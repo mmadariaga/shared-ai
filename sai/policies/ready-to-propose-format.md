@@ -1,3 +1,5 @@
+<!-- Format validator: node sai/tools/lint.js ready-to-propose <file> -->
+
 # Ready to Propose Block Format
 
 Canonical structure for the crystallized `Ready to Propose` block — the single source of truth for the format emitted by explore's crystallization protocol. Consumed by reference; never restated at a consuming surface.

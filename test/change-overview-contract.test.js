@@ -784,16 +784,16 @@ test('archive synchronizes delta specs via CLI without presenting a sync choice'
 });
 
 test('status panel lists the 11 artifact ids in order and derives overview state', () => {
-  const status = artifact('sai/commands/status/body.md');
+  const status = artifact('sai/tools/status.js');
 
   assert.match(status, /11\s+sai-workflow|eleven/i, 'the panel should reference the eleven-artifact schema');
 
   const interfacesIndex = status.indexOf('interfaces');
-  assert.ok(interfacesIndex !== -1, 'the panel should list interfaces');
+  assert.ok(interfacesIndex !== -1, 'the tool should list interfaces');
   const changeOverviewIndex = status.indexOf('change-overview');
-  assert.ok(changeOverviewIndex !== -1, 'the panel should list change-overview');
+  assert.ok(changeOverviewIndex !== -1, 'the tool should list change-overview');
   const implementationIndex = status.indexOf('implementation');
-  assert.ok(implementationIndex !== -1, 'the panel should list implementation');
+  assert.ok(implementationIndex !== -1, 'the tool should list implementation');
   assert.ok(interfacesIndex < changeOverviewIndex, 'change-overview should sit after interfaces');
   assert.ok(changeOverviewIndex < implementationIndex, 'change-overview should sit before implementation');
 

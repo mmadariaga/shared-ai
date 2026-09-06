@@ -28,16 +28,22 @@ The `prereqs-and-change` step SHALL have no step file of its own: it runs from t
 
 ### Requirement: Review step completes immediately without external findings
 
-When the worker receives the `review` pointer with no externally supplied `sai-explore` findings block present, it SHALL return `completed` immediately via the ordinary pre-gate terminal and SHALL create no reviewer machinery — no reviewer dispatch, review loop, counters, retry outcomes, or user-requested reviewer pass. With a valid externally supplied block meeting the shared contract's base-form explicit `High=0` requirement, the worker SHALL process it under the artifact-review-contract and artifact-feedback-gate policies, editing only `proposal.md` and `specs/**`, reporting every discarded item with a specific reason, and returning the `review` progress event while `review` is unmarked.
+When the worker receives the `review` pointer with no externally supplied `sai-explore` findings block present, it SHALL return `completed` immediately via the ordinary pre-gate terminal and SHALL create no reviewer machinery — no reviewer dispatch, review loop, counters, retry outcomes, or user-requested reviewer pass. With a valid externally supplied block meeting the shared contract's base-form explicit `High=0` requirement, the worker SHALL first validate the block's format through the deterministic validator, returning `needs_input` with exact violations if the format is malformed. The coordinator retries correction under the existing bounded-retry mechanism. If the block validates successfully, the worker SHALL process it under the artifact-review-contract and artifact-feedback-gate policies, editing only `proposal.md` and `specs/**`, reporting every discarded item with a specific reason, and returning the `review` progress event while `review` is unmarked.
 
 #### Scenario: no findings block takes the fast path
 
 - **WHEN** the continuation names the `review` step and no externally supplied sai-explore findings block exists
 - **THEN** the worker returns `completed` immediately without creating any reviewer machinery
 
+#### Scenario: malformed findings block returns needs_input
+
+- **WHEN** an externally supplied findings block is present but fails format validation
+- **THEN** the worker returns `needs_input` with the exact violations
+- **AND** the coordinator retries correction under the bounded-retry mechanism
+
 #### Scenario: valid High=0 evidence enables review processing
 
-- **WHEN** an externally supplied sai-explore findings block carries the base-form summary with an explicit `High=0`
+- **WHEN** an externally supplied sai-explore findings block passes format validation and carries the base-form summary with an explicit `High=0`
 - **THEN** the worker processes the block under the shared policies within the proposal/spec edit surface and returns the `review` progress event while `review` is unmarked
 
 ### Requirement: The design worker executes only the coordinator-named active step

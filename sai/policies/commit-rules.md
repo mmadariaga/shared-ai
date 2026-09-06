@@ -1,3 +1,5 @@
+<!-- Format validator: node sai/tools/lint.js commit-rules <file> -->
+
 ## Commit Type Classification
 
 Pick exactly one Conventional Commits type, in this priority order:

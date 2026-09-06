@@ -10,7 +10,17 @@ With no externally supplied `sai-explore` findings block present, return `comple
 
 ## With an externally supplied findings block
 
-Process every finding under `@sai/policies/artifact-review-contract.md` and `@sai/policies/artifact-feedback-gate.md`:
+Validate the format of the externally supplied findings block through the deterministic format validator `validate-findings.js`. Resolve the validator by taking the **first candidate below that exists**, copied **verbatim**:
+
+**Claude Code**:
+1. `.claude/sai/tools/validate-findings.js` — project-local
+2. `~/.claude/sai/tools/validate-findings.js` — user-global
+
+**opencode**:
+1. `.opencode/sai/tools/validate-findings.js` — project-local
+2. `~/.config/opencode/sai/tools/validate-findings.js` — user-global
+
+If no candidate exists, report that and proceed without validation; do not attempt to compose a path. If the validator exists, run it against the findings block. If format violations are found, return `needs_input` with the exact violations and a request to correct and resubmit the block for review. The coordinator retries the correction under the existing bounded-retry mechanism. If the block validates successfully, process every finding under `@sai/policies/artifact-review-contract.md` and `@sai/policies/artifact-feedback-gate.md`:
 
 - Require the shared contract's base-form `Summary: High=<count> Medium=<count> Low=<count>` and an explicit `High=0` before treating the block as review evidence; never infer `High=0` from missing, malformed, or other summary text.
 - Apply each finding selectively per item; discard invalid or inapplicable items.

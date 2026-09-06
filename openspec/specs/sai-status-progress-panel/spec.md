@@ -1,10 +1,12 @@
 # sai-status-progress-panel Specification
 
-## Requirements
+## Purpose
 
+The sai-status-progress-panel capability defines the read-only progress panel that `/sai-status` renders for a single OpenSpec change. It reports the presence state of each of the 11 sai-workflow artifacts, the specs approval state read from `.openspec.yaml`, the change-overview state, implementation progress as a checked-vs-total count, and a `Next:` hint naming the appropriate next `/sai-N-...` command.
+## Requirements
 ### Requirement: sai-status command and wrappers exist across all three harnesses
 
-A `sai-status` command SHALL exist as a body file at `sai/commands/status/body.md` with one wrapper per harness: `commands/claude/sai-status.md`, `commands/opencode/sai-status.md`, and `commands/copilot/sai-status.prompt.md`. All four files SHALL be created and edited together in a single commit (mirror discipline).
+A `sai-status` command SHALL exist as a body file at `sai/commands/status/body.md` with one wrapper per harness: `commands/claude/sai-status.md`, `commands/opencode/sai-status.md`, and `commands/copilot/sai-status.prompt.md`. All four files SHALL be created and edited together in a single commit (mirror discipline). The body file now dispatches to the deterministic status tool rather than containing an inline prose algorithm.
 
 #### Scenario: body file present
 - **WHEN** `sai/commands/` is listed
@@ -16,7 +18,7 @@ A `sai-status` command SHALL exist as a body file at `sai/commands/status/body.m
 
 ### Requirement: panel covers the 11 sai-workflow schema artifacts
 
-`/sai-status {change-name}` SHALL print a compact panel that reports the presence state of each of the 11 sai-workflow schema artifacts — `proposal`, `specs`, `design`, `tasks`, `interfaces`, `change-overview`, `implementation`, `review`, `security`, `performance`, and `accessibility` — and SHALL NOT include `pr.md` as a panel artifact.
+`/sai-status {change-name}` SHALL print a compact panel that reports the presence state of each of the 11 sai-workflow schema artifacts — `proposal`, `specs`, `design`, `tasks`, `interfaces`, `change-overview`, `implementation`, `review`, `security`, `performance`, and `accessibility` — and SHALL NOT include `pr.md` as a panel artifact. Panel derivation is now handled by the deterministic status tool.
 
 #### Scenario: all 11 artifacts represented
 - **WHEN** `/sai-status <change-name>` runs on an existing change
@@ -30,14 +32,13 @@ A `sai-status` command SHALL exist as a body file at `sai/commands/status/body.m
 
 The panel SHALL treat `interfaces.md` as EXEMPT — its absence SHALL NOT be rendered as a problem or a missing-artifact warning, matching the archive classification (ADR 0023). The panel SHALL derive the `change-overview` overview state from the `overview.state` key in `openspec/changes/{name}/.openspec.yaml` (the persisted state defined by the `change-overview-synchronization` capability), NOT from inspecting `change-overview.md` contents:
 
-- `overview.state: current` — rendered as present and current.
+- `overview.state: current` — rendered as present and current only when the CLI also reports `change-overview.md` as done; missing or not-`done` file combined with current metadata renders as a problem/inconsistency.
 - `overview.state: stale` — rendered as a problem (the overview is not the change's current review surface).
 - `overview.state: failed` — rendered as a problem (first materialization was attempted at `Continue` and failed; the change requires a retry).
 - `overview.state: materializing` — rendered as a problem (a generator dispatch is in progress or was interrupted; the overview is not committed).
 - key absent or `overview.state: unmaterialized` on a non-backfilled change — rendered as expected, not a problem (the overview is not yet generated; it materializes at the first successful sai-2 `Continue` processing).
-- `backfilled: true` change — not applicable, no problem rendered.
-
-The panel SHALL derive the overview state from the `.openspec.yaml` key rather than from file presence alone, because file presence alone cannot distinguish unmaterialized, materializing, current, stale, and failed overviews (a stale record still exists at `change-overview.md`, and a failed or interrupted first materialization leaves ambiguous file state). Currentness SHALL be the conjunction of both signals: the panel SHALL render the overview as current only when `overview.state: current` AND the CLI-reported artifact is present/done (`openspec status --change <change-name> --json`). A missing or not-`done` `change-overview.md` combined with `overview.state: current` metadata SHALL be treated as stale/inconsistent and rendered as a problem, because the metadata claims a review surface the file does not provide. Conversely, an overview file present on disk paired with any non-`current` state — `unmaterialized`, `materializing`, `failed`, or `stale` — SHALL be rendered as a problem/inconsistency, because the file is not committed as the change's review surface; for `materializing` the panel SHALL render it as inconsistent until reconciliation verifies it against the current sources.
+- `backfilled: true` change — not applicable, rendered as `N/A`.
+- file present on disk paired with any non-`current` state — rendered as a problem/inconsistency, because the file is not committed as the change's review surface.
 
 #### Scenario: absent interfaces.md not flagged
 - **WHEN** `/sai-status <change-name>` runs on a change that has no `interfaces.md`
@@ -68,6 +69,14 @@ The panel SHALL derive the overview state from the `.openspec.yaml` key rather t
 - **THEN** the panel does NOT render the overview as current
 - **AND** it reports the inconsistency as a problem, because the metadata claims a review surface the file does not provide
 
+#### Scenario: file present with non-current metadata rendered as inconsistent
+- **WHEN** `/sai-status <change-name>` runs on a change whose `change-overview.md` exists (reported as done by CLI) but `.openspec.yaml` records `overview.state: unmaterialized`, `materializing`, `stale`, or `failed`
+- **THEN** the panel reports the inconsistency as a problem, because the file is not committed as the change's review surface
+
+#### Scenario: backfilled change overview forced to N/A
+- **WHEN** `/sai-status <change-name>` runs on a change whose `.openspec.yaml` records `backfilled: true`
+- **THEN** the panel renders the overview cell as `N/A` regardless of the actual `overview.state` value
+
 ### Requirement: Not Applicable audits are surfaced as present
 
 For the audit artifacts (`review`, `security`, `performance`, `accessibility`), the panel SHALL treat an artifact whose body contains a `## Not Applicable` heading as present, mirroring the Classification Check in `sai-archive.md` so the two commands share semantics.
@@ -78,15 +87,23 @@ For the audit artifacts (`review`, `security`, `performance`, `accessibility`), 
 
 ### Requirement: specs approval state is shown from .openspec.yaml
 
-The panel SHALL read the specs approval state from `.openspec.yaml` (the approval key) and display it, and SHALL NOT write to `.openspec.yaml`.
+The panel SHALL read the specs approval state from `.openspec.yaml` (the approval key) and display it, and SHALL NOT write to `.openspec.yaml`. The three-state specs cell renders approved, present-but-unapproved, or absent, enabling the Next hint algorithm to distinguish whether an approved specification exists.
 
 #### Scenario: approval state displayed
 - **WHEN** `.openspec.yaml` records the specs approval key for the change
-- **THEN** the panel displays the specs approval state read from that key
+- **THEN** the panel displays the specs approval state read from that key as approved
 
 #### Scenario: approval key absent
 - **WHEN** `.openspec.yaml` has no recorded specs approval key for the change
 - **THEN** the panel renders the specs approval state as not approved
+
+#### Scenario: approval key absent with specs present
+- **WHEN** `.openspec.yaml` has no recorded specs approval key but the specs artifact is present
+- **THEN** the panel renders the specs state as present-but-unapproved, not absent
+
+#### Scenario: approval key and specs both absent
+- **WHEN** `.openspec.yaml` has no recorded specs approval key and the specs artifact is absent
+- **THEN** the panel renders the specs state as absent
 
 ### Requirement: implementation progress is shown as checked-vs-total
 
@@ -102,7 +119,7 @@ The panel SHALL display implementation progress as a checked-vs-total count deri
 
 ### Requirement: panel prints a Next hint
 
-The panel SHALL include a `Next:` line that suggests the appropriate `/sai-N-...` command for the change's current state. `/sai-pr` MAY appear as a candidate `Next:` hint when the relevant gates are met, but SHALL NOT appear as a panel checkbox.
+The panel SHALL include a `Next:` line that suggests the appropriate `/sai-N-...` command for the change's current state. `/sai-pr` MAY appear as a candidate `Next:` hint when the relevant gates are met, but SHALL NOT appear as a panel checkbox. Next hint resolution uses a deterministic first-match decision table reading the panel's derived cells.
 
 #### Scenario: next command suggested
 - **WHEN** `/sai-status <change-name>` runs on an in-progress change
@@ -118,7 +135,7 @@ The panel SHALL include a `Next:` line that suggests the appropriate `/sai-N-...
 
 ### Requirement: sai-status is read-only
 
-The `sai-status` command SHALL NOT write, create, or delete any file — including anything under `openspec/changes/{name}/`, `openspec/specs/`, and `.openspec.yaml`. Each wrapper SHALL restrict itself to read-only tools via its harness's mechanism: Claude Code via `allowed-tools`, Copilot via `tools:`, and opencode via model-discipline only (opencode has no per-command tool-restriction frontmatter, matching `sai-explore`'s current state).
+The `sai-status` command SHALL NOT write, create, or delete any file — including anything under `openspec/changes/{name}/`, `openspec/specs/`, and `.openspec.yaml`. Each wrapper SHALL restrict itself to read-only tools via its harness's mechanism: Claude Code via `allowed-tools`, Copilot via `tools:`, and opencode via model-discipline only (opencode has no per-command tool-restriction frontmatter, matching `sai-explore`'s current state). The deterministic tool is read-only and creates no state mutations.
 
 #### Scenario: no writes performed
 - **WHEN** `/sai-status <change-name>` runs to completion
@@ -139,3 +156,4 @@ The `sai-status` command SHALL run entirely in the main session with no `budget-
 #### Scenario: no fast-track surface
 - **WHEN** the `sai-status` command body is read
 - **THEN** it defines no `--fast-track` flag or fast-track parse step
+

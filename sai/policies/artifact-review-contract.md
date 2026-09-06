@@ -1,3 +1,5 @@
+<!-- Format validator: node sai/tools/lint.js artifact-review <file> -->
+
 # Artifact Review Contract (shared finding format)
 
 Single source of the artifact review finding contract. Every planning-artifact review surface — the manual `sai-explore` post-crystallization Review Engine and the supervised pipeline's in-session Review Engine rounds — SHALL draw its finding format from this contract by reference. The spec-proposal and design workers are consumers of the resulting external findings block, not additional review surfaces; they SHALL cite this contract when parsing and applying that block but SHALL not form findings or emit a second review format. Neither `sai/commands/explore/instructions.md` nor any capability spec other than `review-finding-format` SHALL redefine the severity criteria, the finding shape, the identifier scheme, or the summary-line format inline; consuming instructions and capability specs SHALL cite this contract by reference. These semantics SHALL NOT be restated in explore or worker instructions.

@@ -1,5 +1,7 @@
 <todo_structure_policy>
 
+<!-- Format validator: Not applicable. This policy defines rendering behavior and state semantics that are coordinator-owned, not file format rules that can be statically validated. See the render and reconciliation rules in the policy body. -->
+
 # Todo Structure Policy
 
 Canonical policy for the progress task list rendered by routed SAI phases. Consumed by reference; never restated at a consuming surface.
