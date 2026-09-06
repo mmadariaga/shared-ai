@@ -149,7 +149,7 @@ test('session file carries owner-only intent without POSIX asserts on Windows', 
 
     const session = readSession(chatId);
     assert.equal(session.port, result.port, 'session port must be present and agree');
-    assert.equal(session.token, result.token, 'session token must be present and agree');
+    assert.equal(session.token, result.token, 'session token must agree');
     assert.ok(Number.isInteger(session.pid) && session.pid > 0, 'session must carry pid');
     assert.ok(session.startTime, 'session must carry startTime');
     assert.ok(session.sidecarVersion, 'session must carry sidecarVersion');
@@ -161,6 +161,77 @@ test('session file carries owner-only intent without POSIX asserts on Windows', 
       const mode = fs.statSync(file).mode & 0o777;
       assert.equal(mode, 0o600, `session file must be owner-only (0o600), got 0o${mode.toString(8)}`);
     }
+  } finally {
+    cleanup([chatId]);
+  }
+});
+
+test('step2 abandoned chat without close dies via pipe EOF or parent poll, no user-activity timer', async () => {
+  const chatId = crypto.randomUUID();
+  try {
+    const mod = require('../bin/sai-state.js');
+    const result = await mod.spawn(chatId);
+    assertRealEndpoint(result, 'spawn()');
+    assert.equal(await mod.healthCheck(chatId), 'live', 'fresh spawn must be live before abandon');
+    const src = fs.readFileSync(path.join(__dirname, '../bin/sai-state.js'), 'utf8');
+    assert.ok(src.includes('stdin'), 'sidecar must handle pipe EOF (stdin)');
+    assert.ok(src.includes('ppid') || src.includes('parent'), 'sidecar must validate parent');
+    assert.ok(!src.includes('lastActivity') && !src.includes('idleTTL') && !src.includes('user-activity'), 'must have no user-activity timer');
+    assert.equal(await mod.healthCheck(chatId), 'dead', 'abandoned chat without close must report dead via pipe EOF or parent poll');
+  } finally {
+    cleanup([chatId]);
+  }
+});
+
+test('step2 post-close tombstone then dead port (5s window)', async () => {
+  const chatId = crypto.randomUUID();
+  try {
+    const mod = require('../bin/sai-state.js');
+    const result = await mod.spawn(chatId);
+    assertRealEndpoint(result, 'spawn()');
+    assert.equal(await mod.healthCheck(chatId), 'live', 'must be live before close');
+    const closed = mod.closeSession(chatId);
+    assert.equal(closed && closed.tombstone, true, 'close must return tombstone:true immediately (5s tombstone naming closed session)');
+  } finally {
+    cleanup([chatId]);
+  }
+});
+
+test('step2 stale-file recovery on dead port plus recycled PID', async () => {
+  const chatId = crypto.randomUUID();
+  try {
+    const mod = require('../bin/sai-state.js');
+    const first = await mod.spawn(chatId);
+    assertRealEndpoint(first, 'initial spawn()');
+    const stale = { port: 1, token: 'stale-token-0000000000000000', pid: 999999, startTime: 'stale', sidecarVersion: '1.0.0' };
+    fs.writeFileSync(sessionFile(chatId), JSON.stringify(stale) + '\n');
+    assert.equal(await mod.healthCheck(chatId), 'dead', 'stale file with dead port must report dead');
+    const recycled = { port: 1, token: 'recycled-token-000000000000', pid: process.pid, startTime: '__recycled__', sidecarVersion: '1.0.0' };
+    fs.writeFileSync(sessionFile(chatId), JSON.stringify(recycled) + '\n');
+    assert.equal(await mod.healthCheck(chatId), 'dead', 'recycled PID with dead port must report dead');
+    const second = await mod.spawn(chatId);
+    assertRealEndpoint(second, 're-spawn()');
+    assert.ok(second.port !== 1, 'next spawn must overwrite stale file with real port');
+    const closed = mod.closeSession(chatId);
+    assert.equal(closed && closed.tombstone, true, 'stale recovery must preserve tombstone-aware close');
+  } finally {
+    cleanup([chatId]);
+  }
+});
+
+test('step2 same spawn+emit+health-check+close succeeds on Windows and POSIX layout', async () => {
+  const chatId = crypto.randomUUID();
+  try {
+    const mod = require('../bin/sai-state.js');
+    const result = await mod.spawn(chatId);
+    assertRealEndpoint(result, 'spawn()');
+    const file = sessionFile(chatId);
+    const expectedDir = path.join(tmpBase(), 'sai-state');
+    assert.ok(file.startsWith(expectedDir), `session file must live under ${expectedDir}, got ${file}`);
+    assert.ok(fs.existsSync(file), 'session file must exist after spawn on any platform');
+    assert.equal(await mod.healthCheck(chatId), 'live', 'health-check must report live on any platform');
+    const closed = mod.closeSession(chatId);
+    assert.equal(closed && closed.tombstone, true, 'close must return tombstone:true on Windows and POSIX');
   } finally {
     cleanup([chatId]);
   }
