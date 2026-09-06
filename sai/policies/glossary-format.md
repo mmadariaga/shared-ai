@@ -1,5 +1,7 @@
 <glossary_format>
 
+<!-- Format validator: node sai/tools/lint.js glossary-format <file> -->
+
 # GLOSSARY.md Format
 
 Canonical structure for `GLOSSARY.md` — the single source of truth for a project's domain language. Adapted from https://github.com/mattpocock/skills/blob/main/skills/engineering/grill-with-docs/CONTEXT-FORMAT.md.

@@ -1,5 +1,7 @@
 <sai_learnings_format>
 
+<!-- Format validator: node sai/tools/lint.js sai-learnings-format <file> -->
+
 # SAI_LEARNINGS.md Format
 
 Canonical structure for `SAI_LEARNINGS.md` — the durable record of execution-observed facts about how a repository actually builds, tests, and behaves. Modeled structurally on `sai/policies/glossary-format.md`.

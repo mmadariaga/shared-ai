@@ -1,3 +1,5 @@
+<!-- Format validator: node sai/tools/lint.js step-contract <file> -->
+
 # Step Contract Format
 
 Canonical structure for the `## Step N` section in `interfaces.md` — the single source of truth for the per-step contract format that specifies public interfaces and test assertions. Consumed by reference; never restated at a consuming surface.
