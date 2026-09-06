@@ -160,6 +160,9 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Known-False Report Recovery**: "A bounded `/sai-4-apply` correction path for a non-clean worker result that coordinator evidence diagnoses — branching on **Cause Locus** to continue the same authorized RED or GREEN worker via `continue_after_recovery` for a new in-scope **Diagnosis Key** (shared three-slot ledger), or to spend zero attempts for out-of-scope/unresolved causes (with at most one coordinator-owned current-Step `implementation.md` plan-artifact repair when applicable)."
 *Avoid*: automatic retry, indefinite retry, advisor escalation, fresh recovery dispatch
 
+**Machine Registry**: "The code registry of hosted state machines backing the sidecar platform, where each entry defines `initialState`, `transition`, and `project` and adding a machine is a module plus one registration line."
+*Avoid*: machine list, model registry, machine catalog
+
 **Managed Worker**: "A phase worker whose agent and harness-specific registration are installed and tracked by the shared-AI installer. The user owns the tunable frontmatter keys (`model` and `effort` for Claude; `model` and `variant` for opencode): the installer preserves their lines on every update while overwriting the managed body and non-tunable frontmatter."
 *Avoid*: worker agent, installer worker, managed agent
 
@@ -174,6 +177,9 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 
 **Native Task Panel**: "The harness-owned UI surface that renders a live task list during a session — Claude Code's task panel via its task-list tool and opencode's task panel via `todowrite` — a single-slot resource with exactly one declared owner at a time; a harness without one falls back to plain in-conversation text."
 *Avoid*: task panel, harness panel, todo panel, progress panel
+
+**Next Pointer**: "The pointer-only transition output (`{follow, hint}`) naming the step file the caller must fetch next, under a fixed minimal template with path interpolation."
+*Avoid*: active step line, instruction block, rendered step
 
 **Orchestration Core**: "The canonical `sai/orchestration/` contracts for coordinator mechanics and worker lifecycle behavior shared by routed planning phases."
 *Avoid*: shared worker prompt, universal phase prompt, coordinator implementation
@@ -289,11 +295,17 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Scope Drift**: "Work evidenced by a selected diff that is absent from the user's supplied statement of intent during **Intent Reconciliation**."
 *Avoid*: unplanned work, scope mismatch, scope creep
 
+**Session File**: "The client-side discovery copy (`$TMPDIR/sai-state/<chatId>.json`) carrying a sidecar's port and token, never the server's authoritative store."
+*Avoid*: state file, server store, snapshot store, state database
+
 **Split-Routed Step**: "A `/sai-4-apply` Step that satisfies all three parts of the routing condition — its body contains a `##### RED phase` block, a **Step Contract** is available for it, AND its plan-level file scope contains at least one production file — and is therefore executed by a **RED Worker** followed by a **GREEN Worker**."
 *Avoid*: testable step, two-dispatch step, split step, TDD step
 
 **Standalone Invocation Shell**: "The apply-owned entry and exit concerns required only for a direct `/sai-4-apply` run — prerequisite checks, change-picker resolution, `--fast-track` parse and session signal, and the pinned completion / MANDATORY STOP literal — distinct from the reusable apply **Phase Adapter**."
 *Avoid*: phase adapter, apply coordinator body, invocation card (when meaning the whole apply surface)
+
+**State Machine Sidecar**: "The deterministic per-session Node service (`sai-state`) that owns session-scoped state for SAI flows behind a uniform envelope, starting with the `explore-stage` machine."
+*Avoid*: sidecar dotfile, owner-hash file, shared daemon, ephemeral app
 
 **Step Contract**: "The `## Step N` section of a change's `interfaces.md` carrying that Step's signatures and exact assertions, whose availability is evaluated per Step because `design.md` omits the section for any step with no interface surface."
 *Avoid*: interface contract, interfaces section, Step N block, contract file
@@ -436,6 +448,8 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - A **Generic Agent** is a **Customization Target** of the `Workers` family and is distinct from a **Managed Worker**: a managed worker is a routed phase worker of the pipeline, while a generic agent serves one of the three budget delegation roles (`explore`, `executor`, or `budget`).
 - A **Closure Reminder** belongs to one **Closure State** and is emitted only while the state is `active-uncrystallized`, naming the token that advances the **Pre-Crystallization Stage TODO** from the user's current stage.
 - A **Readiness Statement** is folded into a **Closure Reminder** at most once per stable idea and is never emitted as a separate closing line.
+- A **State Machine Sidecar** hosts one session's machines through its **Machine Registry** and reports each transition's **Next Pointer**; its **Session File** carries only discovery coordinates, never authoritative state.
+- A **Next Pointer** generalizes the coordinator-delivered `Active step:` pointer for sidecar-hosted machines; the sidecar never renders the named file.
 
 ## Example dialogue
 

@@ -1,0 +1,50 @@
+'use strict';
+
+const store = new Map();
+
+function register(machineIdAtVersion, mod) {
+  if (typeof machineIdAtVersion !== 'string' || machineIdAtVersion.indexOf('@') === -1) {
+    throw new Error('register requires machineIdAtVersion string with @');
+  }
+  const at = machineIdAtVersion.lastIndexOf('@');
+  const base = machineIdAtVersion.slice(0, at);
+  const ver = machineIdAtVersion.slice(at + 1);
+  if (!base || !ver) {
+    throw new Error('register requires non-empty machineId and version');
+  }
+  if (!mod || typeof mod !== 'object' || !('initialState' in mod) || typeof mod.transition !== 'function' || typeof mod.project !== 'function') {
+    throw new Error('register requires module with initialState + transition fn + project fn');
+  }
+  store.set(machineIdAtVersion, mod);
+}
+
+function get(key) {
+  return store.get(key);
+}
+
+function has(key) {
+  return store.has(key);
+}
+
+function list() {
+  return Array.from(store.keys());
+}
+
+function machines() {
+  return Array.from(store.keys());
+}
+
+function clear() {
+}
+
+function reset() {
+  return clear();
+}
+
+function close() {
+  return clear();
+}
+
+try { register('explore-stage@1', require('./machines/explore-stage.js')); } catch (err) {}
+
+module.exports = { register, get, has, list, machines, clear, reset, close };

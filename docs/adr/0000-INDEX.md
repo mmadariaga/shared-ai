@@ -235,6 +235,15 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0173 — Merge collision suffixes ordered by ascending commit date](./0173c-merge-collision-suffix-order-by-commit-date.md) — Refs 0110a, Refs 0113
 - [0175 — Merge renders user-facing output through a coordinator-owned presentation seam](./0175a-merge-renders-through-a-coordinator-owned-presentation-seam.md) — Refs 0075, Refs 0083, Refs 0086
 
+### `sai-state`
+
+- [0176 — Per-session sidecar ownership with single writer](./0176-per-session-sidecar-ownership-single-writer.md)
+- [0177 — Loopback ephemeral token file, no TLS](./0177-loopback-ephemeral-token-file-no-tls.md)
+- [0178 — Uniform envelope, code registry, pinned, idempotent](./0178-uniform-envelope-code-registry-pinned-idempotent.md)
+- [0179 — Pointer-only next, caller-side resolution](./0179-pointer-only-next-caller-side-resolution.md)
+- [0180 — Liveness, pipe EOF, parent poll, tombstone, no TTL](./0180-liveness-pipe-eof-parent-poll-tombstone-no-ttl.md)
+- [0181 — Explore-stage, first hosted machine scope](./0181-explore-stage-first-hosted-machine-scope.md)
+
 ### docker/orca
 
 - [0117b — Orca AppImage is extracted at build time (no FUSE)](./0117b-orca-appimage-build-time-extraction.md)
@@ -365,6 +374,12 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0171b — Routed runner owns the terminal documentation lifecycle](./0171b-routed-runner-owns-terminal-documentation-lifecycle.md)
 - [0171c — Single-string invocation envelope across active SAI surfaces](./0171c-single-string-invocation-envelope.md) — Supersedes 0166, **Reframes** 0159b, Refs 0136, Refs ddr:0114
 - [0175 — Merge renders user-facing output through a coordinator-owned presentation seam](./0175a-merge-renders-through-a-coordinator-owned-presentation-seam.md) — Refs 0075, Refs 0083, Refs 0086
+- [0176 — Per-session sidecar ownership with single writer](./0176-per-session-sidecar-ownership-single-writer.md)
+- [0177 — Loopback ephemeral token file, no TLS](./0177-loopback-ephemeral-token-file-no-tls.md)
+- [0178 — Uniform envelope, code registry, pinned, idempotent](./0178-uniform-envelope-code-registry-pinned-idempotent.md)
+- [0179 — Pointer-only next, caller-side resolution](./0179-pointer-only-next-caller-side-resolution.md)
+- [0180 — Liveness, pipe EOF, parent poll, tombstone, no TTL](./0180-liveness-pipe-eof-parent-poll-tombstone-no-ttl.md)
+- [0181 — Explore-stage, first hosted machine scope](./0181-explore-stage-first-hosted-machine-scope.md)
 
 ### Fetch resolution & path conventions
 
