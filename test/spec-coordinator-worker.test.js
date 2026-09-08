@@ -670,7 +670,13 @@ test('Supervised mode degenerate case: bare --supervised flag with no request fa
 
   assert.match(
     worker,
-    /arguments_value[\s\S]{0,150}empty[\s\S]{0,150}change.picker/i,
-    'empty arguments_value must route to the change picker, not fail',
+    /STOP before change resolution[\s\S]{0,400}covers an empty request/i,
+    'an empty request must STOP before change resolution, not route to a picker',
+  );
+
+  assert.match(
+    worker,
+    /there is no change-picker fallback and no name-only creation path/i,
+    'the change-picker fallback must stay retired for the spec phase',
   );
 });

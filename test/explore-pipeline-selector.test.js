@@ -66,7 +66,7 @@ test('the selector closes every crystallization emission through the authoritati
   assert.match(source, /exactly three options, in this fixed order/i);
   assert.match(source, /\*\*Plan - Unattended\*\* — Runs `sai-1` and `sai-2` to create the plan and stops for pre-implementation human review\./);
   assert.match(source, /\*\*Direct Build - Unattended\*\* — Implements the change directly and updates specs afterward: ideal for fixes and simple changes\./);
-  assert.match(source, /\*\*Manual\*\* — Proceed manually with `\/sai-1-spec <change-name>` \(full control over the process\)\./);
+  assert.match(source, /\*\*Manual\*\* — Proceed manually by pasting the `Ready to Propose` block into a new chat with `\/sai-1-spec` \(full control over the process\)\./);
   assert.match(source, /AskUserQuestion on Claude Code|`AskUserQuestion` on Claude Code/i);
   assert.match(source, /`question` tool on opencode/i);
   assert.match(source, /remember\.md`? \(L10\u201315\)/);
@@ -141,7 +141,7 @@ test('the selector prompt and descriptions localize while option titles and comm
   const source = exploreContract();
 
   assert.match(source, /question text and each option description[\s\S]{0,160}fixed option titles remain exactly `Plan - Unattended`, `Direct Build - Unattended`, and `Manual`/i);
-  assert.match(source, /the literal `review-loop`, `\/sai-1-spec`, `\/sai-2-design`, and `\/sai-1-spec <change-name>` command strings stay verbatim English/i);
+  assert.match(source, /the literal `review-loop`, `\/sai-1-spec`, and `\/sai-2-design` command strings stay verbatim English/i);
 });
 
 test('supervision tracks ordered unique changes and dispatches only eligible work', () => {
@@ -1366,7 +1366,7 @@ test('Step 4: post-selector prose localizes while command and review-loop litera
 
   assert.match(postSelector, /question text and each option description[\s\S]{0,160}fixed option titles remain exactly `Plan - Unattended`, `Direct Build - Unattended`, and `Manual`/i);
   assert.match(postSelector, /After the selector response, the surrounding prose[\s\S]{0,220}follows the selected crystallization language, while its command and standing-path literals remain verbatim English/i);
-  assert.match(postSelector, /the literal `review-loop`, `\/sai-1-spec`, `\/sai-2-design`, and `\/sai-1-spec <change-name>` command strings stay verbatim English/i);
+  assert.match(postSelector, /the literal `review-loop`, `\/sai-1-spec`, and `\/sai-2-design` command strings stay verbatim English/i);
   for (const literal of ['`/sai-1-spec`', '`/sai-2-design`', '`review-loop`']) {
     assert.match(postSelector, new RegExp(literal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
       `${literal} should remain verbatim in post-selector prose`);

@@ -50,7 +50,10 @@ test('canonical generic-agent policies are behavior-only documents', () => {
     assert.doesNotMatch(content,
       /^\s*(?:description|model|variant|effort|mode|temperature|reasoning|provider|permission|tools|metadata)\s*:/im,
       `${policy.name} policy must not select an agent model or metadata`);
-    assert.doesNotMatch(content, /\b(?:installer|installation|install-manifest|projection|projected|destination|ownership|drift)\b/i,
+    // `drift` is no longer installer-exclusive vocabulary: the explore policy's
+    // docs-vs-code drift check is mandated behavior by
+    // openspec/specs/explore-docs-drift-check/spec.md, so it is not a projection marker.
+    assert.doesNotMatch(content, /\b(?:installer|installation|install-manifest|projection|projected|destination|ownership)\b/i,
       `${policy.name} policy must not contain installer or projection logic`);
     assert.doesNotMatch(content, /(?:import|require)\s+(?:[^\n]*\b)?(?:open\s*code|opencode)\b|from\s+['"](?:open\s*code|opencode)/i,
       `${policy.name} policy must not contain a native OpenCode import`);
@@ -116,8 +119,8 @@ test('explore policy preserves bounded read-only research and its spawn output c
     'explore policy should require structured summaries');
   assert.match(content, /no\s+raw\s+output|never\s+(?:return|emit|include)\s+raw\s+(?:output|content)/i,
     'explore policy should prohibit raw output');
-  assert.match(content, /(?:approximately\s+)?(?:30|~30)[- ]?(?:tool\s+)?calls?|30[- ]call/i,
-    'explore policy should preserve the 30-call cap');
+  assert.match(content, /(?:approximately\s+)?(?:40|~40)[- ]?(?:tool\s+)?calls?|40[- ]call/i,
+    'explore policy should preserve the 40-call cap');
   assert.match(content, /cap|limit|maximum/i,
     'explore policy should describe the call bound as a cap or limit');
   assert.match(content, /output\s+contract/i,
@@ -353,7 +356,7 @@ const OPENCODE_BUDGET_SKILL_CONTRACTS = [
       /`explore` \(lowercase\)[\s\S]{0,100}keyword/i,
       /synchronously/i,
       /`model` frontmatter of the explore agent file/i,
-      /30 tool calls/i,
+      /40 tool calls/i,
       /output contract/i,
       /explore-agent\.md/i,
       /## Cost model/i,
@@ -404,7 +407,7 @@ const CLAUDE_BUDGET_SKILL_CONTRACTS = [
     markers: [
       /Agent\s*\(\s*subagent_type:\s*budget-explorer\s*,\s*run_in_background:\s*true\s*,/i,
       /read[- ]only/i,
-      /30\s+tool\s+calls/i,
+      /40\s+tool\s+calls/i,
       /main\s+agent/i,
       /output\s+contract/i,
     ],
