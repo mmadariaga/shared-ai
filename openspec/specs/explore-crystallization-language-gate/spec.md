@@ -6,7 +6,7 @@ Define the language-selection gate used when `sai-explore` crystallizes a handof
 
 ### Requirement: Localize selector question and descriptions while retaining English titles
 
-The crystallization language gate SHALL render the selector question and all option descriptions in the user's language. The option titles MUST remain exactly `Plan - Unattended`, `Build - Unattended`, and `Manual`. The literals `review-loop`, `/sai-1-spec`, `/sai-1-spec <change-name>`, and `/sai-2-design` SHALL remain verbatim English.
+The crystallization language gate SHALL render the selector question and all option descriptions in the user's language. The option titles MUST remain exactly `Plan - Unattended`, `Build - Unattended`, and `Manual`. The literals `review-loop`, `/sai-1-spec`, and `/sai-2-design` SHALL remain verbatim English.
 
 #### Scenario: Localized selector presentation preserves stable literals
 

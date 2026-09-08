@@ -21,7 +21,7 @@
 
       - **Plan - Unattended** — Runs `sai-1` and `sai-2` to create the plan and stops for pre-implementation human review.
       - **Direct Build - Unattended** — Implements the change directly and updates specs afterward: ideal for fixes and simple changes.
-        - **Manual** — Proceed manually by pasting the `Ready to Propose` block into a new chat with `/sai-1-spec` (full control over the process).
+      - **Manual** — Proceed manually by pasting the `Ready to Propose` block into a new chat with `/sai-1-spec` (full control over the process).
 
    Selecting **Plan - Unattended** (`route_mode = plan-unattended`) delegates supervised `sai-1` + `sai-2` execution to this session under the contract below. Selecting **Direct Build - Unattended** (`route_mode = direct-build-unattended`) runs the unattended code-first fast lane under the **Direct Build (unattended) supervision contract** below: direct block-driven implementation, functional fix loop, backfill preparation followed by coordinator-authorized draft execution, archive preparation followed by coordinator-authorized archive execution, and the pre-authorized local commit in one run. Neither dispatching option loads or dispatches anything unless selected; **Manual** (`route_mode = manual`) and every other command surface are unaffected by the selector.
 

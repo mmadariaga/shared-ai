@@ -23,10 +23,10 @@ The Direct Build-Unattended selector description SHALL state that it implements 
 
 ### Requirement: Manual description directs full-control continuation
 
-The Manual selector description SHALL direct the user to proceed manually with `/sai-1-spec <change-name>` with full control over the process, preserving the fixed title, third position, and route identity `manual`.
+The Manual selector description SHALL direct the user to proceed manually by pasting the `Ready to Propose` block into a new chat with `/sai-1-spec` with full control over the process, preserving the fixed title, third position, and route identity `manual`.
 
 #### Scenario: Manual description states verbatim continuation
 
 - **WHEN** the crystallization-close selector is presented
-- **THEN** the Manual option SHALL present its fixed title with the revised description containing the verbatim literal `/sai-1-spec <change-name>` and the full-control statement
+- **THEN** the Manual option SHALL present its fixed title with the revised description containing the verbatim instruction to paste the `Ready to Propose` block into a new chat with `/sai-1-spec` and the full-control statement
 
