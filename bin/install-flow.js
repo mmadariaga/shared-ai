@@ -132,14 +132,6 @@ const PACKAGE_VERSION = require(path.join(REPOSITORY_ROOT, 'package.json')).vers
 
 const OPENCODE_BINDINGS_DIR = path.join(REPOSITORY_ROOT, 'sai', 'orchestration', 'workers', 'bindings', 'opencode');
 const CLAUDE_BINDINGS_DIR = path.join(REPOSITORY_ROOT, 'sai', 'orchestration', 'workers', 'bindings', 'claude');
-const OPENCODE_BINDING_VALIDATION_LOCK = path.join(
-  REPOSITORY_ROOT,
-  '.tmp',
-  'collapse-sai-worker-matrix',
-  'opencode-binding-validation.lock',
-);
-const OPENCODE_BINDING_LOCK_OWNER = 'owner.json';
-const OPENCODE_BINDING_LOCK_STALE_MS = 1000;
 
 // The managed-worker census is no longer hand-maintained: it is derived from
 // the validated Worker Matrix phase entries. The canonical key order below is
@@ -178,114 +170,6 @@ function matrixWorkerRoster(harness) {
   return names;
 }
 
-function isProcessAlive(pid) {
-  if (!Number.isInteger(pid) || pid <= 0) return false;
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (error) {
-    return error.code === 'EPERM';
-  }
-}
-
-function reclaimStaleOpencodeBindingValidationLock() {
-  let lockStat;
-  try {
-    lockStat = fs.statSync(OPENCODE_BINDING_VALIDATION_LOCK);
-  } catch (error) {
-    if (error.code === 'ENOENT') return true;
-    throw error;
-  }
-  if (!lockStat.isDirectory()) return false;
-
-  const ownerPath = path.join(OPENCODE_BINDING_VALIDATION_LOCK, OPENCODE_BINDING_LOCK_OWNER);
-  let owner = null;
-  let ownerFileExists = true;
-  try {
-    owner = JSON.parse(fs.readFileSync(ownerPath, 'utf8'));
-  } catch (error) {
-    if (error.code === 'ENOENT') ownerFileExists = false;
-    else if (error.code === 'EPERM') return false;
-    else if (!(error instanceof SyntaxError)) throw error;
-  }
-  if (owner && isProcessAlive(owner.pid)) return false;
-
-  const age = Date.now() - lockStat.mtimeMs;
-  if (age < OPENCODE_BINDING_LOCK_STALE_MS) return false;
-
-  let entries;
-  try {
-    entries = fs.readdirSync(OPENCODE_BINDING_VALIDATION_LOCK);
-  } catch (error) {
-    if (error.code === 'EPERM') return false;
-    throw error;
-  }
-  if (entries.length === 0) {
-    try {
-      fs.rmdirSync(OPENCODE_BINDING_VALIDATION_LOCK);
-    } catch (error) {
-      if (error.code === 'ENOENT') return true;
-      if (error.code === 'ENOTEMPTY' || error.code === 'EPERM') return false;
-      throw error;
-    }
-    return true;
-  }
-  if (!ownerFileExists || entries.length !== 1 || entries[0] !== OPENCODE_BINDING_LOCK_OWNER) return false;
-
-  try {
-    fs.unlinkSync(ownerPath);
-    fs.rmdirSync(OPENCODE_BINDING_VALIDATION_LOCK);
-  } catch (error) {
-    if (error.code === 'ENOENT') return true;
-    if (error.code === 'ENOTEMPTY' || error.code === 'EPERM') return false;
-    throw error;
-  }
-  return true;
-}
-
-function withOpencodeBindingValidationLock(operation) {
-  ensureDir(path.dirname(OPENCODE_BINDING_VALIDATION_LOCK));
-  const started = Date.now();
-  const waitBuffer = new Int32Array(new SharedArrayBuffer(4));
-  let ownerToken = null;
-  while (ownerToken === null) {
-    try {
-      fs.mkdirSync(OPENCODE_BINDING_VALIDATION_LOCK);
-      const token = crypto.randomUUID();
-      fs.writeFileSync(
-        path.join(OPENCODE_BINDING_VALIDATION_LOCK, OPENCODE_BINDING_LOCK_OWNER),
-        JSON.stringify({ pid: process.pid, token }),
-        'utf8',
-      );
-      ownerToken = token;
-    } catch (error) {
-      if (ownerToken !== null) throw error;
-      // Windows can report EPERM briefly while another process releases the
-      // same transient lock directory. Treat it as contention, not as a
-      // validation result; all other filesystem failures remain fatal.
-      if (error.code !== 'EEXIST' && error.code !== 'EPERM') throw error;
-      if (reclaimStaleOpencodeBindingValidationLock()) continue;
-      if (Date.now() - started >= 30000) {
-        throw new Error(`Timed out waiting for opencode binding validation lock ${OPENCODE_BINDING_VALIDATION_LOCK}`);
-      }
-      Atomics.wait(waitBuffer, 0, 0, 10);
-    }
-  }
-  try {
-    return operation();
-  } finally {
-    const ownerPath = path.join(OPENCODE_BINDING_VALIDATION_LOCK, OPENCODE_BINDING_LOCK_OWNER);
-    try {
-      const owner = JSON.parse(fs.readFileSync(ownerPath, 'utf8'));
-      if (owner.token === ownerToken) {
-        fs.unlinkSync(ownerPath);
-        fs.rmdirSync(OPENCODE_BINDING_VALIDATION_LOCK);
-      }
-    } catch (error) {
-      if (error.code !== 'ENOENT') throw error;
-    }
-  }
-}
 
 const MANAGED_WORKERS = Object.freeze(Object.fromEntries(
   MANAGED_WORKER_ORDER.map(name => [name, Object.freeze({ claude: Object.freeze({ agent: `${name}.md` }) })])
@@ -468,44 +352,14 @@ function validateOpencodeWorkerBindings(bindingsDir = OPENCODE_BINDINGS_DIR) {
     const rosterByEntry = new Map(canonicalBindings.map(binding => [binding.entry.workerName, binding]));
     const canonicalBindingText = (binding) => {
       const bindingPath = path.join(bindingsDir, binding.destinationName);
-      let materialized = false;
-      let temporaryPath = null;
       try {
-        if (bindingsDir === OPENCODE_BINDINGS_DIR && !fs.existsSync(bindingPath)) {
-          temporaryPath = `${bindingPath}.${process.pid}.${crypto.randomUUID()}.tmp`;
-          fs.writeFileSync(temporaryPath, binding.text, 'utf8');
-          try {
-            fs.renameSync(temporaryPath, bindingPath);
-            materialized = true;
-            temporaryPath = null;
-          } catch (error) {
-            if (error.code !== 'EEXIST') throw error;
-          }
-        }
-        try {
-          return fs.readFileSync(bindingPath, 'utf8');
-        } catch (error) {
-          // Matrix rendering has already validated this generated source. The
-          // canonical opencode tree intentionally need not contain materialized
-          // per-worker files, so an absent entry falls back to matrix text.
-          if (error.code === 'ENOENT') return binding.text;
-          throw error;
-        }
-      } finally {
-        if (temporaryPath) {
-          try {
-            fs.unlinkSync(temporaryPath);
-          } catch (error) {
-            if (error.code !== 'ENOENT') throw error;
-          }
-        }
-        if (materialized) {
-          try {
-            fs.unlinkSync(bindingPath);
-          } catch (error) {
-            if (error.code !== 'ENOENT') throw error;
-          }
-        }
+        return fs.readFileSync(bindingPath, 'utf8');
+      } catch (error) {
+        // Matrix rendering has already validated this generated source. The
+        // canonical opencode tree intentionally need not contain materialized
+        // per-worker files, so an absent entry falls back to matrix text.
+        if (error.code === 'ENOENT') return binding.text;
+        throw error;
       }
     };
     const bindingFiles = allFiles
@@ -566,9 +420,7 @@ function validateOpencodeWorkerBindings(bindingsDir = OPENCODE_BINDINGS_DIR) {
     }
     return [...seenBy.keys()];
   };
-  return bindingsDir === OPENCODE_BINDINGS_DIR
-    ? withOpencodeBindingValidationLock(validate)
-    : validate();
+  return validate();
 }
 
 function writeVersionMarker(baseDir) {
@@ -1106,7 +958,7 @@ function assertInstalledMarkdownSourcesUseOneStringEnvelope() {
 function installClaude(destBase) {
   assertHarnessCommandsUseOneStringEnvelope('claude');
   validateClaudeWorkerBindings();
-  withOpencodeBindingValidationLock(assertInstalledMarkdownSourcesUseOneStringEnvelope);
+  assertInstalledMarkdownSourcesUseOneStringEnvelope();
   const targetPath = destBase || CLAUDE_BASE;
   cleanupRetiredProjections('claude', { base: targetPath });
   for (const projection of expandForInstall('claude', { base: targetPath })) installProjection(projection, targetPath);
@@ -1117,7 +969,7 @@ function installClaude(destBase) {
 function installOpencode(destBase, { spawnSync: spawnFn, env: runEnv } = {}) {
   assertHarnessCommandsUseOneStringEnvelope('opencode');
   validateOpencodeWorkerBindings();
-  withOpencodeBindingValidationLock(assertInstalledMarkdownSourcesUseOneStringEnvelope);
+  assertInstalledMarkdownSourcesUseOneStringEnvelope();
   const resolveOptions = {};
   if (spawnFn !== undefined) resolveOptions.spawnSync = spawnFn;
   if (runEnv !== undefined) resolveOptions.env = runEnv;

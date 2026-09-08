@@ -204,7 +204,18 @@ test('Step 4 wrapper echo fields are rejected before Opencode destination mutati
       const isBinding = typeof target === 'string' &&
         path.resolve(path.dirname(target)) === path.resolve(bindingsDir) &&
         /-worker\\.md$/.test(target);
-      const value = originalReadFileSync(target, ...args);
+      let value;
+      try {
+        value = originalReadFileSync(target, ...args);
+      } catch (error) {
+        // For binding files that don't exist on disk (generated bindings), provide synthetic content
+        // so injection can reach the text the validator uses
+        if (isBinding && error.code === 'ENOENT') {
+          value = '# Binding\\n\\ntask({\\n  subagent_type: "test",\\n  prompt: "test",\\n})\\n';
+        } else {
+          throw error;
+        }
+      }
       if (!isBinding || poisoned) return value;
       poisoned = true;
       const text = Buffer.isBuffer(value) ? value.toString('utf8') : String(value);
