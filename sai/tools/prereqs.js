@@ -5,26 +5,32 @@
 /**
  * prereqs — deterministic engine behind the OpenSpec prerequisite preflight.
  *
- * The three preconditions every openspec-dependent sai-* command checks before
+ * The four preconditions every openspec-dependent sai-* command checks before
  * it touches anything are mechanical: a binary on PATH, a directory on disk,
- * and one regex over one file. They are decided here by code so no consumer
- * re-derives them from prose.
+ * one regex over one file, and three skill files on disk. They are decided
+ * here by code so no consumer re-derives them from prose.
  *
  * The checks run in order and the first failure decides the verdict:
  *   1 cli     the `openspec` binary answers `openspec --version`.
  *   2 dir     `openspec/` exists as a directory at the project root.
  *   3 schema  `openspec/config.yaml` has a line matching
  *             /^schema:\s*sai-workflow\s*$/m.
+ *   4 skills  the three OpenSpec skills the pipeline fetches are installed in
+ *             the active harness's project-local skills root. Selected by the
+ *             mandatory `--require-openspec-skills opencode|claude` flag; it
+ *             runs only after `cli`, `dir`, and `schema` pass, and aggregates
+ *             every missing skill into a single halt. Presence-only: a stale
+ *             or outdated skill passes.
  *
  * The remediation text a user sees is owned by the caller — this tool reports
  * WHICH check failed and what it observed, never how to phrase the fix.
  *
  * Sub-commands:
- *   check                      Evaluate the three preconditions and report the
+ *   check                      Evaluate the four preconditions and report the
  *                              verdict.
  *
  * Usage:
- *   node sai/tools/prereqs.js check [--json] [--cwd <dir>]
+ *   node sai/tools/prereqs.js check --require-openspec-skills <opencode|claude> [--json] [--cwd <dir>]
  *
  * Exit codes: 0 = every check passed (`verdict: pass`); 1 = a check failed, so
  * the caller halts (`verdict: halt`) and nothing was read beyond the checks;
@@ -36,6 +42,17 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 const SCHEMA_LINE = /^schema:\s*sai-workflow\s*$/m;
+
+/**
+ * The skills check is active only when the caller names the active harness.
+ * OpenSpec skills are contractually project-local (installed by `openspec
+ * init`, never copied to user globals), so the roots are project-local only:
+ * no homedir() and no XDG override handling.
+ */
+const SKILLS_ROOT_SEGMENTS = { opencode: '.opencode', claude: '.claude' };
+
+/** The OpenSpec skills every full lifecycle fetches; presence-only check. */
+const REQUIRED_SKILLS = ['openspec-explore', 'openspec-propose', 'openspec-archive-change'];
 
 /** Ordered check ids. The first failing one decides the verdict. */
 const CHECKS = ['cli', 'dir', 'schema'];
@@ -83,6 +100,14 @@ function pathExists(target) {
 function isDirectory(target) {
   try {
     return fs.statSync(target).isDirectory();
+  } catch (err) {
+    return false;
+  }
+}
+
+function isFile(target) {
+  try {
+    return fs.statSync(target).isFile();
   } catch (err) {
     return false;
   }
@@ -150,20 +175,45 @@ function checkSchema(cwd) {
   };
 }
 
+/**
+ * "Installed" means the `<name>/SKILL.md` file exists at the active harness's
+ * project-local skills root — the file is stat'd, not the directory, so a
+ * directory without its SKILL.md counts as missing. Every missing skill is
+ * aggregated into one failed result so a single remediation pass suffices.
+ */
+function checkSkills(cwd, harness) {
+  const root = path.join(cwd, SKILLS_ROOT_SEGMENTS[harness], 'skills');
+  const missing = REQUIRED_SKILLS.filter((name) => !isFile(path.join(root, name, 'SKILL.md')));
+  if (missing.length === 0) {
+    return { id: 'skills', passed: true, root, missing_skills: [] };
+  }
+  return {
+    id: 'skills',
+    passed: false,
+    reason: 'openspec-skill-missing',
+    message: `the required OpenSpec skills are missing from '${root}': ${missing.join(', ')}.`,
+    root,
+    missing_skills: missing,
+  };
+}
+
 const RUNNERS = { cli: checkCli, dir: checkDir, schema: checkSchema };
 
 /**
  * Run the checks in order and stop at the first failure: a project without
  * the CLI is not also interrogated about its config file, and the caller
- * receives exactly one failed check to remediate.
+ * receives exactly one failed check to remediate. The `skills` check runs
+ * only after `cli`, `dir`, and `schema` pass, and only when the caller named
+ * the active harness; its aggregation is internal to it.
  */
-function commandCheck(cwd) {
+function commandCheck(cwd, harness) {
+  const ids = harness ? [...CHECKS, 'skills'] : [...CHECKS];
   const checks = [];
-  for (const id of CHECKS) {
-    const result = RUNNERS[id](cwd);
+  for (const id of ids) {
+    const result = id === 'skills' ? checkSkills(cwd, harness) : RUNNERS[id](cwd);
     checks.push(result);
     if (!result.passed) {
-      return {
+      const halt = {
         ok: false,
         action: 'check',
         verdict: 'halt',
@@ -172,6 +222,8 @@ function commandCheck(cwd) {
         message: result.message,
         checks,
       };
+      if (id === 'skills') halt.missing_skills = result.missing_skills;
+      return halt;
     }
   }
   return { ok: true, action: 'check', verdict: 'pass', failed_check: null, checks };
@@ -179,12 +231,20 @@ function commandCheck(cwd) {
 
 function usage() {
   return [
-    'Usage: node sai/tools/prereqs.js check [--json] [--cwd <dir>]',
+    'Usage: node sai/tools/prereqs.js check --require-openspec-skills <opencode|claude> [--json] [--cwd <dir>]',
     '',
-    '  check                    Evaluate the three OpenSpec preconditions — the',
-    '                           openspec binary, the openspec/ directory, and the',
-    '                           schema: sai-workflow line in openspec/config.yaml —',
-    '                           and report verdict pass or halt.',
+    '  check                    Evaluate the four OpenSpec preconditions — the',
+    '                           openspec binary, the openspec/ directory, the',
+    '                           schema: sai-workflow line in openspec/config.yaml,',
+    "                           and the three OpenSpec skills in the active",
+    "                           harness's project-local skills root — and report",
+    '                           verdict pass or halt.',
+    '',
+    '  --require-openspec-skills <harness>',
+    '                           Mandatory harness selector: `opencode` or',
+    '                           `claude`. Omitting the flag or passing any',
+    '                           other value is a usage error (exit 2), never',
+    '                           a halt verdict.',
     '',
     '  --json                   Emit the report as JSON on stdout.',
     '  --cwd <dir>              Project root to check (default: cwd).',
@@ -194,11 +254,12 @@ function usage() {
 }
 
 function parseArgs(argv) {
-  const opts = { command: null, positional: [], json: false, cwd: null, help: false };
+  const opts = { command: null, positional: [], json: false, cwd: null, requireOpenspecSkills: null, help: false };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === '--json') opts.json = true;
     else if (arg === '--cwd') opts.cwd = argv[++i];
+    else if (arg === '--require-openspec-skills') opts.requireOpenspecSkills = argv[++i];
     else if (arg === '--help' || arg === '-h') opts.help = true;
     else if (arg.startsWith('--')) return { error: `unknown flag: ${arg}` };
     else if (opts.command === null) opts.command = arg;
@@ -209,7 +270,10 @@ function parseArgs(argv) {
 
 function renderText(payload) {
   if (payload.verdict === 'halt') return `halt (${payload.reason}): ${payload.message}`;
-  return 'pass: openspec CLI, openspec/ directory, and schema: sai-workflow all present.';
+  const skillsRan = Array.isArray(payload.checks) && payload.checks.some((check) => check.id === 'skills');
+  return skillsRan
+    ? 'pass: openspec CLI, openspec/ directory, schema: sai-workflow, and the three OpenSpec skills all present.'
+    : 'pass: openspec CLI, openspec/ directory, and schema: sai-workflow all present.';
 }
 
 function render(payload, json) {
@@ -235,6 +299,16 @@ function main(argv) {
     process.stderr.write(`check takes no positional arguments\n${usage()}\n`);
     return 2;
   }
+  // The harness selector is mandatory on `check`: a missing or invalid value
+  // is a usage error (exit 2), never a halt verdict.
+  const harness = opts.requireOpenspecSkills;
+  if (harness !== 'opencode' && harness !== 'claude') {
+    const problem = harness === null
+      ? 'check requires --require-openspec-skills with a harness value: opencode or claude'
+      : `invalid --require-openspec-skills value: ${harness} (expected opencode or claude)`;
+    process.stderr.write(`${problem}\n${usage()}\n`);
+    return 2;
+  }
 
   const cwd = opts.cwd ? path.resolve(opts.cwd) : process.cwd();
   if (!isDirectory(cwd)) {
@@ -243,7 +317,7 @@ function main(argv) {
   }
 
   try {
-    const payload = commandCheck(cwd);
+    const payload = commandCheck(cwd, harness);
     render(payload, opts.json);
     return payload.verdict === 'pass' ? 0 : 1;
   } catch (err) {
@@ -260,4 +334,4 @@ if (require.main === module) {
   process.exitCode = main(process.argv.slice(2));
 }
 
-module.exports = { main, commandCheck, checkDir, checkSchema, usage, CHECKS, SCHEMA_LINE };
+module.exports = { main, commandCheck, checkDir, checkSchema, checkSkills, usage, CHECKS, REQUIRED_SKILLS, SCHEMA_LINE };
