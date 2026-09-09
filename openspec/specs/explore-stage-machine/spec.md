@@ -5,7 +5,7 @@ TBD - created by archiving change state-machine-sidecar. Update Purpose after ar
 ## Requirements
 ### Requirement: Deterministic stage transitions
 
-The `explore-stage` machine SHALL advance stages only on explicit caller-supplied intent signals plus the deterministic content-based empty-set rules, and SHALL never advance on model readiness judgment. The content-based rules are: at the `review-edge-cases` stage, when the recorded edge-case list is empty, the machine advances without requiring intent; at the `implementation-details` stage, when the recorded implementation-details list is empty, the machine advances without requiring intent. These rules fire only on their own stages' recorded lists; all other stage transitions require explicit intent. To distinguish recorded empty from unrecorded, the state carries `edgeCaseList` and `implementationDetailsList` as null when unrecorded and as an array (including empty array) when recorded. The explore command (the primary caller) retains intent recognition, dominant-intent classification, and list-agreement semantics on the caller side.
+The `explore-stage` machine SHALL advance stages only on explicit caller-supplied intent signals plus the deterministic content-based empty-set rules, and SHALL never advance on model readiness judgment. The content-based rules are: at the `review-edge-cases` stage, when the recorded edge-case list is empty, the machine advances without requiring intent; at the `implementation-details` stage, when the recorded implementation-details list is empty, the machine advances without requiring intent. These rules fire only on their own stages' recorded lists; all other stage transitions require explicit intent. To distinguish recorded empty from unrecorded, the state carries `edgeCaseList` and `implementationDetailsList` as null when unrecorded and as an array (including empty array) when recorded. The machine SHALL consume a `recordedList` event: a non-null `recordedList` records the supplied list into the current stage's own list (`ideaList` at `explore-change`, `edgeCaseList` at `review-edge-cases`, `implementationDetailsList` at `implementation-details`) without advancing the stage; recording and advancing remain separate emits, and a recorded empty list advances only on a later no-intent emit per the content-based empty-set rule. The explore command (the primary caller) retains intent recognition, dominant-intent classification, and list-agreement semantics on the caller side.
 
 #### Scenario: Intent advances, readiness does not
 
@@ -26,6 +26,16 @@ The `explore-stage` machine SHALL advance stages only on explicit caller-supplie
 
 - **WHEN** the caller emits the stage event at `review-edge-cases` or `implementation-details` where the respective list is null (unrecorded, not yet gathered) and no explicit intent is supplied
 - **THEN** the machine rejects the advance without requiring the list to be gathered first and returns the current state's pointer
+
+#### Scenario: Recording records without advancing
+
+- **WHEN** the caller emits a `recordedList` event at a stage that owns a list
+- **THEN** the supplied list records into that stage's own list and the stage does not advance
+
+#### Scenario: Recording an empty list does not advance by itself
+
+- **WHEN** the caller emits an empty `recordedList` at `review-edge-cases` or `implementation-details`
+- **THEN** the list records as recorded-empty and the stage stays until a later no-intent emit fires the content-based empty-set rule
 
 ### Requirement: Pure projection
 
@@ -67,4 +77,37 @@ The machine SHALL absorb the explore stage-progression rules into its transition
 
 - **WHEN** an emission exercises a stage-progression rule versus a `Result Loop` or intent-classifier behavior
 - **THEN** the machine deterministically decides the former and rejects or ignores the latter as out of scope with the current state's pointer
+
+### Requirement: Single-level emit outcome
+
+The `/emit` route of the `explore-stage` sidecar SHALL return exactly one level of outcome — `{state, snapshot, next}` — where `state` is the plain machine state (`state.stage` a string), `snapshot` is the machine's own snapshot for the returned state, and `next` is the current pointer. The route SHALL store the returned plain state as session state and SHALL NOT re-wrap `transition()`'s return into a nested envelope. A no-intent emit that triggers neither recording nor a content-based empty-set rule SHALL return the current state in-band with the rejection marker `rejected: READINESS_IS_NOT_INTENT` instead of advancing, and a replayed `eventId` SHALL return the identical stored outcome without applying the event twice.
+
+#### Scenario: Single-level envelope and monotonic stage walk
+
+- **WHEN** the caller POSTs a `next-step` event to the live `/emit` route and repeats it across consecutive turns
+- **THEN** every response carries exactly the keys `state`, `snapshot`, and `next` with `state.stage` a plain string, and consecutive emits walk `explore-change` → `review-edge-cases` → `implementation-details` → `crystallize` without resetting to an earlier stage
+
+#### Scenario: No-intent emit rejects in-band
+
+- **WHEN** the caller emits a stage event with no explicit intent where neither recording nor an empty-set rule applies
+- **THEN** the response carries the `rejected: READINESS_IS_NOT_INTENT` marker and returns the current state without advancing
+
+#### Scenario: Replayed eventId returns the identical outcome
+
+- **WHEN** the same `eventId` is emitted twice
+- **THEN** the second response returns the identical stored outcome and the stage does not advance twice
+
+#### Scenario: Restore returns the carried snapshot state
+
+- **WHEN** the caller POSTs the last conversation-carried snapshot to `/restore`
+- **THEN** the restored state equals the snapshotted machine state and the next transition continues from it
+
+### Requirement: HTTP seam live test coverage
+
+The `explore-stage` HTTP seam SHALL have test coverage exercised against the live sidecar server covering consecutive stage advances, list recording, empty-set auto-advance, idempotent replay, and no-intent rejection. The machine and sidecar code SHALL stay stdlib-only with no OS-conditional paths, and the suite SHALL run on Windows and Linux.
+
+#### Scenario: Live seam suite runs identically on both platforms
+
+- **WHEN** the sidecar test suite runs on Windows or Linux
+- **THEN** the live-server seam tests pass with `spawn` → `emit` → `restore` → `close` behaving identically on both platforms and no OS-conditional code paths
 

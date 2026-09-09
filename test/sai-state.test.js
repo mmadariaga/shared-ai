@@ -618,6 +618,109 @@ test('step5 compaction rediscovery via file plus snapshot restores last snapshot
   }
 });
 
+// HTTP seam (live server): /emit single-level envelope, stage walk, recording,
+// empty-set auto-advance, idempotent replay, no-intent rejection. Uses the
+// in-process spawn (server unref'd, no OS-conditional paths).
+test('emit seam: single-level {state,snapshot,next}; consecutive next-step emits walk all stages without resets; restore returns the carried state', async () => {
+  const chatId = crypto.randomUUID();
+  try {
+    const mod = require('../bin/sai-state.js');
+    const endpoint = await mod.spawn(chatId);
+    assertRealEndpoint(endpoint, 'emit-seam spawn()');
+    const emit = (eventId, event) =>
+      mod.requestJson(endpoint.port, endpoint.token, '/emit', { machineId: 'explore-stage@1', eventId, event });
+
+    // First next-step emit: explore-change -> review-edge-cases, single-level response.
+    const r1 = await emit(crypto.randomUUID(), { intent: 'next-step' });
+    assert.ok(r1 && typeof r1 === 'object', `/emit must return an object, got ${JSON.stringify(r1)}`);
+    assert.deepEqual(Object.keys(r1).sort(), ['next', 'snapshot', 'state'], `/emit response must be single-level {state,snapshot,next}, got ${JSON.stringify(Object.keys(r1))}`);
+    assert.deepEqual(
+      Object.keys(r1.state).sort(),
+      ['edgeCaseList', 'ideaList', 'implementationDetailsList', 'stage'],
+      `state must be the plain machine state, got ${JSON.stringify(r1.state)}`,
+    );
+    assert.ok(typeof r1.state.stage === 'string', `state.stage must be a string, got ${JSON.stringify(r1.state)}`);
+    assert.equal(r1.state.stage, 'review-edge-cases', `first next-step must advance explore-change -> review-edge-cases, got ${r1.state.stage}`);
+    assert.ok(r1.snapshot && r1.snapshot.state && r1.snapshot.state.stage === r1.state.stage, 'snapshot must carry the same stage as state');
+    assert.equal(r1.snapshot.machineId, 'explore-stage@1', 'snapshot must pin explore-stage@1');
+    assert.ok(r1.next && typeof r1.next.follow === 'string' && r1.next.follow.includes('.md'), `next must be a real pointer, got ${JSON.stringify(r1.next)}`);
+
+    // Consecutive next-step emits walk the full stage table without resets.
+    const r2 = await emit(crypto.randomUUID(), { intent: 'next-step' });
+    assert.equal(r2.state.stage, 'implementation-details', `second next-step must reach implementation-details, got ${r2.state.stage}`);
+    const r3 = await emit(crypto.randomUUID(), { intent: 'next-step' });
+    assert.equal(r3.state.stage, 'crystallize', `third next-step must reach crystallize, got ${r3.state.stage}`);
+    const r4 = await emit(crypto.randomUUID(), { intent: 'next-step' });
+    assert.equal(r4.state.stage, 'crystallize', `next-step at crystallize must not reset to explore-change, got ${r4.state.stage}`);
+    assert.ok(r1.state.stage !== 'explore-change' && r4.state.stage === 'crystallize', 'consecutive emits must not reset the stage');
+
+    // Restore-per-turn: /restore with the last conversation-carried snapshot
+    // returns the same state (spawn -> emit -> restore parity on any OS).
+    const restored = await mod.requestJson(endpoint.port, endpoint.token, '/restore', { snapshot: r3.snapshot });
+    assert.ok(restored && typeof restored === 'object', `/restore must return an object, got ${JSON.stringify(restored)}`);
+    assert.deepEqual(restored.state, r3.state, 'restored state must equal the carried snapshot state');
+    assert.equal(restored.state.stage, 'crystallize', 'restored stage must be crystallize');
+
+    const closed = mod.closeSession(chatId);
+    assert.equal(closed && closed.tombstone, true, 'close after emit+restore must tombstone the session');
+  } finally {
+    cleanup([chatId]);
+  }
+});
+
+test('emit seam: recordedList records without advancing; empty-set auto-advance on a later no-intent emit; idempotent replay; no-intent rejection', async () => {
+  const chatId = crypto.randomUUID();
+  try {
+    const mod = require('../bin/sai-state.js');
+    const endpoint = await mod.spawn(chatId);
+    assertRealEndpoint(endpoint, 'record-seam spawn()');
+    const emit = (eventId, event) =>
+      mod.requestJson(endpoint.port, endpoint.token, '/emit', { machineId: 'explore-stage@1', eventId, event });
+
+    // Advance to review-edge-cases.
+    const r0 = await emit(crypto.randomUUID(), { intent: 'next-step' });
+    assert.equal(r0.state.stage, 'review-edge-cases', `setup advance must reach review-edge-cases, got ${r0.state.stage}`);
+
+    // No-intent emit is rejected in-band and does not advance.
+    const rej = await emit(crypto.randomUUID(), {});
+    assert.equal(rej.state.stage, 'review-edge-cases', 'no-intent emit must not advance');
+    assert.equal(rej.rejected, 'READINESS_IS_NOT_INTENT', `no-intent emit must carry the rejection marker, got ${JSON.stringify(rej)}`);
+
+    // A recordedList records into the current stage's own list without advancing.
+    const rec = await emit(crypto.randomUUID(), { recordedList: ['E1', 'E2'] });
+    assert.equal(rec.state.stage, 'review-edge-cases', 'recording must not advance the stage');
+    assert.deepEqual(rec.state.edgeCaseList, ['E1', 'E2'], `recordedList must record into the stage's own list, got ${JSON.stringify(rec.state.edgeCaseList)}`);
+    assert.equal(rec.rejected, undefined, 'recording must not reject');
+
+    // Non-empty recorded list: a no-intent emit still rejects (no empty-set advance).
+    const rej2 = await emit(crypto.randomUUID(), {});
+    assert.equal(rej2.state.stage, 'review-edge-cases', 'non-empty list must not auto-advance');
+    assert.equal(rej2.rejected, 'READINESS_IS_NOT_INTENT', 'no-intent emit with non-empty list must reject');
+
+    // Record an empty list: stays in the current stage.
+    const recEmpty = await emit(crypto.randomUUID(), { recordedList: [] });
+    assert.equal(recEmpty.state.stage, 'review-edge-cases', 'empty-list recording must not advance by itself');
+    assert.deepEqual(recEmpty.state.edgeCaseList, [], 'empty recordedList must record as recorded-empty');
+
+    // The existing content-based empty-set rule advances on a later no-intent emit.
+    const adv = await emit(crypto.randomUUID(), {});
+    assert.equal(adv.state.stage, 'implementation-details', `recorded-empty list must auto-advance on a later no-intent emit, got ${adv.state.stage}`);
+    assert.equal(adv.rejected, undefined, 'empty-set auto-advance must not reject');
+
+    // Idempotent replay: the same eventId returns the identical response and applies once.
+    const dupId = crypto.randomUUID();
+    const d1 = await emit(dupId, { intent: 'next-step' });
+    const d2 = await emit(dupId, { intent: 'next-step' });
+    assert.deepEqual(d2, d1, 'replayed eventId must return the identical stored outcome');
+    assert.equal(d1.state.stage, 'crystallize', 'duplicate eventId must not advance twice, got ' + d1.state.stage);
+
+    const closed = mod.closeSession(chatId);
+    assert.equal(closed && closed.tombstone, true, 'close after record+advance must tombstone the session');
+  } finally {
+    cleanup([chatId]);
+  }
+});
+
 // Sidecar Installation Tests
 const { spawnSync } = require('child_process');
 const { installClaude, installOpencode } = require('../bin/install-flow.js');

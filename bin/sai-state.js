@@ -283,10 +283,16 @@ function createSidecarServer(chatId, token) {
           return;
         }
         const cur = session.stateByMachine.has(session.pinned) ? session.stateByMachine.get(session.pinned) : mod.initialState;
-        let nextState;
+        // transition() returns the single-level outcome {state, snapshot, next};
+        // store result.state (the plain machine state) and return the outcome
+        // without re-wrapping it.
+        let result = null;
         try {
-          nextState = mod.transition(cur, body.event);
+          result = mod.transition(cur, body.event);
         } catch (err) {
+          result = null;
+        }
+        if (!result || !result.state || typeof result.state !== 'object') {
           let failNext = session.lastPointer;
           try {
             const projected = mod.project(cur);
@@ -298,14 +304,17 @@ function createSidecarServer(chatId, token) {
           res.end(JSON.stringify({ error: 'INVALID_EVENT', next: failNext }));
           return;
         }
+        const nextState = result.state;
         let nxt = session.lastPointer;
-        try {
-          const projected = mod.project(nextState);
-          if (projected && projected.next && typeof projected.next.follow === 'string' && typeof projected.next.hint === 'string') {
-            nxt = projected.next;
-          }
-        } catch (err) {}
-        const outcome = { state: nextState, snapshot: { state: nextState, machineId: session.pinned }, next: nxt };
+        if (result.next && typeof result.next.follow === 'string' && typeof result.next.hint === 'string') {
+          nxt = result.next;
+        }
+        const outcome = {
+          state: nextState,
+          snapshot: result.snapshot && typeof result.snapshot === 'object' ? result.snapshot : { state: nextState, machineId: session.pinned },
+          next: nxt,
+        };
+        if (result.rejected) outcome.rejected = result.rejected;
         session.stateByMachine.set(session.pinned, nextState);
         session.lastPointer = nxt;
         session.seen.set(body.eventId, outcome);
