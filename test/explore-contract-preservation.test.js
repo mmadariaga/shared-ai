@@ -121,6 +121,8 @@ const allowedDifferences = [
   '--autofast',
   // The archive CLI sync+move change updated the Failures reporting text.
   '- **Failures** (E3): every segment applies `@sai/policies/bounded-recovery.md`',
+  // Step 4 now accepts the .openspec.yaml metadata file as part of the returned draft set
+  '4. **Spec review** — explore validates the returned draft CONTENT read-o',
 ];
 
 function readPreSplitContract() {
