@@ -52,7 +52,7 @@ test('lint.js rejects missing file argument', () => {
   try {
     const result = tool(['commit-rules'], tmpdir);
     assert.equal(result.status, 2);
-    assert.match(result.stderr, /file required/i);
+    assert.match(result.stderr, /file or text argument required/i);
   } finally {
     fs.rmSync(tmpdir, { recursive: true });
   }

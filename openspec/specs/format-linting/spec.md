@@ -5,7 +5,7 @@ TBD - created by archiving change deterministic-format-linter. Update Purpose af
 ## Requirements
 ### Requirement: Deterministic format validation with selectable sub-checks
 
-The repository SHALL provide a single runnable validator at `sai/tools/lint.js` that checks conformance of files to the artifact-format policies defined in `sai/policies/*.md`. The validator MUST support selectable sub-checks, each validating one policy's format rules deterministically without inference. Each check SHALL examine files and report findings using the same exit-code and output contract as `sai/tools/check-delta-headers.js`: exit 0 when conformant, exit 1 when findings are reported line-by-line on stdout, exit 2 on usage or I/O error.
+The repository SHALL provide a single runnable validator at `sai/tools/lint.js` that checks conformance of files and text to the artifact-format policies defined in `sai/policies/*.md`. The validator MUST support selectable sub-checks, each validating one policy's format rules deterministically without inference. Each check SHALL examine files, accept text input, or both as appropriate to the policy, and report findings using the same exit-code and output contract as `sai/tools/check-delta-headers.js`: exit 0 when conformant, exit 1 when findings are reported line-by-line on stdout, exit 2 on usage or I/O error.
 
 #### Scenario: commit-rules check validates Conventional Commits format
 - **WHEN** the commit-rules check is invoked on a commit message file
@@ -36,6 +36,11 @@ The repository SHALL provide a single runnable validator at `sai/tools/lint.js` 
 - **WHEN** the step-contract check is invoked on interfaces.md containing Step sections
 - **THEN** it validates `## Step N:` heading format, presence of `**Interfaces**:` and `**Test assertions**:` fields in each step, or the sentinel `None — no step contracts` as sole content
 - **AND** exit 0 when all steps conform, exit 1 with findings when required fields are missing
+
+#### Scenario: pr-title-rules check validates pull request title format
+- **WHEN** the pr-title-rules check is invoked on a pull request title text
+- **THEN** it validates title length (≤70 chars), Conventional Commits prefix presence, absence of emoji characters, and absence of trailing period
+- **AND** exit 0 when all checks pass, exit 1 with findings when format violations are detected
 
 ### Requirement: Checks are independent and do not mutate input
 

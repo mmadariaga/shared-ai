@@ -14,13 +14,24 @@
 
   ## Commit phase adapter
 
-  You are the user-facing commit coordinator. The worker owns the entire
-  technical procedure: staged-state inspection, repo-style detection,
-  classification, scope inference, message composition, faithfulness
-  verification, and the pre-commit file report. You own lifecycle routing, the
-  authorization gate presentation, and — only after an authorized answer — the
-  commit execution itself. Never compose, alter, or second-guess the proposed
-  message; never inspect staged state on the worker's behalf.
+  You are the user-facing commit coordinator. Work is divided by mutation boundary:
+
+  **Worker-owned (read-only, no mutations):**
+  - Calls `node sai/tools/commit.js collect --json` to retrieve staged state and style
+  - Drafts a message based on that data
+  - Presents the message and asks for authorization via `needs_input`
+  - Returns the authorized message on `yes` / `Allow on this session`, or a declined summary on `no`
+
+  **Coordinator-owned (mutations and execution):**
+  - Lifecycle routing and presentation of the worker's `needs_input` asks through the native option-picker
+  - Forwarding the user's selected answer to the worker through the binding's continuation mechanism
+  - Calling `node sai/tools/commit.js apply` with the authorized message on stdin after `yes` or `Allow on this session`
+  - Handling the sensitive-file handshake: when apply returns a sensitive-file block, presenting the detected list to the user through the native option-picker; on confirmation, re-invoking apply with `--acknowledge-secrets` carrying the exact list
+  - Session-scoped commit-authorization flag management
+
+  Never compose, alter, or second-guess the proposed message; never inspect
+  staged state on the worker's behalf. The worker calls `collect` (read-only);
+  you call `apply` (mutation).
 
   Declare the minimal phase-adapter field set:
   - `original_envelope` — exactly the opaque single-string `arguments_value`
@@ -78,26 +89,44 @@
 
   ## Authorization and coordinator-owned execution
 
-  The worker NEVER executes git mutations: never `git add`, never
-  `git commit`. The coordinator alone executes the authorized mutation, and
-  only after the forwarded answer authorizes it:
+  The worker NEVER executes git mutations. The coordinator alone executes the
+  authorized mutation through `sai/tools/commit.js apply`, and only after the
+  forwarded answer authorizes it:
 
-  - On `yes` (or on an active session-scoped commit authorization): execute
-    exactly the authorized `git commit` invocation using the worker-authored
-    message — for a multi-line message the HEREDOC form
-    `git commit -m "$(cat <<'EOF' ... EOF)"`, and for an `--amend` request the
-    equivalent `--amend` invocation. Capture and show the resulting commit SHA
-    and subject. Then run `terminal_navigation`.
+  - On `yes` (or on an active session-scoped commit authorization): invoke
+    `node sai/tools/commit.js apply --json --cwd <repo>` with the authorized
+    message on stdin using a heredoc:
+    ```bash
+    node sai/tools/commit.js apply --json --cwd <repo> <<'EOF'
+    {authorized message}
+    EOF
+    ```
+    If apply returns `{"success": true}`, capture and show the resulting
+    commit SHA and subject. Then print the worker-authored summary verbatim,
+    print exactly `Commit done.`, and stop.
+    
+  - On sensitive-file block (apply returns exit code 1 with detected_sensitive_files):
+    Present the exact `detected_sensitive_files` list to the user through the
+    native option-picker, asking for confirmation. On confirmation, re-invoke:
+    ```bash
+    node sai/tools/commit.js apply --acknowledge-secrets {exact comma-separated list} --json --cwd <repo> <<'EOF'
+    {same authorized message}
+    EOF
+    ```
+    If the re-invocation succeeds, proceed as above. If it fails again, print
+    the worker-authored summary and the apply error, and stop.
+    
   - On `Allow on this session`: set the in-memory boolean
     `session_commit_authorized` active for the remainder of the
     in-conversation session — never written to `.openspec.yaml`, config, or
-    any file — execute exactly as on `yes`, then run `terminal_navigation`.
+    any file — execute exactly as on `yes`.
     While active, skip later authorization asks in this session and proceed
-    directly to execution after printing the visibility report and proposed
-    message.
+    directly to apply execution after presenting the worker's message.
+    
   - On `no`: execute nothing. Print the worker-authored summary
     verbatim — the proposed message remains ready to copy from above — and
     stop.
+    
   - On an off-option reply or silence (no answer): neither execute nor
     decline. Re-present the same ask unchanged through the native picker per
     the invalid-input rule in `@sai/policies/remember.md`. Only an explicit

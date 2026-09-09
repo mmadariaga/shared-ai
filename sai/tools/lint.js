@@ -12,6 +12,7 @@
  *
  * Sub-commands:
  *   commit-rules <file>           Check that a commit message follows commit rules.
+ *   pr-title-rules <text>         Check that a PR title follows title rules.
  *   glossary-format <file>        Check that GLOSSARY.md follows glossary format.
  *   ready-to-propose <file>       Check that a file follows ready-to-propose format.
  *   artifact-review <file>        Check that artifact review findings follow the contract.
@@ -20,6 +21,7 @@
  *
  * Usage:
  *   node sai/tools/lint.js commit-rules <file> [--json] [--cwd <dir>]
+ *   node sai/tools/lint.js pr-title-rules <text> [--json]
  *   node sai/tools/lint.js glossary-format <file> [--json] [--cwd <dir>]
  *   node sai/tools/lint.js ready-to-propose <file> [--json] [--cwd <dir>]
  *   node sai/tools/lint.js artifact-review <file> [--json] [--cwd <dir>]
@@ -500,6 +502,63 @@ function checkSaiLearningsFormat(content) {
 }
 
 /**
+ * Check PR title format.
+ * Validates per sai/policies/commit-rules.md (adapted for PR titles):
+ *   - Title ≤ 70 characters
+ *   - Starts with Conventional Commits type (feat, fix, docs, etc.)
+ *   - No emoji
+ *   - No trailing period
+ */
+function checkPrTitleRules(title) {
+  const violations = [];
+  const trimmedTitle = title.trim();
+
+  // Check 1: Title length ≤ 70 characters
+  if (trimmedTitle.length > 70) {
+    violations.push({
+      file: 'pull request',
+      line: 1,
+      problem: 'TITLE_TOO_LONG',
+      detail: `title is ${trimmedTitle.length} chars, max is 70 chars`,
+    });
+  }
+
+  // Check 2: Conventional Commits format (feat, fix, refactor, docs, etc.)
+  const ccPattern = /^(feat|fix|perf|refactor|docs|test|build|ci|chore|style|revert)(\([^)]+\))?: .+/;
+  if (!ccPattern.test(trimmedTitle)) {
+    violations.push({
+      file: 'pull request',
+      line: 1,
+      problem: 'INVALID_FORMAT',
+      detail: 'title must follow Conventional Commits format: type(scope): description',
+    });
+  }
+
+  // Check 3: No emoji
+  const emojiPattern = /[\p{Emoji}]/u;
+  if (emojiPattern.test(trimmedTitle)) {
+    violations.push({
+      file: 'pull request',
+      line: 1,
+      problem: 'CONTAINS_EMOJI',
+      detail: 'title must not contain emoji',
+    });
+  }
+
+  // Check 4: No trailing period
+  if (trimmedTitle.endsWith('.')) {
+    violations.push({
+      file: 'pull request',
+      line: 1,
+      problem: 'TRAILING_PERIOD',
+      detail: 'title must not end with a period',
+    });
+  }
+
+  return violations;
+}
+
+/**
  * Check step contract format (interfaces.md).
  * Validates per sai/policies/step-contract-format.md:
  *   - Section heading format: ## Step N: <title>
@@ -581,16 +640,17 @@ function checkStepContract(content) {
 
 function usage() {
   return [
-    'Usage: node sai/tools/lint.js <check> <file> [--json] [--cwd <dir>]',
+    'Usage: node sai/tools/lint.js <check> <file|text> [--json] [--cwd <dir>]',
     '',
     '  <check>             Format check to run:',
     '                      - commit-rules: Validate commit message format',
+    '                      - pr-title-rules: Validate pull request title format',
     '                      - glossary-format: Validate GLOSSARY.md format',
     '                      - ready-to-propose: Validate Ready to Propose block format',
     '                      - artifact-review: Validate artifact review finding format',
     '                      - sai-learnings-format: Validate SAI_LEARNINGS.md format',
     '                      - step-contract: Validate interfaces.md step contract format',
-    '  <file>              File to check',
+    '  <file|text>         File to check (for file-based checks) or text to validate (for pr-title-rules)',
     '  --json              Emit the report as JSON on stdout',
     '  --cwd <dir>         Working directory for file resolution (default: current directory)',
   ].join('\n');
@@ -646,44 +706,56 @@ function main(argv) {
   }
 
   if (!opts.file) {
-    process.stderr.write(`file required.\n${usage()}\n`);
-    return 2;
-  }
-
-  const filePath = path.resolve(opts.cwd, opts.file);
-  let content;
-  try {
-    content = readFileOrFail(filePath);
-  } catch (err) {
-    process.stderr.write(`${err.message}\n`);
+    process.stderr.write(`file or text argument required.\n${usage()}\n`);
     return 2;
   }
 
   let violations = [];
-  const relPath = path.relative(opts.cwd, filePath);
+  let relPath;
+  let content;
 
-  switch (opts.check) {
-    case 'commit-rules':
-      violations = checkCommitRules(content);
-      break;
-    case 'glossary-format':
-      violations = checkGlossaryFormat(content);
-      break;
-    case 'ready-to-propose':
-      violations = checkReadyToPropose(content);
-      break;
-    case 'artifact-review':
-      violations = checkArtifactReview(content);
-      break;
-    case 'sai-learnings-format':
-      violations = checkSaiLearningsFormat(content);
-      break;
-    case 'step-contract':
-      violations = checkStepContract(content);
-      break;
-    default:
-      process.stderr.write(`unknown check: ${opts.check}\n${usage()}\n`);
+  // Handle pr-title-rules separately (doesn't need file reading)
+  if (opts.check === 'pr-title-rules') {
+    if (!opts.file) {
+      process.stderr.write(`title text required for pr-title-rules.\n${usage()}\n`);
       return 2;
+    }
+    violations = checkPrTitleRules(opts.file);
+    relPath = 'pull request';
+  } else {
+    // For file-based checks, read the file
+    const filePath = path.resolve(opts.cwd, opts.file);
+    try {
+      content = readFileOrFail(filePath);
+    } catch (err) {
+      process.stderr.write(`${err.message}\n`);
+      return 2;
+    }
+    relPath = path.relative(opts.cwd, filePath);
+
+    switch (opts.check) {
+      case 'commit-rules':
+        violations = checkCommitRules(content);
+        break;
+      case 'glossary-format':
+        violations = checkGlossaryFormat(content);
+        break;
+      case 'ready-to-propose':
+        violations = checkReadyToPropose(content);
+        break;
+      case 'artifact-review':
+        violations = checkArtifactReview(content);
+        break;
+      case 'sai-learnings-format':
+        violations = checkSaiLearningsFormat(content);
+        break;
+      case 'step-contract':
+        violations = checkStepContract(content);
+        break;
+      default:
+        process.stderr.write(`unknown check: ${opts.check}\n${usage()}\n`);
+        return 2;
+    }
   }
 
   const ok = violations.length === 0;
@@ -710,4 +782,19 @@ function main(argv) {
   return ok ? 0 : 1;
 }
 
-process.exitCode = main(process.argv.slice(2));
+// Export functions for programmatic use
+module.exports = {
+  checkCommitRules,
+  checkPrTitleRules,
+  checkGlossaryFormat,
+  checkReadyToPropose,
+  checkArtifactReview,
+  checkSaiLearningsFormat,
+  checkStepContract,
+  ToolError,
+};
+
+// Run CLI only when executed directly, not when required as a module
+if (require.main === module) {
+  process.exitCode = main(process.argv.slice(2));
+}
