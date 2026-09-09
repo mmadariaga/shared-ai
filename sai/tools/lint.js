@@ -710,4 +710,18 @@ function main(argv) {
   return ok ? 0 : 1;
 }
 
-process.exitCode = main(process.argv.slice(2));
+// Export functions for programmatic use
+module.exports = {
+  checkCommitRules,
+  checkGlossaryFormat,
+  checkReadyToPropose,
+  checkArtifactReview,
+  checkSaiLearningsFormat,
+  checkStepContract,
+  ToolError,
+};
+
+// Run CLI only when executed directly, not when required as a module
+if (require.main === module) {
+  process.exitCode = main(process.argv.slice(2));
+}

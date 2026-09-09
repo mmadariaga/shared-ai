@@ -3,9 +3,7 @@
 ## Purpose
 
 Define the routed coordinator/worker architecture for `/sai-commit`: a minimal-lifecycle phase adapter whose coordinator owns lifecycle routing, authorization presentation, and the destructive git mutation, while the dispatched `sai-commit-worker` owns message authoring and never mutates git — with end-to-end worker registration and the openspec prerequisite exemption carried by the routed cards.
-
 ## Requirements
-
 ### Requirement: Routed card set and boot routing
 
 `sai-commit` SHALL be a routed-shaped command whose card set is exactly `sai/commands/commit/coordinator.md` and `sai/commands/commit/worker.md` (no `invocation.md`; the legacy utility `body.md` is retired). Both harness boot adapters (`sai/adapters/claude/boot.md` and `sai/adapters/opencode/boot.md`) SHALL classify `commit` among the routed names so that selecting it fetches `@sai/commands/commit/coordinator.md`, and SHALL exclude `commit` from the utility-name lists; no boot path SHALL select a commit `body.md`.
@@ -37,31 +35,31 @@ The commit coordinator SHALL declare the minimal phase-adapter field set: `origi
 
 ### Requirement: Worker owns authoring and never mutates git
 
-The dispatched `sai-commit-worker` SHALL perform the entire technical procedure — staged-state inspection, repo-style detection per the rubric, classification, scope inference, message composition, faithfulness verification, and the structured pre-commit file report — and SHALL return the report blocks and proposed subject/body as payload content inside the terminal payload's summary for verbatim coordinator presentation. The worker SHALL NEVER execute a git mutation: never `git add`, never `git commit`, never `git stash`, never any state-changing git command; only the read-only inspection surface (`git status --short`, `git diff --cached*`, `git log`) remains available to it.
+The dispatched `sai-commit-worker` SHALL perform the technical procedure of calling `node sai/tools/commit.js collect --json` to retrieve staged state and repository style, compose a commit message using that data, and verify faithfulness — that every claim maps to a hunk in the staged diff — and SHALL return the message and related context as payload content inside the terminal payload's summary for verbatim coordinator presentation. The worker SHALL NEVER execute a git mutation: never `git add`, never `git commit`, never `git stash`, never any state-changing git command; only the read-only inspection surface (reading the collect JSON output) and message authoring remain available to it. The staged-state inspection and repo-style detection themselves are performed by the collect tool, not by the worker.
+
+#### Scenario: Worker calls collect and drafts message
+- **WHEN** the commit worker begins its workflow
+- **THEN** it calls `node sai/tools/commit.js collect --json`, receives staged state and style as JSON, and composes a message using that data
 
 #### Scenario: Worker delivers content without side effects
-
 - **WHEN** a commit run completes with a composed message
-- **THEN** the report blocks and proposed message arrive at the coordinator as payload content and no git mutation was executed by the worker session
+- **THEN** the message and related context arrive at the coordinator as payload content and no git mutation was executed by the worker session
 
 ### Requirement: Authorization transport and coordinator-only execution
 
-The authorization ask SHALL be returned by the worker as a `needs_input` lifecycle result carrying the question "Run `git commit -m '...'` (or `git commit --amend ...`)?" with the ordered options `yes (Recommended)` / `no` / `Allow on this session`. The coordinator SHALL present the exact question and options through the native option-picker, append only `{question, options, answer_value}` to the opaque input history, and forward the exact answer value to the same worker. Only the coordinator SHALL execute the authorized mutation, and only after an authorizing answer: on `yes` (or on an already-active session-scoped grant) it executes exactly the worker-restated `git commit` invocation — HEREDOC form for multi-line messages, the equivalent `--amend` invocation when requested — captures and shows the resulting SHA and subject, then runs terminal navigation. On `Allow on this session` the coordinator additionally activates the in-memory `session_commit_authorized` flag for the remainder of the in-conversation session, never written to any file. On `no` or no answer the coordinator executes nothing, prints the worker-authored summary verbatim, and stops without any git mutation. Terminal navigation SHALL print the worker-authored summary verbatim on every closure and SHALL close with exactly `Commit done.` only when a commit was executed; every other closure stops without the completion literal.
+The authorization ask SHALL be returned by the worker as a `needs_input` lifecycle result carrying the question "Run `git commit`?" with the ordered options `yes (Recommended)` / `no` / `Allow on this session`. The coordinator SHALL present the exact question and options through the native option-picker, append only `{question, options, answer_value}` to the opaque input history, and forward the exact answer value to the same worker. Only the coordinator SHALL execute the authorized mutation, and only after an authorizing answer: on `yes` (or on an already-active session-scoped grant) it invokes `node sai/tools/commit.js apply --json --cwd <repo>` with the worker-authored message on stdin using a heredoc, or the equivalent `node sai/tools/commit.js apply --json --amend --cwd <repo>` invocation when an amend was requested, captures the result, and on success shows the message output. On `Allow on this session` the coordinator additionally activates the in-memory `session_commit_authorized` flag for the remainder of the in-conversation session, never written to any file. On `no` or no answer the coordinator executes nothing, prints the worker-authored summary verbatim, and stops without any git mutation. Terminal output SHALL print the worker-authored summary verbatim on every closure and SHALL close with exactly `Commit done.` only when a commit was executed; every other closure stops without the completion literal.
 
 #### Scenario: Authorized answer triggers coordinator execution
-
 - **WHEN** the user selects `yes` at the presented ask
-- **THEN** the forwarded answer returns a completed worker payload restating the exact invocation, the coordinator alone runs that `git commit` invocation with the worker-authored message, and the run closes with the summary followed by exactly `Commit done.`
+- **THEN** the forwarded answer returns a completed worker payload restating the exact message, the coordinator alone runs `node sai/tools/commit.js apply` with the worker-authored message on stdin, and the run closes with the summary followed by exactly `Commit done.`
 
 #### Scenario: Decline executes nothing
-
 - **WHEN** the user selects `no` or gives no answer
 - **THEN** no git mutation runs, the worker-authored summary is printed verbatim noting the message remains ready to copy, and the stop carries no completion literal
 
 #### Scenario: Session grant skips later asks in the same session
-
 - **WHEN** `Allow on this session` activated the flag and a later commit run reaches the ask in the same conversation
-- **THEN** the coordinator skips the presentation wait after printing the visibility report and proposed message, and proceeds directly to execution
+- **THEN** the coordinator skips the presentation wait after printing the proposed message, and proceeds directly to apply execution
 
 ### Requirement: Openspec prerequisite exemption carried by the routed cards
 
@@ -89,3 +87,4 @@ The exclusion list for session-scoped commit authorization SHALL live exactly on
 
 - **WHEN** the session-grant exclusion list is updated in `commit-rules.md`
 - **THEN** both apply's coordinator-card contract and the commit cards inherit the updated boundary without further edits
+

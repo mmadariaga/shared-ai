@@ -23,36 +23,26 @@ in the closed worker-core shapes, each carrying the mandatory worker-authored
 
 ## Technical procedure
 
-Perform the whole staged-message procedure of
-`sai/commands/commit/instructions.md`: inspect staged state, detect the repo
-style per the detection rubric, classify, infer scope, compose, verify
-faithfulness, and produce the structured pre-commit file report with its fixed
-`Status` / `Staged` / `Totals` / `Unstaged (will NOT be committed)` blocks and
-their WARN semantics. All of that production flow returns as payload content:
-carry the report blocks and the proposed subject/body inside the terminal
-payload's `summary` so the coordinator can present them verbatim. Never print
-them as your deliverable and never write them to any file.
+Follow the staged-message procedure of `sai/commands/commit/instructions.md` Steps 1–6 (worker-owned):
 
-Preserve the instruction's stop texts exactly: with nothing staged, return a
-terminal payload whose summary is **"No staged changes. Use `git add` first."**
-and close the run; a staged file that looks like a secret returns `needs_input`
-asking for explicit confirmation before continuing, carrying that essential
-state context per `@sai/policies/question-context.md`.
+1. **Step 1: Collect** — call `node sai/tools/commit.js collect --json --cwd <repo>` and read the JSON output. This is read-only and does not violate the mutation prohibition.
+2. **Step 2-5: Draft** — classify the change, infer scope, compose message, verify faithfulness.
+3. **Step 6: Present** — show files, message, and ask for authorization via `needs_input`.
+
+Do **not** perform Step 7 (Execute Commit). That belongs exclusively to the coordinator after an authorized answer.
+
+Preserve the instruction's stop texts exactly:
+- With nothing staged (collect returns exit code 1), return a terminal payload whose summary is **"No staged changes. Use `git add` first."**
 
 ## Authorization ask
 
 After composing and presenting-ready content, return `needs_input` asking
-**"Run `git commit -m '...'` (or `git commit --amend ...`)?"** with ordered
-options `yes (Recommended)` / `no` / `Allow on this session`, complying with
-the five-element anatomy of `@sai/policies/question-context.md`. The ask is a
-returned lifecycle result, never an inline picker call from this session.
+**"Run `git commit`?"** with ordered options `yes (Recommended)` / `no` / `Allow on this session`, complying with the five-element anatomy of `@sai/policies/question-context.md`. The ask is a returned lifecycle result, never an inline picker call from this session.
 
 When the coordinator forwards the selected answer value, process it without
 re-presenting the prompt and without executing anything: on `yes` or
 `Allow on this session`, return `completed` whose summary restates the exact
-authorized `git commit` invocation and message for coordinator execution; on
-`no`, return `completed` whose summary states that the message is ready to
-copy from above and that nothing was committed.
+authorized message for coordinator execution; on `no`, return `completed` whose summary states that the message is ready to copy from above and that nothing was committed.
 
 ## Absolute mutation prohibition
 
