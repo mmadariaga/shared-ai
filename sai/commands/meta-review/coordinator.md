@@ -30,11 +30,14 @@
   Neither segment re-enters a harness boot adapter or command wrapper.
 
   ## Prerequisites
-  Run the three OpenSpec prerequisite checks (fetch `@sai/policies/prereqs.md`)
+  Run the four OpenSpec prerequisite checks (fetch `@sai/policies/prereqs.md`)
   exactly once at composition start, before any segment dispatch:
   1. `openspec` binary in PATH
   2. `openspec/` directory exists
   3. `openspec/config.yaml` declares `schema: sai-workflow`
+  4. the three OpenSpec skills are installed at the active harness's
+     project-local skills root (selected by the mandatory
+     `--require-openspec-skills opencode|claude` flag on the check tool)
 
   Segments inherit the satisfied prerequisites and never repeat them.
 
