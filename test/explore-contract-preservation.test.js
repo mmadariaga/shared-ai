@@ -58,6 +58,12 @@ const allowedDifferences = [
   // and the single-block close line gained the emission-guarantee extension.
   '**Routing** (both axes combined):',
   'After the block ending at `---`, apply the **Crystallization-turn close (shared)** once by reference.',
+  // Transition rules removed from prose, machine now owns them
+  'The stage progression advances only when the user explicitly requests it: the literal token `next-step`',
+  'The sole exceptions are the deterministic empty-set rules of the `Review edge cases` and `Implementation details` stages',
+  'When no in-scope behavior bounds the proposed change, emit exactly `- None`, record the empty list as agreed',
+  'When no technical decision qualifies, emit exactly `- None`, record the empty list',
+  'The stage progression state — the current stage, completed stages, agreed lists',
   // The selector rename and its delegated-write exception update the active
   // split contract while the pre-split contract remains the preservation baseline.
   '1. **No file writes',
@@ -288,3 +294,4 @@ test('contract preservation: selector uses fixed English titles with localized d
   assert.match(languageGate, /question text and all three option descriptions render in the user's language[\s\S]{0,140}option titles remain the fixed English literals `Plan - Unattended`, `Direct Build - Unattended`, and `Manual`/i);
   assert.match(questionContext, /Crystallization-close selector[\s\S]{0,120}`Plan - Unattended`[\s\S]{0,80}`Direct Build - Unattended`[\s\S]{0,40}`Manual`/i);
 });
+

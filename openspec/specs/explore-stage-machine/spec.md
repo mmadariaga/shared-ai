@@ -5,7 +5,7 @@ TBD - created by archiving change state-machine-sidecar. Update Purpose after ar
 ## Requirements
 ### Requirement: Deterministic stage transitions
 
-The `explore-stage` machine SHALL advance stages only on explicit caller-supplied intent signals plus the deterministic content-based empty-set rules, and SHALL never advance on model readiness judgment. The content-based rules are: at the `review-edge-cases` stage, when the recorded edge-case list is empty, the machine advances without requiring intent; at the `implementation-details` stage, when the recorded implementation-details list is empty, the machine advances without requiring intent. These rules fire only on their own stages' recorded lists; all other stage transitions require explicit intent. To distinguish recorded empty from unrecorded, the state carries `edgeCaseList` and `implementationDetailsList` as null when unrecorded and as an array (including empty array) when recorded.
+The `explore-stage` machine SHALL advance stages only on explicit caller-supplied intent signals plus the deterministic content-based empty-set rules, and SHALL never advance on model readiness judgment. The content-based rules are: at the `review-edge-cases` stage, when the recorded edge-case list is empty, the machine advances without requiring intent; at the `implementation-details` stage, when the recorded implementation-details list is empty, the machine advances without requiring intent. These rules fire only on their own stages' recorded lists; all other stage transitions require explicit intent. To distinguish recorded empty from unrecorded, the state carries `edgeCaseList` and `implementationDetailsList` as null when unrecorded and as an array (including empty array) when recorded. The explore command (the primary caller) retains intent recognition, dominant-intent classification, and list-agreement semantics on the caller side.
 
 #### Scenario: Intent advances, readiness does not
 
@@ -38,7 +38,7 @@ The machine's projection from state to caller-facing output SHALL be a pure func
 
 ### Requirement: Caller-owned panel, closure, and review loop
 
-Panel ownership, marking hooks, the `Result Loop`, chat `Closure State` ownership, and intent classification SHALL stay caller-side and out of the machine; the machine defines transitions and the caller orchestrates presentation and review.
+Panel ownership, marking hooks, the `Result Loop`, chat `Closure State` ownership, and intent classification SHALL stay caller-side and out of the machine; the machine defines transitions and the caller orchestrates presentation and review. Explore retains the authority to recognize intent tokens, classify dominant intent, confirm list agreement semantically, and manage panel ownership transitions (phase-A stage TODO to phase-B idea progress list).
 
 #### Scenario: Machine never renders or reviews
 

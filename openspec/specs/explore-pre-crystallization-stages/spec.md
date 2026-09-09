@@ -3,9 +3,7 @@
 ## Purpose
 
 TBD
-
 ## Requirements
-
 ### Requirement: Pre-crystallization lifecycle renders as a four-stage TODO
 
 While a candidate idea is under active exploration (Closure State `active-uncrystallized`), `sai-explore` SHALL render a four-item stage TODO with the labels `Explore change`, `Review edge cases`, `Implementation details`, and `Crystallize`, in that order. The current stage SHALL render `in_progress`, completed stages SHALL render `completed`, and remaining stages SHALL render `pending`. The TODO SHALL render on the native task panel through the per-harness idea-list render binding's phase-A machinery, SHALL render from the first turn in which a candidate idea exists, and SHALL re-render exactly once per turn that changes stage state. The TODO SHALL NOT render while no candidate idea exists.
@@ -22,7 +20,7 @@ While a candidate idea is under active exploration (Closure State `active-uncrys
 
 ### Requirement: Stages advance only on explicit user intent
 
-The stage progression SHALL advance only when the user explicitly requests it: the literal token `next-step` (bare, optionally with trivial punctuation or a greeting, or as the turn's dominant intent — the same recognition machinery as the `review-loop` token), clear natural-language intent naming the next stage or requesting crystallization, or a semantic confirmation of the proposed list at the `Review edge cases` or `Implementation details` stages (`explore-edge-case-review`, `explore-implementation-details`), which records the agreed list and advances the stage within the same turn. Mere containment of the string `next-step` SHALL NOT fire the token: it fires only when the turn is a bare token or when advancing the progression is the turn's dominant intent, and a turn that negates, defers, quotes, or discusses the token SHALL NOT advance the progression. `sai-explore` SHALL NOT advance a stage on its own judgment that the idea is solid or ready. The sole exceptions are the deterministic empty-set rules of the implementation-details stage (`explore-implementation-details`) and the edge-case review stage (`explore-edge-case-review`), which are content-based rules, not readiness judgments. The one-line readiness signal (`explore-crystallization-on-demand`) does not advance the stages.
+The stage progression SHALL advance only when the user explicitly requests it: the literal token `next-step` (bare, optionally with trivial punctuation or a greeting, or as the turn's dominant intent — the same recognition machinery as the `review-loop` token), clear natural-language intent naming the next stage or requesting crystallization, or a semantic confirmation of the proposed list at the `Review edge cases` or `Implementation details` stages. Mere containment of the string `next-step` SHALL NOT fire the token: it fires only when the turn is a bare token or when advancing the progression is the turn's dominant intent, and a turn that negates, defers, quotes, or discusses the token SHALL NOT advance the progression. `sai-explore` SHALL NOT advance a stage on its own judgment that the idea is solid or ready. The recorded empty-list conditions — at the `review-edge-cases` stage when the recorded edge-case list is empty, and at the `implementation-details` stage when the recorded implementation-details list is empty — are content-based rules owned by the `explore-stage` machine and do not constitute readiness judgments. The one-line readiness signal (`explore-crystallization-on-demand`) does not advance the stages. The machine consumes the recorded list state and returns the next stage and step pointer to the caller.
 
 #### Scenario: The next token advances the progression
 
@@ -102,22 +100,21 @@ A POC is not a crystallized feature slice and does not clear or replace the stag
 
 ### Requirement: A materially changed idea resets the stage progression
 
-When the idea under exploration materially changes into a new stable idea, `sai-explore` SHALL reset the stage progression to the `Explore change` stage: the stage TODO re-renders with `Explore change` as the `in_progress` stage and the remaining stages `pending`, completed stages are no longer rendered as completed, and previously agreed lists are discarded for the new idea's progression. The reset SHALL NOT re-run the edge-case review by itself: a fresh review is entered only when the new idea advances into the `Review edge cases` stage or requests crystallization prematurely (`explore-edge-case-review`). The reset SHALL NOT change the Closure State handling of the new idea (a new `active-uncrystallized` lifecycle, `explore-closure-state`).
+When the idea under exploration materially changes into a new stable idea, `sai-explore` SHALL close the current sidecar session and spawn a fresh one, resetting the stage progression to the `Explore change` stage: the stage TODO re-renders with `Explore change` as the `in_progress` stage and the remaining stages `pending`, completed stages are no longer rendered as completed, and previously agreed lists are discarded for the new idea's progression. The reset SHALL NOT re-run the edge-case review by itself: a fresh review is entered only when the new idea advances into the `Review edge cases` stage or requests crystallization prematurely. The reset SHALL NOT change the Closure State handling of the new idea (a new `active-uncrystallized` lifecycle).
 
 #### Scenario: A materially changed idea re-renders the TODO from stage 1
 
 - **WHEN** exploration materially changes the current idea into a new stable idea
-- **THEN** the stage progression resets to `Explore change`
-- **AND** the TODO re-renders once with `Explore change` `in_progress` and the other three stages `pending`
+- **THEN** the sidecar session closes, a fresh session spawns at `explore-change`, and the stage TODO re-renders with `Explore change` `in_progress` and the other three stages `pending`
 
 #### Scenario: Agreed lists do not carry over the reset
 
-- **WHEN** the progression resets for a materially changed idea
+- **WHEN** the progression resets for a materially changed idea and a fresh sidecar session begins
 - **THEN** the previously agreed edge-case list and implementation-details list are discarded and are re-surfaced only when the new idea reaches those stages again
 
 #### Scenario: The reset alone does not start a fresh review
 
-- **WHEN** a materially changed idea resets the progression but the user has not advanced into `Review edge cases` or requested crystallization
+- **WHEN** a materially changed idea resets the progression and spawns a fresh sidecar session, but the user has not advanced into `Review edge cases` or requested crystallization
 - **THEN** no edge-case review runs for the new idea yet
 
 ### Requirement: The stage TODO clears at crystallization
@@ -156,3 +153,28 @@ The stage progression state — the current stage, completed stages, and any agr
 
 - **WHEN** the stage progression advances
 - **THEN** the updated state exists only in conversation and is not written to any file, artifact, or configuration
+
+### Requirement: Sidecar session lifecycle
+
+Explore SHALL obtain its stage order, pointer routing, and transition rules from the `explore-stage` machine hosted by the `sai-state` sidecar, invoked as a black-box service through its command-line interface and loopback routes. The sidecar SHALL be spawned lazily on the first turn that carries a stage event (a user intent that advances the progression or a recorded list at an agreement gate). The returned `state.stage` SHALL be authoritative as the current stage, superseding any prose-derived stage identity. The returned `next` pointer's `follow` field SHALL identify the step file to be fetched and consumed for continued progression. When a restore call to the sidecar fails due to version mismatch or closed session, or when the sidecar is unreachable, explore SHALL fall to the degraded path: hold the current stage without auto-advancing and ask the user to advance explicitly by a direct `next-step` request, continuing without re-deriving the transition table in prose. When the explored idea materially changes into a new stable idea, the current sidecar session SHALL close and a fresh session SHALL spawn, beginning at `explore-change`.
+
+#### Scenario: Lazy spawn on first stage event
+
+- **WHEN** a stage event occurs on the first turn that carries it
+- **THEN** the sidecar spawns if not already running and the machine processes the event, returning the new or unchanged stage
+
+#### Scenario: State and pointer consumption
+
+- **WHEN** the machine returns from a stage-event emission
+- **THEN** the returned `state.stage` becomes the authoritative current stage and the `next.follow` pointer is fetched and consumed for continued progression
+
+#### Scenario: Sidecar failure falls to degraded path
+
+- **WHEN** the sidecar is unreachable, a restore fails due to version mismatch or closed session, or a connection cannot be established
+- **THEN** the progression holds the current stage without advancing, asks the user to advance explicitly, and continues without re-deriving the transition table in prose
+
+#### Scenario: Session boundary on material change
+
+- **WHEN** the explored idea materially changes into a new stable idea
+- **THEN** the current sidecar session closes and a fresh one spawns, beginning at `explore-change`, with no stage or list state carried forward to the new session
+
