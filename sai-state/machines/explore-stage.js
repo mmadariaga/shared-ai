@@ -13,13 +13,16 @@ const STAGE_FILES = Object.freeze({
   crystallize: 'sai/commands/explore/steps/crystallization-protocol.md',
 });
 
-const initialState = Object.freeze({ stage: 'explore-change', ideaList: [] });
+const initialState = Object.freeze({ stage: 'explore-change', ideaList: [], edgeCaseList: null, implementationDetailsList: null });
 
 function cloneState(state) {
   const src = state && typeof state === 'object' ? state : {};
   const stage = typeof src.stage === 'string' ? src.stage : STAGES[0];
   const ideaList = Array.isArray(src.ideaList) ? src.ideaList.slice() : [];
-  return { stage, ideaList };
+  // Distinguish unrecorded (null) from recorded-empty (empty array)
+  const edgeCaseList = Array.isArray(src.edgeCaseList) ? src.edgeCaseList.slice() : null;
+  const implementationDetailsList = Array.isArray(src.implementationDetailsList) ? src.implementationDetailsList.slice() : null;
+  return { stage, ideaList, edgeCaseList, implementationDetailsList };
 }
 
 function nextFor(stage) {
@@ -29,11 +32,13 @@ function nextFor(stage) {
 
 function advanceState(current) {
   const idx = STAGES.indexOf(current.stage);
-  if (idx === -1) {
-    return { stage: current.stage, ideaList: current.ideaList.slice() };
-  }
-  const nextIdx = idx + 1 >= STAGES.length ? STAGES.length - 1 : idx + 1;
-  return { stage: STAGES[nextIdx], ideaList: current.ideaList.slice() };
+  const stage = idx === -1 ? current.stage : (idx + 1 >= STAGES.length ? STAGES[STAGES.length - 1] : STAGES[idx + 1]);
+  return {
+    stage,
+    ideaList: current.ideaList.slice(),
+    edgeCaseList: current.edgeCaseList ? current.edgeCaseList.slice() : null,
+    implementationDetailsList: current.implementationDetailsList ? current.implementationDetailsList.slice() : null,
+  };
 }
 
 function hasIntent(signal) {
@@ -42,7 +47,12 @@ function hasIntent(signal) {
 
 function project(state) {
   const current = cloneState(state);
-  const snapshotState = { stage: current.stage, ideaList: current.ideaList.slice() };
+  const snapshotState = {
+    stage: current.stage,
+    ideaList: current.ideaList.slice(),
+    edgeCaseList: current.edgeCaseList ? current.edgeCaseList.slice() : null,
+    implementationDetailsList: current.implementationDetailsList ? current.implementationDetailsList.slice() : null,
+  };
   return {
     snapshot: { state: snapshotState, machineId },
     next: nextFor(current.stage),
@@ -51,20 +61,44 @@ function project(state) {
 
 function transition(state, signal) {
   const current = cloneState(state);
-  const rawList = state && typeof state === 'object' && Array.isArray(state.ideaList) ? state.ideaList : [];
-  const isEmpty = rawList.length === 0;
-  if (isEmpty) {
+
+  // Determine if auto-advance is allowed based on stage and recorded list content.
+  // Auto-advance only at stages with content-based empty-set rules: review-edge-cases and implementation-details.
+  let shouldAutoAdvance = false;
+  if (current.stage === 'review-edge-cases' && current.edgeCaseList !== null && current.edgeCaseList.length === 0) {
+    shouldAutoAdvance = true;
+  } else if (current.stage === 'implementation-details' && current.implementationDetailsList !== null && current.implementationDetailsList.length === 0) {
+    shouldAutoAdvance = true;
+  }
+
+  if (shouldAutoAdvance) {
     const nextState = advanceState(current);
-    const snapshotState = { stage: nextState.stage, ideaList: nextState.ideaList.slice() };
+    const snapshotState = {
+      stage: nextState.stage,
+      ideaList: nextState.ideaList.slice(),
+      edgeCaseList: nextState.edgeCaseList ? nextState.edgeCaseList.slice() : null,
+      implementationDetailsList: nextState.implementationDetailsList ? nextState.implementationDetailsList.slice() : null,
+    };
     return {
       state: nextState,
       snapshot: { state: snapshotState, machineId },
       next: nextFor(nextState.stage),
     };
   }
+
   if (!hasIntent(signal)) {
-    const staying = { stage: current.stage, ideaList: current.ideaList.slice() };
-    const snapshotState = { stage: staying.stage, ideaList: staying.ideaList.slice() };
+    const staying = {
+      stage: current.stage,
+      ideaList: current.ideaList.slice(),
+      edgeCaseList: current.edgeCaseList ? current.edgeCaseList.slice() : null,
+      implementationDetailsList: current.implementationDetailsList ? current.implementationDetailsList.slice() : null,
+    };
+    const snapshotState = {
+      stage: staying.stage,
+      ideaList: staying.ideaList.slice(),
+      edgeCaseList: staying.edgeCaseList ? staying.edgeCaseList.slice() : null,
+      implementationDetailsList: staying.implementationDetailsList ? staying.implementationDetailsList.slice() : null,
+    };
     return {
       state: staying,
       snapshot: { state: snapshotState, machineId },
@@ -72,8 +106,14 @@ function transition(state, signal) {
       rejected: 'READINESS_IS_NOT_INTENT',
     };
   }
+
   const nextState = advanceState(current);
-  const snapshotState = { stage: nextState.stage, ideaList: nextState.ideaList.slice() };
+  const snapshotState = {
+    stage: nextState.stage,
+    ideaList: nextState.ideaList.slice(),
+    edgeCaseList: nextState.edgeCaseList ? nextState.edgeCaseList.slice() : null,
+    implementationDetailsList: nextState.implementationDetailsList ? nextState.implementationDetailsList.slice() : null,
+  };
   return {
     state: nextState,
     snapshot: { state: snapshotState, machineId },

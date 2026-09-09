@@ -374,19 +374,71 @@ test('step4 intent-vs-readiness: non-empty without intent rejects with current p
   assert.ok(advanced.next.follow !== 'wrong' && advanced.next.hint !== 'wrong', `advanced pointer must be real, got ${JSON.stringify(advanced.next)}`);
 });
 
-test('step4 empty auto-advance: empty list deterministically advances with next pointer', () => {
-  const stage = step4RealStage();
-  const state = { stage, ideaList: [] };
-  const r1 = exploreStage.transition(state, undefined);
-  const r2 = exploreStage.transition(state, undefined);
-  assert.ok(r1 && r1.state && r1.next, 'empty auto-advance must return {state,snapshot,next}');
-  assert.notEqual(r1.state.stage, state.stage, 'empty list must deterministically auto-advance');
-  assert.ok(r1.state.stage !== 'wrong', `auto-advanced stage must be real, got ${JSON.stringify(r1.state && r1.state.stage)}`);
-  assert.ok(typeof r1.next.follow === 'string' && r1.next.follow !== 'wrong', `auto-advance follow must be real, got ${JSON.stringify(r1.next)}`);
-  assert.ok(typeof r1.next.hint === 'string' && r1.next.hint !== 'wrong', `auto-advance hint must be real, got ${JSON.stringify(r1.next)}`);
-  assert.deepEqual(r2, r1, 'empty auto-advance must be deterministic for same state');
-  const reproj = exploreStage.project(r1.state);
-  assert.deepEqual(reproj.next, r1.next, 'auto-advance must carry next pointer consistent with projection');
+test('step4 empty auto-advance: recorded-empty lists at edge-case and implementation-details stages auto-advance; unrecorded lists do not', () => {
+  // E1: From initialState, a transition with no intent signal SHALL NOT advance.
+  // This is the binary acceptance criterion correcting the old behavior.
+  const initialStage = step4RealStage();
+  const initialStateSnapshot = exploreStage.initialState;
+  const r1 = exploreStage.transition(initialStateSnapshot, undefined);
+  assert.equal(r1.state.stage, initialStage, 'E1: initialState without intent must NOT advance');
+  assert.ok(r1.rejected === 'READINESS_IS_NOT_INTENT', 'E1: must reject with READINESS_IS_NOT_INTENT');
+
+  // E2: At review-edge-cases, an unrecorded list SHALL NOT auto-advance, even though no population is present.
+  const edgeCaseUnrecorded = { stage: 'review-edge-cases', ideaList: [], edgeCaseList: null };
+  const r2 = exploreStage.transition(edgeCaseUnrecorded, undefined);
+  assert.equal(r2.state.stage, 'review-edge-cases', 'E2: unrecorded edgeCaseList at review-edge-cases must NOT auto-advance');
+  assert.ok(r2.rejected === 'READINESS_IS_NOT_INTENT', 'E2: must reject with READINESS_IS_NOT_INTENT');
+
+  // E2 variant: At implementation-details, an unrecorded list SHALL NOT auto-advance.
+  const implDetailsUnrecorded = { stage: 'implementation-details', ideaList: [], implementationDetailsList: null };
+  const r2b = exploreStage.transition(implDetailsUnrecorded, undefined);
+  assert.equal(r2b.state.stage, 'implementation-details', 'E2: unrecorded implementationDetailsList at implementation-details must NOT auto-advance');
+  assert.ok(r2b.rejected === 'READINESS_IS_NOT_INTENT', 'E2: must reject with READINESS_IS_NOT_INTENT');
+
+  // E3: Auto-advance SHALL NOT fire at explore-change or crystallize under any list state.
+  const exploreChangeEmpty = { stage: 'explore-change', ideaList: [], edgeCaseList: [] };
+  const r3 = exploreStage.transition(exploreChangeEmpty, undefined);
+  assert.equal(r3.state.stage, 'explore-change', 'E3: explore-change must NOT auto-advance even with empty edgeCaseList');
+  assert.ok(r3.rejected === 'READINESS_IS_NOT_INTENT', 'E3: must reject with READINESS_IS_NOT_INTENT');
+
+  const crystallizeEmpty = { stage: 'crystallize', ideaList: [], edgeCaseList: [] };
+  const r3b = exploreStage.transition(crystallizeEmpty, undefined);
+  assert.equal(r3b.state.stage, 'crystallize', 'E3: crystallize must NOT auto-advance even with empty edgeCaseList');
+  assert.ok(r3b.rejected === 'READINESS_IS_NOT_INTENT', 'E3: must reject with READINESS_IS_NOT_INTENT');
+
+  // E4: A recorded non-empty list without intent SHALL still return the current pointer with READINESS_IS_NOT_INTENT.
+  const edgeCaseNonEmpty = { stage: 'review-edge-cases', ideaList: [], edgeCaseList: ['E1', 'E2'] };
+  const r4 = exploreStage.transition(edgeCaseNonEmpty, undefined);
+  assert.equal(r4.state.stage, 'review-edge-cases', 'E4: recorded non-empty list must NOT advance without intent');
+  assert.ok(r4.rejected === 'READINESS_IS_NOT_INTENT', 'E4: must reject with READINESS_IS_NOT_INTENT');
+  assert.ok(r4.next && typeof r4.next.follow === 'string', 'E4: must return current pointer with real follow');
+
+  // Main content-based auto-advance tests:
+  // At review-edge-cases with recorded-empty list, auto-advance should occur.
+  const edgeCaseEmpty = { stage: 'review-edge-cases', ideaList: [], edgeCaseList: [] };
+  const r5 = exploreStage.transition(edgeCaseEmpty, undefined);
+  assert.notEqual(r5.state.stage, 'review-edge-cases', 'recorded-empty edgeCaseList at review-edge-cases must auto-advance');
+  assert.ok(!('rejected' in r5) || r5.rejected === undefined, 'auto-advance must not reject');
+  assert.ok(typeof r5.next.follow === 'string' && r5.next.follow !== 'wrong', 'auto-advance must carry real follow');
+
+  // At implementation-details with recorded-empty list, auto-advance should occur.
+  const implDetailsEmpty = { stage: 'implementation-details', ideaList: [], implementationDetailsList: [] };
+  const r6 = exploreStage.transition(implDetailsEmpty, undefined);
+  assert.notEqual(r6.state.stage, 'implementation-details', 'recorded-empty implementationDetailsList at implementation-details must auto-advance');
+  assert.ok(!('rejected' in r6) || r6.rejected === undefined, 'auto-advance must not reject');
+  assert.ok(typeof r6.next.follow === 'string' && r6.next.follow !== 'wrong', 'auto-advance must carry real follow');
+
+  // E5: A snapshot restored from the previous state shape, lacking the new fields, SHALL be treated as unrecorded.
+  // Simulate a snapshot without edgeCaseList and implementationDetailsList (old state shape).
+  const oldShapeSnapshot = { stage: 'review-edge-cases', ideaList: [] };
+  const r7 = exploreStage.transition(oldShapeSnapshot, undefined);
+  assert.equal(r7.state.stage, 'review-edge-cases', 'E5: old state shape without recorded lists must treat them as unrecorded and NOT auto-advance');
+  assert.ok(r7.rejected === 'READINESS_IS_NOT_INTENT', 'E5: must reject with READINESS_IS_NOT_INTENT');
+
+  // Verify determinism: same transition twice with recorded-empty must yield identical results.
+  const r8 = exploreStage.transition(edgeCaseEmpty, undefined);
+  const r9 = exploreStage.transition(edgeCaseEmpty, undefined);
+  assert.deepEqual(r8, r9, 'recorded-empty auto-advance must be deterministic');
 });
 
 test('step4 double-projection purity: same state twice identical snapshot+next', () => {
