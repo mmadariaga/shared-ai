@@ -53,21 +53,7 @@ Panel ownership, marking hooks, the `Result Loop`, chat `Closure State` ownershi
 #### Scenario: Machine never renders or reviews
 
 - **WHEN** a transition succeeds for a session with panel and review surfaces active
-- **THEN** the response carries only state, snapshot, and the `next` pointer while the caller alone updates the idea list, owns closure, and runs any review loop
-
-### Requirement: Snapshot carriage and restore
-
-Every machine response SHALL carry the snapshot the caller must retain in conversation, and `restore` SHALL accept the last carried snapshot to re-establish the session after respawn. Snapshots lacking `edgeCaseList` and `implementationDetailsList` fields (from sessions prior to this version) are treated as having those fields as `null` (unrecorded), preserving backward compatibility and the recorded/unrecorded distinction.
-
-#### Scenario: Compaction-safe continuation
-
-- **WHEN** the chat compacts and the caller restores the sidecar from a last-carried snapshot
-- **THEN** the machine resumes at the snapshotted state and its next transition returns the pointer consistent with that state
-
-#### Scenario: Old-shape snapshot restore treats missing fields as unrecorded
-
-- **WHEN** a snapshot lacks `edgeCaseList` or `implementationDetailsList` fields
-- **THEN** those fields are normalized to `null` during restore, and the transition behaves as though the lists were never recorded
+- **THEN** the response carries only the minimal wire outcome (`stage`, `next`, and the optional `rejected` and `warnings` attributes) while the caller alone updates the idea list, owns closure, and runs any review loop
 
 ### Requirement: Stage-machine PoC scope
 
@@ -80,17 +66,17 @@ The machine SHALL absorb the explore stage-progression rules into its transition
 
 ### Requirement: Single-level emit outcome
 
-The `/emit` route of the `explore-stage` sidecar SHALL return exactly one level of outcome — `{state, snapshot, next}` — where `state` is the plain machine state (`state.stage` a string), `snapshot` is the machine's own snapshot for the returned state, and `next` is the current pointer. The route SHALL store the returned plain state as session state and SHALL NOT re-wrap `transition()`'s return into a nested envelope. A no-intent emit that triggers neither recording nor a content-based empty-set rule SHALL return the current state in-band with the rejection marker `rejected: READINESS_IS_NOT_INTENT` instead of advancing, and a replayed `eventId` SHALL return the identical stored outcome without applying the event twice.
+The `/emit` route of the `explore-stage` sidecar SHALL return exactly one level of minimal wire outcome — `{stage, next, rejected?, warnings?}` — where `stage` is the current stage string, `next` is the current pointer, `rejected` is the optional in-band rejection marker, and `warnings` is the optional degradation-warning channel. The route SHALL store the plain machine state as session state (persisted in the sidecar's own session file) and SHALL NOT re-wrap `transition()`'s return into a nested envelope or serialize any state object or snapshot into the response. A no-intent emit that triggers neither recording nor a content-based empty-set rule SHALL return the current stage in-band with the rejection marker `rejected: READINESS_IS_NOT_INTENT` instead of advancing, and a replayed `eventId` SHALL return the identical stored outcome without applying the event twice (in-process via the bounded seen-store, cross-process via the persisted last-event ledger).
 
 #### Scenario: Single-level envelope and monotonic stage walk
 
 - **WHEN** the caller POSTs a `next-step` event to the live `/emit` route and repeats it across consecutive turns
-- **THEN** every response carries exactly the keys `state`, `snapshot`, and `next` with `state.stage` a plain string, and consecutive emits walk `explore-change` → `review-edge-cases` → `implementation-details` → `crystallize` without resetting to an earlier stage
+- **THEN** every response carries exactly the minimal `stage` and `next` keys (plus the optional `rejected` and `warnings` attributes) with `stage` a plain string, and consecutive emits walk `explore-change` → `review-edge-cases` → `implementation-details` → `crystallize` without resetting to an earlier stage
 
 #### Scenario: No-intent emit rejects in-band
 
 - **WHEN** the caller emits a stage event with no explicit intent where neither recording nor an empty-set rule applies
-- **THEN** the response carries the `rejected: READINESS_IS_NOT_INTENT` marker and returns the current state without advancing
+- **THEN** the response carries the `rejected: READINESS_IS_NOT_INTENT` marker and returns the current stage without advancing
 
 #### Scenario: Replayed eventId returns the identical outcome
 
@@ -99,15 +85,81 @@ The `/emit` route of the `explore-stage` sidecar SHALL return exactly one level 
 
 #### Scenario: Restore returns the carried snapshot state
 
-- **WHEN** the caller POSTs the last conversation-carried snapshot to `/restore`
-- **THEN** the restored state equals the snapshotted machine state and the next transition continues from it
+- **WHEN** the caller POSTs to `/restore` on a chat with a persisted machine
+- **THEN** the body-less probe returns the sidecar-owned current `{stage, next}` with no snapshot state (no snapshot is carried, returned, or required)
 
 ### Requirement: HTTP seam live test coverage
 
-The `explore-stage` HTTP seam SHALL have test coverage exercised against the live sidecar server covering consecutive stage advances, list recording, empty-set auto-advance, idempotent replay, and no-intent rejection. The machine and sidecar code SHALL stay stdlib-only with no OS-conditional paths, and the suite SHALL run on Windows and Linux.
+The `explore-stage` HTTP seam SHALL have test coverage exercised against the live sidecar server covering consecutive stage advances, list recording, empty-set auto-advance, idempotent replay, no-intent rejection, sidecar-owned store persistence (the record shape with `createdAt` and the per-machine ledger), atomic session-file writes, corruption warnings, cross-process restart replay, and `/close` purge semantics. The machine and sidecar code SHALL stay stdlib-only with no OS-conditional paths, and the suite SHALL run on Windows and Linux.
 
 #### Scenario: Live seam suite runs identically on both platforms
 
 - **WHEN** the sidecar test suite runs on Windows or Linux
 - **THEN** the live-server seam tests pass with `spawn` → `emit` → `restore` → `close` behaving identically on both platforms and no OS-conditional code paths
+
+### Requirement: Sidecar-owned durable state store
+
+The sidecar SHALL own the explore-stage machine state as a durable store: it SHALL persist each machine's state, a minimal per-machine ledger (`rev`, `lastEventId`, `lastOutcome`), and a record `createdAt` in its own session file under the system temp directory, and SHALL reload persisted state automatically. The load SHALL be lazy — state SHALL be seeded from the session file inside the first request flow that already reads it (only when memory lacks the entry, and only for registry-known machine identifiers) — with no dedicated boot call, so the required client cycle is `spawn` then `/emit`. The session-file record SHALL be written atomically (temp file plus rename) so a crash mid-write never leaves a truncated file, and records lacking `stateByMachine` SHALL load tolerantly as the initial state with no crash and no version bump. An explicit close SHALL purge the persisted state and tombstone the record, so reopening the same chat identifier restarts from the initial state. `rev` is internal bookkeeping and SHALL never be serialized into a response.
+
+#### Scenario: Required cycle is spawn then emit
+
+- **WHEN** a fresh sidecar process spawns for a chat whose session file holds a persisted machine state written by a matching sidecar version
+- **THEN** the first `/emit` request continues from the persisted stage with no prior `/restore` call, and the replay rules of the idempotency contract hold across the process restart
+
+#### Scenario: Legacy record loads tolerantly
+
+- **WHEN** the session file holds a record without `stateByMachine` (a legacy or pre-change record)
+- **THEN** the sidecar loads it without crashing and the machine seeds from its initial state
+
+#### Scenario: Atomic write leaves no temp files
+
+- **WHEN** the sidecar persists a machine outcome to its session file
+- **THEN** the write completes through a temp file plus rename and only the session file itself remains in the store directory
+
+#### Scenario: Close purges the persisted state
+
+- **WHEN** the caller closes the session explicitly and later reopens the same chat identifier
+- **THEN** the persisted state has been purged and the tombstone recorded, and the reopened session starts from the initial state
+
+### Requirement: Minimal wire outcomes
+
+The `/emit` and `/restore` routes SHALL return minimal wire outcomes — `{stage, next, rejected?, warnings?}` on `/emit` and `{stage, next, warnings?}` on `/restore` — and SHALL NOT serialize the full state object or any snapshot onto the wire in either direction; the machine's internal snapshot remains available to projection but never travels in a response. The agent side carries no state JSON and never sends state in a request. A `/restore` request SHALL accept no body and SHALL be strictly read-only (it never pins a machine and never mutates the session), and a probe on a chat with no persisted machine SHALL return the closed-vocabulary `UNKNOWN_MACHINE` error with no state, snapshot, or stage fields. The caller-side agent MAY hold at most one disposable presentation hint (the last rendered stage) for panel rendering on event-less turns and to notice regressions; the sidecar response SHALL always win over the hint.
+
+#### Scenario: Emit response carries no state and no snapshot
+
+- **WHEN** the caller emits a stage event that advances, records, or rejects
+- **THEN** the response carries only `stage`, `next`, and the optional `rejected` and `warnings` attributes, and no state object and no snapshot appear in the response
+
+#### Scenario: Restore is a body-less read-only probe
+
+- **WHEN** the caller POSTs to `/restore` with no body on a chat with a persisted machine
+- **THEN** the probe returns the sidecar-owned current `{stage, next}` without mutating the session, and a later `/emit` continues from the current stage instead of resetting
+
+#### Scenario: Probe before any emit returns the closed error
+
+- **WHEN** the caller POSTs to `/restore` on a chat with no persisted machine
+- **THEN** the response is the closed-vocabulary `UNKNOWN_MACHINE` error with no state, snapshot, or stage fields
+
+### Requirement: Cross-process idempotency across restarts
+
+The sidecar SHALL persist a minimal per-machine ledger (`rev`, `lastEventId`, `lastOutcome`) and SHALL replay the persisted last outcome when the same `eventId` is retried after a process restart, without re-applying the transition, so the same `eventId` never double-applies across restarts. Retries of non-latest `eventId` values are out of coverage because `eventId` values are not reused in practice.
+
+#### Scenario: Same eventId after restart replays without re-applying
+
+- **WHEN** the sidecar process dies after persisting a machine outcome and the caller respawns and re-emits the same `eventId`
+- **THEN** the sidecar returns the stored last outcome byte-identically and the machine state does not advance twice
+
+### Requirement: Session-file degradation warnings
+
+The sidecar SHALL distinguish an absent session file (legal fresh-chat semantics) from a present-but-corrupt or truncated file: absence SHALL seed or continue from the live in-memory state with no warning, while a corrupt file SHALL be treated as absent (initial seed) and notified through a closed optional `warnings` response attribute (a string array, absent when there are no warnings, first value `SESSION_FILE_CORRUPT`) piggybacked on the same `/emit` or `/restore` response the agent already receives, with no extra turns or calls. Once the store is rewritten by a successful persistence, later responses SHALL carry no warning.
+
+#### Scenario: Corrupt file warns in-band and heals
+
+- **WHEN** the session file is corrupt or truncated and the next `/emit` or `/restore` request arrives
+- **THEN** that response carries `warnings` with the value `SESSION_FILE_CORRUPT` and the machine seeds from its initial state, and later responses after the store is rewritten carry no warning
+
+#### Scenario: Absent file is legal and silent
+
+- **WHEN** the session file is absent (swept, cleaned, or a fresh chat) while the sidecar process is live
+- **THEN** the next emit seeds or continues from the in-memory state with no warning and rewrites the store
 

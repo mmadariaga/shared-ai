@@ -618,10 +618,11 @@ test('step5 compaction rediscovery via file plus snapshot restores last snapshot
   }
 });
 
-// HTTP seam (live server): /emit single-level envelope, stage walk, recording,
-// empty-set auto-advance, idempotent replay, no-intent rejection. Uses the
-// in-process spawn (server unref'd, no OS-conditional paths).
-test('emit seam: single-level {state,snapshot,next}; consecutive next-step emits walk all stages without resets; restore returns the carried state', async () => {
+// HTTP seam (live server): /emit minimal wire outcome, stage walk, recording,
+// empty-set auto-advance, idempotent replay, no-intent rejection, sidecar-owned
+// persisted state. Uses the in-process spawn (server unref'd, no OS-conditional
+// paths).
+test('emit seam: minimal {stage,next}; consecutive next-step emits walk all stages without resets; /restore is a body-less read-only probe', async () => {
   const chatId = crypto.randomUUID();
   try {
     const mod = require('../bin/sai-state.js');
@@ -630,39 +631,39 @@ test('emit seam: single-level {state,snapshot,next}; consecutive next-step emits
     const emit = (eventId, event) =>
       mod.requestJson(endpoint.port, endpoint.token, '/emit', { machineId: 'explore-stage@1', eventId, event });
 
-    // First next-step emit: explore-change -> review-edge-cases, single-level response.
+    // First next-step emit: explore-change -> review-edge-cases, minimal wire
+    // outcome. No state object and no snapshot travel on the wire.
     const r1 = await emit(crypto.randomUUID(), { intent: 'next-step' });
     assert.ok(r1 && typeof r1 === 'object', `/emit must return an object, got ${JSON.stringify(r1)}`);
-    assert.deepEqual(Object.keys(r1).sort(), ['next', 'snapshot', 'state'], `/emit response must be single-level {state,snapshot,next}, got ${JSON.stringify(Object.keys(r1))}`);
-    assert.deepEqual(
-      Object.keys(r1.state).sort(),
-      ['edgeCaseList', 'ideaList', 'implementationDetailsList', 'stage'],
-      `state must be the plain machine state, got ${JSON.stringify(r1.state)}`,
-    );
-    assert.ok(typeof r1.state.stage === 'string', `state.stage must be a string, got ${JSON.stringify(r1.state)}`);
-    assert.equal(r1.state.stage, 'review-edge-cases', `first next-step must advance explore-change -> review-edge-cases, got ${r1.state.stage}`);
-    assert.ok(r1.snapshot && r1.snapshot.state && r1.snapshot.state.stage === r1.state.stage, 'snapshot must carry the same stage as state');
-    assert.equal(r1.snapshot.machineId, 'explore-stage@1', 'snapshot must pin explore-stage@1');
+    assert.deepEqual(Object.keys(r1).sort(), ['next', 'stage'], `/emit response must be minimal {stage,next}, got ${JSON.stringify(Object.keys(r1))}`);
+    assert.ok(typeof r1.stage === 'string', `stage must be a string, got ${JSON.stringify(r1)}`);
+    assert.equal(r1.stage, 'review-edge-cases', `first next-step must advance explore-change -> review-edge-cases, got ${r1.stage}`);
     assert.ok(r1.next && typeof r1.next.follow === 'string' && r1.next.follow.includes('.md'), `next must be a real pointer, got ${JSON.stringify(r1.next)}`);
 
     // Consecutive next-step emits walk the full stage table without resets.
     const r2 = await emit(crypto.randomUUID(), { intent: 'next-step' });
-    assert.equal(r2.state.stage, 'implementation-details', `second next-step must reach implementation-details, got ${r2.state.stage}`);
+    assert.equal(r2.stage, 'implementation-details', `second next-step must reach implementation-details, got ${r2.stage}`);
     const r3 = await emit(crypto.randomUUID(), { intent: 'next-step' });
-    assert.equal(r3.state.stage, 'crystallize', `third next-step must reach crystallize, got ${r3.state.stage}`);
+    assert.equal(r3.stage, 'crystallize', `third next-step must reach crystallize, got ${r3.stage}`);
     const r4 = await emit(crypto.randomUUID(), { intent: 'next-step' });
-    assert.equal(r4.state.stage, 'crystallize', `next-step at crystallize must not reset to explore-change, got ${r4.state.stage}`);
-    assert.ok(r1.state.stage !== 'explore-change' && r4.state.stage === 'crystallize', 'consecutive emits must not reset the stage');
+    assert.equal(r4.stage, 'crystallize', `next-step at crystallize must not reset to explore-change, got ${r4.stage}`);
+    assert.ok(r1.stage !== 'explore-change' && r4.stage === 'crystallize', 'consecutive emits must not reset the stage');
 
-    // Restore-per-turn: /restore with the last conversation-carried snapshot
-    // returns the same state (spawn -> emit -> restore parity on any OS).
-    const restored = await mod.requestJson(endpoint.port, endpoint.token, '/restore', { snapshot: r3.snapshot });
+    // /restore is an optional read-only probe: no body, no state on the wire,
+    // returns the sidecar-owned current stage for recovery/panel re-render.
+    const restored = await mod.requestJson(endpoint.port, endpoint.token, '/restore', {});
     assert.ok(restored && typeof restored === 'object', `/restore must return an object, got ${JSON.stringify(restored)}`);
-    assert.deepEqual(restored.state, r3.state, 'restored state must equal the carried snapshot state');
-    assert.equal(restored.state.stage, 'crystallize', 'restored stage must be crystallize');
+    assert.deepEqual(Object.keys(restored).sort(), ['next', 'stage'], `/restore probe must return {stage,next} with no state and no snapshot, got ${JSON.stringify(Object.keys(restored))}`);
+    assert.equal(restored.stage, 'crystallize', 'probe must report the sidecar-owned current stage');
+    assert.ok(restored.next && typeof restored.next.follow === 'string' && restored.next.follow.includes('.md'), `probe next must be a real pointer, got ${JSON.stringify(restored.next)}`);
+
+    // The probe is read-only: a later emit continues from the current stage
+    // instead of resetting to the initial state.
+    const r5 = await emit(crypto.randomUUID(), { intent: 'next-step' });
+    assert.equal(r5.stage, 'crystallize', 'probe must not reset the progression');
 
     const closed = mod.closeSession(chatId);
-    assert.equal(closed && closed.tombstone, true, 'close after emit+restore must tombstone the session');
+    assert.equal(closed && closed.tombstone, true, 'close after emit+probe must tombstone the session');
   } finally {
     cleanup([chatId]);
   }
@@ -676,35 +677,42 @@ test('emit seam: recordedList records without advancing; empty-set auto-advance 
     assertRealEndpoint(endpoint, 'record-seam spawn()');
     const emit = (eventId, event) =>
       mod.requestJson(endpoint.port, endpoint.token, '/emit', { machineId: 'explore-stage@1', eventId, event });
+    const persistedStage = () => {
+      const entry = readSession(chatId).stateByMachine['explore-stage@1'];
+      return entry && entry.state ? entry.state.stage : undefined;
+    };
 
     // Advance to review-edge-cases.
     const r0 = await emit(crypto.randomUUID(), { intent: 'next-step' });
-    assert.equal(r0.state.stage, 'review-edge-cases', `setup advance must reach review-edge-cases, got ${r0.state.stage}`);
+    assert.equal(r0.stage, 'review-edge-cases', `setup advance must reach review-edge-cases, got ${r0.stage}`);
 
     // No-intent emit is rejected in-band and does not advance.
     const rej = await emit(crypto.randomUUID(), {});
-    assert.equal(rej.state.stage, 'review-edge-cases', 'no-intent emit must not advance');
+    assert.equal(rej.stage, 'review-edge-cases', 'no-intent emit must not advance');
     assert.equal(rej.rejected, 'READINESS_IS_NOT_INTENT', `no-intent emit must carry the rejection marker, got ${JSON.stringify(rej)}`);
 
-    // A recordedList records into the current stage's own list without advancing.
+    // A recordedList records into the current stage's own list without
+    // advancing; the recorded list lives only in the sidecar's store, so the
+    // wire response exposes no state object.
     const rec = await emit(crypto.randomUUID(), { recordedList: ['E1', 'E2'] });
-    assert.equal(rec.state.stage, 'review-edge-cases', 'recording must not advance the stage');
-    assert.deepEqual(rec.state.edgeCaseList, ['E1', 'E2'], `recordedList must record into the stage's own list, got ${JSON.stringify(rec.state.edgeCaseList)}`);
+    assert.equal(rec.stage, 'review-edge-cases', 'recording must not advance the stage');
     assert.equal(rec.rejected, undefined, 'recording must not reject');
+    assert.equal(!('state' in rec) && !('snapshot' in rec), true, 'recording response must carry no state and no snapshot');
+    assert.deepEqual(readSession(chatId).stateByMachine['explore-stage@1'].state.edgeCaseList, ['E1', 'E2'], `recordedList must persist into the stage's own list, got ${JSON.stringify(readSession(chatId).stateByMachine)}`);
 
     // Non-empty recorded list: a no-intent emit still rejects (no empty-set advance).
     const rej2 = await emit(crypto.randomUUID(), {});
-    assert.equal(rej2.state.stage, 'review-edge-cases', 'non-empty list must not auto-advance');
+    assert.equal(rej2.stage, 'review-edge-cases', 'non-empty list must not auto-advance');
     assert.equal(rej2.rejected, 'READINESS_IS_NOT_INTENT', 'no-intent emit with non-empty list must reject');
 
     // Record an empty list: stays in the current stage.
     const recEmpty = await emit(crypto.randomUUID(), { recordedList: [] });
-    assert.equal(recEmpty.state.stage, 'review-edge-cases', 'empty-list recording must not advance by itself');
-    assert.deepEqual(recEmpty.state.edgeCaseList, [], 'empty recordedList must record as recorded-empty');
+    assert.equal(recEmpty.stage, 'review-edge-cases', 'empty-list recording must not advance by itself');
+    assert.deepEqual(readSession(chatId).stateByMachine['explore-stage@1'].state.edgeCaseList, [], 'empty recordedList must persist as recorded-empty');
 
     // The existing content-based empty-set rule advances on a later no-intent emit.
     const adv = await emit(crypto.randomUUID(), {});
-    assert.equal(adv.state.stage, 'implementation-details', `recorded-empty list must auto-advance on a later no-intent emit, got ${adv.state.stage}`);
+    assert.equal(adv.stage, 'implementation-details', `recorded-empty list must auto-advance on a later no-intent emit, got ${adv.stage}`);
     assert.equal(adv.rejected, undefined, 'empty-set auto-advance must not reject');
 
     // Idempotent replay: the same eventId returns the identical response and applies once.
@@ -712,7 +720,15 @@ test('emit seam: recordedList records without advancing; empty-set auto-advance 
     const d1 = await emit(dupId, { intent: 'next-step' });
     const d2 = await emit(dupId, { intent: 'next-step' });
     assert.deepEqual(d2, d1, 'replayed eventId must return the identical stored outcome');
-    assert.equal(d1.state.stage, 'crystallize', 'duplicate eventId must not advance twice, got ' + d1.state.stage);
+    assert.equal(d1.stage, 'crystallize', 'duplicate eventId must not advance twice, got ' + d1.stage);
+
+    // Persisted minimal ledger (I4/I5): rev is internal and never exposed on
+    // the wire; the ledger enables the cross-process last-event replay.
+    const entry = readSession(chatId).stateByMachine['explore-stage@1'];
+    assert.ok(typeof entry.rev === 'number' && entry.rev > 0, `ledger must persist an internal rev, got ${JSON.stringify(entry)}`);
+    assert.equal(typeof entry.lastEventId, 'string', 'ledger must persist lastEventId');
+    assert.deepEqual(Object.keys(entry.lastOutcome).sort(), ['next', 'stage'], `ledger lastOutcome must stay minimal, got ${JSON.stringify(entry.lastOutcome)}`);
+    assert.equal(persistedStage(), 'crystallize', 'persisted state must equal the walked stage');
 
     const closed = mod.closeSession(chatId);
     assert.equal(closed && closed.tombstone, true, 'close after record+advance must tombstone the session');
@@ -720,6 +736,238 @@ test('emit seam: recordedList records without advancing; empty-set auto-advance 
     cleanup([chatId]);
   }
 });
+
+test('sidecar-owned store: session record shape (createdAt + stateByMachine ledger), atomic write leaves no temp files, /restore probe before any emit is 404', async () => {
+  const chatId = crypto.randomUUID();
+  try {
+    const mod = require('../bin/sai-state.js');
+    const endpoint = await mod.spawn(chatId);
+    assertRealEndpoint(endpoint, 'store-shape spawn()');
+
+    // Optional probe on a fresh chat (no emit yet, no persisted machine): 404
+    // with the closed vocabulary, never a state object.
+    const probe = await mod.requestJson(endpoint.port, endpoint.token, '/restore', {});
+    assert.equal(probe && probe.error, 'UNKNOWN_MACHINE', `probe before any emit must 404 UNKNOWN_MACHINE, got ${JSON.stringify(probe)}`);
+    assert.ok(!('state' in probe) && !('snapshot' in probe) && !('stage' in probe), `probe error must carry no state, got ${JSON.stringify(probe)}`);
+    const denied = await mod.requestJson(endpoint.port, 'wrong-token-0000000000', '/restore', {});
+    assert.equal(denied && denied.error, 'INVALID_TOKEN', `probe with a bad token must 401, got ${JSON.stringify(denied)}`);
+
+    const emit = (eventId, event) =>
+      mod.requestJson(endpoint.port, endpoint.token, '/emit', { machineId: 'explore-stage@1', eventId, event });
+    const eventId = crypto.randomUUID();
+    const r1 = await emit(eventId, { intent: 'next-step' });
+    assert.equal(r1.stage, 'review-edge-cases', `emit must advance, got ${JSON.stringify(r1)}`);
+
+    // I5 record shape: createdAt + stateByMachine (machineId -> state/rev/
+    // lastEventId/lastOutcome). Legacy records without stateByMachine and
+    // pre-change files load as initial state, so the shape is additive only.
+    const session = readSession(chatId);
+    assert.ok(typeof session.createdAt === 'number' && session.createdAt > 0, `record must carry createdAt, got ${JSON.stringify(session.createdAt)}`);
+    const entry = session.stateByMachine['explore-stage@1'];
+    assert.ok(entry && typeof entry === 'object', `record must persist stateByMachine['explore-stage@1'], got ${JSON.stringify(session.stateByMachine)}`);
+    assert.equal(entry.state.stage, 'review-edge-cases', 'persisted state must be the plain machine state');
+    assert.deepEqual(Object.keys(entry.lastOutcome).sort(), ['next', 'stage'], `lastOutcome must stay minimal, got ${JSON.stringify(entry.lastOutcome)}`);
+    assert.equal(entry.lastEventId, eventId, 'ledger must persist lastEventId');
+    assert.ok(!('rev' in r1) && !('state' in r1) && !('snapshot' in r1), `rev must never be exposed on the wire, got ${JSON.stringify(r1)}`);
+
+    // Atomic write (I3): temp + rename leaves no temp files behind.
+    const dirEntries = fs.readdirSync(path.join(tmpBase(), 'sai-state')).filter((f) => f.startsWith(chatId));
+    assert.deepEqual(dirEntries, [chatId + '.json'], `only the session file may remain, got ${JSON.stringify(dirEntries)}`);
+  } finally {
+    cleanup([chatId]);
+  }
+});
+
+test('sidecar-owned store: corrupt session file notifies SESSION_FILE_CORRUPT in the same response, seeds initial state, and heals (E2)', async () => {
+  const chatId = crypto.randomUUID();
+  try {
+    const mod = require('../bin/sai-state.js');
+    const endpoint = await mod.spawn(chatId);
+    assertRealEndpoint(endpoint, 'corrupt-seed spawn()');
+
+    // Corrupt the file while memory is still empty: the sidecar treats the
+    // corrupt file as absent (initial seed) and piggybacks the closed warning
+    // on the response the agent already receives — no extra turns, no calls.
+    fs.writeFileSync(sessionFile(chatId), '{"port": 1, "token": "trunc', 'utf8');
+    const emit = (eventId, event) =>
+      mod.requestJson(endpoint.port, endpoint.token, '/emit', { machineId: 'explore-stage@1', eventId, event });
+    const r1 = await emit(crypto.randomUUID(), { intent: 'next-step' });
+    assert.deepEqual(r1.warnings, ['SESSION_FILE_CORRUPT'], `corrupt file must notify through the closed warnings attribute, got ${JSON.stringify(r1)}`);
+    assert.equal(r1.stage, 'review-edge-cases', `corrupt file must be treated as absent (initial seed advanced once), got ${JSON.stringify(r1)}`);
+
+    // The emit rewrote the store: the warning is absent from later responses.
+    const r2 = await emit(crypto.randomUUID(), { intent: 'next-step' });
+    assert.equal(r2.warnings, undefined, `healed store must stop warning, got ${JSON.stringify(r2)}`);
+    assert.equal(r2.stage, 'implementation-details', `healed store must continue the progression, got ${JSON.stringify(r2)}`);
+
+    // /restore piggybacks the same warning channel.
+    fs.writeFileSync(sessionFile(chatId), 'not json at all', 'utf8');
+    const probe = await mod.requestJson(endpoint.port, endpoint.token, '/restore', {});
+    assert.deepEqual(probe.warnings, ['SESSION_FILE_CORRUPT'], `restore probe must carry the warning, got ${JSON.stringify(probe)}`);
+  } finally {
+    cleanup([chatId]);
+  }
+});
+
+test('sidecar-owned store: absent session file mid-process is legal (no warning) and memory state wins (E1)', async () => {
+  const chatId = crypto.randomUUID();
+  try {
+    const mod = require('../bin/sai-state.js');
+    const endpoint = await mod.spawn(chatId);
+    assertRealEndpoint(endpoint, 'absent-file spawn()');
+    const emit = (eventId, event) =>
+      mod.requestJson(endpoint.port, endpoint.token, '/emit', { machineId: 'explore-stage@1', eventId, event });
+    const r1 = await emit(crypto.randomUUID(), { intent: 'next-step' });
+    assert.equal(r1.stage, 'review-edge-cases', 'setup advance');
+    fs.rmSync(sessionFile(chatId), { force: true });
+    const r2 = await emit(crypto.randomUUID(), { intent: 'next-step' });
+    assert.equal(r2.warnings, undefined, 'absence is legal (fresh chat semantics) and carries no warning');
+    assert.equal(r2.stage, 'implementation-details', 'in-memory sidecar state keeps serving the progression');
+    assert.ok(fs.existsSync(sessionFile(chatId)), 'the emit rewrites the store from the live endpoint identity');
+  } finally {
+    cleanup([chatId]);
+  }
+});
+
+test('sidecar-owned state survives a real process restart: respawn reloads persisted state and the last eventId replays without re-applying (E3)', async () => {
+  const chatId = crypto.randomUUID();
+  const binPath = path.join(__dirname, '..', 'bin', 'sai-state.js');
+  const { spawn: spawnProcess } = require('child_process');
+  const startChild = () => new Promise((resolve, reject) => {
+    const child = spawnProcess(process.execPath, [binPath, 'spawn', chatId], { stdio: ['pipe', 'pipe', 'pipe'] });
+    let buf = '';
+    const timer = setTimeout(() => { try { child.kill(); } catch (e) {} reject(new Error('sidecar child spawn timeout')); }, 15000);
+    child.stdout.on('data', (chunk) => {
+      buf += chunk.toString();
+      const nl = buf.indexOf('\n');
+      if (nl !== -1) {
+        clearTimeout(timer);
+        try { resolve({ child, endpoint: JSON.parse(buf.slice(0, nl)) }); }
+        catch (err) { try { child.kill(); } catch (e) {} reject(err); }
+      }
+    });
+    child.on('error', (err) => { clearTimeout(timer); reject(err); });
+  });
+  const children = [];
+  try {
+    const first = await startChild();
+    children.push(first.child);
+    const ep1 = first.endpoint;
+    assertRealEndpoint(ep1, 'child spawn #1');
+    const emit1 = (eventId, event) =>
+      mod_request(ep1.port, ep1.token, eventId, event);
+    const eventId = crypto.randomUUID();
+    const r1 = await emit1(eventId, { intent: 'next-step' });
+    assert.equal(r1.stage, 'review-edge-cases', `first-process emit must advance, got ${JSON.stringify(r1)}`);
+
+    // Kill the process: the sidecar dies at turn end in production too. The
+    // progression state must survive in the store, not in any conversation.
+    first.child.kill();
+    await new Promise((resolve) => { first.child.on('exit', resolve); });
+
+    const second = await startChild();
+    children.push(second.child);
+    const ep2 = second.endpoint;
+    assertRealEndpoint(ep2, 'child spawn #2');
+    assert.notEqual(ep2.port, ep1.port, 'respawn must listen on a fresh port (new process)');
+    const emit2 = (eventId, event) =>
+      mod_request(ep2.port, ep2.token, eventId, event);
+
+    // E3: retrying the same eventId after the process death replays the
+    // persisted last outcome without re-applying the transition.
+    const replay = await emit2(eventId, { intent: 'next-step' });
+    assert.deepEqual(replay, r1, 'same eventId after restart must replay the stored outcome byte-identically');
+
+    // The reloaded state continues: a new event advances from the persisted
+    // stage, not from the initial state.
+    const cont = await emit2(crypto.randomUUID(), { intent: 'next-step' });
+    assert.equal(cont.stage, 'implementation-details', `reloaded state must continue from the persisted stage, got ${JSON.stringify(cont)}`);
+  } finally {
+    for (const child of children) { try { child.kill(); } catch (e) {} }
+    cleanup([chatId]);
+  }
+});
+
+test('/close purges the persisted state and tombstones the record; reopening the same chatId restarts from initial (E5)', async () => {
+  const chatId = crypto.randomUUID();
+  const binPath = path.join(__dirname, '..', 'bin', 'sai-state.js');
+  const { spawn: spawnProcess } = require('child_process');
+  const startChild = () => new Promise((resolve, reject) => {
+    const child = spawnProcess(process.execPath, [binPath, 'spawn', chatId], { stdio: ['pipe', 'pipe', 'pipe'] });
+    let buf = '';
+    const timer = setTimeout(() => { try { child.kill(); } catch (e) {} reject(new Error('sidecar child spawn timeout')); }, 15000);
+    child.stdout.on('data', (chunk) => {
+      buf += chunk.toString();
+      const nl = buf.indexOf('\n');
+      if (nl !== -1) {
+        clearTimeout(timer);
+        try { resolve({ child, endpoint: JSON.parse(buf.slice(0, nl)) }); }
+        catch (err) { try { child.kill(); } catch (e) {} reject(err); }
+      }
+    });
+    child.on('error', (err) => { clearTimeout(timer); reject(err); });
+  });
+  const children = [];
+  try {
+    const first = await startChild();
+    children.push(first.child);
+    const ep1 = first.endpoint;
+    const emit1 = (eventId, event) =>
+      mod_request(ep1.port, ep1.token, eventId, event);
+    for (let i = 0; i < 3; i++) {
+      const r = await emit1(crypto.randomUUID(), { intent: 'next-step' });
+      if (i === 2) assert.equal(r.stage, 'crystallize', `setup walk must reach crystallize, got ${JSON.stringify(r)}`);
+    }
+
+    // The real /close: purges the persisted state, tombstones the record, and
+    // exits the process after the 5s window.
+    const closed = await mod_request(ep1.port, ep1.token, null, null, '/close');
+    assert.equal(closed && closed.closed, chatId, `close must acknowledge, got ${JSON.stringify(closed)}`);
+    first.child.kill();
+    await new Promise((resolve) => { first.child.on('exit', resolve); });
+    assert.ok(!('stateByMachine' in readSession(chatId)), `close must purge the persisted state, got ${JSON.stringify(readSession(chatId).stateByMachine)}`);
+
+    const second = await startChild();
+    children.push(second.child);
+    const ep2 = second.endpoint;
+    const emit2 = (eventId, event) =>
+      mod_request(ep2.port, ep2.token, eventId, event);
+    const reopened = await emit2(crypto.randomUUID(), { intent: 'next-step' });
+    assert.equal(reopened.stage, 'review-edge-cases', `reopen must restart from the initial state, got ${JSON.stringify(reopened)}`);
+    assert.equal(reopened.warnings, undefined, 'reopen after close carries no warning');
+  } finally {
+    for (const child of children) { try { child.kill(); } catch (e) {} }
+    cleanup([chatId]);
+  }
+});
+
+// Minimal HTTP POST helper for the child-process tests: the parent test
+// process talks to the real sidecar processes over loopback.
+function mod_request(port, token, eventId, event, reqPath) {
+  const http = require('http');
+  const target = reqPath || '/emit';
+  const payload = JSON.stringify(target === '/close' ? {} : { machineId: 'explore-stage@1', eventId, event });
+  return new Promise((resolve, reject) => {
+    const req = http.request({
+      host: '127.0.0.1',
+      port,
+      path: target,
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-sai-token': token || '', 'content-length': Buffer.byteLength(payload) }
+    }, (res) => {
+      const chunks = [];
+      res.on('data', (c) => chunks.push(c));
+      res.on('end', () => {
+        const raw = Buffer.concat(chunks).toString('utf8');
+        try { resolve(JSON.parse(raw)); } catch (err) { resolve(raw); }
+      });
+    });
+    req.on('error', reject);
+    req.setTimeout(5000, () => { req.destroy(new Error('request timeout')); });
+    req.write(payload);
+    req.end();
+  });
+}
 
 // Sidecar Installation Tests
 const { spawnSync } = require('child_process');

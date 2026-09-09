@@ -18,6 +18,10 @@ const servers = new Map();
 const spawnCounts = new Map();
 const healthCalls = new Map();
 const sessions = new Map();
+// Endpoint identity record each process wrote at spawn. When the on-disk
+// record becomes unreadable (absent or corrupt), the process falls back to
+// this so persisted machine state is re-merged without losing port/token/pid.
+const spawnRecords = new Map();
 function getSession(chatId) {
   let s = sessions.get(chatId);
   if (!s) {
@@ -136,8 +140,78 @@ async function healthCheck(chatId) {
 }
 function writeSessionFile(chatId, record) {
   ensureSessionDir();
-  fs.writeFileSync(sessionFile(chatId), JSON.stringify(record, null, 2) + '\n', { mode: 0o600 });
-  try { fs.chmodSync(sessionFile(chatId), 0o600); } catch (err) {}
+  // Atomic write (I3): temp file + rename, so a crash mid-write never leaves
+  // a truncated session file behind.
+  const target = sessionFile(chatId);
+  const tmp = target + '.' + crypto.randomBytes(6).toString('hex') + '.tmp';
+  try {
+    fs.writeFileSync(tmp, JSON.stringify(record, null, 2) + '\n', { mode: 0o600 });
+    try { fs.chmodSync(tmp, 0o600); } catch (err) {}
+    fs.renameSync(tmp, target);
+  } catch (err) {
+    try { fs.unlinkSync(tmp); } catch (e) {}
+    throw err;
+  }
+}
+// Reads the session record, distinguishing an absent file (E1: legal fresh
+// chat, no warning) from a present-but-corrupt file (E2: treated as absent and
+// notified through the closed optional `warnings` channel).
+function readSessionRecord(chatId) {
+  let raw = null;
+  try { raw = fs.readFileSync(sessionFile(chatId), 'utf8'); } catch (err) { raw = null; }
+  if (raw === null) return { record: null, warnings: null };
+  let record = null;
+  try { record = JSON.parse(raw); } catch (err) { record = null; }
+  if (!record || typeof record !== 'object' || Array.isArray(record)) {
+    return { record: null, warnings: ['SESSION_FILE_CORRUPT'] };
+  }
+  return { record, warnings: null };
+}
+// Lazy seed (I1): load persisted per-machine state into memory inside the
+// request flow that already reads the session file — no dedicated boot calls.
+// Only registry-known machines load, and only when memory lacks the entry;
+// an unregistered machineId stays dormant (E6) while the other machines in the
+// same chat remain intact. Legacy records without `stateByMachine` seed the
+// initial state tolerantly (no crash, no version bump).
+function seedFromRecord(session, record) {
+  if (!record || typeof record !== 'object') return;
+  const persisted = record.stateByMachine;
+  if (!persisted || typeof persisted !== 'object' || Array.isArray(persisted)) return;
+  for (const mid of Object.keys(persisted)) {
+    if (session.stateByMachine.has(mid)) continue;
+    const entry = persisted[mid];
+    if (!entry || typeof entry !== 'object') continue;
+    let mod = null;
+    try { mod = registry.get(mid); } catch (err) { mod = null; }
+    if (!mod) continue;
+    session.stateByMachine.set(mid, entry.state && typeof entry.state === 'object' ? entry.state : mod.initialState);
+  }
+}
+function withWarnings(payload, warnings) {
+  if (!warnings || warnings.length === 0) return payload;
+  return Object.assign({}, payload, { warnings });
+}
+// Durable store (I4/I5): merge the emitted machine's persisted state and
+// minimal ledger {rev, lastEventId, lastOutcome} into the session record. When
+// the on-disk record is unusable (absent or corrupt), fall back to the record
+// this process wrote at spawn so the endpoint identity is never lost (E1/E2).
+// `rev` is internal: it is persisted but never serialized into a response.
+function persistMachineOutcome(chatId, record, machineId, nextState, eventId, wire) {
+  const base = (record && typeof record === 'object') ? record : (spawnRecords.get(chatId) || {});
+  const persisted = (base.stateByMachine && typeof base.stateByMachine === 'object' && !Array.isArray(base.stateByMachine)) ? base.stateByMachine : {};
+  const prev = (persisted[machineId] && typeof persisted[machineId] === 'object' && !Array.isArray(persisted[machineId])) ? persisted[machineId] : {};
+  const lastOutcome = { stage: wire.stage, next: wire.next };
+  if (wire.rejected !== undefined) lastOutcome.rejected = wire.rejected;
+  const merged = Object.assign({}, base);
+  merged.createdAt = typeof base.createdAt === 'number' ? base.createdAt : Date.now();
+  merged.stateByMachine = Object.assign({}, persisted);
+  merged.stateByMachine[machineId] = {
+    state: nextState,
+    rev: (typeof prev.rev === 'number' ? prev.rev : 0) + 1,
+    lastEventId: eventId,
+    lastOutcome,
+  };
+  writeSessionFile(chatId, merged);
 }
 function parseArgs(argv) {
   const out = { command: null, positional: [], json: false };
@@ -154,8 +228,9 @@ function createSidecarServer(chatId, token) {
     const chunks = [];
     req.on('data', (chunk) => chunks.push(chunk));
     req.on('end', () => {
-      let record = null;
-      try { record = JSON.parse(fs.readFileSync(sessionFile(chatId), 'utf8')); } catch (err) { record = null; }
+      const loaded = readSessionRecord(chatId);
+      const record = loaded.record;
+      const loadWarnings = loaded.warnings;
       const tombstoned = !!(record && record.tombstone && typeof record.tombstoneUntil === 'number' && Date.now() < record.tombstoneUntil);
       const reqToken = req.headers['x-sai-token'];
       let rawBody = '';
@@ -203,35 +278,34 @@ function createSidecarServer(chatId, token) {
         const expectedToken = (record && record.token) || token;
         if (reqToken !== expectedToken) {
           res.writeHead(401, { 'content-type': 'application/json' });
-          res.end(JSON.stringify({ error: 'INVALID_TOKEN', next: session.lastPointer }));
+          res.end(JSON.stringify(withWarnings({ error: 'INVALID_TOKEN', next: session.lastPointer }, loadWarnings)));
           return;
         }
         if (tombstoned) {
           res.writeHead(410, { 'content-type': 'application/json' });
-          res.end(JSON.stringify({ error: 'SESSION_CLOSED', next: session.lastPointer }));
+          res.end(JSON.stringify(withWarnings({ error: 'SESSION_CLOSED', next: session.lastPointer }, loadWarnings)));
           return;
         }
-        const snap = body && body.snapshot;
-        if (!snap || typeof snap !== 'object' || !('state' in snap) || !('machineId' in snap)) {
-          res.writeHead(400, { 'content-type': 'application/json' });
-          res.end(JSON.stringify({ error: 'INVALID_SNAPSHOT', next: pinnedNext(session) }));
-          return;
-        }
-        if (session.pinned && snap.machineId !== session.pinned) {
-          res.writeHead(409, { 'content-type': 'application/json' });
-          res.end(JSON.stringify({ error: 'VERSION_MISMATCH', next: pinnedNext(session) }));
-          return;
+        // Demoted optional read-only probe (I6): no body is accepted, no state
+        // and no snapshot travel on the wire; the response is {stage, next,
+        // warnings?}. Used for recovery and panel re-render only — never part
+        // of the required spawn → /emit cycle. Strictly read-only: it never
+        // pins a machine and never mutates the session.
+        seedFromRecord(session, record);
+        let mid = session.pinned;
+        if (!mid) {
+          const persisted = (record && record.stateByMachine && typeof record.stateByMachine === 'object' && !Array.isArray(record.stateByMachine)) ? Object.keys(record.stateByMachine) : [];
+          if (persisted.length === 1) mid = persisted[0];
         }
         let mod = null;
-        try { mod = registry.get(snap.machineId); } catch (err) { mod = null; }
-        if (!mod) {
+        try { mod = mid ? registry.get(mid) : null; } catch (err) { mod = null; }
+        if (!mid || !mod) {
           res.writeHead(404, { 'content-type': 'application/json' });
-          res.end(JSON.stringify({ error: 'UNKNOWN_MACHINE', next: pinnedNext(session) }));
+          res.end(JSON.stringify(withWarnings({ error: 'UNKNOWN_MACHINE', next: pinnedNext(session) }, loadWarnings)));
           return;
         }
-        session.pinned = snap.machineId;
-        const st = snap.state;
-        session.stateByMachine.set(session.pinned, st);
+        const st = session.stateByMachine.has(mid) ? session.stateByMachine.get(mid) : mod.initialState;
+        const stage = st && typeof st === 'object' && typeof st.stage === 'string' ? st.stage : undefined;
         let nxt = session.lastPointer;
         try {
           const projected = mod.project(st);
@@ -239,9 +313,8 @@ function createSidecarServer(chatId, token) {
             nxt = projected.next;
           }
         } catch (err) {}
-        session.lastPointer = nxt;
         res.writeHead(200, { 'content-type': 'application/json' });
-        res.end(JSON.stringify({ state: st, snapshot: { state: st, machineId: session.pinned }, next: nxt }));
+        res.end(JSON.stringify(withWarnings({ stage, next: nxt }, loadWarnings)));
         return;
       }
       if (req.method === 'POST' && req.url === '/emit') {
@@ -249,43 +322,59 @@ function createSidecarServer(chatId, token) {
         const expectedToken = (record && record.token) || token;
         if (reqToken !== expectedToken) {
           res.writeHead(401, { 'content-type': 'application/json' });
-          res.end(JSON.stringify({ error: 'INVALID_TOKEN', next: session.lastPointer }));
+          res.end(JSON.stringify(withWarnings({ error: 'INVALID_TOKEN', next: session.lastPointer }, loadWarnings)));
           return;
         }
         if (tombstoned) {
           res.writeHead(410, { 'content-type': 'application/json' });
-          res.end(JSON.stringify({ error: 'SESSION_CLOSED', next: session.lastPointer }));
+          res.end(JSON.stringify(withWarnings({ error: 'SESSION_CLOSED', next: session.lastPointer }, loadWarnings)));
           return;
         }
+        // Lazy seed (I1): the per-request session-file read this handler
+        // already performs also reloads persisted machine state into memory.
+        seedFromRecord(session, record);
         const parsed = envelope.parseTarget(body.machineId);
         if (!parsed || !body.eventId || typeof body.eventId !== 'string') {
           res.writeHead(400, { 'content-type': 'application/json' });
-          res.end(JSON.stringify({ error: 'INVALID_EVENT', next: pinnedNext(session) }));
+          res.end(JSON.stringify(withWarnings({ error: 'INVALID_EVENT', next: pinnedNext(session) }, loadWarnings)));
           return;
         }
         if (!session.pinned) {
           session.pinned = parsed.key;
         } else if (parsed.key !== session.pinned) {
           res.writeHead(409, { 'content-type': 'application/json' });
-          res.end(JSON.stringify({ error: 'VERSION_MISMATCH', next: pinnedNext(session) }));
+          res.end(JSON.stringify(withWarnings({ error: 'VERSION_MISMATCH', next: pinnedNext(session) }, loadWarnings)));
           return;
         }
-        if (session.seen.has(body.eventId)) {
+        const seenOutcome = session.seen.get(body.eventId);
+        if (seenOutcome) {
           res.writeHead(200, { 'content-type': 'application/json' });
-          res.end(JSON.stringify(session.seen.get(body.eventId)));
+          res.end(JSON.stringify(withWarnings(seenOutcome, loadWarnings)));
+          return;
+        }
+        // Cross-process replay (E3): the only realistic cross-process retry is
+        // the last eventId. A retry of the persisted lastEventId re-serves the
+        // stored last outcome without re-applying the transition, so the same
+        // eventId never double-applies across a process restart.
+        const persistedEntry = (record && record.stateByMachine && typeof record.stateByMachine === 'object' && !Array.isArray(record.stateByMachine) && record.stateByMachine[session.pinned]) || null;
+        if (persistedEntry && persistedEntry.lastEventId === body.eventId && persistedEntry.lastOutcome && typeof persistedEntry.lastOutcome === 'object' && !Array.isArray(persistedEntry.lastOutcome)) {
+          const replay = Object.assign({}, persistedEntry.lastOutcome);
+          session.seen.set(body.eventId, replay);
+          res.writeHead(200, { 'content-type': 'application/json' });
+          res.end(JSON.stringify(withWarnings(replay, loadWarnings)));
           return;
         }
         let mod = null;
         try { mod = registry.get(session.pinned); } catch (err) { mod = null; }
         if (!mod) {
           res.writeHead(404, { 'content-type': 'application/json' });
-          res.end(JSON.stringify({ error: 'UNKNOWN_MACHINE', next: pinnedNext(session) }));
+          res.end(JSON.stringify(withWarnings({ error: 'UNKNOWN_MACHINE', next: pinnedNext(session) }, loadWarnings)));
           return;
         }
         const cur = session.stateByMachine.has(session.pinned) ? session.stateByMachine.get(session.pinned) : mod.initialState;
         // transition() returns the single-level outcome {state, snapshot, next};
-        // store result.state (the plain machine state) and return the outcome
-        // without re-wrapping it.
+        // the machine's internal snapshot still exists for project(), but it is
+        // never serialized into a response.
         let result = null;
         try {
           result = mod.transition(cur, body.event);
@@ -301,7 +390,7 @@ function createSidecarServer(chatId, token) {
             }
           } catch (e) {}
           res.writeHead(400, { 'content-type': 'application/json' });
-          res.end(JSON.stringify({ error: 'INVALID_EVENT', next: failNext }));
+          res.end(JSON.stringify(withWarnings({ error: 'INVALID_EVENT', next: failNext }, loadWarnings)));
           return;
         }
         const nextState = result.state;
@@ -309,21 +398,21 @@ function createSidecarServer(chatId, token) {
         if (result.next && typeof result.next.follow === 'string' && typeof result.next.hint === 'string') {
           nxt = result.next;
         }
-        const outcome = {
-          state: nextState,
-          snapshot: result.snapshot && typeof result.snapshot === 'object' ? result.snapshot : { state: nextState, machineId: session.pinned },
-          next: nxt,
-        };
-        if (result.rejected) outcome.rejected = result.rejected;
+        // Minimal wire outcome (I8): {stage, next, rejected?} — neither the
+        // full state nor a snapshot travels on the wire; the agent renders the
+        // panel from the response and memorizes no state JSON.
+        const wire = { stage: typeof nextState.stage === 'string' ? nextState.stage : undefined, next: nxt };
+        if (result.rejected) wire.rejected = result.rejected;
         session.stateByMachine.set(session.pinned, nextState);
         session.lastPointer = nxt;
-        session.seen.set(body.eventId, outcome);
+        session.seen.set(body.eventId, wire);
         while (session.seen.size > 1000) {
           const oldest = session.seen.keys().next().value;
           session.seen.delete(oldest);
         }
+        try { persistMachineOutcome(chatId, record, session.pinned, nextState, body.eventId, wire); } catch (err) {}
         res.writeHead(200, { 'content-type': 'application/json' });
-        res.end(JSON.stringify(outcome));
+        res.end(JSON.stringify(withWarnings(wire, loadWarnings)));
         return;
       }
       if (tombstoned) {
@@ -350,8 +439,31 @@ async function commandSpawn(chatId) {
   const server = createSidecarServer(chatId, token);
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const port = server.address().port;
-  const record = { port, token, pid: process.pid, startTime: procStartTime(process.pid) ?? Date.now(), sidecarVersion: SIDECAR_VERSION };
+  // Durable store: the sidecar owns the progression state, so a fresh spawn
+  // carries the previous record's persisted machine state forward — this is
+  // what makes `spawn → /emit` the required cycle across process restarts.
+  // Only matching sidecar versions carry state (E4: a version-skewed file
+  // respawns from the initial state, the regression visible as in E1);
+  // legacy records without `stateByMachine` carry nothing (tolerant load,
+  // no version bump). Tombstoned records carry nothing: /close purged the
+  // state (E5), so reopening the same chatId restarts from the initial state.
+  let previous = null;
+  try {
+    const parsed = JSON.parse(fs.readFileSync(sessionFile(chatId), 'utf8'));
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) previous = parsed;
+  } catch (err) { previous = null; }
+  const carriedState = (previous && previous.sidecarVersion === SIDECAR_VERSION && previous.stateByMachine && typeof previous.stateByMachine === 'object' && !Array.isArray(previous.stateByMachine)) ? previous.stateByMachine : {};
+  const record = {
+    port,
+    token,
+    pid: process.pid,
+    startTime: procStartTime(process.pid) ?? Date.now(),
+    sidecarVersion: SIDECAR_VERSION,
+    createdAt: (previous && typeof previous.createdAt === 'number') ? previous.createdAt : Date.now(),
+    stateByMachine: carriedState,
+  };
   writeSessionFile(chatId, record);
+  spawnRecords.set(chatId, record);
   servers.set(chatId, server);
   const prevSpawns = spawnCounts.get(chatId) || 0;
   spawnCounts.set(chatId, prevSpawns + 1);

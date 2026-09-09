@@ -145,46 +145,56 @@ The per-harness idea-list render bindings SHALL implement a phase-A/phase-B pane
 - **WHEN** the opencode and Claude Code idea-list render bindings are inspected
 - **THEN** both declare the same phase-A/phase-B lifecycle with the same marker prefixes and the same displacement at the phase transition
 
-### Requirement: Stage state is conversation-only
-
-The stage progression state — the current stage, completed stages, and any agreed lists — SHALL be held in conversation only. The session SHALL NOT write the stage state to any file, artifact, change directory, configuration, or `.openspec.yaml`; `sai-explore` remains read-only.
-
-#### Scenario: Stage state never persists
-
-- **WHEN** the stage progression advances
-- **THEN** the updated state exists only in conversation and is not written to any file, artifact, or configuration
-
 ### Requirement: Sidecar session lifecycle
 
-Explore SHALL obtain its stage order, pointer routing, and transition rules from the `explore-stage` machine hosted by the `sai-state` sidecar, invoked as a black-box service through its command-line interface and loopback routes. The sidecar is not a persistent holder: a sidecar process cannot be assumed to survive between turns, and every stage-event turn (a user intent that advances the progression or a recorded list at an agreement gate) SHALL run the same restore-per-turn cycle — spawn (reuse-or-fresh), `/restore` with the last conversation-carried snapshot, then `/emit`. The `/emit` response SHALL be consumed as the single-level `{state, snapshot, next}` outcome, and the returned `snapshot` SHALL be carried in conversation and restored on the next stage-event turn. The returned `state.stage` SHALL be authoritative as the current stage, superseding any prose-derived stage identity. The returned `next` pointer's `follow` field SHALL identify the step file to be fetched and consumed for continued progression. When a restore call to the sidecar fails due to version mismatch or closed session, or when the sidecar is unreachable, explore SHALL fall to the degraded path: hold the current stage without auto-advancing and ask the user to advance explicitly by a direct `next-step` request, continuing without re-deriving the transition table in prose. When the explored idea materially changes into a new stable idea, the current sidecar session SHALL close and a fresh session SHALL spawn, beginning at `explore-change`. The prose prescribing this lifecycle SHALL live only in the shared, harness-neutral explore card: the same restore-per-turn cycle applies to every supported harness with no per-harness branches.
+Explore SHALL obtain its stage order, pointer routing, transition rules, and the progression state itself from the `explore-stage` machine hosted by the `sai-state` sidecar, invoked as a black-box service through its command-line interface and loopback routes. The sidecar owns the progression state as a durable store: it persists each machine's state in its own session file under the system temp directory and reloads it automatically, so a sidecar process dying at turn end loses nothing and every stage-event turn (a user intent that advances the progression or a recorded list at an agreement gate) SHALL run the same minimal cycle — spawn (reuse-or-fresh), then `/emit` — with no state ever sent in a request. The `/emit` response SHALL be consumed as the minimal wire outcome `{stage, next: {follow, hint}, rejected?, warnings?}`; no state object and no snapshot SHALL travel on the wire in either direction. The returned `stage` SHALL be authoritative as the current stage, superseding the agent's at-most-one disposable presentation hint and any prose-derived stage identity. The returned `next` pointer's `follow` field SHALL identify the step file to be fetched and consumed for continued progression. A `warnings` array on an `/emit` or `/restore` response (first value `SESSION_FILE_CORRUPT`) reports store degradation in that same response with no extra turns. `/restore` SHALL be an optional body-less read-only probe returning `{stage, next, warnings?}` for recovery and panel re-render and SHALL never be part of the required cycle. At session end explore SHALL call `/close`, which purges the persisted state and tombstones the record so reopening the same chat identifier starts from the initial state. When a restore probe fails due to version mismatch or closed session, or when the sidecar is unreachable, explore SHALL fall to the degraded path: hold the current stage without auto-advancing and ask the user to advance explicitly by a direct `next-step` request, continuing without re-deriving the transition table in prose. When the explored idea materially changes into a new stable idea, the current sidecar session SHALL close and a fresh session SHALL spawn, beginning at `explore-change`. The prose prescribing this lifecycle SHALL live only in the shared, harness-neutral explore card: the same minimal spawn-then-emit cycle applies to every supported harness with no per-harness branches.
 
 #### Scenario: Lazy spawn on first stage event
 
 - **WHEN** a stage event occurs on the first turn that carries it
-- **THEN** the sidecar spawns (reuse-or-fresh) and, after restore, the machine processes the event, returning the new or unchanged stage
+- **THEN** the sidecar spawns (reuse-or-fresh) and the machine processes the event, returning the new or unchanged stage with no restore call
 
 #### Scenario: State and pointer consumption
 
 - **WHEN** the machine returns from a stage-event emission
-- **THEN** the returned `state.stage` becomes the authoritative current stage, the `next.follow` pointer is fetched and consumed for continued progression, and the returned `snapshot` is carried in conversation for the next stage-event turn
+- **THEN** the returned `stage` becomes the authoritative current stage over the presentation hint, the `next.follow` pointer is fetched and consumed for continued progression, and no state object or snapshot is carried in conversation
 
 #### Scenario: Restore-per-turn cycle on every stage-event turn
 
 - **WHEN** any stage-event turn runs, whether it advances the progression or records a list at an agreement gate
-- **THEN** explore spawns the sidecar (reuse-or-fresh), restores with the last conversation-carried snapshot, emits the event, and carries the returned snapshot in conversation for the next stage-event turn
+- **THEN** explore spawns the sidecar (reuse-or-fresh) and emits the event, and the returned minimal wire outcome — not any conversation-carried state — supplies the current stage and pointer
 
-#### Scenario: Restore-per-turn cycle is harness-neutral
+#### Scenario: Optional restore probe
 
-- **WHEN** the sidecar lifecycle prose prescribing the restore-per-turn cycle is inspected for Claude Code and opencode
-- **THEN** the same shared, harness-neutral prose applies to both harnesses with no per-harness branches
+- **WHEN** recovery or panel re-render needs the sidecar-owned current stage
+- **THEN** the body-less `/restore` probe returns `{stage, next, warnings?}` without mutating the session and the required cycle still does not include it
 
 #### Scenario: Sidecar failure falls to degraded path
 
-- **WHEN** the sidecar is unreachable, a restore fails due to version mismatch or closed session, or a connection cannot be established
+- **WHEN** the sidecar is unreachable, a restore probe fails due to version mismatch or closed session, or a connection cannot be established
 - **THEN** the progression holds the current stage without advancing, asks the user to advance explicitly, and continues without re-deriving the transition table in prose
 
 #### Scenario: Session boundary on material change
 
 - **WHEN** the explored idea materially changes into a new stable idea
-- **THEN** the current sidecar session closes and a fresh one spawns, beginning at `explore-change`, with no stage or list state carried forward to the new session
+- **THEN** the current sidecar session closes and a fresh one spawns, beginning at `explore-change`, with the persisted state purged by `/close` and no stage or list state carried forward to the new session
+
+#### Scenario: Restore-per-turn cycle is harness-neutral
+
+- **WHEN** the sidecar lifecycle prose prescribing the minimal spawn-then-emit cycle is inspected for Claude Code and opencode
+- **THEN** the same shared, harness-neutral prose applies to both harnesses with no per-harness branches
+
+### Requirement: Machine-owned stage state persists in the sidecar store
+
+The stage progression state SHALL be owned by the sidecar rather than held in conversation only: the machine-owned portion (the current stage and the agreed lists) SHALL be persisted by the `sai-state` sidecar in its own session file under the system temp directory and reloaded automatically across process restarts, while the pending crystallization request, Closure State, and readiness tracking remain conversation-held. The agent SHALL memorize no state JSON and SHALL never send state in a request, holding at most one disposable presentation hint (the last rendered stage, used only for panel rendering on event-less turns and to notice regressions); the sidecar response SHALL always win over the hint. The session SHALL NOT write this state to any file, artifact, change directory, configuration, or `.openspec.yaml` inside the project — the only persistence is the sidecar's own session file under the system temp directory — and `sai-explore` remains read-only.
+
+#### Scenario: Stage state survives a sidecar process restart
+
+- **WHEN** the sidecar process dies between stage-event turns and a fresh process spawns for the same chat identifier
+- **THEN** the machine-owned stage progression continues from the persisted stage with no restore call and no state JSON in conversation
+
+#### Scenario: The project stays read-only
+
+- **WHEN** the stage progression advances or a list is recorded
+- **THEN** the only write is the sidecar's own session file under the system temp directory and no project file, artifact, change directory, configuration, or `.openspec.yaml` is touched
 
