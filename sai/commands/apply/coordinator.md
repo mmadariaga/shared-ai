@@ -80,6 +80,23 @@
   Before each dispatch, select exactly one immutable plan per runner § Dispatch
   Plan Selection.
 
+  ## No-commit guard (RED and GREEN dispatches)
+
+  Fetch @sai/policies/no-commit-guard.md and follow it for every Step dispatch
+  of this adapter. Each RED, GREEN, or green-exception dispatch is a separate
+  window: run the guard's `snapshot` step immediately before that dispatch and
+  before each same-worker continuation of it (including recovery), holding
+  the returned SHA as
+  invocation-scoped `guard_base`, and its `verify` step immediately after
+  every returned result of that dispatch, before the scratch sweep, the
+  comparisons, and any action on the result. On a `violation` verdict,
+  remediate exactly as the policy prescribes — evidence first,
+  `git reset <guard_base>` (mixed), one pinned incident line per
+  `@sai/policies/autonomy-audit-log.md`, then continue the route. The
+  coordinator's own `git add` and `git commit` operations at the two
+  commit-authorization gates always run between windows and never inside one;
+  no apply window carries `allow_commit`.
+
   ## Progress Events
   Dispatch-local progress is an ephemeral per-dispatch lifecycle view, independent of the durable run-start Step Projection. Worker progress can only report completion in the immutable plan selected for that one invocation; it can never mark, create, extend, rename, reorder, re-label, or otherwise mutate the projection. The coordinator remains the sole owner of Step Projection rendering, state, and checkbox synchronization, which come from the durable implementation plan rather than worker progress. Projection state is evaluated only from the run-start headings and on-disk checkbox state and can change only through the coordinator's verification-and-checkbox update; a worker event never alters that durable view.
 

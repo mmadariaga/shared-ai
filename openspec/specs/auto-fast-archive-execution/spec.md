@@ -68,3 +68,13 @@ In the Direct Build execution continuation, `sai/commands/archive/worker.md` SHA
 - **WHEN** Bash is unavailable in the Direct Build execution continuation
 - **THEN** the worker returns a closed `failed` result and performs no mutation through another channel
 
+### Requirement: The execute continuation verify carries allow_commit
+
+The Direct Build (unattended) archive execute continuation is the only dispatch in the system that carries `allow_commit`: its guard window's verify SHALL run with `--allow-commit`, because the validated closed execution order contains the one pre-authorized local commit. The flag SHALL never be persisted, SHALL never travel as an envelope key, and SHALL be carried by no other dispatch.
+
+#### Scenario: the pre-authorized local commit passes its window
+
+- **WHEN** the execute continuation's validated closed order performs the one pre-authorized local commit inside its window
+- **THEN** the window's verify runs with `--allow-commit` and resolves verdict `allowed`
+- **AND** the flag is consumed for that window only and never persisted
+

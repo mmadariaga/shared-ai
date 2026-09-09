@@ -48,3 +48,13 @@ The autonomy audit log SHALL be rendered in the pinned scannable layout single-s
 - **WHEN** a supervised phase ends and explore renders the autonomy audit
 - **THEN** it invokes the shared layout with its phase label and presents the pinned empty report without fabricated entries when nothing was auto-answered
 
+### Requirement: The guard's violation line is pinned in the shared audit layout
+
+The autonomy-audit-log policy SHALL own a `## Incident line (no-commit guard)` section pinning the one visible violation line the no-commit guard's coordinator prints per remediation, in the fixed field order: `> NO-COMMIT GUARD: unauthorized commit(s) detected after <worker label> dispatch — reset to <base> (mixed); commits preserved unstaged; evidence: <sha> <subject>[; <sha> <subject>]`. Like the audit log, the line SHALL be conversation-only: NEVER written to any file, artifact, change directory, or configuration, and never more than one line printed per violation. `<worker label>` is the dispatched worker's name, `<base>` is the window's `guard_base`, and the evidence pairs come verbatim from the verify payload's `commits` list; when that list is empty the evidence field SHALL read exactly `evidence: none reported`. The section SHALL also record that every coordinator surface fetching `@sai/policies/no-commit-guard.md` consumes the layout by reference.
+
+#### Scenario: a remediation prints exactly one pinned line
+
+- **WHEN** the guard remediates a violation whose evidence lists one unauthorized commit
+- **THEN** the coordinator prints exactly one conversation line in the pinned field order carrying the worker label, the guard_base, and that commit's sha and subject
+- **AND** no incident text is written to any file or artifact
+

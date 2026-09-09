@@ -3,9 +3,7 @@
 ## Purpose
 
 Defines the concurrent dispatch and sequential Result Loop processing model for audit segments in the `/sai-review` composition, including isolation of `needs_input` pauses and failure containment.
-
 ## Requirements
-
 ### Requirement: Soft-parallel audit dispatch with sequential Result Loop processing
 
 When one or more audit segments activate, the composition SHALL dispatch their workers concurrently in one harness-native batch (multiple same-turn `task()` calls on opencode, parallel agent dispatches on Claude Code) and SHALL process their Result Loops sequentially in fixed order: security → performance → accessibility. Each audit SHALL write a disjoint artifact, so concurrency is safe.
@@ -29,3 +27,14 @@ An audit `failed` or `cancelled` outcome SHALL NOT abort sibling audits, retry a
 #### Scenario: One failed audit does not cancel the others
 - **WHEN** the performance audit returns `failed` while security and accessibility are activated
 - **THEN** the security and accessibility segments SHALL continue to completion and the combined terminal SHALL show a per-audit outcome line for each
+
+### Requirement: The concurrent audit batch is one guard window
+
+In the meta-review composition, the concurrent audit batch SHALL be ONE no-commit-guard window: the coordinator SHALL run one `snapshot` at batch start and one `verify` at batch close — after every activated segment's Result Loop has closed and before the combined terminal — per the no-commit-guard policy's batch semantics. No HEAD mutation SHALL occur inside the batch. The review segment at position 0 remains a normal per-dispatch window, and no meta-review window carries `allow_commit`.
+
+#### Scenario: the batch is verified once, before the combined terminal
+
+- **WHEN** the eligible audit segments are dispatched concurrently and their Result Loops close
+- **THEN** the coordinator verifies the batch window once after all segments close and before the combined terminal
+- **AND** no HEAD mutation occurred inside the batch
+

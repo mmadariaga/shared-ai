@@ -3,9 +3,7 @@
 ## Purpose
 
 Define the routed coordinator/worker architecture for `/sai-commit`: a minimal-lifecycle phase adapter whose coordinator owns lifecycle routing, authorization presentation, and the destructive git mutation, while the dispatched `sai-commit-worker` owns message authoring and never mutates git — with end-to-end worker registration and the openspec prerequisite exemption carried by the routed cards.
-
 ## Requirements
-
 ### Requirement: Routed card set and boot routing
 
 `sai-commit` SHALL be a routed-shaped command whose card set is exactly `sai/commands/commit/coordinator.md` and `sai/commands/commit/worker.md` (no `invocation.md`; the legacy utility `body.md` is retired). Both harness boot adapters (`sai/adapters/claude/boot.md` and `sai/adapters/opencode/boot.md`) SHALL classify `commit` among the routed names so that selecting it fetches `@sai/commands/commit/coordinator.md`, and SHALL exclude `commit` from the utility-name lists; no boot path SHALL select a commit `body.md`.
@@ -89,3 +87,13 @@ The exclusion list for session-scoped commit authorization SHALL live exactly on
 
 - **WHEN** the session-grant exclusion list is updated in `commit-rules.md`
 - **THEN** both apply's coordinator-card contract and the commit cards inherit the updated boundary without further edits
+
+### Requirement: The authorized commit executes outside any guard window
+
+The commit coordinator SHALL run the guard's `snapshot` step immediately before each `sai-commit-worker` dispatch and each same-worker continuation, holding the returned SHA as invocation-scoped `guard_base`, and its `verify` step immediately after every returned result, before acting on that result. The coordinator's own authorized `git commit` SHALL execute only after the verify of the result that carried the authorization ask, outside any guard window; no commit window carries `allow_commit`.
+
+#### Scenario: the authorization result closes its window before the commit
+
+- **WHEN** the worker returns the result carrying the authorization ask and the user authorizes the commit
+- **THEN** the coordinator verifies the dispatch window first and executes the authorized commit only after that verify, outside the window
+

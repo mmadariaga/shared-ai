@@ -3,9 +3,7 @@
 ## Purpose
 
 Defines what stays in the `/sai-4-apply` coordinator (main session) under the routed architecture: validation, the `changed_files` union, human gates, and commits are never delegated to the RED or GREEN workers.
-
 ## Requirements
-
 ### Requirement: coordinator-owns-validation
 
 The apply coordinator SHALL perform the coordinator-owned verification itself: after every worker dispatch it SHALL unconditionally sweep the per-change scratch path, re-run the Step's Verification Checklist (quiet confirmation only, not the RED→GREEN cycle), and independently compare the checklist, changed paths, allowed files, baseline, and worker report before checkbox marking or commit gating. The workers SHALL NOT perform the coordinator's verification; their results are validated by the coordinator.
@@ -82,3 +80,14 @@ The apply coordinator SHALL retain ownership of both commit gates and SHALL use 
 #### Scenario: Active session flag skips only authorization
 - **WHEN** the flag is active at a per-Step or terminal documentation commit gate
 - **THEN** the coordinator prints the required report and message, then performs the authorized commit without presenting the authorization prompt
+
+### Requirement: Every apply dispatch window is guarded and gates run between windows
+
+Each RED, GREEN, or green-exception dispatch — and each same-worker continuation of it, including recovery — SHALL be a separate no-commit-guard window: the coordinator SHALL run the guard's `snapshot` step immediately before that dispatch and before each of its continuations, holding the returned SHA as invocation-scoped `guard_base`, and its `verify` step immediately after every returned result of that dispatch, before the scratch sweep, the comparisons, and any action on the result. On a `violation` verdict the coordinator SHALL remediate exactly as the no-commit-guard policy prescribes — evidence first, `git reset <guard_base>` (mixed), one pinned incident line — and continue the route. The coordinator's own `git add` and `git commit` operations at the two commit-authorization gates SHALL always run between windows and never inside one; no apply window carries `allow_commit`.
+
+#### Scenario: a Step dispatch closes its window before the scratch sweep
+
+- **WHEN** a RED or GREEN worker returns its result for a Step
+- **THEN** the coordinator verifies the window's HEAD immobility before the scratch sweep, the comparisons, and any action on the result
+- **AND** the coordinator's own `git add` and `git commit` at the commit-authorization gates run only between windows
+

@@ -126,6 +126,22 @@
   Validate every returned result against the shared runner's closed-payload
   rules before acting on it.
 
+  ## No-commit guard
+
+  Fetch @sai/policies/no-commit-guard.md and follow it for the
+  `sai-merge-worker` dispatch. Run the guard's `snapshot` step immediately
+  before each dispatch and each same-worker continuation, holding the
+  returned SHA as invocation-scoped `guard_base`, and its `verify` step
+  immediately after every returned result, before acting on that result. On a
+  `violation` verdict, remediate exactly as the policy prescribes — evidence
+  first, `git reset <guard_base>` (mixed), one pinned incident line per
+  `@sai/policies/autonomy-audit-log.md`, then continue the route. The fresh
+  snapshot before every continuation is what keeps the coordinator's own git
+  mutations (merge launch, `git checkout --ours/--theirs`, `git mv`, staging,
+  the authorized merge commit) outside every guard window: those operations
+  always run between windows and never inside one. No merge window carries
+  `allow_commit`.
+
   ## Conflict-triggered language hand-off and presentation channels
 
   Initialize `working_language` as unresolved for every invocation. A clean

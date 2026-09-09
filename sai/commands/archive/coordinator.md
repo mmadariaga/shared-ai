@@ -97,6 +97,22 @@
   order. Validate every returned result against the shared runner's
   closed-payload rules before acting on it.
 
+  ## No-commit guard
+
+  Fetch @sai/policies/no-commit-guard.md and follow it for the
+  `sai-archive-worker` dispatch. Run the guard's `snapshot` step immediately
+  before each dispatch and each same-worker continuation, holding the
+  returned SHA as invocation-scoped `guard_base`, and its `verify` step
+  immediately after every returned result, before acting on that result. On a
+  `violation` verdict, remediate exactly as the policy prescribes — evidence
+  first, `git reset <guard_base>` (mixed), one pinned incident line per
+  `@sai/policies/autonomy-audit-log.md`, then continue the route. The
+  coordinator's own CLI archive, staging, and post-archive commit operations
+  always run between windows and never inside one. The one `allow_commit`
+  carrier in the system is the Direct Build (unattended) execute continuation:
+  run that window's verify with `--allow-commit`, because its validated
+  closed execution order contains the one pre-authorized local commit.
+
   ## Needs-input routing
 
   On a worker `needs_input` result — the unchecked-items gate — present the

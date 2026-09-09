@@ -93,3 +93,12 @@ The technical split SHALL remain single-sourced: `sai/commands/archive/instructi
 - **WHEN** the archive card set is audited after the change
 - **THEN** preflight checks and the unchecked-items gate trace to the worker while CLI archive execution and git operations trace to the coordinator or validated Direct Build continuation
 
+### Requirement: Archive guard windows and the single allow_commit carrier
+
+The archive coordinator SHALL run the guard's `snapshot` step immediately before each `sai-archive-worker` dispatch and each same-worker continuation, holding the returned SHA as invocation-scoped `guard_base`, and its `verify` step immediately after every returned result, before acting on that result. The coordinator's own CLI archive, staging, and post-archive commit operations SHALL always run between windows and never inside one. The system's one `allow_commit` carrier is the Direct Build (unattended) execute continuation: that window's verify runs with `--allow-commit`, because its validated closed execution order contains the one pre-authorized local commit.
+
+#### Scenario: the pre-authorized execute continuation is verified with the lax flag
+
+- **WHEN** the archive worker's Direct Build execute continuation completes its validated closed order including the one local commit
+- **THEN** the coordinator runs that window's verify with `--allow-commit`, which resolves verdict `allowed`, and every other archive window runs without the flag
+
