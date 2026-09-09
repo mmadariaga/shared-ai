@@ -1,6 +1,6 @@
 > **⚠ POST-HOC RECORD** — This proposal was reconstructed after implementation from a crystallized `Ready to Propose` block. It describes a decision already made, not one being proposed.
 
-**Complexity**: low (S1 = 2 capabilities in 1-3; S2 = 2 requirements in 1-3; S5 = 4 impact paths in 1-3; no breaking change, no new dependency)
+**Complexity**: medium (S1 = 2 capabilities in 2-3; S2 = 2 requirements; S5 = 4 impact paths in 3-8; no breaking change, no new dependency)
 
 ## Why
 

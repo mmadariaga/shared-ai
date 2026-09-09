@@ -1,17 +1,20 @@
 ## Purpose
 
 Define the language-selection gate used when `sai-explore` crystallizes a handoff.
-
 ## Requirements
-
 ### Requirement: Localize selector question and descriptions while retaining English titles
 
-The crystallization language gate SHALL render the selector question and all option descriptions in the user's language. The option titles MUST remain exactly `Plan - Unattended`, `Build - Unattended`, and `Manual`. The literals `review-loop`, `/sai-1-spec`, and `/sai-2-design` SHALL remain verbatim English.
+The crystallization language gate SHALL render the selector question and all option descriptions in the user's language. The option titles MUST remain exactly `Plan - Unattended`, `Build - Unattended`, and `Manual`. The literals `review-loop`, `/sai-1-spec`, and `/sai-2-design` SHALL remain verbatim English. The retired `/sai-1-spec <change-name>` literal SHALL NOT appear in the preserved-English list, because the name-only creation path is retired by `spec-require-block-input`.
 
 #### Scenario: Localized selector presentation preserves stable literals
 
 - **WHEN** a crystallization close is rendered for a user-selected language
 - **THEN** the question and descriptions use that language while the fixed option titles, route identities, and command literals remain unchanged.
+
+#### Scenario: Preserved-English list carries exactly three literals
+
+- **WHEN** the preserved-English literal list is read
+- **THEN** it SHALL name exactly `review-loop`, `/sai-1-spec`, and `/sai-2-design`, and SHALL NOT name a name-suffixed form
 
 ### Requirement: Scope limited to sai-explore crystallization
 
@@ -140,3 +143,4 @@ The selector question and `Auto`/`Manual` labels SHALL follow crystallization la
 
 - **WHEN** a non-English crystallization reaches selector presentation
 - **THEN** selector prose is localized and required command literals remain unchanged
+
