@@ -129,6 +129,13 @@ const allowedDifferences = [
   '- **Failures** (E3): every segment applies `@sai/policies/bounded-recovery.md`',
   // Step 4 now accepts the .openspec.yaml metadata file as part of the returned draft set
   '4. **Spec review** — explore validates the returned draft CONTENT read-o',
+  // explore-probe-reorder: probes moved after the formal edge-case list, with
+  // the material-probe floor, silent private correction, and the explicit
+  // fewer-than-2-material-scenarios declaration.
+  'Only include behaviors that define a behavior or scope boundary',
+  // explore-probe-reorder: the ripple-explanation rule with probe→E binding
+  // was added to the answer-evaluation paragraph.
+  'Evaluate the answer by dominant semantic intent',
 ];
 
 function readPreSplitContract() {
