@@ -112,3 +112,17 @@ The sidecar SHALL behave identically on Windows and POSIX from one codebase usin
 - **WHEN** the spawn, emit, health-check, and close sequence runs on Windows and POSIX under opencode and Claude Code
 - **THEN** every step succeeds with the same envelope, discovery layout, and exit behavior in all four combinations
 
+### Requirement: Installable sidecar modules
+
+The sidecar's modules (registry, envelope, and machines) SHALL ship with the distributed package, and the installer SHALL project them alongside the binary to a managed destination where the installed binary executes without module-resolution errors.
+
+#### Scenario: Installed binary executes with full module tree
+
+- **WHEN** a consumer installs the `shared-ai` package and invokes the projected sidecar binary at its installed location
+- **THEN** the binary executes, reaches its argument-handling logic, and does not fail with a module-not-found error
+
+#### Scenario: npm pack output includes sidecar modules
+
+- **WHEN** `npm pack --dry-run --json` is run on the repository
+- **THEN** the output contains `sai-state/registry.js`, `sai-state/envelope.js`, and `sai-state/machines/explore-stage.js`, confirming the modules are packaged for distribution
+

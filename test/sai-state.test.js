@@ -565,3 +565,91 @@ test('step5 compaction rediscovery via file plus snapshot restores last snapshot
     cleanup([chatId]);
   }
 });
+
+// Sidecar Installation Tests
+const { spawnSync } = require('child_process');
+const { installClaude, installOpencode } = require('../bin/install-flow.js');
+
+test('installed sai-state binary can be executed and reaches argument handling', () => {
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-state-install-'));
+  try {
+    // Create a minimal installation to test the projection
+    const claudeBase = path.join(projectRoot, 'claude');
+    fs.mkdirSync(claudeBase, { recursive: true });
+    installClaude(claudeBase);
+
+    // The sai-state binary should be installed at claudeBase/sai/bin/sai-state.js
+    const installedBinary = path.join(claudeBase, 'sai', 'bin', 'sai-state.js');
+    assert.ok(fs.existsSync(installedBinary), `installed binary must exist at ${installedBinary}`);
+
+    // The required modules must also be installed
+    const registryModule = path.join(claudeBase, 'sai', 'sai-state', 'registry.js');
+    const envelopeModule = path.join(claudeBase, 'sai', 'sai-state', 'envelope.js');
+    const exploreStageModule = path.join(claudeBase, 'sai', 'sai-state', 'machines', 'explore-stage.js');
+
+    assert.ok(fs.existsSync(registryModule), `registry.js must be installed at ${registryModule}`);
+    assert.ok(fs.existsSync(envelopeModule), `envelope.js must be installed at ${envelopeModule}`);
+    assert.ok(fs.existsSync(exploreStageModule), `explore-stage.js must be installed at ${exploreStageModule}`);
+
+    // Try to execute the installed binary with --help flag to verify it can run
+    const result = spawnSync('node', [installedBinary, '--help'], { cwd: claudeBase });
+    assert.notEqual(result.status, 0, 'sai-state --help should not exit with 0 (binary has no help mode)');
+    const stderr = result.stderr.toString();
+    const stdout = result.stdout.toString();
+    const output = stderr + stdout;
+
+    // Must not fail with MODULE_NOT_FOUND error
+    assert.ok(
+      !output.includes('Cannot find module') && !output.includes('MODULE_NOT_FOUND'),
+      `installed binary must not fail with module resolution error, got: ${output}`,
+    );
+  } finally {
+    fs.rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test('npm pack includes sai-state modules', () => {
+  const result = spawnSync('npm', ['pack', '--dry-run', '--json'], { encoding: 'utf8', shell: true });
+
+  const stderr = result.stderr || '';
+  const stdout = result.stdout || '';
+  const status = result.status;
+  const error = result.error;
+
+  assert.ok(!error, `npm pack must not error, got: ${error}`);
+  assert.ok(status === 0 || status === null, `npm pack --dry-run must succeed, got status ${status}, stderr: ${stderr}`);
+
+  const output = stdout;
+  assert.ok(output && typeof output === 'string' && output.length > 0, `npm pack output must be non-empty, got: ${output}`);
+
+  let packData;
+  try {
+    packData = JSON.parse(output);
+  } catch (e) {
+    assert.fail(`npm pack output must be valid JSON, got error: ${e.message}, output: ${output}`);
+  }
+
+  // packData is an array with one package object
+  assert.ok(Array.isArray(packData), 'npm pack --dry-run --json should return an array');
+  assert.ok(packData.length > 0, 'npm pack should return at least one package');
+
+  const pkg = packData[0];
+  assert.ok(pkg && typeof pkg === 'object' && Array.isArray(pkg.files), 'first item should be a package object with files array');
+
+  const files = pkg.files.map(item => {
+    if (typeof item === 'string') return item;
+    if (item && typeof item === 'object' && typeof item.path === 'string') return item.path;
+    return String(item);
+  });
+
+  const hasSaiStateRegistry = files.some(f => typeof f === 'string' && f.includes('sai-state/registry.js'));
+  const hasSaiStateEnvelope = files.some(f => typeof f === 'string' && f.includes('sai-state/envelope.js'));
+  const hasSaiStateExploreStage = files.some(f => typeof f === 'string' && f.includes('sai-state/machines/explore-stage.js'));
+
+  assert.ok(hasSaiStateRegistry, `npm pack must include sai-state/registry.js, got files: ${files.filter(f => f.includes('sai-state')).join(', ')}`);
+  assert.ok(hasSaiStateEnvelope, `npm pack must include sai-state/envelope.js, got files: ${files.filter(f => f.includes('sai-state')).join(', ')}`);
+  assert.ok(
+    hasSaiStateExploreStage,
+    `npm pack must include sai-state/machines/explore-stage.js, got files: ${files.filter(f => f.includes('sai-state')).join(', ')}`,
+  );
+});

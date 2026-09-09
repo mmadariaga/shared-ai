@@ -21,6 +21,7 @@
     "commands",
     "agents",
     "sai",
+    "sai-state",
     "skills",
     "configs",
     "openspec/schemas",
