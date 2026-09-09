@@ -14,74 +14,71 @@ The output must be PR-ready: copy-pasteable, faithful to what was actually shipp
 
 ## Prerequisites
 
-Before executing the workflow, verify and load:
+Before executing the workflow, verify:
 
-1. **Change artifacts** — read from `openspec/changes/{change-name}/` (where `{change-name}` is the first argument):
-    - `proposal.md` — feature name, goal, design decisions.
-    - `design.md` — architecture context (may be absent for backfilled changes; proceed if missing).
-    - `specs/**/*.md` — per-capability criteria. **List the directory first** to discover all spec files.
-2. **Parent branch** (optional) — branch the PR will target. If not provided, infer:
-    - If current branch was created from another feature branch, use that branch.
-    - Otherwise default to `master` (or `main` if `master` does not exist).
-    - State the inferred parent branch explicitly to the user before proceeding.
+1. **Proposal artifact** — check that `openspec/changes/{change-name}/proposal.md` exists. If missing, respond with: **"`openspec/changes/{change-name}/proposal.md` not found. Ensure the change name is correct and that `/sai-1-spec` has been run for this change."** and STOP.
 
-Auto-detect (no user input required):
-- `openspec/changes/{change-name}/implementation.md` — extract step list to map commits → steps.
-- `openspec/changes/{change-name}/review.md`, `security.md`, `performance.md`, `accessibility.md` — pre-check audit boxes if present.
+2. **Audit artifacts** (optional) — check which of the following exist (collect will report them as JSON):
+    - `openspec/changes/{change-name}/review.md`
+    - `openspec/changes/{change-name}/security.md`
+    - `openspec/changes/{change-name}/performance.md`
+    - `openspec/changes/{change-name}/accessibility.md`
 
-If `proposal.md` is missing, respond with: **"`openspec/changes/{change-name}/proposal.md` not found. Ensure the change name is correct and that `/sai-1-spec` has been run for this change."** and STOP.
+3. **Parent branch** (optional) — branch the PR will target. If not provided, the collect tool will infer it based on existing remote branches.
 
 ## Workflow
 
-### Step 1: Gather Branch State
+### Step 1: Collect Branch State
 
-Run in parallel:
-- `git rev-parse --abbrev-ref HEAD` — current branch
-- `git status --short` — uncommitted changes (warn if non-empty)
-- `git log {parent-branch}..HEAD --oneline` — commits in scope
-- `git log {parent-branch}..HEAD --pretty=format:'%h%n%s%n%n%b%n---'` — full commit messages
-- `git diff --stat {parent-branch}...HEAD` — file-level stat
-- `git diff --name-status {parent-branch}...HEAD` — files added/modified/deleted
-- `gh pr list --head {current-branch} --json number,url,state` — check if PR already exists for this branch
+Run `sai/tools/pr.js collect` with `--json --change {change-name}` to gather:
+- Current branch name
+- Derived parent branch
+- Commits in scope
+- Full commit messages
+- Diff statistics
+- List of changed files
+- Existing PR status (if `gh` is available and authenticated)
+- Artifact presence/absence (proposal, design, implementation, audit files)
 
-If a PR already exists for the branch, ask the user whether to:
-- **Update** the existing PR body (use `gh pr edit {number} --body-file ...`)
-- **Regenerate** the PR body (re-run synthesis and present a new draft)
-- **Skip** PR creation, only show the draft in chat
+### Step 2: Synthesize Title and Body
 
-### Step 2: Read Artefacts
+Using the collected JSON data and the change proposal:
 
-Read in parallel:
-- `spec.md` — extract: feature name, goal, design decisions, discarded alternatives.
-- `implement.md` (if present) — extract step titles to use as commit grouping anchors.
-- `review.md`, `security.md`, `performance.md`, `accessibility.md` (if present) — note which exist to pre-check the corresponding audit boxes.
+1. **Title** — derive from the proposal goal. Conventional Commits format (`feat:`, `fix:`, `refactor:`, `docs:`, `chore:`). ≤70 characters. Imperative mood. No trailing period. Will be validated before PR creation.
+2. **Summary** — 1–3 bullets starting with user-facing outcomes, not implementation details.
+3. **Test plan** — derive from the diff (test files added, frameworks present, or any test-related changes).
+4. **Design decisions** — extract from the proposal if present.
+5. **Audit checkboxes** — pre-check boxes for each audit artefact that exists in `openspec/changes/{change-name}/`. For audits without artifacts, leave unchecked. Mark as `— N/A` only when the surface is clearly untouched (e.g. no UI changes → accessibility N/A).
+6. **Out of scope / Follow-ups** — any deferred work from the proposal.
 
-### Step 3: Synthesize
+**Verification:** Every claim in Summary / Test plan must map to commits or files in the collected `diff` and `commits` data. Do not add claims not backed by the collected git state.
 
-1. **Title** — derive from `spec.md` goal. Conventional Commits format (`feat:`, `fix:`, `refactor:`, `docs:`, `chore:`). ≤70 characters. Imperative mood. No trailing period.
-2. **Summary** — 1–3 bullets. Each bullet starts with the *user-facing* outcome, not the implementation detail.
-3. **Test plan** — extract Human/Automated checks from `implement.md`. If absent, derive from the diff (test files added, frameworks present).
-4. **Design decisions** — copy the *Decisions Made* table from `spec.md` verbatim (or condense if oversized).
-5. **Audits checkboxes** — pre-check boxes for each audit artefact found in `openspec/changes/{change-name}/`. Append `— N/A` for audits whose surface is clearly not touched by this diff (e.g. no UI changes → accessibility N/A).
-6. **Out of scope / Follow-ups** — extract from `spec.md` discarded alternatives or open questions.
-7. **Verification:** every claim in Summary / Test plan must map to a commit or file change in `git log`/`git diff`. Anything in `spec.md` not present in the diff goes under *Out of Scope / Follow-ups*, not Summary.
-
-### Step 4: Present Draft
+### Step 3: Present Draft and Get Authorization
 
 Present in chat:
 - Proposed title
-- Full PR body (using the output template loaded below)
-- Which audit checkboxes were pre-checked and which were marked N/A
+- Full PR body (using the template below)
+- Which audit checkboxes were pre-checked
 
-### Step 5: PR Creation (Authorization Gate)
+Ask: **"Ready to create PR via `gh pr create --base {parent-branch} --title '...' --body '...'`. Proceed?"**
 
-**CRITICAL:** Do not create or update the PR without explicit user authorization.
+If user says "no" or does not respond, STOP and tell them they can copy the body and run `gh pr create` themselves.
 
-- Ask: **"Ready to create PR via `gh pr create --base {parent-branch} --title '...' --body '...'`. Proceed?"**
-- On "yes" → write the body to a temporary file and run `gh pr create --base {parent-branch} --title '...' --body-file {tmp}`. Capture and show the PR URL.
-- On "no" / no response → STOP. Tell the user they can copy the body above and run `gh pr create` themselves.
-- If the branch has no upstream, push first with `git push -u origin {current-branch}` — also requires explicit authorization.
-- Never amend, force-push, or modify existing commits.
+### Step 4: Apply PR (Authorization Gate)
+
+**CRITICAL:** Do not create the PR without explicit user authorization.
+
+On user confirmation ("yes"):
+1. If the branch has no upstream, first ask for authorization to push with `git push -u origin {current-branch}`.
+2. Use `sai/tools/pr.js apply` to create the PR. Pass title and body via stdin in the format:
+   ```
+   {title}
+   
+   {body}
+   ```
+3. Capture and show the PR URL to the user.
+
+Never amend, force-push, or modify existing commits.
 
 ## Output Template
 
@@ -92,9 +89,9 @@ Fetch @sai/commands/pr/pr-body.template.md
 - **Never modify production code.**
 - **Never run `gh pr create`, `gh pr edit`, or `git push` without explicit user authorization.**
 - **Never amend or force-push.**
-- **Title ≤70 characters**, imperative, Conventional Commits prefix. No emoji unless the user explicitly asks. No trailing period.
-- **Faithful to the diff.** Every claim in the body must be backed by a commit or file in `git log {parent}..HEAD` / `git diff {parent}...HEAD`.
-- **Omit empty sections.** Drop Design Decisions and Out of Scope if `spec.md` has nothing to populate them. Leave audit checkboxes unchecked when the audit artefact is absent.
+- **Title ≤70 characters**, imperative, Conventional Commits prefix. No emoji. No trailing period. The `sai/tools/pr.js apply` command will validate the title before PR creation.
+- **Faithful to the diff.** Every claim in the body must be backed by the commits and files reported by `sai/tools/pr.js collect`.
+- **Omit empty sections.** Drop Design Decisions and Out of Scope if there is nothing to populate them. Leave audit checkboxes unchecked when the audit artefact is absent.
 - **No `Co-Authored-By` or AI-generated attribution footer/trailers** unless the user explicitly requests them.
 
 ## Remember
