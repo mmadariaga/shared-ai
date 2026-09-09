@@ -64,3 +64,14 @@ The implementer worker SHALL return `failed` with a concrete failure class when 
 
 - **WHEN** the block cannot be implemented as written
 - **THEN** the worker returns failed with a concrete summary instead of shipping a substituted feature
+
+### Requirement: The implementer window snapshot head is base_sha and guard_base
+
+The Direct Build implementer dispatch SHALL be a no-commit-guard window opened by the Step 1 `snapshot` step, whose returned head SHALL be recorded as both the run's `base_sha` (the diff base for the functional fix loop) and the window's `guard_base`. The window SHALL be verified after the implementer stretch closes — the fix loop converged or the cap was exhausted — and before the Step 3 path-scoped staging, without changing the worker's closed write containment, its mutating-git prohibition prose, or any closed exclusion of its contract.
+
+#### Scenario: one snapshot serves the diff base and the guard baseline
+
+- **WHEN** the Step 1 snapshot runs immediately before the implementer dispatch
+- **THEN** its returned head is recorded as both `base_sha` and the window's `guard_base`, and the window is verified after the implementer stretch closes and before Step 3 staging
+- **AND** the implementer worker's write containment and git prohibition prose are unchanged
+

@@ -90,6 +90,19 @@
 
   Keep an invocation-scoped ordered union of `payload.changed_files`; add each path once and never reset it. Validate every result: the payload status must be exactly one of `completed`, `needs_input`, `failed`, or `cancelled`, with string `summary` and string-list `changed_files`. `needs_input` requires its question and ordered options where applicable. Every post-resolution payload, including `completed`, requires `resolved_change_name`.
 
+  ## No-commit guard
+
+  Fetch @sai/policies/no-commit-guard.md and follow it for every dispatch of
+  the implementation worker. Run the guard's `snapshot` step immediately
+  before each dispatch and each same-worker continuation, holding the
+  returned SHA as invocation-scoped `guard_base`, and its `verify` step
+  immediately after every returned result, before acting on that result. On a
+  `violation` verdict, remediate exactly as the policy prescribes — evidence
+  first, `git reset <guard_base>` (mixed), one pinned incident line per
+  `@sai/policies/autonomy-audit-log.md`, then continue the route. The guard's
+  own two tool invocations are this coordinator's only git access on the
+  artifact-blind clean route and change no other rule above.
+
   ## Result loop
   Progress events are the only allowed nonterminal extension. For a progress
   event, mark the reported step ids in the declared progress plan, union the

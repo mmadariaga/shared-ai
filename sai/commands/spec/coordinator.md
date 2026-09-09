@@ -19,6 +19,19 @@
 
   Set `allowed_nonterminal_extensions` to the sole `progress` shape from `@sai/policies/spec-phase-contract.md`, set `extension_handlers` to empty, and validate the four closed lifecycle statuses plus that progress event. There is no design notice state. Declare the phase-defined `validation_report` extension from the same contract and validate it without inventing fields.
 
+  ## No-commit guard
+
+  Fetch @sai/policies/no-commit-guard.md and follow it for every dispatch of
+  the spec worker. Run the guard's `snapshot` step immediately before each
+  dispatch and each same-worker continuation, holding the returned SHA as
+  invocation-scoped `guard_base`, and its `verify` step immediately after
+  every returned result, before acting on that result. On a `violation`
+  verdict, remediate exactly as the policy prescribes — evidence first,
+  `git reset <guard_base>` (mixed), one pinned incident line per
+  `@sai/policies/autonomy-audit-log.md`, then continue the route. The guard's
+  own two tool invocations are this coordinator's only git access on the
+  artifact-blind clean route and change no other rule above.
+
   ## Lifecycle Steps
 
   ### 1. Render the progress plan and initialize state

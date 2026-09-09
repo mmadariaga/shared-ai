@@ -43,3 +43,13 @@ Runtime tools invoked by command prose SHALL live under `sai/tools/`, and `bin/`
 - **WHEN** `AGENTS.md` is read
 - **THEN** it carries a `sai/tools/` layout line and a registry row naming `check-delta-headers.js` and `worktree.js` and describing the `sai-tools` projection
 
+### Requirement: no-commit-guard.js joins the registered deterministic tool roster
+
+The `sai-tools` projection SHALL install `sai/tools/no-commit-guard.js` into `sai/tools/` under both harness roots as a managed, content-tracked file, with no manifest edit required because the projection installs every `*.js` under `sai/tools/`. The repository documentation (`AGENTS.md` tools-directory row) SHALL register the tool among the deterministic Node tools, describing it as the HEAD-immobility guard with `snapshot`/`verify` sub-commands emitting JSON verdicts `clean | violation | allowed | n/a`.
+
+#### Scenario: the new tool is projected and documented without a manifest edit
+
+- **WHEN** the installer projects `sai/tools/*.js` and the `AGENTS.md` tools-directory row is read
+- **THEN** `no-commit-guard.js` is installed under both harness roots as a managed file with no `sai/install-manifest.json` change
+- **AND** the documentation row names the tool and its verdict vocabulary
+

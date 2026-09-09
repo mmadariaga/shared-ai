@@ -11,10 +11,10 @@ Define the design coordinator: its lifecycle management, notice emission, feedba
 ```yaml
 arguments_value: string
 ```
-
 ## Requirements
 
 The routed design coordinator, worker, and step-local instruction surfaces are grouped at `sai/commands/design/coordinator.md`, `sai/commands/design/worker.md`, and `sai/commands/design/steps/`.
+
 ### Requirement: Design coordinator diagnoses the main path only after non-clean closure
 
 The routed design coordinator SHALL declare the existing recovery policy together with the design worker's main artifact ownership and SHALL preserve the existing overview-generation recovery path. Its clean route remains a thin router: it SHALL not read code, configuration, change artifacts, or design artifacts and SHALL forward worker payloads without inspecting them. A failed result, a coordinator-disproved completed result, or a completed result carrying a STOP opens a narrowly scoped exception under which the coordinator MAY inspect only `design.md`, `tasks.md`, and `interfaces.md`, plus the read-only proposal/spec inputs needed to establish whether a prior-phase cause is out of scope. The coordinator SHALL never write an artifact; it SHALL either re-dispatch the same worker with a diagnosis or stop with zero attempts.
@@ -79,20 +79,34 @@ Claude Code and opencode SHALL invoke the routed design coordinator and their re
 
 Claude Code and opencode SHALL invoke the routed design coordinator and their respective design-worker bindings. No supported entrypoint SHALL require a legacy loader.
 
+#### Scenario: both harnesses use the routed entry
+
+- **WHEN** either supported harness starts the design phase
+- **THEN** it invokes the routed design coordinator and its respective design-worker binding
+- **AND** no supported entrypoint requires a legacy loader
+
 ### Requirement: coordinator-has-no-file-search-shell-git-web-openspec-access
 
-The design coordinator SHALL NOT have file, search, shell, git, web, or OpenSpec access on the clean lifecycle route. All technical I/O SHALL be delegated to the design planning worker, and completed-step stamps SHALL derive from worker-authored `emitted_on` without a wall-clock shell call. The sole additional authority is a non-clean-closure diagnosis route: after resolution, and only for a failed result, a coordinator-disproved completed result, or a completed result carrying a STOP, the coordinator MAY read the declared planning artifacts and read-only prior-phase inputs needed to establish cause. It SHALL not write those artifacts or perform source-code discovery through this exception.
+The design coordinator SHALL NOT have file, search, shell, git, web, or OpenSpec access on the clean lifecycle route. All technical I/O SHALL be delegated to the design planning worker, and completed-step stamps SHALL derive from worker-authored `emitted_on` without a wall-clock shell call. The sole additional authority is a non-clean-closure diagnosis route: after resolution, and only for a failed result, a coordinator-disproved completed result, or a completed result carrying a STOP, the coordinator MAY read the declared planning artifacts and read-only prior-phase inputs needed to establish cause. It SHALL not write those artifacts or perform source-code discovery through this exception. The single clean-route exception beyond diagnosis is the no-commit guard: the design coordinator SHALL run the guard's `snapshot` and `verify` tool invocations (`sai/tools/no-commit-guard.js`) immediately before each dispatch and same-worker continuation and immediately after every returned result, before acting on it, and those two tool invocations per window are the coordinator's only git observations on the artifact-blind clean route. No other rule of this requirement changes.
 
 #### Scenario: coordinator restricted to clean coordination
+
 - **WHEN** the design coordinator is active on a clean route
 - **THEN** it SHALL not perform file reads, globs, grep, shell commands, git operations, web fetches, or OpenSpec commands
 - **AND** it SHALL delegate all such operations to the design planning worker
 - **AND** completed-step stamps SHALL be read from worker payloads without a shell clock call
 
 #### Scenario: non-clean exception is narrow
+
 - **WHEN** a post-resolution non-clean closure is received
 - **THEN** the coordinator MAY read only the declared planning artifacts and the named prior-phase artifacts needed for diagnosis
 - **AND** it SHALL not use the exception on progress, notice, input, cancellation, or clean completion
+
+#### Scenario: the guard's two tool invocations are the only clean-route git access
+
+- **WHEN** the design coordinator snapshots before a dispatch and verifies after the returned result
+- **THEN** those two no-commit-guard tool invocations are its only git observations on the clean route
+- **AND** every other technical I/O stays delegated to the design planning worker
 
 ### Requirement: worker-delegates-explore-only
 
@@ -341,3 +355,4 @@ The design coordinator card SHALL declare a static optional `step_pointer_map` â
 
 - **WHEN** the coordinator reconstructs one replacement worker from complete state including the departing worker's `active_step_id`
 - **THEN** the replacement's first continuation carries the pointer line naming that active step and its `sai/commands/design/steps/` path
+

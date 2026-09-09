@@ -6,6 +6,10 @@ supervised contracts — the spec phase, the design phase, and the
 Direct Build (unattended) run — which name their own phase label when they
 invoke this layout. Consuming surfaces SHALL NOT restate the layout inline.
 
+Also consumed by reference by every coordinator surface that fetches
+`@sai/policies/no-commit-guard.md`: the guard's one visible violation line
+(§ Incident line below) rides this layout's conversation-only invariant.
+
 ## Invariants
 
 - The audit log is assembled from the run's auto-answer records and the
@@ -40,3 +44,20 @@ Autonomy audit — <phase label>
 Auto-answered: 0   Escalated: <M>
 (no questions were auto-answered this phase)
 ```
+
+## Incident line (no-commit guard)
+
+When the no-commit guard remediates a violation, the coordinator prints
+exactly one visible incident line, in the fixed field order below, as
+ordinary conversation text. Like the audit log, the line is NEVER written to
+any file, artifact, change directory, or configuration, and never more than
+one line is printed per violation:
+
+```text
+> NO-COMMIT GUARD: unauthorized commit(s) detected after <worker label> dispatch — reset to <base> (mixed); commits preserved unstaged; evidence: <sha> <subject>[; <sha> <subject>]
+```
+
+`<worker label>` is the dispatched worker's name, `<base>` is the window's
+`guard_base`, and the evidence pairs come verbatim from the verify payload's
+`commits` list. When that list is empty, the evidence field reads exactly
+`evidence: none reported`.

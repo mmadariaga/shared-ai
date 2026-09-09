@@ -372,3 +372,17 @@ The Direct Build - Unattended route's step-4 spec review SHALL run a MODIFIED-de
 - **WHEN** the step-4 spec review finds a MODIFIED requirement whose draft scenario set omits a scenario the main spec already holds
 - **THEN** explore records a High completeness finding and continues it once to the same backfill worker within the remaining `fix_rounds` budget.
 
+### Requirement: The Direct Build run has three guard windows
+
+Every dispatch of a Direct Build (unattended) run SHALL be guarded by the deterministic no-commit guard, in three windows: (1) the implementer window, opened by the Step 1 snapshot whose head is recorded as BOTH `base_sha` and the window's `guard_base`, verified after the implementer stretch closes — the fix loop converged or the cap exhausted — and before the Step 3 staging; (2) the backfill window, opened by a fresh snapshot immediately before the Step 3 prepare dispatch — taken after the path-scoped staging, so the coordinator's `git add` runs outside every window — and verified after the Step 6 execute terminal before acting on it, with the findings and execute continuations each opening their own sub-window from a fresh snapshot and verified after their result; (3) the archive window, opened by a fresh snapshot immediately before the Step 7 prepare dispatch, with a fresh sub-window snapshot immediately before the Step 8 execute continuation whose verify runs with `--allow-commit`, because that continuation's validated closed order contains the one pre-authorized local commit. On a `violation` verdict the coordinator remediates exactly as the no-commit-guard policy prescribes — evidence first, `git reset <guard_base>` (mixed), one pinned incident line — then continues the route.
+
+#### Scenario: the backfill prepare window opens after staging
+
+- **WHEN** the run stages the implementer's owned paths and then dispatches the backfill prepare stretch
+- **THEN** the backfill window's snapshot is taken after the staging, so the coordinator's `git add` runs outside every guard window
+
+#### Scenario: the archive execute sub-window carries the lax flag
+
+- **WHEN** the Step 8 archive execute continuation is dispatched under its fresh sub-window snapshot
+- **THEN** that sub-window's verify runs with `--allow-commit` and the other two windows run without it
+

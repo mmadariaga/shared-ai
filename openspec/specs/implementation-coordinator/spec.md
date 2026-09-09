@@ -3,7 +3,6 @@
 ## Purpose
 
 TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
-
 ## Requirements
 ### Requirement: Shared lifecycle adapter integration
 
@@ -43,9 +42,16 @@ The coordinator SHALL retain the accumulated `changed_files` union itself rather
 
 ### Requirement: Lifecycle-only implementation coordinator
 
-The routed implementation coordinator SHALL own adapter routing, progress rendering, pointer delivery, result validation, and terminal navigation only. It SHALL NOT perform technical planning, read implementation artifacts, run git or OpenSpec checks, or write planning files.
+The routed implementation coordinator SHALL own adapter routing, progress rendering, pointer delivery, result validation, and terminal navigation only. It SHALL NOT perform technical planning, read implementation artifacts, run git or OpenSpec checks, or write planning files. The single clean-route exception is the no-commit guard: the coordinator SHALL run the guard's `snapshot` and `verify` tool invocations (`sai/tools/no-commit-guard.js`) immediately before each dispatch and same-worker continuation and immediately after every returned result, before acting on it, and those two tool invocations per window are the coordinator's only git observations on the artifact-blind clean route. No other rule of this requirement changes.
 
 #### Scenario: Coordinator processes a worker result
 
 - **WHEN** the implementation worker returns a lifecycle result
 - **THEN** the coordinator validates and routes the result without performing technical planning or artifact I/O.
+
+#### Scenario: the guard's two tool invocations are the only clean-route git access
+
+- **WHEN** the implementation coordinator snapshots before a dispatch and verifies after the returned result
+- **THEN** those two no-commit-guard tool invocations are its only git observations on the clean route
+- **AND** no git or OpenSpec check beyond the guard is performed
+

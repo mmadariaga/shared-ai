@@ -13,6 +13,22 @@
   Fetch @sai/commands/meta-review/command-bootstrap.md and follow its segment list
   and triage parse exactly.
 
+  ## No-commit guard
+
+  Fetch @sai/policies/no-commit-guard.md and follow it for every worker
+  dispatch of this composition. The review segment (position 0) is a normal
+  window: run the guard's `snapshot` step immediately before the dispatch and
+  each same-worker continuation, holding the returned SHA as invocation-scoped
+  `guard_base`, and its `verify` step immediately after every returned result,
+  before acting on that result. The concurrent audit batch is ONE window:
+  run one `snapshot` at batch start and one `verify` at batch close — after
+  every activated segment's Result Loop has closed and before the combined
+  terminal — per the policy's batch semantics; no HEAD mutation may occur
+  inside the batch. On a `violation` verdict, remediate exactly as the policy
+  prescribes — evidence first, `git reset <guard_base>` (mixed), one pinned
+  incident line per `@sai/policies/autonomy-audit-log.md`, then continue the
+  route. No meta-review window carries `allow_commit`.
+
   ## Pre-resolution envelope normalization
   Before change resolution, strip every `--fast-track` token from the selected
   `arguments_value` in any token order. The cleaned remainder is the change-name

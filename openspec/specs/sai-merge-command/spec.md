@@ -3,7 +3,6 @@
 ## Purpose
 
 Defines the `/sai-merge` routed command: pre-merge environment guards, recency-ordered local branch selection, the coordinator-only mutation surface with a strictly read-only worker, contextual conflict analysis with complete alternatives and escalation criteria, the fast-track-gated runtime resolution scope question, the bounded three-round verification loop, the unconditional post-merge ADR/DDR collision pass, and explicit final-commit authorization.
-
 ## Requirements
 ### Requirement: Pre-merge environment guards
 
@@ -244,7 +243,6 @@ The Claude Code and opencode projections SHALL use the same neutral worker and c
 - **WHEN** the same semantically ambiguous conflict is handled through Claude Code or opencode
 - **THEN** each harness presents the same complete behavioral alternatives and answer values, keeps `more-context` mutation-free, and does not permit a resolution write, staging, or commit before the same coordinator-owned gates
 
-
 ### Requirement: Adaptive TODO follows the resolved merge path
 
 The coordinator MUST render the canonical merge, scope, resolution, verification, collision, and authorization items only when their route conditions apply, and MUST clear the merge-owned surface at terminal closure without restoring displaced foreign entries.
@@ -332,3 +330,13 @@ The merge coordinator MUST retain every mutation, staging, Git responsibility, a
 
 - **WHEN** worker analysis or coordinator presentation state supplies context that does not satisfy the lifecycle precondition
 - **THEN** the coordinator rejects the transition without transferring mutation or lifecycle-policy authority to the worker
+
+### Requirement: Merge guard windows keep coordinator mutations outside every window
+
+The merge coordinator SHALL run the guard's `snapshot` step immediately before each `sai-merge-worker` dispatch and each same-worker continuation, holding the returned SHA as invocation-scoped `guard_base`, and its `verify` step immediately after every returned result, before acting on that result. The fresh snapshot before every continuation SHALL be what keeps the coordinator's own git mutations — the merge launch, `git checkout --ours/--theirs`, `git mv`, staging, and the authorized merge commit — outside every guard window; those operations always run between windows and never inside one. No merge window carries `allow_commit`.
+
+#### Scenario: the authorized merge commit runs between windows
+
+- **WHEN** the worker's strategy is confirmed and the coordinator stages and commits the merge
+- **THEN** those mutations run after the verify that closed the preceding window and before the next window's fresh snapshot
+

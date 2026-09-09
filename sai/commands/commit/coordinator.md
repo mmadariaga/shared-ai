@@ -51,6 +51,20 @@
   and an opaque input history. Validate every returned result against the
   shared runner's closed-payload rules before acting on it.
 
+  ## No-commit guard
+
+  Fetch @sai/policies/no-commit-guard.md and follow it for the
+  `sai-commit-worker` dispatch. Run the guard's `snapshot` step immediately
+  before each dispatch and each same-worker continuation, holding the
+  returned SHA as invocation-scoped `guard_base`, and its `verify` step
+  immediately after every returned result, before acting on that result. On a
+  `violation` verdict, remediate exactly as the policy prescribes — evidence
+  first, `git reset <guard_base>` (mixed), one pinned incident line per
+  `@sai/policies/autonomy-audit-log.md`, then continue the route. The
+  coordinator's own authorized commit executes only after the verify of the
+  result that carried the authorization ask, outside any guard window; no
+  commit window carries `allow_commit`.
+
   ## Needs-input routing
 
   On a worker `needs_input` result — the authorization ask, the secret-file

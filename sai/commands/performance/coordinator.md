@@ -44,6 +44,19 @@
 
   For a progress event, mark the reported step ids in the declared progress plan, union the event's `changed_files` into the invocation-scoped union in first-seen order, and continue the same worker with exactly `continue_after_progress`. The acknowledgement is protocol-only and is never recorded as user input, opaque input history, or pending feedback.
 
+  ## No-commit guard
+
+  Fetch @sai/policies/no-commit-guard.md and follow it for every dispatch of
+  the performance worker. Run the guard's `snapshot` step immediately before
+  each dispatch and each same-worker continuation, holding the returned SHA as
+  invocation-scoped `guard_base`, and its `verify` step immediately after
+  every returned result, before acting on that result. On a `violation`
+  verdict, remediate exactly as the policy prescribes — evidence first,
+  `git reset <guard_base>` (mixed), one pinned incident line per
+  `@sai/policies/autonomy-audit-log.md`, then continue the route. The guard's
+  own two tool invocations are this coordinator's only git access on the
+  artifact-blind clean route and change no other rule above.
+
   ## Performance navigation
 
   On `completed`, print the worker-authored `summary` verbatim without parsing or recomposing it. Then print the changed-files union, print exactly `Performance audit done.`, and stop. Do not read `performance.md` or present an artifact-feedback gate.

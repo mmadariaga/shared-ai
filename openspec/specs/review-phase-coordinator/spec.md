@@ -37,12 +37,19 @@ The coordinator SHALL construct `original_envelope` with the complete argument s
 
 ### Requirement: Coordinator performs no technical review I/O
 
-The review coordinator SHALL NOT run prerequisites, resolve a change, read or write artifacts, inspect git, load a diff, perform review passes, run tests, apply mutations, or make findings. Those operations SHALL belong exclusively to the review worker.
+The review coordinator SHALL NOT run prerequisites, resolve a change, read or write artifacts, inspect git, load a diff, perform review passes, run tests, apply mutations, or make findings. Those operations SHALL belong exclusively to the review worker. The single clean-route exception is the no-commit guard: the review coordinator SHALL run the guard's `snapshot` and `verify` tool invocations (`sai/tools/no-commit-guard.js`) immediately before each dispatch and same-worker continuation and immediately after every returned result, before acting on it, and those two tool invocations per window are the coordinator's only git observations on the artifact-blind clean route. No other rule of this requirement changes.
 
 #### Scenario: Technical work is requested
+
 - **WHEN** review requires repository, artifact, git, diff, test, or mutation information
 - **THEN** the coordinator delegates it to the review worker
 - **AND** the coordinator performs no equivalent technical operation itself
+
+#### Scenario: the guard's two tool invocations are the only clean-route git access
+
+- **WHEN** the review coordinator snapshots before a dispatch and verifies after the returned result
+- **THEN** those two no-commit-guard tool invocations are its only git observations on the clean route
+- **AND** no diff loading, review pass, or mutation is performed by the coordinator itself
 
 ### Requirement: Review lifecycle results are closed and validated
 
@@ -104,3 +111,4 @@ The review coordinator SHALL validate `emitted_on`-bearing lifecycle results and
 #### Scenario: Review progress returns
 - **WHEN** the review worker reports progress
 - **THEN** the coordinator renders the payload-derived stamp and resumes the worker unchanged.
+

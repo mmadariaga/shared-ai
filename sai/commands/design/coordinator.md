@@ -17,6 +17,19 @@
 
   The design phase adapter declares `recovery_policy: true`; recovery navigation follows only shared-runner rules and adds no phase-specific recovery loop.
 
+  ## No-commit guard
+
+  Fetch @sai/policies/no-commit-guard.md and follow it for every dispatch of
+  the design worker. Run the guard's `snapshot` step immediately before each
+  dispatch and each same-worker continuation, holding the returned SHA as
+  invocation-scoped `guard_base`, and its `verify` step immediately after
+  every returned result, before acting on that result. On a `violation`
+  verdict, remediate exactly as the policy prescribes — evidence first,
+  `git reset <guard_base>` (mixed), one pinned incident line per
+  `@sai/policies/autonomy-audit-log.md`, then continue the route. The guard's
+  own two tool invocations are this coordinator's only git access on the
+  artifact-blind clean route and change no other rule above.
+
   ## Lifecycle step 2: Plan declaration and dispatch
 
   Declare the canonical static progress plans and step pointer map from `@sai/commands/design/phase-contract.md` without modification. The plan follows the raw-token-presence rule above; the coordinator does not inspect or validate the token's value. The pointer map maps every declared step id to its just-in-time instruction pointer as declared in the phase contract.
