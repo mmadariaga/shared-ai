@@ -1,6 +1,6 @@
 'use strict';
 
-const machineId = 'explore-stage@1';
+const machineId = 'explore-idea@1';
 
 const STAGES = Object.freeze(['explore-change', 'review-edge-cases', 'implementation-details', 'crystallize']);
 

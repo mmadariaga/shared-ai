@@ -25,17 +25,17 @@ const spawnRecords = new Map();
 function getSession(chatId) {
   let s = sessions.get(chatId);
   if (!s) {
-    s = { pinned: null, seen: new Map(), stateByMachine: new Map(), lastPointer: { follow: 'sai/commands/explore/steps/common.md', hint: 'fetch the current step' } };
+    s = { seen: new Map(), stateByMachine: new Map(), lastPointer: { follow: 'sai/commands/explore/steps/common.md', hint: 'fetch the current step' } };
     sessions.set(chatId, s);
   }
   return s;
 }
-function pinnedNext(session) {
+function pointerFor(session, machineId) {
   try {
-    if (session.pinned) {
-      const mod = registry.get(session.pinned);
+    if (machineId) {
+      const mod = registry.get(machineId);
       if (mod) {
-        const cur = session.stateByMachine.has(session.pinned) ? session.stateByMachine.get(session.pinned) : mod.initialState;
+        const cur = session.stateByMachine.has(machineId) ? session.stateByMachine.get(machineId) : mod.initialState;
         try {
           const projected = mod.project(cur);
           if (projected && projected.next && typeof projected.next.follow === 'string' && typeof projected.next.hint === 'string') {
@@ -46,6 +46,22 @@ function pinnedNext(session) {
     }
   } catch (err) {}
   return session.lastPointer;
+}
+function machineLookupError(machineId) {
+  const parsed = envelope.parseTarget(machineId);
+  if (!parsed) return 'INVALID_EVENT';
+  let mod = null;
+  try { mod = registry.get(parsed.key); } catch (err) { mod = null; }
+  if (mod) return null;
+  try {
+    const keys = registry.machines();
+    for (const k of keys) {
+      const kat = k.lastIndexOf('@');
+      const kbase = kat === -1 ? null : k.slice(0, kat);
+      if (kbase === parsed.machineId) return 'VERSION_MISMATCH';
+    }
+  } catch (err) {}
+  return 'UNKNOWN_MACHINE';
 }
 
 function sessionDir() {
@@ -286,22 +302,33 @@ function createSidecarServer(chatId, token) {
           res.end(JSON.stringify(withWarnings({ error: 'SESSION_CLOSED', next: session.lastPointer }, loadWarnings)));
           return;
         }
-        // Demoted optional read-only probe (I6): no body is accepted, no state
-        // and no snapshot travel on the wire; the response is {stage, next,
-        // warnings?}. Used for recovery and panel re-render only — never part
-        // of the required spawn → /emit cycle. Strictly read-only: it never
-        // pins a machine and never mutates the session.
+        // Demoted optional read-only probe: no state and no snapshot travel
+        // on the wire; the response is {stage, next, warnings?}. Used for
+        // recovery and panel re-render only — never part of the required
+        // spawn → /emit cycle. Strictly read-only: it never mutates the
+        // session. machineId is required; omitted id is INVALID_EVENT,
+        // mistyped id is UNKNOWN_MACHINE / VERSION_MISMATCH, and nothing
+        // falls back to the first persisted machine.
         seedFromRecord(session, record);
-        let mid = session.pinned;
-        if (!mid) {
-          const persisted = (record && record.stateByMachine && typeof record.stateByMachine === 'object' && !Array.isArray(record.stateByMachine)) ? Object.keys(record.stateByMachine) : [];
-          if (persisted.length === 1) mid = persisted[0];
+        const restoreParsed = envelope.parseTarget(body.machineId);
+        if (!restoreParsed) {
+          res.writeHead(400, { 'content-type': 'application/json' });
+          res.end(JSON.stringify(withWarnings({ error: 'INVALID_EVENT', next: pointerFor(session, null) }, loadWarnings)));
+          return;
         }
+        const restoreLookup = machineLookupError(body.machineId);
+        if (restoreLookup) {
+          const restoreStatus = restoreLookup === 'VERSION_MISMATCH' ? 409 : 404;
+          res.writeHead(restoreStatus, { 'content-type': 'application/json' });
+          res.end(JSON.stringify(withWarnings({ error: restoreLookup, next: pointerFor(session, null) }, loadWarnings)));
+          return;
+        }
+        const mid = restoreParsed.key;
         let mod = null;
-        try { mod = mid ? registry.get(mid) : null; } catch (err) { mod = null; }
-        if (!mid || !mod) {
+        try { mod = registry.get(mid); } catch (err) { mod = null; }
+        if (!mod) {
           res.writeHead(404, { 'content-type': 'application/json' });
-          res.end(JSON.stringify(withWarnings({ error: 'UNKNOWN_MACHINE', next: pinnedNext(session) }, loadWarnings)));
+          res.end(JSON.stringify(withWarnings({ error: 'UNKNOWN_MACHINE', next: pointerFor(session, null) }, loadWarnings)));
           return;
         }
         const st = session.stateByMachine.has(mid) ? session.stateByMachine.get(mid) : mod.initialState;
@@ -336,16 +363,17 @@ function createSidecarServer(chatId, token) {
         const parsed = envelope.parseTarget(body.machineId);
         if (!parsed || !body.eventId || typeof body.eventId !== 'string') {
           res.writeHead(400, { 'content-type': 'application/json' });
-          res.end(JSON.stringify(withWarnings({ error: 'INVALID_EVENT', next: pinnedNext(session) }, loadWarnings)));
+          res.end(JSON.stringify(withWarnings({ error: 'INVALID_EVENT', next: pointerFor(session, null) }, loadWarnings)));
           return;
         }
-        if (!session.pinned) {
-          session.pinned = parsed.key;
-        } else if (parsed.key !== session.pinned) {
-          res.writeHead(409, { 'content-type': 'application/json' });
-          res.end(JSON.stringify(withWarnings({ error: 'VERSION_MISMATCH', next: pinnedNext(session) }, loadWarnings)));
+        const lookup = machineLookupError(body.machineId);
+        if (lookup) {
+          const status = lookup === 'VERSION_MISMATCH' ? 409 : 404;
+          res.writeHead(status, { 'content-type': 'application/json' });
+          res.end(JSON.stringify(withWarnings({ error: lookup, next: pointerFor(session, null) }, loadWarnings)));
           return;
         }
+        const targetId = parsed.key;
         const seenOutcome = session.seen.get(body.eventId);
         if (seenOutcome) {
           res.writeHead(200, { 'content-type': 'application/json' });
@@ -356,7 +384,7 @@ function createSidecarServer(chatId, token) {
         // the last eventId. A retry of the persisted lastEventId re-serves the
         // stored last outcome without re-applying the transition, so the same
         // eventId never double-applies across a process restart.
-        const persistedEntry = (record && record.stateByMachine && typeof record.stateByMachine === 'object' && !Array.isArray(record.stateByMachine) && record.stateByMachine[session.pinned]) || null;
+        const persistedEntry = (record && record.stateByMachine && typeof record.stateByMachine === 'object' && !Array.isArray(record.stateByMachine) && record.stateByMachine[targetId]) || null;
         if (persistedEntry && persistedEntry.lastEventId === body.eventId && persistedEntry.lastOutcome && typeof persistedEntry.lastOutcome === 'object' && !Array.isArray(persistedEntry.lastOutcome)) {
           const replay = Object.assign({}, persistedEntry.lastOutcome);
           session.seen.set(body.eventId, replay);
@@ -365,13 +393,13 @@ function createSidecarServer(chatId, token) {
           return;
         }
         let mod = null;
-        try { mod = registry.get(session.pinned); } catch (err) { mod = null; }
+        try { mod = registry.get(targetId); } catch (err) { mod = null; }
         if (!mod) {
           res.writeHead(404, { 'content-type': 'application/json' });
-          res.end(JSON.stringify(withWarnings({ error: 'UNKNOWN_MACHINE', next: pinnedNext(session) }, loadWarnings)));
+          res.end(JSON.stringify(withWarnings({ error: 'UNKNOWN_MACHINE', next: pointerFor(session, null) }, loadWarnings)));
           return;
         }
-        const cur = session.stateByMachine.has(session.pinned) ? session.stateByMachine.get(session.pinned) : mod.initialState;
+        const cur = session.stateByMachine.has(targetId) ? session.stateByMachine.get(targetId) : mod.initialState;
         // transition() returns the single-level outcome {state, snapshot, next};
         // the machine's internal snapshot still exists for project(), but it is
         // never serialized into a response.
@@ -403,14 +431,14 @@ function createSidecarServer(chatId, token) {
         // panel from the response and memorizes no state JSON.
         const wire = { stage: typeof nextState.stage === 'string' ? nextState.stage : undefined, next: nxt };
         if (result.rejected) wire.rejected = result.rejected;
-        session.stateByMachine.set(session.pinned, nextState);
+        session.stateByMachine.set(targetId, nextState);
         session.lastPointer = nxt;
         session.seen.set(body.eventId, wire);
         while (session.seen.size > 1000) {
           const oldest = session.seen.keys().next().value;
           session.seen.delete(oldest);
         }
-        try { persistMachineOutcome(chatId, record, session.pinned, nextState, body.eventId, wire); } catch (err) {}
+        try { persistMachineOutcome(chatId, record, targetId, nextState, body.eventId, wire); } catch (err) {}
         res.writeHead(200, { 'content-type': 'application/json' });
         res.end(JSON.stringify(withWarnings(wire, loadWarnings)));
         return;

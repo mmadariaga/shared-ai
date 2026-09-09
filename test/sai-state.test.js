@@ -340,7 +340,7 @@ test('step3 machines compose only through caller (no sidecar guard)', () => {
 });
 
 // Step 4: Explore-stage machine and pure projection (RED)
-const exploreStage = require('../sai-state/machines/explore-stage.js');
+const exploreStage = require('../sai-state/machines/explore-idea.js');
 
 function step4RealStage() {
   const s = exploreStage && exploreStage.initialState;
@@ -622,14 +622,14 @@ test('step5 compaction rediscovery via file plus snapshot restores last snapshot
 // empty-set auto-advance, idempotent replay, no-intent rejection, sidecar-owned
 // persisted state. Uses the in-process spawn (server unref'd, no OS-conditional
 // paths).
-test('emit seam: minimal {stage,next}; consecutive next-step emits walk all stages without resets; /restore is a body-less read-only probe', async () => {
+test('emit seam: minimal {stage,next}; consecutive next-step emits walk all stages without resets; /restore is a machineId-required read-only probe', async () => {
   const chatId = crypto.randomUUID();
   try {
     const mod = require('../bin/sai-state.js');
     const endpoint = await mod.spawn(chatId);
     assertRealEndpoint(endpoint, 'emit-seam spawn()');
     const emit = (eventId, event) =>
-      mod.requestJson(endpoint.port, endpoint.token, '/emit', { machineId: 'explore-stage@1', eventId, event });
+      mod.requestJson(endpoint.port, endpoint.token, '/emit', { machineId: 'explore-idea@1', eventId, event });
 
     // First next-step emit: explore-change -> review-edge-cases, minimal wire
     // outcome. No state object and no snapshot travel on the wire.
@@ -649,9 +649,9 @@ test('emit seam: minimal {stage,next}; consecutive next-step emits walk all stag
     assert.equal(r4.stage, 'crystallize', `next-step at crystallize must not reset to explore-change, got ${r4.stage}`);
     assert.ok(r1.stage !== 'explore-change' && r4.stage === 'crystallize', 'consecutive emits must not reset the stage');
 
-    // /restore is an optional read-only probe: no body, no state on the wire,
-    // returns the sidecar-owned current stage for recovery/panel re-render.
-    const restored = await mod.requestJson(endpoint.port, endpoint.token, '/restore', {});
+    // /restore is an optional read-only probe: machineId required, no state on
+    // the wire, returns the sidecar-owned current stage for recovery/panel re-render.
+    const restored = await mod.requestJson(endpoint.port, endpoint.token, '/restore', { machineId: 'explore-idea@1' });
     assert.ok(restored && typeof restored === 'object', `/restore must return an object, got ${JSON.stringify(restored)}`);
     assert.deepEqual(Object.keys(restored).sort(), ['next', 'stage'], `/restore probe must return {stage,next} with no state and no snapshot, got ${JSON.stringify(Object.keys(restored))}`);
     assert.equal(restored.stage, 'crystallize', 'probe must report the sidecar-owned current stage');
@@ -676,9 +676,9 @@ test('emit seam: recordedList records without advancing; empty-set auto-advance 
     const endpoint = await mod.spawn(chatId);
     assertRealEndpoint(endpoint, 'record-seam spawn()');
     const emit = (eventId, event) =>
-      mod.requestJson(endpoint.port, endpoint.token, '/emit', { machineId: 'explore-stage@1', eventId, event });
+      mod.requestJson(endpoint.port, endpoint.token, '/emit', { machineId: 'explore-idea@1', eventId, event });
     const persistedStage = () => {
-      const entry = readSession(chatId).stateByMachine['explore-stage@1'];
+      const entry = readSession(chatId).stateByMachine['explore-idea@1'];
       return entry && entry.state ? entry.state.stage : undefined;
     };
 
@@ -698,7 +698,7 @@ test('emit seam: recordedList records without advancing; empty-set auto-advance 
     assert.equal(rec.stage, 'review-edge-cases', 'recording must not advance the stage');
     assert.equal(rec.rejected, undefined, 'recording must not reject');
     assert.equal(!('state' in rec) && !('snapshot' in rec), true, 'recording response must carry no state and no snapshot');
-    assert.deepEqual(readSession(chatId).stateByMachine['explore-stage@1'].state.edgeCaseList, ['E1', 'E2'], `recordedList must persist into the stage's own list, got ${JSON.stringify(readSession(chatId).stateByMachine)}`);
+    assert.deepEqual(readSession(chatId).stateByMachine['explore-idea@1'].state.edgeCaseList, ['E1', 'E2'], `recordedList must persist into the stage's own list, got ${JSON.stringify(readSession(chatId).stateByMachine)}`);
 
     // Non-empty recorded list: a no-intent emit still rejects (no empty-set advance).
     const rej2 = await emit(crypto.randomUUID(), {});
@@ -708,7 +708,7 @@ test('emit seam: recordedList records without advancing; empty-set auto-advance 
     // Record an empty list: stays in the current stage.
     const recEmpty = await emit(crypto.randomUUID(), { recordedList: [] });
     assert.equal(recEmpty.stage, 'review-edge-cases', 'empty-list recording must not advance by itself');
-    assert.deepEqual(readSession(chatId).stateByMachine['explore-stage@1'].state.edgeCaseList, [], 'empty recordedList must persist as recorded-empty');
+    assert.deepEqual(readSession(chatId).stateByMachine['explore-idea@1'].state.edgeCaseList, [], 'empty recordedList must persist as recorded-empty');
 
     // The existing content-based empty-set rule advances on a later no-intent emit.
     const adv = await emit(crypto.randomUUID(), {});
@@ -724,7 +724,7 @@ test('emit seam: recordedList records without advancing; empty-set auto-advance 
 
     // Persisted minimal ledger (I4/I5): rev is internal and never exposed on
     // the wire; the ledger enables the cross-process last-event replay.
-    const entry = readSession(chatId).stateByMachine['explore-stage@1'];
+    const entry = readSession(chatId).stateByMachine['explore-idea@1'];
     assert.ok(typeof entry.rev === 'number' && entry.rev > 0, `ledger must persist an internal rev, got ${JSON.stringify(entry)}`);
     assert.equal(typeof entry.lastEventId, 'string', 'ledger must persist lastEventId');
     assert.deepEqual(Object.keys(entry.lastOutcome).sort(), ['next', 'stage'], `ledger lastOutcome must stay minimal, got ${JSON.stringify(entry.lastOutcome)}`);
@@ -737,23 +737,26 @@ test('emit seam: recordedList records without advancing; empty-set auto-advance 
   }
 });
 
-test('sidecar-owned store: session record shape (createdAt + stateByMachine ledger), atomic write leaves no temp files, /restore probe before any emit is 404', async () => {
+test('sidecar-owned store: session record shape (createdAt + stateByMachine ledger), atomic write leaves no temp files, /restore without machineId is INVALID_EVENT', async () => {
   const chatId = crypto.randomUUID();
   try {
     const mod = require('../bin/sai-state.js');
     const endpoint = await mod.spawn(chatId);
     assertRealEndpoint(endpoint, 'store-shape spawn()');
 
-    // Optional probe on a fresh chat (no emit yet, no persisted machine): 404
-    // with the closed vocabulary, never a state object.
+    // Optional probe without machineId: INVALID_EVENT. Nothing falls back to
+    // the first machine. A named restore of a registered machine returns
+    // initial state even before any emit.
     const probe = await mod.requestJson(endpoint.port, endpoint.token, '/restore', {});
-    assert.equal(probe && probe.error, 'UNKNOWN_MACHINE', `probe before any emit must 404 UNKNOWN_MACHINE, got ${JSON.stringify(probe)}`);
+    assert.equal(probe && probe.error, 'INVALID_EVENT', `probe without machineId must be INVALID_EVENT, got ${JSON.stringify(probe)}`);
     assert.ok(!('state' in probe) && !('snapshot' in probe) && !('stage' in probe), `probe error must carry no state, got ${JSON.stringify(probe)}`);
+    const named = await mod.requestJson(endpoint.port, endpoint.token, '/restore', { machineId: 'explore-idea@1' });
+    assert.equal(named && named.stage, 'explore-change', `named restore before emit must return initial stage, got ${JSON.stringify(named)}`);
     const denied = await mod.requestJson(endpoint.port, 'wrong-token-0000000000', '/restore', {});
     assert.equal(denied && denied.error, 'INVALID_TOKEN', `probe with a bad token must 401, got ${JSON.stringify(denied)}`);
 
     const emit = (eventId, event) =>
-      mod.requestJson(endpoint.port, endpoint.token, '/emit', { machineId: 'explore-stage@1', eventId, event });
+      mod.requestJson(endpoint.port, endpoint.token, '/emit', { machineId: 'explore-idea@1', eventId, event });
     const eventId = crypto.randomUUID();
     const r1 = await emit(eventId, { intent: 'next-step' });
     assert.equal(r1.stage, 'review-edge-cases', `emit must advance, got ${JSON.stringify(r1)}`);
@@ -763,8 +766,8 @@ test('sidecar-owned store: session record shape (createdAt + stateByMachine ledg
     // pre-change files load as initial state, so the shape is additive only.
     const session = readSession(chatId);
     assert.ok(typeof session.createdAt === 'number' && session.createdAt > 0, `record must carry createdAt, got ${JSON.stringify(session.createdAt)}`);
-    const entry = session.stateByMachine['explore-stage@1'];
-    assert.ok(entry && typeof entry === 'object', `record must persist stateByMachine['explore-stage@1'], got ${JSON.stringify(session.stateByMachine)}`);
+    const entry = session.stateByMachine['explore-idea@1'];
+    assert.ok(entry && typeof entry === 'object', `record must persist stateByMachine['explore-idea@1'], got ${JSON.stringify(session.stateByMachine)}`);
     assert.equal(entry.state.stage, 'review-edge-cases', 'persisted state must be the plain machine state');
     assert.deepEqual(Object.keys(entry.lastOutcome).sort(), ['next', 'stage'], `lastOutcome must stay minimal, got ${JSON.stringify(entry.lastOutcome)}`);
     assert.equal(entry.lastEventId, eventId, 'ledger must persist lastEventId');
@@ -790,7 +793,7 @@ test('sidecar-owned store: corrupt session file notifies SESSION_FILE_CORRUPT in
     // on the response the agent already receives — no extra turns, no calls.
     fs.writeFileSync(sessionFile(chatId), '{"port": 1, "token": "trunc', 'utf8');
     const emit = (eventId, event) =>
-      mod.requestJson(endpoint.port, endpoint.token, '/emit', { machineId: 'explore-stage@1', eventId, event });
+      mod.requestJson(endpoint.port, endpoint.token, '/emit', { machineId: 'explore-idea@1', eventId, event });
     const r1 = await emit(crypto.randomUUID(), { intent: 'next-step' });
     assert.deepEqual(r1.warnings, ['SESSION_FILE_CORRUPT'], `corrupt file must notify through the closed warnings attribute, got ${JSON.stringify(r1)}`);
     assert.equal(r1.stage, 'review-edge-cases', `corrupt file must be treated as absent (initial seed advanced once), got ${JSON.stringify(r1)}`);
@@ -802,7 +805,7 @@ test('sidecar-owned store: corrupt session file notifies SESSION_FILE_CORRUPT in
 
     // /restore piggybacks the same warning channel.
     fs.writeFileSync(sessionFile(chatId), 'not json at all', 'utf8');
-    const probe = await mod.requestJson(endpoint.port, endpoint.token, '/restore', {});
+    const probe = await mod.requestJson(endpoint.port, endpoint.token, '/restore', { machineId: 'explore-idea@1' });
     assert.deepEqual(probe.warnings, ['SESSION_FILE_CORRUPT'], `restore probe must carry the warning, got ${JSON.stringify(probe)}`);
   } finally {
     cleanup([chatId]);
@@ -816,7 +819,7 @@ test('sidecar-owned store: absent session file mid-process is legal (no warning)
     const endpoint = await mod.spawn(chatId);
     assertRealEndpoint(endpoint, 'absent-file spawn()');
     const emit = (eventId, event) =>
-      mod.requestJson(endpoint.port, endpoint.token, '/emit', { machineId: 'explore-stage@1', eventId, event });
+      mod.requestJson(endpoint.port, endpoint.token, '/emit', { machineId: 'explore-idea@1', eventId, event });
     const r1 = await emit(crypto.randomUUID(), { intent: 'next-step' });
     assert.equal(r1.stage, 'review-edge-cases', 'setup advance');
     fs.rmSync(sessionFile(chatId), { force: true });
@@ -941,12 +944,96 @@ test('/close purges the persisted state and tombstones the record; reopening the
   }
 });
 
+test('pin lifted: explore-idea@1 then explore-slice@1 emit in the same chatId; omitted/mistyped machineId errors; retired explore-stage@1 is unknown', async () => {
+  const chatId = crypto.randomUUID();
+  try {
+    const mod = require('../bin/sai-state.js');
+    const endpoint = await mod.spawn(chatId);
+    assertRealEndpoint(endpoint, 'pin-lift spawn()');
+    const emit = (machineId, eventId, event) =>
+      mod.requestJson(endpoint.port, endpoint.token, '/emit', { machineId, eventId, event });
+
+    const idea = await emit('explore-idea@1', crypto.randomUUID(), { intent: 'next-step' });
+    assert.equal(idea.stage, 'review-edge-cases', `explore-idea emit must advance, got ${JSON.stringify(idea)}`);
+
+    const omitted = await emit(undefined, crypto.randomUUID(), { intent: 'direct-build' });
+    assert.equal(omitted && omitted.error, 'INVALID_EVENT', `omitted machineId must be INVALID_EVENT, got ${JSON.stringify(omitted)}`);
+
+    const retired = await emit('explore-stage@1', crypto.randomUUID(), { intent: 'next-step' });
+    assert.equal(retired && retired.error, 'UNKNOWN_MACHINE', `retired explore-stage@1 must be UNKNOWN_MACHINE, got ${JSON.stringify(retired)}`);
+
+    const mistyped = await emit('no-such-machine@1', crypto.randomUUID(), { intent: 'direct-build' });
+    assert.equal(mistyped && mistyped.error, 'UNKNOWN_MACHINE', `mistyped machineId must be UNKNOWN_MACHINE, got ${JSON.stringify(mistyped)}`);
+
+    const slice = await emit('explore-slice@1', crypto.randomUUID(), { intent: 'direct-build' });
+    assert.equal(slice.stage, 'build-implement', `same-chat explore-slice emit must start Direct Build, got ${JSON.stringify(slice)}`);
+    assert.ok(!('set' in slice) && !('active' in slice) && !('done' in slice) && !('mode' in slice), `wire must stay {stage,next}, got ${JSON.stringify(slice)}`);
+
+    const ideaStill = await mod.requestJson(endpoint.port, endpoint.token, '/restore', { machineId: 'explore-idea@1' });
+    assert.equal(ideaStill.stage, 'review-edge-cases', `explore-idea@1 must stay in the map after slice emit, got ${JSON.stringify(ideaStill)}`);
+
+    const restoreOmitted = await mod.requestJson(endpoint.port, endpoint.token, '/restore', {});
+    assert.equal(restoreOmitted && restoreOmitted.error, 'INVALID_EVENT', `restore without machineId must be INVALID_EVENT, got ${JSON.stringify(restoreOmitted)}`);
+  } finally {
+    cleanup([chatId]);
+  }
+});
+
+test('explore-slice Direct Build: Build/Implement → Backfill → Archive marks done; already-running rejects; fail leaves pending; next-slice does not complete', async () => {
+  const chatId = crypto.randomUUID();
+  try {
+    const mod = require('../bin/sai-state.js');
+    const endpoint = await mod.spawn(chatId);
+    assertRealEndpoint(endpoint, 'slice-db spawn()');
+    const emit = (eventId, event) =>
+      mod.requestJson(endpoint.port, endpoint.token, '/emit', { machineId: 'explore-slice@1', eventId, event });
+    const persisted = () => {
+      const entry = readSession(chatId).stateByMachine['explore-slice@1'];
+      return entry && entry.state;
+    };
+
+    const rec = await emit(crypto.randomUUID(), { recordedList: ['slice-a', 'slice-b'] });
+    assert.equal(rec.stage, 'idle', `recording inventory must not move the cursor, got ${JSON.stringify(rec)}`);
+    assert.deepEqual(persisted().set, ['slice-a', 'slice-b'], 'inventory must persist off the wire');
+
+    const start = await emit(crypto.randomUUID(), { intent: 'direct-build' });
+    assert.equal(start.stage, 'build-implement', `direct-build must set cursor to build-implement, got ${JSON.stringify(start)}`);
+    assert.equal(persisted().active, 'slice-a', 'first pending slice becomes active');
+    assert.equal(persisted().mode, 'direct-build', 'mode must be direct-build');
+
+    const running = await emit(crypto.randomUUID(), { intent: 'direct-build' });
+    assert.equal(running.rejected, 'ALREADY_RUNNING', `second Direct Build while active must reject, got ${JSON.stringify(running)}`);
+    assert.equal(running.stage, 'build-implement', 'already-running must leave the cursor pending');
+
+    const toBackfill = await emit(crypto.randomUUID(), { intent: 'complete' });
+    assert.equal(toBackfill.stage, 'backfill', `complete from build-implement must reach backfill, got ${JSON.stringify(toBackfill)}`);
+    const fail = await emit(crypto.randomUUID(), { intent: 'fail' });
+    assert.equal(fail.stage, 'backfill', 'fail must leave the active step pending');
+    assert.equal(persisted().active, 'slice-a', 'fail must not clear active');
+    assert.deepEqual(persisted().done, [], 'fail must not mark the slice done');
+
+    const toArchive = await emit(crypto.randomUUID(), { intent: 'complete' });
+    assert.equal(toArchive.stage, 'archive', `complete from backfill must reach archive, got ${JSON.stringify(toArchive)}`);
+    const nextSlice = await emit(crypto.randomUUID(), { intent: 'next-slice' });
+    assert.equal(nextSlice.stage, 'archive', 'next-slice must not complete Direct Build Archive');
+    assert.equal(persisted().active, 'slice-a', 'next-slice must not clear active');
+
+    const done = await emit(crypto.randomUUID(), { intent: 'complete' });
+    assert.equal(done.stage, 'idle', `completing Archive must return idle, got ${JSON.stringify(done)}`);
+    assert.equal(persisted().active, null, 'completing Archive must clear active');
+    assert.deepEqual(persisted().done, ['slice-a'], 'completing Archive must mark the slice done');
+    assert.equal(persisted().mode, null, 'completing Archive must clear mode');
+  } finally {
+    cleanup([chatId]);
+  }
+});
+
 // Minimal HTTP POST helper for the child-process tests: the parent test
 // process talks to the real sidecar processes over loopback.
 function mod_request(port, token, eventId, event, reqPath) {
   const http = require('http');
   const target = reqPath || '/emit';
-  const payload = JSON.stringify(target === '/close' ? {} : { machineId: 'explore-stage@1', eventId, event });
+  const payload = JSON.stringify(target === '/close' ? {} : { machineId: 'explore-idea@1', eventId, event });
   return new Promise((resolve, reject) => {
     const req = http.request({
       host: '127.0.0.1',
@@ -988,11 +1075,13 @@ test('installed sai-state binary can be executed and reaches argument handling',
     // The required modules must also be installed
     const registryModule = path.join(claudeBase, 'sai', 'sai-state', 'registry.js');
     const envelopeModule = path.join(claudeBase, 'sai', 'sai-state', 'envelope.js');
-    const exploreStageModule = path.join(claudeBase, 'sai', 'sai-state', 'machines', 'explore-stage.js');
+    const exploreIdeaModule = path.join(claudeBase, 'sai', 'sai-state', 'machines', 'explore-idea.js');
+    const exploreSliceModule = path.join(claudeBase, 'sai', 'sai-state', 'machines', 'explore-slice.js');
 
     assert.ok(fs.existsSync(registryModule), `registry.js must be installed at ${registryModule}`);
     assert.ok(fs.existsSync(envelopeModule), `envelope.js must be installed at ${envelopeModule}`);
-    assert.ok(fs.existsSync(exploreStageModule), `explore-stage.js must be installed at ${exploreStageModule}`);
+    assert.ok(fs.existsSync(exploreIdeaModule), `explore-idea.js must be installed at ${exploreIdeaModule}`);
+    assert.ok(fs.existsSync(exploreSliceModule), `explore-slice.js must be installed at ${exploreSliceModule}`);
 
     // Try to execute the installed binary with --help flag to verify it can run
     const result = spawnSync('node', [installedBinary, '--help'], { cwd: claudeBase });
@@ -1047,12 +1136,17 @@ test('npm pack includes sai-state modules', () => {
 
   const hasSaiStateRegistry = files.some(f => typeof f === 'string' && f.includes('sai-state/registry.js'));
   const hasSaiStateEnvelope = files.some(f => typeof f === 'string' && f.includes('sai-state/envelope.js'));
-  const hasSaiStateExploreStage = files.some(f => typeof f === 'string' && f.includes('sai-state/machines/explore-stage.js'));
+  const hasSaiStateExploreIdea = files.some(f => typeof f === 'string' && f.includes('sai-state/machines/explore-idea.js'));
+  const hasSaiStateExploreSlice = files.some(f => typeof f === 'string' && f.includes('sai-state/machines/explore-slice.js'));
 
   assert.ok(hasSaiStateRegistry, `npm pack must include sai-state/registry.js, got files: ${files.filter(f => f.includes('sai-state')).join(', ')}`);
   assert.ok(hasSaiStateEnvelope, `npm pack must include sai-state/envelope.js, got files: ${files.filter(f => f.includes('sai-state')).join(', ')}`);
   assert.ok(
-    hasSaiStateExploreStage,
-    `npm pack must include sai-state/machines/explore-stage.js, got files: ${files.filter(f => f.includes('sai-state')).join(', ')}`,
+    hasSaiStateExploreIdea,
+    `npm pack must include sai-state/machines/explore-idea.js, got files: ${files.filter(f => f.includes('sai-state')).join(', ')}`,
+  );
+  assert.ok(
+    hasSaiStateExploreSlice,
+    `npm pack must include sai-state/machines/explore-slice.js, got files: ${files.filter(f => f.includes('sai-state')).join(', ')}`,
   );
 });

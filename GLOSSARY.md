@@ -304,7 +304,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Standalone Invocation Shell**: "The apply-owned entry and exit concerns required only for a direct `/sai-4-apply` run — prerequisite checks, change-picker resolution, `--fast-track` parse and session signal, and the pinned completion / MANDATORY STOP literal — distinct from the reusable apply **Phase Adapter**."
 *Avoid*: phase adapter, apply coordinator body, invocation card (when meaning the whole apply surface)
 
-**State Machine Sidecar**: "The deterministic per-session Node service (`sai-state`) that owns session-scoped state for SAI flows behind a uniform envelope, starting with the `explore-stage` machine."
+**State Machine Sidecar**: "The deterministic per-session Node service (`sai-state`) that owns session-scoped state for SAI flows behind a uniform envelope, hosting `explore-idea@1` (pre-crystallize) and `explore-slice@1` (post-crystallize inventory plus Direct Build TODO)."
 *Avoid*: sidecar dotfile, owner-hash file, shared daemon, ephemeral app
 
 **Step Contract**: "The `## Step N` section of a change's `interfaces.md` carrying that Step's signatures and exact assertions, whose availability is evaluated per Step because `design.md` omits the section for any step with no interface surface."

@@ -10,7 +10,9 @@ test('sidecar invocation surface: instructions.md names spawn and loopback route
 
   // Sidecar invocation contract
   assert.match(instructions, /sai-state spawn/);
-  assert.match(instructions, /explore-stage@1/);
+  assert.match(instructions, /explore-idea@1/);
+  assert.match(instructions, /explore-slice@1/);
+  assert.doesNotMatch(instructions, /explore-stage@1/);
   assert.match(instructions, /POST.*\/emit/);
   assert.match(instructions, /POST.*\/restore/);
   assert.match(instructions, /\/close/);
