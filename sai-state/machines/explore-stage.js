@@ -15,6 +15,14 @@ const STAGE_FILES = Object.freeze({
 
 const initialState = Object.freeze({ stage: 'explore-change', ideaList: [], edgeCaseList: null, implementationDetailsList: null });
 
+// Each stage's own recorded list. A recordedList event records into the list
+// owned by the current stage.
+const STAGE_LISTS = Object.freeze({
+  'explore-change': 'ideaList',
+  'review-edge-cases': 'edgeCaseList',
+  'implementation-details': 'implementationDetailsList',
+});
+
 function cloneState(state) {
   const src = state && typeof state === 'object' ? state : {};
   const stage = typeof src.stage === 'string' ? src.stage : STAGES[0];
@@ -61,6 +69,34 @@ function project(state) {
 
 function transition(state, signal) {
   const current = cloneState(state);
+  const sig = signal && typeof signal === 'object' ? signal : {};
+
+  // Content-based recording: a non-null recordedList records into the current
+  // stage's own list without advancing. Recording and advancing stay separate
+  // emits; the content-based empty-set rule advances on a later no-intent emit.
+  if (Array.isArray(sig.recordedList)) {
+    const listKey = STAGE_LISTS[current.stage];
+    if (listKey) {
+      const recordedState = {
+        stage: current.stage,
+        ideaList: current.ideaList.slice(),
+        edgeCaseList: current.edgeCaseList ? current.edgeCaseList.slice() : null,
+        implementationDetailsList: current.implementationDetailsList ? current.implementationDetailsList.slice() : null,
+      };
+      recordedState[listKey] = sig.recordedList.slice();
+      const snapshotState = {
+        stage: recordedState.stage,
+        ideaList: recordedState.ideaList.slice(),
+        edgeCaseList: recordedState.edgeCaseList ? recordedState.edgeCaseList.slice() : null,
+        implementationDetailsList: recordedState.implementationDetailsList ? recordedState.implementationDetailsList.slice() : null,
+      };
+      return {
+        state: recordedState,
+        snapshot: { state: snapshotState, machineId },
+        next: nextFor(current.stage),
+      };
+    }
+  }
 
   // Determine if auto-advance is allowed based on stage and recorded list content.
   // Auto-advance only at stages with content-based empty-set rules: review-edge-cases and implementation-details.

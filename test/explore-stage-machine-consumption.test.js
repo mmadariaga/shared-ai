@@ -19,11 +19,15 @@ test('sidecar invocation surface: instructions.md names spawn and loopback route
   assert.match(instructions, /state\.stage/);
 });
 
-test('sidecar lazy spawn: contract names first stage event as trigger', () => {
+test('sidecar restore-per-turn cycle: contract names every stage-event turn as trigger', () => {
   const instructions = fs.readFileSync(path.join(__dirname, '..', 'sai', 'commands', 'explore', 'instructions.md'), 'utf8');
 
-  assert.match(instructions, /Spawn the sidecar lazily/);
-  assert.match(instructions, /first turn that carries a stage event/);
+  // The sidecar is not a persistent holder: every stage-event turn runs the
+  // same restore-per-turn cycle (spawn reuse-or-fresh, /restore, then /emit).
+  assert.match(instructions, /restore-per-turn cycle/);
+  assert.match(instructions, /every stage-event turn/);
+  assert.match(instructions, /spawn \(reuse-or-fresh\), `\/restore`, then `\/emit`/);
+  assert.match(instructions, /carry the returned `snapshot` in conversation/);
   assert.doesNotMatch(instructions, /spawn.*session start/i);
   assert.doesNotMatch(instructions, /spawn.*start of session/i);
 });
