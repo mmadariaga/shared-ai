@@ -34,6 +34,27 @@ explanation, strategy revision, context request, correction, verification
 re-entry, and new-conflict analysis. A clean merge never receives or requests
 this value.
 
+## Read discipline (closed read list)
+
+Open only the fetches this contract names:
+`@sai/policies/verified-precondition-handback.md`,
+`@sai/orchestration/worker-core.md`, and
+`@sai/commands/merge/instructions.md`. Do not proactively open any other file
+under `sai/commands/merge/` — explicitly `coordinator.md`, `presentation.md`,
+and `lifecycle.md`. Do not proactively open policy spec records
+(`sai-merge-command`, `question-context-policy`);
+`sai/policies/question-context.md` stays required via `worker-core`.
+
+Affected repository content reads (conflicted specs, ADR/DDR records and
+indexes of the affected group) are permitted only when the active step
+requires them; they carry no closed path list.
+
+Summaries default to English until a `working_language` is selected; pinned
+questions and stop texts stay verbatim in every language state.
+
+Do not repeat a read-only check with a definitive answer within the same
+stretch.
+
 ## Lifecycle
 
 This phase declares NO progress plan: emit no progress events, no design notice,
@@ -46,8 +67,9 @@ the coordinator handles the language question or the re-entry notice and then
 resumes the same worker. Every stretch still closes with exactly one terminal
 lifecycle status — `completed`, `needs_input`, or pre-resolution
 `failed`/`cancelled` — in the closed worker-core shapes, each carrying the
-mandatory worker-authored `emitted_on`, a concrete summary in the selected
-working language once one exists, and an ordered duplicate-free
+mandatory worker-authored `emitted_on`, a concrete summary in English until a
+`working_language` is selected and in the selected working language
+thereafter, and an ordered duplicate-free
 `changed_files`.
 
 ## Technical procedure
