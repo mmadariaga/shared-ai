@@ -84,8 +84,7 @@
   "Closed-choice prompts" rule in `@sai/policies/remember.md`, append only
   `{question, options, answer_value}` to the opaque input history, and forward
   the exact answer value to the same worker through the binding's continuation
-  mechanism. Present any worker-authored payload content (the pre-commit file
-  report blocks and the proposed message) alongside the ask, unaltered.
+  mechanism. For the authorization ask, render the worker-authored payload content (the staged file inventory with Totals plus the proposed subject/body) as ordinary text above the picker, unaltered and in fixed order (inventory then message), and keep the picker question to the worker's one short line with no added Totals or option explanations. The secret-file confirmation and the already-pushed amend warning keep full context and are excluded from shortening. On an off-option reply or silence to the authorization ask, re-present the same short ask unchanged. Use identical presentation on Claude Code and opencode with no harness fork.
 
   ## Authorization and coordinator-owned execution
 

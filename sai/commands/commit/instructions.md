@@ -70,9 +70,9 @@ Before presenting the message, audit it:
 
 ### Step 6: Present and Authorize
 
-1. Show the `files` array from Step 1, formatted for readability, with a `Totals` summary of `total_insertions` and `total_deletions`.
-2. Show the proposed subject and body.
-3. Ask: **"Run `git commit`?"** — return it as a `needs_input` lifecycle result with options `yes (Recommended)` / `no` / `Allow on this session`, complying with `@sai/policies/remember.md` and `question-context.md`.
+1. Show the `files` array from Step 1, formatted for readability, with a `Totals` summary of `total_insertions` and `total_deletions`, as ordinary text above the picker, unaltered.
+2. Show the proposed subject and body, as ordinary text above the picker, unaltered, after the file inventory (fixed order: inventory then message).
+3. Ask the short decision: **"Run `git commit` on the staged changes above?"** — one short line carrying the decision plus the minimal identifier, without Totals and without option explanations inside the question — return it as a `needs_input` lifecycle result with options `yes (Recommended)` / `no` / `Allow on this session`, complying with `@sai/policies/remember.md` and the commit-authorization exemption in `question-context.md`. Use identical short wording on Claude Code and opencode with no harness fork. The short question plus the visible blocks above together carry the essential state context. The secret-file confirmation (Step 1) and the already-pushed amend warning (Step 7) keep full context and are excluded from this shortening.
 
 **On authorization:**
 - On `yes` or `Allow on this session`: proceed to Step 7. The coordinator additionally activates the session-scoped commit-authorization flag on `Allow on this session`.

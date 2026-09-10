@@ -42,6 +42,7 @@ and no consuming surface may add, remove, or reinterpret an exemption here.
 5. **Plain-text sí/no review invitation** — sai-explore's post-crystallization
    global invitation (item 9), a deliberate narrow exception to the
    native-picker presentation rule in `remember.md`.
+6. **Commit authorization ask** — sai-commit's short "Run `git commit` on the staged changes above?" decision prompt, pinned by `sai/commands/commit/worker.md`. The staged file inventory with Totals plus the proposed subject/body render as ordinary text above the picker, unaltered and in fixed order; the short question plus those visible blocks together carry the essential state context. The secret-file confirmation and the already-pushed amend warning keep full context and are excluded from this shortening.
 
 The full anatomy SHALL apply to every other user-facing decision prompt.
 

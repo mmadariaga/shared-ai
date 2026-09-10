@@ -37,7 +37,7 @@ Preserve the instruction's stop texts exactly:
 ## Authorization ask
 
 After composing and presenting-ready content, return `needs_input` asking
-**"Run `git commit`?"** with ordered options `yes (Recommended)` / `no` / `Allow on this session`, complying with the five-element anatomy of `@sai/policies/question-context.md`. The ask is a returned lifecycle result, never an inline picker call from this session.
+**"Run `git commit` on the staged changes above?"** with ordered options `yes (Recommended)` / `no` / `Allow on this session` as the registered commit-authorization exemption in `@sai/policies/question-context.md`. Keep the picker question to that one short line — decision plus minimal identifier, no Totals and no option explanations inside the question. Render the staged file inventory with Totals plus the proposed subject and body as ordinary text above the picker, unaltered and in fixed order (inventory then message); the short question plus those visible blocks together carry the essential state context. The secret-file confirmation and the already-pushed amend warning keep full context and are excluded from this shortening. Use identical short wording on Claude Code and opencode with no harness fork. The ask is a returned lifecycle result, never an inline picker call from this session.
 
 When the coordinator forwards the selected answer value, process it without
 re-presenting the prompt and without executing anything: on `yes` or
