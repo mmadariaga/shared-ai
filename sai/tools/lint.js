@@ -11,13 +11,14 @@
  * output contract as sai/tools/check-delta-headers.js.
  *
  * Sub-commands:
- *   commit-rules <file>           Check that a commit message follows commit rules.
- *   pr-title-rules <text>         Check that a PR title follows title rules.
- *   glossary-format <file>        Check that GLOSSARY.md follows glossary format.
- *   ready-to-propose <file>       Check that a file follows ready-to-propose format.
- *   artifact-review <file>        Check that artifact review findings follow the contract.
- *   sai-learnings-format <file>   Check that SAI_LEARNINGS.md follows learnings format.
- *   step-contract <file>          Check that interfaces.md follows step contract format.
+ *   commit-rules <file>                  Check that a commit message follows commit rules.
+ *   pr-title-rules <text>                Check that a PR title follows title rules.
+ *   glossary-format <file>               Check that GLOSSARY.md follows glossary format.
+ *   ready-to-propose <file>              Check that a file follows ready-to-propose format.
+ *   artifact-review <file>               Check that artifact review findings follow the contract.
+ *   sai-learnings-format <file>          Check that SAI_LEARNINGS.md follows learnings format.
+ *   step-contract <file>                 Check that interfaces.md follows step contract format.
+ *   worker-emission-ownership <file>     Check that a worker card does not reference emit or sai-state.
  *
  * Usage:
  *   node sai/tools/lint.js commit-rules <file> [--json] [--cwd <dir>]
@@ -27,6 +28,7 @@
  *   node sai/tools/lint.js artifact-review <file> [--json] [--cwd <dir>]
  *   node sai/tools/lint.js sai-learnings-format <file> [--json] [--cwd <dir>]
  *   node sai/tools/lint.js step-contract <file> [--json] [--cwd <dir>]
+ *   node sai/tools/lint.js worker-emission-ownership <file> [--json] [--cwd <dir>]
  *
  * Exit codes: 0 = all checks pass; 1 = findings found (report on stdout);
  * 2 = usage or I/O error.
@@ -638,6 +640,95 @@ function checkStepContract(content) {
   return violations;
 }
 
+/**
+ * Check worker emission ownership.
+ * Validates per sai/policies/stage-machine-write-ownership.md:
+ *   - Worker cards must not reference the stage machine emission surface
+ *   - Only coordinator cards may emit to a stage machine
+ *
+ * The stage machine emission surface includes:
+ *   - sai-state commands (emit, spawn, close, etc.)
+ *   - bin/sai-state.js file reference
+ *   - Stage machine IDs (explore-idea@1, explore-slice@1, spec-standalone@1, design-standalone@1, implement-standalone@1)
+ *   - Legacy /emit HTTP command
+ */
+function checkWorkerEmissionOwnership(content) {
+  const violations = [];
+  const lines = content.split('\n');
+
+  // Patterns for the stage machine emission surface (not the English word "emit")
+  // 1. sai-state command invocations (emit, spawn, close, run, etc.)
+  const saiStateCommandPattern = /sai-state\s+(emit|spawn|close|run)\b/;
+  // 2. Reference to bin/sai-state.js or backtick-quoted sai-state commands
+  const saiStateBinPattern = /bin\/sai-state\.js/;
+  const saiStateQuotedPattern = /`sai-state\s+(emit|spawn|close|run)`/;
+  // 3. Stage machine IDs in the format name@version
+  const stageMachineIdPattern = /(explore-idea|explore-slice|spec-standalone|design-standalone|implement-standalone)@\d+/;
+  // 4. Legacy /emit HTTP command
+  const legacyEmitPattern = /\/emit\b/;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // Check for sai-state command invocations
+    if (saiStateCommandPattern.test(line)) {
+      violations.push({
+        file: 'worker card',
+        line: i + 1,
+        problem: 'WORKER_REFERENCES_STAGE_MACHINE_SURFACE',
+        detail: 'worker cards must not invoke sai-state commands (emit, spawn, close, run); stage machine access is coordinator-only',
+      });
+      continue;
+    }
+
+    // Check for bin/sai-state.js reference
+    if (saiStateBinPattern.test(line)) {
+      violations.push({
+        file: 'worker card',
+        line: i + 1,
+        problem: 'WORKER_REFERENCES_STAGE_MACHINE_SURFACE',
+        detail: 'worker cards must not reference bin/sai-state.js; stage machine access is coordinator-only',
+      });
+      continue;
+    }
+
+    // Check for quoted sai-state command references
+    if (saiStateQuotedPattern.test(line)) {
+      violations.push({
+        file: 'worker card',
+        line: i + 1,
+        problem: 'WORKER_REFERENCES_STAGE_MACHINE_SURFACE',
+        detail: 'worker cards must not reference sai-state commands; stage machine access is coordinator-only',
+      });
+      continue;
+    }
+
+    // Check for stage machine IDs
+    if (stageMachineIdPattern.test(line)) {
+      violations.push({
+        file: 'worker card',
+        line: i + 1,
+        problem: 'WORKER_REFERENCES_STAGE_MACHINE_SURFACE',
+        detail: 'worker cards must not reference stage machine IDs; stage machine access is coordinator-only',
+      });
+      continue;
+    }
+
+    // Check for legacy /emit command
+    if (legacyEmitPattern.test(line)) {
+      violations.push({
+        file: 'worker card',
+        line: i + 1,
+        problem: 'WORKER_REFERENCES_STAGE_MACHINE_SURFACE',
+        detail: 'worker cards must not invoke /emit operations; stage machine access is coordinator-only',
+      });
+      continue;
+    }
+  }
+
+  return violations;
+}
+
 function usage() {
   return [
     'Usage: node sai/tools/lint.js <check> <file|text> [--json] [--cwd <dir>]',
@@ -650,6 +741,7 @@ function usage() {
     '                      - artifact-review: Validate artifact review finding format',
     '                      - sai-learnings-format: Validate SAI_LEARNINGS.md format',
     '                      - step-contract: Validate interfaces.md step contract format',
+    '                      - worker-emission-ownership: Validate worker card emission ownership',
     '  <file|text>         File to check (for file-based checks) or text to validate (for pr-title-rules)',
     '  --json              Emit the report as JSON on stdout',
     '  --cwd <dir>         Working directory for file resolution (default: current directory)',
@@ -752,6 +844,9 @@ function main(argv) {
       case 'step-contract':
         violations = checkStepContract(content);
         break;
+      case 'worker-emission-ownership':
+        violations = checkWorkerEmissionOwnership(content, opts.file);
+        break;
       default:
         process.stderr.write(`unknown check: ${opts.check}\n${usage()}\n`);
         return 2;
@@ -791,6 +886,7 @@ module.exports = {
   checkArtifactReview,
   checkSaiLearningsFormat,
   checkStepContract,
+  checkWorkerEmissionOwnership,
   ToolError,
 };
 
