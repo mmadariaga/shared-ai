@@ -81,7 +81,7 @@
   - `replacement_reconstruction_fields` — the complete original envelope, the
      opaque input history (including forwarded gate answers), the resolved
      change name, `fast_track_active`, the Direct Build (unattended) mode, the validated closed
-     execution order, the one-shot execution state, and the ordered
+     execution order, the execution state, and the ordered
      duplicate-free changed-files union; a replacement worker reconstructs only
      from these and cannot replay an executed order.
   - `terminal_navigation` — on a run whose archive move executed: print the
@@ -197,13 +197,19 @@
    The worker owns the authorized CLI archive invocation, exact-path staging,
    commit-message authoring, and local commit in that order. The CLI
    (`openspec archive <name> --yes --json`) is the sole sync + move primitive;
-   any CLI failure stops staging and commit without retry or fallback. The
-   classified content-fix loop above is ordinary-route only: the Direct Build
-   execute continuation keeps its one-shot no-retry rule. Add every
+   any CLI failure stops staging and commit. A CLI failure evaluated as a
+   backfill-artifact error returns the verbatim error for same-worker backfill
+   correction and archive relaunch under the Direct Build supervision contract;
+   the classified content-fix loop above stays ordinary-route only. Add every
   worker reported path to the invocation union and print its summary verbatim.
-  A failed or cancelled execution is terminal: report the exact partial state,
-  never silently retry or send a second execute continuation, and never fall
-  back to the normal coordinator mutation surface.
+  A repeated defect reported without progress after correction closes as
+  failed-retryable with the verbatim failure in view and no further automatic
+  continuation. A failure after some mutation executed reports the exact
+  partial state and never refires any order onto the partially mutated world.
+  A late continuation after success is rejected without mutation. Both
+  repeated-defect and partial-mutation closures carry no finality: new retries
+  or changes run only at explicit user request. Never fall back to the normal
+  coordinator mutation surface.
 
   ## Content assignment
 

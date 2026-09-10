@@ -298,7 +298,7 @@ After a successful slice completion, explore SHALL preserve completed progress s
 
 ### Requirement: Build - Unattended run state and failure handling
 
-Direct Build slice inventory (`set` / `active` / `done`) and TODO (`mode` plus `stage` cursor) SHALL be owned by `explore-slice@1` in sidecar-owned state. Remaining Direct Build run state SHALL remain conversation-only and SHALL preserve the fixed worker order, one-shot execution boundaries, owned-path staging, and pre-authorized local commit. A backfill execution failure SHALL stop before archive preparation. An archive preparation or execution failure SHALL report the exact CLI, staging, or commit state, SHALL never resend the execute order, and SHALL never commit a partial plan. CLI failure or invalid JSON SHALL stop before staging and commit. Manual `/sai-archive` and `/sai-commit` guidance remains applicable after a non-clean archive outcome. Incomplete Archive SHALL NOT mark the slice done.
+Direct Build slice inventory (`set` / `active` / `done`) and TODO (`mode` plus `stage` cursor) SHALL be owned by `explore-slice@1` in sidecar-owned state. Remaining Direct Build run state SHALL remain conversation-only and SHALL preserve the fixed worker order, execution boundaries, owned-path staging, and pre-authorized local commit. A backfill execution failure with a partial mutation SHALL report the exact draft paths written before stopping and SHALL never refire any order onto the partially mutated state. An archive preparation or execution failure evaluated as a backfill-artifact error SHALL route the verbatim error to the same backfill worker that created those specs for correction and SHALL relaunch archive with the corrected artifacts. A repeated defect reported without progress after correction SHALL close as failed-retryable with the verbatim failure in view and no further automatic continuation. A late continuation after success SHALL be rejected without mutation. Repeated-defect and partial-mutation closures SHALL carry no finality and SHALL run new retries or changes only at explicit user request. An archive preparation or execution failure that is not a backfill-artifact error SHALL report the exact CLI, staging, or commit state and SHALL never commit a partial plan. CLI failure or invalid JSON that is not a backfill-artifact error SHALL stop before staging and commit. Manual `/sai-archive` and `/sai-commit` guidance remains applicable after a non-clean archive outcome. Incomplete Archive SHALL NOT mark the slice done.
 
 #### Scenario: Archive failure stops the unattended flow
 
@@ -309,6 +309,11 @@ Direct Build slice inventory (`set` / `active` / `done`) and TODO (`mode` plus `
 
 - **WHEN** the backfill or archive worker returns a failure before completing its closed order
 - **THEN** the run stops before the next mutation stage and manual `/sai-archive` and `/sai-commit` guidance is reported
+
+#### Scenario: Backfill partial-mutation failure stops before archive
+
+- **WHEN** the backfill worker reports an execution failure with a partial mutation
+- **THEN** the flow SHALL preserve the exact draft paths written and never refire any order onto the partially mutated state
 
 ### Requirement: Build - Unattended pre-dispatch compatibility refusal
 
@@ -399,4 +404,18 @@ On a Direct Build (unattended) selection, explore SHALL POST `/emit` with `{mach
 
 - **WHEN** Direct Build is selected again while `explore-slice@1` returns `rejected: ALREADY_RUNNING`
 - **THEN** explore acknowledges already running and dispatches no worker
+
+### Requirement: Direct Build archive failure correction routing
+
+The supervision SHALL evaluate an archive preparation or execution failure as a backfill-artifact error when the verbatim CLI error grounds in backfill drafts, SHALL route the verbatim error to the same backfill worker that created those specs for correction, and SHALL relaunch archive with the corrected artifacts. A repeated defect reported without progress after correction SHALL close as failed-retryable with the verbatim failure in view and no further automatic continuation. A late continuation after success SHALL be rejected without mutation. Repeated-defect and partial-mutation closures SHALL carry no finality and SHALL run new retries or changes only at explicit user request. An archive preparation or execution failure that is not a backfill-artifact error SHALL report the exact CLI, staging, or commit state and SHALL never commit a partial plan. Manual backfill, archive, and commit guidance SHALL be reported as applicable.
+
+#### Scenario: Backfill-artifact archive failure relaunches after correction
+
+- **WHEN** an archive preparation or execution failure is evaluated as a backfill-artifact error
+- **THEN** the supervision SHALL route the verbatim error to the same backfill worker for correction and relaunch archive with the corrected artifacts
+
+#### Scenario: Repeated defect without progress closes as failed-retryable
+
+- **WHEN** the same defect is reported without progress after correction
+- **THEN** the supervision SHALL close as failed-retryable with the verbatim failure in view and no further automatic continuation
 

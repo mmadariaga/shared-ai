@@ -21,7 +21,7 @@ Define the routed coordinator/worker architecture for `/sai-archive`: a minimal-
 
 ### Requirement: Minimal lifecycle adapter with fast-track session state
 
-The archive coordinator SHALL declare the minimal phase-adapter field set: `original_envelope` is the opaque single-string fast-track-cleaned request; `dispatch_operation` dispatches exactly one `sai-archive-worker` through the active archive-worker binding; `continuation_operation` continues the same worker while forwarding only the selected answer value; `allowed_nonterminal_extensions` is none; and no `progress_plan` or `recovery_policy` is declared. The coordinator SHALL parse `--fast-track` before resolution, retain `fast_track_active` as invocation-scoped session state, and never place it in the envelope. A replacement worker SHALL reconstruct only from the original envelope, opaque input history, resolved change name, fast-track state, Direct Build state, validated execution order, one-shot execution state, and ordered duplicate-free changed-files union.
+The archive coordinator SHALL declare the minimal phase-adapter field set: `original_envelope` is the opaque single-string fast-track-cleaned request; `dispatch_operation` dispatches exactly one `sai-archive-worker` through the active archive-worker binding; `continuation_operation` continues the same worker while forwarding only the selected answer value; `allowed_nonterminal_extensions` is none; and no `progress_plan` or `recovery_policy` is declared. The coordinator SHALL parse `--fast-track` before resolution, retain `fast_track_active` as invocation-scoped session state, and never place it in the envelope. A replacement worker SHALL reconstruct only from the original envelope, opaque input history, resolved change name, fast-track state, Direct Build state, validated execution order, execution state, and ordered duplicate-free changed-files union.
 
 #### Scenario: An archive run carries no progress or recovery machinery
 
@@ -32,6 +32,11 @@ The archive coordinator SHALL declare the minimal phase-adapter field set: `orig
 
 - **WHEN** `/sai-archive {name} --fast-track` dispatches its worker
 - **THEN** the envelope carries the cleaned request, `fast_track_active` remains session state, and the banner is printed exactly once
+
+#### Scenario: Replacement reconstructs without replay
+
+- **WHEN** a replacement worker reconstructs after an executed order
+- **THEN** it SHALL reconstruct only from the declared fields and never replay an executed order
 
 ### Requirement: Worker owns the read-only pre-flight and never mutates
 
@@ -101,4 +106,13 @@ The archive coordinator SHALL run the guard's `snapshot` step immediately before
 
 - **WHEN** the archive worker's Direct Build execute continuation completes its validated closed order including the one local commit
 - **THEN** the coordinator runs that window's verify with `--allow-commit`, which resolves verdict `allowed`, and every other archive window runs without the flag
+
+### Requirement: Direct Build backfill-artifact correction routing
+
+The Direct Build execute continuation SHALL stop staging and commit on any CLI failure. When the failure is evaluated as a backfill-artifact error under the Direct Build supervision contract, the coordinator SHALL return the verbatim error for same-worker backfill correction and archive relaunch and SHALL keep the classified content-fix loop ordinary-route only. A repeated defect reported without progress after correction SHALL close as failed-retryable with the verbatim failure in view and no further automatic continuation. A failure after some mutation executed SHALL report the exact partial state and SHALL never refire any order onto the partially mutated world. A late continuation after success SHALL be rejected without mutation. Both repeated-defect and partial-mutation closures SHALL carry no finality and SHALL run new retries or changes only at explicit user request.
+
+#### Scenario: Backfill-artifact CLI failure routes to correction
+
+- **WHEN** the Direct Build archive CLI fails with a backfill-artifact error
+- **THEN** the coordinator SHALL return the verbatim error for same-worker backfill correction and archive relaunch without staging or committing
 

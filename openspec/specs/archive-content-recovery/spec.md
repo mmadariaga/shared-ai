@@ -33,9 +33,16 @@ The coordinator SHALL validate returned fix content against the delta format, ve
 - **THEN** the coordinator stops with the literal error and sends no further fix
 
 ### Requirement: Late races and one-shot safety preserved
-A main-spec race after a passing preflight SHALL go through the classified resilience path with no tight revalidate loop. The Direct Build execute continuation SHALL keep its one-shot no-retry rule and SHALL NOT use the classified content-fix loop, which is ordinary-route only.
+
+A main-spec race after a passing preflight SHALL go through the classified resilience path with no tight revalidate loop. The Direct Build execute continuation SHALL keep the classified content-fix loop ordinary-route only and SHALL route backfill-artifact errors to same-worker backfill correction with archive relaunch instead of single-use close.
 
 #### Scenario: Post-preflight race uses the resilience path
+
 - **WHEN** the main spec changes after a passing preflight so archive later fails on content
-- **THEN** the run resolves through the single classified fix path without a revalidate loop
+- **THEN** the run SHALL resolve through the single classified fix path without a revalidate loop
+
+#### Scenario: Direct Build backfill-artifact error uses backfill correction
+
+- **WHEN** a Direct Build archive failure is evaluated as a backfill-artifact error
+- **THEN** the run SHALL route the verbatim error to same-worker backfill correction with archive relaunch and keep the classified loop ordinary-route only
 

@@ -2,9 +2,7 @@
 
 ## Purpose
 TBD - created by archiving change worker-owned-autofast-mutations. Update Purpose after archive.
-
 ## Requirements
-
 ### Requirement: Attribute backfill execution to Build
 
 Build (unattended) SHALL use the existing backfill worker's read-only preparation followed by coordinator validation and one explicit execute continuation. The backfill worker SHALL write only the validated draft set during that continuation.
@@ -34,9 +32,24 @@ The execution continuation SHALL write only the validated `.openspec.yaml`, `pro
 
 ### Requirement: Backfill execution is one-shot
 
-The worker MUST reject a repeated execution continuation after successful execution and MUST report exact completed and uncompleted state after a partial failure without retrying.
+The worker MUST reject a repeated execution continuation after successful execution and MUST report exact completed and uncompleted state after a partial failure without retrying. A write or parent-directory failure that leaves a partial mutation SHALL return a closed failed result with the exact completed and uncompleted state, SHALL set unrecoverable true only when the evidence establishes that continuation is unsafe, and SHALL never retry, roll back, continue to a later mutation, or refire any order onto the partially mutated state.
 
 #### Scenario:
 
 - **WHEN** an execution continuation or replacement attempts to repeat a completed mutation
 - **THEN** the worker SHALL reject it without another write
+
+#### Scenario: Partial-mutation failure reports without refire
+
+- **WHEN** a write or parent-directory failure leaves a partial mutation
+- **THEN** the worker SHALL report the exact completed and uncompleted state without retrying or refiring any order onto the partially mutated state
+
+### Requirement: Backfill correction feedback after execution
+
+The worker SHALL accept same-run correction feedback carrying the verbatim archive failure plus the named draft sections to recompose. The worker SHALL recompose only those named sections from the staged diff, the block grounding, and the CLI error, SHALL rewrite only those draft files, SHALL report every rewritten path in the invocation-scoped changed_files union, and SHALL carry no commit authorization. A repeated defect reported without progress after correction SHALL close as failed-retryable with the verbatim failure in view and no further automatic continuation.
+
+#### Scenario: Archive failure routes to same-worker correction
+
+- **WHEN** the same run continues this worker with the verbatim archive failure plus named draft sections to recompose
+- **THEN** the worker SHALL recompose only those named sections and rewrite only those draft files with no commit authorization
+

@@ -182,14 +182,9 @@ supplied contents byte-for-byte, and reports every realized path in the
 invocation-scoped `changed_files` union. It never creates `design.md`,
 `tasks.md`, `implementation.md`, an unlisted capability, or any other file.
 
-Execution is one-shot and idempotency-protected: after a successful execution,
-any later execute continuation or replacement reconstruction is rejected
-without another write. If a write or parent-directory operation fails after a
-partial mutation, return a closed `failed` result with the exact completed and
-uncompleted state, set `unrecoverable: true` only when the evidence establishes
-that continuation is unsafe, and never silently retry, roll back, or continue
-to a later mutation. The coordinator must not resend an execute order after
-that failure.
+After a successful execution, a repeated execute continuation carrying the same closed order is rejected without another write. A write or parent-directory failure that leaves a partial mutation returns a closed `failed` result with the exact completed and uncompleted state, sets `unrecoverable: true` only when the evidence establishes that continuation is unsafe, and never retries, rolls back, or continues to a later mutation; no order is refired onto that partially mutated state.
+
+Correction feedback is the only other accepted continuation after execution: the same run may continue this worker with the verbatim archive failure plus the named draft sections to recompose. The worker recomposes only those named sections from the staged diff, the block grounding, and the CLI error, rewrites only those draft files, and reports every rewritten path in the invocation-scoped `changed_files` union. Corrections rewrite drafts only and carry no commit authorization. A repeated defect reported without progress after correction closes as failed-retryable with the verbatim failure in view and no further automatic continuation.
 
 This execution route does not change the ordinary route: without
 `direct_build_mode: prepare` and the explicit `--direct-build-execute` continuation,

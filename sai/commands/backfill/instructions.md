@@ -299,7 +299,7 @@ writes into `openspec/changes/{name}/`; the worker run closes once the drafts
 are handed over.
 
 On the Direct Build (unattended) route, the prepare stretch still closes after the draft
-handoff, but the same worker may be resumed exactly once with
+handoff, but the same worker may be resumed with
 `--direct-build-execute` after coordinator validation and authorization. That
 continuation writes only the exact validated draft set and then closes; it does
-not compose new content, invoke another SAI command, or invoke archive.
+not invoke another SAI command or invoke archive. After execution, the same worker accepts correction feedback carrying the verbatim archive failure plus the named sections to recompose, rewrites only those draft files, and then closes; a repeated execute carrying the same closed order after success is rejected without mutation. A partial-mutation failure never refires an order onto the partially mutated state. Repeated-defect and partial-mutation closures carry no finality: new retries or changes run only at explicit user request.
