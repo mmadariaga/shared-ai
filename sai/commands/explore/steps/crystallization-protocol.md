@@ -1,3 +1,7 @@
+Fetch @sai/commands/explore/steps/slicing-assessment.md
+Fetch @sai/commands/explore/steps/artifact-review-language-gate.md
+Fetch @sai/commands/explore/steps/crystallization-language-gates.md
+
    **Uncertainty pause (viability POC pre-emission).** When the technical-uncertainty judgment (4) fires, do NOT emit feature `Ready to Propose` blocks yet. Instead, pause before emission and run **Ask 1** through the harness-native picker per `sai/policies/remember.md` (L10–15): `AskUserQuestion` on Claude Code, the `question` tool on opencode. The ask carries fixed informational context followed by exactly two options in this order:
 
     **Fixed info** (rendered as plain text before the picker, in the user's language per item 8): state that the idea depends on an unused third party with insufficient docs for the specific integration case, that a disposable viability POC can prove the approach cheap and dirty before committing the full change set, that the POC runs via Direct Build with `--no-specs` (no backfill, no OpenSpec specs, no artifact archive — implementer only, dirty OK, minimal tests or human review), and that the POC is not a slice of the final set and does not renumber friction or skeleton slices.

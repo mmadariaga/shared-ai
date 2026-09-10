@@ -2,26 +2,39 @@
 
 ## Purpose
 Define the lazy, trigger-point delivery structure for the read-only `sai-explore` instruction contract.
-
 ## Requirements
-
 ### Requirement: Split the explore contract into a startup nucleus and reachable steps
 
-`sai-explore` SHALL retain its read-only restrictions and research-tooling check in `sai/commands/explore/instructions.md`, SHALL fetch `steps/common.md` directly before shared staged-progression and closure rules are evaluated, and SHALL provide exactly ten named Markdown step files under `sai/commands/explore/steps/`. Each step file SHALL be reachable from the nucleus through direct or transitive `Fetch @sai/commands/explore/steps/...` directives.
+`sai-explore` SHALL retain its read-only restrictions and research-tooling check in `sai/commands/explore/instructions.md`, SHALL fetch `steps/common.md` directly before shared staged-progression and closure rules are evaluated, and SHALL provide exactly eleven named Markdown step files under `sai/commands/explore/steps/`. Boot SHALL preload only that explore instruction pack (`instructions.md` and `steps/common.md`) and SHALL NOT fetch `crystallization-protocol.md`, `slice.md`, or `pipeline-direct-build.md` at session start. Each remaining step file SHALL be reachable from the nucleus through direct or transitive `Fetch @sai/commands/explore/steps/...` directives, or through sidecar `next.follow` for those three follow-loaded files.
 
 #### Scenario: all ten steps are reachable
 
-- **WHEN** the explore instruction source and its transitive Fetch directives are evaluated
-- **THEN** exactly ten step files exist and every one is reachable from `instructions.md` without an unreachable step or missing fetched file
+- **WHEN** the explore instruction source, its transitive Fetch directives, and sidecar `next.follow` pointers are evaluated
+- **THEN** exactly eleven step files exist and every one is reachable from `instructions.md` without an unreachable step or missing fetched file
+
+#### Scenario: boot pack excludes follow-loaded step files
+
+- **WHEN** a `sai-explore` session starts
+- **THEN** the boot pack does not fetch `crystallization-protocol.md`, `slice.md`, or `pipeline-direct-build.md`
 
 ### Requirement: Fetch deferred content at its trigger point
 
-Each deferred explore step SHALL be fetched only after the complete sentence or contract paragraph that invokes it, and conditional route files SHALL be fetched at their selector trigger before the selected route is dispatched. The split SHALL preserve the complete normative contract text rather than paraphrasing or truncating it.
+Each deferred explore step SHALL be fetched only after the complete sentence or contract paragraph that invokes it, and conditional route files SHALL be fetched at their selector trigger before the selected route is dispatched. `crystallization-protocol.md`, `slice.md`, and `pipeline-direct-build.md` SHALL load only when a returned `next.follow` names that exact file after `/emit`; if the chat never reaches that stage they SHALL NOT be fetched. Nested crystallization Fetches of `slicing-assessment.md`, `artifact-review-language-gate.md`, and `crystallization-language-gates.md` SHALL live in `crystallization-protocol.md` and SHALL NOT be fetched from `steps/common.md`. The split SHALL preserve the complete normative contract text rather than paraphrasing or truncating it.
 
 #### Scenario: a trigger loads its complete step contract
 
 - **WHEN** a user reaches a deferred explore trigger such as slicing, artifact review, crystallization, review-loop, or pipeline selection
 - **THEN** the corresponding step contract is fetched at that trigger and remains available through transitive Fetch closure without changing the behavior it defines
+
+#### Scenario: follow-loaded steps wait for next.follow
+
+- **WHEN** `/emit` returns `next.follow` naming `crystallization-protocol.md`, `slice.md`, or `pipeline-direct-build.md`
+- **THEN** that exact file is fetched and is not loaded earlier from the boot pack
+
+#### Scenario: nested crystallization files load with the protocol
+
+- **WHEN** `crystallization-protocol.md` is fetched
+- **THEN** it fetches `slicing-assessment.md`, `artifact-review-language-gate.md`, and `crystallization-language-gates.md`, and `steps/common.md` does not fetch those files
 
 ### Requirement: Preserve startup and deferred byte figures
 
@@ -40,3 +53,4 @@ The source instruction structure SHALL remain harness-neutral. The Claude Code a
 
 - **WHEN** the Claude Code and opencode idea-list renderers are inspected
 - **THEN** each renderer references the split surfaces and retains its own machine-readable carrier without asserting identical Phase A and Phase B ownership behavior
+

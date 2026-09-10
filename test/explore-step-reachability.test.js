@@ -23,6 +23,12 @@ function findFetchDirectives(filePath) {
   }
 }
 
+const FOLLOW_LOADED = [
+  'crystallization-protocol.md',
+  'slice.md',
+  'pipeline-direct-build.md',
+];
+
 function getReachableStepFiles() {
   const reachable = new Set();
   const toProcess = new Set();
@@ -37,6 +43,9 @@ function getReachableStepFiles() {
     }
     toProcess.add(file);
   });
+
+  // Follow-loaded files are named by sidecar next.follow, not by nucleus Fetch.
+  FOLLOW_LOADED.forEach(file => toProcess.add(file));
 
   // Process all reachable files
   while (toProcess.size > 0) {
@@ -77,6 +86,55 @@ test('should have common.md reachable directly from nucleus', () => {
   const nucleusFetches = findFetchDirectives(nucleusFile);
   assert.ok(nucleusFetches.includes('common.md'),
     'common.md should be directly reachable from nucleus');
+});
+
+test('boot pack does not fetch follow-loaded step files', () => {
+  const nucleusFetches = findFetchDirectives(nucleusFile);
+  const commonFetches = findFetchDirectives(path.join(explorerStepsDir, 'common.md'));
+  const bootFetches = new Set([...nucleusFetches, ...commonFetches]);
+  for (const file of FOLLOW_LOADED) {
+    assert.ok(!bootFetches.has(file), `boot must not fetch ${file}`);
+  }
+});
+
+test('common.md does not fetch nested crystallization files', () => {
+  const commonFetches = findFetchDirectives(path.join(explorerStepsDir, 'common.md'));
+  for (const file of [
+    'slicing-assessment.md',
+    'artifact-review-language-gate.md',
+    'crystallization-language-gates.md',
+    'crystallization-protocol.md',
+  ]) {
+    assert.ok(!commonFetches.includes(file), `common.md must not fetch ${file}`);
+  }
+});
+
+test('crystallization-protocol.md fetches assessment and language gates', () => {
+  const fetches = findFetchDirectives(path.join(explorerStepsDir, 'crystallization-protocol.md'));
+  assert.ok(fetches.includes('slicing-assessment.md'),
+    'crystallization-protocol.md should fetch slicing-assessment.md');
+  assert.ok(fetches.includes('artifact-review-language-gate.md'),
+    'crystallization-protocol.md should fetch artifact-review-language-gate.md');
+  assert.ok(fetches.includes('crystallization-language-gates.md'),
+    'crystallization-protocol.md should fetch crystallization-language-gates.md');
+});
+
+test('follow-load is driven by next.follow with no whitelist and a stop-on-failure rule', () => {
+  const instructions = fs.readFileSync(nucleusFile, 'utf8');
+  assert.match(instructions, /After each `\/emit`, fetch whatever `next\.follow` names with no file whitelist/);
+  assert.match(instructions, /If that follow load fails, stop, show the error, and wait for the user/);
+  assert.match(instructions, /do not guess another file/);
+  assert.match(instructions, /do not route the failure through worker Bounded Recovery/);
+  assert.match(instructions, /If `\/emit` fails or returns `rejected`, do not fetch `crystallization-protocol\.md`, `slice\.md`, or `pipeline-direct-build\.md` on your own/);
+  assert.doesNotMatch(instructions, /5\. \*\*Crystallization protocol \(single change\)\*\*/);
+});
+
+test('sidecar STAGE_FILES still name the follow-loaded step files', () => {
+  const idea = fs.readFileSync(path.join(__dirname, '..', 'sai-state', 'machines', 'explore-idea.js'), 'utf8');
+  const slice = fs.readFileSync(path.join(__dirname, '..', 'sai-state', 'machines', 'explore-slice.js'), 'utf8');
+  assert.match(idea, /crystallize: 'sai\/commands\/explore\/steps\/crystallization-protocol\.md'/);
+  assert.match(slice, /const SLICE_STEP = 'sai\/commands\/explore\/steps\/slice\.md'/);
+  assert.match(slice, /const DIRECT_BUILD_STEP = 'sai\/commands\/explore\/steps\/pipeline-direct-build\.md'/);
 });
 
 test('should have all step files reachable through fetch chain', () => {

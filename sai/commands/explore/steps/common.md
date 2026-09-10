@@ -14,14 +14,6 @@ Before printing any `Ready to Propose` block, judge whether the idea is solid at
 
 The full `Ready to Propose` block(s) are printed only when the user explicitly asks to crystallize, and only after edge-case agreement. Recognized requests include asking to crystallize, asking for the paste-ready block, asking to create a proposal or run `/sai-1-spec`, and any advancement that enters `Crystallize`. A request made before edge-case agreement remains pending with no skip path. On entry into `Crystallize`, run the §4 slicing assessment (size, friction, uncertainty) first; when uncertainty fires, run the uncertainty pause in the crystallization protocol before the crystallization language gate and block emission; otherwise evaluate the crystallization language gate and only then print the block(s); the overview-language gate runs later only when a supervised **Plan (unattended)** selection confirms a dispatchable change. The applicable stage-aware reminder remains actionable before stage 4.
 
-Fetch @sai/commands/explore/steps/slicing-assessment.md
-Fetch @sai/commands/explore/steps/artifact-review-language-gate.md
-
-This turn requests a review of an existing OpenSpec artifact.
-
-Fetch @sai/commands/explore/steps/crystallization-language-gates.md
-Fetch @sai/commands/explore/steps/crystallization-protocol.md
-
 **Explore change stage (stage 1 — discovery ownership).** While the stage is `Explore change`, explore owns open discovery: ask the open questions that shape the idea. Once the idea is solid, ask directly whether to move to `Review edge cases`. A declining answer stays in `Explore change`; later advancement uses the existing `next-step` path. Explore never advances the stage on its own judgment that the idea is solid.
 
 **Terminology agreement (pre-edge-cases, conversation-only).** Before the edge-case review, fix ambiguous terms in conversation. Agreed terms travel as the block's `Terms`. Explore performs no file writes; it never writes `GLOSSARY.md`.

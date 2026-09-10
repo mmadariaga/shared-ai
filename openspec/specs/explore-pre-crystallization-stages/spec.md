@@ -65,7 +65,7 @@ The `Review edge cases` stage SHALL run the existing edge-case review when the u
 
 The `Crystallize` stage SHALL run the size-based slicing assessment, integration-point friction assessment, and technical-uncertainty assessment before emitting any `Ready to Propose` block. When uncertainty fires, it SHALL run the uncertainty pause and complete the applicable Ask 1 and post-POC path before the crystallization language gate and block emission. The language gate SHALL run only after those checks complete. It MUST NOT run overview-language gate 9 at stage entry; gate 9 belongs to the later supervised Plan (unattended) activation.
 
-Advancing into the `Crystallize` stage SHALL itself count as an explicit crystallization request. Deterministic empty-set advancement into this stage SHALL have the same effect. An explicit crystallize request made from an earlier stage SHALL first run the mandatory edge-case review when the review has not reached agreement, then proceed through all three assessments and any required uncertainty pause.
+Advancing into the `Crystallize` stage SHALL itself count as an explicit crystallization request. The slicing assessment and language-gate sequence SHALL start only after the crystallization step file named by `next.follow` is fetched. Deterministic empty-set advancement into this stage SHALL have the same effect. An explicit crystallize request made from an earlier stage SHALL first run the mandatory edge-case review when the review has not reached agreement, then proceed through all three assessments and any required uncertainty pause.
 
 A POC is not a crystallized feature slice and does not clear or replace the stage TODO. The stage TODO is cleared only when feature crystallization begins emitting its first feature slice and the idea progress list takes the panel.
 
@@ -97,6 +97,11 @@ A POC is not a crystallized feature slice and does not clear or replace the stag
 - **WHEN** `--fast-track` is active during crystallization and later supervised Plan (unattended) activation
 - **THEN** language questions resolve by their separate rules without weakening or skipping either stage or the uncertainty pause
 - **AND** mandatory edge-case review and staged progression remain neither skipped nor weakened
+
+#### Scenario: Crystallize fetches the follow-named step before assessments
+
+- **WHEN** explore enters the `Crystallize` stage and `/emit` returns `next.follow` naming the crystallization protocol
+- **THEN** that step file is fetched before the slicing assessment and language-gate sequence starts
 
 ### Requirement: A materially changed idea resets the stage progression
 
@@ -147,7 +152,7 @@ The per-harness idea-list render bindings SHALL implement a phase-A/phase-B pane
 
 ### Requirement: Sidecar session lifecycle
 
-Explore SHALL obtain pre-crystallization stage order, pointer routing, transition rules, and the progression state itself from the `explore-idea` machine (`explore-idea@1`) hosted by the `sai-state` sidecar, and after crystallization SHALL consume `explore-slice@1` in the same chat for slice inventory and Direct Build TODO. The sidecar is invoked as a black-box service through its command-line interface and loopback routes. The sidecar owns the progression state as a durable store: it persists each machine's state in its own session file under the system temp directory and reloads it automatically, so a sidecar process dying at turn end loses nothing and every stage-event turn (a user intent that advances the progression or a recorded list at an agreement gate) SHALL run the same minimal cycle — spawn (reuse-or-fresh), then `/emit` — with no state ever sent in a request. Every emit SHALL name `machineId: "explore-idea@1"` or `machineId: "explore-slice@1"`; an omitted or mistyped `machineId` is a closed error (`INVALID_EVENT` / `UNKNOWN_MACHINE`) and nothing falls back to the first machine. The `/emit` response SHALL be consumed as the minimal wire outcome `{stage, next: {follow, hint}, rejected?, warnings?}`; no state object and no snapshot SHALL travel on the wire in either direction. The returned `stage` SHALL be authoritative as the current stage, superseding the agent's at-most-one disposable presentation hint and any prose-derived stage identity. The returned `next` pointer's `follow` field SHALL identify the step file to be fetched and consumed for continued progression. A `warnings` array on an `/emit` or `/restore` response (first value `SESSION_FILE_CORRUPT`) reports store degradation in that same response with no extra turns. `/restore` SHALL be an optional read-only probe that requires `{machineId}` and returns `{stage, next, warnings?}` for recovery and panel re-render and SHALL never be part of the required cycle. Entering crystallize SHALL NOT `/close`: `explore-slice@1` can emit in the same chatId while `explore-idea@1` stays at crystallize in the map. At session end explore SHALL call `/close`, which purges the persisted state and tombstones the record so reopening the same chat identifier starts from the initial state. When a restore probe fails due to version mismatch or closed session, or when the sidecar is unreachable, explore SHALL fall to the degraded path: hold the current stage without auto-advancing and ask the user to advance explicitly by a direct `next-step` request, continuing without re-deriving the transition table in prose.
+Explore SHALL obtain pre-crystallization stage order, pointer routing, transition rules, and the progression state itself from the `explore-idea` machine (`explore-idea@1`) hosted by the `sai-state` sidecar, and after crystallization SHALL consume `explore-slice@1` in the same chat for slice inventory and Direct Build TODO. The sidecar is invoked as a black-box service through its command-line interface and loopback routes. The sidecar owns the progression state as a durable store: it persists each machine's state in its own session file under the system temp directory and reloads it automatically, so a sidecar process dying at turn end loses nothing and every stage-event turn (a user intent that advances the progression or a recorded list at an agreement gate) SHALL run the same minimal cycle — spawn (reuse-or-fresh), then `/emit` — with no state ever sent in a request. Every emit SHALL name `machineId: "explore-idea@1"` or `machineId: "explore-slice@1"`; an omitted or mistyped `machineId` is a closed error (`INVALID_EVENT` / `UNKNOWN_MACHINE`) and nothing falls back to the first machine. The `/emit` response SHALL be consumed as the minimal wire outcome `{stage, next: {follow, hint}, rejected?, warnings?}`; no state object and no snapshot SHALL travel on the wire in either direction. The returned `stage` SHALL be authoritative as the current stage, superseding the agent's at-most-one disposable presentation hint and any prose-derived stage identity. The returned `next` pointer's `follow` field SHALL identify the step file to be fetched and consumed for continued progression. After each `/emit`, explore SHALL fetch whatever `next.follow` names with no file whitelist; the sidecar pointer is the contract. If that follow load fails, explore SHALL stop, show the error, and wait for the user; it SHALL NOT guess another file and SHALL NOT route the failure through worker Bounded Recovery. If `/emit` fails or returns `rejected`, explore SHALL NOT fetch `crystallization-protocol.md`, `slice.md`, or `pipeline-direct-build.md` on its own. A `warnings` array on an `/emit` or `/restore` response (first value `SESSION_FILE_CORRUPT`) reports store degradation in that same response with no extra turns. `/restore` SHALL be an optional read-only probe that requires `{machineId}` and returns `{stage, next, warnings?}` for recovery and panel re-render and SHALL never be part of the required cycle. Entering crystallize SHALL NOT `/close`: `explore-slice@1` can emit in the same chatId while `explore-idea@1` stays at crystallize in the map. At session end explore SHALL call `/close`, which purges the persisted state and tombstones the record so reopening the same chat identifier starts from the initial state. When a restore probe fails due to version mismatch or closed session, or when the sidecar is unreachable, explore SHALL fall to the degraded path: hold the current stage without auto-advancing and ask the user to advance explicitly by a direct `next-step` request, continuing without re-deriving the transition table in prose.
 
 #### Scenario: Lazy spawn on first stage event
 
@@ -188,6 +193,21 @@ Explore SHALL obtain pre-crystallization stage order, pointer routing, transitio
 
 - **WHEN** explore enters the crystallize stage
 - **THEN** it does not `/close`, `explore-idea@1` stays at crystallize in the map, and `explore-slice@1` can emit in the same chatId
+
+#### Scenario: Follow load uses next.follow with no whitelist
+
+- **WHEN** `/emit` returns a `next.follow` path
+- **THEN** explore fetches that named file with no file whitelist
+
+#### Scenario: Follow load failure stops and waits
+
+- **WHEN** the follow load for `next.follow` fails
+- **THEN** explore stops, shows the error, and waits for the user without guessing another file or routing the failure through worker Bounded Recovery
+
+#### Scenario: Emit failure does not self-fetch follow-loaded files
+
+- **WHEN** `/emit` fails or returns `rejected`
+- **THEN** explore does not fetch `crystallization-protocol.md`, `slice.md`, or `pipeline-direct-build.md` on its own
 
 ### Requirement: Machine-owned stage state persists in the sidecar store
 
