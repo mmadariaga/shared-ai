@@ -149,7 +149,7 @@ Design coordinator and worker identifiers SHALL be SAI-namespaced. Installation 
 
 ### Requirement: opencode design permission verification covers the SAI directory
 
-The routed OpenCode design-binding activation checks SHALL verify that the active OpenCode configuration grants external-directory access to the narrow SAI global prompt path `~/.config/opencode/sai/**`. The resulting configuration assertion SHALL be owned by the OpenCode installer integration tests in `test/install-opencode.test.js`. Runtime no-additional-prompt behavior SHALL be a documented manual verification in the `Post-install` section of `INSTALL.opencode.md`, not an assumption about a non-existent automated live probe. The check SHALL reject a configuration that relies only on `permission.read`, and SHALL NOT require or recommend a wildcard trust rule for all external directories.
+The routed OpenCode design-binding activation checks SHALL verify that the active OpenCode configuration grants external-directory access to the narrow SAI global prompt path `~/.config/opencode/sai/**`. The resulting configuration assertion SHALL be owned by the OpenCode installer integration tests in `test/install-opencode.test.js`. Runtime no-additional-prompt behavior SHALL be covered by those installer integration tests, not by an assumption about a non-existent automated live probe. The check SHALL reject a configuration that relies only on `permission.read`, and SHALL NOT require or recommend a wildcard trust rule for all external directories.
 
 #### Scenario: OpenCode design permission verification verifies the SAI path
 - **WHEN** the installer integration test and documented post-install verification are performed

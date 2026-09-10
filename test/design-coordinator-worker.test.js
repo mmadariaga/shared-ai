@@ -739,16 +739,12 @@ test('design coordinator spec says worker delegates only to explore', () => {
 test('documentation records the active design compatibility boundary and managed paths', () => {
   const readme = artifact('README.md');
   const agents = artifact('AGENTS.md');
-  const claude = artifact('INSTALL.claude.md');
-  const opencode = artifact('INSTALL.opencode.md');
 
   for (const text of [readme, agents]) {
     assert.match(text, /sai-2-design/);
     assert.match(text, /openspec\/changes\/\{change-name\}\/design\.md|design\.md/);
     assert.match(text, /tasks\.md/);
     assert.match(text, /interfaces\.md/);
-  }
-  for (const text of [claude, opencode]) {
     assert.match(text, /sai\/install-manifest\.json/);
     assert.match(text, /doctor/);
     assert.match(text, /uninstall/);
@@ -759,56 +755,25 @@ test('documentation records the active design compatibility boundary and managed
   assert.match(agents, /sai-2-design-worker/);
 
   assert.match(readme, /Claude Code.*low-effort.*coordinator.*high-effort.*design worker/i);
-  assert.match(readme, /opencode.*GLM 5\.2.*variant: high/i);
+  assert.match(readme, /opencode.*deepseek-v4-flash.*variant: max/i);
   assert.match(readme, /continue_after_notice/);
   assert.match(readme, /new chat[\s\S]{0,80}\/sai-3-implement|\/sai-3-implement[\s\S]{0,80}new chat/i);
   assert.match(readme, /Proposal Complexity.*descriptive/i);
   assert.match(readme, /wrapper[\s\S]{0,60}(?:model|variant)|command[\s\S]{0,60}(?:model|variant)/i);
 
   assert.match(agents, /sai\/commands\/design\/steps\//);
-  assert.match(agents, /sai-2-design-worker\.md/);
-  assert.match(agents, /agents\/claude\/sai-2-design-worker\.md/);
-   assert.match(agents, /sai\/orchestration\/workers\/bindings\//);
+  assert.match(agents, /sai-2-design-worker/);
+  assert.match(agents, /sai\/orchestration\/workers\/bindings\//);
   assert.match(agents, /ends? at design completion|separate[\s\S]{0,40}\/sai-3-implement/i);
-
-  assert.doesNotMatch(claude, /\.sai-2-design-worker\.owner\.json/,
-    'INSTALL.claude.md must not reference an owner sidecar');
-  assert.match(claude, /low[- ]effort/);
-  assert.match(claude, /high[- ]effort/);
-  assert.match(claude, /tunable-seed/i);
-  assert.match(claude, /preserv(?:e|ing)[\s\S]{0,80}(?:model|effort)/i,
-    'INSTALL.claude.md should describe preserving tuned model/effort values');
-  assert.match(claude, /restart.*re-?install|re-?install.*restart/i);
-
-    assert.match(opencode, /sai-2-design-worker/);
-    assert.match(opencode, /sai-3-implementation-worker/);
-   assert.match(opencode, /existing.*agent.*(?:preserv|user-owned)|preserv.*existing.*agent/i);
-   assert.match(opencode, /absent.*(?:default|entry)|default.*absent/i);
-   assert.match(opencode, /configured.*(?:model|variant|mode|permissions).*runtime|runtime.*(?:model|variant|mode|permissions)/i);
-   assert.match(opencode, /no separate coordinator profile|do not reintroduce.*coordinator/i);
-   assert.match(opencode, /Claude worker files.*collision protection|collision protection.*Claude/i);
-    assert.match(opencode, /sai-2-design-worker/);
-  assert.match(opencode, /variant.*high/);
-  assert.match(opencode, /permission/);
-   assert.doesNotMatch(opencode, /agent: sai-coordinator/);
-  assert.match(opencode, /subtask: false/);
-  assert.match(opencode, /variant: high/);
-   assert.match(opencode, /configuration exclusion|excludes?.*opencode\.json|opencode\.json.*excludes?/i);
-  assert.match(opencode, /restart opencode/i);
-  assert.doesNotMatch(opencode, /"agent"\s*:\s*\{/,
-    'INSTALL.opencode.md bash and PowerShell blocks must not show an agent block snippet');
-  assert.match(opencode, /~\/\.config\/opencode\/agents\/(?:explore|executor|budget)\.md/,
-    'INSTALL.opencode.md should document the generic agent files as the model-resolution sources');
+  assert.match(agents, /tunable-seed/i);
+  assert.match(agents, /no separate coordinator profile|do not reintroduce.*coordinator/i);
   assert.doesNotMatch(agents, /model resolved via opencode\.jsonc|resolved via agent\.\w+\.model/i,
     'AGENTS.md model-resolution statements should name the agent files, not opencode.jsonc');
-
 });
 
 test('Step 5 documentation records manifest projections and routed-source boundaries', () => {
   const readme = artifact('README.md');
   const agents = artifact('AGENTS.md');
-  const claude = artifact('INSTALL.claude.md');
-  const opencode = artifact('INSTALL.opencode.md');
 
   for (const text of [readme, agents]) {
     assert.match(text, /sai\/install-manifest\.json/);
@@ -816,25 +781,15 @@ test('Step 5 documentation records manifest projections and routed-source bounda
     assert.match(text, /uninstall/);
     assert.match(text, /sai\/policies/);
   }
-  for (const text of [claude, opencode]) {
-    assert.match(text, /sai\/install-manifest\.json/);
-    assert.match(text, /doctor/);
-    assert.match(text, /uninstall/);
-    assert.match(text, /sai\/policies/);
-    assert.match(text, /sai\/orchestration/);
-  }
   assert.match(agents, /sai\/orchestration\//);
   assert.match(readme, /shared Orchestration Core/i);
-  assert.match(claude, /Claude routed worker bindings/i);
-  assert.match(opencode, /opencode routed worker bindings/i);
+  assert.match(agents, /routed worker bindings/i);
 });
 
 test('Step 3 documentation names only routed Claude Code and opencode support', () => {
   const documentation = [
     'README.md',
     'AGENTS.md',
-    'INSTALL.claude.md',
-    'INSTALL.opencode.md',
   ].map(artifact).join('\n');
 
   assert.match(documentation, /Claude Code/);

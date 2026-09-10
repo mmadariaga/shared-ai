@@ -19,7 +19,7 @@ The repository SHALL NOT contain any `ai-*.md` or `ai-*.prompt.md` command files
 - **THEN** no file matching `ai-*` is present
 
 ### Requirement: Documentation references /sai-* prefix
-All documentation files (README.md, AGENTS.md, INSTALL.claude.md) SHALL reference commands using the `/sai-*` prefix.
+All documentation files (README.md, AGENTS.md) SHALL reference commands using the `/sai-*` prefix.
 
 #### Scenario: README command references
 - **WHEN** a user reads the README

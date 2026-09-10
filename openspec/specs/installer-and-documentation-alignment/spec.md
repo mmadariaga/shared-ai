@@ -54,17 +54,12 @@ The repository tests covering routed design and implementation coordination, ope
 
 ### Requirement: Documentation describes the current architecture
 
-`README.md`, `INSTALL.opencode.md`, and `AGENTS.md` SHALL describe the opencode coordinator runtime as wrapper-declared rather than profile-based, SHALL list only the managed worker agents, SHALL state the invoking-primary-agent prerequisite (native `question` plus `task` dispatch to the numbered workers) and its remediation, SHALL tell users they may delete a leftover `sai-coordinator` entry, and SHALL describe `/sai-2-design` as ending at design completion with `/sai-3-implement` requiring a separate invocation. The ADRs that recorded the superseded decisions SHALL be marked superseded rather than deleted, and the ADR index SHALL be updated accordingly.
+`README.md` and `AGENTS.md` SHALL describe the opencode coordinator runtime as wrapper-declared rather than profile-based, SHALL list only the managed worker agents, SHALL state the invoking-primary-agent prerequisite (native `question` plus `task` dispatch to the numbered workers) and its remediation, SHALL tell users they may delete a leftover `sai-coordinator` entry, and SHALL describe `/sai-2-design` as ending at design completion with `/sai-3-implement` requiring a separate invocation. The ADRs that recorded the superseded decisions SHALL be marked superseded rather than deleted, and the ADR index SHALL be updated accordingly.
 
 #### Scenario: model routing table is corrected
 
 - **WHEN** the README model-routing table row for design (2) is read
 - **THEN** it SHALL describe the opencode coordinator runtime as declared by the wrapper and SHALL NOT name a shared coordinator agent profile
-
-#### Scenario: opencode install doc is corrected
-
-- **WHEN** `INSTALL.opencode.md` is read
-- **THEN** its managed-agent narrative and its inline configuration samples SHALL contain no coordinator agent entry
 
 #### Scenario: superseded ADRs are marked, not removed
 

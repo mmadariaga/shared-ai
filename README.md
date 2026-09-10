@@ -83,11 +83,14 @@ The supported harness roster is **Claude Code** and **opencode**. Both use route
 ## Index
 
 - [Commands](#sequential-pipeline-numbered)
+- [On-demand commands](#on-demand-commands-unnumbered)
+- [Closing an explore session](#closing-an-explore-session)
 - [Skills](#skills)
 - [Cost-Effective Strategies](#cost-effective-strategies)
 - [Project highlights](#project-highlights)
 - [Installation](#global-installation-multi-project)
 - [Model recommendation](#recommended-models-by-command-and-provider)
+- [Diagnosing an install](#diagnosing-an-install--doctor)
 
 ## Sequential pipeline (numbered)
 
@@ -95,67 +98,60 @@ All artifact paths below resolve under `openspec/changes/{change-name}/` (referr
 
 | Command | Input | Output | Purpose |
 |---------|-------|--------|---------|
-| `/sai-1-spec` | feature description | `{c}/proposal.md`, `specs/**` | Describe what you want to build. Claude Code and opencode route through the shared spec coordinator and worker. Both paths consume the canonical `sai/policies/spec-phase-contract.md`, create only proposal/spec artifacts plus permitted glossary updates, and preserve the summary, feedback, and stop behavior. The AI writes a proposal and acceptance criteria for you to review and approve — nothing else happens until you say yes. Same-harness parity evidence is required. |
-| `/sai-2-design` | {change-name} | `{c}/design.md`, `tasks.md`, `interfaces.md` | Turns approved specs into a technical plan: architecture decisions, trade-offs, a concrete task list, and a per-step interface contract (`interfaces.md`) listing the new/modified public signatures and exact test assertions for each step. Claude Code routes through a low-effort Opus 4.8 coordinator and high-effort Opus 4.8 design worker; opencode uses the wrapper-declared GLM 5.2 model ID `opencode-go/glm-5.2`, `variant: high`, and worker `sai-2-design-worker`. The fixed notice is acknowledged with `continue_after_notice`, and `/sai-2-design` ends at design completion. Run `/sai-3-implement {name}` separately in a new chat. Proposal Complexity remains descriptive, not a routing gate. Supports `--fast-track` to auto-approve specs. |
-| `/sai-3-implement` | {change-name} | `{c}/implementation.md` | Claude Code uses a low-effort Opus 4.8 coordinator and a medium-effort Opus 4.8 background planning worker; opencode uses the wrapper-declared GLM 5.2 model and the `sai-3-implementation-worker` planning worker. Both paths preserve `openspec/changes/{change-name}/implementation.md` and the MANDATORY STOP. The worker writes the full coding playbook, while `/sai-4-apply` follows it and copies each step's code verbatim, adjusting only for compilation errors or test failures. |
-| `/sai-4-apply` | {change-name} | code | Routed command: Claude Code and opencode run the coordinator in the main session (a **coordinator** that never edits code itself) and dispatch the **RED** and **GREEN** managed workers on the budget tier — one Step-execution worker per dispatch, with a testable step split across two dispatches: the RED worker authors the test (from the assertions in `interfaces.md`, blind to the implementation body) and confirms it fails by assertion, then the GREEN worker copies the playbook code into the project and makes the test pass **without permission to modify the tests**, adjusting code only for compilation errors or test failures. The coordinator re-verifies each result, prints a pre-commit files-modified report cross-checked against `tasks.md`, and asks for your approval before each commit. Supports `--fast-track` to auto-commit and defer human checks to end-of-run. |
-| `/sai-build` | {change-name} | code | User-invoked routed composition that runs `/sai-3-implement` and then `/sai-4-apply` in exactly that order. It resolves the change once, has no intermediate approval gate, and reuses the existing apply adapter rather than re-declaring RED/GREEN or adding a build worker. The chained apply segment is always fast-tracked; an explicit `--fast-track` token is accepted only as a no-op. Claude Code and opencode preserve the same phase order, artifacts, worker ownership, and terminal behavior. |
+| `/sai-1-spec` | feature description | `{c}/proposal.md`, `specs/**` | Describe what you want to build. The AI writes a proposal and acceptance criteria for you to review and approve — nothing else happens until you say yes. Creates only proposal/spec artifacts plus permitted glossary updates. |
+| `/sai-2-design` | {change-name} | `{c}/design.md`, `tasks.md`, `interfaces.md` | Turns approved specs into a technical plan: architecture decisions, trade-offs, a concrete task list, and a per-step interface contract (`interfaces.md`) listing the new/modified public signatures and exact test assertions for each step. Ends at design completion — run `/sai-3-implement {name}` in a new chat. Supports `--fast-track` to auto-approve specs. |
+| `/sai-3-implement` | {change-name} | `{c}/implementation.md` | Writes the full coding playbook — the "on-paper" implementation — to `openspec/changes/{change-name}/implementation.md`, then stops. `/sai-4-apply` follows it verbatim. |
+| `/sai-4-apply` | {change-name} | code | Real implementation. Each testable step is split across two blind workers: **RED** authors the test from the `interfaces.md` assertions and confirms it fails by assertion, then **GREEN** copies the playbook code in and makes it pass — with no permission to modify the tests. Asks before each commit. Supports `--fast-track` to auto-commit and defer human checks to end-of-run. |
+| `/sai-build` | {change-name} | code | Runs `/sai-3-implement` then `/sai-4-apply` in one invocation, resolving the change once with no intermediate approval gate. The chained apply segment is always fast-tracked; an explicit `--fast-track` token is a no-op. |
 | `/sai-5-review` | {change-name} + diff | `{c}/review.md` | Reviews the finished code across 11 dimensions (correctness, maintainability, tests, etc.). Also tells you which specialized audits to run next based on what changed. |
-| `/sai-review` | {change-name} | `{c}/review.md`, `{c}/security.md`, `{c}/performance.md`, `{c}/accessibility.md` | User-invoked routed composition that runs `/sai-5-review` and then conditionally dispatches the recommended audits (`/sai-6-security`, `/sai-7-performance`, `/sai-8-accessibility`) in one invocation. It resolves the change once, parses the triage sections from the regenerated `review.md`, and concurrently dispatches eligible audit workers. Claude Code and opencode preserve the same phase order, artifacts, worker ownership, and terminal behavior. |
+| `/sai-review` | {change-name} | `{c}/review.md`, `{c}/security.md`, `{c}/performance.md`, `{c}/accessibility.md` | Runs `/sai-5-review`, parses its triage sections, and concurrently dispatches whichever audits it recommended. One invocation, one change resolution. |
 | `/sai-6-security` | {change-name} + diff | `{c}/security.md` | Finds security vulnerabilities in the diff — points to exact file and line, explains the risk, and maps findings to known standards (OWASP, CVE). |
 | `/sai-7-performance` | {change-name} + diff | `{c}/performance.md` | Flags real performance bottlenecks (slow queries, heavy renders, unbounded loops). Evidence-based — no guesswork. |
 | `/sai-8-accessibility` | {change-name} + diff | `{c}/accessibility.md` | Checks UI code for accessibility issues against WCAG 2.2 AA. Can also run browser-based tools for deeper analysis. |
 
-### Implementation coordinator and worker
+### How commands are routed
 
-The routed Claude Code and opencode paths pass a two-field `InvocationEnvelope`: `command_name` as card-selection metadata and `arguments_value` as the complete opaque request. The coordinator and worker have independent model roles: the coordinator owns dispatch and lifecycle aggregation, while the worker receives that request, owns technical I/O and planning writes, and returns metadata-only lifecycle payloads (`status`, `summary`, and `changed_files`, plus the input fields required for `needs_input`). Payloads never contain `implementation.md` contents.
+Every numbered phase runs the same shape: a **coordinator** in your main session and a **worker** dispatched as a subagent. The coordinator owns dispatch, gates, and any git mutation; the worker owns the technical work and returns metadata only — artifact contents never travel in the payload. The two have independent model roles, so a phase can think expensively and execute cheaply.
 
-For `needs_input`, the active harness binding forwards the selected value through `continuation_reference` to the same worker. If same-worker continuation fails, the binding starts one fresh worker with the original envelope and a reconstruction instruction so the worker can rebuild from current durable artifacts. Every routed path preserves the durable artifact at `openspec/changes/{change-name}/implementation.md` and the explicit MANDATORY STOP completion boundary.
+Both harnesses preserve the same durable artifacts, gate wordings, and stop texts. Claude Code and opencode differ only in dispatch mechanics and model IDs.
 
-Claude Code also manages the worker agent under the tunable-seed lifecycle: the user's `model` and `effort` tunables are preserved on every install while the managed body and non-tunable frontmatter are overwritten with a console notice when they diverge. Opencode merges the namespaced worker entries into existing configuration without replacing incompatible or unrelated configuration.
+- `/sai-2-design` — Claude Code uses a low-effort coordinator with a high-effort design worker (`sai-2-design-worker`); opencode declares `opencode-go/deepseek-v4-flash` with `variant: max` on the wrapper. The fixed notice is acknowledged with `continue_after_notice`. Design ends at design completion — run `/sai-3-implement {name}` in a new chat. Proposal Complexity stays descriptive, never a routing gate.
+- `/sai-3-implement` — the worker writes the full coding playbook to `openspec/changes/{change-name}/implementation.md`; `/sai-4-apply` follows it and copies each step's code verbatim, adjusting only for compilation errors or test failures.
+- `/sai-4-apply` — the coordinator never edits code. It dispatches the RED and GREEN workers on the budget tier, re-verifies each result, prints a pre-commit files-modified report cross-checked against `tasks.md`, and asks before each commit.
+- `/sai-commit`, `/sai-merge` — same shape without any openspec dependency. The worker drafts, the coordinator alone runs git.
 
-### Apply coordinator and worker
+> Full routing internals — envelopes, bindings, worker matrix, per-phase ownership boundaries — live in [AGENTS.md](AGENTS.md), not here.
 
-Claude Code and opencode route `/sai-4-apply` through the routed apply card set — `sai/commands/apply/coordinator.md`, `runner.md`, `invocation.md`, and the RED/GREEN worker contracts — and dispatch the `sai-4-red-worker` / `sai-4-green-worker` managed workers on the budget tier. The coordinator stays the executing main-session driver: it performs change resolution, the run-start Step Projection, coordinator verification, human gates, appendices, and commits itself, while the RED worker authors the tests (blind to the GREEN implementation body in the split flow, and authoring green tests under the green-exception) and the GREEN worker implements with an absolute test-file prohibition. Both harnesses preserve the same `openspec/changes/{change-name}/implementation.md` artifact contract and the MANDATORY STOP completion boundary.
-
-### Build coordinator and worker
-
-`/sai-build` is a user-invoked routed composition command, not an `opsx:*` skill. Its internal routed identity is `meta-build` (`command_name: meta-build`). Claude Code and opencode use the routed build cards `sai/commands/meta-build/command-bootstrap.md` and `sai/commands/meta-build/coordinator.md`. The build coordinator is an ordinary composition supervisor that runs exactly two adapters in order: the existing implementation coordinator, then the existing apply adapter. It resolves the change once, does not re-enter either harness wrapper, and transitions immediately without an intermediate approval gate. Build does not declare a build-specific worker or re-declare RED/GREEN; after activation, the apply adapter remains the sole owner of `sai-4-red-worker` / `sai-4-green-worker` selection. The coordinator always injects apply fast-track, owns the single activation banner, and treats an explicit `/sai-build --fast-track` token as a no-op. Claude Code uses `opus` with low effort; opencode uses `opencode-go/deepseek-v4-flash` with `variant: max`. Both harnesses preserve the same phase order, changed-files union, durable artifacts, worker ownership, and terminal navigation.
-
-### Spec coordinator and worker
-
-Claude Code and opencode route `/sai-1-spec` through the shared spec coordinator and worker, consuming the canonical `sai/policies/spec-phase-contract.md` and its mirrored worker bindings. Claude Code preserves the `opus`/medium wrapper and uses a medium-effort Opus 4.8 worker; opencode uses `opencode-go/minimax-m3` and `sai-1-spec-proposal-worker`. The shared path creates only `proposal.md` and `specs/**`, plus permitted glossary updates, and preserves the summary, feedback, and MANDATORY STOP behavior. Same-harness parity evidence is required across the supported harnesses.
-
-### Design coordinator and worker
-
-The routed `/sai-2-design` paths use a low-effort Opus 4.8 coordinator and high-effort Opus 4.8 design worker in Claude Code. Opencode uses the wrapper-declared `opencode-go/glm-5.2` with `variant: high` and the numbered `sai-2-design-worker`; `/sai-2-design` ends at design completion, and `/sai-3-implement {name}` is a separate command in a new chat. The fixed notice is acknowledged with `continue_after_notice`. The opencode routed phases run under your active primary agent; it must permit native question and task dispatch to the numbered SAI workers. The stock build agent satisfies this. If a restrictive primary agent is active, switch to a permissive one (e.g. build) — do not reintroduce a managed coordinator profile. Both harnesses preserve `openspec/changes/{change-name}/design.md`, `tasks.md`, and `interfaces.md`. Proposal Complexity remains descriptive rather than a routing gate.
-
-### Commit coordinator and worker
-
-`/sai-commit` uses the same coordinator/worker shape without an openspec dependency: the `sai-commit-worker` managed worker authors the proposed message from your staged changes (faithfulness to `git diff --cached`, repo-style detection, pre-commit file report) and returns it as payload content, while the authorization ask travels as a structured question the coordinator presents through the native picker. On approval, the coordinator alone executes the `git commit` (`--amend` supported); the worker never runs `git add` or `git commit`. Both harnesses preserve the same payloads, stop texts, and git surface.
-
-### Archive coordinator and worker
-
-`/sai-archive` uses the same coordinator/worker shape with full openspec prerequisite checks intact: the `sai-archive-worker` managed worker performs the read-only pre-flight (artifact classification, checkbox scan, delta-sync diffing against main specs, target-name collision check) and returns the unchecked-items gate as a structured question the coordinator presents through the native picker. On the ordinary route, the coordinator alone executes every mutation. The Direct Build (unattended) route instead validates and authorizes a closed execution order, then the same archive worker owns the exact sync, archive move, owned staging, and pre-authorized local commit; it never acts before the explicit execute continuation. Both harnesses preserve the same payloads, gate wordings, stop texts, and fast-track auto-proceed semantics.
-
-### Backfill coordinator and worker
-
-`/sai-backfill` uses the same coordinator/worker shape for retroactive documentation: the `sai-backfill-worker` managed worker runs the technical flow (diff-source selection, diff computation, optional intent capture with in-memory reconciliation, the fixed interview, delegated `budget-explorer` conflict scanning) and interviews you through structured questions the coordinator presents - closed choices through the native picker, open-ended questions as plain conversation text. Draft artifacts travel as payload text; the coordinator validates them against the sai-workflow schema. On the ordinary route it alone writes the artifacts; the Direct Build (unattended) route sends the validated draft order back through an explicit execute continuation and the same worker owns only those exact writes. Both harnesses preserve the interview question wordings, gate semantics, schema-validation rules, and budget-explorer output contracts.
 
 ## On-demand commands (unnumbered)
 
 | Command | Purpose |
 |---------|---------|
-| `/sai-explore` | Open-ended thinking session before committing to anything — good for fuzzy requirements, unclear trade-offs, or when you just want to think out loud with the AI. When a feature is too big for one reviewable change, it slices the idea into a Walking Skeleton plus a dependency-ordered backlog, each ready to enter the pipeline as its own change; when it detects friction at the integration point (mixed responsibilities, no clean extension seam), it prepends a behavior-preserving SOLID refactor as *slice 0* so the feature attaches by extension. After crystallizing, it offers a review loop over your active changes — pick a change, review its `sai-1` or `sai-2` artifacts. Supports `--fast-track` to skip language gate. |
+| `/sai-explore` | Open-ended thinking session before committing to anything — good for fuzzy requirements, unclear trade-offs, or when you just want to think out loud with the AI. When a feature is too big for one reviewable change, it slices the idea into a Walking Skeleton plus a dependency-ordered backlog, each ready to enter the pipeline as its own change; when it detects friction at the integration point (mixed responsibilities, no clean extension seam), it prepends a behavior-preserving SOLID refactor as *slice 0* so the feature attaches by extension. When it hits genuine technical uncertainty it can first run a throwaway POC to answer it. On close it offers three routes — see [Closing an explore session](#closing-an-explore-session). In Manual mode it also offers a review loop over the changes tracked in the session. Supports `--fast-track` to skip the language gates. |
 | `/sai-build` | User-invoked shortcut for a complete implementation run — chains `/sai-3-implement` into `/sai-4-apply` with one change resolution and no intermediate approval. Apply fast-track is always injected; an explicit `--fast-track` token is a no-op. |
 | `/sai-review` | User-invoked shortcut for review plus conditional audit fan-out — runs `/sai-5-review` and then dispatches the recommended audits (`/sai-6-security`, `/sai-7-performance`, `/sai-8-accessibility`) in one invocation based on the triage parse. An explicit `--fast-track` token is a no-op. |
 | `/sai-commit` | Reads your staged changes and detects the repo's commit style from the last 20 commits (Conventional Commits shape, type/scope vocabulary, body conventions). Adopts the detected vocabulary when it fits, falls back to hard-coded rules otherwise. Shows a pre-commit file report and runs `git commit` only after you explicitly approve. |
 | `/sai-merge` | Merges a local branch into the current branch with conflict-triggered language selection and an iterative, global resolution strategy: after conflicts are detected it asks for the working language, presents worker analysis as text, routes closed decisions through the native picker, and lets you request context or correct the complete plan before any write. It preserves complete alternatives, safe-synthesis rules, new-conflict re-entry, and an incremental ADR/DDR collision pass scoped to source-branch records introduced by the merge, verification loop (up to 3 rounds), coordinator-only mutations, and explicit final-commit authorization. Clean merges never ask for a language or strategy; `--fast-track` bypasses only the scope gate. |
 | `/sai-pr` | Drafts a complete PR description using everything produced during the change (proposal, design, review findings, etc.). Opens the PR on GitHub after you approve. |
 | `/sai-archive` | Routed command: the coordinator runs in the main session and dispatches the `sai-archive-worker` managed worker for the read-only pre-flight. The ordinary route keeps mutation in the coordinator; the Direct Build (unattended) route gives the existing worker a validated, explicitly authorized sync/move/stage/commit order. Moves a completed change to the archive, keeping your active changes folder clean. Supports `--fast-track` to auto-proceed the archive soft gates. |
-| `/sai-status` | Read-only progress panel for one OpenSpec change — shows which of the 10 sai-workflow artifacts exist, the specs approval state, implementation progress, the archive location if archived, and a `Next:` hint suggesting the appropriate `/sai-N` command. Never writes anything. |
+| `/sai-status` | Read-only progress panel — shows which of the eleven sai-workflow artifacts exist, the specs approval state, implementation progress, the archive location if archived, and a `Next:` hint suggesting the appropriate `/sai-N` command. Takes a change name for a single-change panel, or none for a table over every active change. Never writes anything. |
+| `/sai-worktree` | Interactive git worktree manager — inventory, create, and delete linked worktrees with a Create/Delete/Exit selector loop. Names follow one convention: the `<main-dir>.worktree-<n>` sibling directory maps to the `worktree-<n>` branch, and `n` is the first free slot. Creating one also runs a best-effort `codegraph init` in it. No OpenSpec prerequisites. |
 | `/sai-retire-docs` | Read-only, index-driven analysis of active ADRs, DDRs, and related specifications. Correlates bounded evidence, classifies candidates, and asks for explicit per-candidate confirmation before any archival move. |
 | /sai-backfill | Routed command: the coordinator runs in the main session and dispatches the sai-backfill-worker managed worker for inspection, interview, conflict scan, and draft composition, then validates the drafts against the sai-workflow schema. The ordinary route writes them in the coordinator; Direct Build (unattended) sends a validated, explicitly authorized draft order to the same worker. Made a quick fix directly in code without going through the pipeline? This reconstructs the missing documentation after the fact - interviewing you about intent and writing only what can be reliably derived from the diff. |
+
+## Closing an explore session
+
+When `/sai-explore` finishes crystallizing an idea it presents three routes. Nothing is dispatched until you pick one — this selector is the gate that authorizes delegated writes, and `--fast-track` cannot skip it.
+
+| Option | What happens |
+|--------|--------------|
+| **Plan - Unattended** | Runs `sai-1` and `sai-2` back to back and stops for your pre-implementation review. Bounded auto-answering handles routine worker questions; anything ambiguous escalates to you, and every auto-answer is announced inline. |
+| **Direct Build - Unattended** | Code first, specs after: implements the change directly, runs a bounded functional fix loop, then reconstructs `proposal.md` and the capability specs from the diff, validates them against the schema, and archives with one pre-authorized local commit. Never pushes. Ideal for fixes and simple changes. |
+| **Manual** | Dispatches nothing. Hands you the `Ready to Propose` block to paste into a new chat with `/sai-1-spec`. Full control. |
+
+If the idea was sliced, the selector reappears after each slice completes — a per-slice authorization gate rather than one blanket approval.
+
+When explore detects genuine technical uncertainty (an unproven third-party integration with insufficient docs), it first offers a throwaway **POC**: a Direct Build run that implements and checks viability only, touching nothing under `openspec/` and running no mutating git. You get a viable / not-viable answer, then decide.
 
 ## Triage in `/sai-5-review`
 
@@ -255,6 +251,14 @@ Human checks (browser/UI behavior, visual confirmation) are deferred to the inte
 ### Mutation Analysis
 A test that runs your code without checking the result looks fine on paper but catches nothing in practice. Pass 11 deliberately breaks your code in small ways and verifies your tests actually notice — if a test still passes after the code is broken, that test isn't really testing anything. It runs automatically during review, against only the code that changed, and uses a declared deterministic mutation tool (Stryker, PIT, mutmut, …). For this repository, run the checked-in Stryker workflow with `npm run test:mutation`; use `npm run test:mutation:smoke` for the isolated focused engine check. Review passes its exact diff-scoped paths through the engine. If no supported tool is available, review reports that fact and continues without mutation findings; it never simulates mutation results through inference.
 
+### Deterministic tools, not re-derived prose
+
+Decisions that must be identical every run were moved out of prompt prose into small Node tools under `sai/tools/`, projected into both harnesses. The tool decides; the command prose asks the questions and owns the wording. That covers the OpenSpec prerequisite preflight, change-name resolution, the `/sai-status` panel and table, the `/sai-worktree` state machine, `/sai-commit` and `/sai-pr` git mechanics, artifact-format linting, findings-block validation, delta-header checks, and the no-commit guard below. Each exits `0` on success, `1` on refusal, `2` on usage error, and speaks JSON.
+
+### No-commit guard
+
+Worker instructions say "never run a mutating git command", but prose is not enforcement. The guard turns the one invariant true in every project — HEAD must not move across a worker dispatch — into a filesystem check: a snapshot before each dispatch, a verify after each result. If HEAD moved without authorization the coordinator captures the evidence, resets back to the recorded base, prints one incident line, and continues. Exactly one flow carries permission for HEAD to move: the archive worker's pre-authorized Direct Build commit.
+
 ### ADR Proposals
 Proposes creating an ADR/DDR if all 3 criteria below are met:
 1. **Hard to reverse** — the cost of changing later is meaningful.
@@ -268,16 +272,18 @@ Every command starts with zero inherited context — the boot adapter opens each
 Domain terms are captured in a living `GLOSSARY.md` at the project root. Spec reads and appends new terms inline (no batching), Plan uses canonical terms for all new identifiers, and Review validates language consistency in the diff. This enforces a DDD-style ubiquitous language across the entire pipeline —every agent and every artifact speaks the same vocabulary.
 
 ### Fast-track mode (`--fast-track`)
-For low-risk or high-trust runs, four commands accept a `--fast-track` argument that auto-advances their approval gates instead of stopping to ask. A `> FAST-TRACK MODE ACTIVE` banner prints at the start of the run so the relaxed gating is never silent. `/sai-build` is not a fifth fast-track mode: it strips an explicit `--fast-track` token as a no-op and always injects fast-track for its chained apply segment. `/sai-review` is not a sixth fast-track mode: it strips an explicit `--fast-track` token as a no-op; it owns no questions of its own.
+For low-risk or high-trust runs, six commands accept a `--fast-track` argument that auto-advances their approval gates instead of stopping to ask. A `> FAST-TRACK MODE ACTIVE` banner prints at the start of the run so the relaxed gating is never silent. `/sai-build` and `/sai-review` are not members: each strips an explicit `--fast-track` token as a no-op — build always injects fast-track for its chained apply segment, and review owns no questions of its own.
 
 | Command | What `--fast-track` skips |
 |---------|---------------------------|
 | `/sai-explore` | Both language gates take their English path without asking. |
 | `/sai-2-design` | Auto-approves the specs gate and records the approval in `.openspec.yaml`. |
-| `/sai-4-apply` | Pre-authorizes every commit for the run and defers all human-verification checks into one combined list presented after the final sweep. |
+| `/sai-4-apply` | Pre-authorizes every commit for the run, defers all human-verification checks into one combined list presented after the final sweep, and auto-stays on the current branch. |
 | `/sai-archive` | Auto-proceeds the unchecked-items confirmation. |
+| `/sai-backfill` | Skips the generated reconciliation questions, auto-proceeds the spec-conflict gate after reporting it verbatim, and accepts a crystallized `**Change name**` without confirming. |
+| `/sai-merge` | Applies the full resolution scope without the scope gate. Clean merges never ask anything either way. |
 
-Everything else stays intact.
+Everything else stays intact. Fast-track never suppresses a safe-operations confirmation, never skips an input question (a missing diff-source token still asks), and never bypasses `/sai-explore`'s close selector or its POC go/no-go — the gates that authorize delegated writes are deliberately outside its reach.
 
 ## Upgrade Notice
 
@@ -289,7 +295,7 @@ Commands are designed as **user globals**, not per project. A single copy in the
 
 ### Shared Orchestration Core
 
-Claude Code and opencode use the shared Orchestration Core under `sai/orchestration/`: common coordinator and worker lifecycle contracts plus mirrored harness bindings for spec, design, and implement. Their grouped phase cards live under `sai/commands/{spec,design,implement}/`, the build composition cards live under `sai/commands/meta-build/`, their reusable policies live under `sai/policies/`, retired compatibility assets live under `sai/compat/`, and their bindings are installed as separate projections. Both harnesses preserve the same durable artifacts and command contracts.
+Claude Code and opencode use the shared Orchestration Core under `sai/orchestration/`: common coordinator and worker lifecycle contracts plus mirrored harness bindings for spec, design, and implement. Their grouped phase cards live under `sai/commands/{spec,design,implement}/`, the build composition cards live under `sai/commands/meta-build/`, their reusable policies live under `sai/policies/`, their deterministic Node tools live under `sai/tools/`, and their bindings are installed as separate projections. Both harnesses preserve the same durable artifacts and command contracts.
 
 The installer expands `sai/install-manifest.json` deterministically. Install, `doctor`, and uninstall consume that same manifest, so the allowlisted files, destination projections, content-drift checks, and safe removal behavior stay aligned across Claude Code and opencode. The canonical project-agnostic ADR and DDR index templates are `sai/commands/implement/adr-index.template.md` and `sai/commands/implement/ddr-index.template.md`; the recursive `sai-commands` projection installs command-local instructions and co-located `.template.md` files for both supported harnesses, and it also covers the shared overview-generation instruction at `sai/commands/design/change-overview.md` and both index templates, each owned by the single command that consumes it. The manifest also owns retirement records for removed managed destinations, including `retired-adr-index-template`: historical copies are deleted only on a registered SHA-256 hash match, while modified or unrecognized copies remain untouched and are reported for manual cleanup. Retired records are cleanup evidence, not active dependencies. The `sai-agents-index` root-class projection additionally writes `SAI_AGENTS.md` — a project-agnostic orientation index over the four SAI documentation surfaces — to each harness root, inheriting doctor missing-file detection, drift detection, and uninstall cleanup.
 
@@ -309,13 +315,6 @@ npx github:mmadariaga/shared-ai setup /path/to/your/project
 
 Installs the openspec CLI if missing (offers on a TTY; prints the command in CI), runs `openspec init` if needed, sets `schema: sai-workflow` in `openspec/config.yaml`, and copies the schema templates into the project. When the CodeGraph CLI is available, it also builds the project index with `codegraph init` (skipped cleanly if CodeGraph isn't installed — it never blocks setup).
 
-### Manual installation (alternative)
-
-For step-by-step manual installation without npx:
-
-- Opencode: see [INSTALL.opencode.md](INSTALL.opencode.md)
-- Claude Code: see [INSTALL.claude.md](INSTALL.claude.md)
-
 ## Per project installation / override
 
 Per-project commands are still possible: a file placed in a supported harness's project-local command folder at the repo root overrides the user-global wrapper of the same name. Globals act as a base; project-local files override them by filename.
@@ -324,14 +323,11 @@ Per-project commands are still possible: a file placed in a supported harness's 
 |---------|------------------------------|------------------------|
 | opencode | `.opencode/commands/` | ✅ Yes |
 | Claude Code | `.claude/commands/` | ✅ Yes |
-| Claude Code | `.claude/commands/` | ✅ Yes |
 
 Two override patterns are supported:
 
 - **Swap a wrapper's model for one project** — copy the canonical wrapper (e.g. `sai-3-implement`) into your harness's folder above and edit its `model` field. The project-local copy takes precedence over the global.
 - **Create a custom variant command** — copy the canonical wrapper into the folder under a new name (e.g. `sai-3-implement-opus`, `sai-3-implement-gpt`) and set its `model` field. This is the supported replacement for the removed upstream `-low`/`-high` implement variants.
-
-See each harness's `INSTALL.<harness>.md` for a concrete, harness-specific example.
 
 ## Uninstall
 
@@ -360,9 +356,9 @@ The `uninstall` command reverses the installation process:
 
 ## Post Install
 
-If you use opencode, modify the models for each command to match your preferred providers and personal taste.
+`npx github:mmadariaga/shared-ai setup` ends with an interactive **Customize models** menu. It walks provider → model → variant per target and writes project-local overrides, so you can retune a phase without editing any wrapper by hand. Pick `Exit` to keep the shipped defaults.
 
-See [INSTALL.opencode.md](INSTALL.opencode.md#post-install) for post-install steps. Opencode declares coordinator model/variant on the `sai-2-design` and `sai-3-implement` wrappers, as Claude Code already did, with no named coordinator shipped.
+To change a model by hand instead, copy the wrapper into your harness's project-local command folder and edit its `model` field — project-local wins over user-global by filename. Opencode declares model and variant on the wrapper itself; no named coordinator agent is shipped for either harness.
 
 ### Recommended models by command and provider
 
@@ -371,8 +367,8 @@ We set these defaults to models that have worked best for us, you may find bette
 | Command | Opencode | Variant | Claude Code |
 |-------|----------|---------|-------------|
 | explore | `opencode-go/deepseek-v4-flash` | `max` | `sonnet` - medium |
-| spec (1) | `opencode-go/deepseek-v4-flash` | `max` | `opus` - medium |
-| design (2) | wrapper-declared `opencode-go/deepseek-v4-flash`; worker `sai-2-design-worker` | `max` | coordinator `claude-opus-4-8` - low; worker `opus` - high |
+| spec (1) | `opencode-go/deepseek-v4-flash`; worker `sai-1-spec-proposal-worker` | `max` | coordinator `opus` - medium; worker `opus` - medium |
+| design (2) | `opencode-go/deepseek-v4-flash`; worker `sai-2-design-worker` | `max` | coordinator `opus` - medium; worker `opus` - high |
 | implement (3) | `opencode-go/deepseek-v4-flash` | `max` | coordinator `opus` - low; worker `opus` - medium |
 | apply (4) | `opencode-go/deepseek-v4-flash` | `max` | `sonnet` - low |
 | build | `opencode-go/deepseek-v4-flash` | `max` | `opus` - low |

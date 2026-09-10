@@ -128,7 +128,7 @@ test('Step 2 routed coordinator failed needs_input continuation allows one repla
 });
 
 test('Step 3 documentation does not instruct ownership or copying of retired proxy skills', () => {
-  for (const relativePath of ['README.md', 'AGENTS.md', 'INSTALL.claude.md', 'INSTALL.opencode.md', 'INSTALL.copilot.md']) {
+  for (const relativePath of ['README.md', 'AGENTS.md']) {
     const fullPath = path.join(repoRoot, relativePath);
     if (!fs.existsSync(fullPath)) continue;
     const documentation = fs.readFileSync(fullPath, 'utf8');

@@ -275,8 +275,8 @@ test('Step 3 overwrites incompatible Claude destinations with notice while prese
 
     const adr = fs.readFileSync(path.join(repoRoot, 'docs', 'adr', '0077-harness-specific-worker-bindings.md'), 'utf8');
     const boundaries = fs.readFileSync(path.join(repoRoot, 'docs', 'adr', '0088-implementation-harness-projection-boundaries.md'), 'utf8');
-    const install = fs.readFileSync(path.join(repoRoot, 'INSTALL.opencode.md'), 'utf8');
-    const documentation = [adr, boundaries, install].join('\n');
+    const agentsDoc = fs.readFileSync(path.join(repoRoot, 'AGENTS.md'), 'utf8');
+    const documentation = [adr, boundaries, agentsDoc].join('\n');
     assert.match(documentation, /sai-2-design-worker/);
     assert.match(documentation, /sai-3-implementation-worker/);
     assert.match(documentation, /tunable-seed/i);
@@ -293,8 +293,8 @@ test('Step 3 overwrites incompatible Claude destinations with notice while prese
 test('Step 3 ADR/INSTALL prose describes tunable-seed projections, body-identity uninstall, and permission-only merge', () => {
   const adr = fs.readFileSync(path.join(repoRoot, 'docs', 'adr', '0077-harness-specific-worker-bindings.md'), 'utf8');
   const boundaries = fs.readFileSync(path.join(repoRoot, 'docs', 'adr', '0088-implementation-harness-projection-boundaries.md'), 'utf8');
-  const installGuide = fs.readFileSync(path.join(repoRoot, 'INSTALL.opencode.md'), 'utf8');
-  const documentation = [adr, boundaries, installGuide].join('\n');
+  const agentsDoc = fs.readFileSync(path.join(repoRoot, 'AGENTS.md'), 'utf8');
+  const documentation = [adr, boundaries, agentsDoc].join('\n');
   for (const worker of MANAGED_WORKER_NAMES) {
     assert.match(documentation, new RegExp(worker),
       `specs/opencode-agent-preservation/spec.md: opencode documentation should describe the projected ${worker} agent file`);

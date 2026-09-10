@@ -671,8 +671,6 @@ test('Step 3 README documents routed roles, model independence, and artifact sta
   const documentation = [
     'README.md',
     'AGENTS.md',
-    'INSTALL.claude.md',
-    'INSTALL.opencode.md',
   ].map(artifact).join('\n');
   assert.doesNotMatch(
     documentation,
@@ -688,8 +686,6 @@ test('Step 3 documentation requires the two-harness routed roster and upgrade no
   const documentation = [
     'README.md',
     'AGENTS.md',
-    'INSTALL.claude.md',
-    'INSTALL.opencode.md',
   ].map(artifact).join('\n');
 
   assert.match(documentation, /Claude Code/);
@@ -704,50 +700,27 @@ test('Step 3 documentation requires the two-harness routed roster and upgrade no
 test('Step 3 AGENTS documents every coordinator, worker, agent, and binding boundary', () => {
   const agents = artifact('AGENTS.md');
 
-  for (const entry of [
-    'agents/claude/sai-3-implementation-worker.md',
-  ]) {
-    assert.match(agents, new RegExp(entry.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  // The named worker agent files are materialized at install time from
+  // agents/{harness}/worker-template.md plus the manifest worker-matrix; no
+  // agents/claude/sai-*-worker.md source file is checked in. AGENTS.md must
+  // document that boundary, not a source path that no longer exists.
+  for (const entry of ['agents/claude/', 'worker-template.md', 'worker-matrix', 'sai-3-implementation-worker']) {
+    assert.ok(agents.includes(entry), `AGENTS.md should document ${entry}`);
   }
-  assert.match(agents, /sai\/orchestration\/workers\/bindings\//);
+  assert.doesNotMatch(agents, /agents[/]claude[/]sai-\d-[a-z-]*worker[.]md/,
+    'AGENTS.md must not present a generated worker agent file as a checked-in source');
+  assert.match(agents, /sai[/]orchestration[/]workers[/]bindings[/]/);
   assert.match(agents, /harness universality/i);
-});
-
-test('Step 3 Claude installer documentation covers ownership, compatibility, collisions, uninstall guards, and manual copy', () => {
-  const claude = artifact('INSTALL.claude.md');
-
-  assert.match(claude, /agents\/claude\/sai-3-implementation-worker\.md/);
-  assert.match(claude, /(?:~\/\.claude|%USERPROFILE%[\\/]\.claude)[\\/]agents[\\/]sai-3-implementation-worker\.md/);
-  assert.match(claude, /No ownership sidecar is written or read/i);
-  assert.match(claude, /exact-compatible existing agent is reused/i);
-  assert.match(claude, /collision[\s\S]{0,140}(?:rename|remove|remediat|manual)/i);
-  assert.match(claude, /uninstall[\s\S]{0,180}(?:ownership|guard|modified|preserv)/i);
-  assert.match(claude, /(?:cp|Copy-Item)[\s\S]{0,220}sai-3-implementation-worker/i);
-});
-
-test('Step 3 opencode installer documentation covers managed entries, routing shapes, collisions, preservation, and restart', () => {
-  const opencode = artifact('INSTALL.opencode.md');
-
-  assert.match(opencode, /sai-3-implementation-worker/);
-  assert.match(opencode, /opencode-go\/glm-5\.2[\s\S]{0,200}variant[\s\S]{0,40}high/i);
-  assert.match(opencode, /sai-3-implementation-worker[\s\S]{0,280}subagent[\s\S]{0,280}opencode-go\/kimi-k2\.6/i);
-  assert.match(opencode, /variant/i);
-  assert.match(opencode, /collision[\s\S]{0,160}(?:preserv|rename|remove|manual)/i);
-  assert.match(opencode, /uninstall[\s\S]{0,220}(?:preserv|retain|unchanged)[\s\S]{0,100}(?:config|opencode\.jsonc)/i);
-  assert.match(opencode, /restart(?:ing)?[\s\S]{0,120}(?:required|must|need|after|reload)/i);
 });
 
 test('Step 5 installer documentation matches the deterministic manifest', () => {
   const manifest = artifact('sai/install-manifest.json');
   const agents = artifact('AGENTS.md');
-  const claude = artifact('INSTALL.claude.md');
-  const opencode = artifact('INSTALL.opencode.md');
 
   assert.match(manifest, /"id": "claude-orchestration"/);
   assert.match(manifest, /"id": "opencode-orchestration"/);
   assert.match(agents, /manifest-driven installer|deterministic.*manifest/i);
-  assert.match(claude, /sai\/orchestration\/workers/);
-  assert.match(opencode, /sai\/orchestration\/workers/);
+  assert.match(agents, /sai\/orchestration\/workers/);
 });
 
 // ─── Step 1: preservation-first legacy identity migration ───────────────────

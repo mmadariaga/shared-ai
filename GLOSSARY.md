@@ -7,9 +7,6 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **ADR**: "Architecture Decision Record — a decision record that documents a qualifying design decision about how the pipeline is built (layout, mechanism, tooling, ordering, policy) that does not encode a **Domain Invariant**; lives in `docs/adr/` and carries `# ADR NNNN:` H1s."
 *Avoid*: architecture note, design note, "ADR/DDR" as an undecided family
 
-**Advisor Skill**: "A read-only consultation skill (`mid-advisor`, `senior-advisor`) that a cheaper pipeline phase escalates to — a subagent running the model tier of the phase above it — returning a structured advice report instead of editing anything."
-*Avoid*: consultant skill, oracle, reviewer skill, helper agent
-
 **Ambient Agent**: "An agent session that is not running a SAI command — the audience for the **Orientation Index**, which it never auto-loads and reaches only through a pointer in a consumer project's own agent instructions."
 *Avoid*: background agent, idle agent, non-SAI agent, ambient session
 
@@ -345,7 +342,6 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 
 ## Relationships
 
-- An **Advisor Skill** is consulted by the phase directly below its model tier: `mid-advisor` by the `/sai-4-apply` coordinator, `senior-advisor` by `/sai-3-implement`.
 - A **Boot Request** is forwarded byte-for-byte by a **Harness Boot Adapter**, which uses only its `command_name` to select a **Command Card**.
 - A **Command Bootstrap** is loaded by one /sai-* wrapper after its **Harness Boot Adapter**, belongs to one **Command Card** folder, and contains no harness-conditional logic.
 - A **Command Card** belongs to exactly one `/sai-*` command and is either routed, with coordinator and worker surfaces, or utility, with a body-only surface.
@@ -354,7 +350,6 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - Apply's **Standalone Invocation Shell** wraps the reusable apply **Phase Adapter** for direct `/sai-4-apply` and does not replace that adapter's phase-owned behaviors.
 - **Chained Phase Composition** orders one or more **Phase Adapter** segments inside a single supervising invocation; only the final adapter's `terminal_navigation` closes a successful multi-adapter run.
 - The **Build Command** is a consumer of **Chained Phase Composition** that orders the implement then apply **Phase Adapter**s in one invocation; it is not a distinct worker identity.
-- An **Advisor Skill** is the inverse of a budget-* skill (escalates upward to smarter models rather than delegating downward to cheaper ones).
 - An **Architecture Snapshot** belongs to one **Target State** and is displayed before the sai-2 design feedback loop when its effective content is current or changed.
 - An **Architecture Snapshot** relates to an external-first **External Surface** block and an **Internal Public Surface** block.
 - A **File Manifest** belongs to one **Target State** and is the file-level sibling of the **Architecture Snapshot** under it — the snapshot answers which public surfaces will exist, the manifest answers which files will change.
