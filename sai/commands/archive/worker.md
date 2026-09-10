@@ -52,9 +52,12 @@ Completion Check scan (enumerate every `- [ ]` in
 `implementation.md` with its `implementation.md:{line}` location, enclosing
 `#### Step N` heading, and checkbox text), the missing-main-spec delta
 assessment (diff every delta spec against its main spec, classify
-`[ADD]` additions, build the combined summary), and the target-name collision
-check against `openspec/changes/archive/YYYY-MM-DD-{name}/`. Everything is
-read-only: these are checks, scans, and diffs — never mutations.
+`[ADD]` additions, build the combined summary), the capability-emptying delta
+assessment (detect when a delta spec capability's `## REMOVED Requirements`
+names every requirement currently published in `openspec/specs/<capability>/spec.md`
+with no `## ADDED Requirements` for that same capability), and the target-name
+collision check against `openspec/changes/archive/YYYY-MM-DD-{name}/`. Everything
+is read-only: these are checks, scans, and diffs — never mutations.
 
 All findings return as payload content: carry the informational AUDIT line,
 the unchecked-item list, the combined delta-sync summary, and the collision
@@ -65,6 +68,16 @@ Preserve the instruction's stop texts exactly: when any CORE artifact is not
 `done`, return a terminal payload whose summary is exactly
 **"Missing CORE artifact(s): <id1>, <id2>. Archive blocked."** (substituting
 the collected ids) and close the run; no AUDIT soft warning accompanies it.
+
+When the capability-emptying delta assessment detects a delta spec capability
+whose `## REMOVED Requirements` names every requirement currently published in
+`openspec/specs/<capability>/spec.md` with no `## ADDED Requirements` for that
+same capability, return a terminal payload whose summary is exactly
+**"Delta would empty <capability> of all published requirements. Capability
+retirement is owned by `/sai-retire-docs` — reshape as ADD-only or use that
+path. (`openspec validate <capability>` will return green and is not evidence.
+Archive wrote nothing because it was refused here.) Archive blocked."**
+(substituting the capability name) and close the run.
 
 ## Pre-mutation gates
 
