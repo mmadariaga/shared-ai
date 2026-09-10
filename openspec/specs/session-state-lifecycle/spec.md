@@ -1,7 +1,7 @@
-# sidecar-session-lifecycle Specification
+# session-state-lifecycle Specification
 
 ## Purpose
-TBD - created by archiving change state-machine-sidecar. Update Purpose after archive.
+TBD - created by archiving change rename-sidecar-to-stage-machine. Update Purpose after archive.
 ## Requirements
 ### Requirement: Runtime baseline
 

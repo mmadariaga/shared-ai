@@ -132,7 +132,7 @@ function transition(state, signal) {
   const sig = signal && typeof signal === 'object' ? signal : {};
 
   // Inventory recording: a recordedList replaces `set` without moving the
-  // Direct Build or Plan cursor. Slice names persist in sidecar state and never
+  // Direct Build or Plan cursor. Slice names persist in stage machine state and never
   // appear on the wire.
   if (Array.isArray(sig.recordedList)) {
     current.set = sig.recordedList.slice();

@@ -230,7 +230,7 @@ test('selector flows keep overview opt-out and renderer ownership unchanged', ()
   assert.match(source, /separately supported explicit `--overview-lang <language>` remains a distinct opt-in and suppresses gate 9/);
   assert.match(source, /literal `\*\*Overview language\*\*: None`/);
   assert.match(source, /dispatches no overview generation/);
-  assert.match(source, /panel ownership, and sidecar-owned state rules remain authoritative/);
+  assert.match(source, /panel ownership, and stage-machine-owned state rules remain authoritative/);
   assert.match(source, /selector semantics are not duplicated in wrappers, panel renderers, installation projections, or `remember\.md`/);
   assert.match(source, /Claude Code and opencode consume this shared contract/);
   for (const renderer of [opencodeBinding(), claudeBinding(), opencodePanel(), claudePanel()]) {
