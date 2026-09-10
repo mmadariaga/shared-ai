@@ -50,5 +50,6 @@ try { register('explore-slice@1', require('./machines/explore-slice.js')); } cat
 try { register('spec-standalone@1', require('./machines/spec-standalone.js')); } catch (err) {}
 try { register('design-standalone@1', require('./machines/design-standalone.js')); } catch (err) {}
 try { register('implement-standalone@1', require('./machines/implement-standalone.js')); } catch (err) {}
+try { register('review-standalone@1', require('./machines/review-standalone.js')); } catch (err) {}
 
 module.exports = { register, get, has, list, machines, clear, reset, close };
