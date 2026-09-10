@@ -33,12 +33,12 @@ Selecting Direct Build - Unattended SHALL preserve the direct implementation, fu
 
 ### Requirement: Preserve Manual and fast-track gates
 
-Selecting Manual or an unmapped response SHALL use route identity `manual`, dispatch no worker, change no supervision state, and emit the existing path-specific `/sai-1-spec` handoff once. `--fast-track` MUST NOT select or suppress the selector.
+Selecting Manual or an unmapped response SHALL use route identity `manual`, dispatch no worker, change no supervision state, and refer to the path-specific `/sai-1-spec` handoff already emitted exactly once before the selector by the shared close; it SHALL NOT re-emit the handoff after the selector response. `--fast-track` MUST NOT select or suppress the handoff or the selector.
 
 #### Scenario: Manual remains non-dispatching
 
 - **WHEN** Manual or an unmapped response is received
-- **THEN** only the existing handoff is emitted and later execution remains an explicit user action.
+- **THEN** the already-emitted handoff remains the sole handoff and later execution remains an explicit user action.
 
 ### Requirement: Preserve slice selection and retry behavior
 
@@ -107,7 +107,7 @@ Selecting displayed `Plan - Unattended` SHALL authorize the existing supervised 
 
 ### Requirement: Define Manual behavior
 
-Selecting `Manual` SHALL dispatch nothing and SHALL NOT change supervision state. An unmapped free-text answer MUST be treated as `Manual`. The `Manual` branch SHALL refer to the one existing keep-window recommendation already emitted before the selector, naming `review-loop` exactly once; it SHALL not emit a second recommendation or selector for the same answer. After the selector response, the branch SHALL emit the path-specific existing next-step handoff exactly once. The literals `/sai-1-spec`, `/sai-2-design`, and `review-loop` SHALL remain verbatim English; surrounding handoff prose SHALL follow the selected crystallization language. `Manual` SHALL remain re-invocable without a cap when the user later asks to see or run the supervised pipeline selector; each such later Manual/unmapped response SHALL receive its own one-time path-specific handoff.
+Selecting `Manual` SHALL dispatch nothing and SHALL NOT change supervision state. An unmapped free-text answer MUST be treated as `Manual`. The `Manual` branch SHALL refer to the one existing keep-window recommendation already emitted before the selector, naming `review-loop` exactly once, and to the path-specific existing next-step handoff already emitted exactly once before the selector by the shared close; it SHALL NOT emit a second recommendation, handoff, or selector for the same answer, and SHALL NOT re-emit or restate the already-emitted path-specific next-step handoff. The literals `/sai-1-spec`, `/sai-2-design`, and `review-loop` SHALL remain verbatim English; surrounding handoff prose SHALL follow the selected crystallization language. `Manual` SHALL remain re-invocable without a cap when the user later asks to see or run the supervised pipeline selector; every later selector re-emission SHALL emit the path-specific next-step handoff exactly once before the selector again, and each such later Manual/unmapped response SHALL refer to that one-time handoff without re-emitting it.
 
 #### Scenario: Manual is selected
 
@@ -115,8 +115,8 @@ Selecting `Manual` SHALL dispatch nothing and SHALL NOT change supervision state
 - **THEN** no pipeline worker is dispatched
 - **AND** no supervision state is changed
 - **AND** the already-emitted keep-window recommendation remains the sole recommendation naming `review-loop` exactly once
-- **AND** no second recommendation or selector is emitted for the same answer
-- **AND** the applicable path-specific `/sai-1-spec` next-step handoff is emitted exactly once after the selector response.
+- **AND** no second recommendation, handoff, or selector is emitted for the same answer
+- **AND** the applicable path-specific `/sai-1-spec` next-step handoff was already emitted exactly once before the selector and is not re-emitted.
 
 #### Scenario: free text maps to Manual
 
@@ -124,23 +124,24 @@ Selecting `Manual` SHALL dispatch nothing and SHALL NOT change supervision state
 - **THEN** it is treated as `Manual`
 - **AND** no worker is dispatched
 - **AND** the already-emitted keep-window recommendation remains the sole recommendation naming `review-loop` exactly once
-- **AND** no second recommendation or selector is emitted for the same answer
-- **AND** the applicable path-specific `/sai-1-spec` next-step handoff is emitted exactly once after the selector response.
+- **AND** no second recommendation, handoff, or selector is emitted for the same answer
+- **AND** the applicable path-specific `/sai-1-spec` next-step handoff was already emitted exactly once before the selector and is not re-emitted.
 
 #### Scenario: Manual is requested again later
 
 - **WHEN** the user later asks to see or run the supervised pipeline selector
 - **THEN** `sai-explore` re-emits the selector through the existing rule
+- **AND** the path-specific next-step handoff is emitted exactly once before the re-emitted selector
 - **AND** there is no cap on such re-emissions.
 
 ### Requirement: Preserve explicit gating
 
-`--fast-track` SHALL NOT auto-select Plan - Unattended or suppress the selector. Selector text SHALL follow language localization while `review-loop`, `/sai-1-spec`, and `/sai-2-design` MUST remain English literals.
+`--fast-track` SHALL NOT auto-select Plan - Unattended or suppress the pre-selector handoff or the selector. Selector text SHALL follow language localization while `review-loop`, `/sai-1-spec`, and `/sai-2-design` MUST remain English literals.
 
 #### Scenario: fast-track does not bypass route selection
 
 - **WHEN** `--fast-track` is active at crystallization close
-- **THEN** the renamed selector is still presented and its command literals remain unchanged.
+- **THEN** the renamed selector is still presented, the pre-selector handoff is still emitted, and its command literals remain unchanged.
 
 ### Requirement: Auto-fast continuation requests authorization for each pending slice
 

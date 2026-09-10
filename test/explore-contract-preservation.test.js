@@ -58,6 +58,10 @@ const allowedDifferences = [
   // and the single-block close line gained the emission-guarantee extension.
   '**Routing** (both axes combined):',
   'After the block ending at `---`, apply the **Crystallization-turn close (shared)** once by reference.',
+  // explore-always-emit-next-step-handoff: the shared close emits the
+  // path-specific next-step handoff before the recommendation and selector
+  // again, superseding the pre-split post-selector clause.
+  'Path-specific next-step instructions are **not** emitted in the crystallization turn before the selector',
   // Transition rules removed from prose, machine now owns them
   'The stage progression advances only when the user explicitly requests it: the literal token `next-step`',
   'The sole exceptions are the deterministic empty-set rules of the `Review edge cases` and `Implementation details` stages',

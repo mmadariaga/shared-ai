@@ -89,13 +89,14 @@ The gate SHALL present exactly two options. The question prompt and the non-Engl
 
 ### Requirement: Translation scoping — prose translated, scaffolding English
 
-When a non-English language is chosen, the chosen language SHALL govern the block's **free-text prose** and any post-selector Manual/unmapped next-step guidance: the `What`, `Why`, capability descriptions, `Decisions & Rationale`, `Alternatives`, `Trade-offs`, `Model / Re-framings`, `Key constraints`, and any slice headers. The following **scaffolding** SHALL remain in English regardless of the chosen language: the bold field labels — including the `**Implementation Details**` section label and the `**Overview language**` reminder line added by the staged pre-crystallization flow — the kebab-case Change name value, the command literals `/sai-1-spec` and `/sai-2-design`, and the standing-path literal `review-loop`. The surrounding post-selector prose, including the instruction to open a new chat, SHALL be rendered in the chosen language. The gate SHALL NOT alter any OpenSpec artifact file's format or content.
+When a non-English language is chosen, the chosen language SHALL govern the block's **free-text prose** and the path-specific next-step handoff prose emitted before the selector: the `What`, `Why`, capability descriptions, `Decisions & Rationale`, `Alternatives`, `Trade-offs`, `Model / Re-framings`, `Key constraints`, slice headers, and the handoff's surrounding sentences. The following **scaffolding** SHALL remain in English regardless of the chosen language: the bold field labels — including the `**Implementation Details**` section label and the `**Overview language**` reminder line added by the staged pre-crystallization flow — the kebab-case Change name value, the command literals `/sai-1-spec` and `/sai-2-design`, and the standing-path literal `review-loop`. The handoff's surrounding prose, including the instruction to open a new chat, SHALL be rendered in the chosen language. The gate SHALL NOT alter any OpenSpec artifact file's format or content.
 
 #### Scenario: mixed-language block on a non-English choice
 
-- **WHEN** the user selects a non-English language at the gate
-- **THEN** the block's free-text prose is rendered in that language
-- **AND** the bold field labels — including `**Implementation Details**` and the `**Overview language**` line — the kebab-case Change name value, the `/sai-1-spec` command, and the "Open a new chat" line remain in English
+- **WHEN** the user selects a non-English language at the gate and the crystallization close emits its path-specific next-step handoff
+- **THEN** the block's free-text prose and the pre-selector next-step guidance are rendered in that language
+- **AND** the bold field labels — including `**Implementation Details**` and the `**Overview language**` line — the kebab-case Change name value, `/sai-1-spec`, `/sai-2-design`, and `review-loop` remain in English
+- **AND** the surrounding instruction to open a new chat is localized rather than treated as English scaffolding
 
 #### Scenario: no artifact file is altered
 
