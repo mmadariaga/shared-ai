@@ -3,17 +3,20 @@
 ## Purpose
 
 TBD - seeded from delta spec `explore-idea-list` in change `explore-idea-progress-plan`.
-
 ## Requirements
-
 ### Requirement: Project the renamed route identities
 
-The coordinator-owned idea-list route projection SHALL use `plan-unattended`, `build-unattended`, and `manual`. The Plan projection SHALL contain sai-1 and sai-2; the Build projection SHALL contain Build/Implement, Backfill, and Archive; the Manual projection SHALL contain Manual handoff.
+The coordinator-owned idea-list route projection SHALL use `plan-unattended`, `build-unattended`, and `manual`. The Plan projection SHALL contain exactly sai-1, sai-2, and Implement; the Build projection SHALL contain Build/Implement, Backfill, and Archive; the Manual projection SHALL contain Manual handoff. Implement has no worker; it completes only on `next-slice` (or equivalent natural language). Manual SHALL NOT gain a Plan cursor or an Implement panel row.
 
 #### Scenario: route projection follows selection
 
 - **WHEN** a selector route resolves for a slice
-- **THEN** the selected slice displays only the corresponding fixed route steps without changing baseline evidence state.
+- **THEN** the selected slice displays only the corresponding fixed route steps without changing baseline evidence state
+
+#### Scenario: Plan panel exposes three steps
+
+- **WHEN** Plan - Unattended is selected for a slice
+- **THEN** the idea list exposes exactly sai-1, sai-2, and Implement, with sai-1 `in_progress` and sai-2 and Implement `pending`
 
 ### Requirement: idea-list-scope-and-state
 
@@ -501,3 +504,4 @@ The idea progress list SHALL preserve a completed slice's progress states while 
 
 - **WHEN** a clean Auto-fast completion is followed by pending slices
 - **THEN** completed entries are not cleared, rewound, or reclassified
+

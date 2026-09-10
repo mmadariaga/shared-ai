@@ -1720,13 +1720,21 @@ test('crystallization renders a temporary mode-specific route without changing t
   assert.match(selector, /not an invocation envelope field, worker payload field, artifact field, or persisted state/i);
 });
 
+test('selector does not fetch Plan or Direct Build files at presentation', () => {
+  const selector = spec('sai/commands/explore/steps/pipeline-selector.md');
+  assert.doesNotMatch(selector, /Fetch @sai\/commands\/explore\/steps\/pipeline-plan-unattended\.md/);
+  assert.doesNotMatch(selector, /Fetch @sai\/commands\/explore\/steps\/pipeline-direct-build\.md/);
+  assert.match(selector, /event: \{intent: "plan"\}/);
+  assert.match(selector, /Do not fetch `pipeline-plan-unattended\.md` or `pipeline-direct-build\.md` at selector presentation/);
+});
+
 test('mode-specific route labels and Plan/Build progression are explicit', () => {
   const source = exploreContract();
   const ideaList = spec('sai/commands/explore/steps/idea-list.md');
   const plan = ideaList.slice(ideaList.indexOf('**`plan-unattended` route'));
   const build = ideaList.slice(ideaList.indexOf('**`direct-build-unattended` route'));
 
-  assert.match(plan, /exactly two steps, `sai-1` followed by `sai-2`/);
+  assert.match(plan, /exactly three steps, `sai-1` followed by `sai-2` followed by `Implement`/);
   assert.match(plan, /`sai-1` starts `in_progress`[\s\S]*clean spec convergence[\s\S]*`sai-2` as `in_progress`/i);
   assert.match(source, /clean terminal design result completes `sai-2`[\s\S]*does not claim that `sai-3`/i);
   assert.match(build, /exactly the high-level stages `Build\/Implement`, `Backfill`, and `Archive`/);

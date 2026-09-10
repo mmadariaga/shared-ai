@@ -152,7 +152,7 @@ The per-harness idea-list render bindings SHALL implement a phase-A/phase-B pane
 
 ### Requirement: Sidecar session lifecycle
 
-Explore SHALL obtain pre-crystallization stage order, pointer routing, transition rules, and the progression state itself from the `explore-idea` machine (`explore-idea@1`) hosted by the `sai-state` sidecar, and after crystallization SHALL consume `explore-slice@1` in the same chat for slice inventory and Direct Build TODO. The sidecar is invoked as a black-box service through its command-line interface and loopback routes. The sidecar owns the progression state as a durable store: it persists each machine's state in its own session file under the system temp directory and reloads it automatically, so a sidecar process dying at turn end loses nothing and every stage-event turn (a user intent that advances the progression or a recorded list at an agreement gate) SHALL run the same minimal cycle — spawn (reuse-or-fresh), then `/emit` — with no state ever sent in a request. Every emit SHALL name `machineId: "explore-idea@1"` or `machineId: "explore-slice@1"`; an omitted or mistyped `machineId` is a closed error (`INVALID_EVENT` / `UNKNOWN_MACHINE`) and nothing falls back to the first machine. The `/emit` response SHALL be consumed as the minimal wire outcome `{stage, next: {follow, hint}, rejected?, warnings?}`; no state object and no snapshot SHALL travel on the wire in either direction. The returned `stage` SHALL be authoritative as the current stage, superseding the agent's at-most-one disposable presentation hint and any prose-derived stage identity. The returned `next` pointer's `follow` field SHALL identify the step file to be fetched and consumed for continued progression. After each `/emit`, explore SHALL fetch whatever `next.follow` names with no file whitelist; the sidecar pointer is the contract. If that follow load fails, explore SHALL stop, show the error, and wait for the user; it SHALL NOT guess another file and SHALL NOT route the failure through worker Bounded Recovery. If `/emit` fails or returns `rejected`, explore SHALL NOT fetch `crystallization-protocol.md`, `slice.md`, or `pipeline-direct-build.md` on its own. A `warnings` array on an `/emit` or `/restore` response (first value `SESSION_FILE_CORRUPT`) reports store degradation in that same response with no extra turns. `/restore` SHALL be an optional read-only probe that requires `{machineId}` and returns `{stage, next, warnings?}` for recovery and panel re-render and SHALL never be part of the required cycle. Entering crystallize SHALL NOT `/close`: `explore-slice@1` can emit in the same chatId while `explore-idea@1` stays at crystallize in the map. At session end explore SHALL call `/close`, which purges the persisted state and tombstones the record so reopening the same chat identifier starts from the initial state. When a restore probe fails due to version mismatch or closed session, or when the sidecar is unreachable, explore SHALL fall to the degraded path: hold the current stage without auto-advancing and ask the user to advance explicitly by a direct `next-step` request, continuing without re-deriving the transition table in prose.
+Explore SHALL obtain pre-crystallization stage order, pointer routing, transition rules, and the progression state itself from the `explore-idea` machine (`explore-idea@1`) hosted by the `sai-state` sidecar, and after crystallization SHALL consume `explore-slice@1` in the same chat for slice inventory and Plan / Direct Build TODO. The sidecar is invoked as a black-box service through its command-line interface and loopback routes. The sidecar owns the progression state as a durable store: it persists each machine's state in its own session file under the system temp directory and reloads it automatically, so a sidecar process dying at turn end loses nothing and every stage-event turn (a user intent that advances the progression or a recorded list at an agreement gate) SHALL run the same minimal cycle — spawn (reuse-or-fresh), then `/emit` — with no state ever sent in a request. Every emit SHALL name `machineId: "explore-idea@1"` or `machineId: "explore-slice@1"`; an omitted or mistyped `machineId` is a closed error (`INVALID_EVENT` / `UNKNOWN_MACHINE`) and nothing falls back to the first machine. The `/emit` response SHALL be consumed as the minimal wire outcome `{stage, next: {follow, hint}, rejected?, warnings?}`; no state object and no snapshot SHALL travel on the wire in either direction. The returned `stage` SHALL be authoritative as the current stage, superseding the agent's at-most-one disposable presentation hint and any prose-derived stage identity. The returned `next` pointer's `follow` field SHALL identify the step file to be fetched and consumed for continued progression. After each `/emit`, if this chat's conversation loaded-set already contains that `next.follow` path from a successful prior load, explore SHALL skip the fetch and follow the already-loaded instructions; otherwise explore SHALL fetch whatever `next.follow` names with no file whitelist — the sidecar pointer is the contract. Explore SHALL NOT parse `next.hint` to decide whether to fetch. The sidecar does not track the loaded-set. A new chat whose reused sidecar is already on stage 2/3 still loads because the path is missing from this chat's set. Hint wording is stage-static: first stages hint `load and follow <file>`; idea stages 2–3, Plan sai-2/implement, and Direct Build backfill/archive hint `follow the instructions of <file>`. If that follow load fails, explore SHALL stop, show the error, and wait for the user; it SHALL NOT guess another file and SHALL NOT route the failure through worker Bounded Recovery. If `/emit` fails or returns `rejected`, explore SHALL NOT fetch `crystallization-protocol.md`, `slice.md`, `pipeline-direct-build.md`, or `pipeline-plan-unattended.md` on its own.
 
 #### Scenario: Lazy spawn on first stage event
 
@@ -196,8 +196,18 @@ Explore SHALL obtain pre-crystallization stage order, pointer routing, transitio
 
 #### Scenario: Follow load uses next.follow with no whitelist
 
-- **WHEN** `/emit` returns a `next.follow` path
+- **WHEN** `/emit` returns a `next.follow` path that is not in this chat's conversation loaded-set
 - **THEN** explore fetches that named file with no file whitelist
+
+#### Scenario: Skip-fetch when this chat already loaded the path
+
+- **WHEN** `/emit` returns a `next.follow` path this chat already loaded successfully
+- **THEN** explore skips the fetch and follows the already-loaded instructions without parsing `next.hint`
+
+#### Scenario: New chat with reused sidecar still loads
+
+- **WHEN** a new chat reuses a sidecar already on stage 2/3 and the path is missing from this chat's loaded-set
+- **THEN** explore loads the `next.follow` file anyway
 
 #### Scenario: Follow load failure stops and waits
 
@@ -207,7 +217,12 @@ Explore SHALL obtain pre-crystallization stage order, pointer routing, transitio
 #### Scenario: Emit failure does not self-fetch follow-loaded files
 
 - **WHEN** `/emit` fails or returns `rejected`
-- **THEN** explore does not fetch `crystallization-protocol.md`, `slice.md`, or `pipeline-direct-build.md` on its own
+- **THEN** explore does not fetch `crystallization-protocol.md`, `slice.md`, `pipeline-direct-build.md`, or `pipeline-plan-unattended.md` on its own
+
+#### Scenario: Idea stages 2-3 hint follow already loaded
+
+- **WHEN** `explore-idea@1` is at `review-edge-cases` or `implementation-details`
+- **THEN** `next.hint` starts with `follow the instructions of ` and `next.follow` remains populated
 
 ### Requirement: Machine-owned stage state persists in the sidecar store
 
@@ -225,7 +240,7 @@ The stage progression state SHALL be owned by the sidecar rather than held in co
 
 ### Requirement: Post-crystallization next-slice close
 
-After crystallization, Plan and Manual SHALL close the active slice only on the literal token `next-slice`, recognized by the same bare-token or dominant-intent rule as `next-step`. Mere containment of the string `next-slice` SHALL NOT fire the token, and a turn that negates, defers, quotes, or discusses the token SHALL NOT close the slice. Direct Build SHALL NEVER use `next-slice`; completing Archive marks the slice done and clears active. Plan's sai-1 → sai-2 → Implement table stays conversation prose in this change; `next-slice` while Plan is still on sai-1 or sai-2 SHALL NOT complete Implement and SHALL NOT mark the slice done. Manual has no TODO; the user closes the slice with `next-slice`. Slice names come from Ready to Propose blocks in chat, not the wire.
+After crystallization, Plan and Manual SHALL close the active slice only on the literal token `next-slice`, recognized by the same bare-token or dominant-intent rule as `next-step`. Mere containment of the string `next-slice` SHALL NOT fire the token, and a turn that negates, defers, quotes, or discusses the token SHALL NOT close the slice. Direct Build SHALL NEVER use `next-slice`; completing Archive marks the slice done and clears active. Plan's `next-slice`-on-implement rule lives in `pipeline-plan-unattended.md`; `next-slice` while Plan is still on sai-1 or sai-2 SHALL NOT complete Implement and SHALL NOT mark the slice done. Manual has no TODO; the user closes the slice with `next-slice`. Slice names come from Ready to Propose blocks in chat, not the wire.
 
 #### Scenario: Bare next-slice closes a Manual slice
 

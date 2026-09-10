@@ -1,0 +1,52 @@
+> **⚠ POST-HOC RECORD** — This proposal was backfilled after implementation against a user-supplied statement of intent. It describes a decision already made, not one being proposed.
+
+**Complexity**: medium (7 capabilities, 12 files)
+
+## Why
+
+After the reactive follow-load change, Direct Build already had a sidecar cursor, but Plan's sai-1 → sai-2 → Implement table stayed conversation prose. The same emit also re-fetched a `next.follow` path this chat had already loaded.
+
+## What Changes
+
+- `sai-state/machines/explore-slice.js` — same `explore-slice@1` machine gains plan mode: `idle` → `sai-1` → `sai-2` → `implement` → `idle`. Last `idle` is rest (slice done, `active` cleared); it does not restart Plan. `{intent: "plan"}` starts the route. `complete` advances sai-1 → sai-2 → implement; `complete` on implement is `READINESS_IS_NOT_INTENT`. `next-slice` on implement finishes the slice; `next-slice` on sai-1 or sai-2 stays put. `ALREADY_RUNNING` rejects a second Plan or Direct Build, including cross-mode. `pipeline-plan-unattended.md` is `next.follow` for all three Plan stages. Stage-static hints: first stages `load and follow <file>`; later stages `follow the instructions of <file>`.
+- `sai-state/machines/explore-idea.js` — idea stages 2–3 hint `follow the instructions of <file>`; `explore-change` and `crystallize` keep `load and follow <file>`.
+- `sai/commands/explore/instructions.md` — after each `/emit`, skip fetch when this chat's conversation loaded-set already contains that `next.follow` path; otherwise fetch with no whitelist. Do not parse `next.hint` to decide fetch. A new chat whose reused sidecar is already on stage 2/3 still loads. Emit failure or `rejected` does not self-fetch `pipeline-plan-unattended.md`. Plan's `next-slice`-on-implement rule is no longer conversation prose.
+- `sai/commands/explore/steps/pipeline-selector.md` — does not fetch Plan or Direct Build files at selector presentation. Plan selection emits `{intent: "plan"}`; Direct Build selection emits `{intent: "direct-build"}`. Load via `next.follow` after a non-rejected emit. Plan panel initializes sai-1, sai-2, and Implement.
+- `sai/commands/explore/steps/pipeline-plan-unattended.md` — `next.follow` for all three Plan stages; Gate 9 only at Plan activation (enter sai-1); Implement has no worker and completes only on `next-slice`; fail/cancel/STOP does not skip to Implement.
+- `sai/commands/explore/steps/idea-list.md` — Plan route exposes exactly three steps: sai-1, sai-2, Implement.
+- `sai/commands/explore/steps/slice.md` and `steps/common.md` — Plan TODO and repeated-follow hint contract.
+- Tests cover the Plan cursor, cross-mode already-running, loaded-set skip wording, selector non-fetch, and idea/Direct Build repeat hints.
+
+Known limitations left behind: a reused sidecar on stage 2/3 can hint “follow” while a new chat still loads; Plan Implement has no worker, so `next-slice` is the complete signal unlike Direct Build Archive.
+
+## Capabilities
+
+### New Capabilities
+
+None.
+
+### Modified Capabilities
+
+- `explore-slice-machine`: Plan cursor on the same machine; `next-slice` completes implement only; cross-mode `ALREADY_RUNNING`; last idle is rest.
+- `explore-pipeline-selector`: do not fetch Plan or Direct Build files at selector presentation; emit `{intent: "plan"}` or `{intent: "direct-build"}`; load at sai-1 / build-implement via `next.follow`.
+- `explore-pipeline-supervision`: Plan sidecar emits; Implement completes only on `next-slice`; fail/cancel does not skip to Implement.
+- `explore-instruction-delivery`: `pipeline-plan-unattended.md` is follow-loaded; skip fetch when this chat's loaded-set already contains `next.follow`.
+- `explore-idea-list`: Plan projection is sai-1, sai-2, and Implement.
+- `explore-pre-crystallization-stages`: loaded-set skip-fetch; stage-static first vs repeat hints; Plan `next-slice`-on-implement leaves conversation prose.
+
+## Impact
+
+- `sai-state/machines/explore-slice.js` (modified) — plan mode, shared start/finish helpers, stage-static hints
+- `sai-state/machines/explore-idea.js` (modified) — stage-static first vs repeat hints
+- `sai/commands/explore/instructions.md` (modified) — loaded-set skip-fetch, do not parse hint, Plan close wording
+- `sai/commands/explore/steps/common.md` (modified) — idea-stage repeated-follow hints
+- `sai/commands/explore/steps/idea-list.md` (modified) — three-item Plan panel
+- `sai/commands/explore/steps/pipeline-plan-unattended.md` (modified) — Plan follow target, Gate 9, next-slice on Implement
+- `sai/commands/explore/steps/pipeline-selector.md` (modified) — no selector-time fetch; `{intent: "plan"}`
+- `sai/commands/explore/steps/slice.md` (modified) — Plan TODO
+- `test/explore-pipeline-selector.test.js` (modified)
+- `test/explore-slice-machine.test.js` (modified)
+- `test/explore-step-reachability.test.js` (modified)
+- `test/sai-state.test.js` (modified)
+
+Out of scope: design.md, tasks.md, implementation.md — not generated by /sai-backfill

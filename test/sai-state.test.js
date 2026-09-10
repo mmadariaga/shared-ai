@@ -1028,6 +1028,48 @@ test('explore-slice Direct Build: Build/Implement → Backfill → Archive marks
   }
 });
 
+test('explore-slice Plan: sai-1 → sai-2 → implement; next-slice completes; already-running rejects cross-mode', async () => {
+  const chatId = crypto.randomUUID();
+  try {
+    const mod = require('../bin/sai-state.js');
+    const endpoint = await mod.spawn(chatId);
+    assertRealEndpoint(endpoint, 'slice-plan spawn()');
+    const emit = (eventId, event) =>
+      mod.requestJson(endpoint.port, endpoint.token, '/emit', { machineId: 'explore-slice@1', eventId, event });
+    const persisted = () => {
+      const entry = readSession(chatId).stateByMachine['explore-slice@1'];
+      return entry && entry.state;
+    };
+
+    await emit(crypto.randomUUID(), { recordedList: ['slice-a'] });
+    const start = await emit(crypto.randomUUID(), { intent: 'plan' });
+    assert.equal(start.stage, 'sai-1', `plan must set cursor to sai-1, got ${JSON.stringify(start)}`);
+    assert.equal(persisted().active, 'slice-a', 'first pending slice becomes active');
+    assert.equal(persisted().mode, 'plan', 'mode must be plan');
+    assert.match(start.next.hint, /^load and follow /);
+
+    const running = await emit(crypto.randomUUID(), { intent: 'direct-build' });
+    assert.equal(running.rejected, 'ALREADY_RUNNING', `Direct Build while Plan active must reject, got ${JSON.stringify(running)}`);
+
+    const toSai2 = await emit(crypto.randomUUID(), { intent: 'complete' });
+    assert.equal(toSai2.stage, 'sai-2', `complete from sai-1 must reach sai-2, got ${JSON.stringify(toSai2)}`);
+    assert.match(toSai2.next.hint, /^follow the instructions of /);
+    const early = await emit(crypto.randomUUID(), { intent: 'next-slice' });
+    assert.equal(early.stage, 'sai-2', 'next-slice on sai-2 must stay put');
+    assert.equal(persisted().active, 'slice-a', 'next-slice on sai-2 must not clear active');
+
+    const toImpl = await emit(crypto.randomUUID(), { intent: 'complete' });
+    assert.equal(toImpl.stage, 'implement', `complete from sai-2 must reach implement, got ${JSON.stringify(toImpl)}`);
+    const done = await emit(crypto.randomUUID(), { intent: 'next-slice' });
+    assert.equal(done.stage, 'idle', `next-slice on implement must return idle, got ${JSON.stringify(done)}`);
+    assert.equal(persisted().active, null, 'next-slice on implement must clear active');
+    assert.deepEqual(persisted().done, ['slice-a'], 'next-slice on implement must mark the slice done');
+    assert.equal(persisted().mode, null, 'next-slice on implement must clear mode');
+  } finally {
+    cleanup([chatId]);
+  }
+});
+
 // Minimal HTTP POST helper for the child-process tests: the parent test
 // process talks to the real sidecar processes over loopback.
 function mod_request(port, token, eventId, event, reqPath) {

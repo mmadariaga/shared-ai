@@ -33,9 +33,23 @@ function cloneState(state) {
   return { stage, ideaList, edgeCaseList, implementationDetailsList };
 }
 
+// Stage-static first vs repeat. Skip-fetch is the chat loaded-set, not this table.
+const STAGE_HINTS = Object.freeze({
+  'explore-change': 'load',
+  'review-edge-cases': 'follow',
+  'implementation-details': 'follow',
+  crystallize: 'load',
+});
+
+function hintFor(stage, follow) {
+  const kind = STAGE_HINTS[stage] || 'load';
+  if (kind === 'follow') return 'follow the instructions of ' + follow;
+  return 'load and follow ' + follow;
+}
+
 function nextFor(stage) {
   const follow = STAGE_FILES[stage] || COMMON_STEP;
-  return { follow, hint: 'fetch the ' + stage + ' step' };
+  return { follow, hint: hintFor(stage, follow) };
 }
 
 function advanceState(current) {

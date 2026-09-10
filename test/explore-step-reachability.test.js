@@ -27,6 +27,7 @@ const FOLLOW_LOADED = [
   'crystallization-protocol.md',
   'slice.md',
   'pipeline-direct-build.md',
+  'pipeline-plan-unattended.md',
 ];
 
 function getReachableStepFiles() {
@@ -121,11 +122,13 @@ test('crystallization-protocol.md fetches assessment and language gates', () => 
 
 test('follow-load is driven by next.follow with no whitelist and a stop-on-failure rule', () => {
   const instructions = fs.readFileSync(nucleusFile, 'utf8');
-  assert.match(instructions, /After each `\/emit`, fetch whatever `next\.follow` names with no file whitelist/);
+  assert.match(instructions, /After each `\/emit`,[\s\S]*fetch whatever `next\.follow` names with no file whitelist/);
   assert.match(instructions, /If that follow load fails, stop, show the error, and wait for the user/);
   assert.match(instructions, /do not guess another file/);
   assert.match(instructions, /do not route the failure through worker Bounded Recovery/);
-  assert.match(instructions, /If `\/emit` fails or returns `rejected`, do not fetch `crystallization-protocol\.md`, `slice\.md`, or `pipeline-direct-build\.md` on your own/);
+  assert.match(instructions, /If `\/emit` fails or returns `rejected`, do not fetch `crystallization-protocol\.md`, `slice\.md`, `pipeline-direct-build\.md`, or `pipeline-plan-unattended\.md` on your own/);
+  assert.match(instructions, /conversation loaded-set already contains that `next\.follow` path/);
+  assert.match(instructions, /Do not parse `next\.hint` to decide whether to fetch/);
   assert.doesNotMatch(instructions, /5\. \*\*Crystallization protocol \(single change\)\*\*/);
 });
 
@@ -135,6 +138,7 @@ test('sidecar STAGE_FILES still name the follow-loaded step files', () => {
   assert.match(idea, /crystallize: 'sai\/commands\/explore\/steps\/crystallization-protocol\.md'/);
   assert.match(slice, /const SLICE_STEP = 'sai\/commands\/explore\/steps\/slice\.md'/);
   assert.match(slice, /const DIRECT_BUILD_STEP = 'sai\/commands\/explore\/steps\/pipeline-direct-build\.md'/);
+  assert.match(slice, /const PLAN_STEP = 'sai\/commands\/explore\/steps\/pipeline-plan-unattended\.md'/);
 });
 
 test('should have all step files reachable through fetch chain', () => {
