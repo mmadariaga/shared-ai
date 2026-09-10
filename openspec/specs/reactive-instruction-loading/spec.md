@@ -48,3 +48,24 @@ Every standalone run SHALL open a fresh sidecar session and SHALL never reuse pr
 - **WHEN** the caller emits an empty signal while parked at research
 - **THEN** the state and pointer stay unchanged with no rejection
 
+### Requirement: Design per-state follow targets
+The machine SHALL map `prereqs-resolution` to follow none with a no-fetch hint, each of `research`, `design`, `tasks`, `interfaces`, `review`, and `overview` to its step file under `sai/commands/design/steps/`, and `done` to follow none with the all-complete hint. Next SHALL stay pointer-only with no state or snapshot fields, and the hint SHALL carry loaded-set skip wording so an already-loaded follow path is not re-fetched.
+
+#### Scenario: Research pointer carries skip hint
+- **WHEN** the caller completes prereqs-resolution on an opted-in run
+- **THEN** the next follow names the research step file with skip-if-already-loaded wording
+
+### Requirement: Design standalone consult with parked continuations
+Standalone runs SHALL consult the sidecar per progress event and wrap its next follow in the unchanged two-line continuation carrying the step id and path. Feedback and recovery continuations SHALL carry no pointer line so the worker active step file persists across them. The shared command-runner contract SHALL stay untouched and the machine SHALL never write artifacts. The supervised adapter SHALL keep its routing-only map and SHALL never consult this machine.
+
+#### Scenario: Progress event delivers machine pointer
+- **WHEN** the worker reports research complete on a standalone run
+- **THEN** the continuation wraps the design step follow in the unchanged two-line shape
+
+### Requirement: Design follow-load failure handling
+After each emit the coordinator SHALL fetch whatever next follow names with no file whitelist. A machine-named unknown file or a path outside the steps directory SHALL stop with an error and fetch nothing. A follow-load failure or emit failure SHALL stop, show the error, and wait with nothing guessed and never routed through Bounded Recovery.
+
+#### Scenario: Unknown follow target stops without fetching
+- **WHEN** the machine names an unknown file or a path outside the steps directory
+- **THEN** the run stops with an error and no file is fetched
+
