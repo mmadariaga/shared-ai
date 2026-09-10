@@ -49,5 +49,6 @@ try { register('explore-idea@1', require('./machines/explore-idea.js')); } catch
 try { register('explore-slice@1', require('./machines/explore-slice.js')); } catch (err) {}
 try { register('spec-standalone@1', require('./machines/spec-standalone.js')); } catch (err) {}
 try { register('design-standalone@1', require('./machines/design-standalone.js')); } catch (err) {}
+try { register('implement-standalone@1', require('./machines/implement-standalone.js')); } catch (err) {}
 
 module.exports = { register, get, has, list, machines, clear, reset, close };
