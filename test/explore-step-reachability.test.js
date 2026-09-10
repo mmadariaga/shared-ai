@@ -122,11 +122,11 @@ test('crystallization-protocol.md fetches assessment and language gates', () => 
 
 test('follow-load is driven by next.follow with no whitelist and a stop-on-failure rule', () => {
   const instructions = fs.readFileSync(nucleusFile, 'utf8');
-  assert.match(instructions, /After each `\/emit`,[\s\S]*fetch whatever `next\.follow` names with no file whitelist/);
+  assert.match(instructions, /After each emit[\s\S]*fetch whatever `next\.follow` names with no file whitelist/);
   assert.match(instructions, /If that follow load fails, stop, show the error, and wait for the user/);
   assert.match(instructions, /do not guess another file/);
   assert.match(instructions, /do not route the failure through worker Bounded Recovery/);
-  assert.match(instructions, /If `\/emit` fails or returns `rejected`, do not fetch `crystallization-protocol\.md`, `slice\.md`, `pipeline-direct-build\.md`, or `pipeline-plan-unattended\.md` on your own/);
+  assert.match(instructions, /If emit fails or returns `rejected`, do not fetch `crystallization-protocol\.md`, `slice\.md`, `pipeline-direct-build\.md`, or `pipeline-plan-unattended\.md` on your own/);
   assert.match(instructions, /conversation loaded-set already contains that `next\.follow` path/);
   assert.match(instructions, /Do not parse `next\.hint` to decide whether to fetch/);
   assert.doesNotMatch(instructions, /5\. \*\*Crystallization protocol \(single change\)\*\*/);

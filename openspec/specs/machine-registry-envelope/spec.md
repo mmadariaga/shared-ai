@@ -23,22 +23,22 @@ The platform SHALL keep the machine registry in code where each entry defines `i
 
 ### Requirement: Version pinning and routing
 
-The sidecar SHALL NOT pin one `machineId@version` for the session. Every `/emit` and `/restore` SHALL name a `machineId`. An omitted or unparsable `machineId` SHALL be `INVALID_EVENT`. An unknown id SHALL be `UNKNOWN_MACHINE`. A known machine id with a non-registered version SHALL be `VERSION_MISMATCH`. The same chatId SHALL accept emits to `explore-idea@1` and then `explore-slice@1` without `VERSION_MISMATCH`. Retired `explore-stage@1` SHALL be `UNKNOWN_MACHINE` with no alias.
+The store CLI tool SHALL NOT pin one `machineId@version` for the session. Every `emit` and optional restore call SHALL name a `machineId`. An omitted or unparsable `machineId` SHALL be `INVALID_EVENT`. An unknown id SHALL be `UNKNOWN_MACHINE`. A known machine id with a non-registered version SHALL be `VERSION_MISMATCH`. The same session id SHALL accept emissions to `explore-idea@1` and then `explore-slice@1` without `VERSION_MISMATCH`. Retired `explore-stage@1` SHALL be `UNKNOWN_MACHINE` with no alias.
 
 #### Scenario: Pinned version is stable for the session
 
-- **WHEN** a session has already emitted to `explore-idea@1` and the caller later emits to `explore-slice@1` in the same chatId
-- **THEN** the second emit is routed to `explore-slice@1` and is not rejected as `VERSION_MISMATCH`
+- **WHEN** a session has already emitted to `explore-idea@1` and the caller later invokes `emit` to `explore-slice@1` in the same session id
+- **THEN** the second emit is routed to `explore-slice@1` and is not rejected as `VERSION_MISMATCH` (unchanged from prior sidecar behavior, CLI-invoked)
 
 #### Scenario: Omitted machineId is INVALID_EVENT
 
-- **WHEN** the caller POSTs `/emit` or `/restore` without a parsable `machineId`
-- **THEN** the sidecar returns `INVALID_EVENT` and does not route to the first persisted machine
+- **WHEN** the caller invokes `emit` or restore without a parsable `machineId`
+- **THEN** the store returns `{error: "INVALID_EVENT", next: {follow, hint}}` and does not route to the first persisted machine (updated from prior HTTP POST to CLI invocation)
 
 #### Scenario: Mistyped machineId is UNKNOWN_MACHINE
 
-- **WHEN** the caller POSTs `/emit` with a machine id that is not registered
-- **THEN** the sidecar returns `UNKNOWN_MACHINE`
+- **WHEN** the caller invokes `emit` with a machine id that is not registered
+- **THEN** the store returns `{error: "UNKNOWN_MACHINE", next: {follow, hint}}` (unchanged from prior sidecar behavior, CLI-invoked)
 
 ### Requirement: Pointer-only next
 
@@ -51,17 +51,17 @@ Every successful transition SHALL return a pointer-only `next` value with exactl
 
 ### Requirement: Idempotent emit
 
-Emissions SHALL be idempotent by `eventId`: resubmitting the same `eventId` SHALL return the same outcome without applying the transition twice. Seen-`eventId` outcomes SHALL be retained in a bounded per-session store of at most 1000 entries with oldest-first eviction, and the store SHALL clear on `close`.
+Emissions SHALL be idempotent by `eventId`: re-submitting the same `eventId` SHALL return the same outcome without applying the transition twice. Seen-`eventId` outcomes SHALL be retained in a bounded per-session ledger (`lastEventId`, `lastOutcome` per machine) persisted in the session file with oldest-first eviction when the in-memory session limit is reached, and the ledger SHALL clear on `close`.
 
 #### Scenario: Retried emission applies once
 
-- **WHEN** the caller resubmits an emission with an already-seen `eventId` after a transport doubt
-- **THEN** the sidecar returns the original outcome and the machine state advances exactly once for that `eventId`
+- **WHEN** the caller re-invokes `emit` with an already-seen `eventId` after a process restart or transport doubt
+- **THEN** the store returns the original outcome and the machine state advances exactly once for that `eventId` (updated from in-process seen-store to disk-persisted ledger)
 
 #### Scenario: Retention is bounded per session
 
-- **WHEN** a session accumulates more than 1000 seen `eventId` outcomes
-- **THEN** the oldest outcomes are evicted first and the store is empty again after `close`
+- **WHEN** a session accumulates outcomes from many distinct `eventId` values
+- **THEN** the oldest outcomes are evicted first when a limit is reached and the store continues without growing unbounded (principle preserved, implementation in session file per-machine ledger)
 
 ### Requirement: Closed error vocabulary
 

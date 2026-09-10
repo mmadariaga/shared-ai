@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Superseded by ADR 0182 (mechanism); single-writer invariant remains valid
 
 ## Context
 

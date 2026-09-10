@@ -5,12 +5,12 @@ TBD - created by archiving change explore-slice-machine. Update Purpose after ar
 ## Requirements
 ### Requirement: Combined slice inventory and Direct Build TODO
 
-The sidecar SHALL host `explore-slice@1` as the post-crystallization machine. The machine SHALL keep slice inventory (`set`, `active`, `done`) and Plan / Direct Build TODO (`mode` plus `stage` cursor) in sidecar-owned state. A `recordedList` event SHALL replace `set` without moving the Direct Build or Plan cursor. Inventory, active, done, and mode SHALL NOT appear on the wire.
+The store CLI tool SHALL host `explore-slice@1` as the post-crystallization machine. The machine SHALL keep slice inventory (`set`, `active`, `done`) and Plan / Direct Build TODO (`mode` plus `stage` cursor) in CLI-owned state (persisted in the session file, not sidecar in-memory state). A `recordedList` event SHALL replace `set` without moving the Direct Build or Plan cursor. Inventory, active, done, and mode SHALL NOT appear on the wire.
 
 #### Scenario: Recording inventory does not move the cursor
 
-- **WHEN** the caller emits `recordedList` while `explore-slice@1` is at `idle`
-- **THEN** `set` is replaced with the supplied list, `stage` stays `idle`, and the response carries no `set`, `active`, `done`, or `mode` fields
+- **WHEN** the caller invokes `emit` with `recordedList` while `explore-slice@1` is at `idle`
+- **THEN** `set` is replaced with the supplied list in the session file, `stage` stays `idle`, and the response carries no `set`, `active`, `done`, or `mode` fields (unchanged from prior behavior, CLI-invoked)
 
 ### Requirement: Direct Build cursor travels in stage
 

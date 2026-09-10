@@ -1724,7 +1724,8 @@ test('selector does not fetch Plan or Direct Build files at presentation', () =>
   const selector = spec('sai/commands/explore/steps/pipeline-selector.md');
   assert.doesNotMatch(selector, /Fetch @sai\/commands\/explore\/steps\/pipeline-plan-unattended\.md/);
   assert.doesNotMatch(selector, /Fetch @sai\/commands\/explore\/steps\/pipeline-direct-build\.md/);
-  assert.match(selector, /event: \{intent: "plan"\}/);
+  assert.match(selector, /sai-state emit.*explore-slice@1.*intent.*plan/);
+  assert.match(selector, /sai-state emit.*explore-slice@1.*intent.*direct-build/);
   assert.match(selector, /Do not fetch `pipeline-plan-unattended\.md` or `pipeline-direct-build\.md` at selector presentation/);
 });
 

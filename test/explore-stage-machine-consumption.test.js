@@ -5,56 +5,54 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
 
-test('sidecar invocation surface: instructions.md names spawn and loopback routes', () => {
+test('CLI invocation surface: instructions.md names spawn and emit commands', () => {
   const instructions = fs.readFileSync(path.join(__dirname, '..', 'sai', 'commands', 'explore', 'instructions.md'), 'utf8');
 
-  // Sidecar invocation contract
+  // CLI invocation contract
   assert.match(instructions, /sai-state spawn/);
+  assert.match(instructions, /sai-state emit/);
+  assert.match(instructions, /sai-state close/);
   assert.match(instructions, /explore-idea@1/);
   assert.match(instructions, /explore-slice@1/);
   assert.doesNotMatch(instructions, /explore-stage@1/);
-  assert.match(instructions, /POST.*\/emit/);
-  assert.match(instructions, /POST.*\/restore/);
-  assert.match(instructions, /\/close/);
-  assert.match(instructions, /x-sai-token/);
+  assert.doesNotMatch(instructions, /POST.*\/emit/);
+  assert.doesNotMatch(instructions, /x-sai-token/);
   assert.match(instructions, /next\.follow/);
   assert.match(instructions, /returned `stage`/);
 });
 
-test('sidecar-owned state cycle: sidecar owns the progression state and the required cycle is spawn then /emit', () => {
+test('store-owned state cycle: store owns the progression state and the required cycle is spawn then emit', () => {
   const instructions = fs.readFileSync(path.join(__dirname, '..', 'sai', 'commands', 'explore', 'instructions.md'), 'utf8');
 
-  // The sidecar owns the progression state as a durable store: every
-  // stage-event turn runs the same minimal spawn (reuse-or-fresh) then /emit
-  // cycle, the agent carries no state JSON, and /restore is demoted to an
-  // optional read-only probe.
-  assert.match(instructions, /The sidecar owns that state as a durable store/);
+  // The store owns the progression state as a durable store: every
+  // stage-event turn runs the same minimal spawn (reuse-or-fresh) then emit
+  // cycle, the agent carries no state JSON.
+  assert.match(instructions, /It persists each machine's state.*durable store/);
   assert.match(instructions, /durable store/);
   assert.match(instructions, /every stage-event turn/);
-  assert.match(instructions, /spawn \(reuse-or-fresh\), then `\/emit`/);
+  assert.match(instructions, /spawn \(reuse-or-fresh\), then emit/);
   assert.match(instructions, /minimal wire outcome `\{stage, next: \{follow, hint\}, rejected\?, warnings\?\}`/);
   assert.match(instructions, /no state object and no snapshot travel on the wire/);
   assert.match(instructions, /SESSION_FILE_CORRUPT/);
-  assert.match(instructions, /read-only probe/);
-  assert.match(instructions, /never part of the required cycle/);
   assert.match(instructions, /disposable presentation hint/);
-  assert.match(instructions, /purges the persisted state and tombstones the record/);
+  assert.match(instructions, /deletes the session file.*starts from the initial state/);
   assert.doesNotMatch(instructions, /carry the returned `snapshot` in conversation/);
   assert.doesNotMatch(instructions, /restore-per-turn cycle/);
   assert.doesNotMatch(instructions, /spawn.*session start/i);
   assert.doesNotMatch(instructions, /spawn.*start of session/i);
+  assert.doesNotMatch(instructions, /read-only probe/);
 });
 
 test('sidecar degraded path: contract describes hold-and-ask without re-deriving rules', () => {
   const instructions = fs.readFileSync(path.join(__dirname, '..', 'sai', 'commands', 'explore', 'instructions.md'), 'utf8');
 
   // Degraded path hold-and-ask
-  assert.match(instructions, /sidecar is unreachable.*hold the current stage/);
+  assert.match(instructions, /store is unreachable.*hold the current stage/);
   assert.match(instructions, /ask the user to advance explicitly/);
   assert.match(instructions, /degraded mode without re-deriving the transition table in prose/);
 
   // Restore failure handling
-  assert.match(instructions, /Restore failures.*fall to the degraded path/);
+  assert.match(instructions, /Degradation due to version mismatch/);
   assert.match(instructions, /version mismatch/);
 
   // Degraded path stated once, not as full fallback
