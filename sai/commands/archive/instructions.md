@@ -80,3 +80,11 @@ worker runs the CLI as the first mutation step. When no delta specs exist,
 the CLI archives the change without modifying main specs. This policy applies
 regardless of fast-track state. All other archive gates (Classification
 Check, unchecked-items, collision check) remain unchanged.
+
+## Capability-emptying delta refusal
+
+When assessing delta spec sync state during the read-only pre-flight:
+- If a delta spec capability's `## REMOVED Requirements` section names every requirement currently published in `openspec/specs/<capability>/spec.md` with no `## ADDED Requirements` section for that same capability, this is a **capability-emptying delta**.
+- A capability-emptying delta does not proceed: archive refuses before any mutation, naming `/sai-retire-docs` as the path that owns capability retirement.
+- The supported shape for retiring a capability is a separate ADD-only change introducing the replacement capability, after which the retired capability is moved to `openspec/specs/_archived/<capability>/` through `/sai-retire-docs` with its per-candidate confirmation gate. Retired capabilities remain visible to `openspec list --specs` with an `_archived/` id prefix; retirement is namespacing, not removal from CLI discovery.
+- The refusal text states that `openspec validate <capability>` will return green and is not evidence, because the CLI's own fix hint sends the reader there. `openspec validate <change>` checks delta well-formedness only, so the capability-emptying delta validates clean; `openspec archive` rebuilds the spec in memory and validates it during the mutating command (the scenario-preservation guarantee), but that check happens too late; `openspec validate <capability>` inspects the published spec, which archive left unchanged because it was refused here, so returns green. SAI's pre-flight refusal detects the delta shape before any validation step, deliberately without duplicating the CLI's rebuilt-spec validation.

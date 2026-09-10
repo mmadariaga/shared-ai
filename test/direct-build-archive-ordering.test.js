@@ -100,6 +100,29 @@ test('direct-build archive execution keeps the empty-index no-commit result when
   assert.match(commit, /do not author a message or create a commit/);
 });
 
+test('archive contract documents capability-emptying delta refusal with retirement routing', () => {
+  const worker = read('sai/commands/archive/worker.md');
+  const instructions = read('sai/commands/archive/instructions.md');
+
+  assert.match(worker, /the capability-emptying delta\s+assessment \(detect when a delta spec capability's.*?with no `## ADDED Requirements`/s,
+    'archive worker must document the capability-emptying assessment in pre-flight');
+  assert.match(worker, /Delta would empty.*?of all published requirements/,
+    'archive worker must document the capability-emptying stop-text');
+  assert.match(worker, /Capability\s+retirement is owned by `\/sai-retire-docs`/,
+    'archive worker refusal must name /sai-retire-docs as the owning path');
+  assert.match(worker, /reshape as ADD-only/,
+    'archive worker refusal must document reshaping as ADD-only option');
+
+  assert.match(instructions, /## Capability-emptying delta refusal/,
+    'instructions must have a Capability-emptying delta refusal section');
+  assert.match(instructions, /capability's `## REMOVED Requirements` section names every requirement.*?with no `## ADDED Requirements`/s,
+    'instructions must define capability-emptying delta shape');
+  assert.match(instructions, /moved to `openspec\/specs\/_archived\/<capability>\/`.*?through `\/sai-retire-docs`/s,
+    'instructions must document the /sai-retire-docs retirement path');
+  assert.match(instructions, /`openspec validate <capability>` will return green and is not evidence/,
+    'instructions must explain why openspec validate is not evidence');
+});
+
 test('the direct-build backfill execution and archive preparation blocks appear exactly once', () => {
   const explore = readExploreContract();
   assert.equal((explore.match(/\*\*Backfill execution\*\*/g) || []).length, 1);
