@@ -1,8 +1,8 @@
 'use strict';
 
-// design-standalone@1 — stateful sidecar machine owning happy-path step routing
+// design-standalone@1 — stateful stage machine owning happy-path step routing
 // for standalone `sai-2-design` runs (I1). Mirrors `explore-idea@1` cursor
-// pattern and the sibling `spec-standalone@1` machine: sidecar owns the stage
+// pattern and the sibling `spec-standalone@1` machine: stage machine owns the stage
 // table, pointer routing, transition rules, and progression state; the
 // coordinator consults it per progress event and wraps its `next.follow` in
 // the unchanged two-line continuation (wire byte-identical). Routing-only:
@@ -35,8 +35,8 @@
 // (E5, I5). Feedback (`needs_input`) and recovery (`continue_after_recovery`)
 // continuations carry no pointer and never consult the machine — the machine
 // parks until the next progress event (E6, I5). Replacement re-resolves via
-// `project()` from the surviving sidecar session (E6, I5). Every standalone
-// run opens a fresh sidecar session and never reuses prior marks; supervised
+// `project()` from the surviving stage machine session (E6, I5). Every standalone
+// run opens a fresh stage machine session and never reuses prior marks; supervised
 // runs never touch this machine; the session closes when the run closes with
 // no machine auto-retry (E6, I5). Emit or follow-load failure stops the run,
 // shows the error, and waits; nothing is guessed, never through Bounded

@@ -60,22 +60,22 @@ Plan and Direct Build SHALL select only uncompleted names from `last_crystalliza
 
 ### Requirement: Route selected pipeline options through deferred contracts
 
-`sai-explore` SHALL preserve exclusive dispatch: only an explicit `Plan - Unattended` or `Direct Build - Unattended` selection dispatches, and `Manual` and unmapped responses SHALL dispatch nothing. `pipeline-selector.md` SHALL NOT fetch `steps/pipeline-plan-unattended.md` or `steps/pipeline-direct-build.md` at selector presentation. On a Plan - Unattended selection, explore SHALL POST `/emit` with `{machineId: "explore-slice@1", eventId, event: {intent: "plan"}}`. On a Direct Build - Unattended selection, explore SHALL POST `/emit` with `{machineId: "explore-slice@1", eventId, event: {intent: "direct-build"}}`. If the response carries `rejected: ALREADY_RUNNING`, explore SHALL acknowledge already running and dispatch nothing. After a non-rejected emit, explore SHALL consume `next.follow` under the spawn/emit fetch-follow contract and SHALL load the named file only when this chat's conversation loaded-set does not already contain that path. Plan SHALL load `pipeline-plan-unattended.md` at sai-1; Direct Build SHALL load `pipeline-direct-build.md` at build-implement. The displayed Plan route SHALL map to `plan-unattended` and retain the supervised `sai-1`/`sai-2` lifecycle plus an Implement panel row with no worker; the Direct Build - Unattended route SHALL retain the fixed eight-step flow and existing worker boundaries.
+`sai-explore` SHALL preserve exclusive dispatch: only an explicit `Plan - Unattended` or `Direct Build - Unattended` selection dispatches, and `Manual` and unmapped responses SHALL dispatch nothing. `pipeline-selector.md` SHALL NOT fetch `steps/pipeline-plan-unattended.md` or `steps/pipeline-direct-build.md` at selector presentation. On a Plan - Unattended selection, explore SHALL invoke `sai-state emit` with `<id> explore-slice@1 {machineId: "explore-slice@1", eventId: <uuid>, event: {intent: "plan"}}`. On a Direct Build - Unattended selection, explore SHALL invoke `sai-state emit` with `<id> explore-slice@1 {machineId: "explore-slice@1", eventId: <uuid>, event: {intent: "direct-build"}}`. If the response carries `rejected: ALREADY_RUNNING`, explore SHALL acknowledge already running and dispatch nothing. After a non-rejected emit, explore SHALL consume `next.follow` under the spawn/emit fetch-follow contract and SHALL load the named file only when this chat's conversation loaded-set does not already contain that path. Plan SHALL load `pipeline-plan-unattended.md` at sai-1; Direct Build SHALL load `pipeline-direct-build.md` at build-implement. The displayed Plan route SHALL map to `plan-unattended` and retain the supervised `sai-1`/`sai-2` lifecycle plus an Implement panel row with no worker; the Direct Build - Unattended route SHALL retain the fixed eight-step flow and existing worker boundaries.
 
 #### Scenario: deferred route fetches preserve dispatch boundaries
 
 - **WHEN** the crystallization-close selector is reached and the user selects Plan - Unattended, Direct Build - Unattended, or Manual
-- **THEN** route contracts are not fetched at selector presentation, only the explicitly selected Plan or Direct Build route dispatches, and Manual performs no dispatch
+- **THEN** route contracts are not fetched at selector presentation, only the explicitly selected Plan or Direct Build route dispatches, and Manual performs no dispatch (unchanged behavior, CLI invocation)
 
 #### Scenario: selector presentation does not fetch route contracts
 
 - **WHEN** the crystallization-close selector is presented
-- **THEN** `pipeline-plan-unattended.md` and `pipeline-direct-build.md` are not fetched at that presentation
+- **THEN** `pipeline-plan-unattended.md` and `pipeline-direct-build.md` are not fetched at that presentation (unchanged from prior behavior)
 
 #### Scenario: Plan selection emits plan and loads at sai-1
 
 - **WHEN** the user selects Plan - Unattended and `explore-slice@1` has no active slice
-- **THEN** explore emits `{intent: "plan"}` and loads `pipeline-plan-unattended.md` only via `next.follow` when this chat has not already loaded that path
+- **THEN** explore invokes `sai-state emit` with the session id and plan intent, and loads `pipeline-plan-unattended.md` only via `next.follow` when this chat has not already loaded that path (updated from POST /emit to CLI invocation)
 
 ### Requirement: Preserve deterministic auto-fast continuation
 

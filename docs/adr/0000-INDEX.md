@@ -241,8 +241,9 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0177 — Loopback ephemeral token file, no TLS](./0177-loopback-ephemeral-token-file-no-tls.md)
 - [0178 — Uniform envelope, code registry, pinned, idempotent](./0178-uniform-envelope-code-registry-pinned-idempotent.md)
 - [0179 — Pointer-only next, caller-side resolution](./0179-pointer-only-next-caller-side-resolution.md)
-- [0180 — Liveness, pipe EOF, parent poll, tombstone, no TTL](./0180-liveness-pipe-eof-parent-poll-tombstone-no-ttl.md)
+- [0180 — Liveness, pipe EOF, parent poll, tombstone, no TTL](./0180-liveness-pipe-eof-parent-poll-tombstone-no-ttl.md) — Superseded by 0182
 - [0181 — Explore-stage, first hosted machine scope](./0181-explore-stage-first-hosted-machine-scope.md)
+- [0182 — CLI-based state machine with single-writer invariant](./0182-cli-state-machine-single-writer-invariant.md) — Supersedes 0176, 0177, 0180
 
 ### docker/orca
 
@@ -378,8 +379,9 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0177 — Loopback ephemeral token file, no TLS](./0177-loopback-ephemeral-token-file-no-tls.md)
 - [0178 — Uniform envelope, code registry, pinned, idempotent](./0178-uniform-envelope-code-registry-pinned-idempotent.md)
 - [0179 — Pointer-only next, caller-side resolution](./0179-pointer-only-next-caller-side-resolution.md)
-- [0180 — Liveness, pipe EOF, parent poll, tombstone, no TTL](./0180-liveness-pipe-eof-parent-poll-tombstone-no-ttl.md)
+- [0180 — Liveness, pipe EOF, parent poll, tombstone, no TTL](./0180-liveness-pipe-eof-parent-poll-tombstone-no-ttl.md) — Superseded by 0182
 - [0181 — Explore-stage, first hosted machine scope](./0181-explore-stage-first-hosted-machine-scope.md)
+- [0182 — CLI-based state machine with single-writer invariant](./0182-cli-state-machine-single-writer-invariant.md) — Supersedes 0176, 0177, 0180
 
 ### Fetch resolution & path conventions
 

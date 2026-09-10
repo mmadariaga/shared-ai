@@ -607,6 +607,153 @@ test('lint.js step-contract: missing Test assertions field fails', () => {
 });
 
 // ============================================================================
+// worker-emission-ownership checks
+// ============================================================================
+
+test('lint.js worker-emission-ownership: all real worker cards pass the check', () => {
+  // Verify the invariant is mechanically enforced by checking all real worker cards
+  const commandsDir = path.join(REPO_ROOT, 'sai', 'commands');
+  const workerCards = [];
+
+  // Recursively find all *worker*.md files
+  function findWorkerCards(dir) {
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        findWorkerCards(fullPath);
+      } else if (entry.isFile() && entry.name.includes('worker') && entry.name.endsWith('.md')) {
+        workerCards.push(fullPath);
+      }
+    }
+  }
+
+  findWorkerCards(commandsDir);
+
+  // Every worker card must pass the check (zero violations)
+  assert.ok(workerCards.length > 0, 'found at least one worker card');
+
+  for (const cardPath of workerCards) {
+    const content = fs.readFileSync(cardPath, 'utf8');
+    const { checkWorkerEmissionOwnership } = require('../sai/tools/lint.js');
+    const violations = checkWorkerEmissionOwnership(content);
+    assert.equal(violations.length, 0, `worker card ${path.relative(REPO_ROOT, cardPath)} must pass the check but has ${violations.length} violation(s): ${violations.map(v => `${v.line}:${v.problem}`).join(', ')}`);
+  }
+});
+
+test('lint.js worker-emission-ownership: real prose from worker cards passes', () => {
+  const tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), 'lint-'));
+  try {
+    const testFile = path.join(tmpdir, 'worker.md');
+    // Real examples from the codebase that MUST pass
+    const workerContent = `# Worker
+
+## Progress Reporting
+
+Emit progress events marking only the dispatch-local plan's steps.
+
+## Feedback
+
+MUST NOT emit, re-present, or duplicate the feedback-text prompt.
+
+The progress-event-per-batch contract means each batch of work
+produces exactly one progress event.
+`;
+    fs.writeFileSync(testFile, workerContent);
+    const result = tool(['worker-emission-ownership', 'worker.md'], tmpdir);
+    assert.equal(result.status, 0, 'real worker prose must pass');
+    assert.match(result.stdout, /check passed/);
+  } finally {
+    fs.rmSync(tmpdir, { recursive: true });
+  }
+});
+
+test('lint.js worker-emission-ownership: sai-state emit command fails', () => {
+  const tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), 'lint-'));
+  try {
+    const testFile = path.join(tmpdir, 'worker.md');
+    const workerContent = `# Worker
+
+Run: sai-state emit <id> explore-slice@1 '{"intent":"plan"}'
+`;
+    fs.writeFileSync(testFile, workerContent);
+    const result = tool(['worker-emission-ownership', 'worker.md'], tmpdir);
+    assert.equal(result.status, 1);
+    assert.match(result.stdout, /WORKER_REFERENCES_STAGE_MACHINE_SURFACE/);
+  } finally {
+    fs.rmSync(tmpdir, { recursive: true });
+  }
+});
+
+test('lint.js worker-emission-ownership: sai-state spawn command fails', () => {
+  const tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), 'lint-'));
+  try {
+    const testFile = path.join(tmpdir, 'worker.md');
+    const workerContent = `# Worker
+
+The coordinator calls sai-state spawn --key <session-key>.
+`;
+    fs.writeFileSync(testFile, workerContent);
+    const result = tool(['worker-emission-ownership', 'worker.md'], tmpdir);
+    assert.equal(result.status, 1);
+    assert.match(result.stdout, /WORKER_REFERENCES_STAGE_MACHINE_SURFACE/);
+  } finally {
+    fs.rmSync(tmpdir, { recursive: true });
+  }
+});
+
+test('lint.js worker-emission-ownership: stage machine ID fails', () => {
+  const tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), 'lint-'));
+  try {
+    const testFile = path.join(tmpdir, 'worker.md');
+    const workerContent = `# Worker
+
+Consult explore-idea@1 before continuing.
+`;
+    fs.writeFileSync(testFile, workerContent);
+    const result = tool(['worker-emission-ownership', 'worker.md'], tmpdir);
+    assert.equal(result.status, 1);
+    assert.match(result.stdout, /WORKER_REFERENCES_STAGE_MACHINE_SURFACE/);
+  } finally {
+    fs.rmSync(tmpdir, { recursive: true });
+  }
+});
+
+test('lint.js worker-emission-ownership: legacy /emit command fails', () => {
+  const tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), 'lint-'));
+  try {
+    const testFile = path.join(tmpdir, 'worker.md');
+    const workerContent = `# Worker
+
+POST /emit with the updated state.
+`;
+    fs.writeFileSync(testFile, workerContent);
+    const result = tool(['worker-emission-ownership', 'worker.md'], tmpdir);
+    assert.equal(result.status, 1);
+    assert.match(result.stdout, /WORKER_REFERENCES_STAGE_MACHINE_SURFACE/);
+  } finally {
+    fs.rmSync(tmpdir, { recursive: true });
+  }
+});
+
+test('lint.js worker-emission-ownership: bin/sai-state.js reference fails', () => {
+  const tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), 'lint-'));
+  try {
+    const testFile = path.join(tmpdir, 'worker.md');
+    const workerContent = `# Worker
+
+The worker must not invoke bin/sai-state.js directly.
+`;
+    fs.writeFileSync(testFile, workerContent);
+    const result = tool(['worker-emission-ownership', 'worker.md'], tmpdir);
+    assert.equal(result.status, 1);
+    assert.match(result.stdout, /WORKER_REFERENCES_STAGE_MACHINE_SURFACE/);
+  } finally {
+    fs.rmSync(tmpdir, { recursive: true });
+  }
+});
+
+// ============================================================================
 // Manifest test
 // ============================================================================
 

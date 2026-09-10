@@ -1,8 +1,8 @@
 'use strict';
 
-// implement-standalone@1 — stateful sidecar machine owning happy-path step routing
+// implement-standalone@1 — stateful stage machine owning happy-path step routing
 // for standalone `sai-3-implement` runs (I1). Clones the `spec-standalone@1`
-// pattern: sidecar owns the stage table, pointer routing, transition rules,
+// pattern: stage machine owns the stage table, pointer routing, transition rules,
 // and progression state; the coordinator consults it per progress event and
 // wraps its `next.follow` in the unchanged two-line continuation (wire
 // byte-identical). Routing-only: the machine never writes artifacts.
@@ -26,7 +26,7 @@
 // (`continue_after_recovery`) continuations carry no pointer and never
 // consult the machine — the machine parks until the next progress event
 // (I8). Replacement re-resolves via `project()` from the surviving
-// sidecar session (I5). Every standalone run opens a fresh sidecar
+// stage machine session (I5). Every standalone run opens a fresh stage machine
 // session and never reuses prior marks; supervised runs never touch this
 // machine; the session closes when the run closes with no machine
 // auto-retry (E1, I8).
@@ -42,14 +42,14 @@
 // Minimal wire (E4, I5): only `{stage, next}` travels the wire with mandatory
 // `machineId` on every `/emit`; no snapshots, no state in the request;
 // malformed `machineId` answers `INVALID_EVENT` / `UNKNOWN_MACHINE` with no
-// fallback (sidecar-owned).
+// fallback (stage-machine-owned).
 //
 // Minimal boot (E3, I3, I4): nucleus only (`worker.md` + `steps/common.md`);
 // `prereqs-resolution` has no file of its own and runs from the worker
 // contract plus `common.md` before the first pointer; each of the five step
 // files loads only when `next.follow` names it.
 //
-// Fail-closed (E6, I7): without the sidecar the process stops, the user is
+// Fail-closed (E6, I7): without the stage machine the process stops, the user is
 // notified, and the run waits for new instructions; it does not continue
 // degraded. Cursor dedup (E5, I6): re-emitting the same state does not
 // reload the already-loaded file.

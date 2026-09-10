@@ -95,12 +95,12 @@ The `/emit` route of the `explore-idea` sidecar SHALL return exactly one level o
 
 ### Requirement: HTTP seam live test coverage
 
-The `explore-idea` HTTP seam SHALL have test coverage exercised against the live sidecar server covering consecutive stage advances, list recording, empty-set auto-advance, idempotent replay, no-intent rejection, sidecar-owned store persistence (the record shape with `createdAt` and the per-machine ledger), atomic session-file writes, corruption warnings, cross-process restart replay, and `/close` purge semantics. The suite SHALL also cover same-chat `explore-slice@1` emit after `explore-idea@1`, omitted and mistyped `machineId` errors, and restore that requires `machineId`. The machine and sidecar code SHALL stay stdlib-only with no OS-conditional paths, and the suite SHALL run on Windows and Linux.
+The `explore-idea` local CLI emission SHALL have test coverage exercised against the CLI tool covering consecutive stage advances, list recording, empty-set auto-advance, idempotent replay, no-intent rejection, store-owned state persistence (the record shape with `createdAt`, `stateVersion`, and the per-machine ledger), atomic session-file writes, corruption warnings, cross-process restart replay, and `close` purge semantics. The suite SHALL also cover same-chat `explore-slice@1` emission after `explore-idea@1`, omitted and mistyped `machineId` errors, and the optional restore probe (now demoted to a read-only verb). The machine and CLI code SHALL stay stdlib-only with no OS-conditional paths, and the suite SHALL run on Windows and Linux.
 
 #### Scenario: Live seam suite runs identically on both platforms
 
-- **WHEN** the sidecar test suite runs on Windows or Linux
-- **THEN** the live-server seam tests pass with `spawn` → `emit` → `restore` → `close` behaving identically on both platforms and no OS-conditional code paths
+- **WHEN** the store CLI test suite runs on Windows or Linux
+- **THEN** the `spawn` → `emit` → `close` sequence behaves identically on both platforms and no OS-conditional code paths exist (updated from HTTP sidecar server invocation to local CLI invocation)
 
 ### Requirement: Sidecar-owned durable state store
 

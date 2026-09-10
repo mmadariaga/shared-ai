@@ -1,8 +1,8 @@
 'use strict';
 
-// spec-standalone@1 — stateful sidecar machine owning happy-path step routing
+// spec-standalone@1 — stateful stage machine owning happy-path step routing
 // for standalone `sai-1-spec` runs (I1). Mirrors `explore-idea@1` cursor
-// pattern: sidecar owns the stage table, pointer routing, transition rules,
+// pattern: stage machine owns the stage table, pointer routing, transition rules,
 // and progression state; the coordinator consults it per progress event and
 // wraps its `next.follow` in the unchanged two-line continuation (wire
 // byte-identical). Routing-only: the machine never writes artifacts.
@@ -24,7 +24,7 @@
 // (`continue_after_recovery`) continuations carry no pointer and never
 // consult the machine — the machine parks until the next progress event
 // (E7, I5). Replacement re-resolves via `project()` from the surviving
-// sidecar session (E3, I5). Every standalone run opens a fresh sidecar
+// stage machine session (E3, I5). Every standalone run opens a fresh stage machine
 // session and never reuses prior marks; supervised runs never touch this
 // machine; the session closes when the run closes with no machine
 // auto-retry (E5, E7, I5).
