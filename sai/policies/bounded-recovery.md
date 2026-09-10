@@ -49,14 +49,28 @@ additional phase-adapter field.
    is still a coordinator-owned rejection, never a worker-authorable class.
 
 4. **Cause Locus and dual inspection channels.** Every diagnosis SHALL assign
-   exactly one Cause Locus: `in-scope`, `out-of-scope`, or `unresolved`.
+   exactly one Cause Locus: `in-scope`, `owner-in-run`, `out-of-scope`, or `unresolved`.
    `in-scope` means that the evidence identifies a concrete point in an
    authorized production artifact and the authorized correction boundary
-   permits this worker to correct it. `out-of-scope` means that the cause is
-   in a test, declared interface, forbidden artifact, external/shared system,
-   or any other boundary this Step does not authorize. `unresolved` means the
-   evidence cannot establish a concrete point and correction boundary, or the
-   two inspection channels do not agree.
+   permits this worker to correct it. `owner-in-run` means that the evidence
+   identifies a concrete point in an authorized production artifact and the
+   authorized correction boundary is held by a named worker that is still
+   resumable in this run. The coordinator determines the in-run owner roster
+   (worker identity, authorized correction boundary, and resumability state)
+   from the active run's session state: each worker remains in the roster from
+   its initial dispatch until the run or segment boundary ends, and its resumability is tracked
+   from its dispatch state (pending dispatch, active, or completed). A worker's
+   `completed` status marks its dispatch closed but does not remove it from the
+   resumability roster until the run or segment boundary ends. Locus assignment
+   reads only from this coordinator-held roster and does not infer missing
+   workers or boundaries. When the evidence places the cause across more than
+   one in-run owner's authorized correction boundary, Cause Locus is `unresolved`;
+   no multi-owner fan-out to multiple workers occurs. `out-of-scope` means that
+   the cause is in a test, declared interface, forbidden artifact,
+   external/shared system, or any other boundary where no in-run worker holds an
+   authorized correction boundary. `unresolved` means the evidence cannot
+   establish a concrete point and correction boundary, or the two inspection
+   channels do not agree, or the evidence spans multiple in-run owners.
 
    Diagnosis uses both inspection channels before eligibility is evaluated:
    (a) the worker-authored result channel, including its status, failure
@@ -86,17 +100,18 @@ additional phase-adapter field.
    After resolution, both inspection channels, Cause Locus, normalized key,
    worker veto, and ledger state are known, recovery is eligible only when all
    of the following hold: the active segment has `recovery_policy: true`, the
-   Cause Locus is `in-scope`, the key is new in that segment's ledger, a slot
-   remains, the worker has not set `unrecoverable: true`, and the hand-back
-   diagnosis has sufficient evidence for an authorized correction and its
-   verification. The coordinator SHALL validate any present `failure_class`
+   Cause Locus is `in-scope` or `owner-in-run`, the key is new in that segment's
+   ledger, a slot remains, the worker has not set `unrecoverable: true`, and the
+   hand-back diagnosis has sufficient evidence for an authorized correction and
+   its verification. The coordinator SHALL validate any present `failure_class`
    against the closed vocabulary, but SHALL use that value as a prior rather
    than as the eligibility decision.
 
 7. **Zero-attempt branches and duplicate check.** Spend zero slots and do not
    dispatch recovery when recovery is not enabled, resolution has not
    completed, the closed outcome or its required metadata is rejected, Cause
-   Locus is `out-of-scope` or `unresolved`, the worker vetoes continuation,
+   Locus is `out-of-scope` (meaning no in-run worker holds an authorized
+   correction boundary) or `unresolved`, the worker vetoes continuation,
     the ledger is exhausted, or the result is cancelled, except as specified for
     the named Explore Plan (unattended) item-10 route below. Ordinary/generic adapters
     preserve a cancelled result as a clean stop; outside the selector-dispatched
@@ -111,16 +126,37 @@ additional phase-adapter field.
 8. **Dispatch and continuation.** Before an eligible attempt, announce the
    routing diagnosis, failure class, Cause Locus, normalized diagnosis key, and
    the slot ordinal (`1 of 3`, `2 of 3`, or `3 of 3`) in conversation text.
-   Atomically
-   record the new key and consume its one slot, then resume the same live worker
-   with exactly `continue_after_recovery`. Recovery SHALL never dispatch a
-   replacement worker. If that recovery continuation loses transport, is
-   rejected, or otherwise cannot resume the same worker, stop recovery and
+   Atomically record the new key and consume its one slot, then resume the
+   live worker with exactly `continue_after_recovery`. When Cause Locus is
+   `in-scope`, resume the same worker that returned the non-clean result. When
+   Cause Locus is `owner-in-run`, resume the live worker holding the authorized
+   correction boundary identified in the diagnosis. Recovery SHALL never dispatch
+   a replacement worker. If that recovery continuation loses transport, is
+   rejected, or otherwise cannot resume the target worker, stop recovery and
    hand back the diagnosis; do not turn the loss into a replacement dispatch.
    Ordinary continuation loss outside recovery retains the existing at-most-one
    replacement fallback.
    A subsequent diagnosis may be considered only from a successfully resumed
-   same-worker result and only if it has a new key and a remaining slot.
+   target-worker result (the same worker when in-scope, or the owner worker when
+   owner-in-run) and only if it has a new key and a remaining slot.
+
+   **Downstream relaunch after owner correction.** When Cause Locus is
+   `owner-in-run` and the owner worker returns a successful `completed` status
+   from recovery, the owner's correction invalidates the downstream result that
+   reported the non-clean outcome. The coordinator SHALL resume the downstream
+   worker with exactly `continue_after_recovery_relaunch`, a warm continuation
+   carrying the corrected upstream artifacts scoped to recovering from the one
+   concrete diagnosed point. Before the relaunch continuation is sent, the
+   coordinator SHALL check whether any user-facing gate (such as an
+   artifact-feedback gate or approval gate) already accepted artifacts that the
+   owner correction has now rewritten; if so, the coordinator SHALL re-present
+   that gate with the modified artifacts before resuming the downstream worker,
+   preserving the constraint that no approved content is silently mutated. The
+   relaunch is a separate work cycle: the downstream worker executes with the
+   corrected inputs from the continued state, and a separate diagnosis applies to
+   the relaunch result only if a new non-clean outcome is returned. A downstream
+   relaunch does not extend or reset the shared three-slot recovery ledger of the
+   downstream phase.
 
 9. **Input, cancellation, and hand-back.** If recovery returns `needs_input`,
    exit recovery without charging that result, forward its exact question and

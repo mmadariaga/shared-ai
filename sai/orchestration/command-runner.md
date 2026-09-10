@@ -16,8 +16,10 @@ Worker results are closed payloads. A terminal result has exactly one of these
 statuses: `completed`, `needs_input`, `failed`, or `cancelled`. `completed`,
 `failed`, and `cancelled` are run-closing; `needs_input` is a terminal
 lifecycle status that is not run-closing — it pauses the run for the
-forwarded answer, and the loop processes the next result. Validate the
-status, the offset-bearing ISO-8601 `emitted_on`, string `summary`, and string-list
+forwarded answer, and the loop processes the next result. A worker's `completed`
+status closes its current dispatch phase but does not end its resumability for
+recovery purposes; worker resumability ends only when the run closes or the
+segment boundary is crossed. Validate the status, the offset-bearing ISO-8601 `emitted_on`, string `summary`, and string-list
 `changed_files`; `needs_input` also requires its question, ordered options where
 applicable, and binding-owned continuation metadata. A design notice is the
 separate closed shape

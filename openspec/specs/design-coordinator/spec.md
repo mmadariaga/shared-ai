@@ -17,7 +17,7 @@ The routed design coordinator, worker, and step-local instruction surfaces are g
 
 ### Requirement: Design coordinator diagnoses the main path only after non-clean closure
 
-The routed design coordinator SHALL declare the existing recovery policy together with the design worker's main artifact ownership and SHALL preserve the existing overview-generation recovery path. Its clean route remains a thin router: it SHALL not read code, configuration, change artifacts, or design artifacts and SHALL forward worker payloads without inspecting them. A failed result, a coordinator-disproved completed result, or a completed result carrying a STOP opens a narrowly scoped exception under which the coordinator MAY inspect only `design.md`, `tasks.md`, and `interfaces.md`, plus the read-only proposal/spec inputs needed to establish whether a prior-phase cause is out of scope. The coordinator SHALL never write an artifact; it SHALL either re-dispatch the same worker with a diagnosis or stop with zero attempts.
+The routed design coordinator SHALL declare the existing recovery policy together with the design worker's main artifact ownership and SHALL preserve the existing overview-generation recovery path. Its clean route remains a thin router: it SHALL not read code, configuration, change artifacts, or design artifacts and SHALL forward worker payloads without inspecting them. A failed result, a coordinator-disproved completed result, or a completed result carrying a STOP opens a narrowly scoped exception under which the coordinator MAY inspect only `design.md`, `tasks.md`, and `interfaces.md`, plus the read-only proposal/spec inputs needed to establish whether a prior-phase cause is out of scope or owner-in-run. The coordinator SHALL never write an artifact; it SHALL either re-dispatch the same worker with a diagnosis, route recovery to an upstream worker for an owner-in-run diagnosis, or stop with zero attempts. For a post-resolution non-clean main-path trigger with Cause Locus `in-scope`, the coordinator SHALL route through `continue_after_recovery` to the same design worker. For a Cause Locus `owner-in-run` identifying a spec worker that owns the correction boundary, the coordinator SHALL route through `continue_after_recovery` to that upstream spec worker as the first consumer for a prior-phase cause, with that recovery being the upstream worker's correction phase.
 
 #### Scenario: Clean design forwarding remains blind
 - **WHEN** the design worker returns a clean progress event, notice, input request, completed result, or cancellation
@@ -31,8 +31,9 @@ The routed design coordinator SHALL declare the existing recovery policy togethe
 
 #### Scenario: Previous-phase contradiction is not repaired by design
 - **WHEN** coordinator inspection shows that contradictory `proposal.md` or `specs/**` caused the design failure
-- **THEN** the coordinator SHALL identify the prior-phase artifact as out of scope
-- **AND** SHALL spend zero recovery slots and SHALL not edit or forward a correction that changes the spec
+- **THEN** the coordinator SHALL determine whether the cause is out-of-scope (no in-run owner holds the correction boundary) or owner-in-run (an in-run owner holds the correction boundary)
+- **AND** if out-of-scope, SHALL identify the prior-phase artifact as out of scope, spend zero recovery slots, and not edit or forward a correction that changes the spec
+- **AND** if owner-in-run, SHALL route recovery to the owner worker as the first consumer for prior-phase artifact correction
 
 #### Scenario: Coordinator verification wins
 - **WHEN** the design worker reports a safe completed or recoverable result but coordinator artifact verification contradicts it
@@ -40,8 +41,8 @@ The routed design coordinator SHALL declare the existing recovery policy togethe
 - **AND** SHALL not emit the design completion sentence until a later worker result is independently clean
 
 #### Scenario: Design coordinator never writes
-- **WHEN** a diagnosis is eligible for same-worker recovery
-- **THEN** the coordinator SHALL send the ordered diagnosis to the same design worker
+- **WHEN** a diagnosis is eligible for same-worker or owner-worker recovery
+- **THEN** the coordinator SHALL send the ordered diagnosis to the same design worker (in-scope) or to the owner worker (owner-in-run)
 - **AND** SHALL not edit `design.md`, `tasks.md`, `interfaces.md`, `proposal.md`, `specs/**`, `.openspec.yaml`, or the overview
 
 ### Requirement: Design non-clean diagnosis preserves overview and gate boundaries

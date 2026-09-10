@@ -3,7 +3,6 @@
 ## Purpose
 TBD - created by archiving change bounded-worker-recovery. Update Purpose after archive.
 ## Requirements
-
 ### Requirement: Preserve Plan cancellation recovery
 
 The bounded worker-recovery policy SHALL refer to the selector-dispatched Plan (unattended) item-10 exception and SHALL preserve its no-replacement, same-worker, retryable behavior.
@@ -12,6 +11,7 @@ The bounded worker-recovery policy SHALL refer to the selector-dispatched Plan (
 
 - **WHEN** Plan diagnosis cannot deliver its actionable continuation
 - **THEN** the existing continuation-loss result remains terminal for the attempt and the change remains retryable.
+
 ### Requirement: Optional recovery policy declaration
 The shared phase-adapter contract SHALL accept an optional static `recovery_policy` declaration alongside the optional `progress_plan`. The declaration SHALL be fully known at dispatch, immutable for the invocation segment, and presence-only for opt-in: the shared contract SHALL own the fixed recovery budget, non-clean-closure trigger, routing diagnoses, cause-locus rules, and failure rules. For this change, the design overview lifecycle, the standalone spec adapter, and the standalone design adapter MAY declare the policy; the spec and design adapters SHALL additionally declare their worker-owned artifact surface and whether correction is a same-worker re-dispatch. An adapter that omits `recovery_policy` SHALL retain the current continuation and replacement-worker behavior and SHALL emit no recovery-specific terminal lines. The presence of the policy SHALL not make an out-of-scope, unresolved, vetoed, malformed, duplicate, cancelled, or transport-lost result recoverable.
 
@@ -43,7 +43,7 @@ The shared phase-adapter contract SHALL accept an optional static `recovery_poli
 
 ### Requirement: Standalone planning artifacts are recovery surfaces
 
-The bounded-recovery capability SHALL support the following worker-owned planning surfaces when their standalone phase adapter opts into recovery: the spec worker owns `proposal.md`, `specs/**`, and permitted root `GLOSSARY.md` updates; the design worker owns `design.md`, `tasks.md`, and `interfaces.md`; the existing design overview surface remains governed by its current overview-generation contract. The coordinator SHALL inspect these surfaces only after a non-clean closure, SHALL never repair them, and SHALL send any in-scope correction back through the same worker.
+The bounded-recovery capability SHALL support the following worker-owned planning surfaces when their standalone phase adapter opts into recovery: the spec worker owns `proposal.md`, `specs/**`, and permitted root `GLOSSARY.md` updates; the design worker owns `design.md`, `tasks.md`, and `interfaces.md`; the existing design overview surface remains governed by its current overview-generation contract. The coordinator SHALL inspect these surfaces only after a non-clean closure, SHALL never repair them, and SHALL send any in-scope or owner-in-run correction back through the same worker or the owner worker.
 
 #### Scenario: Spec surface identifies an in-scope cause
 - **WHEN** a failed spec result is followed by coordinator evidence locating a safe correction in `proposal.md` or `specs/**`
@@ -57,12 +57,13 @@ The bounded-recovery capability SHALL support the following worker-owned plannin
 
 #### Scenario: Previous-phase cause is out of scope
 - **WHEN** coordinator inspection proves that a design failure is caused by contradictory `proposal.md` or `specs/**`
-- **THEN** the coordinator SHALL name the prior-phase artifact and concrete point
-- **AND** SHALL spend zero recovery slots and SHALL not repair that artifact
+- **THEN** the coordinator SHALL determine whether the cause is out-of-scope (no in-run owner holds the correction boundary) or owner-in-run (an in-run owner holds the correction boundary)
+- **AND** if out-of-scope, SHALL name that prior-phase artifact and concrete point as out of scope, spend zero recovery slots, and not repair that artifact
+- **AND** if owner-in-run, SHALL route recovery to the owner worker as the first consumer for a prior-phase cause
 
 #### Scenario: Planning coordinator never becomes the artifact writer
-- **WHEN** an in-scope planning diagnosis is selected
-- **THEN** the coordinator SHALL send the diagnosis and correction boundary to the same worker
+- **WHEN** an in-scope or owner-in-run planning diagnosis is selected
+- **THEN** the coordinator SHALL send the diagnosis and correction boundary to the same worker (in-scope) or the owner worker (owner-in-run)
 - **AND** SHALL not write any phase artifact, glossary entry, `.openspec.yaml` value, or recovery marker
 
 ### Requirement: Inspection and phase-static recovery channels are mutually exclusive
@@ -188,7 +189,7 @@ For an eligible overview-generation `validation-failed`, `generation-error`, or 
 
 ### Requirement: Recovery eligibility and worker veto
 
-For an opted-in adapter, the shared runner SHALL make a valid worker result eligible when the worker has not set `unrecoverable: true`, coordinator inspection establishes a clear safe correction inside the active worker's authorized scope, and the coordinator-derived `diagnosis_key` is new. The worker-authored `failure_class` SHALL be treated as a prior that can focus diagnosis, but SHALL not be the eligibility gate: `blocking-contradiction` and `unclassified-worker-fault` MAY enter recovery when their established Cause Locus is `in-scope`, while an otherwise eligible class SHALL receive zero when its Cause Locus is out-of-scope or unresolved. A coordinator rejection of a usable completed report SHALL use the phase's validation-failure accounting when the coordinator identifies a clear in-scope correction; its routing diagnosis SHALL remain `coordinator rejection`, and its unique diagnosis key SHALL consume one ledger slot. A malformed result, including a malformed continuation result, SHALL be `coordinator rejection` with coordinator-authored `failure_class: outer-envelope-violation`, `Cause Locus: out-of-scope`, and zero additional attempts. A continuation operation that cannot be delivered or produces no result SHALL be `continuation/transport loss` with `Cause Locus: out-of-scope`; it SHALL stop recovery without charging an additional attempt. A worker result that emits the coordinator-reserved `outer-envelope-violation` SHALL be rejected as an output-contract violation and SHALL receive zero attempts. Any out-of-scope or unresolved cause SHALL receive zero attempts regardless of its failure class. A failed result carrying `unrecoverable: true` SHALL veto all remaining recovery attempts. The worker SHALL set that veto only when worker-side evidence establishes that continuation cannot safely repair the failure; the coordinator SHALL not override it. When `failure_class: blocking-contradiction` and `unrecoverable: true` occur together, the blocking contradiction SHALL take precedence as the reported stopping reason.
+For an opted-in adapter, the shared runner SHALL make a valid worker result eligible when the worker has not set `unrecoverable: true`, coordinator inspection establishes a clear safe correction inside the active worker's authorized scope or inside an in-run owner's authorized scope, and the coordinator-derived `diagnosis_key` is new. The worker-authored `failure_class` SHALL be treated as a prior that can focus diagnosis, but SHALL not be the eligibility gate: `blocking-contradiction` and `unclassified-worker-fault` MAY enter recovery when their established Cause Locus is `in-scope` or `owner-in-run`, while an otherwise eligible class SHALL receive zero when its Cause Locus is out-of-scope or unresolved. A coordinator rejection of a usable completed report SHALL use the phase's validation-failure accounting when the coordinator identifies a clear in-scope or owner-in-run correction; its routing diagnosis SHALL remain `coordinator rejection`, and its unique diagnosis key SHALL consume one ledger slot. A malformed result, including a malformed continuation result, SHALL be `coordinator rejection` with coordinator-authored `failure_class: outer-envelope-violation`, `Cause Locus: out-of-scope`, and zero additional attempts. A continuation operation that cannot be delivered or produces no result SHALL be `continuation/transport loss` with `Cause Locus: out-of-scope`; it SHALL stop recovery without charging an additional attempt. A worker result that emits the coordinator-reserved `outer-envelope-violation` SHALL be rejected as an output-contract violation and SHALL receive zero attempts. Any out-of-scope or unresolved cause SHALL receive zero attempts regardless of its failure class. A failed result carrying `unrecoverable: true` SHALL veto all remaining recovery attempts. The worker SHALL set that veto only when worker-side evidence establishes that continuation cannot safely repair the failure; the coordinator SHALL not override it. When `failure_class: blocking-contradiction` and `unrecoverable: true` occur together, the blocking contradiction SHALL take precedence as the reported stopping reason.
 
 Coordinator inspection that establishes Cause Locus SHALL use exactly one of two evidence channels, selected by the active phase adapter's authority model — never by parsing worker `summary` prose:
 
@@ -211,45 +212,10 @@ Coordinator inspection that establishes Cause Locus SHALL use exactly one of two
 - **AND** SHALL report blocking contradiction as the stopping reason
 - **AND** SHALL not report the veto as the primary cause
 
-1. **Independent verification channel** (verifying adapters, including Apply): the coordinator establishes locus from its own Verification Checklist, baseline, allowed-file set, report comparison, and other phase-owned verification evidence. Worker `failure_class` and `summary` are diagnostic priors only and SHALL NOT replace that verification.
-2. **Phase-static repair-surface channel** (blind opted-in adapters that are contractually forbidden from reading change artifacts, including design today): the coordinator SHALL NOT read change artifacts and SHALL NOT infer locus from `summary` prose. It establishes locus solely by matching closed machine-readable worker fields against a **registered phase-static authorized repair surface** — a fixed record that does not depend on free-form summary text and that is listed in this capability (or a later delta that adds surfaces) rather than only in command-card prose.
-
-A registered surface SHALL define exactly:
-- `surface_id` (stable token)
-- `artifact_path_template` (primary path; `{change-name}` placeholder allowed)
-- `optional_path_templates` (zero or more additional allowed paths, same placeholder rules)
-- `concrete_lifecycle_point` (stable token used as the diagnosis_key concrete point)
-- `authorized_correction_boundary` (stable token used as the diagnosis_key correction boundary)
-- `accepted_failure_classes` (non-empty subset of the closed worker failure-class vocabulary)
-
-**Phase-static match algorithm** (deterministic; no judgment calls):
-1. If `unrecoverable` is not the boolean `false`, the result matches no surface.
-2. Else select the unique registered surface for the active phase whose `accepted_failure_classes` contains the worker's `failure_class`. If none or more than one surface accepts that class for the phase, the result matches no surface (phases SHALL register disjoint accepted-class sets).
-3. **`changed_files` rule** — path evidence is **mandatory positive evidence**, not optional corroboration:
-   - If `changed_files` is missing or empty, the result matches no surface (unresolved). Class+veto alone SHALL NOT authorize an overview (or any) surface match.
-   - If `changed_files` is non-empty, it SHALL be non-empty after path normalization, every listed path SHALL normalize to one of the surface's primary or optional path templates after `{change-name}` substitution, and at least one listed path SHALL normalize to the surface's **primary** `artifact_path_template`. If any path falls outside the allowed set, or the primary path is absent from the list, the result matches no surface (unresolved — not a guessed out-of-scope locus).
-4. On success: Cause Locus is `in-scope`; `diagnosis_key` is `(substituted primary artifact path, concrete_lifecycle_point, authorized_correction_boundary)` without placing `failure_class` or routing labels in the tuple.
-5. On no match: unresolved cause, zero attempts, no out-of-scope claim.
-
-**Registered surface for design (this change)** — the only blind opted-in surface introduced here. This capability defines the required initial row; the **sole runtime registry listing** that agents execute SHALL live in `sai/policies/bounded-recovery.md` (single home). Delta specs and design artifacts MAY cite the row for requirements traceability but SHALL NOT create a second maintained table that can drift from the policy. Future surfaces are added by a delta that updates this requirement and the policy registry in the same change.
-
-| Field | Value |
-| --- | --- |
-| `surface_id` | `design-overview-repair` |
-| `artifact_path_template` | `openspec/changes/{change-name}/change-overview.md` |
-| `optional_path_templates` | `openspec/changes/{change-name}/.openspec.yaml` |
-| `concrete_lifecycle_point` | `overview-generation-repair` |
-| `authorized_correction_boundary` | `design-worker-overview-repair` |
-| `accepted_failure_classes` | `validation-failed`, `generation-error`, `dispatch-failed`, `envelope-contract-violation`, `blocking-contradiction` |
-
-No other design or planning surface is registered by this change. Unregistered phases match nothing and resolve unmatched failures to unresolved.
-
-Both channels produce coordinator-owned Cause Locus and `diagnosis_key` values. The shared runner still transports the closed diagnosis without inspecting artifacts itself. Expanding the closed worker lifecycle payload is not required for the phase-static channel. The bounded-recovery policy (`sai/policies/bounded-recovery.md`) SHALL host the sole runtime registry table (including the design row above), state the match algorithm, and forbid inventing surfaces from design-card prose or from this requirement text alone without updating the policy registry.
-
 #### Scenario: Verifying adapter establishes locus from independent verification
 
-- **WHEN** an opted-in verifying adapter (Apply) receives a non-clean worker result and the coordinator's Verification Checklist, baseline, allowed-file, or report comparison locates a clear safe correction inside the active worker's authorized scope
-- **THEN** the coordinator SHALL assign `Cause Locus: in-scope` from that independent verification evidence
+- **WHEN** an opted-in verifying adapter (Apply) receives a non-clean worker result and the coordinator's Verification Checklist, baseline, allowed-file, or report comparison locates a clear safe correction inside the active worker's authorized scope or inside an in-run owner's authorized scope
+- **THEN** the coordinator SHALL assign `Cause Locus: in-scope` or `Cause Locus: owner-in-run` from that independent verification evidence
 - **AND** SHALL derive `diagnosis_key` from the verified artifact path, concrete point, and correction boundary
 - **AND** SHALL NOT treat worker `summary` prose as sufficient locus evidence
 
@@ -324,7 +290,7 @@ Both channels produce coordinator-owned Cause Locus and `diagnosis_key` values. 
 
 #### Scenario: In-scope unclassified fault uses coordinator diagnosis
 
-- **WHEN** a failed result carries `failure_class: unclassified-worker-fault`, `unrecoverable: false`, and coordinator evidence locates a clear safe cause and correction inside the worker's authorized scope
+- **WHEN** a failed result carries `failure_class: unclassified-worker-fault`, `unrecoverable: false`, and coordinator evidence locates a clear safe cause and correction inside the worker's authorized scope or inside an in-run owner's authorized scope
 - **THEN** the coordinator SHALL use its Cause Locus and diagnosis key to determine eligibility
 - **AND** it SHALL permit one new ledger slot rather than handing back solely because the worker class is unclassified
 
@@ -342,10 +308,9 @@ Both channels produce coordinator-owned Cause Locus and `diagnosis_key` values. 
 
 #### Scenario: Worker verifies its own repair
 
-- **WHEN** a worker continues after an in-scope recovery announcement
+- **WHEN** a worker continues after an in-scope or owner-in-run recovery announcement
 - **THEN** the worker SHALL inspect and verify the relevant artifact or lifecycle state before returning `completed`
 - **AND** the phase coordinator MAY perform its independent verification without delegating that verification back to the worker
-
 
 ### Requirement: Recovered overview state is committed
 When a design-worker recovery continuation repairs an overview-generation failure and returns `status: completed`, the worker SHALL commit `overview.state: current`, clear both `overview.failure_kind` and `overview.failure_details`, and include `openspec/changes/{change-name}/.openspec.yaml` in the invocation's ordered changed-file union. This successful recovery commit SHALL occur only after the worker verifies the overview and its source relationship; it supersedes the prior `failed` or `stale` diagnostic state for that attempt. A recovery that does not return `completed` SHALL retain the existing failure-state mapping for its terminal route.
@@ -518,3 +483,18 @@ The shared bounded-recovery contract SHALL name selector-dispatched Explore Auto
 
 - **WHEN** an Explore Diagnosis Round establishes an actionable correction but same-worker continuation cannot be delivered
 - **THEN** the route records `continuation/transport loss`, consumes the diagnosis round, dispatches no replacement worker, and leaves the change retryable
+
+### Requirement: Downstream relaunch after owner correction
+
+When Cause Locus is `owner-in-run` and the owner worker returns a successful `completed` status from recovery, the owner's correction invalidates the downstream result that reported the non-clean outcome. The coordinator SHALL resume the downstream worker with exactly `continue_after_recovery_relaunch`, a warm continuation carrying the corrected upstream artifacts scoped to recovering from the one concrete diagnosed point. Before the relaunch continuation is sent, the coordinator SHALL check whether any user-facing gate (such as an artifact-feedback gate or approval gate) already accepted artifacts that the owner correction has now rewritten; if so, the coordinator SHALL re-present that gate with the modified artifacts before resuming the downstream worker, preserving the constraint that no approved content is silently mutated. The relaunch is a separate work cycle: the downstream worker executes with the corrected inputs from the continued state, and a separate diagnosis applies to the relaunch result only if a new non-clean outcome is returned. A downstream relaunch does not extend or reset the shared three-slot recovery ledger of the downstream phase.
+
+#### Scenario: Owner worker returns successful correction
+- **WHEN** an owner worker returns `completed` from an `owner-in-run` recovery continuation
+- **THEN** the coordinator SHALL invalidate the downstream result and resume the downstream worker with `continue_after_recovery_relaunch` carrying corrected artifacts
+- **AND** the downstream worker SHALL execute in a separate work cycle with independent diagnosis
+
+#### Scenario: Gate re-surface preserves approved content
+- **WHEN** an owner correction has rewritten artifacts already approved at a user-facing gate
+- **THEN** the coordinator SHALL re-present that gate with the modified artifacts before the downstream relaunch continuation
+- **AND** SHALL preserve the constraint that no approved content is silently mutated
+
