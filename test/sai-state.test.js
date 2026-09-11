@@ -338,6 +338,93 @@ test('sessionDir and sessionFile utilities work correctly', () => {
   assert.ok(file.startsWith(dir), 'sessionFile should be under sessionDir');
 });
 
+test('CLI: reset clears one machine state in a fresh session', () => {
+  const key = 'test-reset-fresh';
+  const spawn = invokeCommand('spawn', '--key', key);
+  const id = JSON.parse(spawn.stdout).id;
+
+  try {
+    // Reset a machine that has no prior state (fresh session)
+    const reset = invokeCommand('reset', id, 'review-standalone@1');
+    assert.equal(reset.exitCode, 0, 'reset on fresh session should succeed');
+    const json = JSON.parse(reset.stdout);
+    assert.equal(json.reset, 'review-standalone@1', 'reset should return the machine id');
+  } finally {
+    cleanup([id]);
+  }
+});
+
+test('CLI: reset resets one machine to initial state and preserves others', () => {
+  const key = 'test-reset-multiple';
+  const spawn = invokeCommand('spawn', '--key', key);
+  const id = JSON.parse(spawn.stdout).id;
+
+  try {
+    // Emit to explore-idea to establish state
+    const event1 = JSON.stringify({ intent: 'next-step' });
+    const emit1 = invokeCommand('emit', id, 'explore-idea@1', event1);
+    assert.equal(emit1.exitCode, 0);
+
+    // Emit to review-standalone to establish state
+    const event2 = JSON.stringify({ step_ids: ['resolve-change'] });
+    const emit2 = invokeCommand('emit', id, 'review-standalone@1', event2);
+    assert.equal(emit2.exitCode, 0);
+    const json2 = JSON.parse(emit2.stdout);
+    assert.equal(json2.stage, 'establish-diff-scope', 'review should be past first step');
+
+    // Reset only review-standalone
+    const reset = invokeCommand('reset', id, 'review-standalone@1');
+    assert.equal(reset.exitCode, 0);
+
+    // Verify review is back to initial state
+    const project = invokeCommand('emit', id, 'review-standalone@1', JSON.stringify({}));
+    assert.equal(project.exitCode, 0);
+    const json3 = JSON.parse(project.stdout);
+    assert.equal(json3.stage, 'resolve-change', 'review should be reset to initial step');
+
+    // Verify explore-idea state is preserved
+    const exploreCheck = invokeCommand('emit', id, 'explore-idea@1', event1);
+    assert.equal(exploreCheck.exitCode, 0);
+    const json4 = JSON.parse(exploreCheck.stdout);
+    assert.ok(json4.stage !== undefined, 'explore-idea state should be preserved');
+  } finally {
+    cleanup([id]);
+  }
+});
+
+test('CLI: reset with unknown machine id returns UNKNOWN_MACHINE', () => {
+  const key = 'test-reset-unknown';
+  const spawn = invokeCommand('spawn', '--key', key);
+  const id = JSON.parse(spawn.stdout).id;
+
+  try {
+    const reset = invokeCommand('reset', id, 'nonexistent@1');
+    assert.equal(reset.exitCode, 1, 'reset with unknown machine should fail with exit code 1');
+    const json = JSON.parse(reset.stdout);
+    assert.equal(json.error, 'UNKNOWN_MACHINE', 'should return UNKNOWN_MACHINE error');
+  } finally {
+    cleanup([id]);
+  }
+});
+
+test('CLI: reset with missing args returns exit code 2', () => {
+  const key = 'test-reset-missing-args';
+  const spawn = invokeCommand('spawn', '--key', key);
+  const id = JSON.parse(spawn.stdout).id;
+
+  try {
+    // Missing machineId
+    const result1 = invokeCommand('reset', id);
+    assert.equal(result1.exitCode, 2, 'reset missing machineId should return exit code 2');
+
+    // Missing both id and machineId
+    const result2 = invokeCommand('reset');
+    assert.equal(result2.exitCode, 2, 'reset missing all args should return exit code 2');
+  } finally {
+    cleanup([id]);
+  }
+});
+
 test('isUuidv4 validates UUIDv4 format correctly', () => {
   assert.ok(isUuidv4('550e8400-e29b-41d4-a716-446655440000'), 'valid v4 UUID should pass');
   assert.ok(isUuidv4('12345678-1234-4234-9234-123456789012'), 'valid v4 UUID should pass');

@@ -753,6 +753,57 @@ The worker must not invoke bin/sai-state.js directly.
   }
 });
 
+test('lint.js worker-emission-ownership: sai-state reset command fails', () => {
+  const tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), 'lint-'));
+  try {
+    const testFile = path.join(tmpdir, 'worker.md');
+    const workerContent = `# Worker
+
+The coordinator must handle \`sai-state reset <id> review-standalone@1\`.
+`;
+    fs.writeFileSync(testFile, workerContent);
+    const result = tool(['worker-emission-ownership', 'worker.md'], tmpdir);
+    assert.equal(result.status, 1);
+    assert.match(result.stdout, /WORKER_REFERENCES_STAGE_MACHINE_SURFACE/);
+  } finally {
+    fs.rmSync(tmpdir, { recursive: true });
+  }
+});
+
+test('lint.js worker-emission-ownership: review-standalone reference in worker fails', () => {
+  const tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), 'lint-'));
+  try {
+    const testFile = path.join(tmpdir, 'worker.md');
+    const workerContent = `# Worker
+
+The machine review-standalone@1 is coordinator-owned.
+`;
+    fs.writeFileSync(testFile, workerContent);
+    const result = tool(['worker-emission-ownership', 'worker.md'], tmpdir);
+    assert.equal(result.status, 1);
+    assert.match(result.stdout, /WORKER_REFERENCES_STAGE_MACHINE_SURFACE/);
+  } finally {
+    fs.rmSync(tmpdir, { recursive: true });
+  }
+});
+
+test('lint.js worker-emission-ownership: security-standalone reference in worker fails', () => {
+  const tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), 'lint-'));
+  try {
+    const testFile = path.join(tmpdir, 'worker.md');
+    const workerContent = `# Worker
+
+The machine security-standalone@1 is coordinator-only.
+`;
+    fs.writeFileSync(testFile, workerContent);
+    const result = tool(['worker-emission-ownership', 'worker.md'], tmpdir);
+    assert.equal(result.status, 1);
+    assert.match(result.stdout, /WORKER_REFERENCES_STAGE_MACHINE_SURFACE/);
+  } finally {
+    fs.rmSync(tmpdir, { recursive: true });
+  }
+});
+
 // ============================================================================
 // Manifest test
 // ============================================================================

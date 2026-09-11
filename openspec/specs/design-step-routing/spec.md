@@ -25,9 +25,23 @@ The machine SHALL ignore undeclared worker ids silently with no notification cha
 - **THEN** the state and pointer stay unchanged with no rejection marker
 
 ### Requirement: Replacement re-resolution and parked lifecycle
-Every standalone run SHALL open a fresh sidecar session and SHALL close it when the run closes with no machine auto-retry. Replacement SHALL re-resolve the active step from the surviving session done set and its immutable variant via project. Needs input, failed, and cancelled outcomes SHALL park the machine with pointer-free feedback and recovery continuations until the next progress event. Emit or follow-load failure SHALL stop the run, show the error, and wait with nothing guessed and never routed through Bounded Recovery.
+
+Every standalone run SHALL open a fresh step machine session with `spawn` followed by an immediate `reset` of the design machine to clear its state (other machines in the session remain untouched). Replacement SHALL re-resolve the active step from the surviving session done set and its immutable variant via project. Needs input, failed, and cancelled outcomes SHALL park the machine with pointer-free feedback and recovery continuations until the next progress event. 
+
+At run-close (completed, failed, or cancelled), the coordinator SHALL invoke `reset` again to clear the design machine's state only (other machines in the session remain untouched); later runs in the same chat with design-standalone@1 start from step zero. Emit or follow-load failure SHALL stop the run, show the error, and wait with nothing guessed and never routed through Bounded Recovery. Store failure (unreachable, corrupt-session-file warning, version mismatch, or unknown machine error) SHALL stop the coordinator, surface the error, and wait for user instructions with no degraded-mode continuation.
 
 #### Scenario: Replacement projects surviving done set
+
 - **WHEN** a replacement projects a surviving session holding prereqs-resolution and research as done while opted-in
 - **THEN** the first continuation carries the design step pointer
+
+#### Scenario: Run-close resets design machine only
+
+- **WHEN** a run closes at any terminal result
+- **THEN** the coordinator invokes `reset` to clear only the design machine's state; other machines in the session remain untouched and a later run with design-standalone@1 starts from step zero
+
+#### Scenario: Store failure stops coordinator
+
+- **WHEN** the sai-state store fails (unreachable, corrupt session file, version mismatch, unknown machine)
+- **THEN** the coordinator stops, displays the error context, and waits for user instructions; it does not continue degraded and does not route through Bounded Recovery
 

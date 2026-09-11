@@ -92,8 +92,8 @@ and do not dispatch a replacement.
 
 The coordinator invokes only these phase-adapter fields, plus the optional
 static, ordered `progress_plan` declaration, the optional static
-`recovery_policy` declaration, and the optional static `step_pointer_map`
-declaration:
+`recovery_policy` declaration, the optional static `step_pointer_map`
+declaration, and the optional static `step_machine` declaration:
 
 - `original_envelope`
 - `dispatch_operation`
@@ -106,6 +106,7 @@ declaration:
 - `progress_plan` (optional — static, ordered, fully known at dispatch, immutable for the active adapter segment; under composition the pre-delta phrase "immutable for the invocation" means immutable for the active adapter segment, and a one-adapter invocation keeps segment scope identical to today's invocation scope; it controls visual task-list rendering only)
 - `recovery_policy` (optional — static boolean, fully known at dispatch, immutable for the active adapter segment under the same segment reading as `progress_plan`) (recovery semantics: @sai/policies/bounded-recovery.md)
 - `step_pointer_map` (optional — static map from phase progress ids to just-in-time step instruction paths, fully known at dispatch, immutable for the active adapter segment under the same segment reading as `progress_plan`; it may be declared without a visual `progress_plan`)
+- `step_machine` (optional — static machine id of the form `<name>@<version>`, fully known at dispatch, immutable for the active adapter segment. When declared, the coordinator consults the step machine per progress event instead of a static routing table. See `@sai/policies/stage-machine.md` § Step machines for the operational contract.)
 
 The dispatch passes exactly `arguments_value`; the
 progress plan is declared by the phase adapter, is never carried in the

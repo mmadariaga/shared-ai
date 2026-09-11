@@ -5,7 +5,7 @@ TBD - created by archiving change enforce-single-writer-stage-machine. Update Pu
 ## Requirements
 ### Requirement: Coordinator-only stage machine emission
 
-Worker cards MUST NOT reference the stage machine emission surface. The stage machine is coordinator-owned; only coordinator sessions may invoke the emit, spawn, close, and run operations. The invariant is enforced at lint time to prevent accidental introduction of worker-to-stage-machine emit calls.
+Worker cards MUST NOT reference the stage machine emission surface. The stage machine is coordinator-owned; only coordinator sessions may invoke the emit, spawn, reset, close, and run operations. The invariant is enforced at lint time to prevent accidental introduction of worker-to-stage-machine invocations.
 
 #### Scenario: Worker card lint validation passes with no stage machine references
 
@@ -14,7 +14,7 @@ Worker cards MUST NOT reference the stage machine emission surface. The stage ma
 
 #### Scenario: Worker card lint validation fails on sai-state command
 
-- **WHEN** a worker card references `sai-state emit`, `sai-state spawn`, `sai-state close`, or `sai-state run`
+- **WHEN** a worker card references `sai-state emit`, `sai-state spawn`, `sai-state reset`, `sai-state close`, or `sai-state run`
 - **THEN** the lint check fails with `WORKER_REFERENCES_STAGE_MACHINE_SURFACE`
 
 #### Scenario: Worker card lint validation fails on stage machine ID
@@ -22,9 +22,19 @@ Worker cards MUST NOT reference the stage machine emission surface. The stage ma
 - **WHEN** a worker card references a stage machine ID in the form `{machine-name}@{version}` (such as `explore-idea@1`)
 - **THEN** the lint check fails with `WORKER_REFERENCES_STAGE_MACHINE_SURFACE`
 
+#### Scenario: Lint fails on reset command reference
+
+- **WHEN** a worker card references `sai-state reset`
+- **THEN** the lint check fails with `WORKER_REFERENCES_STAGE_MACHINE_SURFACE`
+
+#### Scenario: Lint fails on new machine IDs
+
+- **WHEN** a worker card references `review-standalone@1` or `security-standalone@1`
+- **THEN** the lint check fails with `WORKER_REFERENCES_STAGE_MACHINE_SURFACE`
+
 ### Requirement: Lint check coverage of emission surface
 
-The worker-emission-ownership lint check SHALL detect all forms of stage machine emission surface reference including sai-state command invocations, bin/sai-state.js file references, quoted command references, registered stage machine IDs, and the legacy /emit HTTP command. The check SHALL validate every worker card in the repository (matching `*worker*.md` under `sai/commands/`) without false positives on legitimate progress event or coordinator prose.
+The worker-emission-ownership lint check SHALL detect all forms of stage machine emission surface reference including sai-state command invocations (emit, spawn, reset, close, run), bin/sai-state.js file references, quoted command references, registered stage machine IDs, and the legacy /emit HTTP command. The check SHALL validate every worker card in the repository (matching `*worker*.md` under `sai/commands/`) without false positives on legitimate progress event or coordinator prose.
 
 #### Scenario: All real worker cards pass the check
 

@@ -33,6 +33,10 @@ snapshot travel in either direction.
   in a request. A missing argument is a usage error (exit 2); a machine
   rejection returns exit 0 with `rejected` set; a machine error returns
   exit 1 with `{error, next}`.
+- **Reset**: `sai-state reset <id> <machineId>` clears only that machine's
+  state in the session with an atomic write, leaving other machines in the
+  same session untouched. Returns `{reset: <machineId>}`. A missing argument
+  is a usage error (exit 2).
 - **Close**: `sai-state close <id>` deletes the session file and returns
   `{closed: id}`. Reopening the same id afterwards starts from the initial
   state. Close the session when the run closes; there is no auto-retry.
@@ -42,6 +46,7 @@ without re-spelling the verbs):
 
 ```text
 sai-state spawn --key <stable-key>
+sai-state reset <id> review-standalone@1
 sai-state emit <id> explore-idea@1 '{"intent":"next-step"}'
 sai-state close <id>
 ```
@@ -113,9 +118,62 @@ its own specialized store-failure fallback (for example a full-context inline
 derivation) follows that fallback where stated; this section is the default
 everywhere else.
 
+Degraded mode does not apply to linear step-machine routing (see **Step
+machines** below). A coordinator declaring a step machine stops instead of
+continuing degraded when the store fails, surfaces the error, and waits for
+user instructions.
+
+## Step machines
+
+Shared consumption rules for linear step machines in coordinators that declare
+`step_machine: <name>@<version>` as an optional adapter field. Every linear
+step machine owns a coordinator's step cursor and returns the next step file
+in a happy-path sequence (advance-only, no backtracking, no conditional
+branching). A machine never writes artifacts; it is routing-only. Per-command
+definitions (step ids, step files, stage table, initial state, transition
+rules) stay with the owning command and are registered as data modules in
+`sai-state/machines/`.
+
+At the start of a segment whose adapter declares `step_machine`, invoke
+`spawn` once to initialize the session, then immediately `reset <id>
+<machineId>` to clear that machine's state (other machines in the session
+stay untouched). Every progress event invokes `emit <id> <machineId>
+'{"step_ids":[...]}'` with the worker's reported completed step ids in an
+ordered list (empty list for the empty case); the machine advances if the
+reported ids are declared and new, or leaves state unchanged if the list is
+empty, contains only undeclared ids, or repeats completed ids. On each emit,
+the coordinator wraps the returned `next.follow` in the two-line continuation
+from `sai/orchestration/command-runner.md` § Step-gated pointer delivery: the
+first line is today's protocol continuation; the second line is the active
+pointer `Active step: <id> — follow <path>` derived from the machine's
+response. A successful emit with `next.follow: none` is terminal; the pointer
+line reads exactly `Active step: none — complete remaining work and return
+your terminal result.`
+
+Questions, feedback, and recovery continuations (`needs_input`,
+`continue_after_recovery`) do not invoke emit and do not consult the machine:
+the active step file persists across them, and the machine remains parked
+until the next progress event. A replacement worker re-resolves its active
+step from the surviving session's machine state without re-emitting.
+
+When the run closes at any terminal result (`completed`, `failed`, `cancelled`),
+invoke `reset <id> <machineId>` again to clear that machine's state only (no
+side effect on other machines or the session itself). Later runs in the same
+chat with the same machine id start at step zero.
+
+A store failure (unreachable, corrupt-file warning, version mismatch, or
+missing machine error) stops the coordinator, surfaces the error with the
+failure context, and waits for user instructions. There is no degraded-mode
+continuation and no fallback to a static pointer map. The failure is not
+routed through Bounded Recovery.
+
 ## Scope boundary
 
-Operations only. Stage tables, intent tokens, recorded-list shapes, seeding
-shapes, routing modes, variant rules, parking rules, and replacement
+Operations and shared step-machine routing. Stage tables, intent tokens,
+recorded-list shapes, seeding shapes, routing modes, step files, and variant
+rules always stay in the owning command. For linear step machines declared via
+`step_machine`, parking rules and replacement re-resolution are defined in §
+Step machines above. For other machines, parking rules and replacement
 re-resolution stay in the owning command. Consuming surfaces keep exactly
-their own event table and a fetch line to this file.
+their own event table, a fetch line to this file, and (when declaring a step
+machine) the machine definition and the `step_machine` adapter field.
