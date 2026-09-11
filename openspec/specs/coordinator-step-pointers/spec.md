@@ -47,7 +47,7 @@ Artifact-feedback continuations, `continue_after_recovery` continuations, and pi
 
 ### Requirement: The step-pointer convention covers both routed phases
 
-The static `step_pointer_map` continuation convention SHALL apply to every coordinator card that declares a map (spec, design, security, performance, accessibility). The implement and review coordinators SHALL deliver the same two-line continuation through their declared `step_machine` per `@sai/policies/stage-machine.md` § Step machines. Adapters with neither a static map nor a step machine SHALL keep today's exact continuation behavior.
+The static `step_pointer_map` continuation convention SHALL apply to every coordinator card that declares a map (spec, design, performance, accessibility). The implement, review, and security coordinators SHALL deliver the same two-line continuation through their declared `step_machine` per `@sai/policies/stage-machine.md` § Step machines. Adapters with neither a static map nor a step machine SHALL keep today's exact continuation behavior.
 
 #### Scenario: undeclared phases remain byte-for-byte unchanged
 
@@ -56,11 +56,11 @@ The static `step_pointer_map` continuation convention SHALL apply to every coord
 
 #### Scenario: the audit coordinators declare their maps
 
-- **WHEN** the security, performance, or accessibility coordinator activates
+- **WHEN** the performance or accessibility coordinator activates
 - **THEN** its `step_pointer_map` statically maps all declared audit plan ids in plan order with no runtime discovery or amendment
 
 #### Scenario: implement and review coordinators deliver pointers through their machines
 
-- **WHEN** the implement or review coordinator activates and sends a progress-event continuation
+- **WHEN** the implement, review, or security coordinator activates and sends a progress-event continuation
 - **THEN** the two-line continuation format is delivered via the declared `step_machine` and the stage-machine.md policy
 

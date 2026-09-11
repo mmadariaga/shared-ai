@@ -2,9 +2,7 @@
 
 ## Purpose
 TBD - created by syncing change audit-step-gated-instructions. Update Purpose after archive.
-
 ## Requirements
-
 ### Requirement: Security Audit Carved Step Library
 
 The security command SHALL deliver its audit instruction mass through a
@@ -18,26 +16,9 @@ per non-fileless plan step (`discover-module-map`, `resolve-sast-analysis`,
 - **WHEN** any file under `sai/commands/security/steps/` other than `common.md` is read
 - **THEN** it names exactly its own active step id in an `Active step:` declaration
 
-### Requirement: Security Coordinator Static Step Pointer Map
-
-The security coordinator SHALL declare a static optional `step_pointer_map`
-covering exactly the five declared plan ids in plan order, with the leading
-`resolve-security-scope` entry marked fileless, and the map SHALL NOT be
-carried in the dispatch envelope or any reconstruction field.
-
-#### Scenario: Map coverage matches the plan
-
-- **WHEN** the coordinator's declared map rows are compared against the declared progress plan
-- **THEN** every plan id appears exactly once in plan order with `resolve-security-scope` mapped to none and the rest to their step files
-
 ### Requirement: Security Coordinator Pointer Continuations
 
-The security coordinator SHALL send every progress-event continuation as
-exactly two lines whose second line is the deterministic `Active step:`
-pointer derived from the first declared step still unmarked in plan order,
-and SHALL carry no pointer line on continuations that are not
-progress-event continuations; replacement reconstruction fields SHALL
-include `active_step_id`.
+The security coordinator SHALL send every progress-event continuation as exactly two lines whose second line is the deterministic `Active step:` pointer derived from the step machine per `@sai/policies/stage-machine.md` § Step machines, and SHALL carry no pointer line on continuations that are not progress-event continuations; replacement reconstruction fields SHALL include `active_step_id`.
 
 #### Scenario: Non-progress continuation keeps the active step
 
@@ -58,3 +39,4 @@ executing the step file.
 
 - **WHEN** no dependency manifest changed in the diff and the SCA gate resolves as legitimately skipped
 - **THEN** the worker reports the `resolve-sca` milestone completed and the next delivered pointer names the following step without `resolve-sca.md` executing
+
