@@ -57,7 +57,7 @@ Each phase reads from and writes to **`openspec/changes/{change-name}/`** — si
  agents/claude/                   ← Claude Code agent sources: three Generic Agents + worker-template.md
  agents/opencode/                 ← opencode agent sources: three Generic Agents + worker-template.md
  sai-state/                       ← explore stage machine (envelope, registry, machines/)
- bin/sai-state.js                 ← stage machine CLI (spawn / health-check / close)
+ bin/sai-state.js                 ← stage machine CLI (spawn / emit / close)
  skills/claude/                   ← Claude Code harness skills
  skills/opencode/                 ← opencode harness skills
  configs/                         ← config samples (opencode.jsonc)
@@ -202,17 +202,6 @@ All of them follow the same **tunable-seed lifecycle**:
 `model`, `effort`, and `variant` are **user-owned**; everything else is managed. Doctor compares by the body-and-non-tunable identity rule (tunable lines stripped before comparing): a missing file is an error with re-run-the-installer remediation, a body divergence is an error naming the file, and a file differing only in tunables is ok. Uninstall deletes a body-matching file regardless of its tunable values and keeps a body-divergent file as a project-local override. The opencode configuration merge is permission-only — no agent key is ever inserted into `opencode.json`/`opencode.jsonc`, and that configuration is excluded from uninstall.
 
 The configured agent file governs runtime dispatch — its declared mode, model, variant, and permissions decide behavior, not any config block. A project-local `.claude/agents/<name>.md` wins over the user-global seed by filename. **Restart opencode (or Claude Code) after installing or updating agent definitions**, and reinstall after upgrades to resynchronize command, skill, binding, and agent files.
-
-### Explore stage machine (`sai-state/`)
-
-`/sai-explore` is the one command with externalized stage state. Instead of re-deriving its stage table in prose each turn, it drives a per-chat local stage machine: `bin/sai-state.js` (`spawn` / `health-check` / `close`) starts a loopback HTTP service authenticated with a per-session token, and the agent emits stage events to it.
-
-- **State never travels the wire and is never written into the project.** It lives at `<tmp>/sai-state/<chatId>.json` (mode `0600`, atomic writes, `chatId` must be a UUIDv4). `/emit` returns only `{stage, next:{follow, hint}}`.
-- **Two machines share one chat**, registered in `sai-state/registry.js` under `<machineId>@<version>`: `explore-idea@1` (`explore-change` → `review-edge-cases` → `implementation-details` → `crystallize`) and `explore-slice@1` (`idle` → `build-implement` → `backfill` → `archive` → `idle`, the Direct Build cursor). Each machine module exports `{initialState, transition, project}`.
-- **Advancing requires explicit intent.** An intent-less emit is rejected with `READINESS_IS_NOT_INTENT` — the machine never advances on the agent's own judgment that the idea is "ready".
-- **Idempotency survives process death**: a retry of the persisted `lastEventId` re-serves the stored outcome instead of re-applying the transition, so a stage machine that dies at turn end loses nothing (a fresh spawn carries `stateByMachine` forward when `sidecarVersion` matches).
-- **`next.follow` is the step-loading contract.** Boot preloads only `instructions.md` + `steps/common.md`; `crystallization-protocol.md`, `slice.md`, and `pipeline-direct-build.md` load only when a returned `next.follow` names them, so a chat that never crystallizes never pays for them. There is no file whitelist — the pointer is the contract. If that load fails the session stops and waits for the user; it never guesses another file.
-- **Degraded mode**: when the stage machine is unreachable the agent holds the current stage without auto-advancing and asks the user for an explicit next step.
 
 ### Single artifact home
 All sai-* artifacts (`implementation.md`, `review.md`, `security.md`, `performance.md`, `accessibility.md`, `pr.md`) write to `openspec/changes/{change-name}/`. The legacy `plans/` directory is **not used** by the new pipeline.
