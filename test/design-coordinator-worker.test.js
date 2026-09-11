@@ -2050,8 +2050,8 @@ const TASKS_SKELETON_MARKERS = [
   '**Testing Strategy**',
   '**Existing Tests Broken**',
   '## Required Documentation',
-  '### Local files',
   '### Spec files',
+  '### Local files',
   '### External URLs',
   '## Implementation Context',
 ];
@@ -2096,6 +2096,31 @@ test('RED skeleton oracle pins the single-source design artifact contracts', () 
     'design.md must contain a **Record family**: marker with an optional inline placeholder');
 
   assertSkeletonOrder(tasks, TASKS_SKELETON_MARKERS, 'tasks.md');
+
+  // Required Documentation section contracts (read from actual instruction file, not template)
+  const designTasksInstruction = artifact('sai/commands/design/steps/tasks.md');
+  assert.match(designTasksInstruction, /### Spec files[\s\S]*?### Local files[\s\S]*?### External URLs/,
+    'tasks.md instruction must list Spec files before Local files before External URLs');
+  assert.match(designTasksInstruction, /<path>\s*—\s*<note>/,
+    'tasks.md instruction must describe <path> — <note> format for Local files');
+  assert.match(designTasksInstruction, /<URL>\s*—\s*<note>/,
+    'tasks.md instruction must describe <URL> — <note> format for External URLs');
+  assert.match(designTasksInstruction, /no path or URL is listed twice[\s\S]*?every spec[\s\S]*?lives only under Spec files/,
+    'tasks.md instruction must state the no-duplicate rule for specs under Spec files');
+  assert.doesNotMatch(designTasksInstruction, /### Local files[\s\S]*?use line ranges/,
+    'tasks.md instruction Local files section must not contain "use line ranges" instruction');
+
+  const instructionsFile = artifact('sai/commands/implement/instructions.md');
+  assert.match(instructionsFile, /—[\s\S]*?path or URL is the text before/,
+    'instructions.md must mention the — separator and path/URL extraction');
+  assert.match(instructionsFile, /with line ranges when specified/,
+    'instructions.md must still mention "(with line ranges when specified)"');
+
+  const docReviewFile = artifact('sai/commands/implement/steps/documentation-review.md');
+  assert.match(docReviewFile, /—[\s\S]*?path or URL is the text before/,
+    'documentation-review.md must mention the — separator and path/URL extraction');
+  assert.match(docReviewFile, /with line ranges when specified/,
+    'documentation-review.md must still mention "(with line ranges when specified)"');
 
   assert.match(interfaces, /^\*\*Interfaces\*\*/m,
     'interfaces.md must contain the **Interfaces** marker');

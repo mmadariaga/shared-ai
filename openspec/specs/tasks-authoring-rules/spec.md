@@ -20,24 +20,23 @@ Steps in `tasks.md` are a planning scaffold. They MUST reference the relevant `s
 
 ### Requirement: The Required Documentation section in tasks.md SHALL include a Spec files subsection
 
-The `## Required Documentation` section MUST contain a `### Spec files` subsection listing every `specs/**/*.md` file consulted during the design step. This subsection MUST NOT be empty.
+The `## Required Documentation` section MUST contain a `### Spec files` subsection, placed first, before `### Local files` and `### External URLs`. It lists every `specs/**/*.md` file consulted during the design step, including both change delta specs under `openspec/changes/{change-name}/specs/**` and consulted main specs under `openspec/specs/**`. This subsection MUST NOT be empty.
 
 #### Scenario: Design step completes
 - **WHEN** `tasks.md` is written
-- **THEN** `## Required Documentation` contains `### Local files`, `### Spec files`, and `### External URLs` subsections
-- **THEN** `### Spec files` lists every spec file path referenced by the implementation steps
+- **THEN** `## Required Documentation` contains `### Spec files`, `### Local files`, and `### External URLs` subsections in that order
+- **THEN** `### Spec files` lists every spec file path referenced by the implementation steps, delta and main specs alike
 
 #### Scenario: No spec files consulted
 - **WHEN** no spec files were consulted (impossible in a valid SAI workflow)
 - **THEN** the subsection MUST still appear and MUST NOT be empty or contain "None"
 
----
-
 ### Requirement: Required Documentation SHALL be populated entirely from the explore subagent's report
 
-The `### Local files` subsection MUST be derived from the explore subagent's output, not from files the main agent read directly.
+The `### Local files` and `### External URLs` subsections MUST be derived from the explore subagent's output and the design-phase documentation research, never from files the main agent read directly. Each `### Local files` entry MUST be a whole-file path with no line range, followed by ` — ` and its relevance note; each `### External URLs` entry MUST be a URL followed by ` — ` and its relevance note.
 
 #### Scenario: Main agent populates Required Documentation
-- **WHEN** the main agent writes the `### Local files` subsection
-- **THEN** every entry corresponds to a file reported by the explore subagent, with file:line ranges where applicable
+- **WHEN** the main agent writes the `### Local files` and `### External URLs` subsections
+- **THEN** every entry corresponds to a file or URL reported by the explore subagent or consulted during design research, written as `<path or URL> — <relevance note>`
+- **THEN** the relevance note is one short sentence stating why that resource matters for implementing the change
 

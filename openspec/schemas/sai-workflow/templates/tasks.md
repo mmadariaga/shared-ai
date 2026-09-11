@@ -13,17 +13,17 @@
 
 ## Required Documentation
 
-### Local files
-
-<!-- one path per line, or None -->
-
 ### Spec files
 
 <!-- one path per line, or None -->
 
+### Local files
+
+<!-- one entry per line: <path> — <note>, or None -->
+
 ### External URLs
 
-<!-- one URL per line, or None -->
+<!-- one entry per line: <URL> — <note>, or None -->
 
 ## Implementation Context
 

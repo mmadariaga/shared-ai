@@ -119,7 +119,7 @@ Read the `## Decisions` section from `design.md`. Fetch @sai/policies/adr-ddr-cr
 
 ### Step 4: Read Required Documentation (One Time Only)
 
-MANDATORY: Read every document listed in `## Required Documentation` from `tasks.md`:
+MANDATORY: Read every document listed in `## Required Documentation` from `tasks.md`. The path or URL is the text before ` — `, and the note guides the reading:
 - For local file paths: use the Read tool (with line ranges when specified). When reading multiple local files, read them in parallel.
 - For external URLs: use web fetch
 

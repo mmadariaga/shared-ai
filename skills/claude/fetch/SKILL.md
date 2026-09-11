@@ -17,6 +17,8 @@ Active harness identity: `claude`.
 
 Resolve project-local `.claude/` before user-global `~/.claude/`. This identity and root order are established before interpreting any fetch directive.
 
+Internal checkpoint: for SAI instructions, the only valid roots are `.claude/` and `~/.claude/`. Loading SAI instructions from any other path means loading instructions for the wrong harness; reject that path and do not continue with its content.
+
 ### Path composition
 
 Every agent that loads fetch inherits this rule, on both harnesses. It governs how a path is written, not where an agent may go.
