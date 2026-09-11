@@ -27,9 +27,7 @@ For each coordinator that declares `step_machine: <name>@<version>`, a test MUST
 
 ### Requirement: Step id alignment validation
 
-For spec and design coordinators that declare `step_machine`, tests MUST verify that the coordinator's progress_plan step ids match the machine's STEPS array exactly.
-
-**Scope:** Prevents step mismatch between coordinator declarations and machine implementation.
+For all coordinators that declare `step_machine` — spec, design, implement, and review — tests MUST verify that the coordinator's progress_plan step ids match the machine's STEPS array exactly. Prevents step mismatch between coordinator declarations and machine implementation.
 
 #### Scenario: Coordinator progress_plan matches machine STEPS
 
@@ -41,11 +39,19 @@ For spec and design coordinators that declare `step_machine`, tests MUST verify 
 - **WHEN** design-standalone@1 declares UNOPTED_STEPS and OPTED_IN_STEPS arrays
 - **THEN** a test verifies that the unopted design coordinator variant's progress_plan matches UNOPTED_STEPS and the opted-in variant matches OPTED_IN_STEPS
 
+#### Scenario: Implement coordinator step ids read from card and match machine STEPS
+
+- **WHEN** implement-standalone@1 machine declares STEPS as `['prereqs-resolution', 'collapse-implemented-steps', 'artifact-analysis', 'documentation-review', 'plan-generation', 'validation']`
+- **THEN** a test extracts the step ids from the implement coordinator's progress_plan and verifies exact match with the machine's STEPS
+
+#### Scenario: Review coordinator step ids read from card and match machine STEPS
+
+- **WHEN** review-standalone@1 machine declares STEPS as `['resolve-change', 'establish-diff-scope', 'resolve-review-analysis', 'resolve-mutation-analysis', 'close-review-outcome']`
+- **THEN** a test extracts the step ids from the review coordinator's progress_plan and verifies exact match with the machine's STEPS
+
 ### Requirement: Step file path alignment validation
 
-For spec and design coordinators that declare `step_machine`, tests MUST verify that the machine's STAGE_FILES map paths match those in the coordinator's phase-contract files.
-
-**Scope:** Prevents file path divergence between machine routing and coordinator documentation.
+For spec and design coordinators that declare `step_machine`, tests MUST verify that the machine's STAGE_FILES map paths match those in the phase-contract files. Prevents file path divergence between machine routing and coordinator documentation.
 
 #### Scenario: Machine step file paths match phase-contract
 
@@ -59,17 +65,20 @@ For spec and design coordinators that declare `step_machine`, tests MUST verify 
 
 ### Requirement: Coordinator discovery and bulk validation
 
-Tests MUST discover all coordinators declaring `step_machine` by scanning `sai/commands/*/coordinator.md` files for the `step_machine:` field pattern and MUST validate every discovered coordinator against the four preceding requirements without false positives.
-
-**Scope:** Automated enforcement of the wiring contract across the entire codebase.
+Tests MUST discover all coordinators declaring `step_machine` by scanning `sai/commands/*/coordinator.md` files for the `step_machine:` field pattern and MUST validate every discovered coordinator against the preceding requirements without false positives. As of this change, discovered coordinators include spec, design, implement, and review.
 
 #### Scenario: All coordinators with step_machine pass validation
 
 - **WHEN** the test suite runs the coordinator discovery and validation
-- **THEN** every coordinator declaring `step_machine` passes all four validation checks (fetch, registration, step ids, file paths)
+- **THEN** every coordinator declaring `step_machine` passes all validation checks (fetch, registration, step ids, file paths)
 
 #### Scenario: Test catches newly declared unwired machine
 
 - **WHEN** a new coordinator adds `step_machine: new-machine@1` without loading the policy
 - **THEN** the test fails with a clear message indicating missing fetch or unregistered machine
+
+#### Scenario: Discovery finds exactly spec, design, implement, and review
+
+- **WHEN** the coordinator discovery scan completes
+- **THEN** it identifies exactly these four coordinators declaring step_machine with registered implementations
 

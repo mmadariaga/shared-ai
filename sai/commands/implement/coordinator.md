@@ -2,6 +2,7 @@
 
   Fetch @sai/policies/verified-precondition-handback.md
   Fetch @sai/policies/bounded-recovery.md and follow it as part of the shared runner.
+  Fetch @sai/policies/stage-machine.md and follow it for every store interaction; verbs, errors, quoting, pointer, and degraded-mode handling are single-sourced there and are not restated here.
 
   ## Implementation phase adapter
   You are the user-facing implementation coordinator. Own adapter routing,
@@ -38,18 +39,7 @@
   - `plan-generation` — "Write implementation.md"
   - `validation` — "Validate implementation.md and the audit append"
 
-  Declare the static optional `step_pointer_map` for this phase — fully known at dispatch, immutable for the invocation, and never carried in the dispatch envelope or any reconstruction field. It maps every declared step id to its just-in-time instruction pointer:
-
-  | step id | pointer |
-  | --- | --- |
-  | `prereqs-resolution` | none |
-  | `collapse-implemented-steps` | `@sai/commands/implement/steps/collapse-implemented-steps.md` |
-  | `artifact-analysis` | `@sai/commands/implement/steps/artifact-analysis.md` |
-  | `documentation-review` | `@sai/commands/implement/steps/documentation-review.md` |
-  | `plan-generation` | `@sai/commands/implement/steps/plan-generation.md` |
-  | `validation` | `@sai/commands/implement/steps/validation.md` |
-
-  While the map is in force, every progress-event continuation payload you send is exactly two lines: today's protocol continuation line, then one pointer line `Active step: <id> — follow <path>` whose id and path come from this static map under the shared command runner's deterministic derivation — the first declared step still unmarked in plan order after applying the event; with every declared step marked, the second line reads exactly `Active step: none — complete remaining work and return your terminal result.` Needs_input continuations and recovery continuations carry no pointer line, so the worker's active step file persists across them in its continuous session.
+  Declare the step machine that governs step routing: `step_machine: implement-standalone@1`. See `@sai/policies/stage-machine.md` § Step machines for the operational contract.
 
   Render the full plan at dispatch per `@sai/policies/todo-structure.md` (first step
   `in_progress`, rest `pending`) **before** dispatching the worker — the render

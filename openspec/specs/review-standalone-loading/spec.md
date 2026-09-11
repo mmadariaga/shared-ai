@@ -48,15 +48,6 @@ Newly completed declared ids SHALL be added in canonical STEPS order with marks 
 - **WHEN** the signal carries only ids outside the five declared states
 - **THEN** the state SHALL stay unchanged with no rejection marker
 
-### Requirement: Standalone-only scope with byte-identical composed path
-
-The stage machine SHALL govern `sai-5` only in standalone mode; on the chained path (`/sai-review` review position 0 non-final) the same adapter runs with supervised transition and this machine does not arbitrate. No shared sessions or state exist between the two paths. The composed path keeps today's `step_pointer_map` derivation byte-identical and never consults this machine.
-
-#### Scenario: Composed path ignores the machine
-
-- **WHEN** review runs as position 0 in a chained `/sai-review` invocation
-- **THEN** the machine does not arbitrate and the coordinator uses the unchanged `step_pointer_map` derivation
-
 ### Requirement: Terminal done maps to completion pointer
 
 The terminal done state SHALL map to the exact literal `Active step: none — complete remaining work and return your terminal result.`
@@ -65,4 +56,23 @@ The terminal done state SHALL map to the exact literal `Active step: none — co
 
 - **WHEN** the final step `close-review-outcome` is marked completed
 - **THEN** the state SHALL transition to done with next.follow returning none and the hint indicating all steps are complete
+
+### Requirement: Every-activation scope with byte-identical pointers
+
+The machine SHALL govern the review adapter for every activation — direct (`/sai-5-review`) and chained (as position 0 of `/sai-review`). No shared sessions or state exist between activations. Pointer sequences remain byte-identical between direct and chained paths. Feedback and recovery continuations SHALL carry no pointer and never consult the machine; parking and pointer behavior follow `@sai/policies/stage-machine.md` § Step machines.
+
+#### Scenario: Direct activation consults the machine
+
+- **WHEN** `/sai-5-review` is invoked directly
+- **THEN** the machine arbitrates step routing via the coordinator's declared `step_machine: review-standalone@1` and delivers the two-line continuation
+
+#### Scenario: Chained activation consults the same machine
+
+- **WHEN** the review adapter runs as position 0 of a chained `/sai-review` invocation
+- **THEN** the same machine arbitrates step routing with identical pointer derivation as the direct path, with no supervised-transition fallback or separate static map
+
+#### Scenario: Store failure during chained segment stops the chain
+
+- **WHEN** the machine emits and the store reports a failure during a chained `/sai-review` segment
+- **THEN** the run stops per stage-machine.md, and `/sai-review` does not proceed to the next segment
 
