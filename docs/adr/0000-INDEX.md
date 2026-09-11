@@ -142,6 +142,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0167c — Named Explore Auto cancellation exception in Bounded Recovery](./0167c-explore-auto-cancellation-exception-in-bounded-recovery.md) — **Amends** 0158b, Refs 0159a
 - [0171b — Routed runner owns the terminal documentation lifecycle](./0171b-routed-runner-owns-terminal-documentation-lifecycle.md)
 - [0171c — Single-string invocation envelope across active SAI surfaces](./0171c-single-string-invocation-envelope.md) — Supersedes 0166, **Reframes** 0159b, Refs 0136, Refs ddr:0114
+- [0183 — Apply self-gating via standalone state machine](./0183-apply-self-gating-via-standalone-state-machine.md) — Refs 0172c
 
 ### `/sai-5-review`
 

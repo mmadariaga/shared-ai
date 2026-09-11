@@ -51,5 +51,6 @@ try { register('spec-standalone@1', require('./machines/spec-standalone.js')); }
 try { register('design-standalone@1', require('./machines/design-standalone.js')); } catch (err) {}
 try { register('implement-standalone@1', require('./machines/implement-standalone.js')); } catch (err) {}
 try { register('review-standalone@1', require('./machines/review-standalone.js')); } catch (err) {}
+try { register('apply-standalone@1', require('./machines/apply-standalone.js')); } catch (err) {}
 
 module.exports = { register, get, has, list, machines, clear, reset, close };

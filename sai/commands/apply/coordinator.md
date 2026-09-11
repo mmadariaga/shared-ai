@@ -65,7 +65,7 @@
   harness boot or wrapper re-entry.
 
   ## Run-Start Step Projection
-  The run-start render of the step list happens before the first Step dispatch, after change resolution: the coordinator renders the step list before the first Step dispatch by reading `openspec/changes/{change-name}/implementation.md` and collecting the `#### Step N:` headings in plan order — each heading yields exactly one list entry whose stable id is the heading's step integer and whose label is the heading text; the render never adds, removes, renames, reorders, or re-labels entries. Apply the minimum-threshold rule of `sai/policies/todo-structure.md` by reference — the threshold constant is single-sourced in that policy and is never restated here. At or above the threshold, render the full list through the harness task-list mechanism, with the initial state derived from the on-disk checkbox state at run start: a Step whose checkboxes are fully marked `[x]` renders `completed`, the first not-fully-marked Step in plan order renders `in_progress`, and the remaining Steps render `pending`. If a declared panel tool is unavailable at runtime, apply the harness panel binding's one-time degradation route before the first Step dispatch: record its notice, disable later panel calls for this invocation, and continue without panel rendering; do not runtime-detect or switch surfaces. The projection is coordinator-derived and introduces no progress protocol: no progress_plan declaration, no progress event, no progress payload, and no acknowledgement, and no change to the worker lifecycle. The task-list tool call originates from the coordinator session only, never from a Step-execution worker. On re-run, a Step whose checkboxes are already marked `[x]` renders `completed`, and `implementation.md` remains the durable record.
+  The run-start render of the step list happens before the first Step dispatch, after change resolution: the coordinator renders the step list before the first Step dispatch by reading `openspec/changes/{change-name}/implementation.md` and collecting the `#### Step N:` headings in plan order — each heading yields exactly one list entry whose stable id is the heading's step integer and whose label is the heading text; the render never adds, removes, renames, reorders, or re-labels entries. Apply the minimum-threshold rule of `sai/policies/todo-structure.md` by reference — the threshold constant is single-sourced in that policy and is never restated here. At or above the threshold, render the full list through the harness task-list mechanism, with the initial state derived by seeding the active `apply-standalone@1` machine from the on-disk checkbox state at run start. If a declared panel tool is unavailable at runtime, apply the harness panel binding's one-time degradation route before the first Step dispatch: record its notice, disable later panel calls for this invocation, and continue without panel rendering; do not runtime-detect or switch surfaces. The projection is coordinator-derived and introduces no progress protocol: no progress_plan declaration, no progress event, no progress payload, and no acknowledgement, and no change to the worker lifecycle. The task-list tool call originates from the coordinator session only, never from a Step-execution worker. On re-run, a Step whose checkboxes are already marked `[x]` renders `completed`, and `implementation.md` remains the durable record.
 
   Mark a Step's projected entry `completed` only in the same batched update that flips its checkboxes `[x]`, after the Step's verification passes and, when applicable, the Human Verification gate confirms — so the harness list and the on-disk checkboxes never disagree. An unverified Step's entry is not marked and stays `pending`.
 
@@ -76,7 +76,27 @@
 
   Route each Step through the Step Routing Tree defined as the sole normative home
   in `sai/commands/apply/runner.md` § Step Routing Tree (including the STOP when a
-  RED block lacks an exact unambiguous `## Step N` contract in `interfaces.md`).
+  RED block lacks an exact unambiguous `## Step N` contract in `interfaces.md`),
+  using the active `apply-standalone@1` state machine for self-gated instruction
+  delivery. The machine owns the Step cursor and routing-mode pointer: spawn it at
+  run start with the harness-session-derived stable session key, seed it from the
+  parsed `#### Step N:` headings and per-Step checkbox state via `emit` with
+  `{ recordedList: [...Step ids...], recordedDone: [...completed Step ids...] }`,
+  and for each Step, determine its routing mode by examining the on-disk Step
+  content (RED block presence, matching interface contract, production file
+  presence), emit `{ mode: <mode-name> }` to the machine, and fetch only the
+  routing file named by the returned `next.follow` pointer. Do not load the entire
+  routing tree or hold mode files beyond the current Step; the machine
+  provides the entry point for one Step at a time.
+
+  **Degraded-store fallback (I10):** On apply-standalone@1 store failure or
+  unreachability, the coordinator SHALL NOT halt apply (mutation must never be
+  blocked by storage). Instead, fall back to loading every routing file in `sai/commands/apply/steps/` conditionally based on the five routing conditions
+  from runner.md § Step Routing Tree, deriving the Step cursor inline from
+  implementation.md and on-disk checkboxes without the machine, and complete the
+  run at full context cost; only the session state saving is lost. Document any
+  store failure before the fallback.
+
   Before each dispatch, select exactly one immutable plan per runner § Dispatch
   Plan Selection.
 
