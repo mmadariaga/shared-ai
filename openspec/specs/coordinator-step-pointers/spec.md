@@ -47,7 +47,7 @@ Artifact-feedback continuations, `continue_after_recovery` continuations, and pi
 
 ### Requirement: The step-pointer convention covers both routed phases
 
-The static `step_pointer_map` continuation convention SHALL apply to every coordinator card that declares a map (spec, design, accessibility). The implement, review, security, and performance coordinators SHALL deliver the same two-line continuation through their declared `step_machine` per `@sai/policies/stage-machine.md` § Step machines. Adapters with neither a static map nor a step machine SHALL keep today's exact continuation behavior.
+The static `step_pointer_map` continuation convention SHALL apply to every coordinator card that declares a map (spec, design). The implement, review, security, performance, and accessibility coordinators SHALL deliver the same two-line continuation through their declared `step_machine` per `@sai/policies/stage-machine.md` § Step machines. Adapters with neither a static map nor a step machine SHALL keep today's exact continuation behavior.
 
 #### Scenario: undeclared phases remain byte-for-byte unchanged
 
@@ -57,10 +57,10 @@ The static `step_pointer_map` continuation convention SHALL apply to every coord
 #### Scenario: the audit coordinators declare their maps
 
 - **WHEN** the accessibility coordinator activates
-- **THEN** its `step_pointer_map` statically maps all declared audit plan ids in plan order with no runtime discovery or amendment
+- **THEN** it declares no `step_pointer_map`, and its audit plan ids are routed by its declared `step_machine: accessibility-standalone@1`
 
 #### Scenario: implement and review coordinators deliver pointers through their machines
 
-- **WHEN** the implement, review, security, or performance coordinator activates and sends a progress-event continuation
+- **WHEN** the implement, review, security, performance, or accessibility coordinator activates and sends a progress-event continuation
 - **THEN** the two-line continuation format is delivered via the declared `step_machine` and the stage-machine.md policy
 

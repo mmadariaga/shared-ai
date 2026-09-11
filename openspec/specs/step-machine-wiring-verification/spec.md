@@ -27,7 +27,7 @@ For each coordinator that declares `step_machine: <name>@<version>`, a test MUST
 
 ### Requirement: Step id alignment validation
 
-For all coordinators that declare `step_machine` — spec, design, implement, performance, review, and security — tests MUST verify that the coordinator's progress_plan step ids match the machine's STEPS array exactly. Prevents step mismatch between coordinator declarations and machine implementation.
+For all coordinators that declare `step_machine` — spec, design, implement, performance, review, security, and accessibility — tests MUST verify that the coordinator's progress_plan step ids match the machine's STEPS array exactly. Prevents step mismatch between coordinator declarations and machine implementation.
 
 #### Scenario: Coordinator progress_plan matches machine STEPS
 
@@ -59,6 +59,11 @@ For all coordinators that declare `step_machine` — spec, design, implement, pe
 - **WHEN** security-standalone@1 machine declares STEPS as `['resolve-security-scope', 'discover-module-map', 'resolve-sast-analysis', 'resolve-sca', 'close-security-outcome']`
 - **THEN** a test extracts the step ids from the security coordinator's progress_plan and verifies exact match with the machine's STEPS
 
+#### Scenario: Accessibility coordinator step ids read from card and match machine STEPS
+
+- **WHEN** accessibility-standalone@1 machine declares STEPS as `['resolve-accessibility-scope', 'map-ui-framework', 'resolve-static-audit', 'resolve-runtime-audit', 'close-accessibility-outcome']`
+- **THEN** a test extracts the step ids from the accessibility coordinator's progress_plan and verifies exact match with the machine's STEPS
+
 ### Requirement: Step file path alignment validation
 
 For spec and design coordinators that declare `step_machine`, tests MUST verify that the machine's STAGE_FILES map paths match those in the phase-contract files. Prevents file path divergence between machine routing and coordinator documentation.
@@ -75,7 +80,7 @@ For spec and design coordinators that declare `step_machine`, tests MUST verify 
 
 ### Requirement: Coordinator discovery and bulk validation
 
-Tests MUST discover all coordinators declaring `step_machine` by scanning `sai/commands/*/coordinator.md` files for the `step_machine:` field pattern and MUST validate every discovered coordinator against the preceding requirements without false positives. As of this change, discovered coordinators include spec, design, implement, performance, review, and security.
+Tests MUST discover all coordinators declaring `step_machine` by scanning `sai/commands/*/coordinator.md` files for the `step_machine:` field pattern and MUST validate every discovered coordinator against the preceding requirements without false positives. As of this change, discovered coordinators include spec, design, implement, performance, review, security, and accessibility.
 
 #### Scenario: All coordinators with step_machine pass validation
 
@@ -90,15 +95,20 @@ Tests MUST discover all coordinators declaring `step_machine` by scanning `sai/c
 #### Scenario: Discovery finds exactly spec, design, implement, and review
 
 - **WHEN** the coordinator discovery scan completes
-- **THEN** spec, design, implement, and review are each discovered as `step_machine` coordinators with registered machines (security is additionally covered by the five-coordinator scenario)
+- **THEN** spec, design, implement, and review are each discovered as `step_machine` coordinators with registered machines (security, performance, and accessibility are additionally covered by later scenarios)
 
 #### Scenario: Discovery finds spec, design, implement, review, and security with step machines
 
 - **WHEN** the coordinator discovery scan completes
-- **THEN** spec, design, implement, review, and security are each discovered as `step_machine` coordinators with registered machines (performance is additionally covered by the six-coordinator scenario)
+- **THEN** spec, design, implement, review, and security are each discovered as `step_machine` coordinators with registered machines (performance and accessibility are additionally covered by later scenarios)
 
 #### Scenario: Discovery finds exactly six coordinators with step machines
 
 - **WHEN** the coordinator discovery scan completes
-- **THEN** it identifies exactly spec, design, implement, performance, review, and security declaring `step_machine` with registered implementations
+- **THEN** spec, design, implement, performance, review, and security are each discovered as `step_machine` coordinators with registered implementations (accessibility is additionally covered by the seven-coordinator scenario)
+
+#### Scenario: Discovery finds exactly seven coordinators with step machines
+
+- **WHEN** the coordinator discovery scan completes
+- **THEN** it identifies exactly spec, design, implement, performance, review, security, and accessibility declaring `step_machine` with registered implementations
 

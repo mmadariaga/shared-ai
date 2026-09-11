@@ -53,6 +53,7 @@ try { register('implement-standalone@1', require('./machines/implement-standalon
 try { register('review-standalone@1', require('./machines/review-standalone.js')); } catch (err) {}
 try { register('security-standalone@1', require('./machines/security-standalone.js')); } catch (err) {}
 try { register('performance-standalone@1', require('./machines/performance-standalone.js')); } catch (err) {}
+try { register('accessibility-standalone@1', require('./machines/accessibility-standalone.js')); } catch (err) {}
 try { register('apply-standalone@1', require('./machines/apply-standalone.js')); } catch (err) {}
 
 module.exports = { register, get, has, list, machines, clear, reset, close };
