@@ -9,8 +9,11 @@ not perform the technical work delegated to a worker.
 
 Initialize one invocation-scoped ordered, duplicate-free `changed_files` union.
 Add reported paths in first-seen order; the union is never reset.
-Dispatch one worker with the phase adapter's `original_envelope` and validate
-every returned result before acting on it.
+Dispatch one worker with the phase adapter's `original_envelope`, retain the
+harness-native resumable handle captured at dispatch return before any guard
+snapshot or continuation, and validate every returned result before acting on
+it. A dispatch cancelled before the handle returns leaves no handle; its retry
+starts from zero with a deferred snapshot and opens no guard window.
 
 Worker results are closed payloads. A terminal result has exactly one of these
 statuses: `completed`, `needs_input`, `failed`, or `cancelled`. `completed`,
@@ -83,7 +86,11 @@ Render before resuming when rendering is enabled, so the user sees the mark
 before the next stretch of worker work begins. Progress events are not a worker
 status.
 
-Attempt same-worker continuation first. If it fails, preserve the union and
+Attempt same-worker continuation first on the retained handle, resuming with
+the adapter's existing continuation literals. A cancellation after the
+handshake but before expensive work resumes via continue on the captured
+handle; a handshake-then-stall with no further progress follows the existing
+continuation/transport-loss path. If it fails, preserve the union and
 dispatch at most one replacement worker with the original envelope, exact
 opaque input history, pending phase feedback when present, and all required
 reconstruction metadata. Replacement reconstruction must have complete phase

@@ -56,19 +56,25 @@ do not fall back to re-deriving the check in prose.
 A **window** is one dispatch-to-result stretch of a routed worker. The guard
 pairs every window:
 
-- **Snapshot** — run the `snapshot` sub-command immediately before each worker
-  dispatch and immediately before each same-worker continuation. Hold the
-  returned `head` SHA as invocation-scoped coordinator conversation state
-  `guard_base` for that window only. A fresh snapshot opens every stretch: a
-  coordinator-owned mutation (an apply commit gate, a merge launch, the
-  archive post-archive commit, backfill staging) always runs between windows
-  and never inside one, because the next stretch starts with its own snapshot.
+- **Snapshot** — run the `snapshot` sub-command only after the dispatch's
+  harness-native resumable handle is captured and retained, immediately before
+  the worker's expensive work proceeds, and immediately before each
+  same-worker continuation once its handle is retained. Hold the returned
+  `head` SHA as invocation-scoped coordinator conversation state `guard_base`
+  for that window only. A dispatch cancelled before the handle returns opens
+  no window and runs no snapshot; its retry starts from zero with a deferred
+  snapshot. HEAD movement between dispatch and handle capture is baselined by
+  that deferred snapshot, so the window still holds HEAD immobility across the
+  expensive stretch. A fresh snapshot opens every stretch: a coordinator-owned
+  mutation (an apply commit gate, a merge launch, the archive post-archive commit,
+  backfill staging) always runs between windows and never inside one, because
+  the next stretch starts with its own snapshot.
 - **Verify** — run the `verify` sub-command immediately after every returned
   worker result — progress event, notice, nonterminal extension, and terminal
   status alike — and **before acting on that result**. Pass
   `--base <guard_base>`.
 - **Batch semantics** — concurrent batch dispatches are one window: snapshot
-  at batch start, verify at batch close, before acting on the batch outcome.
+  at batch start once all batch handles are captured, verify at batch close, before acting on the batch outcome.
   No coordinator mutation of HEAD may occur inside a batch.
 - **Replacement workers** — a replacement dispatch is a new window with its
   own fresh snapshot; `guard_base` is never carried across stretches.

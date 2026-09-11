@@ -4,7 +4,11 @@ This binding wires the {{workerName}} worker contract into {{harness}} and perfo
 exactly one bounded replacement dispatch per run.
 
 {{panelRenderBinding}}Dispatch the worker once with the harness-native background primitive and capture the
-resulting agent ID:
+resulting agent ID. The `Agent` dispatch with `run_in_background: true`
+returns the agent ID immediately; retain that captured agent ID before any
+guard snapshot or continuation. A dispatch cancelled before the agent ID
+returns leaves no handle; its retry starts from zero with a deferred
+snapshot.
 
 The original InvocationEnvelope slot contains only the opaque `arguments_value`;
 binding metadata remains outside the worker request.

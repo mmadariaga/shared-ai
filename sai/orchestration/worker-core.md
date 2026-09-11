@@ -275,12 +275,23 @@ stretch.
 
 ## Startup Handshake
 
-The first nonterminal return is a handshake and SHALL come early. A worker with
-a declared progress plan returns its startup progress event as soon as
-prerequisite checks pass and its required change or scope resolution completes,
-and **before** dispatching any subagent, reading beyond what resolution
-requires, writing any artifact, or beginning any analysis, research, or review
-pass. Long work never precedes the handshake.
+A handshake is the worker's first early return carrying its resumable
+progress, before any expensive work. A handle is the harness-native
+resumable identifier (Claude agent ID, opencode task_id) the coordinator
+captures at dispatch return and retains before any guard snapshot or
+continuation. A guard window is one snapshot-to-verify span holding
+guard_base for a single dispatch-to-result stretch.
+
+The first nonterminal return is a handshake and SHALL come early. Every
+routed worker with a declared progress plan or routing-only
+step_pointer_map returns its startup progress event as its handshake as
+soon as prerequisite checks pass and its required change or scope
+resolution completes, and **before** dispatching any subagent, reading
+beyond what resolution requires, writing any artifact, or beginning any
+analysis, research, or review pass. Long work never precedes the
+handshake. A worker whose adapter declares neither a visual
+progress_plan nor a routing-only step_pointer_map emits no handshake
+event; its transport-captured handle is its resumable handle.
 
 The handshake exists so that the coordinator holds a resumable handle to the
 live worker before the phase's expensive work begins. Without it, a stalled or
@@ -288,6 +299,12 @@ user-interrupted run has no handle to resume and must be restarted from
 scratch. A worker that cannot reach the handshake — because a prerequisite or
 resolution check fails — returns the applicable terminal status instead, which
 serves the same purpose.
+
+Only the first early return before expensive work counts as the handshake.
+A late or duplicate handshake — any subagent dispatch, resolution-excess
+read, artifact write, or analysis, research, or review pass before the
+first nonterminal return — is treated as ordinary non-handshake progress
+and is not marked resumable.
 
 ## Phase-Defined Report Extension
 
