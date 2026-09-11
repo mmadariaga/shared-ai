@@ -48,16 +48,17 @@ On `win32` the `openspec --version` probe SHALL run through a shell, because an 
 - **THEN** the probe executes through a shell and the check passes, rather than failing with a spawn `ENOENT`
 
 ### Requirement: Policy and delegation prompt run the tool instead of the checks
+`sai/commands/explore/body.md` SHALL run one direct invocation of `sai/tools/prereqs.js` `check` inline in the main session with no subagent and no deferral condition, using the first existing verbatim tool-path candidate and the byte-identical literal `node <tool-path> check --json --cwd <project-root> --require-openspec-skills <harness>`. It SHALL report what the tool returned without re-deriving, second-guessing, or repairing a check and without self-correcting a non-zero failure. Exit 0 SHALL be relayed as `verdict: pass`, exit 1 as `verdict: halt` with the tool's `failed_check` and the matching verbatim literal, and exit 2, unlocatable tool, or unparseable payload SHALL be reported as an incomplete check with no literal, never as `verdict: pass` and never as a halt with an invented literal.
 
-`sai/policies/prereqs-check.md` SHALL delegate the three checks to the tool and SHALL carry a per-harness ordered list of verbatim tool-path candidates — project-local root before user-global, with an `opencode debug paths` probe as the only fallback for a non-default opencode config root — and MUST NOT compose a tool path by joining a root string to a suffix. The invocation SHALL be the byte-identical literal `node <tool-path> check --json --cwd <project-root>`, so a single whitelist entry per root covers it. When no candidate exists, the consumer SHALL name the candidates it tried and stop, and MUST NOT fall back to running the checks in prose.
-
-`sai/commands/explore/body.md` SHALL delegate one run of the tool to exactly one budget subagent per invocation, with no deferral condition. The subagent SHALL report what the tool returned and MUST NOT re-derive, second-guess, or repair a check in prose, and MUST NOT self-correct a non-zero tool failure. Exit 0 SHALL be reported as `verdict: pass` and exit 1 as `verdict: halt` with the tool's `failed_check` and the matching verbatim literal; an exit 2, an unlocatable tool, or an unparseable payload SHALL be reported as envelope `status: failed`, never as `verdict: pass` and never as a halt with an invented literal.
+#### Scenario: inline tool run replaces delegated run
+- **WHEN** the explore prerequisite preflight executes after the change
+- **THEN** the main session performs one inline tool run with the byte-identical invocation and direct trichotomy
 
 #### Scenario: a tool failure is never reported as a pass
-- **WHEN** the tool exits 2, cannot be located under any candidate path, or returns a payload the subagent cannot parse
-- **THEN** the subagent reports envelope `status: failed`, prints no remediation literal, and the run does not continue as if the checks passed
+- **WHEN** the tool exits 2, cannot be located, or returns an unparseable payload
+- **THEN** the main session reports it as an incomplete check directly with no remediation literal, never as verdict pass and never as a halt with an invented literal
 
 #### Scenario: the policy names the tool rather than the mechanics
-- **WHEN** `sai/policies/prereqs-check.md` is read
-- **THEN** it directs the reader to run `node <tool-path> check --json --cwd <project-root>` and print the mapped literal, and instructs them not to run the checks themselves, not to second-guess a verdict, and not to repair one
+- **WHEN** sai/policies/prereqs-check.md is read
+- **THEN** it directs the reader to run the byte-identical inline tool invocation and print the mapped literal, and instructs them not to run the checks themselves, not to second-guess a verdict, and not to repair one
 

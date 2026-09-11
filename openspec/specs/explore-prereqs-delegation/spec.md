@@ -3,48 +3,21 @@
 ## Purpose
 
 TBD — purpose to be documented.
-
 ## Requirements
-
-### Requirement: Delegated prerequisite check in the shared explore body
-
-The `## Prerequisite checks` section of `sai/commands/explore/body.md` SHALL delegate the execution of the three OpenSpec prerequisite checks — the `openspec` binary availability check, the `openspec/` directory existence check, and the `openspec/config.yaml` `schema: sai-workflow` check, as defined in `sai/policies/prereqs-check.md` — to exactly one budget subagent per invocation, instead of running them inline in the main agent. The delegation SHALL live in the shared body file so that both the Claude Code and opencode harness projections inherit it. The subagent SHALL be spawned under the budget-subagent binding (`skills/claude/budget-subagent/SKILL.md` on Claude Code, `skills/opencode/budget-subagent/SKILL.md` on opencode), and the main agent is a permitted dispatcher per the dispatch-safety invariant.
-
-The `commands/claude/sai-explore.md` wrapper's tool list SHALL NOT be altered by this change.
-
-#### Scenario: the check runs in a budget subagent, not the main agent
-
-- **WHEN** `sai/commands/explore/body.md` is read after the change
-- **THEN** its `## Prerequisite checks` section contains a delegation directive that spawns the budget subagent
-- **AND** the section contains no inline instruction to run `openspec --version`, probe for the `openspec/` directory, or inspect `openspec/config.yaml` for the schema line
-
-#### Scenario: both harness projections inherit the delegation
-
-- **WHEN** the shared body `sai/commands/explore/body.md` is read
-- **THEN** its `## Prerequisite checks` section contains the delegation directive
-- **AND** no per-harness copy of the check execution exists in either wrapper
-
-#### Scenario: exactly one unconditional spawn per invocation
-
-- **WHEN** `sai/commands/explore/body.md` is read after the change
-- **THEN** its `## Prerequisite checks` section spawns exactly one budget subagent on every invocation
-- **AND** the section contains no condition deferring the check to first use of an openspec path
-
 ### Requirement: Verdict-only surface in the main conversation
+The main session SHALL relay the tool verdict directly with no completion-report envelope: exit 0 (`verdict: pass`) continues exploration, exit 1 (`verdict: halt`) prints the matching remediation literal from `sai/policies/prereqs-check.md` for the tool's `failed_check` unchanged with no prefix, suffix, summary, or rephrasing and stops without writing any file, and exit 2, unlocatable tool, or unparseable payload is reported as-is with no remediation literal and the run does not continue as passed, never as `verdict: pass` and never as a halt with an invented literal.
 
-The budget subagent SHALL return only a verdict — `pass` or `halt` — to the main agent, carried in the completion report's `output` field as the payload `verdict: pass` or `verdict: halt`; the report's envelope `status` SHALL remain within the budget-subagent binding's closed vocabulary (`success | partial | failed`). The subagent SHALL NOT return the path table, raw shell output, or any openspec command transcript. The check artifact content SHALL likewise not cross the boundary, with one explicit exemption: on `halt`, the subagent SHALL include the verbatim remediation literal from `sai/policies/prereqs-check.md` for the failed check in the output payload, as required by the halt-message-fidelity capability. The main conversation SHALL show the verdict; evidence (the shell output that produced it) SHALL stay in the subprocess. A completion report whose envelope status is `failed` or `partial` is a dispatch failure, not a verdict, and SHALL NOT be presented as a pass or halt verdict (per the halt-message-fidelity capability).
+#### Scenario: direct verdict relay without envelope
+- **WHEN** the inline preflight completes with any exit outcome
+- **THEN** the main session relays that outcome directly with no envelope status mapping
 
 #### Scenario: passing check surfaces a pass verdict only
-
 - **WHEN** all three checks pass
-- **THEN** the main conversation shows the pass verdict
-- **AND** no openspec command transcript or check artifact content is relayed into the main conversation
+- **THEN** the main session shows the pass verdict directly with no envelope and no openspec command transcript or check artifact content is relayed
 
 #### Scenario: failing check surfaces a halt verdict only
-
 - **WHEN** any of the three checks fails
-- **THEN** the main conversation shows the halt verdict and the verbatim remediation text per the halt-message-fidelity capability
-- **AND** the raw shell evidence that produced the halt is not relayed into the main conversation
+- **THEN** the main session shows the halt verdict and the verbatim remediation literal directly with no envelope and the raw shell evidence that produced the halt is not relayed
 
 ### Requirement: Path reference retained in the main agent
 
@@ -72,3 +45,19 @@ The delegation SHALL NOT move the post-crystallization review-loop's artifact re
 - **WHEN** the user triggers the `review-loop` token or the semantic review invitation after this change
 - **THEN** the review-loop reads the requested artifacts in the main agent
 - **AND** no budget subagent is spawned for review-loop artifact reads
+
+### Requirement: Inline prerequisite check in the shared explore body
+The `## Prerequisite checks` section of `sai/commands/explore/body.md` SHALL run the OpenSpec prerequisite preflight inline in the main session with no subagent and no deferral condition on every invocation, including sessions that never touch `openspec/`. It SHALL use the first existing tool-location candidate in `sai/policies/prereqs-check.md` order, project-local relative path first then verbatim global, and SHALL NOT compose a tool path by joining a root string to a suffix. The invocation SHALL be the byte-identical-per-harness literal `node <tool-path> check --json --cwd <project-root> --require-openspec-skills <harness>`; omitting the flag or passing any other value is a usage error (exit 2), never a halt. It SHALL NOT re-derive, second-guess, or repair a check in prose and SHALL NOT self-correct a non-zero tool failure.
+
+#### Scenario: inline check runs in the main agent, not a subagent
+- **WHEN** `sai/commands/explore/body.md` prerequisite checks run after the change
+- **THEN** the main session runs one direct tool invocation with no subagent dispatch
+
+#### Scenario: both harness projections inherit the inline run
+- **WHEN** the shared body `sai/commands/explore/body.md` is read
+- **THEN** its `## Prerequisite checks` section contains the inline directive with no per-harness copy of the check execution
+
+#### Scenario: exactly one unconditional inline run per invocation
+- **WHEN** `sai/commands/explore/body.md` is read after the change
+- **THEN** its `## Prerequisite checks` section runs exactly one inline check on every invocation with no deferral condition
+
