@@ -3,18 +3,16 @@
 ## Purpose
 
 Defines the routed card set for `/sai-4-apply` — coordinator.md + runner.md + invocation.md + worker contracts under `sai/commands/apply/`, with runner.md extracted from the current monolithic instructions.md — so apply gains the same routed shape as the other seven numbered commands.
-
 ## Requirements
-
 ### Requirement: apply-terminal-lifecycle-contract-coverage
 
-The repository SHALL contain focused contract tests for the active routed apply source that assert the coordinator-owned terminal lifecycle is present in `sai/commands/apply/runner.md`: Final sweep, exactly one learnings promotion pass, terminal documentation-set evaluation, visibility disclosure, authorization/commit behavior, and MANDATORY STOP in that order. The tests SHALL cover the no-op path, decline path, active session-flag and `--fast-track` paths, and the boundary that halts before the Final sweep.
+The repository SHALL contain focused contract tests for the active routed apply source that assert the coordinator-owned terminal lifecycle is accessible from `sai/commands/apply/runner.md` through a Fetch directive to `sai/commands/apply/steps/terminal-lifecycle.md`: Final sweep, exactly one learnings promotion pass, terminal documentation-set evaluation, visibility disclosure, authorization/commit behavior, and MANDATORY STOP in that order. The tests SHALL cover the no-op path, decline path, active session-flag and `--fast-track` paths, and the boundary that halts before the Final sweep.
 
-The tests SHALL protect the routed source as the authority and SHALL fail if the behavior is moved only into the retired monolithic `sai/commands/apply/instructions.md` or omitted from the active card set.
+The tests SHALL protect the routed source as the authority and SHALL fail if the behavior is removed from the active card set or moved only into the retired monolithic `sai/commands/apply/instructions.md`.
 
 #### Scenario: Routed runner loses the terminal lifecycle
 
-- **WHEN** a future edit removes promotion, terminal evaluation, or terminal navigation ordering from `runner.md`
+- **WHEN** a future edit removes the Fetch directive to `terminal-lifecycle.md`, removes terminal evaluation from the stepped file, or omits the behavior from the active card set
 - **THEN** the contract suite fails with a focused assertion identifying the missing routed lifecycle behavior
 
 #### Scenario: Halt and no-op semantics regress
@@ -54,7 +52,7 @@ The contract suite SHALL verify parity across Claude Code and opencode for the r
 
 ### Requirement: apply-card-set-is-routed
 
-The `sai/commands/apply/` folder SHALL contain the routed card set: `coordinator.md`, `runner.md`, `invocation.md`, and the RED and GREEN worker contracts. The utility `body.md` surface SHALL be retired and SHALL NOT be selected by any boot adapter. The active `runner.md` SHALL carry the Step loop contract — dispatch routing, coordinator verification, scratch sweeps, human gates, checkbox marking, appendices, pre-commit report, STOP & COMMIT checklist, learnings memory, the once-per-run learnings promotion, terminal documentation commit, and final sweep. The retired monolithic `instructions.md` SHALL NOT be required as an executable authority for these operations.
+The `sai/commands/apply/` folder SHALL contain the routed card set: `coordinator.md`, `runner.md`, `invocation.md`, and the RED and GREEN worker contracts. The utility `body.md` surface SHALL be retired and SHALL NOT be selected by any boot adapter. The active `runner.md` SHALL carry the Step loop contract — dispatch routing, coordinator verification, scratch sweeps, human gates, checkbox marking, appendices, pre-commit report, STOP & COMMIT checklist, learnings memory — directly, and SHALL carry the once-per-run learnings promotion, terminal documentation commit, and final sweep through Fetch directives to step files under `sai/commands/apply/steps/`. The retired monolithic `instructions.md` SHALL NOT be required as an executable authority for these operations.
 
 #### Scenario: apply folder holds the routed surfaces
 
@@ -65,7 +63,7 @@ The `sai/commands/apply/` folder SHALL contain the routed card set: `coordinator
 #### Scenario: runner.md carries the complete loop contract
 
 - **WHEN** a maintainer reads `sai/commands/apply/runner.md` after this change lands
-- **THEN** it contains the Step loop, promotion pass, terminal documentation-set evaluation, terminal visibility, authorization, commit boundaries, final sweep, and terminal navigation contracts
+- **THEN** it contains the Step loop and the routing table, and Fetch directives to step files that supply the promotion pass, terminal documentation-set evaluation, terminal visibility, authorization, commit boundaries, final sweep, and terminal navigation contracts
 
 #### Scenario: boot adapter never selects apply body.md
 
@@ -188,8 +186,6 @@ The routed `sai/commands/apply/coordinator.md` SHALL contain the apply-time sess
 - **WHEN** apply activates through the standalone wrapper boot or the chained composition segment
 - **THEN** the coordinator card supplies session flag activation, reset, scope, and reporting, plus non-detached branch auto-stay and detached-HEAD fallback
 
-## ADDED Requirements
-
 ### Requirement: Apply irreducible differences documented as deliberate design
 
 AGENTS.md SHALL document exactly three irreducible apply differences as deliberate design rather than debt: (1) dynamic Step projection from `implementation.md` instead of a static phase-declared progress plan, (2) fresh blind workers per Step with immutable dispatch-local plans, and (3) coordinator-owned git operations at the two commit-authorization gates.
@@ -198,3 +194,4 @@ AGENTS.md SHALL document exactly three irreducible apply differences as delibera
 
 - **WHEN** a contributor reads the Apply coordinator-and-worker section of AGENTS.md
 - **THEN** the three irreducible differences appear together as an intentional-design block with the coordinator-card ownership note for the runner fetch and relocated behaviors
+
