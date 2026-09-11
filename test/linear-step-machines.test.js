@@ -8,12 +8,14 @@ const path = require('path');
 const specMachine = require('../sai-state/machines/spec-standalone.js');
 const implementMachine = require('../sai-state/machines/implement-standalone.js');
 const reviewMachine = require('../sai-state/machines/review-standalone.js');
+const securityMachine = require('../sai-state/machines/security-standalone.js');
 const registry = require('../sai-state/registry.js');
 
 const machines = [
   { name: 'spec-standalone@1', machine: specMachine },
   { name: 'implement-standalone@1', machine: implementMachine },
   { name: 'review-standalone@1', machine: reviewMachine },
+  { name: 'security-standalone@1', machine: securityMachine },
 ];
 
 for (const { name, machine } of machines) {

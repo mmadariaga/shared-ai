@@ -1,6 +1,7 @@
 <TASK>
 
   Fetch @sai/policies/verified-precondition-handback.md
+  Fetch @sai/policies/stage-machine.md and follow it for every store interaction; verbs, errors, quoting, pointer, and degraded-mode handling are single-sourced there and are not restated here.
 
   ## Security phase adapter
 
@@ -13,7 +14,7 @@
   - `continuation_operation`: continue the captured worker with the exact selected answer value.
   - `allowed_nonterminal_extensions`: progress events — `{event: "progress", emitted_on: string, step_ids: string[], changed_files: string[]}` as the sole nonterminal extension.
   - `extension_handlers`: empty.
-  - `replacement_reconstruction_fields`: original envelope, ordered duplicate-free changed-files union, exact opaque input history, `resolved_change_name` when available, and the departing worker's `active_step_id` when the step-pointer map below is in force.
+  - `replacement_reconstruction_fields`: original envelope, ordered duplicate-free changed-files union, exact opaque input history, `resolved_change_name` when available, and the departing worker's `active_step_id` when the step machine is declared.
   - `terminal_navigation`: the security navigation below.
   - `progress_plan`: the canonical progress plan declared below.
   - `recovery_policy: false` — bounded recovery is disabled for this audit lifecycle: keep no recovery ledger and perform no `continue_after_recovery` continuations.
@@ -26,17 +27,7 @@
   - `resolve-sca` — "Resolve SCA gate"
   - `close-security-outcome` — "Close security outcome"
 
-  Declare the static optional `step_pointer_map` for this phase — fully known at dispatch, immutable for the invocation, and never carried in the dispatch envelope or any reconstruction field. It maps every declared step id to its just-in-time instruction pointer:
-
-  | step id | pointer |
-  | --- | --- |
-  | `resolve-security-scope` | none |
-  | `discover-module-map` | `@sai/commands/security/steps/discover-module-map.md` |
-  | `resolve-sast-analysis` | `@sai/commands/security/steps/resolve-sast-analysis.md` |
-  | `resolve-sca` | `@sai/commands/security/steps/resolve-sca.md` |
-  | `close-security-outcome` | `@sai/commands/security/steps/close-security-outcome.md` |
-
-  While the map is in force, every progress-event continuation payload you send is exactly two lines: today's protocol continuation line, then one pointer line `Active step: <id> — follow <path>` whose id and path come from this static map under the shared command runner's deterministic derivation — the first declared step still unmarked in plan order after applying the event; with every declared step marked, the second line reads exactly `Active step: none — complete remaining work and return your terminal result.` Continuations that are not progress-event continuations — picker-answer forwarding — carry no pointer line, so the worker's active step file persists across them in its continuous session. On replacement dispatch, require the departing worker's `active_step_id` in reconstruction state; the replacement's first continuation carries the correct pointer line for that active step.
+  Declare the step machine that governs step routing: `step_machine: security-standalone@1`. See `@sai/policies/stage-machine.md` § Step machines for the operational contract.
 
   Render the full plan at dispatch per `@sai/policies/todo-structure.md` (first step `in_progress`, rest `pending`) **before** dispatching the worker — the render is a prerequisite of the dispatch, not a step that follows it. If a declared panel tool is unavailable at runtime, apply the harness panel binding's one-time degradation route before dispatch: record its notice, disable later panel calls for this invocation, and continue without panel rendering; do not runtime-detect or switch surfaces. Only after the render attempt or recorded degradation decision, dispatch the worker. Progress-event panel updates follow `@sai/policies/todo-structure.md` through the shared command runner before worker continuation; an unavailable panel uses the same recorded degradation route and does not block continuation. Mark steps only from worker progress-event `step_ids`; and reconcile at run-closing results: `completed` renders every unmarked step `completed`, `failed` and `cancelled` leave the list exactly as last rendered, and a `needs_input` result — a terminal lifecycle status that is not run-closing — leaves the list exactly as last rendered. The plan is immutable for the invocation, held in invocation-scoped state, survives same-worker continuation and replacement-worker reconstruction, and is never carried in the dispatch envelope or any reconstruction field.
 

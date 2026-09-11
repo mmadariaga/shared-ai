@@ -67,10 +67,10 @@ test('discovered coordinators have registered step machines and fetch stage-mach
   const coordinators = discoverStepMachineCoordinators();
   assert.ok(coordinators.length > 0, 'should discover at least one coordinator with step_machine');
 
-  // Must discover exactly spec, design, implement, and review
+  // Must discover exactly spec, design, implement, review, and security
   const names = coordinators.map(c => c.name).sort();
-  const expectedPhases = ['design', 'implement', 'review', 'spec'];
-  assert.deepEqual(names, expectedPhases, 'must discover exactly spec, design, implement, and review');
+  const expectedPhases = ['design', 'implement', 'review', 'security', 'spec'];
+  assert.deepEqual(names, expectedPhases, 'must discover exactly spec, design, implement, review, and security');
 
   for (const coord of coordinators) {
     assert.ok(registry.has(coord.machineId), `${coord.machineId} must be registered in sai-state/registry.js`);
@@ -112,7 +112,7 @@ test('coordinator progress plans match their registered machines (source-driven)
       assert.ok(unoptedMatch, 'design phase-contract should have unopted plan block');
       const unoptedIds = planIds(unoptedMatch[0]);
       assert.deepEqual(unoptedIds, machine.UNOPTED_STEPS, 'design unopted ids must match UNOPTED_STEPS');
-    } else if (coord.name === 'implement' || coord.name === 'review') {
+    } else if (coord.name === 'implement' || coord.name === 'review' || coord.name === 'security') {
       // Extract from coordinator card itself
       extractedIds = planIds(coord.content);
       assert.deepEqual(extractedIds, machine.STEPS, `${coord.name} progress plan ids must match machine STEPS`);
@@ -204,6 +204,17 @@ test('review-standalone@1 machine is properly registered', () => {
   const machine = registry.get('review-standalone@1');
   assert.ok(machine, 'review-standalone@1 must be registered');
   assert.equal(machine.machineId, 'review-standalone@1');
+  assert.ok(Array.isArray(machine.STEPS), 'must have STEPS array');
+  assert.ok(machine.STAGE_FILES, 'must have STAGE_FILES');
+  assert.ok(machine.initialState, 'must have initialState');
+  assert.equal(typeof machine.transition, 'function', 'must have transition function');
+  assert.equal(typeof machine.project, 'function', 'must have project function');
+});
+
+test('security-standalone@1 machine is properly registered', () => {
+  const machine = registry.get('security-standalone@1');
+  assert.ok(machine, 'security-standalone@1 must be registered');
+  assert.equal(machine.machineId, 'security-standalone@1');
   assert.ok(Array.isArray(machine.STEPS), 'must have STEPS array');
   assert.ok(machine.STAGE_FILES, 'must have STAGE_FILES');
   assert.ok(machine.initialState, 'must have initialState');
