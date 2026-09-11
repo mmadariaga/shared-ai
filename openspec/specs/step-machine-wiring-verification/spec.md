@@ -27,7 +27,7 @@ For each coordinator that declares `step_machine: <name>@<version>`, a test MUST
 
 ### Requirement: Step id alignment validation
 
-For all coordinators that declare `step_machine` — spec, design, implement, review, and security — tests MUST verify that the coordinator's progress_plan step ids match the machine's STEPS array exactly. Prevents step mismatch between coordinator declarations and machine implementation.
+For all coordinators that declare `step_machine` — spec, design, implement, performance, review, and security — tests MUST verify that the coordinator's progress_plan step ids match the machine's STEPS array exactly. Prevents step mismatch between coordinator declarations and machine implementation.
 
 #### Scenario: Coordinator progress_plan matches machine STEPS
 
@@ -43,6 +43,11 @@ For all coordinators that declare `step_machine` — spec, design, implement, re
 
 - **WHEN** implement-standalone@1 machine declares STEPS as `['prereqs-resolution', 'collapse-implemented-steps', 'artifact-analysis', 'documentation-review', 'plan-generation', 'validation']`
 - **THEN** a test extracts the step ids from the implement coordinator's progress_plan and verifies exact match with the machine's STEPS
+
+#### Scenario: Performance coordinator step ids read from card and match machine STEPS
+
+- **WHEN** performance-standalone@1 machine declares STEPS as `['resolve-performance-scope', 'map-stack-hot-paths', 'audit-performance-tiers', 'resolve-diagnostics', 'close-performance-outcome']`
+- **THEN** a test extracts the step ids from the performance coordinator's progress_plan and verifies exact match with the machine's STEPS
 
 #### Scenario: Review coordinator step ids read from card and match machine STEPS
 
@@ -70,7 +75,7 @@ For spec and design coordinators that declare `step_machine`, tests MUST verify 
 
 ### Requirement: Coordinator discovery and bulk validation
 
-Tests MUST discover all coordinators declaring `step_machine` by scanning `sai/commands/*/coordinator.md` files for the `step_machine:` field pattern and MUST validate every discovered coordinator against the preceding requirements without false positives. As of this change, discovered coordinators include spec, design, implement, review, and security.
+Tests MUST discover all coordinators declaring `step_machine` by scanning `sai/commands/*/coordinator.md` files for the `step_machine:` field pattern and MUST validate every discovered coordinator against the preceding requirements without false positives. As of this change, discovered coordinators include spec, design, implement, performance, review, and security.
 
 #### Scenario: All coordinators with step_machine pass validation
 
@@ -90,5 +95,10 @@ Tests MUST discover all coordinators declaring `step_machine` by scanning `sai/c
 #### Scenario: Discovery finds spec, design, implement, review, and security with step machines
 
 - **WHEN** the coordinator discovery scan completes
-- **THEN** it identifies exactly these five coordinators declaring `step_machine` with registered implementations
+- **THEN** spec, design, implement, review, and security are each discovered as `step_machine` coordinators with registered machines (performance is additionally covered by the six-coordinator scenario)
+
+#### Scenario: Discovery finds exactly six coordinators with step machines
+
+- **WHEN** the coordinator discovery scan completes
+- **THEN** it identifies exactly spec, design, implement, performance, review, and security declaring `step_machine` with registered implementations
 
