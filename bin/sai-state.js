@@ -291,6 +291,69 @@ function commandEmit(id, machineIdArg, eventJsonArg) {
   process.exitCode = 0;
 }
 
+function commandReset(id, machineIdArg) {
+  if (!id || !machineIdArg) {
+    process.stderr.write('reset requires <id> <machineId>\n');
+    process.exitCode = 2;
+    return;
+  }
+
+  const loaded = readSessionRecord(id);
+  const record = loaded.record;
+  const loadWarnings = loaded.warnings;
+
+  const parsed = envelope.parseTarget(machineIdArg);
+  if (!parsed) {
+    const payload = withWarnings({ error: 'INVALID_EVENT' }, loadWarnings);
+    process.stdout.write(JSON.stringify(payload) + '\n');
+    process.exitCode = 1;
+    return;
+  }
+
+  const targetId = parsed.key;
+  let mod = null;
+  try { mod = registry.get(targetId); } catch (err) { mod = null; }
+  if (!mod) {
+    const payload = withWarnings({ error: 'UNKNOWN_MACHINE' }, loadWarnings);
+    process.stdout.write(JSON.stringify(payload) + '\n');
+    process.exitCode = 1;
+    return;
+  }
+
+  // Build new record with this machine reset to initialState
+  const base = (record && typeof record === 'object') ? record : {};
+  const persisted = (base.stateByMachine && typeof base.stateByMachine === 'object' && !Array.isArray(base.stateByMachine)) ? base.stateByMachine : {};
+  const merged = Object.assign({}, base);
+  merged.createdAt = typeof base.createdAt === 'number' ? base.createdAt : Date.now();
+  merged.stateVersion = STATE_VERSION;
+  merged.stateByMachine = Object.assign({}, persisted);
+
+  // Reset just this machine to initial state
+  const priorRev = (persisted[targetId] && typeof persisted[targetId].rev === 'number') ? persisted[targetId].rev : 0;
+  merged.stateByMachine[targetId] = {
+    state: mod.initialState,
+    rev: priorRev + 1,
+    lastEventId: '',
+    lastOutcome: null,
+  };
+
+  try {
+    writeSessionFile(id, merged);
+  } catch (err) {
+    const payload = withWarnings({ error: 'WRITE_FAILED' }, loadWarnings);
+    process.stdout.write(JSON.stringify(payload) + '\n');
+    process.exitCode = 1;
+    return;
+  }
+
+  // Clear from in-memory cache as well
+  sessions.delete(id);
+
+  const payload = withWarnings({ reset: machineIdArg }, loadWarnings);
+  process.stdout.write(JSON.stringify(payload) + '\n');
+  process.exitCode = 0;
+}
+
 function commandClose(id) {
   if (!id) {
     process.stderr.write('close requires <id>\n');
@@ -324,12 +387,17 @@ function main(argv) {
     commandEmit(parsed.positional[0], parsed.positional[1], parsed.positional[2]);
     return;
   }
+  if (parsed.command === 'reset') {
+    commandReset(parsed.positional[0], parsed.positional[1]);
+    return;
+  }
   if (parsed.command === 'close') {
     commandClose(parsed.positional[0]);
     return;
   }
   process.stderr.write('Usage: sai-state spawn --key <stable-key>\n');
   process.stderr.write('       sai-state emit <id> <machineId> <eventJson>\n');
+  process.stderr.write('       sai-state reset <id> <machineId>\n');
   process.stderr.write('       sai-state close <id>\n');
   process.exitCode = 2;
 }

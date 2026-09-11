@@ -47,23 +47,20 @@ Artifact-feedback continuations, `continue_after_recovery` continuations, and pi
 
 ### Requirement: The step-pointer convention covers both routed phases
 
-The static `step_pointer_map` and single-pointer-line continuation conventions SHALL apply to every coordinator card that declares a map; with this change, the `/sai-6-security`, `/sai-7-performance`, and `/sai-8-accessibility` coordinators join the `/sai-5-review`, `/sai-1-spec`, and `/sai-2-design` coordinators, while adapters without a declared map keep today's exact continuation behavior so undeclared phases remain observationally identical.
+The static `step_pointer_map` continuation convention SHALL apply to every coordinator card that declares a map (spec, design, security, performance, accessibility). The implement and review coordinators SHALL deliver the same two-line continuation through their declared `step_machine` per `@sai/policies/stage-machine.md` § Step machines. Adapters with neither a static map nor a step machine SHALL keep today's exact continuation behavior.
 
 #### Scenario: undeclared phases remain byte-for-byte unchanged
 
-- **WHEN** a routed phase's adapter declares no `step_pointer_map`
-- **THEN** its continuations carry no pointer lines and its observable continuation behavior is unchanged from before the convention existed
+- **WHEN** a routed phase's adapter declares neither a `step_pointer_map` nor a `step_machine`
+- **THEN** its continuations carry no pointer lines and its observable continuation behavior is unchanged
 
 #### Scenario: the audit coordinators declare their maps
 
 - **WHEN** the security, performance, or accessibility coordinator activates
-- **THEN** its `step_pointer_map` statically maps all five declared audit plan ids in plan order with no runtime discovery or amendment
+- **THEN** its `step_pointer_map` statically maps all declared audit plan ids in plan order with no runtime discovery or amendment
 
-### Requirement: Review coordinator declares a static step_pointer_map
+#### Scenario: implement and review coordinators deliver pointers through their machines
 
-The review coordinator card SHALL declare a static optional `step_pointer_map` for the phase — fully known at dispatch, immutable for the invocation, and never carried in the dispatch envelope or any reconstruction field — mapping every declared review progress-plan id to its just-in-time instruction pointer: `resolve-change` to none, and `establish-diff-scope`, `resolve-review-analysis`, `resolve-mutation-analysis`, and `close-review-outcome` each to their file under `sai/commands/review/steps/`.
+- **WHEN** the implement or review coordinator activates and sends a progress-event continuation
+- **THEN** the two-line continuation format is delivered via the declared `step_machine` and the stage-machine.md policy
 
-#### Scenario: the review map covers every declared plan id
-
-- **WHEN** the review coordinator activates
-- **THEN** its `step_pointer_map` statically maps all five canonical review plan ids in plan order with no runtime discovery or amendment

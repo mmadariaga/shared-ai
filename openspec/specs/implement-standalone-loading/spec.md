@@ -45,13 +45,6 @@ An already-loaded follow path SHALL not be re-fetched. The next hint SHALL carry
 - **WHEN** the next follow path is already in the loaded set
 - **THEN** the coordinator SHALL skip the re-fetch per the hint wording
 
-### Requirement: Standalone-only scope with parked machine lifecycle
-The machine SHALL govern standalone sai-3 only and SHALL never arbitrate the chained implement path where the adapter runs supervised transition with no shared sessions or state. Feedback and recovery continuations SHALL carry no pointer and never consult the machine, parking it until the next progress event. Every standalone run SHALL open a fresh session that never reuses prior marks, and the session SHALL close when the run closes with no machine auto-retry.
-
-#### Scenario: Chained path never consults the standalone machine
-- **WHEN** the implement adapter runs as a non-final chained segment
-- **THEN** the standalone machine SHALL not arbitrate and the supervised transition SHALL apply
-
 ### Requirement: Replacement re-resolution from surviving session
 The project function SHALL derive the active step from the surviving session done set via first-unmarked, so a replacement first continuation carries the correct pointer even when the cached stage is stale.
 
@@ -72,4 +65,23 @@ The registry SHALL register implement-standalone@1 alongside explore-idea@1, exp
 #### Scenario: Registry lists four machines
 - **WHEN** the registry is listed after this change
 - **THEN** it SHALL include implement-standalone@1 with the three existing machines
+
+### Requirement: Every-activation scope with parked machine lifecycle
+
+The machine SHALL govern the implement adapter for every activation — direct (`/sai-3-implement`) and chained (as part of `/sai-build`). Feedback and recovery continuations SHALL carry no pointer and never consult the machine; parking and pointer behavior follow `@sai/policies/stage-machine.md` § Step machines. The machine resets per-machine at segment start and resets (not closes) at run-closing. Every activation opens a session that does not reuse prior marks.
+
+#### Scenario: Direct activation consults the machine
+
+- **WHEN** `/sai-3-implement` is invoked directly
+- **THEN** the machine arbitrates step routing via the coordinator's declared `step_machine: implement-standalone@1` throughout the run
+
+#### Scenario: Chained activation consults the same machine
+
+- **WHEN** the implement adapter runs as position 0 of `/sai-build`
+- **THEN** the same machine arbitrates step routing with identical pointer derivation as the direct path, and the coordinator never falls back to supervised transition
+
+#### Scenario: Store failure during chained segment stops the chain
+
+- **WHEN** the machine emits and the store reports a failure during a chained `/sai-build` segment
+- **THEN** the run stops per stage-machine.md, and `/sai-build` does not proceed to the next segment
 

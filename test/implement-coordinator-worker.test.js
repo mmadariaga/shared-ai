@@ -925,16 +925,15 @@ function parseStepPointerMap(source) {
   return rows;
 }
 
-test('step-gated: implement coordinator declares a static step_pointer_map with six rows matching the progress plan', () => {
+test('step-gated: implement coordinator declares step_machine and loads stage-machine.md', () => {
   const coordinator = artifact('sai/commands/implement/coordinator.md');
 
-  assert.match(coordinator, /step_pointer_map/,
-    'the coordinator should declare a step_pointer_map');
-  const mapRows = parseStepPointerMap(coordinator);
-  assert.deepEqual(mapRows, IMPLEMENT_STEP_POINTER_MAP,
-    'the step_pointer_map should map every declared step id to its pointer or none');
-  assert.equal(mapRows.length, IMPLEMENT_PLAN_STEPS.length,
-    'the map should have one row per declared progress-plan step');
+  assert.match(coordinator, /step_machine: implement-standalone@1/,
+    'the coordinator should declare step_machine: implement-standalone@1');
+  assert.match(coordinator, /Fetch @sai\/policies\/stage-machine\.md/,
+    'the coordinator should fetch stage-machine.md');
+  assert.doesNotMatch(coordinator, /step_pointer_map/,
+    'the static step_pointer_map should not be declared');
 });
 
 test('step-gated: implement worker fetches steps/common.md and declares active-step execution', () => {
@@ -961,24 +960,28 @@ test('step-gated: implement coordinator replacement reconstruction carries activ
     'the replacement first continuation should carry the pointer line for the active step');
 });
 
-test('step-gated: implement coordinator documents two-line continuation shape and terminal none row', () => {
+test('step-gated: implement coordinator references stage-machine.md for step machine contract', () => {
   const coordinator = artifact('sai/commands/implement/coordinator.md');
+  const stageMachine = artifact('sai/policies/stage-machine.md');
 
-  assert.match(coordinator, /Active step: <id> — follow <path>/,
-    'the coordinator should document the pointer line shape');
-  assert.match(coordinator, /Active step: none — complete remaining work and return your terminal result/,
-    'the coordinator should document the terminal none row when every step is marked');
-  assert.match(coordinator, /exactly two lines/i,
-    'the coordinator should specify the two-line continuation shape');
+  assert.match(coordinator, /Fetch @sai\/policies\/stage-machine\.md/,
+    'the coordinator should fetch stage-machine.md');
+  assert.match(stageMachine, /## Step machines/,
+    'stage-machine.md should have a Step machines section');
+  assert.match(stageMachine, /the two-line continuation/i,
+    'stage-machine.md should document the two-line continuation');
+  assert.match(stageMachine, /Active step: none.*complete remaining work and return/,
+    'stage-machine.md should document the terminal none pointer');
 });
 
 test('step-gated: non-progress continuations carry no pointer line', () => {
   const coordinator = artifact('sai/commands/implement/coordinator.md');
+  const stageMachine = artifact('sai/policies/stage-machine.md');
 
-  assert.match(coordinator, /Needs_input continuations and recovery continuations carry no pointer line/,
-    'the coordinator should state that non-progress continuations carry no pointer line');
-  assert.match(coordinator, /active step file persists across them in its continuous session/i,
-    'the coordinator should state the active step persists across non-progress continuations');
+  assert.match(coordinator, /Fetch @sai\/policies\/stage-machine\.md/,
+    'the coordinator should fetch stage-machine.md');
+  assert.match(stageMachine, /do not invoke emit and do not consult the machine[\s\S]*active step file persists/,
+    'stage-machine.md should state that non-progress continuations do not consume pointers and the active step persists');
 });
 
 test('step-gated: step instruction files exist for every non-none map entry', () => {

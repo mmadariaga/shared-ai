@@ -5,10 +5,11 @@ TBD - created by archiving change replace-state-sidecar-with-cli. Update Purpose
 ## Requirements
 ### Requirement: Local CLI three-verb interface
 
-The stage machine store SHALL provide three CLI verbs via `sai-state` binary:
+The stage machine store SHALL provide four CLI verbs via `sai-state` binary:
 1. `spawn --key <stable-key>` — Initializes or locates a session, deriving a deterministic UUIDv4 from the stable key, returning `{id}` on success
 2. `emit <id> <machineId> <eventJson>` — Applies a transition, accepting the session id, target machine id, and JSON event object, returning minimal wire outcome
-3. `close <id>` — Terminates a session by deleting the session file, returning `{closed: id}` on success
+3. `reset <id> <machineId>` — Clears only that machine's state to its initialState with an atomic write, leaving other machines in the same session untouched, returning `{reset: <machineId>}` on success
+4. `close <id>` — Terminates a session by deleting the session file, returning `{closed: id}` on success
 
 Each verb writes minimal JSON to stdout on success and writes error text to stderr on failure. Exit code 0 indicates success; exit code 1 or 2 indicates failure.
 
@@ -21,6 +22,21 @@ Each verb writes minimal JSON to stdout on success and writes error text to stde
 
 - **WHEN** the caller invokes `sai-state emit <id> <machineId> <eventJson>`
 - **THEN** the process outputs JSON `{stage, next, rejected?, warnings?}` and exits with code 0 on success, or exits with code 1 and outputs `{error: <name>, next: {follow, hint}}` on failure
+
+#### Scenario: CLI reset clears one machine and returns confirmation
+
+- **WHEN** the caller invokes `sai-state reset <id> <machineId>` with a registered machine id
+- **THEN** that machine's state is reset to its initialState with an atomic write, other machines in the session remain untouched, and the process outputs `{reset: <machineId>}` with exit code 0
+
+#### Scenario: CLI reset with missing arguments returns usage error
+
+- **WHEN** the caller invokes `sai-state reset` with missing id or machineId
+- **THEN** the process exits with code 2 and writes a usage message to stderr
+
+#### Scenario: CLI reset with unknown machine returns error
+
+- **WHEN** the caller invokes `sai-state reset <id>` with a machine id not in the registry
+- **THEN** the process outputs `{error: "UNKNOWN_MACHINE"}` with exit code 1
 
 #### Scenario: CLI close deletes and returns confirmation
 
@@ -53,6 +69,11 @@ The store SHALL persist each session's state in a JSON file under `$TMPDIR/sai-s
 - **WHEN** `emit` applies a transition and persists the outcome
 - **THEN** the session file contains the per-machine ledger and state in JSON form `{createdAt, stateVersion, stateByMachine: {machineId: {state, rev, lastEventId, lastOutcome}}}`
 
+#### Scenario: Reset atomically updates machine state
+
+- **WHEN** `reset <id> <machineId>` is invoked with other machines in the session
+- **THEN** the session file is atomically rewritten with only that machine reset to initialState and other machines' state preserved
+
 #### Scenario: Close deletes the session file
 
 - **WHEN** `close <id>` is invoked
@@ -60,7 +81,7 @@ The store SHALL persist each session's state in a JSON file under `$TMPDIR/sai-s
 
 ### Requirement: Closed error vocabulary via JSON error field
 
-Every failed emit (invalid event, unknown machine, version mismatch) SHALL return a JSON response carrying a mandatory `error` field with one of the closed-vocabulary values: `INVALID_EVENT`, `UNKNOWN_MACHINE`, `VERSION_MISMATCH`, `ALREADY_RUNNING`, or `READINESS_IS_NOT_INTENT`. The response SHALL also carry the current state's `next` pointer. Exit code SHALL be 1.
+Every failed emit (invalid event, unknown machine, version mismatch) SHALL return a JSON response carrying a mandatory `error` field with one of the closed-vocabulary values: `INVALID_EVENT`, `UNKNOWN_MACHINE`, `VERSION_MISMATCH`, `ALREADY_RUNNING`, or `READINESS_IS_NOT_INTENT`. The response SHALL also carry the current state's `next` pointer. Exit code SHALL be 1. Reset failures also return `error` with closed-vocabulary values, but without a `next` pointer.
 
 #### Scenario: Invalid machineId returns INVALID_EVENT
 
@@ -72,12 +93,19 @@ Every failed emit (invalid event, unknown machine, version mismatch) SHALL retur
 - **WHEN** `emit` is called with a registered `machineId` that is not in the code registry
 - **THEN** the response carries `{error: "UNKNOWN_MACHINE", next: {follow, hint}}`
 
+#### Scenario: Reset with unknown machine returns error without pointer
+
+- **WHEN** `reset` is called with a machine id not in the code registry
+- **THEN** the response carries `{error: "UNKNOWN_MACHINE"}` with exit code 1 and no `next` field
+
 ### Requirement: Minimal wire outcomes
 
 Each CLI verb SHALL return minimal JSON without state serialization:
 - `spawn`: `{id}`
 - `emit` success: `{stage, next: {follow, hint}, rejected?, warnings?}`
 - `emit` failure: `{error: <name>, next: {follow, hint}}`
+- `reset` success: `{reset: <machineId>}`
+- `reset` failure: `{error: <name>}`
 - `close`: `{closed: id}`
 
 The machine's internal state remains in the session file; no snapshot or state object is serialized to stdout.
@@ -86,6 +114,11 @@ The machine's internal state remains in the session file; no snapshot or state o
 
 - **WHEN** `emit` applies a transition that advances the stage
 - **THEN** the stdout JSON contains only `{stage, next, rejected?, warnings?}` without `state`, `snapshot`, or other internal fields
+
+#### Scenario: Reset response carries only machine id
+
+- **WHEN** `reset` completes successfully
+- **THEN** the stdout JSON contains only `{reset: <machineId>}` without `state`, `snapshot`, or other internal fields
 
 ### Requirement: Session file version and idempotency
 

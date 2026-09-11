@@ -647,9 +647,9 @@ function checkStepContract(content) {
  *   - Only coordinator cards may emit to a stage machine
  *
  * The stage machine emission surface includes:
- *   - sai-state commands (emit, spawn, close, etc.)
+ *   - sai-state commands (emit, spawn, close, reset, etc.)
  *   - bin/sai-state.js file reference
- *   - Stage machine IDs (explore-idea@1, explore-slice@1, spec-standalone@1, design-standalone@1, implement-standalone@1)
+ *   - Stage machine IDs (explore-idea@1, explore-slice@1, spec-standalone@1, design-standalone@1, implement-standalone@1, review-standalone@1, security-standalone@1)
  *   - Legacy /emit HTTP command
  */
 function checkWorkerEmissionOwnership(content) {
@@ -657,13 +657,13 @@ function checkWorkerEmissionOwnership(content) {
   const lines = content.split('\n');
 
   // Patterns for the stage machine emission surface (not the English word "emit")
-  // 1. sai-state command invocations (emit, spawn, close, run, etc.)
-  const saiStateCommandPattern = /sai-state\s+(emit|spawn|close|run)\b/;
+  // 1. sai-state command invocations (emit, spawn, close, reset, run, etc.)
+  const saiStateCommandPattern = /sai-state\s+(emit|spawn|close|reset|run)\b/;
   // 2. Reference to bin/sai-state.js or backtick-quoted sai-state commands
   const saiStateBinPattern = /bin\/sai-state\.js/;
-  const saiStateQuotedPattern = /`sai-state\s+(emit|spawn|close|run)`/;
+  const saiStateQuotedPattern = /`sai-state\s+(emit|spawn|close|reset|run)`/;
   // 3. Stage machine IDs in the format name@version
-  const stageMachineIdPattern = /(explore-idea|explore-slice|spec-standalone|design-standalone|implement-standalone)@\d+/;
+  const stageMachineIdPattern = /(explore-idea|explore-slice|spec-standalone|design-standalone|implement-standalone|review-standalone|security-standalone)@\d+/;
   // 4. Legacy /emit HTTP command
   const legacyEmitPattern = /\/emit\b/;
 
