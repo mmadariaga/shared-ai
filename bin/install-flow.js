@@ -644,6 +644,14 @@ async function offerOpenspecInstall({
 // screen" apart from "abandon the flow".
 const BACK = Symbol('BACK');
 
+// Blank separator rows divide the All-scope checklist into group tables.
+// The value is blank so items and displayOptions stay index-aligned; the
+// navigator owns the non-selectable behavior and the customizer owns grouping.
+const CHECKLIST_SEPARATOR = '';
+function isChecklistSeparator(value) {
+  return value === CHECKLIST_SEPARATOR;
+}
+
 const ANSI_SEQUENCE = /\x1B\[[0-9;]*[A-Za-z]/g;
 const DEFAULT_TERMINAL_WIDTH = 80;
 const DEFAULT_SINGLE_SELECT_LEGEND = 'Up/Down move · Space/Enter confirm · ←/Esc back · q/Ctrl-C cancel';
@@ -716,8 +724,10 @@ async function runNavigator({
   }
 
   return new Promise((resolve) => {
-    const selected = options.map(option => defaultSelected.includes(option));
+    const selected = options.map(option => !isChecklistSeparator(option) && defaultSelected.includes(option));
     let cursor = 0;
+    while (cursor < options.length && isChecklistSeparator(options[cursor])) cursor += 1;
+    if (cursor >= options.length && options.length > 0) cursor = 0;
     let previousRows = 0;
 
     function frameLines() {
@@ -727,6 +737,10 @@ async function runNavigator({
       // `options`, so they never consume movement or toggles.
       if (header) lines.push(...(Array.isArray(header) ? header : [header]));
       options.forEach((option, i) => {
+        if (isChecklistSeparator(option)) {
+          lines.push('');
+          return;
+        }
         const label = Array.isArray(displayOptions) && displayOptions[i] !== undefined
           ? displayOptions[i]
           : option;
@@ -775,12 +789,17 @@ async function runNavigator({
         return;
       }
       if (key.name === 'up') {
-        cursor = Math.max(0, cursor - 1);
+        let prev = cursor - 1;
+        while (prev >= 0 && isChecklistSeparator(options[prev])) prev -= 1;
+        if (prev >= 0) cursor = prev;
         render();
       } else if (key.name === 'down') {
-        cursor = Math.min(options.length - 1, cursor + 1);
+        let next = cursor + 1;
+        while (next < options.length && isChecklistSeparator(options[next])) next += 1;
+        if (next < options.length) cursor = next;
         render();
         } else if (str === ' ') {
+          if (isChecklistSeparator(options[cursor])) return;
           if (mode === 'multi') {
             selected[cursor] = !selected[cursor];
           render();
@@ -789,11 +808,12 @@ async function runNavigator({
           resolve({ status: 'confirmed', items: [options[cursor]] });
           }
         } else if (key.name === 'return') {
-          if (mode === 'multi' && preventEmptyConfirm && !selected.some(Boolean)) return;
+          if (isChecklistSeparator(options[cursor]) && mode === 'single') return;
+          if (mode === 'multi' && preventEmptyConfirm && !selected.some((marked, i) => marked && !isChecklistSeparator(options[i]))) return;
           cleanup();
           resolve({
             status: 'confirmed',
-            items: mode === 'multi' ? options.filter((_, i) => selected[i]) : [options[cursor]],
+            items: mode === 'multi' ? options.filter((_, i) => selected[i] && !isChecklistSeparator(options[i])) : [options[cursor]],
           });
         }
       }
@@ -1296,6 +1316,8 @@ module.exports = {
   promptSelect,
   runNavigator,
   BACK,
+  CHECKLIST_SEPARATOR,
+  isChecklistSeparator,
   CLAUDE_BASE,
   OPENCODE_BASE,
   OPENCODE_SAI_PERMISSION_PATTERN,
