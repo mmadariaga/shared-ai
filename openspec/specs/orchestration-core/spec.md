@@ -249,3 +249,42 @@ The shared orchestration contract SHALL support a phase adapter declaring a clos
 - **WHEN** a phase adapter declares no nonterminal extension
 - **THEN** it retains its existing lifecycle and terminal behavior without an extension-specific prompt or mutation path
 
+### Requirement: Stateless worker payload validation
+
+The shared orchestration source SHALL define a deterministic, stateless tool that validates the closed payload shapes a coordinator receives from a worker. The validator tool at `sai/tools/worker-report-validator.js` SHALL accept a closed payload on stdin with a `--kind` flag, enumerate the required fields and their types for each payload kind, validate `emitted_on` to be ISO-8601 with a numeric offset (never the `Z` designator), and return a structured verdict containing an `ok` boolean and an `errors` array. The validator SHALL never repair, infer, or reformat values; a malformed value is reported as malformed without correction. The shared coordinator contract in `sai/orchestration/command-runner.md` SHALL invoke this tool for terminal, notice, progress, and extension payloads and consume its verdict rather than re-deriving the validation checks in prose.
+
+#### Scenario: Validator accepts closed terminal payloads
+
+- **WHEN** the coordinator receives a terminal payload (status: completed, needs_input, failed, or cancelled)
+- **THEN** it SHALL invoke `sai/tools/worker-report-validator.js validate --kind terminal` with the payload on stdin
+- **AND** the tool SHALL return `{ok: true}` if the payload is valid, or `{ok: false, errors: [...]}` if validation fails
+- **AND** the validator SHALL require status, emitted_on, summary, and changed_files fields
+
+#### Scenario: emitted_on enforces numeric offset without Z
+
+- **WHEN** a payload carries an `emitted_on` value
+- **THEN** the validator SHALL require the format `YYYY-MM-DDTHH:MM:SS±HH:MM` with a numeric offset
+- **AND** it SHALL reject the `Z` designator (e.g., `2026-09-12T14:30:15Z`)
+- **AND** it SHALL report a malformed value without reformatting or converting it
+
+#### Scenario: Validator rejects malformed payloads without repair
+
+- **WHEN** a payload carries a missing field, wrong field type, or invalid enum value
+- **THEN** the validator SHALL return an error list identifying each violation
+- **AND** it SHALL never attempt to repair, infer, or reformat the value
+- **AND** the coordinator SHALL handle the verdict and stop further processing
+
+#### Scenario: Validator checks notice, progress, and conflict_detected kinds
+
+- **WHEN** the coordinator receives a notice, progress, or conflict_detected payload
+- **THEN** it SHALL invoke the validator with `--kind notice`, `--kind progress`, or `--kind conflict_detected` respectively
+- **AND** the validator SHALL check the closed-shape contract for that kind
+- **AND** it SHALL enforce the `emitted_on` format and return a verdict
+
+#### Scenario: Coordinator consumes verdict instead of prose validation
+
+- **WHEN** a coordinator result-processing loop receives a payload
+- **THEN** it SHALL run the validator tool and read the verdict
+- **AND** it SHALL not re-derive the closed-shape checks, field-type validation, or `emitted_on` format rules in its own prose or logic
+- **AND** any validation logic SHALL be implemented as code in the tool, not duplicated in the coordinator or other consumers
+

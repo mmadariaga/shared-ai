@@ -26,24 +26,31 @@ lifecycle status that is not run-closing — it pauses the run for the
 forwarded answer, and the loop processes the next result. A worker's `completed`
 status closes its current dispatch phase but does not end its resumability for
 recovery purposes; worker resumability ends only when the run closes or the
-segment boundary is crossed. Validate the status, the offset-bearing ISO-8601 `emitted_on`, string `summary`, and string-list
-`changed_files`; `needs_input` also requires its question, ordered options where
-applicable, and binding-owned continuation metadata. A design notice is the
-separate closed shape
+segment boundary is crossed. Validate terminal result payloads by running
+`sai/tools/worker-report-validator.js validate --kind terminal` with the
+payload on stdin and reading its verdict; the tool validates the status, the
+offset-bearing ISO-8601 `emitted_on` (numeric offset, never `Z`), string
+`summary`, and field shapes; `needs_input` also requires its question, ordered
+options where applicable, and binding-owned continuation metadata; do not
+re-derive the checks in prose. A design notice is the separate closed shape
 `{event: "notice", emitted_on: string, message: string, changed_files: string[]}`.
 
 An adapter may also declare a phase-defined closed nonterminal extension in
-`allowed_nonterminal_extensions`. Validate its discriminator, `emitted_on`,
-`summary`, `changed_files`, and every additional field in the adapter's exact
-extension shape before invoking `extension_handlers`. An extension is a pause,
-not a terminal status: add its paths to the union, route its source through the
-declared coordinator handler, and resume only through the handler's exact
-same-worker continuation. Do not infer a question, answer, or mutation from an
-extension payload. In the merge phase, `event: conflict_detected` carries an
-`affected_files` inventory and a `continuation_state` of
-`language-selection|strategy-analysis`; the coordinator uses that extension to
-announce the conflict, ask for a working language only on the first state, and
-re-enter strategy analysis without asking again on the second state.
+`allowed_nonterminal_extensions`. Validate extension payloads by running
+`sai/tools/worker-report-validator.js validate --kind <extension-event>` with
+the payload on stdin and reading its verdict; the tool validates the
+discriminator, `emitted_on`, `summary`, and every additional field in the
+adapter's exact extension shape; do not re-derive the checks in prose. An
+extension is a pause, not a terminal status: add its paths to the union, route
+its source through the declared coordinator handler, and resume only through the
+handler's exact same-worker continuation. Do not infer a question, answer, or
+mutation from an extension payload. In the merge phase, `event: conflict_detected`
+carries an `affected_files` inventory and a `continuation_state` of
+`language-selection|strategy-analysis`; validate with
+`sai/tools/worker-report-validator.js validate --kind conflict_detected`; the
+coordinator uses that extension to announce the conflict, ask for a working
+language only on the first state, and re-enter strategy analysis without asking
+again on the second state.
 
 Add every reported path to the invocation-scoped union in first-seen order.
 The non-reset enumeration spans input, feedback, notice, progress,
@@ -55,12 +62,13 @@ carries the worker-authored `emitted_on` immediately after its `status` or
 wall-clock time with the session's numeric UTC offset, never the `Z` designator.
 It is mandatory in every result and in every phase; a missing, non-ISO-8601, or
 offset-less value is a malformed payload, handled through the same route as any
-other closed-shape violation. Forward or record the value verbatim and never
-invent, correct, re-derive, or reformat it. It is also the sole source of the
-Milestone Stamp: the `HH:mm` a progress task list attaches to a step it renders
-`completed` is that step's marking result's `emitted_on` per
-`@sai/policies/todo-structure.md`, read straight off the value with no
-conversion, so the coordinator issues no wall-clock call and resolves no zone.
+other closed-shape violation (validated by `sai/tools/worker-report-validator.js`).
+Forward or record the value verbatim and never invent, correct, re-derive, or
+reformat it. It is also the sole source of the Milestone Stamp: the `HH:mm` a
+progress task list attaches to a step it renders `completed` is that step's
+marking result's `emitted_on` per `@sai/policies/todo-structure.md`, read straight
+off the value with no conversion, so the coordinator issues no wall-clock call and
+resolves no zone.
 
 For `needs_input` with a closed option set, present the exact question and
 options, forward the exact answer through the active binding, and process the
@@ -68,11 +76,14 @@ next result through this loop. When a phase explicitly permits an empty option
 set as open input, present its exact question through that phase's ordinary
 conversation channel, forward the user's exact free-form answer, and process
 the next result through the same loop; do not synthesize options. For a notice,
-invoke the design adapter's notice extension and forward its fixed
-acknowledgement. Notices are not a worker status.
+validate with `sai/tools/worker-report-validator.js validate --kind notice` and
+read its verdict; invoke the design adapter's notice extension and forward its
+fixed acknowledgement. Notices are not a worker status.
 
 A progress event is the separate closed shape
-`{event: "progress", emitted_on: string, step_ids: string[], changed_files: string[]}`.
+`{event: "progress", emitted_on: string, step_ids: string[], changed_files: string[]}`;
+validate with `sai/tools/worker-report-validator.js validate --kind progress` and
+read its verdict.
 Mark reported ids against the adapter's declared `progress_plan` when one is
 present, or against the declared `step_pointer_map` when the adapter uses a
 routing-only map. Ignore ids outside the active declaration — neither a plan
