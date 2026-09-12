@@ -10,7 +10,10 @@ Fetch @sai/policies/remember.md
 ## Invocation Envelope
 
 The worker receives exactly one opaque string: `arguments_value`; binding
-metadata remains outside the worker request. Do not scan parent conversation
+metadata remains outside the worker request. Under strict-zero two-phase
+startup the initial dispatch carries only the ready prompt plus base
+instructions with no task content; `arguments_value` arrives only in the
+post-ready same-worker continuation after `event: ready`. Do not scan parent conversation
 history. Throughout `@sai/commands/backfill/instructions.md`, `$ARGUMENTS`
 denotes the received `arguments_value`.
 
@@ -43,8 +46,10 @@ wrapper and no coordinator splits this envelope on the command's behalf.
 
 ## Lifecycle
 
-This phase declares NO progress plan: emit no progress events, no notice, and
-no handshake event. Every run closes with exactly one terminal lifecycle
+This phase declares NO progress plan: emit no progress events and no notice.
+Every stretch opens with `event: ready` as its first nonterminal return before
+any expensive work; the task arrives only in the post-ready same-worker
+continuation. Every run closes with exactly one terminal lifecycle
 status — `completed`, `needs_input`, or `failed`/`cancelled` — in the closed
 worker-core shapes, each carrying the mandatory worker-authored `emitted_on`,
 a concrete English `summary`, and an ordered duplicate-free `changed_files`.

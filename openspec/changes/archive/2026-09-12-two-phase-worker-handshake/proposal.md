@@ -1,26 +1,41 @@
 > **⚠ POST-HOC RECORD** — This proposal was backfilled after implementation against a user-supplied statement of intent. It describes a decision already made, not one being proposed.
 
+**Complexity**: medium (3 capabilities, 12 files, no breaking change)
+
 ## Why
-The routed startup handshake depended on worker goodwill, so a worker could start expensive work before its first return and leave the coordinator without a resumable handle over completed work. Withholding task content until after a trivial ready return makes pre-ready expensive work structurally impossible and bounds pre-ready loss to base loading.
+Without structural withholding, expensive work could start before a resumable handle existed, making recovery guesswork. This change makes pre-handle work impossible rather than forbidden by enforcing a strict-zero ready-only opening on every routed stretch.
 
 ## What Changes
-- GLOSSARY.md adds Handle, Handshake, and Ready definitions that name the resumable identifier, the trivial first return, and the availability signal.
-- sai/orchestration/command-runner.md switches the initial dispatch to a minimal ready envelope with zero task content and discloses the task only in the post-ready same-worker continuation.
-- sai/orchestration/command-runner.md adds fresh relaunch with the original envelope when ready never arrives, with no timeouts, retries, or new escalation, and charges two round trips to every routed stretch including every RED and GREEN dispatch per apply Step.
-- sai/orchestration/command-runner.md keeps the original envelope minimal and recovers the task from opaque continuation history during replacement reconstruction.
-- sai/orchestration/worker-core.md replaces Startup Handshake with Two-Phase Startup Handshake, enforcing ordering by information withholding, keeping post-task stall behavior unchanged, and bounding loss without guaranteeing readiness.
+- sai/orchestration/command-runner.md now defines strict zero (no change name, flags, or provenance), handle-then-guard-snapshot-then-task ordering, post-ready disclosure on the captured handle, fresh minimal-envelope relaunch when ready never arrives, opaque-history-only reconstruction with failed restart on incomplete history, fixed double round-trip with no withholding-breaking batching, and ready-first coexistence for merge conflict_detected.
+- sai/orchestration/worker-core.md now defines the exact ready return with empty changed_files, strict-zero withholding, handle-then-guard ordering, minimal envelope plus opaque-history recovery, fixed double round-trip, and merge coexistence after ready.
+- sai/commands/archive/worker.md, sai/commands/backfill/worker.md, sai/commands/commit/worker.md, sai/commands/merge/worker.md, and sai/commands/explore/direct-build-worker.md now require the handshake: initial dispatch carries no task, arguments_value arrives only in the post-ready continuation, and merge emits conflict_detected only after ready.
+- sai/orchestration/workers/bindings/claude/worker-template.md and sai/orchestration/workers/bindings/opencode/worker-template.md now send a ready-only opening with no change name, flags, provenance, or task content, and disclose the task only post-ready with opaque-history reconstruction.
+- bin/install-flow.js now validates the ready-only prompt instead of the InvocationEnvelope slot.
+- test/install-claude.test.js and test/install-opencode.test.js now assert strict-zero openings with no InvocationEnvelope or arguments_value and the ready-only literal.
 
 ## Capabilities
+This change extends existing handshake and dispatch capabilities; no new top-level capability is introduced.
 
 ### New Capabilities
-- two-phase-worker-handshake — two-phase startup handshake with ready-only initial dispatch, post-ready task disclosure on the same worker, no-ready fresh relaunch, minimal envelope with history recovery, double round-trip for all routed stretches, and shared handshake terminology.
+None — this change extends existing capabilities.
 
 ### Modified Capabilities
-- None. All implemented behavior is captured as the new two-phase-worker-handshake delta; the ten overlapping main specs noted in the conflict scan travel as informational context for archive sync and are not drafted as modified capabilities in this backfill.
+- two-phase-worker-handshake — strict-zero ready-only opening, post-ready disclosure on the captured handle, handle-then-guard-then-task ordering with fresh relaunch, opaque-history-only reconstruction, fixed double round-trip cost, ready-first merge coexistence, and ready-only templates with install validation.
+- worker-dispatch-prompt-template — initial dispatch template inverted from the InvocationEnvelope slot to the ready-only literal with no task at open.
+- worker-fast-handshake — handshake redefined from progress-event with exemptions to universal event ready with no exemptions.
 
 ## Impact
-- Modified: GLOSSARY.md — three terminology entries for Handle, Handshake, and Ready.
-- Modified: sai/orchestration/command-runner.md — minimal ready envelope, post-ready continuation disclosure, no-ready relaunch, double round-trip, history-based reconstruction.
-- Modified: sai/orchestration/worker-core.md — Two-Phase Startup Handshake section with ready, handle, guard window, ordering, absence, minimal envelope, and loss-bound rules.
-- New files in implementation evidence: None.
+- Modified bin/install-flow.js — prompt validation expects the ready-only literal.
+- Modified sai/commands/archive/worker.md — inverted to require the handshake.
+- Modified sai/commands/backfill/worker.md — inverted to require the handshake.
+- Modified sai/commands/commit/worker.md — inverted to require the handshake.
+- Modified sai/commands/explore/direct-build-worker.md — inverted to require the handshake.
+- Modified sai/commands/merge/worker.md — inverted to require the handshake with ready-first conflict coexistence.
+- Modified sai/orchestration/command-runner.md — strict-zero dispatch, post-ready disclosure, guard ordering, opaque recovery, fixed cost.
+- Modified sai/commands/backfill/worker.md — inverted to require the handshake.
+- Modified sai/orchestration/worker-core.md — strict-zero definition, ready shape, guard ordering, opaque recovery, fixed cost.
+- Modified sai/orchestration/workers/bindings/claude/worker-template.md — ready-only initial dispatch.
+- Modified sai/orchestration/workers/bindings/opencode/worker-template.md — ready-only initial dispatch.
+- Modified test/install-claude.test.js — strict-zero assertions.
+- Modified test/install-opencode.test.js — strict-zero assertions.
 Out of scope: design.md, tasks.md, implementation.md — not generated by /sai-backfill

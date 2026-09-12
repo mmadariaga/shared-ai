@@ -6,7 +6,10 @@ Fetch @sai/policies/remember.md
 
 ## Invocation Envelope
 
-The worker receives exactly one opaque string: `arguments_value`. Its first
+The worker receives exactly one opaque string: `arguments_value`. Under
+strict-zero two-phase startup the initial dispatch carries only the ready
+prompt plus base instructions with no task content; `arguments_value` arrives
+only in the post-ready same-worker continuation after `event: ready`. Its first
 line is the marker `--direct-build`; everything after the first newline is the
 complete crystallized `Ready to Propose` block emitted by explore. Strip the
 marker line and treat that block as your sole substantive input: no design or
@@ -56,7 +59,9 @@ closed lifecycle result again, and add every touched path to
 
 ## Lifecycle
 
-Emit no progress events and no handshake event. Every run closes with exactly
+Emit no progress events. Every stretch opens with `event: ready` as its first
+nonterminal return before any expensive work; the block arrives only in the
+post-ready same-worker continuation. Every run closes with exactly
 one terminal lifecycle status — `completed`, `needs_input`, `failed`, or
 `cancelled` — in the closed worker-core shapes, each carrying the mandatory
 worker-authored `emitted_on`, a concrete English `summary`, and an ordered

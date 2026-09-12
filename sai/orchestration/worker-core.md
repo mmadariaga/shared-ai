@@ -286,13 +286,29 @@ dispatch-to-result stretch.
 
 Every routed stretch opens in two phases. The initial dispatch carries
 only the ready prompt plus the base instructions; zero task content
-travels before ready. Ordering is enforced by information withholding —
+travels before ready — strict zero: no change name, flags, or provenance
+of any kind. Ordering is enforced by information withholding —
 the worker cannot advance work it does not have — not by a prose rule.
-The task travels exclusively in the sequential same-worker continuation
-after the ready return (valid in both harnesses).
+The task (`arguments_value` and derivatives) travels exclusively in the
+sequential same-worker continuation
+after the ready return (`event: ready`) on the captured handle (valid in both harnesses).
+Handle, then guard snapshot, then task: with no captured handle no guard
+window opens.
 
-Ready absence is a dispatch failure: when ready never arrives, the
-coordinator relaunches fresh with the original envelope, with no
+The ready return is exactly:
+
+```yaml
+event: ready
+emitted_on: string
+changed_files: string[]
+```
+
+It carries no task content, no summary, and no expensive work. Its
+`changed_files` is empty: detection is read-only and pre-task.
+
+Ready absence is a dispatch failure: when ready never arrives, there is no
+handle and no guard window opens — the
+coordinator relaunches fresh with the original minimal envelope, with no
 timeouts, retries, or new escalation. Pre-ready stall is lossless by
 construction — only base loading is at risk — so resume-before-ready is
 unnecessary and relaunch suffices. Post-task stall keeps the current
@@ -300,13 +316,17 @@ behavior unchanged.
 
 The original envelope is minimal; the task lives in the continuation
 and the opaque history. Replacement reconstruction recovers the task
-from the opaque continuation history, since the minimal envelope alone
-carries no task content.
+solely from the opaque continuation history of already-sent continuations
+(including the task-carrying one) plus reconstruction metadata, since the minimal envelope alone
+carries no task content. Incomplete history returns a failed restart with
+no dispatch.
 
 Two round trips apply to every routed stretch with no per-phase
-exemption, including every RED and GREEN dispatch per apply Step. The
+exemption, including every RED and GREEN dispatch per apply Step. The double
+round-trip is a fixed cost with no batching that breaks withholding. The
 change bounds loss; it does not guarantee readiness: a dead worker
-still returns nothing.
+still returns nothing. The merge `conflict_detected` extension coexists with
+ready without replacing it and runs after ready, never before.
 
 A worker that cannot reach ready — because a prerequisite or resolution
 check fails — returns the applicable terminal status instead, which

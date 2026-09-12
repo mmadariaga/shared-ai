@@ -10,11 +10,14 @@ not perform the technical work delegated to a worker.
 Initialize one invocation-scoped ordered, duplicate-free `changed_files` union.
 Add reported paths in first-seen order; the union is never reset.
 Dispatch one worker with the phase adapter's minimal `original_envelope`
-(ready prompt plus base instructions; zero task content), retain the
+(ready prompt plus base instructions; zero task content — strict zero: no
+change name, flags, or provenance of any kind), retain the
 harness-native resumable handle captured at dispatch return before any guard
 snapshot or continuation, and validate every returned result before acting on
-it. The task is disclosed only in the post-ready same-worker continuation.
-A dispatch cancelled before the handle returns leaves no handle; its retry
+it. Handle, then guard snapshot, then task: with no captured handle no guard
+window opens. The task (`arguments_value` and derivatives) is disclosed only
+in the post-ready same-worker continuation after `event: ready` on the captured
+handle. A dispatch cancelled before the handle returns leaves no handle; its retry
 starts from zero with a deferred snapshot and opens no guard window. Every
 routed stretch costs two round trips with no per-phase exemption, including
 every RED and GREEN dispatch per apply Step.
@@ -41,7 +44,8 @@ declared coordinator handler, and resume only through the handler's exact
 same-worker continuation. Do not infer a question, answer, or mutation from an
 extension payload. In the merge phase, `event: conflict_detected` carries an
 `affected_files` inventory and a `continuation_state` of
-`language-selection|strategy-analysis`; the coordinator uses that extension to
+`language-selection|strategy-analysis`; it coexists with ready without replacing
+it and runs after ready, never before. The coordinator uses that extension to
 announce the conflict, ask for a working language only on the first state, and
 re-enter strategy analysis without asking again on the second state.
 
@@ -90,10 +94,12 @@ Render before resuming when rendering is enabled, so the user sees the mark
 before the next stretch of worker work begins. Progress events are not a worker
 status.
 
-Disclose the task only after ready: when the ready return arrives, continue
+Disclose the task only after ready: when the ready return (`event: ready`)
+arrives, continue
 the same worker on the retained handle with the task as a sequential
-same-worker continuation. When ready never arrives, relaunch fresh with the
-original envelope, with no timeouts, retries, or new escalation. Attempt
+same-worker continuation. When ready never arrives, there is no handle and no
+guard window opens: relaunch fresh with the
+original minimal envelope, with no timeouts, retries, or new escalation. Attempt
 same-worker continuation first on the retained handle thereafter, resuming with
 the adapter's existing continuation literals. A cancellation after the
 handshake but before expensive work resumes via continue on the captured
@@ -101,11 +107,13 @@ handle; a handshake-then-stall with no further progress follows the existing
 continuation/transport-loss path. If it fails, preserve the union and
 dispatch at most one replacement worker with the minimal original envelope, exact
 opaque input history including the task-carrying continuation, pending phase feedback when present, and all required
-reconstruction metadata. Replacement reconstruction recovers the task from the
-opaque continuation history, since the minimal envelope alone carries no task
+reconstruction metadata. Replacement reconstruction recovers the task solely from the
+opaque continuation history of already-sent continuations (including the
+task-carrying one) plus reconstruction metadata, since the minimal envelope alone carries no task
 content. Replacement reconstruction must have complete phase
 state. If any required field is unavailable, return a failed restart request
-and do not dispatch a replacement.
+and do not dispatch a replacement. The double round-trip per stretch is a fixed
+cost with no batching that breaks withholding.
 
 The coordinator invokes only these phase-adapter fields, plus the optional
 static, ordered `progress_plan` declaration, the optional static
