@@ -2,39 +2,37 @@
 
 ## Purpose
 TBD: Define the encoded literal contract-aware dispatch template for routed worker bindings.
-
 ## Requirements
-
 ### Requirement: Routed worker bindings use an encoded literal contract-aware dispatch template
 
-Each of the seven Claude Code and seven opencode worker bindings SHALL use a literal, worker-specific initial dispatch prompt template encoded as one double-quoted string on the dispatch line. After substituting the binding's canonical worker contract filename, the prompt string SHALL contain literal `\\n` escape sequences and SHALL decode to the worker contract section followed by an opaque slot containing only the coordinator-supplied `arguments_value`.
+Each of the seven Claude Code and seven opencode worker bindings SHALL use a literal, worker-specific ready-only initial dispatch prompt template encoded as one double-quoted string on the dispatch line. After substituting the binding canonical worker contract filename, the prompt string SHALL contain literal backslash-n escape sequences and SHALL decode to the worker contract section followed by the ready-only sentence asking for event ready now with task disclosure in the same-worker continuation. The template SHALL contain no InvocationEnvelope slot, no arguments_value, and no task content at open, and SHALL NOT define, serialize, concatenate, or reinterpret a wrapper-echo field.
 
-    Worker contract: Fetch @sai/orchestration/workers/<worker-contract>.md and follow it exactly.\n\nInvocationEnvelope:\n<original InvocationEnvelope>
+    Worker contract: Fetch @sai/orchestration/workers/<worker-contract>.md and follow it exactly.\n\nReturn event: ready now; await task disclosure in the same-worker continuation.
 
 `<worker-contract>` SHALL be the matching canonical contract filename. The template SHALL not define, serialize, concatenate, or reinterpret a wrapper-echo field; phase-specific parsing remains owned by the coordinator and worker contract.
 
 #### Scenario: Every current binding carries the matching template
 
 - **WHEN** the fourteen active binding files are inspected
-- **THEN** each initial `Agent` or `task` dispatch SHALL contain the literal template for its own worker contract
+- **THEN** each initial `Agent` or `task` dispatch SHALL contain the ready-only literal template for its own worker contract with no envelope slot
 - **AND** the Claude binding SHALL retain background `Agent` dispatch semantics while the opencode binding SHALL retain `task` dispatch semantics
 
 #### Scenario: The existing invocation envelope passes through unchanged
 
 - **WHEN** a coordinator performs the initial dispatch
-- **THEN** the binding SHALL place the complete opaque `arguments_value` request into the template slot without changing its bytes
-- **AND** phase-specific worker resolution SHALL continue to own interpretation of the envelope
+- **THEN** the binding SHALL send only the ready-only prompt with no task content and SHALL place no `arguments_value` bytes at open
+- **AND** phase-specific worker resolution SHALL receive `arguments_value` only in the post-ready continuation and SHALL continue to own interpretation of the envelope
 
 #### Scenario: The encoded template remains parseable on one dispatch line
 
 - **WHEN** a binding's initial dispatch is parsed
-- **THEN** the prompt SHALL be captured from the same double-quoted dispatch argument, its literal `\n` sequences SHALL be decoded for comparison, and no physical newline SHALL be required inside the call
-- **AND** continuation prompts SHALL not be mistaken for the initial template
+- **THEN** the prompt SHALL be captured from the same double-quoted dispatch argument, its literal backslash-n sequences SHALL be decoded for comparison, and no physical newline SHALL be required inside the call
+- **AND** continuation prompts SHALL not be mistaken for the initial ready-only template
 
 #### Scenario: Claude template drift is installer-validated
 
 - **WHEN** Claude worker projections are installed or validated
-- **THEN** an installer-owned Claude binding check SHALL validate all seven Claude initial dispatch prompts against the same decoded worker-specific template used by the opencode census
+- **THEN** an installer-owned Claude binding check SHALL validate all seven Claude initial dispatch prompts against the same decoded worker-specific ready-only template used by the opencode census
 - **AND** a mismatch SHALL fail before the Claude projection writes or activates the affected binding
 
 #### Scenario: A binding template names the wrong contract
@@ -51,3 +49,4 @@ Replacing the initial dispatch placeholder SHALL NOT change continuation behavio
 - **WHEN** a routed worker returns `needs_input`
 - **THEN** the binding SHALL reuse its captured continuation reference and forward only the selected value
 - **AND** the continuation SHALL not package the contract template, binding metadata, or artifacts as new worker input
+

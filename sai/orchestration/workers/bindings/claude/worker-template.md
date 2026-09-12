@@ -6,18 +6,23 @@ exactly one bounded replacement dispatch per run.
 {{panelRenderBinding}}Dispatch the worker once with the harness-native background primitive and capture the
 resulting agent ID. The `Agent` dispatch with `run_in_background: true`
 returns the agent ID immediately; retain that captured agent ID before any
-guard snapshot or continuation. A dispatch cancelled before the agent ID
+guard snapshot or continuation. Handle, then guard snapshot, then task: with
+no captured handle no guard window opens. A dispatch cancelled before the agent ID
 returns leaves no handle; its retry starts from zero with a deferred
-snapshot.
+snapshot and opens no guard window.
 
-The original InvocationEnvelope slot contains only the opaque `arguments_value`;
-binding metadata remains outside the worker request.
+The initial dispatch is ready-only under strict zero: ready prompt plus base
+instructions only, with no change name, flags, provenance, or task content.
+The original envelope is minimal; binding metadata remains outside the worker
+request. The task (`arguments_value` and derivatives) travels only in the
+post-ready same-worker continuation after `event: ready` on the captured handle,
+and in the opaque continuation history for replacement reconstruction.
 
 ```
 Agent(
   name: "{{workerName}}",
   run_in_background: true,
-  prompt: "Worker contract: Fetch @{{workerContract}} and follow it exactly.\n\nInvocationEnvelope:\n<original InvocationEnvelope>"
+  prompt: "Worker contract: Fetch @{{workerContract}} and follow it exactly.\n\nReturn event: ready now; await task disclosure in the same-worker continuation."
 )
 ```
 

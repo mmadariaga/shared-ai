@@ -95,7 +95,7 @@ const WORKER_CONTRACT_BY_NAME = {
 };
 
 function expectedWorkerPrompt(phase) {
-  return `Worker contract: Fetch @sai/commands/${phase}/worker.md and follow it exactly.\n\nInvocationEnvelope:\n<original InvocationEnvelope>`;
+  return `Worker contract: Fetch @sai/commands/${phase}/worker.md and follow it exactly.\n\nReturn event: ready now; await task disclosure in the same-worker continuation.`;
 }
 
 function extractDispatchCalls(source, keyword) {
@@ -269,8 +269,10 @@ test('Step 2 initial Opencode task dispatches deliver the matching contract and 
          `specs/worker-dispatch-prompt-template/spec.md: ${workerName} should receive its matching worker contract`);
        assert.doesNotMatch(prompt, /\bwrapper_echo_value\s*:/,
          `${workerName} manifest-rendered worker prompt must not construct the wrapper echo field`);
-       assert.match(prompt, /InvocationEnvelope:\n<original InvocationEnvelope>$/,
-         `${workerName} should preserve the opaque InvocationEnvelope slot`);
+       assert.doesNotMatch(prompt, /InvocationEnvelope|arguments_value/,
+         `${workerName} initial prompt carries no task under strict zero`);
+       assert.match(prompt, /Return event: ready now; await task disclosure in the same-worker continuation\.$/,
+         `${workerName} initial prompt is ready-only with no task content`);
       assert.ok(continuations.length > 0, `${workerName} should retain a continuation task dispatch`);
        for (const continuation of continuations) {
          assert.match(continuation, /\bprompt\s*[:=]\s*"<selected value>"/,

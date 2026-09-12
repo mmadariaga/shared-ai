@@ -9,7 +9,10 @@ Fetch @sai/policies/commit-rules.md and follow it for the Direct Build (unattend
 ## Invocation Envelope
 
 The worker receives exactly one opaque string: `arguments_value`; binding
-metadata remains outside the worker request. Do not scan parent conversation
+metadata remains outside the worker request. Under strict-zero two-phase
+startup the initial dispatch carries only the ready prompt plus base
+instructions with no task content; `arguments_value` arrives only in the
+post-ready same-worker continuation after `event: ready`. Do not scan parent conversation
 history. Change resolution has already happened coordinator-side through the
 shared change-picker before this dispatch, so every payload carries
 `resolved_change_name`. Throughout `@sai/commands/archive/instructions.md`,
@@ -35,8 +38,10 @@ auto-proceeded gate as authorization to mutate.
 
 ## Lifecycle
 
-This phase declares NO progress plan: emit no progress events, no notice, and
-no handshake event. Every run closes with exactly one terminal lifecycle
+This phase declares NO progress plan: emit no progress events and no notice.
+Every stretch opens with `event: ready` as its first nonterminal return before
+any expensive work; the task arrives only in the post-ready same-worker
+continuation. Every run closes with exactly one terminal lifecycle
 status — `completed`, `needs_input`, or `failed`/`cancelled` — in the closed
 worker-core shapes, each carrying the mandatory worker-authored `emitted_on`,
 a concrete English `summary`, an ordered duplicate-free `changed_files`, and

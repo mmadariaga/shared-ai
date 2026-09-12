@@ -7,7 +7,10 @@ Fetch @sai/commands/merge/instructions.md and follow those instructions exactly.
 ## Invocation Envelope
 
 The worker receives exactly one opaque string: `arguments_value`; binding
-metadata remains outside the worker request. Do not scan parent conversation
+metadata remains outside the worker request. Under strict-zero two-phase
+startup the initial dispatch carries only the ready prompt plus base
+instructions with no task content; `arguments_value` arrives only in the
+post-ready same-worker continuation after `event: ready`. Do not scan parent conversation
 history. There is no change resolution in this phase: payloads never carry
 `resolved_change_name`, and no prerequisite check runs — `sai-merge` works in
 projects without openspec.
@@ -57,9 +60,12 @@ stretch.
 
 ## Lifecycle
 
-This phase declares NO progress plan: emit no progress events, no design notice,
-and no handshake event. A conflicted merge first emits the declared closed
-nonterminal `event: conflict_detected` extension from
+This phase declares NO progress plan: emit no progress events and no design notice.
+Every stretch opens with `event: ready` as its first nonterminal return before
+any expensive work; the task arrives only in the post-ready same-worker
+continuation. The declared closed nonterminal `event: conflict_detected`
+extension coexists with ready without replacing it: a conflicted merge emits
+ready first, then the `conflict_detected` extension from
 `@sai/orchestration/worker-core.md`; it carries the affected-file inventory and
 either `continuation_state: language-selection` or
 `continuation_state: strategy-analysis`. The event pauses this worker stretch;

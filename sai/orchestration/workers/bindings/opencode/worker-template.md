@@ -6,14 +6,19 @@ exactly one bounded replacement task per run.
 {{panelRenderBinding}}Dispatch the worker once with the harness-native subagent primitive and capture the
 resulting task ID. The `task` dispatch returns the task ID immediately;
 retain that captured task ID before any guard snapshot or continuation.
-A dispatch cancelled before the task ID returns leaves no handle; its
-retry starts from zero with a deferred snapshot.
+Handle, then guard snapshot, then task: with no captured handle no guard
+window opens. A dispatch cancelled before the task ID returns leaves no handle; its
+retry starts from zero with a deferred snapshot and opens no guard window.
 
-The original InvocationEnvelope slot contains only the opaque `arguments_value`;
-binding metadata remains outside the worker request.
+The initial dispatch is ready-only under strict zero: ready prompt plus base
+instructions only, with no change name, flags, provenance, or task content.
+The original envelope is minimal; binding metadata remains outside the worker
+request. The `arguments_value` content and derivatives travel only in the
+post-ready same-worker continuation after `event: ready` on the captured handle,
+and in the opaque continuation history for replacement reconstruction.
 
 ```
-task(subagent_type: "{{workerName}}", prompt: "Worker contract: Fetch @{{workerContract}} and follow it exactly.\n\nInvocationEnvelope:\n<original InvocationEnvelope>")
+task(subagent_type: "{{workerName}}", prompt: "Worker contract: Fetch @{{workerContract}} and follow it exactly.\n\nReturn event: ready now; await task disclosure in the same-worker continuation.")
 ```
 
 Continue on the same task by sending the selected value back to the captured task:

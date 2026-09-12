@@ -45,3 +45,52 @@ The system SHALL bound pre-ready loss to base loading by construction, SHALL kee
 - **WHEN** a stall happens before ready or after task disclosure
 - **THEN** pre-ready loss stays limited to base loading while post-task stall follows the current behavior and a dead worker still returns nothing
 
+### Requirement: Strict-Zero Ready-Only Initial Dispatch
+The system SHALL open every routed stretch with an initial dispatch carrying only the ready prompt plus base instructions and zero task content under strict zero with no change name, flags, provenance, or derivatives, including each apply RED and GREEN dispatch per Step.
+
+#### Scenario: Open routed stretch under strict zero
+- **WHEN** the coordinator opens any routed stretch including an apply RED or GREEN dispatch
+- **THEN** the initial dispatch carries only the ready prompt plus base instructions with no task content of any kind
+
+### Requirement: Post-Ready Task Disclosure On Captured Handle
+The system SHALL disclose arguments_value and all derivatives exclusively in the sequential same-worker continuation after event ready on the captured harness-native handle.
+
+#### Scenario: Disclose task after ready
+- **WHEN** the worker returns ready on the captured handle
+- **THEN** the coordinator continues the same worker with the task as a sequential continuation and never discloses task content before ready
+
+### Requirement: Handle-Then-Guard-Then-Task Ordering With Fresh Relaunch
+The system SHALL retain the handle before any guard snapshot, SHALL open the no-commit guard window only after handle capture, and SHALL relaunch fresh with the original minimal envelope with no timeouts and no open guard window when ready never arrives or cancellation happens before the handle returns.
+
+#### Scenario: Guard opens only after handle
+- **WHEN** a routed stretch starts and no handle has been captured
+- **THEN** no guard window opens and no snapshot runs until the handle is retained, and a missing ready relaunches fresh with deferred snapshot
+
+### Requirement: Opaque-History-Only Replacement Reconstruction
+The system SHALL reconstruct a replacement worker solely from the opaque history of already-sent continuations including the task-carrying one plus reconstruction metadata, and SHALL return a failed restart with no dispatch when that history is incomplete, never guessing task content.
+
+#### Scenario: Reconstruct from opaque history
+- **WHEN** a replacement worker is needed and the minimal envelope alone carries no task
+- **THEN** reconstruction uses solely the opaque continuation history plus metadata and fails without dispatch on incomplete history
+
+### Requirement: Fixed Double Round-Trip Cost With No Withholding-Breaking Batching
+The system SHALL charge a fixed double round-trip to every routed stretch with no per-phase exemption including short apply steps, and SHALL permit no batching that breaks withholding.
+
+#### Scenario: Price every routed stretch
+- **WHEN** any routed stretch executes
+- **THEN** the stretch costs two round trips with no exemption and no batching that discloses task content pre-ready
+
+### Requirement: Ready-First Coexistence With Merge Conflict Extension
+The system SHALL emit ready first on every merge stretch and SHALL run the conflict_detected nonterminal extension only after ready, never before and never as a replacement for ready.
+
+#### Scenario: Merge conflict follows ready
+- **WHEN** a merge stretch encounters conflicts
+- **THEN** the worker returns ready first and then emits conflict_detected with its affected-file inventory and continuation state
+
+### Requirement: Ready-Only Binding Templates And Install Validation
+The system SHALL send the ready-only prompt with no envelope slot from both harness binding templates, SHALL require the handshake in the merge, commit, archive, backfill, and direct-build worker contracts, and SHALL validate projections and tests against the new prompt with no InvocationEnvelope or arguments_value at open.
+
+#### Scenario: Validate ready-only bindings
+- **WHEN** worker bindings are installed or tested
+- **THEN** each initial dispatch carries the ready-only literal with no task content and validation fails on any envelope slot carryover
+
