@@ -198,8 +198,8 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0137b — The apply routed boundary carries progress events against immutable dispatch-local plans](./0137b-apply-routed-boundary-carries-progress-events.md) — Supersedes 0116
 - [0138 — Cap exhaustion continues after the last round's findings](./0138-cap-exhaustion-continues-after-last-round-findings.md)
 - [0139 — Supervised review edits remain worker-owned](./0139-supervised-review-edits-remain-worker-owned.md) — Refs adr:0139a
-- [0140 — Every closed worker payload carries a worker-authored `emitted_on`](./0140-closed-worker-payloads-carry-result-emission-time.md) — Refs 0110
-- [0141 — The milestone stamp is closure-only and derived from `emitted_on`, never from a coordinator clock](./0141-milestone-stamp-is-closure-only-and-derived-from-emitted-on.md) — Refs 0140, Refs 0112, Refs adr:0144
+- [0140 — Valid results carry a validator-observed `validated_at` sidecar; worker payloads are timeless](./0140-closed-worker-payloads-carry-result-emission-time.md) — Refs 0110
+- [0141 — The milestone stamp is closure-only and derived from `validated_at`, never from a coordinator clock](./0141-milestone-stamp-is-closure-only-and-derived-from-emitted-on.md) — Refs 0140, Refs 0112, Refs adr:0144
 - [0146 — Stable planning progress ids remain compatibility keys while labels become user-facing](./0146-stable-planning-progress-ids-preserve-compatibility.md)
 - [0147 — Structured spec research closes at the shared confidence boundary before proposal generation](./0147-spec-research-closes-at-confidence-boundary.md)
 - [0149 — The Orchestration Core contracts live under `sai/orchestration/`](./0149-orchestration-core-contracts-live-under-orchestration.md) — Supersedes 0128

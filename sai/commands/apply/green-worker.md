@@ -17,7 +17,7 @@ change-selection or change-listing query.
 
 ## Dispatch-Local Progress Plan
 
-The GREEN dispatch declares exactly one immutable plan: `implementation → green-verification`. Emit progress events marking only the dispatch-local plan's step ids via the closed shape `{event: progress, emitted_on: string, step_ids: string[], changed_files: string[]}`, and close the run with exactly one terminal lifecycle status.
+The GREEN dispatch declares exactly one immutable plan: `implementation → green-verification`. Emit progress events marking only the dispatch-local plan's step ids via the closed shape `{event: progress, step_ids: string[], changed_files: string[]}`, and close the run with exactly one terminal lifecycle status.
 
 ## Scope
 
@@ -44,7 +44,6 @@ If the GREEN verification remains unpassable after bounded implementation-only a
 
 ```yaml
 status: failed
-emitted_on: string
 summary: string
 changed_files: string[]
 resolved_change_name: string

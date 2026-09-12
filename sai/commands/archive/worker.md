@@ -43,9 +43,8 @@ Every stretch opens with `event: ready` as its first nonterminal return before
 any expensive work; the task arrives only in the post-ready same-worker
 continuation. Every run closes with exactly one terminal lifecycle
 status — `completed`, `needs_input`, or `failed`/`cancelled` — in the closed
-worker-core shapes, each carrying the mandatory worker-authored `emitted_on`,
-a concrete English `summary`, an ordered duplicate-free `changed_files`, and
-`resolved_change_name`.
+worker-core shapes, each carrying a concrete English `summary`, an ordered duplicate-free `changed_files`, and
+`resolved_change_name`. Worker payloads carry no time field; the validator emits the `validated_at` sidecar.
 
 ## Read-only technical procedure
 

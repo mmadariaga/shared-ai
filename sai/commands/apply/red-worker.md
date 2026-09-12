@@ -16,7 +16,7 @@ this worker SHALL NOT run any change-selection or change-listing query.
 
 ## Dispatch-Local Progress Plan
 
-The RED dispatch declares exactly one immutable plan: `test-authoring → red-verification`. Emit progress events marking only the dispatch-local plan's step ids via the closed shape `{event: progress, emitted_on: string, step_ids: string[], changed_files: string[]}`, and close the run with exactly one terminal lifecycle status.
+The RED dispatch declares exactly one immutable plan: `test-authoring → red-verification`. Emit progress events marking only the dispatch-local plan's step ids via the closed shape `{event: progress, step_ids: string[], changed_files: string[]}`, and close the run with exactly one terminal lifecycle status.
 
 ## Scope
 
@@ -48,7 +48,6 @@ When bounded RED attempts cannot produce a valid RED result without a forbidden 
 
 ```yaml
 status: failed
-emitted_on: string
 summary: string
 changed_files: string[]
 resolved_change_name: string

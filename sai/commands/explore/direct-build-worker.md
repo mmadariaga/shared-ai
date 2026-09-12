@@ -63,9 +63,8 @@ Emit no progress events. Every stretch opens with `event: ready` as its first
 nonterminal return before any expensive work; the block arrives only in the
 post-ready same-worker continuation. Every run closes with exactly
 one terminal lifecycle status — `completed`, `needs_input`, `failed`, or
-`cancelled` — in the closed worker-core shapes, each carrying the mandatory
-worker-authored `emitted_on`, a concrete English `summary`, and an ordered
+`cancelled` — in the closed worker-core shapes, each carrying a concrete English `summary`, and an ordered
 duplicate-free `changed_files` union of every path created or modified across
-all rounds of this worker instance. Return `failed` with a concrete failure
+all rounds of this worker instance. Worker payloads carry no time field. Return `failed` with a concrete failure
 class when the block cannot be implemented as written; never silently
 substitute a different feature.

@@ -107,9 +107,9 @@ not widen it.
 
 The design phase accepts the generic worker-core terminal statuses:
 
-- `completed` — worker-authored `emitted_on`, `summary`, ordered
+- `completed` — `summary`, ordered
   duplicate-free `changed_files`, and post-resolution `resolved_change_name`
-  and `overview_language`;
+  and `overview_language` (no time field; the validator emits `validated_at`);
 - `needs_input` — the same fields plus the worker's exact `question` and
   ordered `options` (with `resolved_change_name` and `overview_language` after
   resolution);
@@ -122,7 +122,6 @@ The sole allowed nonterminal extension is:
 
 ```yaml
 event: progress
-emitted_on: string
 step_ids: string[]
 changed_files: string[]
 ```
@@ -131,13 +130,11 @@ The design-only notice extension is:
 
 ```yaml
 event: notice
-emitted_on: string
 message: string
 changed_files: string[]
 ```
 
-Every payload follows `@sai/orchestration/worker-core.md`; `emitted_on` remains
-worker-authored and `changed_files` is unioned by the active coordinator in
+Every payload follows `@sai/orchestration/worker-core.md`; worker payloads carry no time field and `changed_files` is unioned by the active coordinator in
 first-seen order. Progress is nonterminal, notices are nonterminal, `needs_input`
 pauses the same worker, and only `completed`, `failed`, or `cancelled` closes
 the current lifecycle stretch.
