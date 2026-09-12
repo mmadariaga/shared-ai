@@ -180,7 +180,6 @@ Return the following closed nonterminal result immediately:
 
 ```yaml
 event: conflict_detected
-emitted_on: string
 summary: string
 changed_files: []
 affected_files: string[]

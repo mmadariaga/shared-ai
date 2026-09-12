@@ -76,8 +76,8 @@
     post-merge outcome report together with the captured invocation-scoped merge
     provenance.
   - `allowed_nonterminal_extensions` — the merge-only closed
-    `conflict_detected` extension `{event: conflict_detected, emitted_on:
-    string, summary: string, changed_files: string[], affected_files:
+    `conflict_detected` extension `{event: conflict_detected,
+    summary: string, changed_files: string[], affected_files:
     string[], continuation_state: language-selection|strategy-analysis}`.
     This is the only nonterminal extension; it is not a worker status or a
     progress event.

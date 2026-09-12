@@ -20,7 +20,7 @@
     received from the active wrapper, byte-for-byte.
   - `dispatch_operation`: the active implementation-worker binding dispatch
   - `continuation_operation`: the active binding's same-worker continuation
-  - `allowed_nonterminal_extensions`: progress events — `{event: "progress", emitted_on: string, step_ids: string[], changed_files: string[]}` as the sole nonterminal extension
+  - `allowed_nonterminal_extensions`: progress events — `{event: "progress", step_ids: string[], changed_files: string[]}` as the sole nonterminal extension
   - `extension_handlers`: empty
   - `recovery_policy: true` — bounded recovery is enabled for this planning phase (parity with spec and design); recovery semantics follow `@sai/policies/bounded-recovery.md`. The worker-owned, authorized, path-bounded non-clean read set for recovery inspection is only `openspec/changes/{change-name}/implementation.md`; same-worker correction on that surface regenerates or repairs the plan in place, and the coordinator has zero write or repair authority on it.
   - `replacement_reconstruction_fields`: `resolved_change_name` when already known, ordered `opaque_input_history`, the fixed durable-artifact reconstruction instruction, and the worker's `active_step_id`

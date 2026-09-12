@@ -94,8 +94,8 @@ widen it.
 
 The spec phase accepts the generic worker-core terminal statuses:
 
-- `completed` — worker-authored `emitted_on`, `summary`, ordered
-  duplicate-free `changed_files`, and post-resolution `resolved_change_name`;
+- `completed` — `summary`, ordered
+  duplicate-free `changed_files`, and post-resolution `resolved_change_name` (no time field; the validator emits `validated_at`);
 - `needs_input` — the same fields plus the worker's exact `question` and
   ordered `options` (and `resolved_change_name` after resolution);
 - `failed` — the generic post-resolution closed `failure_class` and
@@ -106,13 +106,12 @@ The sole allowed nonterminal extension is:
 
 ```yaml
 event: progress
-emitted_on: string
 step_ids: string[]
 changed_files: string[]
 ```
 
 There is no spec `notice` result. Every payload follows
-`@sai/orchestration/worker-core.md`; `emitted_on` remains worker-authored and
+`@sai/orchestration/worker-core.md`; worker payloads carry no time field and
 `changed_files` is unioned by the active coordinator in first-seen order.
 Progress is nonterminal, `needs_input` pauses the same worker, and only
 `completed`, `failed`, or `cancelled` closes the current lifecycle stretch.

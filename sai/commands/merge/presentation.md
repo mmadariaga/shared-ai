@@ -200,7 +200,6 @@ The worker reports a conflict through the declared closed nonterminal
 
 ```text
 event: conflict_detected
-emitted_on: <worker-authored ISO-8601 instant>
 summary: <concise conflict-state summary>
 changed_files: <worker-write paths, normally []>
 affected_files: <exact Git-conflicted paths>
@@ -464,7 +463,7 @@ displaced when ownership was claimed.
 The concise terminal renderer prints the worker source `summary`
 without rewriting it. It prints `Merge done.` only when `commit_executed` is
 true; every other closure stops without that literal and without mutation. It
-forwards `emitted_on` verbatim and never takes a replacement clock reading.
+forwards the validator `validated_at` sidecar verbatim and never takes a replacement clock reading.
 The invocation-wide ordered, duplicate-free `changed_files` union remains
 coordinator state and is not replaced by a presentation list.
 

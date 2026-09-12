@@ -51,8 +51,7 @@ Every stretch opens with `event: ready` as its first nonterminal return before
 any expensive work; the task arrives only in the post-ready same-worker
 continuation. Every run closes with exactly one terminal lifecycle
 status — `completed`, `needs_input`, or `failed`/`cancelled` — in the closed
-worker-core shapes, each carrying the mandatory worker-authored `emitted_on`,
-a concrete English `summary`, and an ordered duplicate-free `changed_files`.
+worker-core shapes, each carrying a concrete English `summary`, and an ordered duplicate-free `changed_files`. Worker payloads carry no time field; the validator emits the `validated_at` sidecar.
 
 An unattended envelope — a detected crystallized block, a parsed diff-source
 token, and every consumed field derivable — closes with zero `needs_input`
