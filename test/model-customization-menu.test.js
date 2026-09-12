@@ -113,20 +113,20 @@ const SCRAMBLED_COMMANDS = [
 ];
 
 const COMBINED_BOTH = [
-  'worker:budget',
-  'worker:sai-1-spec-proposal-worker',
-  'worker:sai-3-implementation-worker',
   'command:sai-1-spec',
+  'worker:sai-1-spec-proposal-worker',
   'command:sai-backfill',
+  'worker:budget',
+  'worker:sai-3-implementation-worker',
   'utility:sai-pr',
 ];
 
 const COMBINED_BOTH_BARE = [
-  'budget',
-  'sai-1-spec-proposal-worker',
-  'sai-3-implementation-worker',
   'sai-1-spec',
+  'sai-1-spec-proposal-worker',
   'sai-backfill',
+  'budget',
+  'sai-3-implementation-worker',
   'sai-pr',
 ];
 
@@ -160,9 +160,41 @@ const OPENCODE_COMMANDS = [
 // worker and every command of the harness, workers first, each family
 // alphabetical, type-prefixed (the Step 3 flow sorts each family).
 const COMBINED_BOTH_FULL = [
-  ...[...OPENCODE_AGENTS].sort().map(name => `worker:${name}`),
-  ...[...MODEL_COMMANDS].sort().map(name => `command:${name}`),
-  ...[...UTILITY_COMMANDS].sort().map(name => `utility:${name}`),
+  'command:sai-1-spec',
+  'worker:sai-1-spec-proposal-worker',
+  'command:sai-2-design',
+  'worker:sai-2-design-worker',
+  'command:sai-3-implement',
+  'worker:sai-3-implementation-worker',
+  'command:sai-4-apply',
+  'worker:sai-4-red-worker',
+  'worker:sai-4-green-worker',
+  'command:sai-5-review',
+  'worker:sai-5-review-worker',
+  'command:sai-6-security',
+  'worker:sai-6-security-worker',
+  'command:sai-7-performance',
+  'worker:sai-7-performance-worker',
+  'command:sai-8-accessibility',
+  'worker:sai-8-accessibility-worker',
+  'command:sai-archive',
+  'worker:sai-archive-worker',
+  'command:sai-backfill',
+  'worker:sai-backfill-worker',
+  'command:sai-build',
+  'command:sai-explore',
+  'command:sai-review',
+  'worker:budget',
+  'worker:executor',
+  'worker:explore',
+  'worker:sai-commit-worker',
+  'worker:sai-direct-build-worker',
+  'worker:sai-merge-worker',
+  'utility:sai-commit',
+  'utility:sai-pr',
+  'utility:sai-retire-docs',
+  'utility:sai-status',
+  'utility:sai-worktree',
 ];
 
 const CHECKLIST_LEGEND = 'Up/Down move \u00b7 Space toggle \u00b7 Enter confirm \u00b7 \u2190/Esc back \u00b7 q/Ctrl-C cancel';
@@ -769,7 +801,7 @@ test('full dependent-flow traversal walks menu, harness, checklist, and provider
 test('checklist receives the full enumerated target list of the chosen harness and scope as its default selection', async () => {
   const cases = [
     { scope: 'Workers', items: OPENCODE_AGENTS.map(name => `worker:${name}`) },
-    { scope: 'Commands', items: MODEL_COMMANDS.map(name => `command:${name}`).sort() },
+    { scope: 'Orchestrators', items: MODEL_COMMANDS.map(name => `command:${name}`).sort() },
     { scope: 'All', items: COMBINED_BOTH_FULL },
   ];
   for (const item of cases) {
@@ -857,7 +889,7 @@ test('production prompt bindings retain the expected shared-selector surface and
 
 // --- Step 3: customization scope screen ---
 
-test('scope Workers presents worker identities and scope Commands presents command identities', async () => {
+test('scope Workers presents worker identities and scope Orchestrators presents orchestrator identities', async () => {
   const opencodeOps = { select: [], create: [] };
   const claudeOps = { select: [], create: [] };
   const restoreOpencode = patchFactory('createOpencodeAdapter', () =>
@@ -880,7 +912,7 @@ test('scope Workers presents worker identities and scope Commands presents comma
     assert.deepEqual(workerChecklist[0][1], OPENCODE_AGENTS.map(name => `worker:${name}`),
       'every worker is pre-selected by default in the Workers scope');
 
-    const commandAnswers = ['Customize models', 'OpenCode', 'Commands', 'Exit'];
+    const commandAnswers = ['Customize models', 'OpenCode', 'Orchestrators', 'Exit'];
     const commandChecklist = [];
     const commandsResult = await runPostSetupMenu({
       projectPath: REPO_ROOT,
@@ -890,18 +922,18 @@ test('scope Workers presents worker identities and scope Commands presents comma
     });
     assert.equal(commandsResult.status, 'skipped');
     assert.equal(commandsResult.reason, 'cancelled');
-    assert.equal(commandChecklist.length, 1, 'the checklist should be invoked exactly once for the Commands scope');
+    assert.equal(commandChecklist.length, 1, 'the checklist should be invoked exactly once for the Orchestrators scope');
     assert.deepEqual(commandChecklist[0][0], MODEL_COMMANDS.map(name => `command:${name}`).sort(),
-      'the Commands scope checklist items retain stable command identities');
+      'the Orchestrators scope checklist items retain stable command identities');
     assert.deepEqual(commandChecklist[0][1], MODEL_COMMANDS.map(name => `command:${name}`).sort(),
-      'every command is pre-selected by default in the Commands scope');
+      'every orchestrator is pre-selected by default in the Orchestrators scope');
   } finally {
     restoreOpencode();
     restoreClaude();
   }
 });
 
-test('scope All presents combined worker and command identities, workers first, each family alphabetical', async () => {
+test('scope All presents phased orchestrator blocks with semantic worker pairs in command-alphabetical order', async () => {
   const opencodeOps = { select: [], create: [] };
   const claudeOps = { select: [], create: [] };
   const restoreOpencode = patchFactory('createOpencodeAdapter', () =>
@@ -953,22 +985,22 @@ test('injected checklist seam renders the task-complexity column in both harness
       });
       assert.equal(result.reason, 'cancelled');
       assert.deepEqual(checklistCalls[0][0], [
-        'worker:sai-worker', 'command:sai-build', 'utility:sai-pr',
+        'command:sai-build', 'worker:sai-worker', 'utility:sai-pr',
       ]);
       assert.deepEqual(checklistCalls[0][1], checklistCalls[0][0],
         'selection defaults use stable values, not display labels');
       assert.deepEqual(checklistCalls[0][4].header, [
-        '         TYPE  TARGET      TASK COMPLEXITY  SETTING',
-        `      ${'─'.repeat(7)}  ${'─'.repeat(10)}  ${'─'.repeat(15)}  ${'─'.repeat(7)}`,
+        '              TYPE  TARGET      TASK COMPLEXITY  SETTING',
+        `      ${'─'.repeat(12)}  ${'─'.repeat(10)}  ${'─'.repeat(15)}  ${'─'.repeat(7)}`,
       ],
         'the header columns start under the six-char option prefix and reuse the row widths');
       assert.deepEqual(checklistCalls[0][4].displayOptions, [
-        ` WORKER  sai-worker  ↑${' '.repeat(14)}  opencode-go/test-model (high)`,
-        `COMMAND  sai-build   ↑↑${' '.repeat(13)}  opencode-go/test-model (high)`,
-        `UTILITY  sai-pr      ↑${' '.repeat(14)}  opencode-go/test-model (high)`,
+        `ORCHESTRATOR  sai-build   ↑↑${' '.repeat(13)}  opencode-go/test-model (high)`,
+        `      WORKER  sai-worker  ↑${' '.repeat(14)}  opencode-go/test-model (high)`,
+        `     UTILITY  sai-pr      ↑${' '.repeat(14)}  opencode-go/test-model (high)`,
       ],
         'display labels are aligned type/target/complexity/setting columns without ANSI wrappers');
-      assert.deepEqual(ops.select, ['worker:sai-worker, command:sai-build, utility:sai-pr'],
+      assert.deepEqual(ops.select, ['command:sai-build, worker:sai-worker, utility:sai-pr'],
         'the injected seam returns stable identities independently of labels');
     } finally {
       restore();
@@ -992,7 +1024,7 @@ test('an adapter without effectiveSetting renders unavailable as plain column te
     });
     assert.equal(result.reason, 'cancelled');
     assert.deepEqual(checklistCalls[0][4].displayOptions, [
-      ` WORKER  sai-worker  ↑${' '.repeat(14)}  unavailable`,
+      `      WORKER  sai-worker  ↑${' '.repeat(14)}  unavailable`,
     ],
       'the unavailable setting renders as ordinary text in the setting column');
     for (const label of checklistCalls[0][4].displayOptions) {
@@ -1098,14 +1130,14 @@ test('back at the scope screen re-opens the harness selector and persists no sel
     const scopePrompts = prompts.filter(prompt =>
       prompt.options.length === 5
       && prompt.options.includes('Workers')
-      && prompt.options.includes('Commands')
+      && prompt.options.includes('Orchestrators')
       && prompt.options.includes('Agents')
       && prompt.options.includes('Utilities')
       && prompt.options.includes('All'));
     assert.equal(scopePrompts.length, 2,
       'back at the scope screen should re-present the scope screen after the harness is re-picked');
     for (const prompt of scopePrompts) {
-      assert.deepEqual(prompt.options, ['Workers', 'Agents', 'Commands', 'Utilities', 'All'],
+      assert.deepEqual(prompt.options, ['All', 'Workers', 'Agents', 'Orchestrators', 'Utilities'],
         'the scope screen offers exactly the five model customization families');
     }
     assert.equal(prompts.filter(prompt => prompt.question === 'Choose a harness:').length, 2,
@@ -1133,7 +1165,7 @@ test('back at the target checklist re-opens the scope screen and persists no sel
   const questions = [];
   const checklistCalls = [];
   try {
-    const answers = ['Customize models', 'OpenCode', 'Workers', 'Commands', 'Exit'];
+    const answers = ['Customize models', 'OpenCode', 'Workers', 'Orchestrators', 'Exit'];
     const result = await runPostSetupMenu({
       projectPath: REPO_ROOT,
       isTTY: true,
@@ -1153,16 +1185,16 @@ test('back at the target checklist re-opens the scope screen and persists no sel
     assert.deepEqual(checklistCalls[0][0], [...OPENCODE_AGENTS].sort().map(name => `worker:${name}`),
       'the first checklist pass presents the Workers scope targets with stable worker identities');
     assert.deepEqual(checklistCalls[1][0], MODEL_COMMANDS.map(name => `command:${name}`),
-      'after back the re-picked Commands scope presents stable command identities');
+      'after back the re-picked Orchestrators scope presents stable command identities');
     assert.equal(questions.length, 5,
       'menu, harness, scope, the re-presented scope, and the fresh menu are prompted');
     assert.equal(questions[1], 'Choose a harness:', 'the harness selector precedes the first scope screen');
     assert.equal(questions[2], questions[3],
       'back at the checklist re-presents the same scope screen');
     assert.deepEqual(opencodeOps.select, [MODEL_COMMANDS.map(name => `command:${name}`).join(', ')],
-      'only the confirmed Commands pass reaches settings selection');
+      'only the confirmed Orchestrators pass reaches settings selection');
     assert.deepEqual(opencodeOps.create.map(entry => entry.target.name), MODEL_COMMANDS,
-      'only the confirmed Commands pass configures targets, exactly once each; the abandoned Workers pass persists nothing');
+      'only the confirmed Orchestrators pass configures targets, exactly once each; the abandoned Workers pass persists nothing');
     assert.equal(claudeOps.select.length, 0, 'claude must never be configured');
     assert.equal(claudeOps.create.length, 0, 'claude must never create overrides');
   } finally {
@@ -3600,7 +3632,7 @@ test('flow: command targets with no source or invalid frontmatter are reported i
     }
     writeGlobalCommand(fixture, 'claude', valid, claudeCommandSource(valid));
     writeGlobalCommand(fixture, 'claude', invalid, 'no frontmatter block here\njust a body\n');
-    const answers = ['Customize models', 'Claude Code', 'Commands'];
+    const answers = ['Customize models', 'Claude Code', 'Orchestrators'];
     const result = await runPostSetupMenu({
       projectPath: fixture.projectPath,
       isTTY: true,
@@ -3649,8 +3681,8 @@ test('the settings selector is invoked exactly once per run for the whole confir
     makeFakeAdapter(CLAUDE_AGENTS, claudeOps));
   try {
     const answers = ['Customize models', 'OpenCode', 'All', 'Exit'];
-    const both = ['worker:budget', 'worker:explore', 'command:sai-1-spec'];
-    const bothBare = ['budget', 'explore', 'sai-1-spec'];
+    const both = ['command:sai-1-spec', 'worker:budget', 'worker:explore'];
+    const bothBare = ['sai-1-spec', 'budget', 'explore'];
     const result = await runPostSetupMenu({
       projectPath: REPO_ROOT,
       isTTY: true,

@@ -14,11 +14,11 @@ const {
 
 const MENU_OPTIONS = Object.freeze(['Customize models', 'Exit']);
 const HARNESS_OPTIONS = Object.freeze(['OpenCode', 'Claude Code']);
-const SCOPE_OPTIONS = Object.freeze(['Workers', 'Agents', 'Commands', 'Utilities', 'All']);
+const SCOPE_OPTIONS = Object.freeze(['All', 'Workers', 'Agents', 'Orchestrators', 'Utilities']);
 const MODEL_CHECKLIST_LEGEND = 'Up/Down move · Space toggle · Enter confirm · ←/Esc back · q/Ctrl-C cancel';
 const MODEL_TABLE_INDENT = '      ';
 const MODEL_TABLE_GUTTER = '  ';
-const MODEL_TABLE_TYPE_WIDTH = 7;
+const MODEL_TABLE_TYPE_WIDTH = 12;
 const MODEL_TABLE_COMPLEXITY_HEADER = 'TASK COMPLEXITY';
 const MODEL_TABLE_COMPLEXITY_WIDTH = MODEL_TABLE_COMPLEXITY_HEADER.length;
 const COMBINED_ENTRY_DELIMITER = ' | ';
@@ -106,10 +106,67 @@ function target(family, name, label = name) {
   return { value: `${TARGET_PREFIXES[family]}${name}`, family, name, label };
 }
 
+function displayFamily(family) {
+  return family === 'command' ? 'ORCHESTRATOR' : family.toUpperCase();
+}
+
+const COMMAND_WORKER_ORDER = Object.freeze({
+  'sai-1-spec': Object.freeze(['sai-1-spec-proposal-worker']),
+  'sai-2-design': Object.freeze(['sai-2-design-worker']),
+  'sai-3-implement': Object.freeze(['sai-3-implementation-worker']),
+  'sai-4-apply': Object.freeze(['sai-4-red-worker', 'sai-4-green-worker']),
+  'sai-5-review': Object.freeze(['sai-5-review-worker']),
+  'sai-6-security': Object.freeze(['sai-6-security-worker']),
+  'sai-7-performance': Object.freeze(['sai-7-performance-worker']),
+  'sai-8-accessibility': Object.freeze(['sai-8-accessibility-worker']),
+  'sai-archive': Object.freeze(['sai-archive-worker']),
+  'sai-backfill': Object.freeze(['sai-backfill-worker']),
+  'sai-merge': Object.freeze(['sai-merge-worker']),
+});
+
+function entryName(entry) {
+  return typeof entry === 'string' ? entry : entry.name;
+}
+
+function toTarget(family, entry) {
+  return typeof entry === 'string' ? target(family, entry) : entry;
+}
+
+function sortedByName(entries) {
+  return entries.slice().sort((left, right) => {
+    const leftName = entryName(left);
+    const rightName = entryName(right);
+    return leftName < rightName ? -1 : leftName > rightName ? 1 : 0;
+  });
+}
+
 function buildChecklistTargets(scope, families) {
-  const selectedFamilies = scope === 'All'
-    ? ['worker', 'agent', 'command', 'utility']
-    : ({ Workers: ['worker'], Agents: ['agent'], Commands: ['command'], Utilities: ['utility'] }[scope] || []);
+  if (scope === 'All') {
+    const agents = sortedByName(families.agent || []).map(entry => toTarget('agent', entry));
+    const sortedCommands = sortedByName(families.command || []);
+    const workerByName = new Map();
+    for (const entry of (families.worker || [])) {
+      workerByName.set(entryName(entry), toTarget('worker', entry));
+    }
+    const blocks = [];
+    for (const cmdEntry of sortedCommands) {
+      const cmdName = entryName(cmdEntry);
+      blocks.push(toTarget('command', cmdEntry));
+      const expected = COMMAND_WORKER_ORDER[cmdName] || [];
+      for (const workerName of expected) {
+        if (workerByName.has(workerName)) {
+          blocks.push(workerByName.get(workerName));
+          workerByName.delete(workerName);
+        }
+      }
+    }
+    const orphanWorkers = [...workerByName.entries()]
+      .sort((left, right) => (left[0] < right[0] ? -1 : left[0] > right[0] ? 1 : 0))
+      .map(([, entry]) => entry);
+    const utilities = sortedByName(families.utility || []).map(entry => toTarget('utility', entry));
+    return [...agents, ...blocks, ...orphanWorkers, ...utilities];
+  }
+  const selectedFamilies = ({ Workers: ['worker'], Agents: ['agent'], Commands: ['command'], Orchestrators: ['command'], Utilities: ['utility'] }[scope] || []);
   return selectedFamilies.flatMap(family => (families[family] || []).slice().sort()
     .map(entry => typeof entry === 'string' ? target(family, entry) : entry));
 }
@@ -813,7 +870,7 @@ async function runPostSetupMenu({
           const setting = typeof adapter.effectiveSetting === 'function'
             ? adapter.effectiveSetting(entry)
             : 'unavailable';
-          return `${entry.family.toUpperCase().padStart(MODEL_TABLE_TYPE_WIDTH)}${MODEL_TABLE_GUTTER}${entry.name.padEnd(nameWidth)}${MODEL_TABLE_GUTTER}${taskComplexityFor(entry).padEnd(MODEL_TABLE_COMPLEXITY_WIDTH)}${MODEL_TABLE_GUTTER}${setting}`;
+          return `${displayFamily(entry.family).padStart(MODEL_TABLE_TYPE_WIDTH)}${MODEL_TABLE_GUTTER}${entry.name.padEnd(nameWidth)}${MODEL_TABLE_GUTTER}${taskComplexityFor(entry).padEnd(MODEL_TABLE_COMPLEXITY_WIDTH)}${MODEL_TABLE_GUTTER}${setting}`;
         });
 
         const selection = await promptChecklist(
