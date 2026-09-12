@@ -34,11 +34,11 @@ run: if an item serves a capability that belongs to a later slice, do not
 implement, stub, or reference it here. Never implement the whole idea when only
 one slice's capabilities are in scope.
 
-Code, tests, and the project configuration the change requires are writable.
+Code, tests, the project configuration the change requires, and shipped product schemas under `openspec/schemas/**` are writable.
 Write NOTHING else:
 
-- never create or modify anything under `openspec/` — proposal, specs,
-  design, tasks, and metadata are reconstructed later by backfill;
+- never create or modify anything under `openspec/` except `openspec/schemas/**` — proposal, specs,
+  design, tasks, and metadata are reconstructed later by backfill; `openspec/specs/**`, `openspec/changes/**`, and `openspec/config.yaml` stay forbidden or reserved;
 - never create planning artifacts (`design.md`, `tasks.md`,
   `implementation.md`);
 - never run a mutating git command — no `git add`, `git commit`, `git push`,

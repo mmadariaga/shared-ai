@@ -142,7 +142,7 @@ Before the first dispatch of a Plan - Unattended run, explore SHALL fetch `sai/p
 
 ### Requirement: Gate suppression does not weaken force-majeure interruptions
 
-Supervised gate auto-proceed SHALL NOT create any advance path over a phase worker `failed` or `cancelled` result, and SHALL NOT alter the question-autonomy policy. A `needs_input` that fails the confidence threshold or grounding floor SHALL still escalate to the user and interrupt the run. An invalid non-empty `mode` value that causes the shared gate to STOP is an authoring-fault path at the fetch site, distinct from normal supervised runtime interruptions. Explore SHALL remain read-only under Plan - Unattended supervision: it SHALL NOT create, modify, or delete files, artifacts, or configuration; the only writes remain those the already-authorized phase workers perform within their owned change-directory scope. This scope is extended solely by the explicitly consented Direct Build - Unattended selection: the dispatched `sai-direct-build-worker` writes only code, tests, and required project configuration outside `openspec/` under its closed exclusions, and the dispatched `sai-backfill-worker` and `sai-archive-worker` execute the consented validated artifact writes, spec sync, archive move, owned-path staging, and pre-authorized local commit in their closed order, while explore itself remains read-only, including read-only schema validation of draft content against `openspec/schemas/sai-workflow/schema.yaml`.
+Supervised gate auto-proceed SHALL NOT create any advance path over a phase worker `failed` or `cancelled` result, and SHALL NOT alter the question-autonomy policy. A `needs_input` that fails the confidence threshold or grounding floor SHALL still escalate to the user and interrupt the run. An invalid non-empty `mode` value that causes the shared gate to STOP is an authoring-fault path at the fetch site, distinct from normal supervised runtime interruptions. Explore SHALL remain read-only under Plan - Unattended supervision: it SHALL NOT create, modify, or delete files, artifacts, or configuration; the only writes remain those the already-authorized phase workers perform within their owned change-directory scope. This scope is extended solely by the explicitly consented Direct Build - Unattended selection. The dispatched implementer SHALL write only code, tests, required project configuration, and `openspec/schemas/**` under its closed exclusions and never under `openspec/` except `openspec/schemas/**`. The dispatched backfill and archive workers SHALL execute only the consented validated artifact writes, spec sync, archive move, owned-path staging, and pre-authorized local commit in their closed order. Explore itself SHALL remain read-only including read-only schema validation of draft content.
 
 #### Scenario: failed worker skips gate and auto-proceed
 
@@ -154,6 +154,11 @@ Supervised gate auto-proceed SHALL NOT create any advance path over a phase work
 - **WHEN** a supervised worker returns `needs_input` whose answer is ungrounded or below the confidence threshold
 - **THEN** explore escalates the exact question and options to the user
 - **AND** gate suppression does not answer, swallow, or bypass that escalation.
+
+#### Scenario: Direct Build exception includes schemas
+
+- **WHEN** Direct Build Unattended is selected
+- **THEN** the implementer may write code, tests, configuration, and schemas under closed exclusions while explore stays read-only
 
 ### Requirement: item-10 diagnosis feedback is bounded and read-only
 
@@ -317,11 +322,11 @@ Direct Build slice inventory (`set` / `active` / `done`) and TODO (`mode` plus `
 
 ### Requirement: Build - Unattended pre-dispatch compatibility refusal
 
-Before Step 1 of the Direct Build - Unattended flow, explore SHALL judge the emitted Ready to Propose block against the step-1 implementer's work scope only, not the whole route. Steps 3–8 (backfill and archive, owned in the `sai-backfill-worker` and `sai-archive-worker`) own writes to OpenSpec bookkeeping artifacts under `openspec/changes/{name}/**` and `openspec/specs/**`. Reading ONLY the block, explore SHALL check for genuine step-1 violations: planning-artifact creation (`design.md`, `tasks.md`, `implementation.md`), mutating git commands, subagent dispatch, or writes under `openspec/` that the block designates as step-1 implementation work (including non-bookkeeping content like `openspec/schemas/**` or `openspec/config.yaml`). A block that only mentions or references OpenSpec bookkeeping artifacts (in `**Why**`, `**Decisions & Rationale**, or `**Research Leads**`) passes straight through to Step 1 with no refusal and no recovery, as steps 3–8 absorb those artifacts.
+Before Step 1 of the Direct Build Unattended flow, explore SHALL judge the emitted Ready to Propose block against the step-1 implementer's work scope only. Steps 3 through 8 own writes to OpenSpec bookkeeping artifacts under `openspec/changes/{name}/**` and `openspec/specs/**`. Explore SHALL check for planning-artifact creation, mutating git commands, subagent dispatch, or writes under `openspec/` that the block designates as step-1 implementation work including `openspec/specs/**`, `openspec/changes/**`, or `openspec/config.yaml`. `openspec/schemas/**` is permitted product scope and SHALL never be a violation. When the block evidence clearly triggers a genuine violation, explore SHALL emit a documented refusal naming the violated clause and the block evidence, dispatch nothing, mutate no selection state, and leave the change retryable. When Capabilities in scope or Implementation Details designate non-bookkeeping content under `openspec/` other than `openspec/schemas/**`, explore SHALL enter a bounded pre-dispatch recovery cycle of at most two correction attempts. A block that only mentions bookkeeping artifacts in Why, Decisions and Rationale, or Research Leads SHALL pass straight through to Step 1 with no refusal and no recovery.
 
 #### Scenario: Genuine step-1 violations are refused
 
-- **WHEN** the block evidence clearly designates implementation work that violates the step-1 scope (planning-artifact creation, mutating git, subagent dispatch, or non-bookkeeping openspec writes)
+- **WHEN** the block evidence clearly designates implementation work that violates the step-1 scope (planning-artifact creation, mutating git, subagent dispatch, or non-bookkeeping openspec writes including `openspec/specs/**`, `openspec/changes/**`, or `openspec/config.yaml`)
 - **THEN** explore emits a documented refusal naming the violated clause and the block evidence, dispatches nothing, mutates no selection state, and leaves the change retryable.
 
 #### Scenario: Bookkeeping-only blocks pass through without refusal
@@ -329,9 +334,14 @@ Before Step 1 of the Direct Build - Unattended flow, explore SHALL judge the emi
 - **WHEN** the block only mentions or references OpenSpec bookkeeping artifacts in non-Capabilities fields
 - **THEN** explore dispatches to Step 1 without refusal or recovery.
 
+#### Scenario: Schemas implementation passes through
+
+- **WHEN** the block designates `openspec/schemas/**` implementation work
+- **THEN** explore dispatches to Step 1 with no refusal and no recovery
+
 #### Scenario: Pre-dispatch recovery for non-bookkeeping openspec targets
 
-- **WHEN** the block's `**Capabilities in scope**` or `**Implementation Details**` designate implementation work targeting non-bookkeeping content under `openspec/`
+- **WHEN** the block's `**Capabilities in scope**` or `**Implementation Details**` designate implementation work targeting non-bookkeeping content under `openspec/` other than `openspec/schemas/**`
 - **THEN** explore enters a bounded pre-dispatch recovery cycle (at most two correction attempts): present the incompatibility naming the violated clause and the block evidence, allow the block to be corrected in session memory, revalidate against the narrowed refusal, and proceed to Step 1 with the corrected block when revalidation passes.
 
 #### Scenario: Recovery cycle exhaustion refers to Manual
