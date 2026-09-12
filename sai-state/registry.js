@@ -55,5 +55,6 @@ try { register('security-standalone@1', require('./machines/security-standalone.
 try { register('performance-standalone@1', require('./machines/performance-standalone.js')); } catch (err) {}
 try { register('accessibility-standalone@1', require('./machines/accessibility-standalone.js')); } catch (err) {}
 try { register('apply-standalone@1', require('./machines/apply-standalone.js')); } catch (err) {}
+try { register('recovery-ledger@1', require('./machines/recovery-ledger.js')); } catch (err) {}
 
 module.exports = { register, get, has, list, machines, clear, reset, close };

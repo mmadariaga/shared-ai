@@ -498,3 +498,31 @@ When Cause Locus is `owner-in-run` and the owner worker returns a successful `co
 - **THEN** the coordinator SHALL re-present that gate with the modified artifacts before the downstream relaunch continuation
 - **AND** SHALL preserve the constraint that no approved content is silently mutated
 
+### Requirement: The recovery ledger is owned by a registered stage machine
+
+The three-slot per-segment recovery ledger SHALL be owned by the `recovery-ledger@1` stage machine registered in `sai-state/registry.js`. Before spending a slot the coordinator SHALL consult that machine with the raw ordered tuple `(artifact path, concrete point, authorized correction boundary)`, and the machine SHALL perform the normalization, key-equality comparison, duplicate detection and slot accounting. Normalization SHALL canonicalize the artifact path as a repository-relative path with `/` separators and a leading `./` removed, and SHALL trim and collapse non-semantic whitespace in the concrete point. The machine SHALL report a consumed slot through the existing emit wire `stage` field as a string ordinal, and SHALL report every zero-slot outcome through the existing `rejected` field carrying a value from the closed stopping-reason vocabulary. The machine SHALL route to no step file and SHALL always return `next.follow` as `none`. A segment boundary SHALL clear the ledger with `reset <id> recovery-ledger@1`, leaving every other machine in the same session untouched. The machine SHALL require no change to the emit wire or to `bin/sai-state.js`, and the coordinator SHALL retain ownership of constructing the diagnosis and assigning Cause Locus.
+
+#### Scenario: Distinct diagnosis keys consume successive slots
+
+- **WHEN** the coordinator consults `recovery-ledger@1` with three tuples that differ after normalization
+- **THEN** the machine SHALL report the ordinals for the first, second and third slot in turn through the wire `stage` field
+- **AND** it SHALL carry no `rejected` value for any of the three
+
+#### Scenario: A duplicate normalized key spends no slot
+
+- **WHEN** the coordinator consults the machine with a tuple that differs only in a leading `./`, in path separators, or in non-semantic whitespace from a tuple already in the segment ledger
+- **THEN** the machine SHALL reject it as a duplicate diagnosis
+- **AND** it SHALL leave the consumed slot count unchanged
+
+#### Scenario: A fourth distinct key reports exhaustion
+
+- **WHEN** the coordinator consults the machine with a fourth tuple that is distinct from the three already recorded in the segment ledger
+- **THEN** the machine SHALL reject it as exhaustion
+- **AND** it SHALL create no fourth slot
+
+#### Scenario: The segment boundary clears only the ledger
+
+- **WHEN** the coordinator resets `recovery-ledger@1` at an eligible composition-segment boundary
+- **THEN** the next consult SHALL report the first slot ordinal again
+- **AND** every other machine registered in the same session SHALL retain its state
+

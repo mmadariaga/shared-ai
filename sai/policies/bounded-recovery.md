@@ -13,14 +13,15 @@ segment; it does not make a result eligible by itself. The fixed
 `continue_after_recovery` acknowledgement is runner-owned and is not an
 additional phase-adapter field.
 
-1. **Segment-scoped ledger.** For every recovery-eligible composition segment,
-   create a fresh ledger with exactly three slots. A slot is consumed only when
-   the runner dispatches recovery for a new normalized diagnosis key. A
-   diagnosis key can consume at most one slot, the ledger is scoped to the
-   active segment, and the ledger is discarded at the segment boundary. A
-   one-adapter invocation keeps segment scope identical to the invocation.
-   A later eligible segment gets a fresh three-slot ledger and never inherits
-   an earlier segment's spent slots.
+1. **Segment-scoped ledger.** The `recovery-ledger@1` machine registered in
+   `sai-state/registry.js` owns diagnosis-key normalization, duplicate detection,
+   and three-slot ledger accounting per segment. Reset it with `reset <id> recovery-ledger@1`
+   at each composition-segment boundary so the next segment gets a fresh three-slot pool.
+   A later eligible segment never inherits an earlier segment's depleted or remaining
+   slots. The machine normalizes keys, checks for duplicates, and tracks slots; the
+   coordinator consults it before recovery dispatch. A slot is consumed only
+   when the machine accepts a new normalized diagnosis key. A one-adapter
+   invocation keeps segment scope identical to the invocation.
 
 2. **Post-resolution diagnosis precedes eligibility.** The runner SHALL first
    establish the resolved change identity and validate the closed result. Only
@@ -85,14 +86,15 @@ additional phase-adapter field.
    `(artifact path, concrete point, authorized correction boundary)`. It has
    exactly those three components; routing diagnosis, `failure_class`,
    attempt ordinal, timestamps, summaries, and `changed_files` are not key
-   components. Before comparison, normalize the tuple deterministically:
-   canonicalize the artifact path as a repository-relative path with `/`
-   separators and redundant `.` segments removed, trim and collapse
-   whitespace in the concrete point, and use the canonical spelling for the
-   authorized correction boundary. Preserve component order and repository
-   case semantics, and do not infer or reorder missing values. A missing or
-   non-concrete component normalizes to no usable key and leaves Cause Locus
-   `unresolved`; it must not accidentally match a different diagnosis.
+   components. The `recovery-ledger@1` machine owns key normalization:
+   canonicalizes the artifact path as repository-relative with `/` separators
+   and redundant `.` segments removed, trims and collapses whitespace in the
+   concrete point, and uses the canonical spelling for the authorized
+   correction boundary, preserving component order and repository case
+   semantics. The coordinator sends the raw tuple to the machine, which
+   normalizes it internally for comparison. A missing or non-concrete
+   component results in no usable key and leaves Cause Locus `unresolved`;
+   it must not accidentally match a different diagnosis.
 
 6. **Eligibility is diagnosis-driven.** `failure_class` is a diagnostic prior
    used to focus and order inspection; it is not an eligibility gate. No
@@ -116,29 +118,31 @@ additional phase-adapter field.
     the named Explore Plan (unattended) item-10 route below. Ordinary/generic adapters
     preserve a cancelled result as a clean stop; outside the selector-dispatched
     Explore Plan (unattended) item 10 exception, cancellation closes as cancelled without a
-    recovery charge. A duplicate normalized diagnosis key is checked before
-    dispatch: it spends zero slots, does not
-   invoke `continue_after_recovery`, and hands back the existing diagnosis
-   rather than creating a second attempt. A coordinator-owned rejection with
-   no concrete in-scope correction likewise spends zero slots. These branches
-   do not alter the unchanged `changed_files` union.
+    recovery charge. The `recovery-ledger@1` machine checks for duplicate normalized
+    diagnosis keys before dispatch: if a key is a duplicate, it spends zero slots,
+    does not invoke `continue_after_recovery`, and returns a stopping reason of
+    `duplicate diagnosis`. The coordinator hands back the existing diagnosis rather
+    than creating a second attempt. A coordinator-owned rejection with
+    no concrete in-scope correction likewise spends zero slots. These branches
+    do not alter the unchanged `changed_files` union.
 
 8. **Dispatch and continuation.** Before an eligible attempt, announce the
-   routing diagnosis, failure class, Cause Locus, normalized diagnosis key, and
-   the slot ordinal (`1 of 3`, `2 of 3`, or `3 of 3`) in conversation text.
-   Atomically record the new key and consume its one slot, then resume the
-   live worker with exactly `continue_after_recovery`. When Cause Locus is
-   `in-scope`, resume the same worker that returned the non-clean result. When
-   Cause Locus is `owner-in-run`, resume the live worker holding the authorized
-   correction boundary identified in the diagnosis. Recovery SHALL never dispatch
-   a replacement worker. If that recovery continuation loses transport, is
-   rejected, or otherwise cannot resume the target worker, stop recovery and
-   hand back the diagnosis; do not turn the loss into a replacement dispatch.
-   Ordinary continuation loss outside recovery retains the existing at-most-one
-   replacement fallback.
-   A subsequent diagnosis may be considered only from a successfully resumed
-   target-worker result (the same worker when in-scope, or the owner worker when
-   owner-in-run) and only if it has a new key and a remaining slot.
+   routing diagnosis, failure class, and Cause Locus in conversation text.
+   Consult the `recovery-ledger@1` machine with the normalized diagnosis key.
+   The machine returns the slot ordinal (`1 of 3`, `2 of 3`, or `3 of 3`) and
+   records the new key in the ledger. Announce the normalized diagnosis key and
+   the slot ordinal in conversation text. Resume the live worker with exactly
+   `continue_after_recovery`. When Cause Locus is `in-scope`, resume the same
+   worker that returned the non-clean result. When Cause Locus is `owner-in-run`,
+   resume the live worker holding the authorized correction boundary identified
+   in the diagnosis. Recovery SHALL never dispatch a replacement worker. If that
+   recovery continuation loses transport, is rejected, or otherwise cannot resume
+   the target worker, stop recovery and hand back the diagnosis; do not turn the
+   loss into a replacement dispatch. Ordinary continuation loss outside recovery
+   retains the existing at-most-one replacement fallback. A subsequent diagnosis
+   may be considered only from a successfully resumed target-worker result (the
+   same worker when in-scope, or the owner worker when owner-in-run) and only
+   if it has a new key and a remaining slot.
 
    **Downstream relaunch after owner correction.** When Cause Locus is
    `owner-in-run` and the owner worker returns a successful `completed` status
