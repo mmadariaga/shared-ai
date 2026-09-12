@@ -10,11 +10,12 @@ const {
   promptSelect,
   promptChecklist: installFlowPromptChecklist,
   BACK,
+  CHECKLIST_SEPARATOR,
 } = require('./install-flow.js');
 
 const MENU_OPTIONS = Object.freeze(['Customize models', 'Exit']);
 const HARNESS_OPTIONS = Object.freeze(['OpenCode', 'Claude Code']);
-const SCOPE_OPTIONS = Object.freeze(['All', 'Workers', 'Agents', 'Orchestrators', 'Utilities']);
+const SCOPE_OPTIONS = Object.freeze(['All', 'Agents', 'Orchestrators', 'Workers', 'Utilities']);
 const MODEL_CHECKLIST_LEGEND = 'Up/Down move · Space toggle · Enter confirm · ←/Esc back · q/Ctrl-C cancel';
 const MODEL_TABLE_INDENT = '      ';
 const MODEL_TABLE_GUTTER = '  ';
@@ -164,7 +165,18 @@ function buildChecklistTargets(scope, families) {
       .sort((left, right) => (left[0] < right[0] ? -1 : left[0] > right[0] ? 1 : 0))
       .map(([, entry]) => entry);
     const utilities = sortedByName(families.utility || []).map(entry => toTarget('utility', entry));
-    return [...agents, ...blocks, ...orphanWorkers, ...utilities];
+    const middle = [...blocks, ...orphanWorkers];
+    // Grouped All table: agents | orchestrator-worker block | utilities.
+    // Join non-empty groups with a single blank separator row so there is
+    // never a leading, trailing, or doubled blank.
+    const groups = [agents, middle, utilities].filter(group => group.length > 0);
+    if (groups.length <= 1) return groups.length === 0 ? [] : groups[0];
+    const result = [];
+    groups.forEach((group, index) => {
+      if (index > 0) result.push({ value: CHECKLIST_SEPARATOR, separator: true, family: 'separator', name: '', label: '' });
+      result.push(...group);
+    });
+    return result;
   }
   const selectedFamilies = ({ Workers: ['worker'], Agents: ['agent'], Commands: ['command'], Orchestrators: ['command'], Utilities: ['utility'] }[scope] || []);
   return selectedFamilies.flatMap(family => (families[family] || []).slice().sort()
@@ -172,6 +184,7 @@ function buildChecklistTargets(scope, families) {
 }
 
 function parseTarget(value) {
+  if (value === CHECKLIST_SEPARATOR) return null;
   for (const [family, prefix] of Object.entries(TARGET_PREFIXES)) {
     if (value.startsWith(prefix)) return target(family, value.slice(prefix.length), value);
   }
@@ -861,21 +874,23 @@ async function runPostSetupMenu({
           screen = 'scope';
           continue;
         }
-        const nameWidth = Math.max(...targetEntries.map(entry => entry.name.length));
+        const selectableEntries = targetEntries.filter(entry => !entry.separator);
+        const nameWidth = Math.max(...selectableEntries.map(entry => entry.name.length));
         const header = [
-          `${MODEL_TABLE_INDENT}${'TYPE'.padStart(MODEL_TABLE_TYPE_WIDTH)}${MODEL_TABLE_GUTTER}${'TARGET'.padEnd(nameWidth)}${MODEL_TABLE_GUTTER}${MODEL_TABLE_COMPLEXITY_HEADER.padEnd(MODEL_TABLE_COMPLEXITY_WIDTH)}${MODEL_TABLE_GUTTER}SETTING`,
+          `${MODEL_TABLE_INDENT}${'TYPE'.padEnd(MODEL_TABLE_TYPE_WIDTH)}${MODEL_TABLE_GUTTER}${'TARGET'.padEnd(nameWidth)}${MODEL_TABLE_GUTTER}${MODEL_TABLE_COMPLEXITY_HEADER.padEnd(MODEL_TABLE_COMPLEXITY_WIDTH)}${MODEL_TABLE_GUTTER}SETTING`,
           `${MODEL_TABLE_INDENT}${'─'.repeat(MODEL_TABLE_TYPE_WIDTH)}${MODEL_TABLE_GUTTER}${'─'.repeat(nameWidth)}${MODEL_TABLE_GUTTER}${'─'.repeat(MODEL_TABLE_COMPLEXITY_WIDTH)}${MODEL_TABLE_GUTTER}${'─'.repeat('SETTING'.length)}`,
         ];
         const labels = targetEntries.map((entry) => {
+          if (entry.separator) return '';
           const setting = typeof adapter.effectiveSetting === 'function'
             ? adapter.effectiveSetting(entry)
             : 'unavailable';
-          return `${displayFamily(entry.family).padStart(MODEL_TABLE_TYPE_WIDTH)}${MODEL_TABLE_GUTTER}${entry.name.padEnd(nameWidth)}${MODEL_TABLE_GUTTER}${taskComplexityFor(entry).padEnd(MODEL_TABLE_COMPLEXITY_WIDTH)}${MODEL_TABLE_GUTTER}${setting}`;
+          return `${displayFamily(entry.family).padEnd(MODEL_TABLE_TYPE_WIDTH)}${MODEL_TABLE_GUTTER}${entry.name.padEnd(nameWidth)}${MODEL_TABLE_GUTTER}${taskComplexityFor(entry).padEnd(MODEL_TABLE_COMPLEXITY_WIDTH)}${MODEL_TABLE_GUTTER}${setting}`;
         });
 
         const selection = await promptChecklist(
           targets,
-          targets,
+          selectableEntries.map(entry => entry.value),
           undefined,
           MODEL_CHECKLIST_LEGEND,
           { preventEmptyConfirm: true, displayOptions: labels, header },

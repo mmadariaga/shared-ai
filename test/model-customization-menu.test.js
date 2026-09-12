@@ -802,7 +802,11 @@ test('checklist receives the full enumerated target list of the chosen harness a
   const cases = [
     { scope: 'Workers', items: OPENCODE_AGENTS.map(name => `worker:${name}`) },
     { scope: 'Orchestrators', items: MODEL_COMMANDS.map(name => `command:${name}`).sort() },
-    { scope: 'All', items: COMBINED_BOTH_FULL },
+    {
+      scope: 'All',
+      items: [...COMBINED_BOTH_FULL.slice(0, -5), '', ...COMBINED_BOTH_FULL.slice(-5)],
+      defaults: COMBINED_BOTH_FULL,
+    },
   ];
   for (const item of cases) {
     const opencodeOps = { select: [], create: [] };
@@ -824,8 +828,8 @@ test('checklist receives the full enumerated target list of the chosen harness a
         `the checklist should be invoked exactly once for the ${item.scope} scope`);
       assert.deepEqual(checklistCalls[0][0], item.items,
         `the checklist items should be the full enumerated ${item.scope} target list`);
-      assert.deepEqual(checklistCalls[0][1], item.items,
-        `every target of the ${item.scope} scope should be pre-selected by default`);
+      assert.deepEqual(checklistCalls[0][1], item.defaults ?? item.items,
+        `every selectable target of the ${item.scope} scope should be pre-selected by default, ignoring blank separators`);
       assert.equal(result.status, 'skipped');
       assert.equal(result.reason, 'cancelled');
     } finally {
@@ -951,10 +955,10 @@ test('scope All presents phased orchestrator blocks with semantic worker pairs i
     assert.equal(result.status, 'skipped');
     assert.equal(result.reason, 'cancelled');
     assert.equal(checklistCalls.length, 1, 'the checklist should be invoked exactly once for the All scope');
-    assert.deepEqual(checklistCalls[0][0], COMBINED_BOTH,
-      'the All scope checklist items retain family-prefixed identities');
+    assert.deepEqual(checklistCalls[0][0], [...COMBINED_BOTH.slice(0, -1), '', ...COMBINED_BOTH.slice(-1)],
+      'the All scope checklist items retain family-prefixed identities with a blank separator before utilities');
     assert.deepEqual(checklistCalls[0][1], COMBINED_BOTH,
-      'every combined row is pre-selected by default in the All scope');
+      'every selectable combined row is pre-selected by default in the All scope, ignoring the blank separator');
     assert.deepEqual(opencodeOps.select, [COMBINED_BOTH.join(', ')],
       'confirming the All scope returns the stable values into the settings selection');
     assert.deepEqual(opencodeOps.create.map(entry => entry.target.name), COMBINED_BOTH_BARE,
@@ -985,21 +989,25 @@ test('injected checklist seam renders the task-complexity column in both harness
       });
       assert.equal(result.reason, 'cancelled');
       assert.deepEqual(checklistCalls[0][0], [
+        'command:sai-build', 'worker:sai-worker', '', 'utility:sai-pr',
+      ],
+        'the All scope checklist items carry a blank separator between the orchestrator-worker block and utilities');
+      assert.deepEqual(checklistCalls[0][1], [
         'command:sai-build', 'worker:sai-worker', 'utility:sai-pr',
-      ]);
-      assert.deepEqual(checklistCalls[0][1], checklistCalls[0][0],
-        'selection defaults use stable values, not display labels');
+      ],
+        'selection defaults use stable values without the blank separator, not display labels');
       assert.deepEqual(checklistCalls[0][4].header, [
-        '              TYPE  TARGET      TASK COMPLEXITY  SETTING',
+        '      TYPE          TARGET      TASK COMPLEXITY  SETTING',
         `      ${'─'.repeat(12)}  ${'─'.repeat(10)}  ${'─'.repeat(15)}  ${'─'.repeat(7)}`,
       ],
-        'the header columns start under the six-char option prefix and reuse the row widths');
+        'the header columns start under the six-char option prefix and reuse the row widths with left-aligned TYPE');
       assert.deepEqual(checklistCalls[0][4].displayOptions, [
         `ORCHESTRATOR  sai-build   ↑↑${' '.repeat(13)}  opencode-go/test-model (high)`,
-        `      WORKER  sai-worker  ↑${' '.repeat(14)}  opencode-go/test-model (high)`,
-        `     UTILITY  sai-pr      ↑${' '.repeat(14)}  opencode-go/test-model (high)`,
+        `WORKER        sai-worker  ↑${' '.repeat(14)}  opencode-go/test-model (high)`,
+        '',
+        `UTILITY       sai-pr      ↑${' '.repeat(14)}  opencode-go/test-model (high)`,
       ],
-        'display labels are aligned type/target/complexity/setting columns without ANSI wrappers');
+        'display labels are left-aligned type/target/complexity/setting columns with a blank separator row and no ANSI wrappers');
       assert.deepEqual(ops.select, ['command:sai-build, worker:sai-worker, utility:sai-pr'],
         'the injected seam returns stable identities independently of labels');
     } finally {
@@ -1024,7 +1032,7 @@ test('an adapter without effectiveSetting renders unavailable as plain column te
     });
     assert.equal(result.reason, 'cancelled');
     assert.deepEqual(checklistCalls[0][4].displayOptions, [
-      `      WORKER  sai-worker  ↑${' '.repeat(14)}  unavailable`,
+      `WORKER        sai-worker  ↑${' '.repeat(14)}  unavailable`,
     ],
       'the unavailable setting renders as ordinary text in the setting column');
     for (const label of checklistCalls[0][4].displayOptions) {
@@ -1137,7 +1145,7 @@ test('back at the scope screen re-opens the harness selector and persists no sel
     assert.equal(scopePrompts.length, 2,
       'back at the scope screen should re-present the scope screen after the harness is re-picked');
     for (const prompt of scopePrompts) {
-      assert.deepEqual(prompt.options, ['All', 'Workers', 'Agents', 'Orchestrators', 'Utilities'],
+      assert.deepEqual(prompt.options, ['All', 'Agents', 'Orchestrators', 'Workers', 'Utilities'],
         'the scope screen offers exactly the five model customization families');
     }
     assert.equal(prompts.filter(prompt => prompt.question === 'Choose a harness:').length, 2,

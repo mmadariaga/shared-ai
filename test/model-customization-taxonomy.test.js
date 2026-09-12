@@ -28,7 +28,7 @@ function fixtureManifest() {
 }
 
 test('model customization exposes the five stable taxonomy labels and metadata families', () => {
-  assert.deepEqual(customization.SCOPE_OPTIONS, ['All', 'Workers', 'Agents', 'Orchestrators', 'Utilities']);
+  assert.deepEqual(customization.SCOPE_OPTIONS, ['All', 'Agents', 'Orchestrators', 'Workers', 'Utilities']);
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-model-taxonomy-'));
   try {
     for (const harness of ['claude', 'opencode']) {
