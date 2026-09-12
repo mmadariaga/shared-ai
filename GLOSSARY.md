@@ -139,6 +139,12 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **GREEN Worker**: "The `/sai-4-apply` Step-execution managed worker (`sai-4-green-worker`) that executes a Step's implementation body — including the GREEN side of a **Split-Routed Step** — and verifies GREEN, and is forbidden from creating or modifying any test file; dispatched through the worker-matrix on the budget tier."
 *Avoid*: implementation dispatch, impl agent, code worker, build dispatch, GREEN dispatch
 
+**Handle**: "The harness-native resumable identifier the coordinator captures at dispatch return and retains before any guard snapshot or continuation."
+*Avoid*: agent ID, task ID, continuation reference
+
+**Handshake**: "The worker's trivial first nonterminal ready return before expensive work that gives the coordinator a resumable handle over the live worker."
+*Avoid*: progress event, acknowledgement, status update
+
 **Harness Boot Adapter**: "The single supported-harness entry file that selects a command card and owns harness-specific fetch and dispatch glue without redefining lifecycle semantics."
 *Avoid*: harness loader, phase adapter, command wrapper
 
@@ -236,6 +242,9 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 
 **Readiness Statement**: "The one-line maturity judgment that an explored idea is solid enough to crystallize on request — emitted at most once per stable idea, folded into the **Closure Reminder** line rather than emitted separately, and never satisfying the actionable closure on its own."
 *Avoid*: readiness signal, solidity line, maturity notice
+
+**Ready**: "The trivial first worker return reporting availability to receive the task, carrying no expensive work."
+*Avoid*: handshake, acknowledgement, progress event
 
 **Recovery Dispatch**: "The retired fresh-dispatch correction mechanism of the pre-routed `/sai-4-apply` — superseded by **Known-False Report Recovery**, which continues the same authorized RED or GREEN worker via `continue_after_recovery` instead of dispatching a fresh corrective worker."
 *Avoid*: retry dispatch, second opinion, advisor dispatch, same-worker continuation (which names the active mechanism)
