@@ -273,38 +273,50 @@ lifetime: the design worker's pre-gate `completed` and its post-gate
 overview-generation terminal are two stretches, not two terminals of one
 stretch.
 
-## Startup Handshake
+## Two-Phase Startup Handshake
 
-A handshake is the worker's first early return carrying its resumable
-progress, before any expensive work. A handle is the harness-native
-resumable identifier (Claude agent ID, opencode task_id) the coordinator
-captures at dispatch return and retains before any guard snapshot or
-continuation. A guard window is one snapshot-to-verify span holding
-guard_base for a single dispatch-to-result stretch.
+A handshake is the worker's first early nonterminal return before
+expensive work. A ready is the trivial handshake return reporting
+availability to receive the task, carrying no expensive work. A handle
+is the harness-native resumable identifier (Claude agent ID, opencode
+task_id) the coordinator captures at dispatch return and retains before
+any guard snapshot or continuation. A guard window is one
+snapshot-to-verify span holding guard_base for a single
+dispatch-to-result stretch.
 
-The first nonterminal return is a handshake and SHALL come early. Every
-routed worker with a declared progress plan or routing-only
-step_pointer_map returns its startup progress event as its handshake as
-soon as prerequisite checks pass and its required change or scope
-resolution completes, and **before** dispatching any subagent, reading
-beyond what resolution requires, writing any artifact, or beginning any
-analysis, research, or review pass. Long work never precedes the
-handshake. A worker whose adapter declares neither a visual
-progress_plan nor a routing-only step_pointer_map emits no handshake
-event; its transport-captured handle is its resumable handle.
+Every routed stretch opens in two phases. The initial dispatch carries
+only the ready prompt plus the base instructions; zero task content
+travels before ready. Ordering is enforced by information withholding —
+the worker cannot advance work it does not have — not by a prose rule.
+The task travels exclusively in the sequential same-worker continuation
+after the ready return (valid in both harnesses).
 
-The handshake exists so that the coordinator holds a resumable handle to the
-live worker before the phase's expensive work begins. Without it, a stalled or
-user-interrupted run has no handle to resume and must be restarted from
-scratch. A worker that cannot reach the handshake — because a prerequisite or
-resolution check fails — returns the applicable terminal status instead, which
+Ready absence is a dispatch failure: when ready never arrives, the
+coordinator relaunches fresh with the original envelope, with no
+timeouts, retries, or new escalation. Pre-ready stall is lossless by
+construction — only base loading is at risk — so resume-before-ready is
+unnecessary and relaunch suffices. Post-task stall keeps the current
+behavior unchanged.
+
+The original envelope is minimal; the task lives in the continuation
+and the opaque history. Replacement reconstruction recovers the task
+from the opaque continuation history, since the minimal envelope alone
+carries no task content.
+
+Two round trips apply to every routed stretch with no per-phase
+exemption, including every RED and GREEN dispatch per apply Step. The
+change bounds loss; it does not guarantee readiness: a dead worker
+still returns nothing.
+
+A worker that cannot reach ready — because a prerequisite or resolution
+check fails — returns the applicable terminal status instead, which
 serves the same purpose.
 
-Only the first early return before expensive work counts as the handshake.
-A late or duplicate handshake — any subagent dispatch, resolution-excess
-read, artifact write, or analysis, research, or review pass before the
-first nonterminal return — is treated as ordinary non-handshake progress
-and is not marked resumable.
+Only the first early return before expensive work counts as the
+handshake. A late or duplicate handshake — any subagent dispatch,
+resolution-excess read, artifact write, or analysis, research, or
+review pass before the first nonterminal return — is treated as
+ordinary non-handshake progress and is not marked resumable.
 
 ## Phase-Defined Report Extension
 

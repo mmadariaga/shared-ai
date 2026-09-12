@@ -9,11 +9,15 @@ not perform the technical work delegated to a worker.
 
 Initialize one invocation-scoped ordered, duplicate-free `changed_files` union.
 Add reported paths in first-seen order; the union is never reset.
-Dispatch one worker with the phase adapter's `original_envelope`, retain the
+Dispatch one worker with the phase adapter's minimal `original_envelope`
+(ready prompt plus base instructions; zero task content), retain the
 harness-native resumable handle captured at dispatch return before any guard
 snapshot or continuation, and validate every returned result before acting on
-it. A dispatch cancelled before the handle returns leaves no handle; its retry
-starts from zero with a deferred snapshot and opens no guard window.
+it. The task is disclosed only in the post-ready same-worker continuation.
+A dispatch cancelled before the handle returns leaves no handle; its retry
+starts from zero with a deferred snapshot and opens no guard window. Every
+routed stretch costs two round trips with no per-phase exemption, including
+every RED and GREEN dispatch per apply Step.
 
 Worker results are closed payloads. A terminal result has exactly one of these
 statuses: `completed`, `needs_input`, `failed`, or `cancelled`. `completed`,
@@ -86,14 +90,20 @@ Render before resuming when rendering is enabled, so the user sees the mark
 before the next stretch of worker work begins. Progress events are not a worker
 status.
 
-Attempt same-worker continuation first on the retained handle, resuming with
+Disclose the task only after ready: when the ready return arrives, continue
+the same worker on the retained handle with the task as a sequential
+same-worker continuation. When ready never arrives, relaunch fresh with the
+original envelope, with no timeouts, retries, or new escalation. Attempt
+same-worker continuation first on the retained handle thereafter, resuming with
 the adapter's existing continuation literals. A cancellation after the
 handshake but before expensive work resumes via continue on the captured
 handle; a handshake-then-stall with no further progress follows the existing
 continuation/transport-loss path. If it fails, preserve the union and
-dispatch at most one replacement worker with the original envelope, exact
-opaque input history, pending phase feedback when present, and all required
-reconstruction metadata. Replacement reconstruction must have complete phase
+dispatch at most one replacement worker with the minimal original envelope, exact
+opaque input history including the task-carrying continuation, pending phase feedback when present, and all required
+reconstruction metadata. Replacement reconstruction recovers the task from the
+opaque continuation history, since the minimal envelope alone carries no task
+content. Replacement reconstruction must have complete phase
 state. If any required field is unavailable, return a failed restart request
 and do not dispatch a replacement.
 
@@ -115,7 +125,9 @@ declaration, and the optional static `step_machine` declaration:
 - `step_pointer_map` (optional — static map from phase progress ids to just-in-time step instruction paths, fully known at dispatch, immutable for the active adapter segment under the same segment reading as `progress_plan`; it may be declared without a visual `progress_plan`)
 - `step_machine` (optional — static machine id of the form `<name>@<version>`, fully known at dispatch, immutable for the active adapter segment. When declared, the coordinator consults the step machine per progress event instead of a static routing table. See `@sai/policies/stage-machine.md` § Step machines for the operational contract.)
 
-The dispatch passes exactly `arguments_value`; the
+The dispatch passes exactly `arguments_value` as the minimal ready envelope; the
+task travels only in the post-ready continuation and the opaque history, never
+in the minimal envelope. The
 progress plan is declared by the phase adapter, is never carried in the
 dispatch envelope or in any reconstruction field, and survives same-worker
 continuation and replacement-worker reconstruction in invocation-scoped
