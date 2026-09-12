@@ -9,7 +9,7 @@ MANDATORY: Read every document listed in `## Required Documentation` from `tasks
 - For external URLs: use web fetch
 
 Do NOT load `SKILL.md` indexes or explore documentation trees beyond what is listed.
-Do NOT use subagents for documentation research — read the listed files directly.
+Do NOT use subagents for documentation research — read the listed files directly. Scoped lookups beyond this one-time read use ONLY the bounded batch permission in `sai/commands/implement/steps/plan-generation.md` research_task §2 (`budget-explorer` only, per-item approval).
 
 **Exception (re-run):** If Step 1 detected an existing `implementation.md` (i.e., the applied-steps set is non-empty), research on elements introduced since the last run is permitted — spawn a **`budget-subagent`** subagent scoped to those new elements only.
 

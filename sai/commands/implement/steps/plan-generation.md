@@ -106,9 +106,33 @@ and `## Implementation Context` are the primary source of truth.
       permission boundaries).
    - If a convention is needed for code generation but is not nailed down by `tasks.md`
       (Expertise Profile silent AND no neighbour file in Required Documentation
-      demonstrates it), STOP and ask the user. Do NOT run repo-wide Grep/Glob to
-      guess the convention — that is `tasks.md`'s job.
+      demonstrates it), apply the §2 bounded batch permission first; only gaps
+      denied under §2 keep the STOP-and-ask behavior. Do NOT run repo-wide
+      Grep/Glob yourself to guess the convention — that is `tasks.md`'s job, and
+      path discovery belongs to `budget-explorer` under §2.
    - Build/test/run commands come from the Expertise Profile or AGENTS.md if listed.
+
+2. Bounded batch permission (sole exception to the closed allowlist)
+   - When one or more gaps from §1 exist, request scoped project lookups in ONE
+      batch permission before stopping. One line per gap in the fixed format
+      `Me gustaría consultar <xxx> en proyecto por <yyyy> del Step N`, where
+      `xxx` is always a functional area or concept (never an exact path — if the
+      exact path were known it would already be in Required Documentation) and
+      `yyyy` is the Step-linked reason. Cap the batch at ≤5 areas; per-item
+      decision inside the batch.
+   - On approval, delegate area-to-file resolution to `budget-explorer` ONLY —
+      the worker never broadens scope itself and never runs Grep/Glob itself.
+      `budget-explorer` returns ONLY bounded verbatim `path:start-end` citations
+      (the existing `sai/policies/ready-to-propose-format.md:80`
+      `path:startLine-endLine` form; path literals stay English) with no summary:
+      ≤3 citations per area, ≤20 lines per citation, project-root confined,
+      read-only.
+   - Later full reads stay limited to the approved returned files; never open a
+      new file outside that approval. A denied item keeps the current behavior
+      (`Questions` block plus stop, no guessing, no broad search); approved
+      items proceed on their citations.
+   - `--fast-track` auto-approves this permission but keeps the same area,
+      evidence, and cap bounds.
 
 4. Official Docs
    - Read ONLY the documents listed in `## Required Documentation` from `tasks.md`
