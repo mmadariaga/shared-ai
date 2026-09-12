@@ -24,8 +24,8 @@ const {
   createClaudeAdapter,
   defaultRunCommand,
   parseModelCatalog,
-  parseVerboseModelRecords,
-  extractVariants,
+  parseApiModelList,
+  extractApiVariants,
 } = modelCustomization;
 
 const REPO_ROOT = path.join(__dirname, '..');
@@ -682,7 +682,9 @@ test('full dependent-flow traversal walks menu, harness, checklist, and provider
 
     const runner = makeCatalogRunner(
       'opencode-go/deepseek-v4-flash\nopencode-go/glm-5.2\nopenai/gpt-5.4\n',
-      'opencode-go/deepseek-v4-flash\n{\n  "variants": { "low": {}, "high": {} }\n}\n');
+      makeApiFixture([
+        { providerID: 'opencode-go', id: 'deepseek-v4-flash', variants: variantIdsToRecords(['low', 'high']) },
+      ]));
 
     const answers = ['Customize models', 'OpenCode', 'Workers'];
     const overrides = [];
@@ -744,8 +746,8 @@ test('full dependent-flow traversal walks menu, harness, checklist, and provider
       assert.equal(screenIndex, 3,
         'provider, model, and variant screens are presented exactly once each, in that order');
       assert.deepEqual(runner.calls.map(call => call.args),
-        [['models'], ['models', 'opencode-go', '--verbose']],
-        'the traversal invokes the catalog and verbose queries as argument vectors, never --refresh');
+        [['models'], ['api', 'v2.model.list']],
+        'the traversal invokes the catalog and v2 model-list queries as argument vectors, never --refresh');
       assert.equal(overrides.length, OPENCODE_WORKERS.length,
         'createLocalOverride should run exactly once per selected agent');
       for (const entry of overrides) {
@@ -1786,92 +1788,89 @@ test('parseModelCatalog preserves first-appearance provider order for the provid
     'distinct providers are offered once in first-appearance order');
 });
 
-test('parseVerboseModelRecords parses a header plus multiline JSON into one record', () => {
-  const records = parseVerboseModelRecords('opencode-go/deepseek-v4-flash\n{\n  "variants": {}\n}\n');
-  assert.deepEqual(records, [
-    { identity: 'opencode-go/deepseek-v4-flash', record: { variants: {} } },
-  ], 'header plus multiline JSON parses into one record');
+test('parseApiModelList reads .data with variants in original order', () => {
+  const stdout = makeApiFixture([
+    { providerID: 'opencode-go', id: 'deepseek-v4-flash', variants: variantIdsToRecords(['low', 'high', 'max']) },
+    { providerID: 'opencode', id: 'muse-spark-1.3-contributor-free', variants: variantIdsToRecords(['minimal', 'low', 'medium', 'high', 'xhigh']) },
+  ]);
+  const list = parseApiModelList(stdout);
+  assert.equal(list.length, 2);
+  assert.deepEqual(extractApiVariants(list, 'opencode-go', 'deepseek-v4-flash'), ['low', 'high', 'max'],
+    'variant ids preserve original order');
+  assert.deepEqual(extractApiVariants(list, 'opencode', 'muse-spark-1.3-contributor-free'),
+    ['minimal', 'low', 'medium', 'high', 'xhigh']);
 });
 
-test('parseVerboseModelRecords parses two header-plus-JSON records separated by a blank line independently', () => {
-  const stdout = 'opencode-go/deepseek-v4-flash\n{\n  "variants": { "low": {} }\n}\n'
-    + '\n'
-    + 'openai/gpt-5.4\n{\n  "variants": { "high": {}, "max": {} }\n}\n';
-  const records = parseVerboseModelRecords(stdout);
-  assert.deepEqual(records, [
-    { identity: 'opencode-go/deepseek-v4-flash', record: { variants: { low: {} } } },
-    { identity: 'openai/gpt-5.4', record: { variants: { high: {}, max: {} } } },
-  ], 'multiple records separated by blank lines parse independently, never merged');
+test('parseApiModelList tolerates a leading BOM', () => {
+  const stdout = '﻿' + makeApiFixture([
+    { providerID: 'opencode-go', id: 'deepseek-v4-flash', variants: variantIdsToRecords(['high']) },
+  ]);
+  const list = parseApiModelList(stdout);
+  assert.deepEqual(extractApiVariants(list, 'opencode-go', 'deepseek-v4-flash'), ['high'],
+    'a BOM-prefixed payload still parses');
 });
 
-test('parseVerboseModelRecords throws when a header is followed only by non-JSON garbage', () => {
-  assert.throws(() => parseVerboseModelRecords('opencode-go/deepseek-v4-flash\nthis is not json\n'),
-    'a header without a parseable JSON object is a failure');
+test('parseApiModelList falls back to a plain array payload', () => {
+  const stdout = JSON.stringify([
+    { providerID: 'opencode-go', id: 'deepseek-v4-flash', variants: variantIdsToRecords(['high']) },
+  ]);
+  assert.deepEqual(extractApiVariants(parseApiModelList(stdout), 'opencode-go', 'deepseek-v4-flash'), ['high'],
+    'a bare array payload is accepted');
 });
 
-test('parseVerboseModelRecords throws when the accumulated record text parses to a number', () => {
-  assert.throws(() => parseVerboseModelRecords('opencode-go/deepseek-v4-flash\n42\n'),
-    'a non-object record is malformed and never becomes a model');
+test('parseApiModelList throws on unparseable output and on a missing data array', () => {
+  assert.throws(() => parseApiModelList('not json\n'),
+    'unparseable output is a failure');
+  assert.throws(() => parseApiModelList(JSON.stringify({ location: 'test' })),
+    'a payload without a data array is a failure');
+  assert.throws(() => parseApiModelList(''),
+    'empty output is a failure');
 });
 
-test('parseVerboseModelRecords throws when the accumulated record text parses to null', () => {
-  assert.throws(() => parseVerboseModelRecords('opencode-go/deepseek-v4-flash\nnull\n'),
-    'a non-object record is malformed and never becomes a model');
-});
-
-test('parseVerboseModelRecords throws when the accumulated record text parses to a string', () => {
-  assert.throws(() => parseVerboseModelRecords('opencode-go/deepseek-v4-flash\n"str"\n'),
-    'a non-object record is malformed and never becomes a model');
-});
-
-test('parseVerboseModelRecords throws when the accumulated record text parses to an array', () => {
-  assert.throws(() => parseVerboseModelRecords('opencode-go/deepseek-v4-flash\n[1, 2]\n'),
-    'a non-object record is malformed and never becomes a model');
-});
-
-test('extractVariants returns the variants keys in JSON object order', () => {
-  assert.deepEqual(extractVariants({ variants: { low: {}, high: {}, max: {} } }),
-    ['low', 'high', 'max'], 'variant keys become the variant list in JSON object order');
-});
-
-test('extractVariants returns an empty list for an empty or absent variants field', () => {
-  assert.deepEqual(extractVariants({ variants: {} }), [],
-    'an empty variants field exposes no variants');
-  assert.deepEqual(extractVariants({}), [],
+test('extractApiVariants returns [] for empty, absent, or non-array variants and null for a missing model', () => {
+  const list = [
+    { providerID: 'opencode-go', id: 'with-variants', variants: variantIdsToRecords(['high']) },
+    { providerID: 'opencode-go', id: 'empty-variants', variants: [] },
+    { providerID: 'opencode-go', id: 'absent-variants' },
+    { providerID: 'opencode-go', id: 'null-variants', variants: null },
+  ];
+  assert.deepEqual(extractApiVariants(list, 'opencode-go', 'with-variants'), ['high']);
+  assert.deepEqual(extractApiVariants(list, 'opencode-go', 'empty-variants'), [],
+    'an empty variants array exposes no variants');
+  assert.deepEqual(extractApiVariants(list, 'opencode-go', 'absent-variants'), [],
     'an absent variants field exposes no variants');
-});
-
-test('extractVariants throws when variants is an array', () => {
-  assert.throws(() => extractVariants({ variants: ['low', 'high'] }),
-    'array variants values fail variant discovery instead of array-index variant names');
-});
-
-test('extractVariants throws when variants is null', () => {
-  assert.throws(() => extractVariants({ variants: null }),
-    'null variants values fail variant discovery instead of silently becoming an empty variant set');
-});
-
-test('extractVariants throws when variants is a primitive string', () => {
-  assert.throws(() => extractVariants({ variants: 'low' }),
-    'primitive variants values fail variant discovery instead of silently becoming an empty variant set');
+  assert.deepEqual(extractApiVariants(list, 'opencode-go', 'null-variants'), [],
+    'a null variants field degrades to no variants');
+  assert.equal(extractApiVariants(list, 'opencode-go', 'missing-model'), null,
+    'a model absent from the list is reported as missing');
+  assert.equal(extractApiVariants(list, 'other-provider', 'with-variants'), null,
+    'provider filtering is exact');
 });
 
 // --- Step 2: dependent opencode model-discovery flow ---
 
 // Scripted runner that records raw invocation vectors and serves the catalog
-// and verbose stdout fixtures. `runner.calls` holds { executable, args } for
+// and v2 model-list stdout fixtures. `runner.calls` holds { executable, args } for
 // every invocation in order.
-function makeCatalogRunner(catalogStdout, verboseStdout) {
+function makeCatalogRunner(catalogStdout, apiStdout) {
   const calls = [];
   const runner = (executable, args) => {
     calls.push({ executable, args });
-    if (args.includes('--verbose')) {
-      return { stdout: verboseStdout, status: 0 };
+    if (args[0] === 'api' || args.includes('v2.model.list')) {
+      return { stdout: apiStdout, status: 0 };
     }
     return { stdout: catalogStdout, status: 0 };
   };
   runner.calls = calls;
   return runner;
+}
+
+function makeApiFixture(entries) {
+  return JSON.stringify({ location: 'test', data: entries });
+}
+
+function variantIdsToRecords(ids) {
+  return ids.map(id => ({ id }));
 }
 
 // Returns true when the options are the legacy combined-frame entries (frozen
@@ -1929,7 +1928,9 @@ function makeAdaptivePrompt({
 test('full dependent flow presents provider, model, and variant screens in order and builds the variant override', async () => {
   const runner = makeCatalogRunner(
     'opencode-go/deepseek-v4-flash\nopencode-go/glm-5.2\nopenai/gpt-5.4\n',
-    'opencode-go/deepseek-v4-flash\n{\n  "variants": { "low": {}, "high": {} }\n}\n');
+    makeApiFixture([
+      { providerID: 'opencode-go', id: 'deepseek-v4-flash', variants: variantIdsToRecords(['low', 'high']) },
+    ]));
   const prompt = makeAdaptivePrompt({
     provider: 'opencode-go',
     expectedModels: ['deepseek-v4-flash', 'glm-5.2'],
@@ -1950,7 +1951,9 @@ test('full dependent flow presents provider, model, and variant screens in order
 test('the runner is invoked as argument vectors, never with --refresh, twice in a completed flow', async () => {
   const runner = makeCatalogRunner(
     'opencode-go/deepseek-v4-flash\nopencode-go/glm-5.2\n',
-    'opencode-go/deepseek-v4-flash\n{\n  "variants": { "high": {} }\n}\n');
+    makeApiFixture([
+      { providerID: 'opencode-go', id: 'deepseek-v4-flash', variants: variantIdsToRecords(['high']) },
+    ]));
   const prompt = makeAdaptivePrompt({
     provider: 'opencode-go',
     model: 'deepseek-v4-flash',
@@ -1961,8 +1964,8 @@ test('the runner is invoked as argument vectors, never with --refresh, twice in 
   assert.deepEqual(settings, { model: 'opencode-go/deepseek-v4-flash', variant: 'high' },
     'the completed flow resolves the selected variant');
   assert.deepEqual(runner.calls.map(call => call.args),
-    [['models'], ['models', 'opencode-go', '--verbose']],
-    'the catalog and verbose queries are exact argument vectors in discovery order, never --refresh');
+    [['models'], ['api', 'v2.model.list']],
+    'the catalog and v2 model-list queries are exact argument vectors in discovery order, never --refresh');
   for (const call of runner.calls) {
     assert.ok(Array.isArray(call.args), 'args are passed as an argument array, never a shell string');
     assert.ok(!call.args.includes('--refresh'), 'the refresh flag is never passed');
@@ -1970,10 +1973,12 @@ test('the runner is invoked as argument vectors, never with --refresh, twice in 
   }
 });
 
-test('a provider containing shell metacharacters is passed as a single argument-array element', async () => {
+test('a provider containing shell metacharacters never reaches the shell: the v2 list is provider-free', async () => {
   const runner = makeCatalogRunner(
     'open;code/deepseek-v4-flash\n',
-    'open;code/deepseek-v4-flash\n{\n  "variants": { "high": {} }\n}\n');
+    makeApiFixture([
+      { providerID: 'open;code', id: 'deepseek-v4-flash', variants: variantIdsToRecords(['high']) },
+    ]));
   const prompt = makeAdaptivePrompt({
     provider: 'open;code',
     model: 'deepseek-v4-flash',
@@ -1983,16 +1988,20 @@ test('a provider containing shell metacharacters is passed as a single argument-
   const settings = await adapter.selectSettings('explore');
   assert.deepEqual(settings, { model: 'open;code/deepseek-v4-flash', variant: 'high' },
     'a metacharacter-bearing provider flows through the whole dependent selection');
-  const verboseCalls = runner.calls.filter(call => call.args.includes('--verbose'));
-  assert.equal(verboseCalls.length, 1, 'the verbose query runs exactly once for the selected model');
-  assert.deepEqual(verboseCalls[0].args, ['models', 'open;code', '--verbose'],
-    'the provider is a single argument-array element and is never interpreted as command syntax');
+  const apiCalls = runner.calls.filter(call => call.args[0] === 'api');
+  assert.equal(apiCalls.length, 1, 'the v2 model-list query runs exactly once for the selected model');
+  assert.deepEqual(apiCalls[0].args, ['api', 'v2.model.list'],
+    'the v2 list carries no provider argument and is never interpreted as command syntax');
+  assert.ok(runner.calls.every(call => !call.args.includes('open;code')),
+    'provider text must not be interpolated into CLI arguments');
 });
 
 test('the model screen is scoped to the selected provider from one catalog parse', async () => {
   const runner = makeCatalogRunner(
     'opencode-go/deepseek-v4-flash\nopencode-go/glm-5.2\nopenai/gpt-5.4\n',
-    'opencode-go/deepseek-v4-flash\n{\n  "variants": { "high": {} }\n}\n');
+    makeApiFixture([
+      { providerID: 'opencode-go', id: 'deepseek-v4-flash', variants: variantIdsToRecords(['high']) },
+    ]));
   const prompt = makeAdaptivePrompt({
     provider: 'opencode-go',
     expectedModels: ['deepseek-v4-flash', 'glm-5.2'],
@@ -2002,7 +2011,7 @@ test('the model screen is scoped to the selected provider from one catalog parse
   const settings = await adapter.selectSettings('explore');
   assert.deepEqual(settings, { model: 'opencode-go/deepseek-v4-flash', variant: 'high' },
     'the flow resolves a model belonging to the selected provider');
-  const catalogCalls = runner.calls.filter(call => !call.args.includes('--verbose'));
+  const catalogCalls = runner.calls.filter(call => call.args[0] === 'models');
   assert.equal(catalogCalls.length, 1,
     'the model screen is populated from the already-parsed catalog with exactly one catalog launch');
 });
@@ -2010,7 +2019,9 @@ test('the model screen is scoped to the selected provider from one catalog parse
 test('the provider screen offers distinct providers in first-appearance order', async () => {
   const runner = makeCatalogRunner(
     'openai/gpt-5.4\nopencode-go/deepseek-v4-flash\nopencode-go/glm-5.2\n',
-    'opencode-go/deepseek-v4-flash\n{\n  "variants": { "high": {} }\n}\n');
+    makeApiFixture([
+      { providerID: 'opencode-go', id: 'deepseek-v4-flash', variants: variantIdsToRecords(['high']) },
+    ]));
   let screenIndex = 0;
   const promptSpy = async (question, options) => {
     if (screenIndex === 0) {
@@ -2090,43 +2101,49 @@ test('a malformed catalog line and an empty catalog each cancel with no partial 
   }
 });
 
-test('verbose-query failure, unparseable verbose output, and an unmatched model cancel after the screens', async () => {
+test('v2-list failure, unparseable output, and a missing model degrade to model-only after the screens', async () => {
   const cases = [
-    { name: 'non-zero verbose exit', verboseStdout: '', verboseStatus: 1 },
-    { name: 'unparseable verbose output', verboseStdout: 'not json\n', verboseStatus: 0 },
-    { name: 'no record matching the selected model',
-      verboseStdout: 'opencode-go/glm-5.2\n{\n  "variants": { "high": {} }\n}\n', verboseStatus: 0 },
+    { name: 'non-zero v2 exit', apiStdout: '', apiStatus: 1 },
+    { name: 'unparseable v2 output', apiStdout: 'not json\n', apiStatus: 0 },
+    { name: 'no entry matching the selected model',
+      apiStdout: makeApiFixture([
+        { providerID: 'opencode-go', id: 'glm-5.2', variants: variantIdsToRecords(['high']) },
+      ]), apiStatus: 0 },
+    { name: 'empty variants list',
+      apiStdout: makeApiFixture([
+        { providerID: 'opencode-go', id: 'deepseek-v4-flash', variants: [] },
+      ]), apiStatus: 0 },
   ];
   for (const item of cases) {
     let screenIndex = 0;
     const promptSpy = async (question, options) => {
       if (screenIndex === 0) {
         screenIndex += 1;
-        assert.ok(options.includes('opencode-go'), 'provider screen appears before the verbose query');
+        assert.ok(options.includes('opencode-go'), 'provider screen appears before the v2 query');
         return 'opencode-go';
       }
       if (screenIndex === 1) {
         screenIndex += 1;
-        assert.ok(options.includes('deepseek-v4-flash'), 'model screen appears before the verbose query');
+        assert.ok(options.includes('deepseek-v4-flash'), 'model screen appears before the v2 query');
         return 'deepseek-v4-flash';
       }
       screenIndex += 1;
-      assert.fail('no variant screen may appear after the verbose query fails');
+      assert.fail('no variant screen may appear after the v2 query degrades');
     };
-    const runner = (executable, args) => args.includes('--verbose')
-      ? { stdout: item.verboseStdout, status: item.verboseStatus }
+    const runner = (executable, args) => args[0] === 'api'
+      ? { stdout: item.apiStdout, status: item.apiStatus }
       : { stdout: 'opencode-go/deepseek-v4-flash\nopencode-go/glm-5.2\n', status: 0 };
     const adapter = createOpencodeAdapter({ repoRoot: REPO_ROOT, promptChoice: promptSpy, runCommand: runner });
     const settings = await adapter.selectSettings('explore');
-    assert.equal(settings, null,
-      `${item.name} must cancel the selection with null after the provider and model screens`);
+    assert.deepEqual(settings, { model: 'opencode-go/deepseek-v4-flash' },
+      `${item.name} must degrade to model-only after the provider and model screens`);
     assert.equal(screenIndex, 2,
       `${item.name} presents exactly the provider and model screens, no further screen`);
   }
 });
 
 test('q at the provider screen cancels after exactly one catalog launch', async () => {
-  const runner = makeCatalogRunner('opencode-go/deepseek-v4-flash\n', '');
+  const runner = makeCatalogRunner('opencode-go/deepseek-v4-flash\n', makeApiFixture([]));
   let promptCalls = 0;
   const promptSpy = async (question, options) => {
     promptCalls += 1;
@@ -2139,13 +2156,15 @@ test('q at the provider screen cancels after exactly one catalog launch', async 
   assert.equal(settings, null, 'q at the provider screen cancels the selection with null');
   assert.equal(promptCalls, 1, 'only the provider screen is prompted before q cancels');
   assert.deepEqual(runner.calls.map(call => call.args), [['models']],
-    'exactly one catalog launch precedes the provider screen, no verbose query');
+    'exactly one catalog launch precedes the provider screen, no v2 query');
 });
 
 test('q at the variant screen cancels with no settings after two launches', async () => {
   const runner = makeCatalogRunner(
     'opencode-go/deepseek-v4-flash\n',
-    'opencode-go/deepseek-v4-flash\n{\n  "variants": { "low": {}, "high": {} }\n}\n');
+    makeApiFixture([
+      { providerID: 'opencode-go', id: 'deepseek-v4-flash', variants: variantIdsToRecords(['low', 'high']) },
+    ]));
   let screenIndex = 0;
   const promptSpy = async (question, options) => {
     if (screenIndex === 0) {
@@ -2167,14 +2186,16 @@ test('q at the variant screen cancels with no settings after two launches', asyn
   assert.equal(settings, null, 'q at the variant screen cancels the selection with null');
   assert.equal(screenIndex, 3, 'q is answered at the variant screen after the provider and model screens');
   assert.deepEqual(runner.calls.map(call => call.args),
-    [['models'], ['models', 'opencode-go', '--verbose']],
-    'the verbose query runs before the variant screen, for exactly two launches');
+    [['models'], ['api', 'v2.model.list']],
+    'the v2 query runs before the variant screen, for exactly two launches');
 });
 
 test('a model without variants skips the variant screen and yields a model-only override', async () => {
   const runner = makeCatalogRunner(
     'opencode-go/deepseek-v4-flash\nopencode-go/glm-5.2\n',
-    'opencode-go/deepseek-v4-flash\n{\n  "variants": {}\n}\n');
+    makeApiFixture([
+      { providerID: 'opencode-go', id: 'deepseek-v4-flash', variants: [] },
+    ]));
   let screenIndex = 0;
   const promptSpy = async (question, options) => {
     if (screenIndex === 0) {
@@ -2212,7 +2233,9 @@ test('NO_VARIANT is a symbol distinct from every possible variant string', () =>
 test('selecting Default (no variant) omits the variant key from the settings', async () => {
   const runner = makeCatalogRunner(
     'opencode-go/deepseek-v4-flash\n',
-    'opencode-go/deepseek-v4-flash\n{\n  "variants": { "low": {}, "high": {} }\n}\n');
+    makeApiFixture([
+      { providerID: 'opencode-go', id: 'deepseek-v4-flash', variants: variantIdsToRecords(['low', 'high']) },
+    ]));
   let screenIndex = 0;
   const promptSpy = async (question, options) => {
     if (screenIndex === 0) {
@@ -2241,8 +2264,8 @@ test('selecting Default (no variant) omits the variant key from the settings', a
 
 test('a discovered variant literally named Default or default stays selectable and resolves exactly', async () => {
   const cases = [
-    { variant: 'default', verbose: 'opencode-go/deepseek-v4-flash\n{\n  "variants": { "default": {}, "high": {} }\n}\n' },
-    { variant: 'Default', verbose: 'opencode-go/deepseek-v4-flash\n{\n  "variants": { "Default": {}, "high": {} }\n}\n' },
+    { variant: 'default', ids: ['default', 'high'] },
+    { variant: 'Default', ids: ['Default', 'high'] },
   ];
   for (const item of cases) {
     let screenIndex = 0;
@@ -2262,7 +2285,9 @@ test('a discovered variant literally named Default or default stays selectable a
         `a discovered variant named ${item.variant} is offered as a selectable option alongside the no-variant option`);
       return item.variant;
     };
-    const runner = makeCatalogRunner('opencode-go/deepseek-v4-flash\n', item.verbose);
+    const runner = makeCatalogRunner('opencode-go/deepseek-v4-flash\n', makeApiFixture([
+      { providerID: 'opencode-go', id: 'deepseek-v4-flash', variants: variantIdsToRecords(item.ids) },
+    ]));
     const adapter = createOpencodeAdapter({ repoRoot: REPO_ROOT, promptChoice: promptSpy, runCommand: runner });
     const settings = await adapter.selectSettings('explore');
     assert.deepEqual(settings, { model: 'opencode-go/deepseek-v4-flash', variant: item.variant },
@@ -2273,7 +2298,9 @@ test('a discovered variant literally named Default or default stays selectable a
 test('a discovered variant whose identifier equals the pinned label renders a distinct display and resolves exactly', async () => {
   const runner = makeCatalogRunner(
     'opencode-go/deepseek-v4-flash\n',
-    'opencode-go/deepseek-v4-flash\n{\n  "variants": { "Default (no variant)": {}, "high": {} }\n}\n');
+    makeApiFixture([
+      { providerID: 'opencode-go', id: 'deepseek-v4-flash', variants: variantIdsToRecords(['Default (no variant)', 'high']) },
+    ]));
   let screenIndex = 0;
   const promptSpy = async (question, options) => {
     if (screenIndex === 0) {
@@ -2616,7 +2643,9 @@ test('Step 1 materialize selected harness overrides: OpenCode selection is in-me
     writePackageAgent(fixture, 'opencode', PERSIST_OPENCODE_AGENT, 'package-only OpenCode bytes\n');
     const runner = makeCatalogRunner(
       'opencode-go/deepseek-v4-flash\n',
-      'opencode-go/deepseek-v4-flash\n{\n  "variants": { "high": {} }\n}\n'
+      makeApiFixture([
+        { providerID: 'opencode-go', id: 'deepseek-v4-flash', variants: variantIdsToRecords(['high']) },
+      ])
     );
     const prompt = makeAdaptivePrompt({
       provider: 'opencode-go',
@@ -3976,7 +4005,9 @@ test('post-setup selectors use the default single-select legend while the menu s
     },
     runCommand: makeCatalogRunner(
       'opencode-go/deepseek-v4-flash\n',
-      'opencode-go/deepseek-v4-flash\n{\n  "variants": { "high": {} }\n}\n'
+      makeApiFixture([
+        { providerID: 'opencode-go', id: 'deepseek-v4-flash', variants: variantIdsToRecords(['high']) },
+      ])
     ),
   });
   await opencode.selectSettings('target');

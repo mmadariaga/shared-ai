@@ -467,45 +467,55 @@ function parseModelCatalog(stdout) {
   return entries;
 }
 
-function parseVerboseModelRecords(stdout) {
-  const records = [];
-  let identity = null;
-  let accumulated = null;
-  for (const rawLine of stdout.split('\n')) {
-    const line = rawLine.trim();
-    if (line === '') continue;
-    if (identity === null) {
-      identity = line;
-      accumulated = null;
-      continue;
-    }
-    accumulated = accumulated === null ? line : `${accumulated}\n${line}`;
-    let parsed;
-    try {
-      parsed = JSON.parse(accumulated);
-    } catch {
-      continue;
-    }
-    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
-      throw new Error(`Verbose model record for ${identity} parsed to a non-object JSON value`);
-    }
-    records.push({ identity, record: parsed });
-    identity = null;
-    accumulated = null;
+function parseApiModelList(stdout) {
+  if (typeof stdout !== 'string') {
+    throw new Error('Model list output is not a string');
   }
-  if (identity !== null) {
-    throw new Error(`Verbose model record for ${identity} has no parseable JSON object`);
+  let text = stdout.includes('\0') ? stdout.replace(/\0/g, '') : stdout;
+  text = text.trim();
+  if (text.length > 0 && text.charCodeAt(0) === 0xFEFF) {
+    text = text.slice(1);
   }
-  return records;
+  if (text.startsWith('ï»¿')) {
+    text = text.slice(3);
+  }
+  text = text.trim();
+  if (text === '') {
+    throw new Error('Empty model list output');
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch (error) {
+    throw new Error(`Unparseable model list output: ${error.message}`);
+  }
+  const list = Array.isArray(parsed)
+    ? parsed
+    : (parsed !== null && typeof parsed === 'object' && Array.isArray(parsed.data) ? parsed.data : null);
+  if (list === null) {
+    throw new Error('Model list output has no data array');
+  }
+  return list;
 }
 
-function extractVariants(record) {
-  if (!Object.prototype.hasOwnProperty.call(record, 'variants')) return [];
-  const variants = record.variants;
-  if (variants === null || typeof variants !== 'object' || Array.isArray(variants)) {
-    throw new Error('Model record variants field is not a plain object');
+function extractApiVariants(modelList, provider, model) {
+  if (!Array.isArray(modelList)) return null;
+  const entry = modelList.find(item => item !== null
+    && typeof item === 'object'
+    && item.providerID === provider
+    && item.id === model);
+  if (!entry) return null;
+  const variants = entry.variants;
+  if (!Array.isArray(variants)) return [];
+  const ids = [];
+  for (const variant of variants) {
+    if (variant !== null && typeof variant === 'object' && typeof variant.id === 'string' && variant.id !== '') {
+      ids.push(variant.id);
+    } else if (typeof variant === 'string' && variant !== '') {
+      ids.push(variant);
+    }
   }
-  return Object.keys(variants);
+  return ids;
 }
 
 async function opencodeSelectSettings(subsetLabel, promptChoice, runCommand) {
@@ -537,9 +547,13 @@ async function opencodeSelectSettings(subsetLabel, promptChoice, runCommand) {
   // Provider, model and variant form a dependent chain: stepping back from one
   // screen re-opens the previous one with the catalog already in hand, and
   // stepping back off the provider screen hands control to the caller.
+  // Variants come from a single cached `opencode api v2.model.list` source,
+  // fetched once per setup run and reused for every selected model.
   let screen = 'provider';
   let provider = null;
   let model = null;
+  let cachedModelList = null;
+  let cachedAvailable = null;
 
   for (;;) {
     if (screen === 'provider') {
@@ -566,31 +580,40 @@ async function opencodeSelectSettings(subsetLabel, promptChoice, runCommand) {
 
     const identity = `${provider}/${model}`;
 
-    let verboseOutcome;
-    try {
-      verboseOutcome = runCommand('opencode', ['models', provider, '--verbose']);
-    } catch (error) {
-      console.error(`Unable to query OpenCode model variants: ${error.message}`);
-      return null;
-    }
-    if (verboseOutcome.status !== 0) {
-      reportCommandFailure('query OpenCode model variants', verboseOutcome);
-      return null;
+    if (cachedAvailable === null) {
+      let apiOutcome = null;
+      let apiFailed = false;
+      try {
+        apiOutcome = runCommand('opencode', ['api', 'v2.model.list']);
+      } catch (error) {
+        console.error(`Unable to query OpenCode model variants: ${error.message}`);
+        apiFailed = true;
+      }
+      if (apiFailed) {
+        cachedAvailable = false;
+      } else if (apiOutcome.status !== 0) {
+        reportCommandFailure('query OpenCode model variants', apiOutcome);
+        cachedAvailable = false;
+      } else {
+        try {
+          cachedModelList = parseApiModelList(apiOutcome.stdout);
+          cachedAvailable = true;
+        } catch {
+          cachedAvailable = false;
+        }
+      }
     }
 
-    let records;
-    try {
-      records = parseVerboseModelRecords(verboseOutcome.stdout);
-    } catch {
-      return null;
-    }
-    const matched = records.find(record => record.identity === identity);
-    if (!matched) return null;
-    let variants;
-    try {
-      variants = extractVariants(matched.record);
-    } catch {
-      return null;
+    let variants = [];
+    if (cachedAvailable === true) {
+      try {
+        const extracted = extractApiVariants(cachedModelList, provider, model);
+        variants = extracted === null ? [] : extracted;
+      } catch {
+        variants = [];
+      }
+    } else {
+      variants = [];
     }
     if (variants.length === 0) return { model: identity };
 
@@ -876,8 +899,8 @@ module.exports = {
   selectClaudeSettings,
   defaultRunCommand,
   parseModelCatalog,
-  parseVerboseModelRecords,
-  extractVariants,
+  parseApiModelList,
+  extractApiVariants,
   buildVariantDisplayOptions,
   buildChecklistTargets,
   parseTarget,

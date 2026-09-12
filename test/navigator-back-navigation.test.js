@@ -382,25 +382,36 @@ test('back at the main menu redraws it rather than exiting the flow', { timeout:
 
 // --- back navigation through the opencode provider -> model -> variant chain
 
-function makeCatalogRunner(catalog, verbose) {
+function makeCatalogRunner(catalog, apiStdout) {
   const calls = [];
   const runner = (executable, args) => {
     calls.push({ executable, args });
-    return args.includes('--verbose')
-      ? { stdout: verbose, stderr: '', status: 0 }
+    return args[0] === 'api'
+      ? { stdout: apiStdout, stderr: '', status: 0 }
       : { stdout: catalog, stderr: '', status: 0 };
   };
   runner.calls = calls;
   return runner;
 }
 
+function makeApiFixture(entries) {
+  return JSON.stringify({ location: 'test', data: entries });
+}
+
+function variantIdsToRecords(ids) {
+  return ids.map(id => ({ id }));
+}
+
 const CATALOG = 'opencode-go/deepseek-v4-flash\nopencode-go/glm-5.2\nopenai/gpt-5.4\n';
-const VERBOSE = 'opencode-go/deepseek-v4-flash\n{\n  "variants": { "low": {}, "high": {} }\n}\n';
+const API = makeApiFixture([
+  { providerID: 'opencode-go', id: 'deepseek-v4-flash', variants: variantIdsToRecords(['low', 'high']) },
+  { providerID: 'opencode-go', id: 'glm-5.2', variants: variantIdsToRecords(['high']) },
+]);
 
 test('back at the model screen re-opens the provider screen without re-querying the catalog', { timeout: INTERACTION_TIMEOUT }, async () => {
   const questions = [];
   const answers = ['opencode-go', BACK, 'openai', BACK, 'opencode-go', 'deepseek-v4-flash', 'high'];
-  const runner = makeCatalogRunner(CATALOG, VERBOSE);
+  const runner = makeCatalogRunner(CATALOG, API);
   const adapter = createOpencodeAdapter({
     promptChoice: async (question) => {
       questions.push(question.split(' for ')[0]);
@@ -413,31 +424,36 @@ test('back at the model screen re-opens the provider screen without re-querying 
   assert.deepEqual(settings, { model: 'opencode-go/deepseek-v4-flash', variant: 'high' });
   assert.deepEqual(questions, ['Provider', 'Model', 'Provider', 'Model', 'Provider', 'Model', 'Variant'],
     'each back should reopen the preceding screen of the dependent chain');
-  assert.equal(runner.calls.filter(call => !call.args.includes('--verbose')).length, 1,
+  assert.equal(runner.calls.filter(call => call.args[0] === 'models').length, 1,
     'the model catalog should be queried once and reused across back steps');
+  assert.equal(runner.calls.filter(call => call.args[0] === 'api').length, 1,
+    'the v2 model list should be queried once and reused across back steps');
 });
 
 test('back at the variant screen re-opens the model screen', { timeout: INTERACTION_TIMEOUT }, async () => {
   const questions = [];
   const answers = ['opencode-go', 'deepseek-v4-flash', BACK, 'deepseek-v4-flash', 'low'];
+  const runner = makeCatalogRunner(CATALOG, API);
   const adapter = createOpencodeAdapter({
     promptChoice: async (question) => {
       questions.push(question.split(' for ')[0]);
       return answers.shift();
     },
-    runCommand: makeCatalogRunner(CATALOG, VERBOSE),
+    runCommand: runner,
   });
 
   const settings = await adapter.selectSettings('two agents');
   assert.deepEqual(settings, { model: 'opencode-go/deepseek-v4-flash', variant: 'low' });
   assert.deepEqual(questions, ['Provider', 'Model', 'Variant', 'Model', 'Variant'],
     'stepping back from the variant screen should return to the model screen');
+  assert.equal(runner.calls.filter(call => call.args[0] === 'api').length, 1,
+    'the v2 model list is fetched once and reused after stepping back from the variant screen');
 });
 
 test('back at the provider screen hands control back to the caller as BACK', { timeout: INTERACTION_TIMEOUT }, async () => {
   const adapter = createOpencodeAdapter({
     promptChoice: async () => BACK,
-    runCommand: makeCatalogRunner(CATALOG, VERBOSE),
+    runCommand: makeCatalogRunner(CATALOG, API),
   });
 
   assert.equal(await adapter.selectSettings('two agents'), BACK,
