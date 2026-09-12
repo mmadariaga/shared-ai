@@ -46,7 +46,7 @@ Read `## Implementation Context` (**Stack**, **Conventions**, **Avoid**, **Test 
    - Change name and affected files
    - Step-by-step implementation actions from `tasks.md`
    - Expertise Profile from `## Implementation Context` in `tasks.md`
-3. Read ONLY the documents listed in `## Required Documentation` from `tasks.md` (local files via Read tool, external URLs via web fetch). Do not perform additional codebase exploration.
+3. Read ONLY the documents listed in `## Required Documentation` from `tasks.md` (local files via Read tool, external URLs via web fetch). Do not perform additional codebase exploration, except the bounded batch permission defined in `sai/commands/implement/steps/plan-generation.md` research_task §2 — the sole exception, via `budget-explorer` only with per-item approval.
 4. Generate a file: `openspec/changes/{change-name}/implementation.md` using the implementation plan template (`sai/commands/implement/implementation-plan.template.md`)
 5. Ensure all instructions are concrete and directly executable
 
