@@ -17,9 +17,8 @@ projects without openspec.
 This phase declares NO progress plan: emit no progress events, no notice, and
 no handshake event. Every run closes with exactly one terminal lifecycle
 status — `completed`, `needs_input`, or pre-resolution `failed`/`cancelled` —
-in the closed worker-core shapes, each carrying the mandatory worker-authored
-`emitted_on`, a concrete English `summary`, and an ordered duplicate-free
-`changed_files`.
+in the closed worker-core shapes, each carrying a concrete English `summary`, and an ordered duplicate-free
+`changed_files`. Worker payloads carry no time field.
 
 ## Technical procedure
 

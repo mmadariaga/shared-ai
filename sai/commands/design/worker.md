@@ -237,9 +237,9 @@ original envelope. The `overview_language` value is re-derivable from raw
 
 Every payload after resolution includes `resolved_change_name`; pre-resolution
 payloads omit it. The closed result shapes remain single-sourced in
-`@sai/orchestration/worker-core.md`: a notice is exactly `event`, `emitted_on`,
+`@sai/orchestration/worker-core.md`: a notice is exactly `event`,
 `message`, and `changed_files`; a progress event is exactly `event`,
-`emitted_on`, `step_ids`, and `changed_files`; terminal payloads carry their
+`step_ids`, and `changed_files`; terminal payloads carry their
 closed status fields, including `summary` and `changed_files`. Do not add
 overview-language or other lifecycle metadata to notices or progress events.
 

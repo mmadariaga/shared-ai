@@ -28,18 +28,18 @@ status closes its current dispatch phase but does not end its resumability for
 recovery purposes; worker resumability ends only when the run closes or the
 segment boundary is crossed. Validate terminal result payloads by running
 `sai/tools/worker-report-validator.js validate --kind terminal` with the
-payload on stdin and reading its verdict; the tool validates the status, the
-offset-bearing ISO-8601 `emitted_on` (numeric offset, never `Z`), string
+payload on stdin and reading its verdict; the tool validates the status, string
 `summary`, and field shapes; `needs_input` also requires its question, ordered
 options where applicable, and binding-owned continuation metadata; do not
-re-derive the checks in prose. A design notice is the separate closed shape
-`{event: "notice", emitted_on: string, message: string, changed_files: string[]}`.
+re-derive the checks in prose. Worker payloads carry no time field; unknown
+fields are ignored with no explicit legacy handling. A design notice is the separate closed shape
+`{event: "notice", message: string, changed_files: string[]}`.
 
 An adapter may also declare a phase-defined closed nonterminal extension in
 `allowed_nonterminal_extensions`. Validate extension payloads by running
 `sai/tools/worker-report-validator.js validate --kind <extension-event>` with
 the payload on stdin and reading its verdict; the tool validates the
-discriminator, `emitted_on`, `summary`, and every additional field in the
+discriminator, `summary`, and every additional field in the
 adapter's exact extension shape; do not re-derive the checks in prose. An
 extension is a pause, not a terminal status: add its paths to the union, route
 its source through the declared coordinator handler, and resume only through the
@@ -57,18 +57,20 @@ The non-reset enumeration spans input, feedback, notice, progress,
 continuation, and recovery, and is never reset.
 
 Every closed payload — terminal status, notice, and progress event alike —
-carries the worker-authored `emitted_on` immediately after its `status` or
-`event` discriminator, in the exact form `YYYY-MM-DDTHH:MM:SS±HH:MM` — local
-wall-clock time with the session's numeric UTC offset, never the `Z` designator.
-It is mandatory in every result and in every phase; a missing, non-ISO-8601, or
-offset-less value is a malformed payload, handled through the same route as any
-other closed-shape violation (validated by `sai/tools/worker-report-validator.js`).
-Forward or record the value verbatim and never invent, correct, re-derive, or
-reformat it. It is also the sole source of the Milestone Stamp: the `HH:mm` a
+carries no time field. Worker payloads are timeless in every phase; a missing
+required field (never a missing time field) is a malformed payload, handled
+through the same route as any other closed-shape violation (validated by
+`sai/tools/worker-report-validator.js`). On valid results the validator emits an
+additive display-only `validated_at` sidecar (validator-observed validation
+timestamp in `YYYY-MM-DDTHH:MM:SS±HH:MM` form — local wall-clock with numeric
+offset, never `Z`); invalid results carry no timestamp. Forward the verdict
+verbatim and surface `validated_at` in the coordinator prompt for terminal and
+progress results at minimum; never invent, correct, re-derive, or reformat it.
+It is also the sole source of the Milestone Stamp: the `HH:mm` a
 progress task list attaches to a step it renders `completed` is that step's
-marking result's `emitted_on` per `@sai/policies/todo-structure.md`, read straight
+marking verdict's `validated_at` per `@sai/policies/todo-structure.md`, read straight
 off the value with no conversion, so the coordinator issues no wall-clock call and
-resolves no zone.
+resolves no zone. Zone handling lives in the tool.
 
 For `needs_input` with a closed option set, present the exact question and
 options, forward the exact answer through the active binding, and process the
@@ -81,7 +83,7 @@ read its verdict; invoke the design adapter's notice extension and forward its
 fixed acknowledgement. Notices are not a worker status.
 
 A progress event is the separate closed shape
-`{event: "progress", emitted_on: string, step_ids: string[], changed_files: string[]}`;
+`{event: "progress", step_ids: string[], changed_files: string[]}`;
 validate with `sai/tools/worker-report-validator.js validate --kind progress` and
 read its verdict.
 Mark reported ids against the adapter's declared `progress_plan` when one is

@@ -25,8 +25,7 @@ payloads omit it.
 Use the canonical `progress_plan`, `step_pointer_map`, and progress result shape from `@sai/policies/spec-phase-contract.md`. After prerequisite checks pass and change resolution completes, return the startup progress event for `prereqs-and-change` before dispatching any subagent, reading beyond resolution, writing an artifact, or beginning research. The research batch returns `research`; the completed `proposal.md` write returns `proposal`; the completed `specs/**` write returns `specs`; and artifact validation plus decision-summary derivation returns `validation`. A `review` event is returned only for a valid externally supplied `sai-explore` findings block whose base-form `Summary: High=0 Medium=<count> Low=<count>` explicitly reports `High=0`, and only while `review` is unmarked.
 
 Progress events are returned lifecycle results, not text written into the
-worker session. Every event uses the closed progress shape and worker-authored
-`emitted_on`. Progress step ids are reported in canonical plan/map order and
+worker session. Every event uses the closed timeless progress shape. Progress step ids are reported in canonical plan/map order and
 only when newly complete; marks are monotonic and the worker never reopens or
 re-reports an earlier id. The coordinator alone applies visual rendering,
 pointer routing, milestone stamps, `changed_files` unioning, and result

@@ -53,9 +53,9 @@ The milestone stamp is a decorative rendering action: an HH:mm annotation that d
 
 **Closure-only.** A step carries a stamp exactly when it renders `completed`, and it carries exactly one. A `pending` step and the `in_progress` step carry none: no start stamp, no inherited stamp, no placeholder. A step that gains its stamp keeps it unchanged for the rest of the invocation.
 
-**Sourced from the payload, never from a clock.** The stamp value is the `emitted_on` of the worker result that marked the step, rendered as HH:mm. A state-changing progress-event update stamps every newly completed step that event marks with that event's `emitted_on`; a no-op progress event stamps nothing. The run-closing `completed` reconciliation stamps every step it marks with the terminal payload's `emitted_on`. The coordinator therefore issues **no wall-clock call of any kind** — not per step, not per render act, not per run — and never substitutes its own reading of the time for the value the worker authored. Each stamp reports when the worker finished the work, not when the coordinator got around to rendering it.
+**Sourced from the verdict, never from a clock.** The stamp value is the `validated_at` of the validator verdict that marked the step, rendered as HH:mm. A state-changing progress-event update stamps every newly completed step that event marks with that verdict's `validated_at`; a no-op progress event stamps nothing. The run-closing `completed` reconciliation stamps every step it marks with the terminal verdict's `validated_at`. The coordinator therefore issues **no wall-clock call of any kind** — not per step, not per render act, not per run — and never substitutes its own reading of the time for the validator-observed value. Each stamp reports when the pipeline saw the result, not when the coordinator got around to rendering it. Reception time substitutes emission time; the small transport delta is accepted as a duration proxy.
 
-`emitted_on` already carries local wall-clock time with its numeric offset attached, so the stamp is the value's own `HH:MM` field read straight off it — no timezone resolution, no conversion, no fallback. The coordinator renders what the worker wrote and never alters the payload value, which is forwarded and recorded verbatim.
+`validated_at` already carries local wall-clock time with its numeric offset attached, so the stamp is the value's own `HH:MM` field read straight off it — no timezone resolution, no conversion, no fallback. Zone handling lives in the validator tool. The coordinator renders what the validator observed and never alters the verdict value, which is forwarded and recorded verbatim.
 
 **Rendered form.** The stamp follows the step's user-facing label, separated by ` - `:
 
@@ -66,9 +66,9 @@ The milestone stamp is a decorative rendering action: an HH:mm annotation that d
 
 **Scope.** Stamps attach to every routed phase progress task list whose steps are marked from worker progress events — the spec, design, and implement planning plans and the review, security, performance, and accessibility audit plans alike. The `sai-explore` Idea Progress List and the apply step projection carry no stamps: neither is marked from worker progress events, so neither has a payload to take a stamp value from. A plan suppressed by the minimum-threshold rule renders no list and therefore no stamps.
 
-**Freeze.** `needs_input`, `failed`, and `cancelled` leave the list and its stamps exactly as last rendered: they add no stamp, change none, and clear none. Pause time is absorbed into the next stamp a step receives, because that stamp is the emitting worker's own instant.
+**Freeze.** `needs_input`, `failed`, and `cancelled` leave the list and its stamps exactly as last rendered: they add no stamp, change none, and clear none. Pause time is absorbed into the next stamp a step receives, because that stamp is the validator's observation instant.
 
-Stamp attachment originates exclusively from the coordinator session, never from a worker subagent, extending the emission-ownership invariant to stamp attachment. The worker authors `emitted_on` as part of its closed payload; it never renders, attaches, or formats a stamp.
+Stamp attachment originates exclusively from the coordinator session, never from a worker subagent, extending the emission-ownership invariant to stamp attachment. The validator emits `validated_at` as part of its verdict sidecar; the worker authors no time and never renders, attaches, or formats a stamp.
 
 ## Merge adaptive TODO
 

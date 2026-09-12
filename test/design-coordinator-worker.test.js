@@ -1413,7 +1413,7 @@ test('Step 2: the design coordinator renders task-list stamps coordinator-only v
   assert.match(policy, /never from a worker subagent/i,
     'the policy should state attachment never originates from the worker subagent');
   assert.doesNotMatch(claudeWrapper, /Bash\(/,
-    'the wrapper should carry no shell grant now that stamps come from emitted_on');
+    'the wrapper should carry no shell grant now that stamps come from validated_at');
   assert.doesNotMatch(coordinator, /date \+%H:%M|Get-Date/,
     'per-harness wall-clock commands no longer live in the coordinator body');
 });

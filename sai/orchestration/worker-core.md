@@ -18,21 +18,19 @@ artifact contents.
 ## Closed Outcomes
 
 Every closed payload — terminal status, design notice, and progress event alike —
-carries `emitted_on` immediately after its `status` or `event` discriminator. It
-is the worker-authored ISO-8601 instant at which the worker composed that
-result, in the exact form `YYYY-MM-DDTHH:MM:SS±HH:MM` (for example
-`2026-08-17T14:32:05+02:00`): local wall-clock time followed by the session's
-numeric UTC offset, colon-separated, never the `Z` designator, and never
-omitted. A machine running on UTC writes `+00:00`. It is mandatory in every
-payload below; a result missing it, or carrying a non-ISO-8601 or
-offset-less value, is malformed.
-See [Result Emission Time](#result-emission-time).
+carries no time field. Worker payloads are timeless: the worker never reads a
+clock, never authors a timestamp, and never carries `status`/`event` plus time.
+Unknown payload fields are ignored with no explicit legacy handling; a payload
+carrying a legacy time field stays valid with that field ignored. Time is
+observation, not claim: the validator tool observes validation time and emits an
+additive display-only `validated_at` sidecar on its verdict (see
+[Validator-Observed Time](#validator-observed-time)). A missing required field
+(not a missing time field) is malformed.
 
 Completion is exactly:
 
 ```yaml
 status: completed
-emitted_on: string
 summary: string
 changed_files: string[]
 resolved_change_name: string
@@ -42,7 +40,6 @@ Input is exactly:
 
 ```yaml
 status: needs_input
-emitted_on: string
 summary: string
 changed_files: string[]
 question: string
@@ -56,7 +53,6 @@ Unsuccessful outcomes are exactly:
 
 ```yaml
 status: failed|cancelled
-emitted_on: string
 summary: string
 changed_files: string[]
 ```
@@ -69,7 +65,6 @@ classification, exactly:
 
 ```yaml
 status: failed
-emitted_on: string
 summary: string
 changed_files: string[]
 resolved_change_name: string
@@ -116,7 +111,6 @@ The design-only notice is exactly:
 
 ```yaml
 event: notice
-emitted_on: string
 message: string
 changed_files: string[]
 ```
@@ -129,7 +123,6 @@ The progress event is the routed-phase additive extension, exactly:
 
 ```yaml
 event: progress
-emitted_on: string
 step_ids: string[]
 changed_files: string[]
 ```
@@ -170,7 +163,6 @@ The merge adapter's conflict hand-off is the only current instance:
 
 ```yaml
 event: conflict_detected
-emitted_on: string
 summary: string
 changed_files: string[]
 affected_files: string[]
@@ -183,65 +175,49 @@ substituted for `changed_files`. `continuation_state` is coordinator-visible
 route state: `language-selection` is used for the first conflict hand-off and
 `strategy-analysis` is used when application or verification exposes a new
 problem. The event carries no `question`, `options`, artifact contents,
-continuation identifier, or binding dispatch metadata. Its `emitted_on` follows
-the one-read rule above, immediately after the `event` discriminator.
+continuation identifier, or binding dispatch metadata. It carries no time field;
+the validator's `validated_at` sidecar supplies observation time.
 
-## Result Emission Time
+## Validator-Observed Time
 
-`emitted_on` is worker-authored and describes one result, not the run. The
-field order shown in [Closed Outcomes](#closed-outcomes) is serialization order,
-not composition order. The worker SHALL decide every other field and complete
-the payload before reading the clock. For each payload it returns, the worker
-SHALL read the clock exactly once, as its last action before returning. After
-that read it SHALL return the payload without another clock read; a second read
-for the same payload is prohibited. If anything about the payload changes after
-the read, the value stands and is never re-read. A composition abandoned without
-returning a payload discards its read and cannot carry it into a later payload.
+`validated_at` is validator-observed and describes when the pipeline saw the
+result, not when the worker claims it finished. Worker payloads carry no time
+field and the worker never reads a clock. The validator tool owns the only
+clock: on each valid result it reads the clock once and emits an additive
+display-only `validated_at` sidecar in the exact form
+`YYYY-MM-DDTHH:MM:SS±HH:MM` — local wall-clock time with the session's numeric
+UTC offset attached, colon-separated, never the `Z` designator. A machine on UTC
+writes `+00:00`. Reception time substitutes emission time; the small transport
+delta is accepted as a duration proxy.
 
-The value SHALL come from that one clock read; a worker SHALL NOT estimate,
-infer, reuse, back-date, forward-date, or copy a value from an earlier result,
-or carry forward a time it did not read. If the clock read is unavailable or
-fails, the worker SHALL return the payload with the literal sentinel
-`1970-01-01T00:00:00+00:00` in `emitted_on`; the unavailable read still counts as
-that payload's one read, and it is not a failure path. The sentinel is an
-explicit exception to the run's non-decreasing-values property: it may occur
-in any result position and neither invalidates the run nor requires a later
-payload to be re-read or changed. Excluding sentinel values, actual clock
-values remain non-decreasing in return order, and a terminal result with an
-available clock carries the latest actual value. A payload following
-`continue_after_progress` or `continue_after_notice` is a new payload with its
-own one-read bound.
+The sidecar never alters the validation decision or payload identity: exit codes
+and `ok`/`errors` semantics are unchanged, the payload is never rewritten, and
+unknown payload fields stay ignored with no explicit legacy handling. A payload
+carrying a legacy time field stays valid with that field ignored. Invalid
+results carry no timestamp. The sidecar applies to all four validated kinds
+(terminal, notice, progress, `conflict_detected`).
 
-The instant is written in the session's local zone with its numeric offset
+The instant is written in the validator's local zone with its numeric offset
 attached, so the wall-clock reading and the absolute instant travel together:
 characters 12–16 are the local `HH:MM` a reader recognises, and the trailing
 offset keeps the value an unambiguous instant, exactly as comparable as a UTC
-one. The offset is the worker's own at composition time. A run that crosses a
-daylight-saving transition therefore carries two different offsets, and its
-values remain correct instants while ceasing to sort lexicographically — an
-accepted trade for local readability the rest of the year.
+one. Zone handling lives in the tool; the coordinator never reads wall-clock
+time and never resolves a timezone.
 
-The field is present in every closed payload and in every phase, including a
-phase whose adapter declares no progress plan and a pre-resolution result that
-omits `resolved_change_name`. Unlike `resolved_change_name`, `failure_class`,
-and `unrecoverable`, it is never conditional.
+It is validator state, not worker or binding state: it is not a continuation
+identifier, not binding dispatch metadata, and not artifact contents. A
+coordinator forwards the verdict verbatim, surfaces `validated_at` in its prompt
+for terminal and progress results at minimum, and SHALL NOT invent, correct,
+re-derive, or reformat it. A replacement worker authors no time and never
+reconstructs a prior observation.
 
-It is worker state, not binding state: it is not a continuation identifier, not
-binding dispatch metadata, and not artifact contents, so it stays worker-authored
-under the same rules as `summary` and `changed_files`. A coordinator forwards or
-records it verbatim and SHALL NOT invent, correct, re-derive, or reformat it.
-A replacement worker authors its own `emitted_on` for its own results and never
-reconstructs the prior worker's values.
-
-`emitted_on` is the sole source of the Milestone Stamp. The stamp is the
+`validated_at` is the sole source of the Milestone Stamp. The stamp is the
 coordinator-rendered `HH:mm` annotation a progress task list attaches to a step
 when it renders `completed` per `@sai/policies/todo-structure.md`, and its value
-is the `emitted_on` of the result that marked that step — a progress event for a
-step it marks, the terminal `completed` payload for a step closed by run-closing
-reconciliation. The coordinator never reads a clock to produce a stamp. A worker
-that authors an inaccurate `emitted_on` therefore renders an inaccurate stamp.
-The single clock read as the final action before return is what supplies its
-accuracy; the worker never reconstructs that value afterwards. The worker still
+is the `validated_at` of the verdict that marked that step — a progress verdict
+for a step it marks, the terminal `completed` verdict for a step closed by
+run-closing reconciliation. The coordinator never reads a clock to produce a
+stamp. The validator's observation supplies its accuracy. The worker still
 never renders, attaches, or formats a stamp itself.
 
 ## Nonterminal Result Transport

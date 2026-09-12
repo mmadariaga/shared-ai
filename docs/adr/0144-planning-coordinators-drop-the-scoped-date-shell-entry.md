@@ -17,8 +17,8 @@ itself (`date +%H:%M` / `Get-Date -Format "HH:mm"`) in the per-harness bindings.
 
 The `collapse-sai-worker-matrix` change deleted those bindings, so no production
 surface names a wall-clock command any more, while the grant remained. DDR 0141
-then removed the need entirely: the stamp is now derived from the worker
-payload's `emitted_on`, and the coordinator issues no wall-clock call.
+then removed the need entirely: the stamp is now derived from the validator
+verdict's `validated_at`, and the coordinator issues no wall-clock call.
 
 ## Decision
 
@@ -45,7 +45,7 @@ command lapses with it.
 The exception rode three wrappers plus their exact-match test pins, so removing
 it touches the same set (`design-coordinator-worker`, `implement-coordinator-worker`,
 `install-claude`). Any future capability needing coordinator-side time must
-either re-argue the grant or, preferably, take the value from a worker payload
+either re-argue the grant or, preferably, take the value from the validator verdict
 as the stamp now does. The decision encodes a permission grant on the install
 surface rather than a domain property, which is why this record is an ADR.
 

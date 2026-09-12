@@ -9,9 +9,17 @@
  * terminal statuses (completed, needs_input, failed, cancelled), design notices,
  * progress events, and phase-defined nonterminal extensions (e.g., conflict_detected).
  *
- * The validator checks closed-shape field presence and types, validates the
- * emitted_on field format (ISO-8601 with numeric offset, never Z), and rejects
- * malformed payloads without repair or inference.
+ * Worker payloads carry no time field. The validator checks closed-shape field
+ * presence and types, ignores unknown fields with no explicit legacy handling,
+ * and rejects malformed payloads without repair or inference.
+ *
+ * On valid results the validator emits an additive display-only validated_at
+ * sidecar (validator-observed validation timestamp in
+ * YYYY-MM-DDTHH:MM:SS±HH:MM form, local wall-clock with numeric offset, never Z)
+ * as a text suffix and a JSON field. The sidecar never alters the validation
+ * decision or payload identity; exit codes and ok/errors semantics are unchanged.
+ * Invalid results carry no timestamp. Zone handling lives in this tool; the
+ * coordinator never calls wall-clock time and forwards the verdict verbatim.
  *
  * Sub-commands:
  *   validate                   Read a closed payload from stdin and validate it.
@@ -53,10 +61,11 @@ const VALID_EVENTS = ['notice', 'progress', 'conflict_detected'];
 const VALID_CONTINUATION_STATES = ['language-selection', 'strategy-analysis'];
 
 /**
- * ISO-8601 with numeric offset pattern: YYYY-MM-DDTHH:MM:SS±HH:MM
- * Requires a numeric offset (not Z).
+ * Validated-at wire form: YYYY-MM-DDTHH:MM:SS±HH:MM
+ * Local wall-clock time with numeric offset (never Z). This pattern describes
+ * the validator-observed sidecar only; it is never a payload field.
  */
-const EMITTED_ON_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/;
+const VALIDATED_AT_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/;
 
 /** Usage error / tooling failure. Carries the exit code the caller sees. */
 class ToolError extends Error {
@@ -66,20 +75,29 @@ class ToolError extends Error {
   }
 }
 
+function pad2(n) {
+  return String(n).padStart(2, '0');
+}
+
 /**
- * Validate the emitted_on field format.
- * Must be ISO-8601 with numeric offset (never Z).
+ * Generate the validator-observed validation timestamp.
+ * Local wall-clock time with its numeric UTC offset, colon-separated, never Z.
+ * Reception time substitutes emission time; the small transport delta is
+ * accepted as a duration proxy. Time is observation, not claim.
  */
-function validateEmittedOn(emittedOn) {
-  const errors = [];
-  if (typeof emittedOn !== 'string') {
-    errors.push(`emitted_on must be a string, got ${typeof emittedOn}`);
-  } else if (!EMITTED_ON_PATTERN.test(emittedOn)) {
-    errors.push(
-      `emitted_on must be ISO-8601 with numeric offset (YYYY-MM-DDTHH:MM:SS±HH:MM), got "${emittedOn}" (Z designator not allowed)`
-    );
-  }
-  return errors;
+function generateValidatedAt(now = new Date()) {
+  const year = now.getFullYear();
+  const month = pad2(now.getMonth() + 1);
+  const day = pad2(now.getDate());
+  const hours = pad2(now.getHours());
+  const minutes = pad2(now.getMinutes());
+  const seconds = pad2(now.getSeconds());
+  const offsetMinutes = -now.getTimezoneOffset();
+  const sign = offsetMinutes >= 0 ? '+' : '-';
+  const abs = Math.abs(offsetMinutes);
+  const offHours = pad2(Math.floor(abs / 60));
+  const offMinutes = pad2(abs % 60);
+  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}${sign}${offHours}:${offMinutes}`;
 }
 
 /**
@@ -108,7 +126,8 @@ function validateStringArray(payload, fieldName, errors) {
 
 /**
  * Validate a terminal status payload.
- * Required fields: status, emitted_on, summary, changed_files.
+ * Required fields: status, summary, changed_files. No time field is required;
+ * unknown fields are ignored with no explicit legacy handling.
  * Additional validation based on status value.
  */
 function validateTerminal(payload) {
@@ -120,7 +139,6 @@ function validateTerminal(payload) {
     errors.push(`status must be one of [${VALID_STATUSES.join(', ')}], got "${payload.status}"`);
   }
 
-  errors.push(...validateEmittedOn(payload.emitted_on || null));
   validateStringField(payload, 'summary', errors);
   validateStringArray(payload, 'changed_files', errors);
 
@@ -165,7 +183,7 @@ function validateTerminal(payload) {
 
 /**
  * Validate a design notice payload.
- * Required fields: event: "notice", emitted_on, message, changed_files.
+ * Required fields: event: "notice", message, changed_files. No time field.
  */
 function validateNotice(payload) {
   const errors = [];
@@ -176,7 +194,6 @@ function validateNotice(payload) {
     errors.push(`event must be "notice" for a notice payload, got "${payload.event}"`);
   }
 
-  errors.push(...validateEmittedOn(payload.emitted_on || null));
   validateStringField(payload, 'message', errors);
   validateStringArray(payload, 'changed_files', errors);
 
@@ -185,7 +202,7 @@ function validateNotice(payload) {
 
 /**
  * Validate a progress event payload.
- * Required fields: event: "progress", emitted_on, step_ids, changed_files.
+ * Required fields: event: "progress", step_ids, changed_files. No time field.
  */
 function validateProgress(payload) {
   const errors = [];
@@ -196,7 +213,6 @@ function validateProgress(payload) {
     errors.push(`event must be "progress" for a progress event, got "${payload.event}"`);
   }
 
-  errors.push(...validateEmittedOn(payload.emitted_on || null));
   validateStringArray(payload, 'step_ids', errors);
   validateStringArray(payload, 'changed_files', errors);
 
@@ -205,8 +221,8 @@ function validateProgress(payload) {
 
 /**
  * Validate a conflict_detected extension payload.
- * Required fields: event: "conflict_detected", emitted_on, summary, changed_files,
- * affected_files, continuation_state.
+ * Required fields: event: "conflict_detected", summary, changed_files,
+ * affected_files, continuation_state. No time field.
  */
 function validateConflictDetected(payload) {
   const errors = [];
@@ -217,7 +233,6 @@ function validateConflictDetected(payload) {
     errors.push(`event must be "conflict_detected" for a conflict extension, got "${payload.event}"`);
   }
 
-  errors.push(...validateEmittedOn(payload.emitted_on || null));
   validateStringField(payload, 'summary', errors);
   validateStringArray(payload, 'changed_files', errors);
   validateStringArray(payload, 'affected_files', errors);
@@ -290,11 +305,20 @@ async function commandValidate(kind) {
   }
 
   const errors = validatePayload(payload, kind);
+  if (errors.length !== 0) {
+    return {
+      ok: false,
+      action: 'validate',
+      kind,
+      errors,
+    };
+  }
   return {
-    ok: errors.length === 0,
+    ok: true,
     action: 'validate',
     kind,
-    errors,
+    errors: [],
+    validated_at: generateValidatedAt(),
   };
 }
 
@@ -314,6 +338,8 @@ function usage() {
     '                           currently used by the validator).',
     '',
     'Exit codes: 0 = ok; 1 = validation failed; 2 = usage or IO error.',
+    'Valid results carry an additive display-only validated_at sidecar',
+    '(validator-observed validation timestamp); invalid results carry none.',
   ].join('\n');
 }
 
@@ -336,7 +362,7 @@ function renderText(payload) {
   if (!payload.ok) {
     return `invalid (${payload.kind}): ${payload.errors.join('; ')}`;
   }
-  return `valid (${payload.kind})`;
+  return `valid (${payload.kind}) validated_at ${payload.validated_at}`;
 }
 
 function render(payload, json) {
@@ -402,11 +428,11 @@ module.exports = {
   validateNotice,
   validateProgress,
   validateConflictDetected,
-  validateEmittedOn,
+  generateValidatedAt,
   usage,
   VALID_STATUSES,
   VALID_FAILURE_CLASSES,
   VALID_EVENTS,
   VALID_CONTINUATION_STATES,
-  EMITTED_ON_PATTERN,
+  VALIDATED_AT_PATTERN,
 };

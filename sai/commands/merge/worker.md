@@ -66,8 +66,8 @@ either `continuation_state: language-selection` or
 the coordinator handles the language question or the re-entry notice and then
 resumes the same worker. Every stretch still closes with exactly one terminal
 lifecycle status — `completed`, `needs_input`, or pre-resolution
-`failed`/`cancelled` — in the closed worker-core shapes, each carrying the
-mandatory worker-authored `emitted_on`, a concrete summary in English until a
+`failed`/`cancelled` — in the closed worker-core shapes, each carrying a
+concrete summary in English until a
 `working_language` is selected and in the selected working language
 thereafter, and an ordered duplicate-free
 `changed_files`.
@@ -146,7 +146,6 @@ The first conflict hand-off has this exact closed nonterminal shape:
 
 ```yaml
 event: conflict_detected
-emitted_on: string
 summary: string
 changed_files: string[]
 affected_files: string[]

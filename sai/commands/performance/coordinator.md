@@ -12,7 +12,7 @@
   - `original_envelope`: exactly `arguments_value` from the active wrapper, preserving the complete argument string.
   - `dispatch_operation`: dispatch exactly one worker through the active performance-worker binding.
   - `continuation_operation`: continue the captured worker with the exact selected answer value.
-  - `allowed_nonterminal_extensions`: progress events — `{event: "progress", emitted_on: string, step_ids: string[], changed_files: string[]}` as the sole nonterminal extension.
+  - `allowed_nonterminal_extensions`: progress events — `{event: "progress", step_ids: string[], changed_files: string[]}` as the sole nonterminal extension.
   - `extension_handlers`: empty.
   - `replacement_reconstruction_fields`: original envelope, ordered duplicate-free changed-files union, exact opaque input history, `resolved_change_name` when available, and the departing worker's `active_step_id` when the step machine is declared.
   - `terminal_navigation`: the performance navigation below.
