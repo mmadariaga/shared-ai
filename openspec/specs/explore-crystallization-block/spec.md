@@ -69,68 +69,35 @@ The companion `explore-handoff-edge-cases` capability governs the same `**Edge C
 - **THEN** its `**Edge Cases**` section contains exactly `- None`
 
 ### Requirement: Close crystallization with selector
-`sai-explore` SHALL define one authoritative crystallization-turn close in `sai/commands/explore/instructions.md`. Items 5 (single change), 6 (sliced feature), and 7 (inline proposal refusal) SHALL reference that definition rather than restating its emission sequence. The shared close SHALL apply after the single `Ready to Propose` block, after the final per-slice block, or after the inline-refusal paste-ready block(s), respectively.
-
-The shared close SHALL emit, in this order and exactly once per crystallization turn:
-
-1. One path-specific next-step handoff immediately after the `---` separator that ends the handoff block(s), choosing the wording that matches the crystallization path that just closed: the single-change `Open a new chat` instruction with `/sai-1-spec`, the sliced instruction to take the first block to a new chat with `/sai-1-spec` while each later slice becomes its own change, or the inline-refusal copy/start-new-chat clause with `/sai-1-spec` and no in-session proposal dispatch.
-2. One keep-window-open recommendation outside the handoff block, rendered under the existing language-gate rule and naming the literal `review-loop` exactly once.
-3. One harness-native three-option crystallization-close selector using the displayed `Plan - Unattended` label before `Direct Build - Unattended` and `Manual`.
-
-The handoff's surrounding prose SHALL follow the selected crystallization language per item 8, while `/sai-1-spec`, `/sai-2-design`, and `review-loop` remain verbatim English. The recommendation SHALL be plain conversational text rendered in the user's language under the existing language-gate rule, while the agreed literals remain verbatim. `review-loop` remains a standing user-triggered path while the selector governs only delegated execution. The recommendation SHALL remain before the selector. The selector SHALL be the final emission of the shared close and the crystallization turn; a later answer is a separate response turn. Selecting `Manual`, or giving an answer that maps to neither selector option, SHALL refer to the already-emitted recommendation and to the path-specific handoff this shared close already emitted before the selector, SHALL dispatch nothing, MUST NOT re-emit a second recommendation, handoff, or selector, and SHALL NOT re-emit or restate the already-emitted path-specific next-step handoff. Item 10 SHALL describe that branch by reference to this shared rule. The recommendation and the handoff SHALL NOT alter any `Ready to Propose` block, its `---` payload boundary, or its language-gate invariants. On every later selector re-emission, the shared close SHALL emit the path-specific next-step handoff exactly once before the selector again.
+`sai-explore` SHALL define one authoritative crystallization-turn close in `sai/commands/explore/instructions.md`. Items 5 (single change) and 6 (sliced feature) SHALL reference that definition rather than restating its emission sequence. Item 7 (inline proposal refusal) SHALL stay outside the shared close. The shared close SHALL emit, in order and exactly once per crystallization turn, only the `Ready to Propose` block(s) ending at `---` plus one harness-native three-option selector, with no path-specific handoff and no keep-window-open recommendation before selection. Selecting `Manual` or an unmapped answer SHALL emit once the closing path handoff plus the keep-window-open recommendation naming `review-loop` exactly once, with no second selector in that turn. Selecting `Plan - Unattended` or `Direct Build - Unattended` SHALL never emit handoff or recommendation.
 
 #### Scenario: single-change handoff uses the shared close
 - **WHEN** `sai-explore` emits the single-change `Ready to Propose` block
-- **THEN** item 5 uses the shared close definition
-- **AND** the existing `Open a new chat` next-step instruction is emitted exactly once between the `---` separator and the selector, before the keep-window recommendation
-- **AND** one keep-window recommendation using the existing language rule and naming `review-loop` exactly once precedes one selector offering `Plan - Unattended` before `Direct Build - Unattended` and `Manual`
-- **AND** the selector is the final emission of this slice's turn
+- **THEN** item 5 uses the shared close with block plus selector only and no handoff or recommendation before selection
 
 #### Scenario: sliced output closes once after the final slice
 - **WHEN** `sai-explore` emits one `Ready to Propose` block per slice
-- **THEN** item 6 uses the shared close definition only after the final slice block
-- **AND** the instruction to take the first block to a new chat with `/sai-1-spec` is emitted exactly once before the selector for the whole slice set, while later slices remain separate follow-up changes
-- **AND** one keep-window recommendation using the existing language rule precedes one selector after the final block
-- **AND** the selector is emitted once for the whole slice set and is the final emission of this slice's turn
-- **AND** the handoff and selector are not repeated for an earlier slice
+- **THEN** item 6 uses the shared close only after the final slice block with selector following the last block directly and no intermediate handoff
 
 #### Scenario: inline proposal refusal uses the shared close
 - **WHEN** the user asks to create a proposal or run `/sai-1-spec` inline and the paste-ready block(s) are emitted
-- **THEN** item 7 uses the shared close definition
-- **AND** the copy/start-new-chat next-step clause with `/sai-1-spec` is emitted exactly once after the refusal rationale and before the selector
-- **AND** no in-session proposal dispatch is introduced
-- **AND** the existing recommendation precedes the selector, which remains the final emission of this slice's turn
+- **THEN** item 7 stays outside the shared close with its immediate copy-start-new-chat handoff and no selector and no in-session dispatch
 
 #### Scenario: Manual refers to the existing recommendation once and moves the handoff after the selector
 - **WHEN** the user selects `Manual` or gives an unmapped answer to the selector
-- **THEN** no worker is dispatched
-- **AND** the recommendation was already emitted once before the selector
-- **AND** the path-specific next-step handoff was already emitted once before the selector
-- **AND** no second recommendation, handoff, or selector is emitted as part of that answer
-- **AND** the existing selector re-invocation behavior remains available on a later explicit request
+- **THEN** no worker is dispatched and the closing path handoff plus recommendation emits once with no second selector
 
 #### Scenario: the close does not alter the handoff payload
-- **WHEN** the shared close is emitted in any of the three crystallization paths
-- **THEN** the existing `Ready to Propose` block field labels, field order, scaffolding, and `---` separator remain unchanged
-- **AND** the complete block remains the `crystallized_block` payload transported through the existing two-string spec-worker envelope, including its existing marker and argument structure
-- **AND** the path-specific next-step handoff is outside the block and is emitted once before the selector instead of after the selector response
-- **AND** `review-loop` remains a standing user-triggered review path while the selector governs only delegated execution
-- **AND** `--fast-track` does not suppress or auto-answer the handoff or the selector
+- **WHEN** the shared close is emitted in any single-change or sliced crystallization path
+- **THEN** the existing `Ready to Propose` block field labels and `---` separator remain unchanged with handoff outside the block and `review-loop` as standing user-triggered path
 
 #### Scenario: recommendation language and review separation remain unchanged
 - **WHEN** the crystallization turn uses a non-English conversation language
-- **THEN** the recommendation remains plain conversational text rendered in the user's language, while both literal tokens remain verbatim
-- **AND** the pre-selector handoff prose follows the selected crystallization language while `/sai-1-spec`, `/sai-2-design`, and `review-loop` remain verbatim English
-- **AND** the selector remains the sole control for delegated execution
-- **AND** `review-loop` remains a standing user-triggered path while the selector governs only delegated execution
-- **AND** the `review-loop` path remains independent of selector selection
+- **THEN** the post-`Manual` recommendation remains plain conversational text in the user language with `/sai-1-spec`, `/sai-2-design`, and `review-loop` verbatim English
 
 #### Scenario: recommendation does not alter the block or the item-8 gate
-- **WHEN** the closing recommendation is emitted
-- **THEN** the `Ready to Propose` block's scaffolding and the item-8 crystallization language-gate invariants are unchanged
-- **AND** the recommendation itself is plain conversational text rendered in the user's language
-- **AND** both literal tokens remain verbatim
-- **AND** `review-loop` remains a standing user-triggered path while the selector governs only delegated execution
+- **WHEN** the post-`Manual` closing recommendation is emitted
+- **THEN** the `Ready to Propose` block scaffolding and item-8 language-gate invariants stay unchanged with both literal tokens verbatim
 
 ### Requirement: Sole edit target is sai/commands/explore/instructions.md
 
