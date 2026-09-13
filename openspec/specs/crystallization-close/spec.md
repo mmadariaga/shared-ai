@@ -52,3 +52,21 @@ The crystallization close SHALL discard a premature selector from a prior turn t
 - **WHEN** a prior turn emitted a selector without a block
 - **THEN** the correction turn discards that selection and emits one block plus close plus single selector for re-selection in block-then-selector order
 
+### Requirement: Crystallization close ends at block emission with cleared TODO
+
+The crystallization close SHALL end at the Ready to Propose block plus `---` with the stage TODO cleared and stopped, SHALL create no panel entries in that turn, and SHALL emit no handoff and no recommendation at emission. The panel SHALL stay empty from block emission until the deferred route choice resolves.
+
+#### Scenario: Single crystallization stops after block with empty panel
+
+- **WHEN** a single-change crystallization turn emits its block ending at `---`
+- **THEN** the turn clears the stage TODO and stops with an empty panel and no choice presented
+
+### Requirement: Crystallization protocol carries zero selector references
+
+The crystallization protocol SHALL contain zero references to selector presentation, deterministic selection, or route-owned entries. The deferred choice SHALL live only in the route-selector step and the protocol SHALL only record the emitted change name for that later choice.
+
+#### Scenario: Crystallization file holds no selector language
+
+- **WHEN** the crystallization protocol file is inspected after the change
+- **THEN** it ends at block plus stop with no selector presentation or route entries defined
+

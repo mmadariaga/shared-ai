@@ -10,11 +10,12 @@ const PLAN_STEPS = Object.freeze(['sai-1', 'sai-2', 'implement']);
 const ANON_SLICE = 'current';
 
 const SLICE_STEP = 'sai/commands/explore/steps/slice.md';
+const ROUTE_SELECTOR_STEP = 'sai/commands/explore/steps/route-selector.md';
 const DIRECT_BUILD_STEP = 'sai/commands/explore/steps/pipeline-direct-build.md';
 const PLAN_STEP = 'sai/commands/explore/steps/pipeline-plan-unattended.md';
 
 const STAGE_FILES = Object.freeze({
-  idle: SLICE_STEP,
+  idle: ROUTE_SELECTOR_STEP,
   'sai-1': PLAN_STEP,
   'sai-2': PLAN_STEP,
   implement: PLAN_STEP,
