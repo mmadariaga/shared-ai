@@ -1,19 +1,19 @@
-# Deferred route choice (sai-explore only)
+# Crystallization-close route choice (sai-explore only)
 
-**Deferred choice served by `explore-slice@1` idle via `next.follow`.** This step runs when crystallization has concluded — Closure State is `crystallized`, the stage TODO is cleared, and the panel stays empty from block emission until this choice resolves. It runs before any route dispatch. Fast-track never auto-selects this choice; the choice is always asked.
+**Same-turn choice served at crystallization close, re-presented by `explore-slice@1` idle via `next.follow` while pending slices remain.** The first presentation runs in the same turn as the `Ready to Propose` block emission — Closure State is `crystallized`, the stage TODO is cleared, the `recordedList` for the emitted set is emitted, and the panel stays empty from block emission until this choice resolves. It runs before any route dispatch. Fast-track never auto-selects this choice; the choice is always asked. The `inline-refusal` path, the uncertainty POC pause, and store/panel failure keep their current behavior with no fusion.
 
 Fetch @sai/policies/stage-machine.md and follow it for every store interaction; the verbs, errors, quoting, pointer, and degraded-mode contract are single-sourced there and are not restated here.
 Fetch @sai/commands/explore/steps/slice.md for inventory wiring only.
 Fetch @sai/commands/explore/steps/pipeline-selector.md for supervision state only.
 Fetch @sai/commands/explore/steps/idea-list.md for route-owned entries only.
 
-**Idle distinction (no machine version bump).** The machine stays `explore-slice@1`. Prose distinguishes two idle cases; the transition table is unchanged:
-- **First-idle with pending** — `stage` is `idle` with at least one pending slice (`set` minus `done` non-empty). Crystallization has concluded and the choice is pending: present the choice below once.
+**Idle distinction (no machine version bump).** The machine stays `explore-slice@1`. The first presentation runs same-turn at crystallization close; prose distinguishes two idle cases for re-presentation while pending slices remain, and the transition table is unchanged:
+- **First-idle with pending** — `stage` is `idle` with at least one pending slice (`set` minus `done` non-empty). A pending set remains after a completed slice: re-present the choice below once.
 - **Rest-idle without pending** — `stage` is `idle` with no pending slice (`set` minus `done` empty, `active` cleared). The slice is done: rest, present no choice, dispatch nothing, and never restart a route.
 
 **Inventory.** Slice names come from `Ready to Propose` blocks in chat, not the wire. A `recordedList` replaces `set` without moving the cursor. Do not run `openspec list --json`, enumerate changes on disk, or re-sort emitted names.
 
-**Deferred route choice presentation.** There is no literal pipeline token. Route execution is entered only through this choice, and no token form is recognized. Present it through the harness-native picker per `sai/policies/remember.md` (L10–15): `AskUserQuestion` on Claude Code, the `question` tool on opencode. Only that native picker call counts as the choice — a plain-text list does not count. It carries exactly three options, in this fixed order, each carrying its fixed one-line description, with fixed English titles `Plan - Unattended`, `Direct Build - Unattended`, `Manual`. The stable machine-readable route identities are exactly `plan-unattended`, `direct-build-unattended`, and `manual`; they are not localized and are never accepted as compatibility aliases:
+**Crystallization-close route choice presentation.** The first presentation runs in the same turn as block emission after the final `---` with the `recordedList` emit. There is no literal pipeline token. Route execution is entered only through this choice, and no token form is recognized. Present it through the harness-native picker per `sai/policies/remember.md` (L10–15): `AskUserQuestion` on Claude Code, the `question` tool on opencode. Only that native picker call counts as the choice — a plain-text list does not count. It carries exactly three options, in this fixed order, each carrying its fixed one-line description, with fixed English titles `Plan - Unattended`, `Direct Build - Unattended`, `Manual`. The stable machine-readable route identities are exactly `plan-unattended`, `direct-build-unattended`, and `manual`; they are not localized and are never accepted as compatibility aliases:
 
 - **Plan - Unattended** — Runs `sai-1` and `sai-2` to create the plan and stops for pre-implementation human review.
 - **Direct Build - Unattended** — Implements the change directly and updates specs afterward: ideal for fixes and simple changes.

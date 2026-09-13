@@ -5,13 +5,11 @@
 Define the crystallized handoff format and closing behavior for `sai-explore`.
 ## Requirements
 ### Requirement: Close crystallization with the three named routes
-
-The shared crystallization close SHALL retain its existing recommendation and SHALL then emit exactly one selector with Plan (unattended), Build (unattended), and Manual in fixed order.
+The shared crystallization close SHALL emit the Ready to Propose block or blocks plus the recordedList plus exactly one selector with Plan - Unattended, Direct Build - Unattended, and Manual in fixed order as the final close emission, with no path-specific handoff and no keep-window-open recommendation before selection, and SHALL never end the turn after the block without that selector. No route SHALL be selected automatically.
 
 #### Scenario: shared close remains final
-
-- **WHEN** a crystallization block or slice is emitted
-- **THEN** the three-option selector is the final close emission and no route is selected automatically.
+- **WHEN** a crystallization block or slice is emitted same-turn
+- **THEN** the three-option selector with recordedList is the final close emission and no route is selected automatically
 
 ### Requirement: Three mandatory decision-facet sections in the single-change Ready to Propose block
 
@@ -69,26 +67,26 @@ The companion `explore-handoff-edge-cases` capability governs the same `**Edge C
 - **THEN** its `**Edge Cases**` section contains exactly `- None`
 
 ### Requirement: Close crystallization with selector
-`sai-explore` SHALL define one authoritative crystallization-turn close in `sai/commands/explore/instructions.md`. Items 5 (single change) and 6 (sliced feature) SHALL reference that definition rather than restating its emission sequence. Item 7 (inline proposal refusal) SHALL stay outside the shared close. The shared close SHALL emit, in order and exactly once per crystallization turn, only the `Ready to Propose` block(s) ending at `---` plus one harness-native three-option selector, with no path-specific handoff and no keep-window-open recommendation before selection. Selecting `Manual` or an unmapped answer SHALL emit once the closing path handoff plus the keep-window-open recommendation naming `review-loop` exactly once, with no second selector in that turn. Selecting `Plan - Unattended` or `Direct Build - Unattended` SHALL never emit handoff or recommendation.
+`sai-explore` SHALL define one authoritative crystallization-turn close in the explore instructions. Single-change and sliced-feature items SHALL reference that definition rather than restating its emission sequence. Inline proposal refusal SHALL stay outside the shared close. The shared close SHALL emit, in order and exactly once per crystallization turn, only the Ready to Propose blocks ending at separators plus the recordedList plus one harness-native three-option selector, with no path-specific handoff and no keep-window-open recommendation before selection. Selecting Manual or an unmapped answer SHALL emit once the closing path handoff plus the keep-window-open recommendation with no second selector in that turn. Selecting Plan - Unattended or Direct Build - Unattended SHALL never emit handoff or recommendation.
 
 #### Scenario: single-change handoff uses the shared close
-- **WHEN** `sai-explore` emits the single-change `Ready to Propose` block
-- **THEN** item 5 uses the shared close with block plus selector only and no handoff or recommendation before selection
+- **WHEN** sai-explore emits the single-change Ready to Propose block same-turn
+- **THEN** the single-change item uses the shared close with block plus recordedList plus selector only and no handoff before selection
 
 #### Scenario: sliced output closes once after the final slice
-- **WHEN** `sai-explore` emits one `Ready to Propose` block per slice
-- **THEN** item 6 uses the shared close only after the final slice block with selector following the last block directly and no intermediate handoff
+- **WHEN** sai-explore emits one Ready to Propose block per slice same-turn
+- **THEN** item 6 uses the shared close only after the final slice block with recordedList plus selector following the last block directly and no intermediate handoff
 
 #### Scenario: inline proposal refusal uses the shared close
 - **WHEN** the user asks to create a proposal or run `/sai-1-spec` inline and the paste-ready block(s) are emitted
 - **THEN** item 7 stays outside the shared close with its immediate copy-start-new-chat handoff and no selector and no in-session dispatch
 
 #### Scenario: Manual refers to the existing recommendation once and moves the handoff after the selector
-- **WHEN** the user selects `Manual` or gives an unmapped answer to the selector
+- **WHEN** the user selects `Manual` or gives an unmapped answer to the same-turn selector
 - **THEN** no worker is dispatched and the closing path handoff plus recommendation emits once with no second selector
 
 #### Scenario: the close does not alter the handoff payload
-- **WHEN** the shared close is emitted in any single-change or sliced crystallization path
+- **WHEN** the shared close is emitted in any single-change or sliced crystallization path same-turn
 - **THEN** the existing `Ready to Propose` block field labels and `---` separator remain unchanged with handoff outside the block and `review-loop` as standing user-triggered path
 
 #### Scenario: recommendation language and review separation remain unchanged

@@ -32,13 +32,11 @@ Selecting Direct Build - Unattended SHALL preserve the direct implementation, fu
 - **THEN** the existing eight-step Direct Build flow remains authoritative without re-entering `/sai-build` or `meta-build`.
 
 ### Requirement: Preserve Manual and fast-track gates
-
-Selecting Manual or an unmapped response SHALL use route identity `manual`, dispatch no worker, change no supervision state, and refer to the path-specific `/sai-1-spec` handoff already emitted exactly once before the selector by the shared close; it SHALL NOT re-emit the handoff after the selector response. `--fast-track` MUST NOT select or suppress the handoff or the selector.
+Selecting Manual or an unmapped response SHALL use route identity manual, SHALL dispatch no worker, SHALL change no supervision state, and SHALL emit the closing path handoff plus the keep-window-open recommendation exactly once only after Manual selection, never before the selector and never in the emission turn. Selecting Plan - Unattended or Direct Build - Unattended SHALL never emit handoff or recommendation. Fast-track SHALL NOT auto-select or suppress the handoff or the selector.
 
 #### Scenario: Manual remains non-dispatching
-
-- **WHEN** Manual or an unmapped response is received
-- **THEN** the already-emitted handoff remains the sole handoff and later execution remains an explicit user action.
+- **WHEN** Manual or an unmapped response is received from the same-turn selector
+- **THEN** no worker dispatches and the handoff plus recommendation emits once after selection with no second selector
 
 ### Requirement: Preserve slice selection and retry behavior
 
@@ -50,13 +48,11 @@ Plan and Direct Build SHALL select only uncompleted names from `last_crystalliza
 - **THEN** the selector is presented again in fixed order for the pending slice before any new dispatch begins.
 
 ### Requirement: Emit the crystallization-close selector
-
-`sai-explore` SHALL emit exactly one harness-native selector after the shared keep-window-open recommendation, with options in fixed order: `Plan - Unattended`, `Direct Build - Unattended`, and `Manual`, each retaining its existing one-line description and localized presentation rules. The first displayed label SHALL map to internal route `plan-unattended` and SHALL state that only supervised `sai-1` and `sai-2` run. The selector SHALL remain the final emission of the crystallization turn. The selector contract SHALL be delivered from `sai/commands/explore/steps/pipeline-selector.md`, fetched only after the complete shared recommendation sentence.
+`sai-explore` SHALL emit exactly one harness-native selector same-turn after the Ready to Propose block or blocks ending at the separator plus the recordedList emit, with options in fixed order Plan - Unattended, Direct Build - Unattended, and Manual, each retaining its existing one-line description, with no prior handoff and no prior recommendation, as the final emission of the crystallization turn. The selector contract SHALL be delivered from the route-selector step for same-turn presentation.
 
 #### Scenario: the split selector closes crystallization
-
-- **WHEN** a single-change, sliced, or inline-refusal crystallization turn reaches its close
-- **THEN** the shared recommendation is emitted once, `pipeline-selector.md` is fetched, and exactly one fixed-order three-option selector is emitted as the final turn output.
+- **WHEN** a single-change or sliced crystallization turn reaches its close with same-turn blocks
+- **THEN** exactly one fixed-order three-option selector emits as the final turn output with no prior handoff
 
 ### Requirement: Route selected pipeline options through deferred contracts
 
@@ -121,13 +117,11 @@ Selecting `Manual` SHALL dispatch nothing and SHALL NOT change supervision state
 - **THEN** `sai-explore` re-emits the selector with no prior handoff and each new `Manual` re-emits handoff plus recommendation once
 
 ### Requirement: Preserve explicit gating
-
-`--fast-track` SHALL NOT auto-select Plan - Unattended or suppress the pre-selector handoff or the selector. Selector text SHALL follow language localization while `review-loop`, `/sai-1-spec`, and `/sai-2-design` MUST remain English literals.
+Fast-track SHALL NOT auto-select Plan - Unattended or Direct Build - Unattended and SHALL NOT suppress the selector or the emission-turn neutrality with no handoff in the emission turn. Selector text SHALL follow language localization while review-loop, /sai-1-spec, and /sai-2-design MUST remain English literals.
 
 #### Scenario: fast-track does not bypass route selection
-
-- **WHEN** `--fast-track` is active at crystallization close
-- **THEN** the renamed selector is still presented, the pre-selector handoff is still emitted, and its command literals remain unchanged.
+- **WHEN** fast-track is active at crystallization close
+- **THEN** the selector is still presented with no auto-selection, no emission-turn handoff, and unchanged command literals
 
 ### Requirement: Auto-fast continuation requests authorization for each pending slice
 
@@ -257,11 +251,11 @@ Selecting **Direct Build - Unattended** SHALL be the explicit user act that auth
 - **THEN** delegated writes are consented for the Direct Build workers and exactly one local commit is pre-authorized, with no other command surface affected.
 
 ### Requirement: Selector fires once at end only with same-turn block
-The pipeline selector SHALL fire only when block(s) with `---` were emitted in the same turn, exactly once at the end through the native picker. It SHALL carry the fixed titles `Plan - Unattended`, `Direct Build - Unattended`, `Manual` in the identical block-first order on Claude Code and opencode.
+The pipeline selector SHALL fire only when blocks with separators were emitted in the same turn, exactly once at the end through the native picker. It SHALL carry the fixed titles Plan - Unattended, Direct Build - Unattended, and Manual in identical block-first order on Claude Code and opencode, with no handoff and no recommendation in the emission turn.
 
 #### Scenario: Selector gated on same-turn block
-- **WHEN** a crystallization turn ends with same-turn blocks and the shared handoff and recommendation emitted
-- **THEN** exactly one native-picker selector with the three fixed titles is emitted as the final emission
+- **WHEN** a crystallization turn ends with same-turn blocks and no emission-turn handoff
+- **THEN** exactly one native-picker selector with the three fixed titles emits as the final emission
 
 ### Requirement: Direct Build enters only via stage-machine emit and follow
 Direct Build selection SHALL enter only through emit of intent direct-build to `explore-slice@1` plus `next.follow` to `pipeline-direct-build.md`. It SHALL never enter via an ad-hoc Temp script or any other helper path.

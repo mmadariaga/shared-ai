@@ -53,20 +53,23 @@ The crystallization close SHALL discard a premature selector from a prior turn t
 - **THEN** the correction turn discards that selection and emits one block plus close plus single selector for re-selection in block-then-selector order
 
 ### Requirement: Crystallization close ends at block emission with cleared TODO
-
-The crystallization close SHALL end at the Ready to Propose block plus `---` with the stage TODO cleared and stopped, SHALL create no panel entries in that turn, and SHALL emit no handoff and no recommendation at emission. The panel SHALL stay empty from block emission until the deferred route choice resolves.
+The crystallization close SHALL end at the Ready to Propose block plus separator with the stage TODO cleared, the recordedList for the emitted set emitted, and the crystallization-close route selector presented same-turn as the final emission, SHALL create no panel entries in that turn, and SHALL emit no handoff and no recommendation in the emission turn. The panel SHALL stay empty from block emission until the choice resolves with the first render only at resolution. Fast-track SHALL never auto-select the selector and no overview-language question SHALL run at emission. The inline-refusal path, the uncertainty POC pause, and store and panel failure SHALL keep their current behavior with no fusion. Explore-slice idle SHALL re-present the selector only while pending slices remain.
 
 #### Scenario: Single crystallization stops after block with empty panel
-
 - **WHEN** a single-change crystallization turn emits its block ending at `---`
-- **THEN** the turn clears the stage TODO and stops with an empty panel and no choice presented
+- **THEN** the turn clears the stage TODO, emits the recordedList, and presents the crystallization-close route selector same-turn with an empty panel and no handoff in the emission turn
 
 ### Requirement: Crystallization protocol carries zero selector references
-
-The crystallization protocol SHALL contain zero references to selector presentation, deterministic selection, or route-owned entries. The deferred choice SHALL live only in the route-selector step and the protocol SHALL only record the emitted change name for that later choice.
+The crystallization protocol SHALL contain same-turn selector presentation, deterministic selection, and route-owned entry references for the crystallization-close choice, which supersedes the prior zero-reference constraint, SHALL record emitted change names for same-turn choice, and SHALL reference the route-selector step for same-turn presentation. The choice SHALL NOT live only in the route-selector step, and the protocol SHALL only record names as part of the same-turn close.
 
 #### Scenario: Crystallization file holds no selector language
-
 - **WHEN** the crystallization protocol file is inspected after the change
-- **THEN** it ends at block plus stop with no selector presentation or route entries defined
+- **THEN** it contains same-turn selector presentation and route entries for the same-turn choice, superseding the prior block-plus-stop close
+
+### Requirement: Same-turn close preserves exclusion paths without fusion
+The same-turn crystallization close SHALL preserve the inline-refusal path, the uncertainty POC pause, and store and panel failure behavior with no fusion, SHALL keep their current behavior unchanged, and SHALL NOT present the crystallization-close route selector on those paths.
+
+#### Scenario: Exclusion path keeps current behavior
+- **WHEN** a crystallization turn follows the inline-refusal path, the uncertainty POC pause, or store or panel failure
+- **THEN** the turn keeps its current behavior with no same-turn selector fusion
 
