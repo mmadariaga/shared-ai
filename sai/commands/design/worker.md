@@ -149,7 +149,7 @@ text; MUST NOT emit, re-present, or duplicate the feedback-text prompt.
 - Dispatch no automatic reviewer regardless of `supervised`.
 
 - The supervised selector Explore carve-out is selector-only.
-- It has no adapter progress plan, worker progress is plan-independent, and the `reviewed-sai-2` idea-list item is evidence only, not a progress step or a worker-owned review.
+- It has no adapter progress plan and worker progress is plan-independent; explore carries no review-evidence panel entries, and design progress is worker-independent with no idea-list review item.
 - The mode-dependent gate behavior defined by `sai/policies/artifact-feedback-gate.md` is: interactive or omitted mode keeps the coordinator-owned gate at iteration 0, while `mode = supervised` auto-proceeds without a picker through the deferred gate.
 - The worker neither presents nor suppresses the picker, never receives, branches on, evaluates, or handles `mode`, and gains no lifecycle field or picker logic.
 

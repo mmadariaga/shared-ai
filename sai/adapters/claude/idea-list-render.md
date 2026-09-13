@@ -6,12 +6,12 @@ Fetch @sai/adapters/claude/panel-render.md and use it for the harness panel mech
 
 - Each stage-TODO entry's label (`subject`) carries the stage label (`Explore change`, `Review edge cases`, `Implementation details`, `Crystallize`).
 - The machine-readable carrier is the panel binding's `description` field, with value `sai-explore-stage:<stage-id>` (stage ids `explore-change`, `review-edge-cases`, `implementation-details`, `crystallize`).
-- The stage TODO clears at the idea list's first render (the first slice block emission) and never re-renders afterward.
+- The stage TODO clears at block emission and never re-renders afterward; the panel stays empty until the deferred route choice resolves.
 
 ## Phase B — idea progress list
 
 - Each idea-list entry's label (`subject`) carries the slice's change name.
-- Status is `pending | in_progress | completed`: a marked item renders `completed`, a cleared item renders back to `pending`, and the slice's active review item (reviewed-sai-1 or reviewed-sai-2, per `idea-list-review-in-progress-state`) renders `in_progress` while the post-crystallization review loop (item 9) processes that slice or while the supervised pipeline's in-session review rounds (item 10) process that phase — reviewed-sai-1 during supervised spec rounds, reviewed-sai-2 during supervised design rounds. The research item and slice-crystallization items never carry `in_progress`.
+- Status is `pending | in_progress | completed`: a marked entry renders `completed`, an unmarked entry renders `pending`, and the active route step renders `in_progress`. `reviewed-sai-1`, `reviewed-sai-2`, research, and slice-crystallization references are inert and render nothing.
 - The machine-readable carrier is the panel binding's `description` field, with value `sai-idea-list:<change-name>` — the marker prefix `sai-idea-list:` plus the slice's `**Change name**` key.
 - Emission originates exclusively from the coordinator session, never from a worker subagent.
 
