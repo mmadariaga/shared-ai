@@ -100,10 +100,10 @@ test('tunable-seed routes to the dedicated installer', () => {
     assert.doesNotThrow(() => installProjection(projection, dir),
       'installProjection should accept a tunable-seed projection without throwing');
     const dest = fs.readFileSync(projection.destinationPath, 'utf8');
-    assert.ok(dest.includes('model: tuned-model'),
-      'the destination model line should retain its pre-install value');
-    assert.ok(dest.includes('effort: tuned-effort'),
-      'the destination effort line should retain its pre-install value');
+    assert.ok(dest.includes('model: source-model'),
+      'global install should overwrite the destination model with the source value');
+    assert.ok(dest.includes('effort: source-effort'),
+      'global install should overwrite the destination effort with the source value');
     assert.ok(dest.includes('description: Source command'),
       'the destination non-tunable frontmatter should come from the source');
     assert.ok(dest.includes('Source body.'), 'the destination body should come from the source');

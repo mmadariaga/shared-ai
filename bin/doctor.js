@@ -314,12 +314,12 @@ function diffAgainstBundled(expectedEntries) {
   return drift;
 }
 
-function managedBytesMatch(projection, destinationPath, tunableKeys) {
+function managedBytesMatch(projection, destinationPath) {
   const source = projection.sourceText !== undefined
     ? Buffer.from(projection.sourceText, 'utf8')
     : fs.readFileSync(projection.sourcePath);
   const destination = fs.readFileSync(destinationPath);
-  return flow.stripTunableLines(source, tunableKeys).equals(flow.stripTunableLines(destination, tunableKeys));
+  return source.equals(destination);
 }
 
 function managedClaudeWorkerRecords(harness, repoRoot) {
@@ -362,7 +362,7 @@ function managedClaudeWorkerRecords(harness, repoRoot) {
       });
       continue;
     }
-    const compatible = managedBytesMatch(projection, destination, flow.CLAUDE_TUNABLE_KEYS);
+    const compatible = managedBytesMatch(projection, destination);
     records.push(compatible
       ? { section, name: label, severity: 'ok', message: `managed Claude worker ${agentName} is compatible` }
       : { section, name: label, severity: 'error', message: `incompatible Claude worker definition ${agentName}` });
@@ -410,7 +410,7 @@ function managedOpencodeAgentRecords(harness, repoRoot) {
       });
       continue;
     }
-    const compatible = managedBytesMatch(projection, destination, flow.OPENCODE_TUNABLE_KEYS);
+    const compatible = managedBytesMatch(projection, destination);
     records.push(compatible
       ? { section, name: label, severity: 'ok', message: `managed opencode worker ${agentName} is compatible` }
       : { section, name: label, severity: 'error', message: `incompatible opencode worker definition ${agentName}` });

@@ -108,7 +108,6 @@ function tunableSeedInstaller(projection) {
     ? Buffer.from(projection.sourceText, 'utf8')
     : fs.readFileSync(projection.sourcePath);
   const destination = projection.destinationPath;
-  const tunableKeys = projection.harness === 'claude' ? CLAUDE_TUNABLE_KEYS : OPENCODE_TUNABLE_KEYS;
   ensureDir(path.dirname(destination));
   let outcome;
   if (!fs.existsSync(destination)) {
@@ -116,12 +115,11 @@ function tunableSeedInstaller(projection) {
     outcome = 'created';
   } else {
     const destinationBytes = fs.readFileSync(destination);
-    const spliced = spliceTunables(sourceBytes.toString('utf8'), destinationBytes.toString('utf8'), tunableKeys);
-    fs.writeFileSync(destination, spliced);
-    const differs = !stripTunableLines(sourceBytes, tunableKeys).equals(stripTunableLines(destinationBytes, tunableKeys));
+    const differs = !sourceBytes.equals(destinationBytes);
+    fs.writeFileSync(destination, sourceBytes);
     outcome = differs ? 'overwritten' : 'reused';
     if (differs) {
-      console.log(`Notice: managed agent body or non-tunable frontmatter differs from source; overwritten ${destination}`);
+      console.log(`Notice: managed agent differs from source; overwritten ${destination}`);
     }
   }
   deleteSidecarUnderShapeGuard(destination);

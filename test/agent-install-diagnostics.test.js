@@ -111,14 +111,14 @@ test('divergent body produces a notice, not a throw', () => {
     });
     assert.ok(printed.some(line => line.includes(destinationPath)),
       'a stdout notice should name the destination path when the body diverges');
-    assert.ok(fs.readFileSync(destinationPath, 'utf8').includes('model: tuned-model'),
-      'destination tunables should survive a divergent update');
+    assert.ok(fs.readFileSync(destinationPath, 'utf8').includes('model: source-model'),
+      'global install should overwrite destination tunables with source defaults');
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
 
-test('identical body produces no notice', () => {
+test('identical body produces a notice and overwrites tunables', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-tunable-quiet-'));
   try {
     const { sourcePath, destinationPath } = writeFixture(dir,
@@ -126,17 +126,17 @@ test('identical body produces no notice', () => {
       '---\ndescription: Same\nmodel: tuned-model\n---\n\nbody\n');
     const projection = { strategy: 'tunable-seed', harness: 'claude', sourcePath, destinationPath };
     const printed = captureOutput(() => installProjection(projection, dir));
-    assert.ok(!printed.some(line => line.includes(destinationPath)),
-      'no stdout notice should be printed when only tunables differ');
+    assert.ok(printed.some(line => line.includes(destinationPath)),
+      'a stdout notice should be printed when tunables differ');
     const dest = fs.readFileSync(destinationPath, 'utf8');
-    assert.ok(dest.includes('model: tuned-model'), 'the tunable pass should still apply');
+    assert.ok(dest.includes('model: source-model'), 'global install should overwrite tunables with source values');
     assert.ok(dest.includes('description: Same'), 'the body should match the source');
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
 
-test('doctor accepts a destination whose only change is a tunable', async () => {
+test('doctor flags a destination whose only change is a tunable', async () => {
   const projectRoot = makeProjectRoot();
   const claudeBase = path.join(projectRoot, 'claude');
   const opencodeBase = path.join(projectRoot, 'opencode');
@@ -150,14 +150,12 @@ test('doctor accepts a destination whose only change is a tunable', async () => 
     fs.writeFileSync(agentPath, tuned);
 
     const { code, report } = await runDoctor(projectRoot, claudeBase, opencodeBase);
-    assert.equal(code, 0);
+    assert.equal(code, 1);
     const record = findRecords(report, '[Opencode]')
       .find(entry => entry.name === 'sai-2-design-worker');
     assert.ok(record, 'doctor should enumerate the tuned design worker');
-    assert.equal(record.severity, 'ok',
-      'a destination whose only change is a tunable should be accepted');
-    assert.doesNotMatch(record.message || '', /\bmodel\b|\bvariant\b|\beffort\b/i,
-      'the record message must not name the tunable key');
+    assert.equal(record.severity, 'error',
+      'a destination whose only change is a tunable should be flagged as drift');
   } finally {
     fs.rmSync(projectRoot, { recursive: true, force: true });
   }

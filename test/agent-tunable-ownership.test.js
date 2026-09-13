@@ -113,124 +113,121 @@ test('first install writes source verbatim', () => {
   }
 });
 
-test('body and non-tunable frontmatter are overwritten', () => {
+test('global reinstall overwrites customized models with repo defaults', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-tunable-overwrite-'));
   try {
     const source = '---\ndescription: Source command\nmodel: source-model\neffort: source-effort\n---\n\nSource body.\n';
     const dest = installTunableSeed(dir, source,
       '---\ndescription: Dest command\nmodel: tuned-model\neffort: tuned-effort\n---\n\nDest body.\n');
-    assert.equal(stripTunableLines(dest), stripTunableLines(source),
-      'body and non-tunable frontmatter should match the source after the tunable pass');
-    assert.ok(dest.includes('model: tuned-model') && dest.includes('effort: tuned-effort'),
-      'destination tunable lines should retain their pre-install values');
-    assert.ok(!dest.includes('model: source-model') && !dest.includes('effort: source-effort'),
-      'source tunable values should not overwrite destination tunables');
+    assert.equal(dest, source,
+      'global install should overwrite the destination with source bytes verbatim');
+    assert.ok(dest.includes('model: source-model') && dest.includes('effort: source-effort'),
+      'source tunable values should overwrite destination tunables');
+    assert.ok(!dest.includes('model: tuned-model') && !dest.includes('effort: tuned-effort'),
+      'destination tunable customizations should not survive a global reinstall');
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
 
-test('source gains a non-tunable key and the destination tunable stays top-level', () => {
+test('global reinstall overwrites destination with source including tunables', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-tunable-gain-'));
   try {
+    const source = '---\ndescription: Test\ndescription_priority: override\npermission:\n  task:\n    "*": deny\n---\n\nbody\n';
     const dest = installTunableSeed(dir,
-      '---\ndescription: Test\ndescription_priority: override\npermission:\n  task:\n    "*": deny\n---\n\nbody\n',
+      source,
       '---\ndescription: Test\nmodel: tuned-model\npermission:\n  task:\n    "*": deny\n---\n\nbody\n');
+    assert.equal(dest, source,
+      'global install should overwrite the destination with source bytes verbatim');
     assert.ok(dest.includes('description_priority: override'),
-      'a source non-tunable key should be projected into the destination');
-    const modelIndex = lineIndexOf(dest, 'model: tuned-model');
-    const permissionIndex = lineIndexOf(dest, 'permission:');
-    const priorityIndex = lineIndexOf(dest, 'description_priority: override');
-    assert.ok(modelIndex > -1, 'the destination tunable line should be present');
-    assert.ok(permissionIndex > -1 && priorityIndex > -1 &&
-      modelIndex > priorityIndex && modelIndex < permissionIndex,
-      'the model line should follow the last top-level scalar and precede the first nested block');
-    assert.doesNotMatch(dest.split('\n').slice(permissionIndex + 1).join('\n'), /^model:/m,
-      'no model line should appear inside the permission block');
+      'a source non-tunable key should be present after overwrite');
+    assert.ok(!dest.includes('model: tuned-model'),
+      'destination tunable customizations should not survive a global reinstall');
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
 
-test('source loses a non-tunable key and the destination tunable stays top-level', () => {
+test('global reinstall removes stale keys and discards destination tunables', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-tunable-lose-'));
   try {
+    const source = '---\ndescription: Test\npermission:\n  edit: allow\n---\n\nbody\n';
     const dest = installTunableSeed(dir,
-      '---\ndescription: Test\npermission:\n  edit: allow\n---\n\nbody\n',
+      source,
       '---\ndescription: Test\neffort: tuned-effort\ndescription_priority: stale\npermission:\n  edit: allow\n---\n\nbody\n');
+    assert.equal(dest, source,
+      'global install should overwrite the destination with source bytes verbatim');
     assert.ok(!dest.includes('description_priority'),
       'a non-tunable key absent from the source should be removed from the destination');
-    const effortIndex = lineIndexOf(dest, 'effort: tuned-effort');
-    const permissionIndex = lineIndexOf(dest, 'permission:');
-    const descriptionIndex = lineIndexOf(dest, 'description: Test');
-    assert.ok(effortIndex > -1 && permissionIndex > -1 && descriptionIndex > -1 &&
-      effortIndex > descriptionIndex && effortIndex < permissionIndex,
-      'the effort line should follow the last top-level scalar and precede the first nested block');
+    assert.ok(!dest.includes('effort: tuned-effort'),
+      'destination tunable customizations should not survive a global reinstall');
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
 
-test('destination tunable is never emitted inside the permission block', () => {
+test('global reinstall overwrites permission-block destinations with source bytes', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-tunable-permission-'));
   try {
+    const source = '---\ndescription: Test\npermission:\n  edit: "**"\n  task:\n    "*": deny\n---\n\nbody\n';
     const dest = installTunableSeed(dir,
-      '---\ndescription: Test\npermission:\n  edit: "**"\n  task:\n    "*": deny\n---\n\nbody\n',
+      source,
       '---\ndescription: Test\nmodel: tuned-model\npermission:\n  edit: "**"\n  task:\n    "*": deny\n---\n\nbody\n',
       'opencode');
-    const modelIndex = lineIndexOf(dest, 'model: tuned-model');
-    const permissionIndex = lineIndexOf(dest, 'permission:');
-    assert.ok(modelIndex > -1, 'the destination model line should be present');
-    assert.ok(permissionIndex > -1 && modelIndex < permissionIndex,
-      'the model line should sit above the permission block');
-    assert.doesNotMatch(dest.split('\n').slice(permissionIndex + 1).join('\n'), /^\s*model:/m,
-      'no model line should appear inside the permission block');
+    assert.equal(dest, source,
+      'global install should overwrite the destination with source bytes verbatim');
+    assert.ok(!dest.includes('model: tuned-model'),
+      'destination tunable customizations should not survive a global reinstall');
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
 
-test('tunable lines appear in source order with destination values', () => {
+test('global reinstall overwrites tunable lines with source values', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-tunable-order-'));
   try {
+    const source = '---\ndescription: Test\nmodel: source-model\neffort: source-effort\n---\n\nbody\n';
     const dest = installTunableSeed(dir,
-      '---\ndescription: Test\nmodel: source-model\neffort: source-effort\n---\n\nbody\n',
+      source,
       '---\ndescription: Test\neffort: tuned-effort\nmodel: tuned-model\n---\n\nbody\n');
-    const modelIndex = lineIndexOf(dest, 'model: tuned-model');
-    const effortIndex = lineIndexOf(dest, 'effort: tuned-effort');
-    assert.ok(modelIndex > -1 && effortIndex > -1 && modelIndex < effortIndex,
-      'destination tunable lines should appear in source order with destination values');
-    assert.ok(!dest.includes('model: source-model') && !dest.includes('effort: source-effort'),
-      'source tunable values should be replaced by the destination values');
+    assert.equal(dest, source,
+      'global install should overwrite the destination with source bytes verbatim');
+    assert.ok(dest.includes('model: source-model') && dest.includes('effort: source-effort'),
+      'source tunable values should overwrite destination tunables');
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
 
-test('a destination tunable with no source counterpart is preserved', () => {
+test('global reinstall discards destination-only tunables', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-tunable-preserve-'));
   try {
+    const source = '---\ndescription: Test\nmodel: source-model\n---\n\nbody\n';
     const dest = installTunableSeed(dir,
-      '---\ndescription: Test\nmodel: source-model\n---\n\nbody\n',
+      source,
       '---\ndescription: Test\nmodel: tuned-model\neffort: tuned-effort\n---\n\nbody\n');
-    assert.ok(dest.includes('effort: tuned-effort'),
-      'a destination tunable without a source counterpart should be preserved');
-    assert.ok(dest.includes('model: tuned-model'),
-      'a destination tunable with a source counterpart should keep its value');
+    assert.equal(dest, source,
+      'global install should overwrite the destination with source bytes verbatim');
+    assert.ok(!dest.includes('effort: tuned-effort'),
+      'a destination-only tunable should not survive a global reinstall');
+    assert.ok(dest.includes('model: source-model'),
+      'the source tunable value should overwrite the destination');
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
 
-test('an absent tunable stays absent', () => {
+test('global reinstall seeds source tunables into the destination', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-tunable-absent-'));
   try {
+    const source = '---\ndescription: Test\nmodel: source-model\neffort: source-effort\n---\n\nbody\n';
     const dest = installTunableSeed(dir,
-      '---\ndescription: Test\nmodel: source-model\neffort: source-effort\n---\n\nbody\n',
+      source,
       '---\ndescription: Test\n---\n\nbody\n');
-    assert.doesNotMatch(dest, /^model:/m, 'model should not be re-seeded into the destination');
-    assert.doesNotMatch(dest, /^effort:/m, 'effort should not be re-seeded into the destination');
-    assert.ok(dest.includes('description: Test'), 'the destination frontmatter should remain intact');
+    assert.equal(dest, source,
+      'global install should overwrite the destination with source bytes verbatim');
+    assert.ok(dest.includes('model: source-model') && dest.includes('effort: source-effort'),
+      'source tunables should be seeded into the destination');
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
@@ -275,8 +272,8 @@ test('extraction does not require a YAML library', () => {
     }
     assert.ok(!requested.some(name => /yaml/i.test(name)),
       'the tunable extraction path must not require a YAML parser');
-    assert.ok(fs.readFileSync(destinationPath, 'utf8').includes('model: tuned-model'),
-      'the tunable pass should still apply');
+    assert.ok(fs.readFileSync(destinationPath, 'utf8').includes('model: source-model'),
+      'global install should overwrite destination tunables with source values');
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }

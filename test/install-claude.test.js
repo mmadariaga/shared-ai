@@ -519,7 +519,7 @@ test('Claude installer projects the three budget-agent destinations with role-ma
   }
 });
 
-test('installClaude replaces a foreign Claude budget-agent destination while preserving its tunables and emitting a notice', () => {
+test('installClaude replaces a foreign Claude budget-agent destination with source defaults and emitting a notice', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-budget-foreign-'));
   const agentPath = path.join(tmpDir, 'agents', 'budget-explorer.md');
   try {
@@ -530,10 +530,10 @@ test('installClaude replaces a foreign Claude budget-agent destination while pre
         'installClaude should not throw on a foreign budget-agent destination');
     });
     const after = fs.readFileSync(agentPath, 'utf8');
-    assert.ok(after.includes('model: foreign-model'),
-      'the foreign destination model should be preserved across the managed install');
-    assert.ok(after.includes('effort: foreign-effort'),
-      'the foreign destination effort should be preserved across the managed install');
+    assert.ok(!after.includes('model: foreign-model'),
+      'the foreign destination model should be overwritten with repo defaults');
+    assert.ok(!after.includes('effort: foreign-effort'),
+      'the foreign destination effort should be overwritten with repo defaults');
     assert.ok(!after.includes('foreign body'),
       'the foreign body should be replaced by the managed source content');
     assert.ok(notices.some(message => message.includes(agentPath)),
@@ -543,7 +543,7 @@ test('installClaude replaces a foreign Claude budget-agent destination while pre
   }
 });
 
-test('installClaude preserves tuned tunables and overwrites divergent bodies with notice', () => {
+test('installClaude overwrites tuned tunables and divergent bodies with notice', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-tuned-'));
   const agentPath = path.join(tmpDir, 'agents', 'sai-5-review-worker.md');
   const sidecarPath = path.join(tmpDir, 'agents', '.sai-5-review-worker.owner.json');
@@ -565,12 +565,10 @@ test('installClaude preserves tuned tunables and overwrites divergent bodies wit
     assert.equal(reinstallError, null,
       'installClaude should not throw on a tuned agent destination');
     const after = fs.readFileSync(agentPath, 'utf8');
-    assert.ok(after.includes('model: tuned-review-model'),
-      'the tuned model value should survive a re-install');
-    assert.ok(after.includes('effort: high'),
-      'the tuned effort value should survive a re-install');
-    assert.equal(stripTunableLines(after), stripTunableLines(sourceBytes.toString('utf8')),
-      'body and non-tunable frontmatter should match the source');
+    assert.deepEqual(Buffer.from(after), sourceBytes,
+      'a tuned destination should be overwritten with repo defaults');
+    assert.ok(!after.includes('model: tuned-review-model'),
+      'the tuned model value should not survive a re-install');
     assert.equal(fs.existsSync(sidecarPath), false,
       'no owner sidecar should exist after a tuned re-install');
 
@@ -609,7 +607,7 @@ test('installClaude overwrites stale command wrappers', () => {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-test('installClaude re-install preserves tuned values and never recreates ownership', () => {
+test('installClaude re-install overwrites tuned values and never recreates ownership', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-'));
   try {
     installClaude(tmpDir);
@@ -636,12 +634,10 @@ test('installClaude re-install preserves tuned values and never recreates owners
     assert.equal(reinstallError, null,
       'installClaude should not throw on a tuned agent destination');
     const after = fs.readFileSync(agentPath, 'utf8');
-    assert.ok(after.includes('model: tuned-model') && after.includes('effort: tuned-effort'),
-      'tuned values should survive a re-install');
-    assert.equal(stripTunableLines(after), stripTunableLines(sourceBytes.toString('utf8')),
-      'body and non-tunable frontmatter should match the source after a re-install');
-    assert.ok(!notices.some(message => message.includes(agentPath)),
-      'a tunable-only difference should not print an overwrite notice');
+    assert.deepEqual(Buffer.from(after), sourceBytes,
+      'tuned values should be overwritten with repo defaults on re-install');
+    assert.ok(notices.some(message => message.includes(agentPath)),
+      'a tunable-only difference should print an overwrite notice');
     assert.equal(fs.existsSync(sidecarPath), false,
       'a re-install must not create an owner sidecar');
   } finally {

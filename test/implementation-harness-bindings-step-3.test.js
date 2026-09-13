@@ -139,7 +139,7 @@ test('Step 3 manifest projects the shared lifecycle and one active harness bindi
   }
 });
 
-test('a tuned Claude worker preserves its tunables across install and is removed by uninstall', () => {
+test('a tuned Claude worker is overwritten with repo defaults and is removed by uninstall', () => {
   const base = tempDir('sai-step-3-claude-');
   try {
     installClaude(base);
@@ -159,15 +159,13 @@ test('a tuned Claude worker preserves its tunables across install and is removed
     }
     assert.equal(installError, null, 're-install should not throw on a tuned destination');
     const after = fs.readFileSync(workerPath, 'utf8');
-    assert.ok(after.includes('model: tuned-model') && after.includes('effort: tuned-effort'),
-      'tuned values should survive a re-install');
-    assert.equal(stripTunableLines(after), stripTunableLines(sourceBytes.toString('utf8')),
-      'body and non-tunable frontmatter should match the source after a re-install');
+    assert.deepEqual(Buffer.from(after), sourceBytes,
+      'a tuned destination should be overwritten with repo defaults');
     assert.equal(fs.existsSync(ownerPath), false, 'no owner sidecar should exist');
 
     runDeletion(enumerateClaude(base));
     assert.equal(fs.existsSync(workerPath), false,
-      'a tuned body-matching worker should be deleted by uninstall');
+      'an overwritten worker should be deleted by uninstall');
   } finally {
     fs.rmSync(base, { recursive: true, force: true });
   }

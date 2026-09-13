@@ -2,27 +2,21 @@
 
 ## Purpose
 Diagnostics for managed agent projection installs and doctor checks. The installer emits a console notice when an overwrite changes the destination body or non-tunable frontmatter; doctor compares body and non-tunable frontmatter only (tunable lines are ignored), reports missing agent files with a re-install hint, and never reports owner-sidecar files.
-
 ## Requirements
-
 ### Requirement: doctor compares body and non-tunable frontmatter only
-
-The `doctor` managed-asset check MUST compute, for each managed agent projection, a `managedDiff` that compares only the body and the non-tunable frontmatter of the destination against the source. Tunable lines (`model`, `effort` for Claude; `model`, `variant` for opencode) MUST be stripped from both the destination and the source before the comparison. Differences in the stripped lines, including presence, value, and absence, MUST NOT produce a record.
-
+The doctor managed-asset check SHALL compare destination agent files against source bytes exactly, including model, effort, and variant lines. A destination whose only difference is a tunable value SHALL be reported as an error naming the agent. A destination differing in body or non-tunable frontmatter SHALL be reported as an error naming the file. The check SHALL emit a record for every managed agent projection.
 #### Scenario: doctor accepts a destination whose only change is a tunable
-- **WHEN** a destination agent file is byte-identical to the source except that one or more tunable lines have been added, removed, or changed
-- **THEN** the doctor record for that agent has `severity` equal to `ok`
-- **AND** the doctor does not emit any record whose message names the tunable key
-
+- **WHEN** a destination is byte-identical to the source except tunable lines were added, removed, or changed
+- **THEN** the doctor reports an error for that agent naming the file because tunable-only drift is no longer accepted
 #### Scenario: doctor flags a destination whose body or non-tunable frontmatter changed
-- **WHEN** a destination agent file differs from the source in the body or in a non-tunable frontmatter line
-- **THEN** the doctor record for that agent has `severity` equal to `error`
-- **AND** the doctor message names the agent file
-
+- **WHEN** a destination differs from the source in body or non-tunable frontmatter
+- **THEN** the doctor reports an error naming the agent file
 #### Scenario: doctor reports every managed agent projection
 - **WHEN** the doctor managed-asset check runs
-- **THEN** it emits a record for every agent destination the manifest declares as a managed agent projection
-- **AND** this holds for all 7 Claude and all 7 opencode managed agent destinations
+- **THEN** it emits a record for every declared managed agent projection
+#### Scenario: doctor flags tunable-only drift as error
+- **WHEN** a destination differs from source only in tunable lines
+- **THEN** the doctor reports an error for that agent
 
 ### Requirement: doctor reports missing agent files
 
@@ -34,18 +28,16 @@ The `doctor` managed-asset check MUST report a missing destination agent file as
 - **AND** the doctor message matches the regular expression `/re-?install/i`
 
 ### Requirement: installer overwrites divergent body with a console notice
-
-When the installer overwrites a destination agent file whose body or non-tunable frontmatter differs from the source, the installer MUST emit a console notice that names the destination path, and MUST NOT throw.
-
+The installer SHALL overwrite any destination whose bytes differ from source, including tunable-only differences, with source bytes verbatim and SHALL emit a console notice naming the destination path. Identical bytes SHALL produce no notice.
 #### Scenario: divergent body produces a notice, not a throw
-- **WHEN** the destination exists and its body or non-tunable frontmatter differs from the source
-- **THEN** the installer writes the source-overwritten content to the destination
-- **AND** the installer writes a line to stdout that names the destination path
-- **AND** the installer returns normally
-
+- **WHEN** a destination exists with body, non-tunable, or tunable differences from source
+- **THEN** the installer writes source bytes verbatim and emits a notice naming the destination without throwing
 #### Scenario: identical body produces no notice
-- **WHEN** the destination exists and its body and non-tunable frontmatter match the source after the tunable-preservation pass
-- **THEN** the installer does not emit a console notice for that destination
+- **WHEN** a destination is byte-identical to source
+- **THEN** the installer emits no console notice for that destination
+#### Scenario: tunable-only difference produces overwrite notice
+- **WHEN** a destination matches source except for tunable values
+- **THEN** the installer overwrites with source bytes and emits a notice naming the destination
 
 ### Requirement: doctor never reports sidecar files
 
@@ -55,3 +47,4 @@ The `doctor` output MUST NOT contain any record whose `name` is `.<agent>.owner.
 - **WHEN** the `doctor` JSON output is inspected
 - **THEN** no record has a `name` field that begins with `.sai-` and ends with `.owner.json`
 - **AND** no record has a `message` field that contains the substring `.owner.json`
+
