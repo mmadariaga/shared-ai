@@ -69,35 +69,37 @@ OpenCode and Claude Code MUST be represented by independent adapters. Each adapt
 - **THEN** the flow MUST call the Claude Code adapter's operations and MUST NOT call OpenCode adapter operations
 
 ### Requirement: Derived target families
-
-The model-customization menu SHALL derive target families from the canonical worker matrix and current wrapper inventory. The command family MUST include the active `sai-*` wrappers only and MUST exclude `budget` after the standalone wrapper is removed. Worker and agent families remain independently derived, so an available `budget` agent remains an agent target. `sai-merge-worker` SHALL remain a routed worker and `sai-merge` SHALL remain a command on both adapters.
-
+The model-customization menu SHALL derive target families from the canonical worker matrix and current wrapper inventory. The command family MUST include the active `sai-*` wrappers only and MUST exclude `budget` after the standalone wrapper is removed. Worker and agent families remain independently derived, so an available `budget` agent remains an agent target. `sai-merge-worker` SHALL remain a routed worker and `sai-merge` SHALL remain a command on both adapters. `sai-commit-worker` SHALL remain a routed worker and `sai-commit` SHALL remain a command on both adapters, with `utility:sai-commit` absent. An existing project-local override for sai-commit SHALL keep resolving without migration because both families resolve to the same commands directory.
 #### Scenario: Merge targets appear in the menu
 
 - **WHEN** the customization menu enumerates configurable targets on either adapter
 - **THEN** the merge worker and command are present in their routed/command families with the updated counts asserted by the suite
-
 #### Scenario: Budget remains an agent but not a command
 - **WHEN** the All scope enumerates targets for a harness with a budget agent
 - **THEN** it includes `agent:budget` and excludes `command:budget`.
+#### Scenario: Commit appears as an orchestrator with its worker
+- **WHEN** the menu enumerates targets for either harness
+- **THEN** sai-commit SHALL appear as command:sai-commit in the command family and sai-commit-worker SHALL remain a routed worker, with utility:sai-commit absent
 
 ### Requirement: Checklist rows expose task complexity
-
-The model-customization checklist SHALL render columns in the order `TYPE`, `TARGET`, `TASK COMPLEXITY`, and `SETTING` for every target in both OpenCode and Claude Code flows. Headers, separators, and rows SHALL remain aligned, and existing setting text SHALL remain unchanged.
-
+The model-customization checklist SHALL render columns in the order `TYPE`, `TARGET`, `TASK COMPLEXITY`, and `SETTING` for every target in both OpenCode and Claude Code flows. Headers, separators, and rows SHALL remain aligned, and existing setting text SHALL remain unchanged. `worker:sai-4-green-worker` SHALL display a double up-arrow.
 #### Scenario: Display complexity in both harnesses
 
 - **WHEN** a user opens a customization checklist in either supported harness
 - **THEN** each target row displays an arrow-based complexity value between its target name and setting text while preserving the existing selection identity
+#### Scenario: Green worker shows raised complexity with aligned columns
+- **WHEN** a user opens a customization checklist in either harness
+- **THEN** the worker:sai-4-green-worker row SHALL show a double up-arrow between its target name and setting text with alignment and setting text preserved
 
 ### Requirement: Complexity uses family-qualified target identities
-
-The customization logic SHALL resolve task complexity by complete family-qualified identity, including the `worker:`, `agent:`, `command:`, or `utility:` prefix. Configured values MUST be one of `↑`, `↑↑`, or `↑↑↑`; an unmapped identity SHALL resolve to `↑`. Stable selection values, family grouping, alphabetical ordering, and settings rendering SHALL remain unchanged.
-
+The customization logic SHALL resolve task complexity by complete family-qualified identity, including the `worker:`, `agent:`, `command:`, or `utility:` prefix. Configured values MUST be one of `↑`, `↑↑`, or `↑↑↑`; an unmapped identity SHALL resolve to `↑`. Stable selection values, family grouping, alphabetical ordering, and settings rendering SHALL remain unchanged. `command:sai-commit` SHALL resolve to a single up-arrow and `worker:sai-4-green-worker` SHALL resolve to a double up-arrow, with `utility:sai-commit` absent.
 #### Scenario: Prevent bare-name taxonomy collisions
 
 - **WHEN** complexity is resolved for targets with family-qualified identities such as `agent:budget` and `command:sai-2-design`
 - **THEN** each lookup uses its complete identity rather than a bare target name, and the resulting display value remains one of the permitted arrow levels
+#### Scenario: Family-qualified lookup reflects promotion and bump
+- **WHEN** complexity is resolved for command:sai-commit and worker:sai-4-green-worker
+- **THEN** each lookup SHALL use its complete identity and return the promoted single-arrow and raised double-arrow values within the permitted set
 
 ### Requirement: Shared settings selection
 After the target-selection checklist confirms a non-empty subset and before any local override is created, the flow SHALL invoke the selected harness's settings selector exactly once for the whole confirmed subset in that customization pass. The collected settings choices — a model and an optional effort choice for Claude Code, and a discovered model with an optional variant for OpenCode — SHALL be passed to the per-target local-override operation once for every selected target. A per-target skipped result means the operation was attempted but its source was unavailable; it SHALL not be treated as a settings-selector failure or prevent later targets from being attempted. In `All` scope, the selector SHALL run once and the same settings SHALL be passed to every marked target across all selected families, with no per-family differentiation within a pass. Because the model-customization checklist rejects empty confirmation, the settings selector SHALL never be invoked for an empty selection.
@@ -313,43 +315,37 @@ For every traversed target, the selected harness adapter MUST invoke a local-ove
 - **THEN** the operation SHALL report a persistence failure with a diagnostic for that target and SHALL continue processing the remaining targets
 
 ### Requirement: Navigable target-selection checklist
-The empty-enumeration notice SHALL read `No customization targets are available for the selected scope.` After scope selection and before per-target configuration, the flow SHALL present a navigable multi-select checklist listing every target of the chosen family — or every family in `All` scope — derived from the canonical manifest projections and Worker Matrix metadata in `sai/install-manifest.json` for the chosen harness, with every target selected by default when at least one target exists. The command family SHALL enumerate only active `sai-*` wrappers and SHALL NOT produce a `command:budget` target after the standalone wrapper is removed; independently derived worker and agent families MAY still contain budget targets. Up/down arrows SHALL move the `>` cursor, space SHALL toggle the highlighted target's selection, and Enter SHALL confirm the selection only when at least one target is marked. Rows SHALL retain stable family-prefixed identities (`worker:`, `agent:`, `command:`, or `utility:`) as their confirmed selection values while their display labels render as aligned TYPE/TARGET/SETTING table columns under a two-line English header; display labels SHALL remain separate from the confirmed stable values. The header SHALL render between the question and the option rows starting under the six-character option prefix, carrying TYPE/TARGET/SETTING titles above a U+2500 dash separator row sized to the same widths as the row columns, and its lines SHALL be non-selectable decoration excluded from cursor movement and toggling while included in redraw bookkeeping. In single-family scopes the checklist SHALL keep alphabetical target order with no separators. In All scope the checklist SHALL use the logical pipeline order with phase separators instead of family-alphabetical command blocks: alphabetical agents first, then the phased middle block in four fixed phases, then alphabetical utilities after a blank. Stepping back from the target checklist MUST re-open the scope screen. The flow SHALL run per-target configuration exactly for the selected targets in checklist order, and SHALL preserve that order for diagnostics. If the adapter enumerates no targets, it SHALL print the empty-enumeration notice before building any header or labels and return to the scope screen without opening a zero-row checklist.
-
+The empty-enumeration notice SHALL read `No customization targets are available for the selected scope.` After scope selection and before per-target configuration, the flow SHALL present a navigable multi-select checklist listing every target of the chosen family — or every family in `All` scope — derived from the canonical manifest projections and Worker Matrix metadata in `sai/install-manifest.json` for the chosen harness, with every target selected by default when at least one target exists. The command family SHALL enumerate only active `sai-*` wrappers and SHALL NOT produce a `command:budget` target after the standalone wrapper is removed; independently derived worker and agent families MAY still contain budget targets. Up/down arrows SHALL move the `>` cursor, space SHALL toggle the highlighted target's selection, and Enter SHALL confirm the selection only when at least one target is marked. Rows SHALL retain stable family-prefixed identities (`worker:`, `agent:`, `command:`, or `utility:`) as their confirmed selection values while their display labels render as aligned TYPE/TARGET/SETTING table columns under a two-line English header; display labels SHALL remain separate from the confirmed stable values. The header SHALL render between the question and the option rows starting under the six-character option prefix, carrying TYPE/TARGET/SETTING titles above a U+2500 dash separator row sized to the same widths as the row columns, and its lines SHALL be non-selectable decoration excluded from cursor movement and toggling while included in redraw bookkeeping. In single-family scopes the checklist SHALL keep alphabetical target order with no separators. In All scope the checklist SHALL use the logical pipeline order with phase separators instead of family-alphabetical command blocks: alphabetical agents first, then the phased middle block in four fixed phases, then alphabetical utilities after a blank. Stepping back from the target checklist MUST re-open the scope screen. The flow SHALL run per-target configuration exactly for the selected targets in checklist order, and SHALL preserve that order for diagnostics. If the adapter enumerates no targets, it SHALL print the empty-enumeration notice before building any header or labels and return to the scope screen without opening a zero-row checklist. Phase 4 SHALL order `sai-backfill`, `sai-archive`, `sai-merge`, and `sai-commit`, with the `sai-commit` orchestrator block ordered directly after the `sai-merge` block and before the utilities separator as ORCHESTRATOR `sai-commit` followed by WORKER `sai-commit-worker`. `COMMAND_WORKER_ORDER` SHALL pair `sai-commit` with `sai-commit-worker`.
 #### Scenario: Target checklist renders its table header above the options
 - **WHEN** the model-customization target checklist is rendered with available targets
 - **THEN** a two-line TYPE/TARGET/SETTING header SHALL appear between the question and the first option row, indented over the option prefix, with dash separators matching the row column widths
-
 #### Scenario: Checklist defaults to all targets selected
 - **WHEN** the user enters the target-selection checklist for a harness and scope
 - **THEN** every target of that scope SHALL be pre-selected when at least one target exists
-
 #### Scenario: User narrows the customization subset
 - **WHEN** the user deselects one or more targets and confirms with Enter
 - **THEN** per-target configuration SHALL run only for the targets remaining selected
-
 #### Scenario: All mode omits the removed command
 - **WHEN** the OpenCode All-scope checklist is rendered after the budget wrapper removal
 - **THEN** the checklist contains no `command:budget` row while retaining any independently enumerated `agent:budget` row.
-
 #### Scenario: All mode groups rows by family
 - **WHEN** the user enters the All checklist for a harness
 - **THEN** family-grouped alphabetical command blocks SHALL be superseded; stable family-prefixed identities SHALL be retained as selection values while All order SHALL follow logical pipeline phases with separators
-
 #### Scenario: Empty selection remains on the checklist
 - **WHEN** the user deselects every target and presses Enter
 - **THEN** the navigator SHALL refuse confirmation, the checklist SHALL remain open, and no settings or target configuration SHALL run until the user marks a target or navigates back or cancels
-
 #### Scenario: Empty target enumeration returns to scope
 - **WHEN** the selected adapter enumerates no targets for the chosen scope
 - **THEN** the flow SHALL print the notice once and return to the scope screen without opening a checklist or rendering a header
-
 #### Scenario: All mode uses logical pipeline order
 - **WHEN** the user enters the All checklist for a harness
 - **THEN** the system SHALL present targets in logical pipeline order with phase separators while keeping stable prefixed values
-
 #### Scenario: Single-family scope stays alphabetical
 - **WHEN** the user selects Workers, Agents, Orchestrators, or Utilities
 - **THEN** the system SHALL present exactly that family in alphabetical order with no separators
+#### Scenario: All tail orders merge block then commit block before utilities
+- **WHEN** the user enters the All checklist for a harness
+- **THEN** the system SHALL present the sai-merge block, then the sai-commit orchestrator-plus-worker block, then the separator with utilities sai-pr, sai-retire-docs, sai-status, and sai-worktree
 
 ### Requirement: Navigable cancellation aborts customization
 When the user presses `q` or Ctrl-C at any navigable surface — the post-setup menu, the harness picker, the customization scope screen, the target-selection checklist, the Claude Code combined model/effort frame, or any OpenCode provider, model, or variant screen — the flow SHALL cancel the entire customization run: no target SHALL be configured, no further navigable surface SHALL be presented, and the flow SHALL complete normally without hard-exiting the process (the configurator's non-exit contract, in contrast to the installer's caller-owned exit policy).

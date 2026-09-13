@@ -12,7 +12,7 @@ const {
   createOpencodeAdapter,
 } = require('../bin/model-customization.js');
 
-const UTILITY_NAMES = ['sai-commit', 'sai-pr', 'sai-retire-docs', 'sai-status', 'sai-worktree'];
+const UTILITY_NAMES = ['sai-pr', 'sai-retire-docs', 'sai-status', 'sai-worktree'];
 const SCRATCH_ROOT = path.join(__dirname, '..', '.tmp', 'customize-command-models', 'utility-source-root');
 const ROOTS = [];
 
