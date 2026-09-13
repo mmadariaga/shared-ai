@@ -13,7 +13,7 @@ const {
   CHECKLIST_SEPARATOR,
 } = require('./install-flow.js');
 
-const MENU_OPTIONS = Object.freeze(['Customize models', 'Exit']);
+const MENU_OPTIONS = Object.freeze(['Customize models', 'Reset to default models', 'Exit']);
 const HARNESS_OPTIONS = Object.freeze(['OpenCode', 'Claude Code']);
 const SCOPE_OPTIONS = Object.freeze(['All', 'Agents', 'Orchestrators', 'Workers', 'Utilities']);
 const MODEL_CHECKLIST_LEGEND = 'Up/Down move · Space toggle · Enter confirm · ←/Esc back · q/Ctrl-C cancel';
@@ -424,6 +424,133 @@ function effectiveSetting(targetEntry, projectPath, globalAgentRoot, globalComma
     || 'unavailable';
 }
 
+function localOverridePath(targetEntry, projectPath, harness) {
+  const family = typeof targetEntry === 'string' ? 'worker' : (targetEntry.family || 'worker');
+  const name = typeof targetEntry === 'string' ? targetEntry : targetEntry.name;
+  const directory = family === 'command' || family === 'utility' ? 'commands' : 'agents';
+  const base = harness === 'claude'
+    ? path.join(projectPath, '.claude', directory)
+    : path.join(projectPath, '.opencode', directory);
+  return path.join(base, `${name}.md`);
+}
+
+function localOverrideExists(targetEntry, projectPath, harness) {
+  try {
+    return fs.existsSync(localOverridePath(targetEntry, projectPath, harness));
+  } catch {
+    return false;
+  }
+}
+
+function factorySetting(targetEntry, projectPath, globalAgentRoot, globalCommandRoot, harness) {
+  const directory = targetEntry.family === 'command' || targetEntry.family === 'utility' ? 'commands' : 'agents';
+  const globalRoot = directory === 'commands' ? globalCommandRoot : globalAgentRoot;
+  if (!globalRoot) return 'unavailable';
+  return readFrontmatterSettings(path.join(globalRoot, `${targetEntry.name}.md`), harness)
+    || 'unavailable';
+}
+
+function resetLocalOverrideToFactory({
+  agentName,
+  projectPath,
+  globalAgentRoot,
+  globalCommandRoot,
+  harness,
+  family = 'worker',
+}) {
+  const familyDirectory = family === 'command' || family === 'utility' ? 'commands' : 'agents';
+  const localDirectory = harness === 'claude'
+    ? path.join(projectPath, '.claude', familyDirectory)
+    : path.join(projectPath, '.opencode', familyDirectory);
+  const destination = path.join(localDirectory, `${agentName}.md`);
+  const sourceRoot = family === 'command' || family === 'utility' ? globalCommandRoot : globalAgentRoot;
+  const source = sourceRoot ? path.join(sourceRoot, `${agentName}.md`) : null;
+  const tunableKeys = harness === 'claude' ? ['model', 'effort'] : ['model', 'variant'];
+
+  if (!fs.existsSync(destination)) {
+    return {
+      status: 'skipped',
+      agent: agentName,
+      reason: 'missing-local',
+      diagnostic: `Skipped ${agentName}: project-local override is unavailable.`,
+    };
+  }
+
+  if (!source || !fs.existsSync(source)) {
+    return {
+      status: 'skipped',
+      agent: agentName,
+      reason: 'missing-source',
+      diagnostic: `Skipped ${agentName}: installed source is unavailable.`,
+    };
+  }
+
+  let globalText;
+  try {
+    globalText = fs.readFileSync(source, 'utf8');
+  } catch {
+    return {
+      status: 'skipped',
+      agent: agentName,
+      reason: 'missing-source',
+      diagnostic: `Skipped ${agentName}: installed source is unavailable.`,
+    };
+  }
+
+  let localText;
+  try {
+    localText = fs.readFileSync(destination, 'utf8');
+  } catch (error) {
+    return materializationFailure(
+      agentName,
+      `Unable to read the project-local target for ${agentName}: ${error.message}`
+    );
+  }
+
+  const globalSplit = splitFrontmatter(globalText);
+  if (globalSplit === null) {
+    return {
+      status: 'skipped',
+      agent: agentName,
+      reason: 'missing-source',
+      diagnostic: `Skipped ${agentName}: installed source is unavailable.`,
+    };
+  }
+
+  const factorySettings = {};
+  for (const line of globalSplit.lines.slice(1, globalSplit.endIndex)) {
+    const match = TOP_LEVEL_SCALAR.exec(line);
+    if (match && tunableKeys.includes(match[1]) && !(match[1] in factorySettings)) {
+      const value = match[2].trim();
+      if (value !== '') factorySettings[match[1]] = value;
+    }
+  }
+
+  if (!factorySettings.model) {
+    return {
+      status: 'skipped',
+      agent: agentName,
+      reason: 'missing-source',
+      diagnostic: `Skipped ${agentName}: installed source is unavailable.`,
+    };
+  }
+
+  const patchedText = patchFrontmatter(localText, tunableKeys, factorySettings);
+  if (patchedText === null) {
+    return materializationFailure(agentName, `Target ${agentName} has no valid frontmatter block.`);
+  }
+
+  const writeError = atomicReplace(destination, patchedText);
+  if (writeError !== null) {
+    return materializationFailure(
+      agentName,
+      `Unable to persist ${destination}: ${writeError.message}`
+    );
+  }
+
+  return { status: 'persisted', agent: agentName, destination };
+}
+
 function isConcreteClaudeCatalogValue(value) {
   return typeof value === 'string'
     && value !== ''
@@ -759,6 +886,20 @@ function createClaudeAdapter({
     enumerateCommands: () => enumerateCommands(packageRoot, loadManifestOverride, 'claude'),
     enumerateTargets: () => enumerateProjectionTargets(packageRoot, loadManifestOverride, 'claude'),
     effectiveSetting: (targetEntry) => effectiveSetting(targetEntry, projectPath, globalAgentRoot, globalCommandRoot, 'claude'),
+    factorySetting: (targetEntry) => factorySetting(targetEntry, projectPath, globalAgentRoot, globalCommandRoot, 'claude'),
+    localOverrideExists: (targetEntry) => localOverrideExists(targetEntry, projectPath, 'claude'),
+    resetLocalOverride: (target) => {
+      const family = typeof target === 'string' ? 'worker' : (target.family || 'worker');
+      const targetName = typeof target === 'string' ? target : target.name;
+      return resetLocalOverrideToFactory({
+        agentName: targetName,
+        projectPath,
+        globalAgentRoot,
+        globalCommandRoot,
+        harness: 'claude',
+        family,
+      });
+    },
     selectSettings: subsetLabel => selectClaudeSettings(subsetLabel, promptChoice, settingsCatalog),
     createLocalOverride: (target, settings) => {
       const family = typeof target === 'string' ? 'worker' : target.family;
@@ -795,6 +936,20 @@ function createOpencodeAdapter({
     enumerateCommands: () => enumerateCommands(packageRoot, loadManifestOverride, 'opencode'),
     enumerateTargets: () => enumerateProjectionTargets(packageRoot, loadManifestOverride, 'opencode'),
     effectiveSetting: (targetEntry) => effectiveSetting(targetEntry, projectPath, effectiveAgentRoot, effectiveCommandRoot, 'opencode'),
+    factorySetting: (targetEntry) => factorySetting(targetEntry, projectPath, effectiveAgentRoot, effectiveCommandRoot, 'opencode'),
+    localOverrideExists: (targetEntry) => localOverrideExists(targetEntry, projectPath, 'opencode'),
+    resetLocalOverride: (target) => {
+      const family = typeof target === 'string' ? 'worker' : (target.family || 'worker');
+      const targetName = typeof target === 'string' ? target : target.name;
+      return resetLocalOverrideToFactory({
+        agentName: targetName,
+        projectPath,
+        globalAgentRoot: effectiveAgentRoot,
+        globalCommandRoot: effectiveCommandRoot,
+        harness: 'opencode',
+        family,
+      });
+    },
     selectSettings: subsetLabel => opencodeSelectSettings(subsetLabel, promptChoice, runCommand),
     createLocalOverride: (target, settings) => {
       const family = typeof target === 'string' ? 'worker' : target.family;
@@ -842,6 +997,7 @@ async function runPostSetupMenu({
     let scope = null;
     let selectedTargets = null;
     let settings = null;
+    let mode = null;
 
     for (;;) {
       if (screen === 'menu') {
@@ -853,9 +1009,17 @@ async function runPostSetupMenu({
         );
         if (action === BACK) continue;
         if (action === null || action === 'Exit') return skippedOutcome('cancelled');
-        if (action !== 'Customize models') return skippedOutcome('cancelled');
-        screen = 'harness';
-        continue;
+        if (action === 'Customize models') {
+          mode = 'customize';
+          screen = 'harness';
+          continue;
+        }
+        if (action === 'Reset to default models') {
+          mode = 'reset';
+          screen = 'harness';
+          continue;
+        }
+        return skippedOutcome('cancelled');
       }
 
       if (screen === 'harness') {
@@ -867,7 +1031,7 @@ async function runPostSetupMenu({
         if (chosen === null) return skippedOutcome('cancelled');
         if (chosen !== 'OpenCode' && chosen !== 'Claude Code') return skippedOutcome('cancelled');
         harness = chosen;
-        screen = 'scope';
+        screen = mode === 'reset' ? 'reset-targets' : 'scope';
         continue;
       }
 
@@ -882,6 +1046,111 @@ async function runPostSetupMenu({
         scope = chosen;
         screen = 'targets';
         continue;
+      }
+
+      if (screen === 'reset-targets') {
+        adapter = harness === 'OpenCode'
+          ? module.exports.createOpencodeAdapter({
+            projectPath,
+            packageRoot,
+            globalAgentRoot: effectiveOpencodeAgentRoot,
+            globalCommandRoot: effectiveOpencodeCommandRoot,
+            promptChoice,
+          })
+          : module.exports.createClaudeAdapter({
+            projectPath,
+            packageRoot,
+            globalAgentRoot: claudeGlobalAgentRoot,
+            globalCommandRoot: claudeGlobalCommandRoot,
+            promptChoice,
+          });
+        const resetFamilies = typeof adapter.enumerateTargets === 'function'
+          ? adapter.enumerateTargets()
+          : {
+            worker: typeof adapter.enumerateWorkers === 'function' ? adapter.enumerateWorkers() : [],
+            agent: [],
+            command: typeof adapter.enumerateCommands === 'function' ? adapter.enumerateCommands() : [],
+            utility: [],
+          };
+        const allResetEntries = buildChecklistTargets('All', resetFamilies);
+        let resetEntries = allResetEntries;
+        if (typeof adapter.localOverrideExists === 'function') {
+          const kept = [];
+          for (const entry of allResetEntries) {
+            if (entry.separator) {
+              kept.push(entry);
+              continue;
+            }
+            let exists = false;
+            try {
+              exists = adapter.localOverrideExists(entry);
+            } catch {
+              exists = false;
+            }
+            if (exists) kept.push(entry);
+          }
+          const pruned = [];
+          for (const entry of kept) {
+            if (entry.separator) {
+              if (pruned.length === 0) continue;
+              if (pruned[pruned.length - 1].separator) continue;
+              pruned.push(entry);
+            } else {
+              pruned.push(entry);
+            }
+          }
+          while (pruned.length > 0 && pruned[pruned.length - 1].separator) pruned.pop();
+          resetEntries = pruned;
+        }
+        const selectableReset = resetEntries.filter(entry => !entry.separator);
+        if (selectableReset.length === 0) {
+          console.log('No project-local model overrides exist for the selected harness.');
+          screen = 'harness';
+          continue;
+        }
+        const resetNameWidth = Math.max(...selectableReset.map(entry => entry.name.length));
+        const resetHeader = [
+          `${MODEL_TABLE_INDENT}${'TYPE'.padEnd(MODEL_TABLE_TYPE_WIDTH)}${MODEL_TABLE_GUTTER}${'TARGET'.padEnd(resetNameWidth)}${MODEL_TABLE_GUTTER}${MODEL_TABLE_COMPLEXITY_HEADER.padEnd(MODEL_TABLE_COMPLEXITY_WIDTH)}${MODEL_TABLE_GUTTER}SETTING`,
+          `${MODEL_TABLE_INDENT}${'─'.repeat(MODEL_TABLE_TYPE_WIDTH)}${MODEL_TABLE_GUTTER}${'─'.repeat(resetNameWidth)}${MODEL_TABLE_GUTTER}${'─'.repeat(MODEL_TABLE_COMPLEXITY_WIDTH)}${MODEL_TABLE_GUTTER}${'─'.repeat('SETTING'.length)}`,
+        ];
+        const resetLabels = resetEntries.map((entry) => {
+          if (entry.separator) return '';
+          let setting = 'unavailable';
+          try {
+            if (typeof adapter.factorySetting === 'function') {
+              setting = adapter.factorySetting(entry) || 'unavailable';
+            } else if (typeof adapter.effectiveSetting === 'function') {
+              setting = adapter.effectiveSetting(entry) || 'unavailable';
+            }
+          } catch {
+            setting = 'unavailable';
+          }
+          if (typeof setting !== 'string' || setting === '') setting = 'unavailable';
+          return `${displayFamily(entry.family).padEnd(MODEL_TABLE_TYPE_WIDTH)}${MODEL_TABLE_GUTTER}${entry.name.padEnd(resetNameWidth)}${MODEL_TABLE_GUTTER}${taskComplexityFor(entry).padEnd(MODEL_TABLE_COMPLEXITY_WIDTH)}${MODEL_TABLE_GUTTER}${setting}`;
+        });
+        const resetTargets = resetEntries.map(entry => entry.value);
+        const resetSelection = await promptChecklist(
+          resetTargets,
+          selectableReset.map(entry => entry.value),
+          undefined,
+          MODEL_CHECKLIST_LEGEND,
+          { preventEmptyConfirm: true, displayOptions: resetLabels, header: resetHeader },
+        );
+        if (!resetSelection || resetSelection.status === 'cancelled') return skippedOutcome('cancelled');
+        if (resetSelection.status === 'non-interactive') return skippedOutcome('non-tty');
+        if (resetSelection.status === 'back') {
+          screen = 'harness';
+          continue;
+        }
+        if (resetSelection.status !== 'confirmed') return skippedOutcome('cancelled');
+        selectedTargets = Array.isArray(resetSelection.items)
+          ? resetSelection.items.map(value => parseTarget(value)).filter(Boolean)
+          : [];
+        if (selectedTargets.length === 0) {
+          screen = 'reset-targets';
+          continue;
+        }
+        break;
       }
 
       if (screen === 'targets') {
@@ -966,6 +1235,54 @@ async function runPostSetupMenu({
       break;
     }
 
+    if (mode === 'reset') {
+      const resetSkipped = [];
+      const resetFailed = [];
+      const resetDiagnostics = [];
+      for (const target of selectedTargets) {
+        let resetResult;
+        try {
+          resetResult = typeof adapter.resetLocalOverride === 'function'
+            ? adapter.resetLocalOverride(target)
+            : {
+              status: 'skipped',
+              agent: target.name,
+              reason: 'missing-source',
+              diagnostic: `Skipped ${target.name}: installed source is unavailable.`,
+            };
+        } catch (error) {
+          resetResult = {
+            status: 'persistence-failed',
+            agent: target.name,
+            diagnostic: error && error.message ? error.message : `Target ${target.name} has no valid frontmatter block.`,
+          };
+        }
+        if (resetResult.status === 'persisted') continue;
+        if (resetResult.status === 'skipped') {
+          resetSkipped.push(target.name);
+          resetDiagnostics.push(resetResult.diagnostic || `Skipped ${target.name}: installed source is unavailable.`);
+          continue;
+        }
+        if (resetResult.status !== 'persistence-failed') {
+          throw new Error(`Unexpected local override outcome for ${target.name}: ${resetResult.status}`);
+        }
+        if (typeof resetResult.diagnostic !== 'string' || resetResult.diagnostic === '') {
+          throw new Error(`Persistence failure for ${target.name} did not include a diagnostic.`);
+        }
+        resetFailed.push(target.name);
+        resetDiagnostics.push(resetResult.diagnostic);
+      }
+
+      for (const diagnostic of resetDiagnostics) {
+        console.error(`Post-setup customization: ${diagnostic}`);
+      }
+
+      if (resetFailed.length > 0) {
+        return { status: 'persistence-failed', failedAgents: resetFailed, diagnostics: resetDiagnostics };
+      }
+      continue;
+    }
+
     const skippedAgents = [];
     const failedAgents = [];
     const diagnostics = [];
@@ -1021,6 +1338,10 @@ module.exports = {
   taskComplexityFor,
   enumerateProjectionTargets,
   effectiveSetting,
+  factorySetting,
+  localOverrideExists,
+  localOverridePath,
+  resetLocalOverrideToFactory,
   patchFrontmatter,
   materializeLocalOverride,
   atomicReplace,

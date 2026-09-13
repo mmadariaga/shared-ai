@@ -865,12 +865,12 @@ test('checklist receives the canonical legend string as its footer argument', as
   }
 });
 
-test('model customization is the sole enabled empty-confirm checklist call', () => {
+test('model customization enables empty-confirm on both customize and reset checklists', () => {
   const source = fs.readFileSync(path.join(REPO_ROOT, 'bin', 'model-customization.js'), 'utf8');
   const enabledGuards = source.match(/preventEmptyConfirm\s*:\s*true\b/g) || [];
 
-  assert.equal(enabledGuards.length, 1,
-    'exactly the model-customization checklist call should enable preventEmptyConfirm');
+  assert.equal(enabledGuards.length, 2,
+    'both the customize checklist and the reset checklist should enable preventEmptyConfirm');
 });
 
 test('production prompt bindings retain the expected shared-selector surface and one no-footer post-setup override', () => {

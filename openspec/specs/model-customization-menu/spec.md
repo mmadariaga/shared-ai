@@ -398,3 +398,27 @@ The operation SHALL still return skipped missing-source with its diagnostic and 
 - **WHEN** a utility source is genuinely absent or a worker, agent, or command target is customized
 - **THEN** the utility SHALL report skipped missing-source without breaking the loop and the other families SHALL persist from their existing source roots
 
+### Requirement: Reset to default models menu option
+The post-setup flow SHALL present Reset to default models as a menu action in Post-setup customization alongside Customize models and Exit, setting mode reset and routing harness selection to the reset-targets screen with no scope screen and no settings selection.
+#### Scenario: User enters reset from the post-setup menu
+- **WHEN** the user selects Reset to default models at the post-setup menu
+- **THEN** the flow SHALL route harness selection to the reset-targets screen without presenting scope or settings screens
+
+### Requirement: Reset target checklist with factory settings
+The reset-targets screen SHALL enumerate All targets via enumerateTargets plus buildChecklistTargets, filter to targets with an existing local override, and render the SETTING column with factorySetting plus the existing header, legend, and preventEmptyConfirm true, handling empty sets, BACK, cancellation, and non-TTY as defined.
+#### Scenario: Reset checklist shows factory values for existing overrides
+- **WHEN** the reset-targets screen renders with existing local overrides for the selected harness
+- **THEN** each row SHALL display the factory model plus effort/variant setting with plain-text unavailable fallback and no ANSI wrappers
+
+### Requirement: Tunable-only factory restore
+The reset operation SHALL read factory tunables from the installed global source and patch only model plus effort/variant into the existing project-local file via patchFrontmatter plus atomicReplace, preserving remaining local content and reporting persisted, skipped, or persistence-failed with Post-setup customization diagnostics.
+#### Scenario: Selected reset targets are restored from factory sources
+- **WHEN** confirmed reset targets are processed for the selected harness
+- **THEN** each target SHALL have only its tunable keys overwritten from the global source while non-tunable local content is preserved
+
+### Requirement: Reset pass outcome and menu re-entry
+A reset pass with zero persistence-failed results SHALL return to Post-setup customization while a pass with failures SHALL terminate without re-entry, with empty sets returning to harness selection, per-target skips continuing the pass, and Exit returning the final skipped/cancelled outcome.
+#### Scenario: Successful reset returns to the post-setup menu
+- **WHEN** a reset pass completes with no persistence failure
+- **THEN** the flow SHALL re-enter the Post-setup customization menu instead of terminating
+
