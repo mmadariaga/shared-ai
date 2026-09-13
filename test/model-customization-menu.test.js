@@ -160,15 +160,19 @@ const OPENCODE_COMMANDS = [
 // worker and every command of the harness, workers first, each family
 // alphabetical, type-prefixed (the Step 3 flow sorts each family).
 const COMBINED_BOTH_FULL = [
+  'command:sai-explore',
+  'worker:sai-direct-build-worker',
   'command:sai-1-spec',
   'worker:sai-1-spec-proposal-worker',
   'command:sai-2-design',
   'worker:sai-2-design-worker',
+  'command:sai-build',
   'command:sai-3-implement',
   'worker:sai-3-implementation-worker',
   'command:sai-4-apply',
   'worker:sai-4-red-worker',
   'worker:sai-4-green-worker',
+  'command:sai-review',
   'command:sai-5-review',
   'worker:sai-5-review-worker',
   'command:sai-6-security',
@@ -177,18 +181,14 @@ const COMBINED_BOTH_FULL = [
   'worker:sai-7-performance-worker',
   'command:sai-8-accessibility',
   'worker:sai-8-accessibility-worker',
-  'command:sai-archive',
-  'worker:sai-archive-worker',
   'command:sai-backfill',
   'worker:sai-backfill-worker',
-  'command:sai-build',
-  'command:sai-explore',
-  'command:sai-review',
+  'command:sai-archive',
+  'worker:sai-archive-worker',
   'worker:budget',
   'worker:executor',
   'worker:explore',
   'worker:sai-commit-worker',
-  'worker:sai-direct-build-worker',
   'worker:sai-merge-worker',
   'utility:sai-commit',
   'utility:sai-pr',
@@ -804,7 +804,7 @@ test('checklist receives the full enumerated target list of the chosen harness a
     { scope: 'Orchestrators', items: MODEL_COMMANDS.map(name => `command:${name}`).sort() },
     {
       scope: 'All',
-      items: [...COMBINED_BOTH_FULL.slice(0, -5), '', ...COMBINED_BOTH_FULL.slice(-5)],
+      items: [...COMBINED_BOTH_FULL.slice(0, 6), '', ...COMBINED_BOTH_FULL.slice(6, 12), '', ...COMBINED_BOTH_FULL.slice(12, 21), '', ...COMBINED_BOTH_FULL.slice(21, 30), '', ...COMBINED_BOTH_FULL.slice(30)],
       defaults: COMBINED_BOTH_FULL,
     },
   ];
@@ -937,7 +937,7 @@ test('scope Workers presents worker identities and scope Orchestrators presents 
   }
 });
 
-test('scope All presents phased orchestrator blocks with semantic worker pairs in command-alphabetical order', async () => {
+test('scope All presents phased orchestrator blocks with semantic worker pairs in logical pipeline order', async () => {
   const opencodeOps = { select: [], create: [] };
   const claudeOps = { select: [], create: [] };
   const restoreOpencode = patchFactory('createOpencodeAdapter', () =>
@@ -955,7 +955,7 @@ test('scope All presents phased orchestrator blocks with semantic worker pairs i
     assert.equal(result.status, 'skipped');
     assert.equal(result.reason, 'cancelled');
     assert.equal(checklistCalls.length, 1, 'the checklist should be invoked exactly once for the All scope');
-    assert.deepEqual(checklistCalls[0][0], [...COMBINED_BOTH.slice(0, -1), '', ...COMBINED_BOTH.slice(-1)],
+    assert.deepEqual(checklistCalls[0][0], [...COMBINED_BOTH.slice(0, 2), '', ...COMBINED_BOTH.slice(2, -1), '', ...COMBINED_BOTH.slice(-1)],
       'the All scope checklist items retain family-prefixed identities with a blank separator before utilities');
     assert.deepEqual(checklistCalls[0][1], COMBINED_BOTH,
       'every selectable combined row is pre-selected by default in the All scope, ignoring the blank separator');
@@ -989,7 +989,7 @@ test('injected checklist seam renders the task-complexity column in both harness
       });
       assert.equal(result.reason, 'cancelled');
       assert.deepEqual(checklistCalls[0][0], [
-        'command:sai-build', 'worker:sai-worker', '', 'utility:sai-pr',
+        'command:sai-build', '', 'worker:sai-worker', '', 'utility:sai-pr',
       ],
         'the All scope checklist items carry a blank separator between the orchestrator-worker block and utilities');
       assert.deepEqual(checklistCalls[0][1], [
@@ -1003,6 +1003,7 @@ test('injected checklist seam renders the task-complexity column in both harness
         'the header columns start under the six-char option prefix and reuse the row widths with left-aligned TYPE');
       assert.deepEqual(checklistCalls[0][4].displayOptions, [
         `ORCHESTRATOR  sai-build   ↑↑${' '.repeat(13)}  opencode-go/test-model (high)`,
+        '',
         `WORKER        sai-worker  ↑${' '.repeat(14)}  opencode-go/test-model (high)`,
         '',
         `UTILITY       sai-pr      ↑${' '.repeat(14)}  opencode-go/test-model (high)`,
