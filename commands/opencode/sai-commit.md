@@ -1,7 +1,7 @@
 ---
 description: Conventional Commits message author from staged changes — generates subject (≤50 chars) and optional body, gates `git commit` behind explicit authorization
-model: opencode-go/deepseek-v4-flash
-variant: default
+model: opencode/muse-spark-1.3-contributor-free
+variant: high
 ---
 Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.
 Fetch @sai/adapters/opencode/boot.md and follow it.

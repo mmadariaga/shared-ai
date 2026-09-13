@@ -2,7 +2,8 @@
 name: budget
 description: Binds cost-controlled task delegation to the OpenCode budget agent keyword. General-purpose single-task subagent for file operations, searches, writes, and code analysis.
 mode: subagent
-model: opencode-go/deepseek-v4-flash
+model: opencode/muse-spark-1.3-contributor-free
+variant: high
 ---
 
 Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.

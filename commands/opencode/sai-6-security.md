@@ -1,6 +1,7 @@
 ---
 description: Structured Security Audit Prompt — SAST + SCA on the diff vs parent branch (or full repo / path), produces openspec/changes/{change-name}/security.md
-model: opencode-go/qwen3.7-plus
+model: opencode-go/deepseek-v4.1-flash
+variant: max
 ---
 Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.
 Fetch @sai/adapters/opencode/boot.md and follow it.

@@ -1,7 +1,7 @@
 ---
 description: Structured Accessibility Audit Prompt — WCAG 2.2 AA static review (and optional runtime axe/Lighthouse) on UI changes vs parent branch, produces openspec/changes/{change-name}/accessibility.md
-model: opencode-go/qwen3.7-plus
-variant: high
+model: opencode-go/deepseek-v4.1-flash
+variant: max
 ---
 Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.
 Fetch @sai/adapters/opencode/boot.md and follow it.

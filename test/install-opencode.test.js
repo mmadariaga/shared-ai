@@ -294,8 +294,8 @@ test('installOpencode copies commands/opencode/*.md to dest/commands/', () => {
   assert.ok(files.includes('sai-build.md'), 'sai-build.md should be in commands/');
   assert.equal(files.includes('budget.md'), false, 'budget.md should not be in commands/');
   const design = fs.readFileSync(path.join(cmdDir, 'sai-2-design.md'), 'utf8');
-   assert.match(design, /^model: opencode-go\/deepseek-v4-flash$/m);
-   assert.match(design, /^variant: max$/m);
+   assert.match(design, /^model: opencode-go\/muse-spark-1\.3-contributor$/m);
+   assert.match(design, /^variant: xhigh$/m);
    assert.match(design, /^subtask: false$/m);
    assert.doesNotMatch(design, /^agent:/m);
    assert.doesNotMatch(design, /^\*\*Change-name argument and and optional flags:\*\*\s*\$ARGUMENTS\s*$/m,

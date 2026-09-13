@@ -1,6 +1,7 @@
 ---
 description: Archive a completed change — wraps opsx:archive skill. Moves openspec/changes/{name}/ into the archive folder once tasks are done.
-model: opencode-go/deepseek-v4-flash
+model: opencode-go/muse-spark-1.3-contributor
+variant: xhigh
 ---
 Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.
 Fetch @sai/adapters/opencode/boot.md and follow it.

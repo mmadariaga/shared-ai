@@ -1,6 +1,7 @@
 ---
 description: Structured Code Review Prompt — diffs current branch against parent, contrasts with the OpenSpec change artifacts, and produces openspec/changes/{change-name}/review.md
-model: opencode-go/qwen3.7-plus
+model: opencode-go/deepseek-v4.1-flash
+variant: max
 ---
 Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.
 Fetch @sai/adapters/opencode/boot.md and follow it.

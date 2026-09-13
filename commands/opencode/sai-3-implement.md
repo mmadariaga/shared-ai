@@ -1,7 +1,7 @@
 ---
 description: Granular implementation plan through the canonical coordinator contract and a routed worker.
-model: opencode-go/deepseek-v4-flash
-variant: max
+model: opencode-go/muse-spark-1.3-contributor
+variant: xhigh
 subtask: false
 ---
 Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.

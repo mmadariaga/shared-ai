@@ -1,6 +1,7 @@
 ---
 description: Read-only progress panel for one OpenSpec change — the 10 sai-workflow artifacts, specs approval, implementation progress, and a Next: hint. Writes nothing.
-model: opencode-go/deepseek-v4-flash
+model: opencode/muse-spark-1.3-contributor-free
+variant: high
 ---
 Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.
 Fetch @sai/adapters/opencode/boot.md and follow it.

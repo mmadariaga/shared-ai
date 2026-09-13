@@ -1,6 +1,7 @@
 ---
 description: Analyze active ADRs, DDRs, and related specifications for bounded, confirmation-gated archival. No OpenSpec prerequisite.
-model: opencode-go/deepseek-v4-flash
+model: opencode/muse-spark-1.3-contributor-free
+variant: high
 ---
 Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.
 Fetch @sai/adapters/opencode/boot.md and follow it.

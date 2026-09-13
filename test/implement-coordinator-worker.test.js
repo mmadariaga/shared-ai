@@ -333,10 +333,10 @@ test('Step 2 routes Claude and opencode through the coordinator', () => {
    assert.match(claude, /^effort:\s*low\s*$/m);
      assert.match(claude, /Fetch @sai\/commands\/implement\/command-bootstrap\.md/);
    assert.doesNotMatch(claude, /Fetch @skills\/sai-3-implementation-worker\/SKILL\.md/);
-     assert.match(opencode, /^model: opencode-go\/deepseek-v4-flash$/m);
+     assert.match(opencode, /^model: opencode-go\/muse-spark-1\.3-contributor$/m);
      assert.match(opencode, /Fetch @sai\/commands\/implement\/command-bootstrap\.md/);
     assert.doesNotMatch(opencode, /Fetch @skills\/sai-3-implementation-worker\/SKILL\.md/);
-    assert.match(opencode, /^variant: max$/m);
+    assert.match(opencode, /^variant: xhigh$/m);
    assert.match(opencode, /^subtask:\s*false\s*$/m);
    assert.doesNotMatch(opencode, /^agent:/m);
    for (const [harness, source] of [['claude', claude], ['opencode', opencode]]) {
@@ -395,8 +395,8 @@ test('routed harness bindings and inline parity', () => {
   assert.match(opencodeBinding, /worker/i);
   assert.doesNotMatch(opencodeBinding, /claude[\\/\\]implementation-worker\.md/,
     'the opencode binding should not reference the Claude harness binding');
-  assert.match(opencodeWrapper, /^model: opencode-go\/deepseek-v4-flash$/m);
-  assert.match(opencodeWrapper, /^variant: max$/m);
+  assert.match(opencodeWrapper, /^model: opencode-go\/muse-spark-1\.3-contributor$/m);
+  assert.match(opencodeWrapper, /^variant: xhigh$/m);
   assert.match(opencodeWrapper, /^subtask:\s*false\s*$/m);
   assert.doesNotMatch(opencodeWrapper, /^agent:/m);
 

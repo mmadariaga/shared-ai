@@ -185,8 +185,8 @@ test('design wrappers activate routed Claude/opencode entry and preserve phase b
      assert.match(claude, /sai\/commands\/design\/command-bootstrap\.md/);
     assert.doesNotMatch(claude, /Fetch @skills\/sai-2-design-worker\/SKILL\.md/);
 
-    assert.match(opencode, /^model: opencode-go\/deepseek-v4-flash$/m);
-   assert.match(opencode, /^variant: max$/m);
+    assert.match(opencode, /^model: opencode-go\/muse-spark-1\.3-contributor$/m);
+   assert.match(opencode, /^variant: xhigh$/m);
     assert.match(opencode, /^subtask: false$/m);
     assert.doesNotMatch(opencode, /^agent:/m);
     assert.doesNotMatch(opencode, /sai-2-design-worker/);
@@ -755,7 +755,7 @@ test('documentation records the active design compatibility boundary and managed
   assert.match(agents, /sai-2-design-worker/);
 
   assert.match(readme, /Claude Code.*low-effort.*coordinator.*high-effort.*design worker/i);
-  assert.match(readme, /opencode.*deepseek-v4-flash.*variant: max/i);
+  assert.match(readme, /opencode.*muse-spark-1\.3-contributor.*variant: xhigh/i);
   assert.match(readme, /continue_after_notice/);
   assert.match(readme, /new chat[\s\S]{0,80}\/sai-3-implement|\/sai-3-implement[\s\S]{0,80}new chat/i);
   assert.match(readme, /Proposal Complexity.*descriptive/i);

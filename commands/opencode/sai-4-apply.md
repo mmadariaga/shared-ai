@@ -1,7 +1,7 @@
 ---
 description: Apply the granular implementation plan mechanically — reads openspec/changes/{name}/implementation.md and executes step-by-step with a cheap model. Uses openspec CLI for status context.
-model: opencode-go/deepseek-v4-flash
-variant: max
+model: opencode-go/muse-spark-1.3-contributor
+variant: xhigh
 ---
 Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.
 Fetch @sai/adapters/opencode/boot.md and follow it.
