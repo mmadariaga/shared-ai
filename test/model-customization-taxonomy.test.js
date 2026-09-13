@@ -44,7 +44,7 @@ test('model customization exposes the five stable taxonomy labels and metadata f
       'worker:sai-1-spec-proposal-worker', 'worker:sai-4-red-worker',
     ]);
     assert.deepEqual(customization.buildChecklistTargets('Utilities', families).map(item => item.value), [
-      'utility:sai-commit', 'utility:sai-pr', 'utility:sai-retire-docs', 'utility:sai-status', 'utility:sai-worktree',
+      'utility:sai-pr', 'utility:sai-retire-docs', 'utility:sai-status', 'utility:sai-worktree',
     ]);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });

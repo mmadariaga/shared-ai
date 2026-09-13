@@ -24,12 +24,12 @@ const MODEL_TABLE_COMPLEXITY_HEADER = 'TASK COMPLEXITY';
 const MODEL_TABLE_COMPLEXITY_WIDTH = MODEL_TABLE_COMPLEXITY_HEADER.length;
 const COMBINED_ENTRY_DELIMITER = ' | ';
 const TARGET_PREFIXES = Object.freeze({ worker: 'worker:', agent: 'agent:', command: 'command:', utility: 'utility:' });
-const UTILITY_NAMES = Object.freeze(['sai-commit', 'sai-pr', 'sai-retire-docs', 'sai-status', 'sai-worktree']);
+const UTILITY_NAMES = Object.freeze(['sai-pr', 'sai-retire-docs', 'sai-status', 'sai-worktree']);
 const TASK_COMPLEXITY = Object.freeze({
   'worker:sai-1-spec-proposal-worker': '↑↑',
   'worker:sai-2-design-worker': '↑↑↑',
   'worker:sai-3-implementation-worker': '↑↑',
-  'worker:sai-4-green-worker': '↑',
+  'worker:sai-4-green-worker': '↑↑',
   'worker:sai-4-red-worker': '↑',
   'worker:sai-5-review-worker': '↑↑',
   'worker:sai-6-security-worker': '↑↑↑',
@@ -60,7 +60,7 @@ const TASK_COMPLEXITY = Object.freeze({
   'command:sai-explore': '↑↑',
   'command:sai-merge': '↑↑',
   'command:sai-review': '↑↑',
-  'utility:sai-commit': '↑',
+  'command:sai-commit': '↑',
   'utility:sai-pr': '↑',
   'utility:sai-retire-docs': '↑↑',
   'utility:sai-status': '↑',
@@ -124,6 +124,7 @@ const COMMAND_WORKER_ORDER = Object.freeze({
   'sai-archive': Object.freeze(['sai-archive-worker']),
   'sai-backfill': Object.freeze(['sai-backfill-worker']),
   'sai-merge': Object.freeze(['sai-merge-worker']),
+  'sai-commit': Object.freeze(['sai-commit-worker']),
 });
 
 // Logical pipeline order for the grouped `All` table only. Filtered scope
@@ -133,7 +134,7 @@ const ALL_PHASE_ORDER = Object.freeze([
   Object.freeze(['sai-explore', 'sai-1-spec', 'sai-2-design']),
   Object.freeze(['sai-build', 'sai-3-implement', 'sai-4-apply']),
   Object.freeze(['sai-review', 'sai-5-review', 'sai-6-security', 'sai-7-performance', 'sai-8-accessibility']),
-  Object.freeze(['sai-backfill', 'sai-archive', 'sai-merge']),
+  Object.freeze(['sai-backfill', 'sai-archive', 'sai-merge', 'sai-commit']),
 ]);
 
 function entryName(entry) {

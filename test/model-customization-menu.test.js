@@ -71,7 +71,7 @@ const CLAUDE_AGENTS = [
 ];
 const OPENCODE_WORKERS = OPENCODE_AGENTS.filter(name => name.startsWith('sai-'));
 const CLAUDE_WORKERS = CLAUDE_AGENTS.filter(name => name.startsWith('sai-'));
-const UTILITY_COMMANDS = ['sai-commit', 'sai-pr', 'sai-retire-docs', 'sai-status', 'sai-worktree'];
+const UTILITY_COMMANDS = ['sai-pr', 'sai-retire-docs', 'sai-status', 'sai-worktree'];
 
 // Step 3: command-family targets exposed by the adapter enumeration seam.
 // Kept alphabetical so a bare-name checklist assertion is order-independent of
@@ -185,12 +185,12 @@ const COMBINED_BOTH_FULL = [
   'worker:sai-backfill-worker',
   'command:sai-archive',
   'worker:sai-archive-worker',
+  'command:sai-commit',
+  'worker:sai-commit-worker',
   'worker:budget',
   'worker:executor',
   'worker:explore',
-  'worker:sai-commit-worker',
   'worker:sai-merge-worker',
-  'utility:sai-commit',
   'utility:sai-pr',
   'utility:sai-retire-docs',
   'utility:sai-status',
@@ -804,7 +804,7 @@ test('checklist receives the full enumerated target list of the chosen harness a
     { scope: 'Orchestrators', items: MODEL_COMMANDS.map(name => `command:${name}`).sort() },
     {
       scope: 'All',
-      items: [...COMBINED_BOTH_FULL.slice(0, 6), '', ...COMBINED_BOTH_FULL.slice(6, 12), '', ...COMBINED_BOTH_FULL.slice(12, 21), '', ...COMBINED_BOTH_FULL.slice(21, 30), '', ...COMBINED_BOTH_FULL.slice(30)],
+      items: [...COMBINED_BOTH_FULL.slice(0, 6), '', ...COMBINED_BOTH_FULL.slice(6, 12), '', ...COMBINED_BOTH_FULL.slice(12, 21), '', ...COMBINED_BOTH_FULL.slice(21, 31), '', ...COMBINED_BOTH_FULL.slice(31)],
       defaults: COMBINED_BOTH_FULL,
     },
   ];
