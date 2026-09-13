@@ -112,6 +112,7 @@ function displayFamily(family) {
 }
 
 const COMMAND_WORKER_ORDER = Object.freeze({
+  'sai-explore': Object.freeze(['sai-direct-build-worker']),
   'sai-1-spec': Object.freeze(['sai-1-spec-proposal-worker']),
   'sai-2-design': Object.freeze(['sai-2-design-worker']),
   'sai-3-implement': Object.freeze(['sai-3-implementation-worker']),
@@ -124,6 +125,16 @@ const COMMAND_WORKER_ORDER = Object.freeze({
   'sai-backfill': Object.freeze(['sai-backfill-worker']),
   'sai-merge': Object.freeze(['sai-merge-worker']),
 });
+
+// Logical pipeline order for the grouped `All` table only. Filtered scope
+// views keep today's alphabetical order. Phase 4 keeps `backfill` before
+// `archive` as the explicit alphabetical exception.
+const ALL_PHASE_ORDER = Object.freeze([
+  Object.freeze(['sai-explore', 'sai-1-spec', 'sai-2-design']),
+  Object.freeze(['sai-build', 'sai-3-implement', 'sai-4-apply']),
+  Object.freeze(['sai-review', 'sai-5-review', 'sai-6-security', 'sai-7-performance', 'sai-8-accessibility']),
+  Object.freeze(['sai-backfill', 'sai-archive', 'sai-merge']),
+]);
 
 function entryName(entry) {
   return typeof entry === 'string' ? entry : entry.name;
@@ -144,29 +155,58 @@ function sortedByName(entries) {
 function buildChecklistTargets(scope, families) {
   if (scope === 'All') {
     const agents = sortedByName(families.agent || []).map(entry => toTarget('agent', entry));
-    const sortedCommands = sortedByName(families.command || []);
     const workerByName = new Map();
     for (const entry of (families.worker || [])) {
       workerByName.set(entryName(entry), toTarget('worker', entry));
     }
-    const blocks = [];
-    for (const cmdEntry of sortedCommands) {
-      const cmdName = entryName(cmdEntry);
-      blocks.push(toTarget('command', cmdEntry));
+    const commandByName = new Map();
+    for (const entry of (families.command || [])) {
+      const name = entryName(entry);
+      if (!commandByName.has(name)) commandByName.set(name, toTarget('command', entry));
+    }
+    const takeCommandBlock = (cmdName) => {
+      if (!commandByName.has(cmdName)) return [];
+      const rows = [commandByName.get(cmdName)];
+      commandByName.delete(cmdName);
       const expected = COMMAND_WORKER_ORDER[cmdName] || [];
       for (const workerName of expected) {
         if (workerByName.has(workerName)) {
-          blocks.push(workerByName.get(workerName));
+          rows.push(workerByName.get(workerName));
           workerByName.delete(workerName);
         }
       }
-    }
+      return rows;
+    };
+    const phases = ALL_PHASE_ORDER.map(phase => phase.flatMap(takeCommandBlock));
+    // Future commands outside the fixed phases stay alphabetical and join the
+    // close phase so the four fixed groups never gain a fifth separator.
+    const leftoverRows = [...commandByName.entries()]
+      .sort((left, right) => (left[0] < right[0] ? -1 : left[0] > right[0] ? 1 : 0))
+      .flatMap(([cmdName, cmdTarget]) => {
+        const rows = [cmdTarget];
+        const expected = COMMAND_WORKER_ORDER[cmdName] || [];
+        for (const workerName of expected) {
+          if (workerByName.has(workerName)) {
+            rows.push(workerByName.get(workerName));
+            workerByName.delete(workerName);
+          }
+        }
+        return rows;
+      });
     const orphanWorkers = [...workerByName.entries()]
       .sort((left, right) => (left[0] < right[0] ? -1 : left[0] > right[0] ? 1 : 0))
       .map(([, entry]) => entry);
+    if (phases.length > 0) {
+      phases[phases.length - 1].push(...leftoverRows, ...orphanWorkers);
+    }
+    const nonEmptyPhases = phases.filter(phase => phase.length > 0);
+    const middle = [];
+    nonEmptyPhases.forEach((phase, index) => {
+      if (index > 0) middle.push({ value: CHECKLIST_SEPARATOR, separator: true, family: 'separator', name: '', label: '' });
+      middle.push(...phase);
+    });
     const utilities = sortedByName(families.utility || []).map(entry => toTarget('utility', entry));
-    const middle = [...blocks, ...orphanWorkers];
-    // Grouped All table: agents | orchestrator-worker block | utilities.
+    // Grouped All table: agents | phased middle block | utilities.
     // Join non-empty groups with a single blank separator row so there is
     // never a leading, trailing, or doubled blank.
     const groups = [agents, middle, utilities].filter(group => group.length > 0);
