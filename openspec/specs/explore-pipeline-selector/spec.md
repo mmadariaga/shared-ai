@@ -106,33 +106,19 @@ Selecting displayed `Plan - Unattended` SHALL authorize the existing supervised 
 - **THEN** explore does not facilitate a later implementation phase, emits exactly one localized guidance line naming the applicable stopped phase, and the change remains retryable under the existing Plan state rules.
 
 ### Requirement: Define Manual behavior
-
-Selecting `Manual` SHALL dispatch nothing and SHALL NOT change supervision state. An unmapped free-text answer MUST be treated as `Manual`. The `Manual` branch SHALL refer to the one existing keep-window recommendation already emitted before the selector, naming `review-loop` exactly once, and to the path-specific existing next-step handoff already emitted exactly once before the selector by the shared close; it SHALL NOT emit a second recommendation, handoff, or selector for the same answer, and SHALL NOT re-emit or restate the already-emitted path-specific next-step handoff. The literals `/sai-1-spec`, `/sai-2-design`, and `review-loop` SHALL remain verbatim English; surrounding handoff prose SHALL follow the selected crystallization language. `Manual` SHALL remain re-invocable without a cap when the user later asks to see or run the supervised pipeline selector; every later selector re-emission SHALL emit the path-specific next-step handoff exactly once before the selector again, and each such later Manual/unmapped response SHALL refer to that one-time handoff without re-emitting it.
+Selecting `Manual` SHALL dispatch nothing and SHALL NOT change supervision state. An unmapped free-text answer MUST be treated as `Manual`. The `Manual` branch SHALL emit exactly once the closing path handoff plus the keep-window-open recommendation naming `review-loop` exactly once, with no second selector in that turn. Selecting `Plan - Unattended` or `Direct Build - Unattended` SHALL never emit handoff or recommendation. Selector re-emissions SHALL carry no prior handoff and every new `Manual` selection SHALL re-emit handoff plus recommendation once. The literals `/sai-1-spec`, `/sai-2-design`, and `review-loop` SHALL remain verbatim English.
 
 #### Scenario: Manual is selected
-
 - **WHEN** the user selects `Manual`
-- **THEN** no pipeline worker is dispatched
-- **AND** no supervision state is changed
-- **AND** the already-emitted keep-window recommendation remains the sole recommendation naming `review-loop` exactly once
-- **AND** no second recommendation, handoff, or selector is emitted for the same answer
-- **AND** the applicable path-specific `/sai-1-spec` next-step handoff was already emitted exactly once before the selector and is not re-emitted.
+- **THEN** no worker is dispatched and the closing path handoff plus recommendation emits once with no second selector
 
 #### Scenario: free text maps to Manual
-
 - **WHEN** the user's answer maps to neither selector option
-- **THEN** it is treated as `Manual`
-- **AND** no worker is dispatched
-- **AND** the already-emitted keep-window recommendation remains the sole recommendation naming `review-loop` exactly once
-- **AND** no second recommendation, handoff, or selector is emitted for the same answer
-- **AND** the applicable path-specific `/sai-1-spec` next-step handoff was already emitted exactly once before the selector and is not re-emitted.
+- **THEN** it is treated as `Manual` with once-only handoff plus recommendation and no second selector
 
 #### Scenario: Manual is requested again later
-
 - **WHEN** the user later asks to see or run the supervised pipeline selector
-- **THEN** `sai-explore` re-emits the selector through the existing rule
-- **AND** the path-specific next-step handoff is emitted exactly once before the re-emitted selector
-- **AND** there is no cap on such re-emissions.
+- **THEN** `sai-explore` re-emits the selector with no prior handoff and each new `Manual` re-emits handoff plus recommendation once
 
 ### Requirement: Preserve explicit gating
 

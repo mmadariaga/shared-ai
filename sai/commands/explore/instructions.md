@@ -50,25 +50,28 @@ The stage progression advances only when the user explicitly requests it: the li
 
 The stage progression state — the current stage, completed stages, agreed lists, pending crystallization request, Closure State, and readiness tracking — is no longer conversation-only: the machine-owned portion (current stage and agreed lists) is owned and persisted by the stage machine store in its own session file under the system temp directory, while the pending crystallization request, Closure State, and readiness tracking remain conversation-held and the agent memorizes no state JSON. When the idea materially changes into a new stable idea, close the current store session and spawn a fresh one; the new session's stage progression begins at `Explore change`. Render that stage `in_progress` with the other stages `pending`, discard the prior agreed edge-case and implementation-details lists and any pending crystallization request, and begin a new `active-uncrystallized` lifecycle. The reset alone SHALL NOT start a new edge-case review; the new idea enters that review only on explicit advancement or a premature crystallization request. The session SHALL NOT write this state to any file, artifact, change directory, configuration, or `.openspec.yaml` inside the project — the only persistence is the store's own session file under the system temp directory — and `sai-explore` remains read-only.
 
-**Crystallization-turn close (shared):** After the handoff block(s), close the crystallization turn exactly once with this sequence — the sole full statement of the close; items 5, 6, and 7 invoke it by reference and MUST NOT restate the emission sequence:
+**Crystallization-turn close (shared):** After the `Ready to Propose` block(s), close the crystallization turn exactly once with this sequence — the sole full statement of the close; items 5 and 6 invoke it by reference and MUST NOT restate the emission sequence:
 
-Immediately after the `---` separator that ends the handoff block(s), and before the recommendation and the selector below, emit the path-specific next-step handoff exactly once, choosing the wording that matches the crystallization path that just closed:
-
-- **Single-change path**: emit the existing `**Open a new chat**` instruction and run `/sai-1-spec` with the content above.
-- **Sliced path**: Tell the user to take the **first** block to a new chat with `/sai-1-spec`, and that each later slice becomes its own change once its predecessor is specced (the "new change per follow-up" pattern).
-- **Inline-refusal path**: emit the existing handoff: "Creating a proposal opens a new context. The paste-ready block follows — copy it and start a new chat with `/sai-1-spec` to keep the spec session clean." Do not dispatch a proposal in-session.
-
-The handoff's surrounding prose follows the selected crystallization language per item 8; `/sai-1-spec`, `/sai-2-design`, and `review-loop` remain verbatim English. Emit the handoff exactly once per crystallization turn, and once before the selector on every later selector re-emission.
-
-1. One keep-window-open recommendation outside the handoff block: plain conversational free-text prose rendered in the user's language per item 8 / `sai/policies/remember.md` (only the recommendation is localized — `Ready to Propose` scaffolding and next-step command lines stay English). It tells the user to keep this explore window open and return to it to review and refine the artifacts that `/sai-1-spec` and `/sai-2-design` create next (per the `explore-crystallization-block` capability). It replaces the removed auto-fired review picker (item 9) as the thing that closes the crystallization turn before the selector. The recommendation names the literal token `review-loop` exactly once for the user-triggered review loop; the token is never presented through a picker and is never auto-started or auto-offered. The recommendation names no pipeline token. The standing user-triggered review path remains available while the selector (item 10) governs only delegated execution.
-
-Fetch @sai/commands/explore/steps/review-loop.md
-
-2. After that recommendation, emit the crystallization-close pipeline selector (item 10) exactly once as the **final** emission of this slice's turn.
+Immediately after the `---` separator that ends the `Ready to Propose` block(s), emit the crystallization-close pipeline selector (item 10) exactly once as the **final** emission of this slice's turn, with no path-specific next-step handoff and no keep-window-open recommendation before selection. On the sliced path with several blocks, the selector follows the last block directly with no intermediate handoff.
 
 Fetch @sai/commands/explore/steps/pipeline-selector.md
 
-Selecting **Manual**, or giving an answer that maps to neither selector option, refers to the already-emitted recommendation and to the path-specific next-step handoff this shared close already emitted before the selector, MUST NOT re-emit a second recommendation, handoff, or selector, and dispatches nothing. Item 10 describes that branch by reference to this shared rule.
+1. Definitions for post-**Manual** emission only:
+- **handoff**: the path-specific next-step instruction for opening a new chat with `/sai-1-spec`, choosing the wording that matches the crystallization path that just closed:
+  - **Single-change path**: emit the existing `**Open a new chat**` instruction and run `/sai-1-spec` with the content above.
+  - **Sliced path**: Tell the user to take the **first** block to a new chat with `/sai-1-spec`, and that each later slice becomes its own change once its predecessor is specced (the "new change per follow-up" pattern).
+  - **Inline-refusal path** stays outside this close (see below).
+- **recommendation**: one keep-window-open prose outside the handoff block: plain conversational free-text prose rendered in the user's language per item 8 / `sai/policies/remember.md` (only the recommendation is localized — `Ready to Propose` scaffolding and next-step command lines stay English). It tells the user to keep this explore window open and return to it to review and refine the artifacts that `/sai-1-spec` and `/sai-2-design` create next (per the `explore-crystallization-block` capability). It replaces the removed auto-fired review picker (item 9) as the thing that closes the post-**Manual** turn. The recommendation names the literal token `review-loop` exactly once for the user-triggered review loop; the token is never presented through a picker and is never auto-started or auto-offered. The recommendation names no pipeline token. The standing user-triggered review path remains available while the selector (item 10) governs only delegated execution.
+
+Fetch @sai/commands/explore/steps/review-loop.md
+
+The handoff's surrounding prose follows the selected crystallization language per item 8; `/sai-1-spec`, `/sai-2-design`, and `review-loop` remain verbatim English.
+
+2. Post-**Manual** emission: selecting **Manual**, or giving an answer that maps to neither selector option, emits exactly once the closing path's handoff plus the recommendation, with no second selector in that turn. Selecting **Plan - Unattended** or **Direct Build - Unattended** never emits handoff or recommendation; their terminal texts stay untouched. Item 10 describes those branches by reference to this shared rule.
+
+**Inline-refusal path**: stays outside this close and keeps its immediate handoff without a selector: emit the existing handoff: "Creating a proposal opens a new context. The paste-ready block follows — copy it and start a new chat with `/sai-1-spec` to keep the spec session clean." Do not dispatch a proposal in-session. Emit no selector on that path.
+
+Selector re-emissions carry no prior handoff; every new **Manual** selection re-emits handoff plus recommendation once.
 
 11. **Idea Progress List (sai-explore only)** — **Phase A: Stage TODO ownership**:
 
