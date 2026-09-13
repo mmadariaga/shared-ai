@@ -270,3 +270,17 @@ Selecting **Direct Build - Unattended** SHALL be the explicit user act that auth
 - **WHEN** the user selects Direct Build - Unattended on the crystallization-close selector
 - **THEN** delegated writes are consented for the Direct Build workers and exactly one local commit is pre-authorized, with no other command surface affected.
 
+### Requirement: Selector fires once at end only with same-turn block
+The pipeline selector SHALL fire only when block(s) with `---` were emitted in the same turn, exactly once at the end through the native picker. It SHALL carry the fixed titles `Plan - Unattended`, `Direct Build - Unattended`, `Manual` in the identical block-first order on Claude Code and opencode.
+
+#### Scenario: Selector gated on same-turn block
+- **WHEN** a crystallization turn ends with same-turn blocks and the shared handoff and recommendation emitted
+- **THEN** exactly one native-picker selector with the three fixed titles is emitted as the final emission
+
+### Requirement: Direct Build enters only via stage-machine emit and follow
+Direct Build selection SHALL enter only through emit of intent direct-build to `explore-slice@1` plus `next.follow` to `pipeline-direct-build.md`. It SHALL never enter via an ad-hoc Temp script or any other helper path.
+
+#### Scenario: Direct Build uses stage-machine route
+- **WHEN** the user selects Direct Build - Unattended from a valid same-turn selector
+- **THEN** the flow emits direct-build intent and follows to the Direct Build contract without loading a Temp helper script
+

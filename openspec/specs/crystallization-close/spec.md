@@ -31,3 +31,24 @@ A selector re-emission after a missing-selector report SHALL use only the curren
 - **WHEN** a missing-selector report requests the selector again
 - **THEN** the selector is re-emitted from the current chat set without re-emitting the recommendation and without dispatching a stale change
 
+### Requirement: Same-turn block guard blocks premature selector
+The crystallization close SHALL invoke the native-picker selector only when one or more blocks ending at `---` were emitted in the same turn for items 5, 6, and 7. When no block with `---` was emitted in the turn, it SHALL emit no selector.
+
+#### Scenario: Close without same-turn block emits no selector
+- **WHEN** a crystallization turn reaches its close without a same-turn block ending at `---`
+- **THEN** no native-picker selector is emitted in that turn
+
+### Requirement: Language-gate continuation resumes at block emission
+The crystallization close SHALL resume at Ready to Propose block emission after a language-gate answer and SHALL never jump directly to the selector. It SHALL ask no overview-language question at emission, reserving the overview-language decision for supervised Plan - Unattended activation, and fast-track SHALL skip only the language question without skipping or auto-selecting the selector.
+
+#### Scenario: Gate answer leads to block emission
+- **WHEN** the user answers the crystallization language gate
+- **THEN** the flow emits the Ready to Propose block next and does not emit the selector first
+
+### Requirement: Premature selector discard with single-selector correction
+The crystallization close SHALL discard a premature selector from a prior turn that carried no block and SHALL carry no selection from it. The correction turn SHALL emit the block plus the shared close plus a single selector, and the user SHALL re-select from `last_crystallization_set` in the identical harness order of block with `---`, then handoff, then recommendation, then a single selector.
+
+#### Scenario: Correction after premature selector
+- **WHEN** a prior turn emitted a selector without a block
+- **THEN** the correction turn discards that selection and emits one block plus close plus single selector for re-selection
+
