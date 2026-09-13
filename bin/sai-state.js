@@ -113,23 +113,132 @@ function withWarnings(payload, warnings) {
   return Object.assign({}, payload, { warnings });
 }
 
+function entryRev(entry) {
+  return (entry && typeof entry === 'object' && !Array.isArray(entry) && typeof entry.rev === 'number') ? entry.rev : 0;
+}
+
+function stateByMachineMap(record) {
+  if (!record || typeof record !== 'object' || Array.isArray(record)) return {};
+  const m = record.stateByMachine;
+  if (!m || typeof m !== 'object' || Array.isArray(m)) return {};
+  return m;
+}
+
+function unionDoneInCanonicalOrder(mod, ...lists) {
+  const seen = new Set();
+  const flat = [];
+  for (const list of lists) {
+    if (!Array.isArray(list)) continue;
+    for (const v of list) {
+      if (typeof v !== 'string') continue;
+      if (!seen.has(v)) { seen.add(v); flat.push(v); }
+    }
+  }
+  let steps = null;
+  try { steps = (mod && Array.isArray(mod.STEPS)) ? mod.STEPS : null; } catch (err) { steps = null; }
+  if (steps) {
+    const order = new Map();
+    for (let i = 0; i < steps.length; i++) { if (!order.has(steps[i])) order.set(steps[i], i); }
+    flat.sort((a, b) => {
+      const ai = order.has(a) ? order.get(a) : Number.MAX_SAFE_INTEGER;
+      const bi = order.has(b) ? order.get(b) : Number.MAX_SAFE_INTEGER;
+      if (ai !== bi) return ai - bi;
+      return 0;
+    });
+  }
+  return flat;
+}
+
+function canonicalizeMergedState(mod, mergedState) {
+  try {
+    if (!mod || typeof mod.project !== 'function' || !mergedState) return mergedState;
+    const proj = mod.project(mergedState);
+    if (proj && proj.snapshot && proj.snapshot.state && typeof proj.snapshot.state.stage === 'string') {
+      mergedState.stage = proj.snapshot.state.stage;
+    }
+    if (proj && proj.snapshot && proj.snapshot.state && ('active' in proj.snapshot.state)) {
+      mergedState.active = proj.snapshot.state.active;
+    }
+  } catch (err) {}
+  return mergedState;
+}
+
 function persistMachineOutcome(id, record, machineId, nextState, eventId, wire) {
-  const base = (record && typeof record === 'object') ? record : {};
-  const persisted = (base.stateByMachine && typeof base.stateByMachine === 'object' && !Array.isArray(base.stateByMachine)) ? base.stateByMachine : {};
-  const prev = (persisted[machineId] && typeof persisted[machineId] === 'object' && !Array.isArray(persisted[machineId])) ? persisted[machineId] : {};
-  const lastOutcome = { stage: wire.stage, next: wire.next };
-  if (wire.rejected !== undefined) lastOutcome.rejected = wire.rejected;
-  const merged = Object.assign({}, base);
-  merged.createdAt = typeof base.createdAt === 'number' ? base.createdAt : Date.now();
+  let freshRecord = null;
+  try { freshRecord = readSessionRecord(id).record; } catch (err) { freshRecord = null; }
+  const staleMap = stateByMachineMap(record);
+  const freshMap = stateByMachineMap(freshRecord);
+  const baseForMeta = (freshRecord && typeof freshRecord === 'object' && !Array.isArray(freshRecord)) ? freshRecord : ((record && typeof record === 'object' && !Array.isArray(record)) ? record : {});
+  const freshCreatedAt = (freshRecord && typeof freshRecord.createdAt === 'number') ? freshRecord.createdAt : null;
+  const staleCreatedAt = (record && typeof record.createdAt === 'number') ? record.createdAt : null;
+  const createdAt = (typeof freshCreatedAt === 'number') ? freshCreatedAt : ((typeof staleCreatedAt === 'number') ? staleCreatedAt : Date.now());
+
+  let mod = null;
+  try { mod = registry.get(machineId); } catch (err) { mod = null; }
+
+  const staleEntry = (staleMap[machineId] && typeof staleMap[machineId] === 'object' && !Array.isArray(staleMap[machineId])) ? staleMap[machineId] : {};
+  const freshEntry = (freshMap[machineId] && typeof freshMap[machineId] === 'object' && !Array.isArray(freshMap[machineId])) ? freshMap[machineId] : {};
+  const newRev = Math.max(entryRev(staleEntry), entryRev(freshEntry)) + 1;
+
+  let mergedState = nextState;
+  const nextHasDone = !!(nextState && Array.isArray(nextState.done));
+  const staleHasDone = !!(staleEntry.state && Array.isArray(staleEntry.state.done));
+  const freshHasDone = !!(freshEntry.state && Array.isArray(freshEntry.state.done));
+  if (nextHasDone || staleHasDone || freshHasDone) {
+    const nextDone = nextHasDone ? nextState.done : [];
+    const freshDone = freshHasDone ? freshEntry.state.done : [];
+    const staleDone = staleHasDone ? staleEntry.state.done : [];
+    const united = unionDoneInCanonicalOrder(mod, nextDone, freshDone, staleDone);
+    mergedState = Object.assign({}, nextState);
+    mergedState.done = united;
+    mergedState = canonicalizeMergedState(mod, mergedState);
+  }
+
+  let mergedStage = (mergedState && typeof mergedState.stage === 'string') ? mergedState.stage : wire.stage;
+  let mergedNext = wire.next;
+  try {
+    if (mod && typeof mod.project === 'function' && mergedState) {
+      const proj = mod.project(mergedState);
+      if (proj && proj.next && typeof proj.next.follow === 'string' && typeof proj.next.hint === 'string') {
+        mergedNext = proj.next;
+        if (proj.snapshot && proj.snapshot.state && typeof proj.snapshot.state.stage === 'string') {
+          mergedStage = proj.snapshot.state.stage;
+        }
+      }
+    }
+  } catch (err) {}
+  const mergedWire = { stage: mergedStage, next: mergedNext };
+  if (wire.rejected !== undefined) mergedWire.rejected = wire.rejected;
+
+  const merged = Object.assign({}, baseForMeta);
+  merged.createdAt = createdAt;
   merged.stateVersion = STATE_VERSION;
-  merged.stateByMachine = Object.assign({}, persisted);
+  merged.stateByMachine = {};
+  const allKeys = new Set(Object.keys(staleMap).concat(Object.keys(freshMap)));
+  for (const key of allKeys) {
+    if (key === machineId) continue;
+    const sEnt = staleMap[key];
+    const fEnt = freshMap[key];
+    const sValid = (sEnt && typeof sEnt === 'object' && !Array.isArray(sEnt)) ? sEnt : null;
+    const fValid = (fEnt && typeof fEnt === 'object' && !Array.isArray(fEnt)) ? fEnt : null;
+    if (sValid && fValid) {
+      merged.stateByMachine[key] = (entryRev(fValid) >= entryRev(sValid)) ? fValid : sValid;
+    } else if (fValid) {
+      merged.stateByMachine[key] = fValid;
+    } else if (sValid) {
+      merged.stateByMachine[key] = sValid;
+    }
+  }
+  const lastOutcome = { stage: mergedWire.stage, next: mergedWire.next };
+  if (mergedWire.rejected !== undefined) lastOutcome.rejected = mergedWire.rejected;
   merged.stateByMachine[machineId] = {
-    state: nextState,
-    rev: (typeof prev.rev === 'number' ? prev.rev : 0) + 1,
+    state: mergedState,
+    rev: newRev,
     lastEventId: eventId,
     lastOutcome,
   };
   writeSessionFile(id, merged);
+  return { mergedState, mergedWire, newRev };
 }
 
 function parseArgs(argv) {
@@ -281,12 +390,18 @@ function commandEmit(id, machineIdArg, eventJsonArg) {
   const wire = { stage: typeof nextState.stage === 'string' ? nextState.stage : undefined, next: nxt };
   if (result.rejected) wire.rejected = result.rejected;
 
-  session.stateByMachine.set(targetId, nextState);
-  session.lastPointer = nxt;
+  let emitWire = wire;
+  let persistedState = nextState;
+  try {
+    const merged = persistMachineOutcome(id, record, targetId, nextState, '', wire);
+    if (merged && merged.mergedWire) emitWire = merged.mergedWire;
+    if (merged && merged.mergedState) persistedState = merged.mergedState;
+  } catch (err) {}
 
-  try { persistMachineOutcome(id, record, targetId, nextState, '', wire); } catch (err) {}
+  session.stateByMachine.set(targetId, persistedState);
+  session.lastPointer = emitWire.next;
 
-  const payload = withWarnings(wire, loadWarnings);
+  const payload = withWarnings(emitWire, loadWarnings);
   process.stdout.write(JSON.stringify(payload) + '\n');
   process.exitCode = 0;
 }
@@ -320,16 +435,39 @@ function commandReset(id, machineIdArg) {
     return;
   }
 
-  // Build new record with this machine reset to initialState
-  const base = (record && typeof record === 'object') ? record : {};
-  const persisted = (base.stateByMachine && typeof base.stateByMachine === 'object' && !Array.isArray(base.stateByMachine)) ? base.stateByMachine : {};
-  const merged = Object.assign({}, base);
-  merged.createdAt = typeof base.createdAt === 'number' ? base.createdAt : Date.now();
+  // Build new record with this machine reset to initialState, preserving siblings by max rev
+  const base = (record && typeof record === 'object' && !Array.isArray(record)) ? record : {};
+  let freshRecordForReset = null;
+  try { freshRecordForReset = readSessionRecord(id).record; } catch (err) { freshRecordForReset = null; }
+  const staleMapForReset = stateByMachineMap(record);
+  const freshMapForReset = stateByMachineMap(freshRecordForReset);
+  const baseForReset = (freshRecordForReset && typeof freshRecordForReset === 'object' && !Array.isArray(freshRecordForReset)) ? freshRecordForReset : base;
+  const freshCreatedAtForReset = (freshRecordForReset && typeof freshRecordForReset.createdAt === 'number') ? freshRecordForReset.createdAt : null;
+  const baseCreatedAtForReset = (typeof base.createdAt === 'number') ? base.createdAt : null;
+  const merged = Object.assign({}, baseForReset);
+  merged.createdAt = (typeof freshCreatedAtForReset === 'number') ? freshCreatedAtForReset : ((typeof baseCreatedAtForReset === 'number') ? baseCreatedAtForReset : Date.now());
   merged.stateVersion = STATE_VERSION;
-  merged.stateByMachine = Object.assign({}, persisted);
+  merged.stateByMachine = {};
+  const allResetKeys = new Set(Object.keys(staleMapForReset).concat(Object.keys(freshMapForReset)));
+  for (const key of allResetKeys) {
+    if (key === targetId) continue;
+    const sEnt = staleMapForReset[key];
+    const fEnt = freshMapForReset[key];
+    const sValid = (sEnt && typeof sEnt === 'object' && !Array.isArray(sEnt)) ? sEnt : null;
+    const fValid = (fEnt && typeof fEnt === 'object' && !Array.isArray(fEnt)) ? fEnt : null;
+    if (sValid && fValid) {
+      merged.stateByMachine[key] = (entryRev(fValid) >= entryRev(sValid)) ? fValid : sValid;
+    } else if (fValid) {
+      merged.stateByMachine[key] = fValid;
+    } else if (sValid) {
+      merged.stateByMachine[key] = sValid;
+    }
+  }
 
   // Reset just this machine to initial state
-  const priorRev = (persisted[targetId] && typeof persisted[targetId].rev === 'number') ? persisted[targetId].rev : 0;
+  const staleTarget = (staleMapForReset[targetId] && typeof staleMapForReset[targetId] === 'object' && !Array.isArray(staleMapForReset[targetId])) ? staleMapForReset[targetId] : {};
+  const freshTarget = (freshMapForReset[targetId] && typeof freshMapForReset[targetId] === 'object' && !Array.isArray(freshMapForReset[targetId])) ? freshMapForReset[targetId] : {};
+  const priorRev = Math.max(entryRev(staleTarget), entryRev(freshTarget));
   merged.stateByMachine[targetId] = {
     state: mod.initialState,
     rev: priorRev + 1,
@@ -402,5 +540,5 @@ function main(argv) {
   process.exitCode = 2;
 }
 
-module.exports = { sessionFile, sessionDir, isUuidv4, STATE_VERSION };
+module.exports = { sessionFile, sessionDir, isUuidv4, STATE_VERSION, entryRev, stateByMachineMap, unionDoneInCanonicalOrder, persistMachineOutcome };
 if (require.main === module) { main(process.argv.slice(2)); }
