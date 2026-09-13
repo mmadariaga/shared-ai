@@ -20,6 +20,20 @@ session persists as a durable store in its own file under the system temp direct
 writes) and reloads automatically on each invocation. No state object and no
 snapshot travel in either direction.
 
+## Concurrency
+
+One session file has one writer at a time. Parallel workers may run
+concurrently, but their store operations (`emit`, `reset`) against the same
+session `id` serialize — for the meta-review audit batch in fixed order
+security → performance → accessibility. The store re-reads the file just
+before writing, preserves sibling machines by max `rev`, and merges the
+target `done[]` by union in canonical order, so a narrow overlap keeps
+survivors harmless for monotonic step sets. The read-then-write is not
+atomic: a residual TOCTOU window remains with no lockfile or CAS retry,
+accepted because serialization leaves it with no real pressure. Keep a
+single `<id>.json` with `stateByMachine` and per-machine `rev`; no
+per-machine files.
+
 ## Verbs
 
 - **Spawn**: `sai-state spawn --key <stable-key>` initializes or locates the

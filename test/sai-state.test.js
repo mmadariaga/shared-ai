@@ -8,7 +8,7 @@ const path = require('path');
 const { execSync } = require('child_process');
 const crypto = require('crypto');
 
-const { sessionFile, sessionDir, isUuidv4, STATE_VERSION } = require('../bin/sai-state.js');
+const { sessionFile, sessionDir, isUuidv4, STATE_VERSION, persistMachineOutcome } = require('../bin/sai-state.js');
 
 function tmpBase() {
   return process.env.TMPDIR || os.tmpdir();
@@ -437,4 +437,35 @@ test('isUuidv4 validates UUIDv4 format correctly', () => {
 test('STATE_VERSION is exported correctly', () => {
   assert.ok(typeof STATE_VERSION === 'string', 'STATE_VERSION should be string');
   assert.match(STATE_VERSION, /^\d+\.\d+\.\d+$/, 'STATE_VERSION should be semantic version');
+});
+
+test('CLI: concurrent emits to different machines preserve both done sets', () => {
+  const key = 'test-concurrent-' + Date.now() + '-' + Math.floor(Math.random() * 1000000);
+  const spawn = invokeCommand('spawn', '--key', key);
+  assert.equal(spawn.exitCode, 0, 'spawn should succeed');
+  const id = JSON.parse(spawn.stdout).id;
+  try {
+    // Both concurrent writers start from the same stale snapshot.
+    const staleRecord = JSON.parse(fs.readFileSync(sessionFile(id), 'utf8'));
+    // First writer: security via CLI.
+    const secEvent = JSON.stringify({ step_ids: ['resolve-security-scope'] });
+    const secRes = invokeCommand('emit', id, 'security-standalone@1', secEvent);
+    assert.equal(secRes.exitCode, 0, 'security emit should succeed');
+    // Second writer: performance from the stale snapshot (simulates a concurrent
+    // reader that read before security wrote). Fresh re-read inside persist must
+    // preserve the sibling. Direct call avoids timing flakiness from the residual
+    // TOCTOU window while still exercising the stale-snapshot merge.
+    const perfNext = { stage: 'map-stack-hot-paths', done: ['resolve-performance-scope'] };
+    const perfWire = { stage: perfNext.stage, next: { follow: 'sai/commands/performance/steps/map-stack-hot-paths.md', hint: 'fetch the map-stack-hot-paths step' } };
+    persistMachineOutcome(id, staleRecord, 'performance-standalone@1', perfNext, '', perfWire);
+    const stored = JSON.parse(fs.readFileSync(sessionFile(id), 'utf8'));
+    const secEntry = stored.stateByMachine && stored.stateByMachine['security-standalone@1'];
+    const perfEntry = stored.stateByMachine && stored.stateByMachine['performance-standalone@1'];
+    const secDone = secEntry && secEntry.state && secEntry.state.done;
+    const perfDone = perfEntry && perfEntry.state && perfEntry.state.done;
+    assert.ok(Array.isArray(secDone) && secDone.indexOf('resolve-security-scope') !== -1, 'security done should survive concurrent emit');
+    assert.ok(Array.isArray(perfDone) && perfDone.indexOf('resolve-performance-scope') !== -1, 'performance done should survive concurrent emit');
+  } finally {
+    cleanup([id]);
+  }
 });

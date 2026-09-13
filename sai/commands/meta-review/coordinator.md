@@ -103,12 +103,14 @@
   - **opencode**: multiple same-turn `task()` calls
   - **Claude Code**: parallel agent dispatches
 
-  The coordinator processes their Result Loops sequentially in fixed order
-  (security → performance → accessibility). Each audit writes a disjoint
-  artifact (`security.md`, `performance.md`, `accessibility.md`), so concurrency
-  is safe. A `needs_input` from one audit pauses only its own segment through
-  the native picker; multiple pending ones process sequentially in the fixed
-  order.
+  Worker dispatch stays parallel; only store operations serialize. The
+  coordinator processes their Result Loops sequentially in fixed order
+  (security → performance → accessibility). `sai-state` emits and resets
+  against the same session `id` run one-writer-at-a-time in that same fixed
+  order. Each audit writes a disjoint artifact (`security.md`,
+  `performance.md`, `accessibility.md`), so artifact concurrency is safe. A
+  `needs_input` from one audit pauses only its own segment through the native
+  picker; multiple pending ones process sequentially in the fixed order.
 
   ## Non-final terminal navigation
   When an audit segment runs as non-final (position `i` where `i + 1` is still
