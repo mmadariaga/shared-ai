@@ -38,4 +38,8 @@ Every spawn prompt must declare exact response fields, a hard word-or-line limit
 
 Every caller spawn prompt MUST state the **goal** and the **output contract** — exact fields, length cap, raw-content rule. A spawn prompt MUST NOT prescribe a specific research tool, a procedure, a numbered sequence of steps, or a method. The tool-preference ladder (`@sai/policies/explore-agent.md`) is the governing preference order and is never overridden by a caller prompt.
 
+## Two-Phase Startup handshake (sai-explore only)
+
+Pre-crystallization explore → budget-explorer runs in two phases. The initial `Agent(subagent_type: budget-explorer, run_in_background: true, ...)` dispatch is ready-only under strict-zero: base instructions only, with no goal, output contract, change/topic, or provenance. The explorer returns exactly `event: ready` with empty `changed_files` before any expensive work. The goal plus output contract travels only in the post-ready same-worker continuation via `SendMessage` to the captured agent handle. Each parallel explorer performs its own independent ready with no shared batch ready. Retain the handle for continuation only with no guard snapshot. Ready and task retry separately with identical prompts under the shared bounded retry budget (at most two retries per operation); a missing ready relaunches fresh with the original minimal envelope and no resume-before-ready. The ladder, output contract, and 40-call ceiling hold across both phases; the ready prompt never names a tool. Supervised crystallization-close spec/design dispatches keep their routed two-phase with no double wrap. Explore declares no progress plan. No `run_in_background` change. Full semantics live in the fetched explore-agent policy.
+
 Fetch @sai/policies/explore-agent.md
