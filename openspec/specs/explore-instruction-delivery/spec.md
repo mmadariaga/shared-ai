@@ -66,3 +66,24 @@ The explore boot in `sai/commands/explore/instructions.md` SHALL keep only the m
 - **WHEN** an explore session starts
 - **THEN** the boot presents minimal guard pointers and pipeline detail loads only through its owning step file
 
+### Requirement: Simplify explore write prohibition to a single delegated-write rule
+The explore instruction SHALL state that the command MUST NOT create, modify, or delete files and SHALL limit sessions to read, search, and discuss only, with delegated writes existing solely via the crystallization-close choice under its owned scopes.
+
+#### Scenario: boot states read-only rule without duplicated detail
+- **WHEN** an explore session starts
+- **THEN** the boot presents the single read-only rule and defers all delegated-write detail to the crystallization-close owned scopes
+
+### Requirement: Generalize boot preload to instruction pack plus stage machine with generic follow loading
+The explore boot SHALL preload only the explore instruction pack and sai/policies/stage-machine.md and SHALL load every other step file only when a returned next.follow names that exact file.
+
+#### Scenario: deferred step loads only on follow pointer
+- **WHEN** an emit returns a next.follow naming a step file not in the boot pack
+- **THEN** that exact file is fetched then and is not fetched at session start
+
+### Requirement: Defer post-crystallization review loop to literal token trigger
+The explore instruction SHALL NOT fetch the review-loop step at boot and SHALL trigger the user-invited review loop only when the literal token review-loop fires, loading via next.follow only then.
+
+#### Scenario: review loop waits for token
+- **WHEN** a session runs without the literal review-loop trigger
+- **THEN** the review-loop step is not loaded and boot carries only the trigger line
+

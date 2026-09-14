@@ -1,8 +1,6 @@
 You are in explore mode — a read-and-discuss context. These restrictions are in effect for the entire session:
 
-1. **No file writes**: Explore has no direct write tool and MUST NOT create, modify, or delete files. Do NOT invoke any write-producing sai-* command, and do NOT use `write`, `edit`, or any other tool that creates or modifies files. Explore mode is strictly read-only — you may only read files, search code, and discuss. This includes prompts, configs, skills, scripts, and documentation. The only exceptions are the user's explicit selections on the crystallization-close pipeline selector (item 10): **Plan (unattended)** and **Direct Build (unattended)** may dispatch their owned workers through closed execution — owned scopes live in `pipeline-plan-unattended.md` and `pipeline-direct-build.md`. This exception grants no direct write tool to Explore and authorizes no out-of-scope delegated write.
-
-   **Supervised artifact-feedback gate parameter pins**: the spec application supplies `artifacts = proposal.md, specs/**`, `proceed-label = Finish step`, `next-action = the spec-to-design phase-transition`, and `mode = supervised`; each design application supplies `artifacts = design.md, tasks.md, interfaces.md`, `proceed-label = Continue`, and a conditional `next-action = post-gate overview-generation and supervised design-terminal` when `overview_language` is a selected non-`None` value, or `next-action = no-generation supervised-terminal` when `overview_language` is `None`, with `mode = supervised`. The shared policy auto-proceeds in supervised mode without a picker, free-text path, or iteration increment; an omitted `mode` remains interactive for standalone coordinators.
+1. **No file writes**: This command MUST NOT create, modify, or delete files — read, search, and discuss only. Delegated writes exist solely via the crystallization-close choice under its owned scopes.
 
 2. **Research-tooling check (sai-explore only)**: At session start, before any grep/glob/Read for the user's request — and before the `openspec-explore` skill's own `openspec list --json` and codebase reading — evaluate the code-graph MCP state **once** and print the single matching notice below. This check applies only within `sai-explore`; no other `sai-*` command is affected. It is **non-blocking** (never halts the session, prompts the user, or gates later work) and **read-only** (`Glob` is the only permitted filesystem probe; do NOT use `write`, `edit`, or any other file-modifying tool).
 
@@ -36,7 +34,7 @@ You are in explore mode — a read-and-discuss context. These restrictions are i
 
 Fetch @sai/commands/explore/steps/common.md
 
-Boot preloads only this explore instruction pack (`instructions.md` and `steps/common.md`). Do not fetch `crystallization-protocol.md`, `slice.md`, `route-selector.md`, `pipeline-direct-build.md`, or `pipeline-plan-unattended.md` at session start; those files load only when a returned `next.follow` names that exact file after `/emit`. If the chat never reaches that stage they are not fetched.
+Boot preloads only this explore instruction pack (`instructions.md` and `steps/common.md`) plus `sai/policies/stage-machine.md`. Every other step file loads only when a returned `next.follow` names that exact file after `/emit`. If the chat never reaches that stage they are not fetched.
 
 Fetch @sai/policies/stage-machine.md and follow it for every store interaction; the verbs, errors, quoting, pointer, and degraded-mode contract are single-sourced there and are not restated here.
 
@@ -46,11 +44,7 @@ Fetch @sai/policies/stage-machine.md and follow it for every store interaction; 
 
 **Crystallization-turn close (shared) lives in `crystallization-protocol.md` by reference.** Load via `next.follow`; checkpoint, `recordedList`-before-selector order, and `fast-track` never-auto-selects live there only.
 
-Fetch @sai/commands/explore/steps/route-selector.md
-
-**Post-Manual handoff lives in `route-selector.md`; boot only points here. Scaffolding stays English.**
-
-Fetch @sai/commands/explore/steps/review-loop.md
+**Post-crystallization review loop:** the literal token `review-loop` triggers the user-invited review loop; load via `next.follow` only then.
 
 11. **Idea Progress List (sai-explore only)** — marker only; full spec lives in `steps/idea-list.md`.
 
