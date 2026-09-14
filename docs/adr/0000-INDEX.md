@@ -336,6 +336,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0165 — Dual coordinator inspection channels — verifying vs phase-static](./0165-dual-coordinator-inspection-channels.md) — Refs ddr:0151b, Refs ddr:0152
 - [0166b — Dual-channel exclusivity is per cause surface](./0166b-per-cause-surface-dual-channel-exclusivity.md) — **Amends** 0165
 - [0171c — Single-string invocation envelope across active SAI surfaces](./0171c-single-string-invocation-envelope.md) — Supersedes 0166, **Reframes** 0159b, Refs 0136, Refs ddr:0114
+- [0184 — Budget-explorer resolver lives behind canonical skills with per-harness bindings](./0184-budget-explorer-resolver-lives-behind-canonical-skills.md) — **Amends** 0001
 
 ---
 
@@ -438,6 +439,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0144 — The three planning-phase coordinators drop the scoped `Bash(date:*)` entry](./0144-planning-coordinators-drop-the-scoped-date-shell-entry.md) — Supersedes 0117a, Refs 0118a, Refs ddr:0141
 - [0153a — Overview dispatch names the budget-subagent binding per harness](./0153a-overview-dispatch-names-the-budget-subagent-binding-per-harness.md)
 - [0171c — Single-string invocation envelope across active SAI surfaces](./0171c-single-string-invocation-envelope.md) — Supersedes 0166, **Reframes** 0159b, Refs 0136, Refs ddr:0114
+- [0184 — Budget-explorer resolver lives behind canonical skills with per-harness bindings](./0184-budget-explorer-resolver-lives-behind-canonical-skills.md) — **Amends** 0001
 
 ### Argument passing & change-name resolution
 
@@ -609,6 +611,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 | [0171a](./0171a-item-10-diagnosis-entry-shared-non-clean-plus-cancelled.md) | amends | [0168b](./0168b-explore-item-10-diagnosis-review-engine-same-worker.md) |
 | [0171c](./0171c-single-string-invocation-envelope.md) | supersedes | [0166](./archive/0166-envelope-only-change-name-resolution.md) |
 | [0171c](./0171c-single-string-invocation-envelope.md) | reframes | [0159b](./0159b-marker-grammar-stays-on-two-string-envelope.md) |
+| [0184](./0184-budget-explorer-resolver-lives-behind-canonical-skills.md) | amends | [0001](./0001-sai-separate-harness-files.md) |
 | [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0033](./archive/0033-echo-line-format-and-placement.md) |
 | [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0034](./archive/0034-resolution-precedence-wrapper-echo-first.md) |
 | [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0035](./archive/0035-harness-specific-adapter-carve-out.md) |
