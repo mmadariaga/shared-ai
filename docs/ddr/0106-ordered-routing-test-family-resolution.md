@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-`sai/instructions/implement.md:95` asked the user "Do you want me to create `docs/adr/NNNN-slug.md` or `docs/ddr/NNNN-slug.md`?" with no criterion attached, and `sai/instructions/design.md:69` and `sai/instructions/spec.propose.md:78-85` each restated the three ADR/DDR criteria without distinguishing the two families, so the ADR-vs-DDR choice fell to whichever model was running. With 93 ADRs and 20 DDRs split by hand in this repository, the ambiguity was no longer hypothetical.
+`sai/instructions/implement.md:95` at `3e8a767d` asked the user "Do you want me to create `docs/adr/NNNN-slug.md` or `docs/ddr/NNNN-slug.md`?" with no criterion attached, and `sai/instructions/design.md:69` at `3e8a767d` and `sai/instructions/spec.propose.md:78-85` at `3e8a767d` each restated the three ADR/DDR criteria without distinguishing the two families, so the ADR-vs-DDR choice fell to whichever model was running. With 93 ADRs and 20 DDRs split by hand in this repository, the ambiguity was no longer hypothetical.
 
 ## Decision
 

@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-The Pre-commit File Visibility Report in `/sai-4-apply` sources its committed-files block from `git diff --cached --stat` (`sai/instructions/apply.md:172`). Staging in this flow is deferred: the `git add` + `git commit` runs only inside the STOP & COMMIT Checklist step that executes on `yes` / `Allow on this session`, *after* the authorization ask. Because the report runs *before* that step, the git index is empty when the report is generated. Consequently `git diff --cached` reports 0 files "staged", and the report mislabels the Step's own files as `Unstaged (will NOT be committed)` — immediately before the commit stages exactly those files.
+The Pre-commit File Visibility Report in `/sai-4-apply` sources its committed-files block from `git diff --cached --stat` (`sai/instructions/apply.md:172` at `d0eb28a7`). Staging in this flow is deferred: the `git add` + `git commit` runs only inside the STOP & COMMIT Checklist step that executes on `yes` / `Allow on this session`, *after* the authorization ask. Because the report runs *before* that step, the git index is empty when the report is generated. Consequently `git diff --cached` reports 0 files "staged", and the report mislabels the Step's own files as `Unstaged (will NOT be committed)` — immediately before the commit stages exactly those files.
 
 ## Decision
 

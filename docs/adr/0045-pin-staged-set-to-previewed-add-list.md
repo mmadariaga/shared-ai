@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-The STOP & COMMIT Checklist step that runs on `yes` / `Allow on this session` currently jumps straight to `git commit` (`sai/instructions/apply.md:206`) with the staged *set* left unscoped/implicit (`commit-rules.md` line 111 treats `git add` for the same step as implicitly authorized). This means the previewed add-list and the actual staged set could diverge: a blanket `git add -A` would stage leftovers the report just labeled "Will NOT be committed", contradicting the preview.
+The STOP & COMMIT Checklist step that runs on `yes` / `Allow on this session` currently jumps straight to `git commit` (`sai/instructions/apply.md:206` at `d0eb28a7`) with the staged *set* left unscoped/implicit (`sai/instructions/commit-rules.md:111` at `d0eb28a7` treats `git add` for the same step as implicitly authorized). This means the previewed add-list and the actual staged set could diverge: a blanket `git add -A` would stage leftovers the report just labeled "Will NOT be committed", contradicting the preview.
 
 ## Decision
 

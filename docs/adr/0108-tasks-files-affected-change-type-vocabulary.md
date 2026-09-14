@@ -46,7 +46,7 @@ prose-verb ambiguity. Consumers that strip an arbitrary leading token keep
 working unchanged (`/sai-4-apply` plan cross-check, `tasks-routing-metadata`,
 `atomic-commit-planning`); adding a fifth letter later is additive and
 non-breaking. Archived `tasks.md` files are exempt; the wording of
-`sai/instructions/apply.md:386` and `openspec/specs/apply-pre-commit-file-report/spec.md`
+`sai/instructions/apply.md:386` at `92c092c7` and `openspec/specs/apply-pre-commit-file-report/spec.md`
 stays misaligned by accepted trade-off (Decision 7).
 
 ## Provenance

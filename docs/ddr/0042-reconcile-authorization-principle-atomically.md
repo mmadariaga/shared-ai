@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-The CRITICAL "ask every time / No implicit authorization" block in `apply.md:220-223` and the shared hard rules in `commit-rules.md:110-111` state absolute per-invocation authorization. Adding a session-scoped skip creates a standing contradiction unless the principle itself is amended.
+The CRITICAL "ask every time / No implicit authorization" block in `sai/instructions/apply.md:220-223` at `35ccccc7` and the shared hard rules in `sai/instructions/commit-rules.md:110-111` at `35ccccc7` state absolute per-invocation authorization. Adding a session-scoped skip creates a standing contradiction unless the principle itself is amended.
 
 ## Decision
 

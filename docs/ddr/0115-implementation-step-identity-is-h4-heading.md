@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-Two heading conventions exist for implementation-plan steps. The landed artifact convention is `#### Step N:` — an H4 with colon, as written by the implementation plan template (`sai/instructions/_templates/implementation-plan.md:29`) and read by `sai/instructions/implement.md`'s re-run classification ("every `#### Step N:` section"). The schema scaffold (`openspec/schemas/sai-workflow/templates/implementation.md:9`) carries a different form, `## Step N —` (H2), which no landed plan follows. The apply step projection renders a task list from `implementation.md`'s step headings and keys each entry's stable identity on the heading integer, so the projection must commit to exactly one convention — and the wrong choice silently drops re-runs and audit-appended steps from the projected list.
+Two heading conventions exist for implementation-plan steps. The landed artifact convention is `#### Step N:` — an H4 with colon, as written by the implementation plan template (`sai/instructions/_templates/implementation-plan.md:29` at `109eb236`) and read by `sai/instructions/implement.md`'s re-run classification ("every `#### Step N:` section"). The schema scaffold (`openspec/schemas/sai-workflow/templates/implementation.md:9` at `109eb236`) carries a different form, `## Step N —` (H2), which no landed plan follows. The apply step projection renders a task list from `implementation.md`'s step headings and keys each entry's stable identity on the heading integer, so the projection must commit to exactly one convention — and the wrong choice silently drops re-runs and audit-appended steps from the projected list.
 
 ## Decision
 

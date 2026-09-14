@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-The dispatch envelope is closed at exactly two strings (`wrapper_echo_value`, `arguments_value`) per the design worker contract (`sai/orchestration/workers/sai-2-design-worker.md:7-10`), and no requirement widens it. User review of the change's prose (GLOSSARY.md:91, "transported through dispatch", and reconstruction phrasing) read as if the progress plan travels through the dispatch channel — a contradiction with the closed envelope.
+The dispatch envelope is closed at exactly two strings (`wrapper_echo_value`, `arguments_value`) per the design worker contract (`sai/orchestration/workers/sai-2-design-worker.md:7-10` at `47ddc3cf`), and no requirement widens it. User review of the change's prose (the change's uncommitted `GLOSSARY.md` draft, "transported through dispatch", and reconstruction phrasing) read as if the progress plan travels through the dispatch channel — a contradiction with the closed envelope.
 
 ## Decision
 

@@ -11,7 +11,7 @@ A binding that declares background dispatch — directly via `run_in_background:
 
 #### Scenario: Routed coordinator dispatches a background worker
 
-- **WHEN** a routed SAI coordinator (for example, `sai/orchestration/workers/bindings/claude/design-worker.md:5`) spawns a background worker with `run_in_background: true`
+- **WHEN** a routed SAI coordinator (for example, `sai/orchestration/workers/bindings/claude/worker-template.md:24`) spawns a background worker with `run_in_background: true`
 - **THEN** the coordinator SHALL capture the agent ID returned by the dispatch
 - **AND** the coordinator SHALL await the worker's structured payload on its own turn
 - **AND** the worker SHALL remain reachable (via `SendMessage` or harness equivalent) for continuation and reaping until its payload is consumed
@@ -50,8 +50,8 @@ The dispatch mode of a `budget-*` subagent binding SHALL be declared in the bind
 A binding that declares background dispatch SHALL name the class of dispatcher that may invoke it. The following dispatcher classes are the only call sites permitted to invoke a background `budget-*` binding:
 
 - The main agent — the user-facing session that captures the continuation reference and awaits the child's structured payload on its own turn before returning to the user.
-- A routed SAI coordinator — per `sai/orchestration/workers/bindings/{claude,opencode}/*-worker.md`, which captures the agent ID or task ID as binding-owned continuation metadata and awaits the structured payload on its own turn.
-- A routed SAI worker — a worker dispatched by a coordinator (for example, `agents/claude/sai-2-design-worker.md`, which loads `skills/budget-explorer/SKILL.md` at line 10) that is itself permitted to dispatch `budget-*` subagents per its own worker contract. A routed worker satisfies the outlives-child property because a background parent defers its own completion until its background children finish, so the worker's structured payload is not produced until every `budget-*` subagent it dispatched has reported its result.
+- A routed SAI coordinator — per the bindings materialized from `sai/orchestration/workers/bindings/{claude,opencode}/worker-template.md`, which captures the agent ID or task ID as binding-owned continuation metadata and awaits the structured payload on its own turn.
+- A routed SAI worker — a worker dispatched by a coordinator (for example, `sai-2-design-worker`, whose contract `sai/commands/design/worker.md:98-100` delegates discovery to `budget-explorer`) that is itself permitted to dispatch `budget-*` subagents per its own worker contract. A routed worker satisfies the outlives-child property because a background parent defers its own completion until its background children finish, so the worker's structured payload is not produced until every `budget-*` subagent it dispatched has reported its result.
 
 A binding that does not name one of these three dispatcher classes SHALL NOT be invoked as a background call.
 

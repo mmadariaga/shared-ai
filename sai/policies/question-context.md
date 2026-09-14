@@ -38,7 +38,7 @@ and no consuming surface may add, remove, or reinterpret an exemption here.
    pinned byte-for-byte by `sai/policies/artifact-feedback-gate.md`.
 4. **Crystallization-close selector** — sai-explore's `Plan - Unattended` /
    `Direct Build - Unattended` / `Manual` selector, pinned by
-   `sai/commands/explore/instructions.md` item 10.
+   `sai/commands/explore/steps/route-selector.md` (item 10).
 5. **Plain-text sí/no review invitation** — sai-explore's post-crystallization
    global invitation (item 9), a deliberate narrow exception to the
    native-picker presentation rule in `remember.md`.

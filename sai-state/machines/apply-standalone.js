@@ -80,7 +80,7 @@ function snapshotOf(current) {
   };
 }
 
-// E2: derivation rule from coordinator.md:68.
+// E2: same derivation as sai/policies/todo-structure.md:27-32, over checkbox-marked Steps.
 // Fully-marked Step is done, first not-fully-marked is active, rest pending.
 function deriveActive(set, done) {
   for (const step of set) {

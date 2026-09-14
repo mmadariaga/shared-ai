@@ -10,7 +10,7 @@ The `commit-auth-allow-on-session` change introduces a session-scoped authorizat
 
 ## Decision
 
-The flag is a boolean held in the agent's in-conversation working memory only. It is never written to disk and resets at the start of a new chat or new `/sai-*` invocation. This mirrors the feedback-gate iteration counter (`artifact-feedback-gate.md:19-27`) which follows the same in-conversation-only model.
+The flag is a boolean held in the agent's in-conversation working memory only. It is never written to disk and resets at the start of a new chat or new `/sai-*` invocation. This mirrors the feedback-gate iteration counter (`sai/instructions/artifact-feedback-gate.md:19-27` at `401706fe`) which follows the same in-conversation-only model.
 
 ## Alternatives Considered
 

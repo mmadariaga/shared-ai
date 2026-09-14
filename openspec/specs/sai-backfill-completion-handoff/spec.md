@@ -9,7 +9,7 @@ TBD - this spec was authored as a change delta and never merged into the main tr
 
 `/sai-backfill` MUST end its completion by printing a `## Ready to Archive` block that names the change and prints the next command. The block MUST replace the current "To archive the change, run `/sai-archive {name}`" line. The block MUST be the LAST output of the command, after any decision summary, summary statistics, or final status line, and MUST be a paste-ready handoff into a fresh chat — not an in-context auto-execution of `/sai-archive`.
 
-The block is a minimal handoff, NOT a recap of the proposal. The `## Ready to Propose` block from `sai/commands/explore/instructions.md:42-53` is the *input* to `/sai-1-spec` and therefore must include What/Why/Capabilities/Key constraints; the `## Ready to Archive` block is the *handoff* to `/sai-archive`, which only needs the change name — the proposal.md the agent just wrote already contains the full context for the user to see.
+The block is a minimal handoff, NOT a recap of the proposal. The `## Ready to Propose` block from `sai/policies/ready-to-propose-format.md:14-41` is the *input* to `/sai-1-spec` and therefore must include What/Why/Capabilities/Key constraints; the `## Ready to Archive` block is the *handoff* to `/sai-archive`, which only needs the change name — the proposal.md the agent just wrote already contains the full context for the user to see.
 
 #### Scenario: Block contains name and next command
 

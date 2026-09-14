@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-`bin/doctor.js` must know each harness's expected destination files to classify them present / missing / unexpected, and to hash-compare them for the version file-diff (ADR 0056). That expected set is exactly "the files the installer would write" — the same set `bin/uninstall-flow.js` already reconstructs via `enumerateClaude`/`enumerateOpencode`/`enumerateCopilot`, which return `{ src, dest, editorBase }` entries and are exported (`module.exports`, `bin/uninstall-flow.js:267–282`). The install graph is otherwise implicit in `install-flow.js`'s imperative `copy()` calls; a symmetry test already locks the uninstall enumeration against install drift (ADR 0055). The doctor is a third consumer of the same graph.
+`bin/doctor.js` must know each harness's expected destination files to classify them present / missing / unexpected, and to hash-compare them for the version file-diff (ADR 0056). That expected set is exactly "the files the installer would write" — the same set `bin/uninstall-flow.js` already reconstructs via `enumerateClaude`/`enumerateOpencode`/`enumerateCopilot`, which return `{ src, dest, editorBase }` entries and are exported (`module.exports`, `bin/uninstall-flow.js:267–282` at `6a721be1`). The install graph is otherwise implicit in `install-flow.js`'s imperative `copy()` calls; a symmetry test already locks the uninstall enumeration against install drift (ADR 0055). The doctor is a third consumer of the same graph.
 
 ## Decision
 
@@ -28,4 +28,4 @@ Accepted
 - `openspec/changes/add-sai-doctor/design.md` — Decision D2
 - ADR 0055 — re-derive the uninstall deletion set and verify symmetry by test (the enumeration this ADR reuses)
 - `openspec/changes/add-sai-doctor/specs/doctor-harness-inventory/spec.md` — "per-harness file inventory"
-- `bin/uninstall-flow.js:267–282` — `module.exports` (`enumerate*`, `buildDeletionSet`, `sha256File`)
+- `bin/uninstall-flow.js:267–282` at `6a721be1` — `module.exports` (`enumerate*`, `buildDeletionSet`, `sha256File`)
