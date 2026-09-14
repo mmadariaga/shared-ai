@@ -22,7 +22,7 @@ and in the opaque continuation history for replacement reconstruction.
 Agent(
   name: "{{workerName}}",
   run_in_background: true,
-  prompt: "Worker contract: Fetch @{{workerContract}} and follow it exactly.\n\nReturn event: ready now; await task disclosure in the same-worker continuation."
+  prompt: "Worker contract: Fetch @{{workerContract}} and follow it exactly.\n\nReturn event: ready now; await task disclosure in the same-worker continuation.\n\nReturn exactly:\n```yaml\nevent: ready\nchanged_files: []\n```"
 )
 ```
 

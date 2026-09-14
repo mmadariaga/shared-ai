@@ -95,7 +95,7 @@ const WORKER_CONTRACT_BY_NAME = {
 };
 
 function expectedWorkerPrompt(phase) {
-  return `Worker contract: Fetch @sai/commands/${phase}/worker.md and follow it exactly.\n\nReturn event: ready now; await task disclosure in the same-worker continuation.`;
+  return `Worker contract: Fetch @sai/commands/${phase}/worker.md and follow it exactly.\n\nReturn event: ready now; await task disclosure in the same-worker continuation.\n\nReturn exactly:\n\`\`\`yaml\nevent: ready\nchanged_files: []\n\`\`\``;
 }
 
 function extractDispatchCalls(source, keyword) {
@@ -271,8 +271,10 @@ test('Step 2 initial Opencode task dispatches deliver the matching contract and 
          `${workerName} manifest-rendered worker prompt must not construct the wrapper echo field`);
        assert.doesNotMatch(prompt, /InvocationEnvelope|arguments_value/,
          `${workerName} initial prompt carries no task under strict zero`);
-       assert.match(prompt, /Return event: ready now; await task disclosure in the same-worker continuation\.$/,
+       assert.match(prompt, /Return event: ready now; await task disclosure in the same-worker continuation\./,
          `${workerName} initial prompt is ready-only with no task content`);
+       assert.match(prompt, /event: ready\nchanged_files: \[\]/,
+          `${workerName} initial prompt carries the literal ready example`);
       assert.ok(continuations.length > 0, `${workerName} should retain a continuation task dispatch`);
        for (const continuation of continuations) {
          assert.match(continuation, /\bprompt\s*[:=]\s*"<selected value>"/,

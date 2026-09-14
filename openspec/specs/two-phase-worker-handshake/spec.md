@@ -94,3 +94,10 @@ The system SHALL send the ready-only prompt with no envelope slot from both harn
 - **WHEN** worker bindings are installed or tested
 - **THEN** each initial dispatch carries the ready-only literal with no task content and validation fails on any envelope slot carryover
 
+### Requirement: Install validation enforces literal ready example in every initial dispatch
+Installer and test validation SHALL require every routed initial dispatch to carry the ready-only sentence plus the literal two-line ready example with no change name, flags, provenance, or task content, preserving strict-zero withholding and post-ready disclosure on the captured handle.
+
+#### Scenario: Validation requires example under strict zero
+- **WHEN** worker bindings are installed or tested
+- **THEN** each initial dispatch SHALL contain the ready-only literal plus the example and no task content
+

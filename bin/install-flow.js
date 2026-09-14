@@ -183,7 +183,7 @@ const MANAGED_WORKER_CONTRACTS = Object.freeze(Object.fromEntries(
 
 function expectedDispatchPrompt(workerName) {
   const contract = MANAGED_WORKER_CONTRACTS[workerName];
-  return `Worker contract: Fetch @${contract} and follow it exactly.\n\nReturn event: ready now; await task disclosure in the same-worker continuation.`;
+  return `Worker contract: Fetch @${contract} and follow it exactly.\n\nReturn event: ready now; await task disclosure in the same-worker continuation.\n\nReturn exactly:\n\`\`\`yaml\nevent: ready\nchanged_files: []\n\`\`\``;
 }
 
 function assertOneStringInvocationEnvelope(text, bindingPath) {

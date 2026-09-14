@@ -18,7 +18,7 @@ post-ready same-worker continuation after `event: ready` on the captured handle,
 and in the opaque continuation history for replacement reconstruction.
 
 ```
-task(subagent_type: "{{workerName}}", prompt: "Worker contract: Fetch @{{workerContract}} and follow it exactly.\n\nReturn event: ready now; await task disclosure in the same-worker continuation.")
+task(subagent_type: "{{workerName}}", prompt: "Worker contract: Fetch @{{workerContract}} and follow it exactly.\n\nReturn event: ready now; await task disclosure in the same-worker continuation.\n\nReturn exactly:\n```yaml\nevent: ready\nchanged_files: []\n```")
 ```
 
 Continue on the same task by sending the selected value back to the captured task:

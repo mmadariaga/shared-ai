@@ -50,3 +50,17 @@ Replacing the initial dispatch placeholder SHALL NOT change continuation behavio
 - **THEN** the binding SHALL reuse its captured continuation reference and forward only the selected value
 - **AND** the continuation SHALL not package the contract template, binding metadata, or artifacts as new worker input
 
+### Requirement: Initial dispatch prompt embeds literal ready example
+Each routed worker binding initial dispatch prompt SHALL embed the literal two-line ready example naming event ready and empty changed_files after the ready-only sentence, encoded with escaped newline sequences in the single double-quoted dispatch string so decoding yields the multi-line example.
+
+#### Scenario: Binding carries literal example
+- **WHEN** a binding initial dispatch prompt is inspected after decoding
+- **THEN** the prompt SHALL contain the ready-only sentence plus the two-line ready example with no task content
+
+### Requirement: Dispatch prompt preserves single-line escaped encoding
+Each modified dispatch prompt SHALL remain a single double-quoted line using escaped newline sequences with no physical newline inside the call, and installer exact-match validation SHALL enforce the full string including the example.
+
+#### Scenario: Encoded prompt validates exactly
+- **WHEN** installer validation compares a rendered dispatch prompt
+- **THEN** exact equality SHALL require the ready-only sentence plus the literal example block
+
