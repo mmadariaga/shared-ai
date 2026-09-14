@@ -100,18 +100,19 @@ The notice text SHALL always be the script-returned verbatim English `literal` r
 - **THEN** the research-tooling notice is still printed in English while other chat output continues to follow the `remember.md` language policy
 
 ### Requirement: Notice is visually emphasized
-
-The notice SHALL be rendered so that it visually stands out in scrollback rather than as an unmarked plain-text line. It SHALL use markdown emphasis — at minimum a bold lead — and SHOULD present as a blockquote callout carrying a ⚠️ marker. This rendering requirement applies to all three states, so the active research mode is not missed by the user.
+The notice SHALL be rendered so that it visually stands out in scrollback rather than as an unmarked plain-text line. It SHALL use markdown emphasis — at minimum a bold lead. Fallback notices for the not-installed and no-index states SHALL present as a blockquote callout carrying a warning marker. The `ready` notice SHALL present as a blockquote callout with a bold lead and without a warning marker. Text output and the `literal` field in `--json` mode share the same `LITERALS.ready` value.
 
 #### Scenario: fallback notice is emphasized
-
 - **WHEN** the check prints a fallback notice for the not-installed or installed-but-no-index state
 - **THEN** the notice is visually emphasized (a bold lead, and a blockquote callout with a ⚠️ marker) rather than an unmarked plain-text line
 
 #### Scenario: ready notice is emphasized
-
 - **WHEN** the check prints the ready-state notice
-- **THEN** the notice is visually emphasized with at least a bold lead so it stands out in scrollback
+- **THEN** the notice is visually emphasized as a blockquote callout with a bold lead and without a warning marker so it stands out in scrollback without presenting as a warning
+
+#### Scenario: ready JSON literal carries no warning marker
+- **WHEN** the check emits the ready state with `--json`
+- **THEN** the `literal` field renders as blockquote and bold without a warning marker
 
 ### Requirement: Generic preference with CodeGraph-specific recommendation
 

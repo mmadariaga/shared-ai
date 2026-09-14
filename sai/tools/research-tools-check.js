@@ -55,7 +55,7 @@ const LITERALS = {
   'no-index':
     '> ⚠️ **CodeGraph available but this project has no index — structural research falls back to grep/glob/Read.** Run `codegraph init -i` at the project root to build the index and enable structural queries. (CodeGraph: https://github.com/colbymchenry/codegraph)',
   ready:
-    '> ⚠️ **CodeGraph ready — structural research will use codegraph instead of grep/glob/Read.**',
+    '> **CodeGraph ready — structural research will use codegraph instead of grep/glob/Read.**',
 };
 
 /** Usage error / tooling failure. Carries the exit code the caller sees. */
