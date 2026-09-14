@@ -173,7 +173,7 @@
         },
         "opencodeAgent": {
           "description": "Owns the complete technical review phase and returns structured lifecycle metadata.",
-          "model": "opencode-go/deepseek-v4.1-flash",
+          "model": "opencode-go/gpt-5.6-luna",
           "variantLine": "variant: max",
           "permissionBlock": "    budget: allow\n    explore: allow"
         }
@@ -243,7 +243,7 @@
         },
         "opencodeAgent": {
           "description": "Owns the complete technical performance phase and returns structured lifecycle metadata.",
-          "model": "opencode-go/deepseek-v4.1-flash",
+          "model": "opencode-go/glm-5.3-flash",
           "variantLine": "variant: max",
           "permissionBlock": "    budget: allow\n    explore: allow"
         }
@@ -278,7 +278,7 @@
         },
         "opencodeAgent": {
           "description": "Owns the complete technical accessibility phase and returns structured lifecycle metadata.",
-          "model": "opencode-go/deepseek-v4.1-flash",
+          "model": "opencode-go/glm-5.3-flash",
           "variantLine": "variant: max",
           "permissionBlock": "    budget: allow\n    explore: allow"
         }
