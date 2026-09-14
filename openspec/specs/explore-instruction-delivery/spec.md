@@ -5,7 +5,7 @@ Define the lazy, trigger-point delivery structure for the read-only `sai-explore
 ## Requirements
 ### Requirement: Split the explore contract into a startup nucleus and reachable steps
 
-`sai-explore` SHALL retain its read-only restrictions and research-tooling check in `sai/commands/explore/instructions.md`, SHALL fetch `steps/common.md` directly before shared staged-progression and closure rules are evaluated, and SHALL provide exactly eleven named Markdown step files under `sai/commands/explore/steps/`. Boot SHALL preload only that explore instruction pack (`instructions.md` and `steps/common.md`) and SHALL NOT fetch `crystallization-protocol.md`, `slice.md`, `pipeline-direct-build.md`, or `pipeline-plan-unattended.md` at session start. Each remaining step file SHALL be reachable from the nucleus through direct or transitive `Fetch @sai/commands/explore/steps/...` directives, or through the stage machine store's `next.follow` pointer for those four follow-loaded files.
+`sai-explore` SHALL retain its read-only restrictions and research-tooling check in `sai/commands/explore/instructions.md` as the one-line literal-print rule for the `literal` already run from `body.md`, SHALL fetch `steps/common.md` directly before shared staged-progression and closure rules are evaluated, and SHALL provide exactly eleven named Markdown step files under `sai/commands/explore/steps/`. Probe execution SHALL be owned by `sai/commands/explore/body.md` immediately after the prereqs pass and before Load behaviors and first research. Boot SHALL preload only that explore instruction pack (`instructions.md` and `steps/common.md`) and SHALL NOT fetch `crystallization-protocol.md`, `slice.md`, `pipeline-direct-build.md`, or `pipeline-plan-unattended.md` at session start. Each remaining step file SHALL be reachable from the nucleus through direct or transitive `Fetch @sai/commands/explore/steps/...` directives, or through the stage machine store's `next.follow` pointer for those four follow-loaded files.
 
 #### Scenario: all ten steps are reachable
 
@@ -16,6 +16,11 @@ Define the lazy, trigger-point delivery structure for the read-only `sai-explore
 
 - **WHEN** a `sai-explore` session starts
 - **THEN** the boot pack does not fetch `crystallization-protocol.md`, `slice.md`, `pipeline-direct-build.md`, or `pipeline-plan-unattended.md` (unchanged from prior behavior)
+
+#### Scenario: research-tooling check prints the script literal
+
+- **WHEN** `sai-explore` reaches the research-tooling check instruction
+- **THEN** it prints the script-returned literal verbatim in English without re-deriving, repeating, or translating it
 
 ### Requirement: Fetch deferred content at its trigger point
 
@@ -60,9 +65,11 @@ The source instruction structure SHALL remain harness-neutral. The Claude Code a
 - **THEN** each renderer references the split surfaces and retains its own machine-readable carrier without asserting identical Phase A and Phase B ownership behavior
 
 ### Requirement: Boot keeps minimal guard with deferred exception detail
+
 The explore boot in `sai/commands/explore/instructions.md` SHALL keep only the minimal resident guard and pointer lines for B1-partial, B5, B6, B7, and B8, and SHALL defer full exception and pipeline detail to `steps/pipeline-plan-unattended.md`, `steps/pipeline-direct-build.md`, and the owning step files with no restatement in boot.
 
 #### Scenario: Boot loads without pipeline detail
+
 - **WHEN** an explore session starts
 - **THEN** the boot presents minimal guard pointers and pipeline detail loads only through its owning step file
 
