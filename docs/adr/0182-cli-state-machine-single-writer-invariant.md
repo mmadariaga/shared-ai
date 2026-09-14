@@ -6,9 +6,9 @@ Accepted
 
 ## Context
 
-The sidecar process model served per-session state ownership with one write-owning process per explore chat session (ADR 0176). The HTTP transport over loopback (ADR 0177, 0180) was necessary for context-compaction rediscovery, but in practice every sidecar self-terminates on stdin EOF when the shell invocation closes (bin/sai-state.js:507-513). This makes the transport a one-off per shell turn with no cross-turn reuse — the `reused: true` path in ADR 0176 never fires. The HTTP layer serves only the calling shell and provides a silent failure mode when transport fails.
+The sidecar process model served per-session state ownership with one write-owning process per explore chat session (ADR 0176). The HTTP transport over loopback (ADR 0177, 0180) was necessary for context-compaction rediscovery, but in practice every sidecar self-terminates on stdin EOF when the shell invocation closes (`bin/sai-state.js:507-517` at `3c49173e`). This makes the transport a one-off per shell turn with no cross-turn reuse — the `reused: true` path in ADR 0176 never fires. The HTTP layer serves only the calling shell and provides a silent failure mode when transport fails.
 
-The single-writer invariant remains valid: a fresh session per invocation plus coordinator-only emission already makes concurrent writers impossible (sai/commands/spec/coordinator.md:41), so the process lifetime constraint is not what enforces ownership — the invocation discipline does.
+The single-writer invariant remains valid: a fresh session per invocation plus coordinator-only emission already makes concurrent writers impossible (`sai/commands/spec/coordinator.md:41` at `3c49173e`), so the process lifetime constraint is not what enforces ownership — the invocation discipline does.
 
 ## Decision
 

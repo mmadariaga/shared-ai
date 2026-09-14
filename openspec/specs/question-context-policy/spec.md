@@ -79,7 +79,7 @@ Every user-facing question surface in the pipeline SHALL draw the prompt-content
 
 ### Requirement: question-context-policy-installation
 
-The policy SHALL be fetchable as `@sai/policies/question-context.md` for both Claude Code and opencode through the existing recursive `sai-policies` projection (`sai/install-manifest.json:9`). No install-manifest entry, harness binding, wrapper, or agent file SHALL be required for the policy to reach either harness.
+The policy SHALL be fetchable as `@sai/policies/question-context.md` for both Claude Code and opencode through the existing recursive `sai-policies` projection (the `sai-policies` entry in `sai/install-manifest.json`). No install-manifest entry, harness binding, wrapper, or agent file SHALL be required for the policy to reach either harness.
 
 #### Scenario: both harnesses can fetch the policy
 

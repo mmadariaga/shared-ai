@@ -22,7 +22,7 @@ A declared progress plan with fewer than three progress steps SHALL NOT be rende
 
 ### Requirement: threshold-single-sourced
 
-The minimum-threshold constant SHALL be fixed in the neutral policy `sai/policies/todo-structure.md` and SHALL be the single source of the rule: consuming surfaces SHALL reference it and SHALL NOT restate the constant, following the single-source pattern of `sai/policies/question-context.md:29-31`.
+The minimum-threshold constant SHALL be fixed in the neutral policy `sai/policies/todo-structure.md` and SHALL be the single source of the rule: consuming surfaces SHALL reference it and SHALL NOT restate the constant, following the single-source pattern of `sai/policies/question-context.md:49-51`.
 
 #### Scenario: threshold referenced from policy
 

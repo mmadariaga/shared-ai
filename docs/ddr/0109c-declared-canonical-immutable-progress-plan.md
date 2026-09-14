@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-A routed phase coordinator is phase-blind by contract (`sai/orchestration/coordinator-contract.md:44-45`: "The coordinator never reads artifacts, resolves phase data, or invents phase-specific payload fields"), while the worker that knows the phases runs in its own context — so neither side alone can produce a useful live task list. No SAI surface defined a task-list convention, and every routed agent improvised progress presentation.
+A routed phase coordinator is phase-blind by contract (`sai/orchestration/coordinator-contract.md:61-62` at `47ddc3cf`: "The coordinator never reads artifacts, resolves phase data, or invents phase-specific payload fields"), while the worker that knows the phases runs in its own context — so neither side alone can produce a useful live task list. No SAI surface defined a task-list convention, and every routed agent improvised progress presentation.
 
 ## Decision
 

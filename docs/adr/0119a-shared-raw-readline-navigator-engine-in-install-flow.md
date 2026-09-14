@@ -8,7 +8,7 @@ Accepted
 
 The post-setup model customizer (`bin/agent-customization.js`) collects every choice through `promptChoice`, a numbered type-a-number prompt built on `readline.createInterface` — the exact interaction pattern ADR 0010 already rejected for the installer. A full run asks two prompts per agent (14 for the 7 Claude Code agents, 20 for the 10 opencode agents), all typed-number input.
 
-The installer already ships the accepted pattern: `promptChecklist` (`bin/install-flow.js:452-509`) is a raw-readline navigable multi-select (arrow keys, space toggle, Enter confirm, `>` cursor, `[x] markers) using only Node built-in modules per ADR 0010. Its keypress engine is inline inside `promptChecklist` and unexported — it is the repository's only raw-mode keypress code. The configurator must move to navigable single-selects (main menu, harness picker, per-agent model/effort) plus a navigable agent-selection checklist; every navigable surface needs the same raw-mode keypress machinery.
+The installer already ships the accepted pattern: `promptChecklist` (`bin/install-flow.js:452-509` at `f4662f14`) is a raw-readline navigable multi-select (arrow keys, space toggle, Enter confirm, `>` cursor, `[x] markers) using only Node built-in modules per ADR 0010. Its keypress engine is inline inside `promptChecklist` and unexported — it is the repository's only raw-mode keypress code. The configurator must move to navigable single-selects (main menu, harness picker, per-agent model/effort) plus a navigable agent-selection checklist; every navigable surface needs the same raw-mode keypress machinery.
 
 ## Decision
 

@@ -1,6 +1,6 @@
 # Artifact Feedback Gate (shared parameterized instruction)
 
-Shared completion-phase gate fetched by `sai/commands/spec/coordinator.md`, `sai/commands/design/coordinator.md`, and — at **Plan (unattended)** dispatch — by `sai-explore`'s supervised pipeline (`sai/commands/explore/instructions.md` item 10). It offers an in-context review loop over the artifacts a step just wrote, then hands control to the step's proceed action. The gate logic lives ONLY here — neither body file restates it inline.
+Shared completion-phase gate fetched by `sai/commands/spec/coordinator.md`, `sai/commands/design/coordinator.md`, and — at **Plan (unattended)** dispatch — by `sai-explore`'s supervised pipeline (`sai/commands/explore/steps/pipeline-plan-unattended.md`, item 10). It offers an in-context review loop over the artifacts a step just wrote, then hands control to the step's proceed action. The gate logic lives ONLY here — neither body file restates it inline.
 
 Interactive mode, including an omitted `mode`, preserves the existing choice order: `Give feedback (Recommended)` first, followed by `proceed-label`.
 
