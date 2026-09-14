@@ -70,28 +70,23 @@ The machine SHALL absorb the explore stage-progression rules into its transition
 - **THEN** the machine deterministically decides the former and rejects or ignores the latter as out of scope with the current state's pointer
 
 ### Requirement: Single-level emit outcome
-
-The `/emit` route of the `explore-idea` sidecar SHALL return exactly one level of minimal wire outcome — `{stage, next, rejected?, warnings?}` — where `stage` is the current stage string, `next` is the current pointer, `rejected` is the optional in-band rejection marker, and `warnings` is the optional degradation-warning channel. The route SHALL store the plain machine state as session state (persisted in the sidecar's own session file) and SHALL NOT re-wrap `transition()`'s return into a nested envelope or serialize any state object or snapshot into the response. A no-intent emit that triggers neither recording nor a content-based empty-set rule SHALL return the current stage in-band with the rejection marker `rejected: READINESS_IS_NOT_INTENT` instead of advancing, and a replayed `eventId` SHALL return the identical stored outcome without applying the event twice (in-process via the bounded seen-store, cross-process via the persisted last-event ledger).
+The `/emit` route of the `explore-idea` sidecar SHALL return exactly one level of minimal wire outcome — `{stage, next, rejected?, warnings?}` — where `stage` is the current stage string, `next` is the current pointer, `rejected` is the optional in-band rejection marker, and `warnings` is the optional degradation-warning channel. The route SHALL store the plain machine state as session state and SHALL NOT re-wrap `transition()`'s return into a nested envelope or serialize any state object into the response. A no-intent emit that triggers neither recording nor a content-based empty-set rule SHALL return the current stage in-band with the rejection marker `rejected: READINESS_IS_NOT_INTENT` instead of advancing. The implementation SHALL NOT claim eventId replay: `bin/sai-state.js` persists with a fixed empty eventId and never compares `lastEventId`, so a replayed `eventId` MUST NOT be described as returning the stored outcome without re-applying.
 
 #### Scenario: Single-level envelope and monotonic stage walk
-
-- **WHEN** the caller POSTs a `next-step` event to the live `/emit` route with `machineId: "explore-idea@1"` and repeats it across consecutive turns
-- **THEN** every response carries exactly the minimal `stage` and `next` keys (plus the optional `rejected` and `warnings` attributes) with `stage` a plain string, and consecutive emits walk `explore-change` → `review-edge-cases` → `implementation-details` → `crystallize` without resetting to an earlier stage
+- **WHEN** the caller emits a stage event via `emit <id> <machineId> <eventJson>` with machineId `explore-idea@1` across consecutive turns
+- **THEN** every response carries exactly the minimal `stage` and `next` keys (plus the optional `rejected` and `warnings` attributes) with `stage` a plain string, consecutive emits walk `explore-change` to `review-edge-cases` to `implementation-details` to `crystallize` without resetting, and the specification makes no idempotent-replay guarantee
 
 #### Scenario: No-intent emit rejects in-band
-
 - **WHEN** the caller emits a stage event with no explicit intent where neither recording nor an empty-set rule applies
 - **THEN** the response carries the `rejected: READINESS_IS_NOT_INTENT` marker and returns the current stage without advancing
 
 #### Scenario: Replayed eventId returns the identical outcome
-
 - **WHEN** the same `eventId` is emitted twice
-- **THEN** the second response returns the identical stored outcome and the stage does not advance twice
+- **THEN** the second response does NOT return the identical stored outcome without re-applying; the transition re-applies, the ledger is persisted for observability only, and `bin/sai-state.js` persists fixed empty eventId and never compares `lastEventId`
 
 #### Scenario: Restore returns the carried snapshot state
-
-- **WHEN** the caller POSTs to `/restore` with `machineId: "explore-idea@1"` on a chat with a persisted machine
-- **THEN** the probe returns the sidecar-owned current `{stage, next}` with no snapshot state (no snapshot is carried, returned, or required)
+- **WHEN** the caller looks for a `/restore` probe with machineId `explore-idea@1` on a chat with a persisted machine
+- **THEN** no `/restore` verb exists and state continues only via `spawn` then `emit`; no snapshot is carried, returned, or required
 
 ### Requirement: HTTP seam live test coverage
 
@@ -127,37 +122,30 @@ The sidecar SHALL own the `explore-idea` machine state as a durable store: it SH
 - **THEN** the persisted state has been purged and the tombstone recorded, and the reopened session starts from the initial state
 
 ### Requirement: Minimal wire outcomes
-
-The `/emit` and `/restore` routes SHALL return minimal wire outcomes — `{stage, next, rejected?, warnings?}` on `/emit` and `{stage, next, warnings?}` on `/restore` — and SHALL NOT serialize the full state object or any snapshot onto the wire in either direction; the machine's internal snapshot remains available to projection but never travels in a response. The agent side carries no state JSON and never sends state in a request. A `/restore` request SHALL require `machineId` and SHALL be strictly read-only (it never mutates the session). An omitted `machineId` SHALL return `INVALID_EVENT`. A mistyped unknown id SHALL return `UNKNOWN_MACHINE`. A named restore of a registered machine before any emit SHALL return that machine's initial `{stage, next}`. Nothing SHALL fall back to the first persisted machine. The caller-side agent MAY hold at most one disposable presentation hint (the last rendered stage) for panel rendering on event-less turns and to notice regressions; the sidecar response SHALL always win over the hint.
+The `/emit` route SHALL return minimal wire outcomes — `{stage, next, rejected?, warnings?}` on `/emit` — and SHALL NOT serialize the full state object or any snapshot onto the wire; the machine's internal snapshot remains available to projection but never travels in a response. The agent side carries no state JSON and never sends state in a request. There SHALL be no `/restore` route: `bin/sai-state.js` implements only `spawn`, `emit`, `reset`, and `close`, and a restore probe MUST NOT be documented as available. An omitted `machineId` SHALL return `INVALID_EVENT`. A mistyped unknown id SHALL return `UNKNOWN_MACHINE`.
 
 #### Scenario: Emit response carries no state and no snapshot
-
 - **WHEN** the caller emits a stage event that advances, records, or rejects
 - **THEN** the response carries only `stage`, `next`, and the optional `rejected` and `warnings` attributes, and no state object and no snapshot appear in the response
 
 #### Scenario: Restore is a body-less read-only probe
-
-- **WHEN** the caller POSTs to `/restore` with `machineId: "explore-idea@1"` on a chat with a persisted machine
-- **THEN** the probe returns the sidecar-owned current `{stage, next}` without mutating the session, and a later `/emit` continues from the current stage instead of resetting
+- **WHEN** the caller looks for a `/restore` probe with machineId `explore-idea@1` on a chat with a persisted machine
+- **THEN** no `/restore` verb exists and the probe MUST NOT be documented as available; state continues only via `spawn` then `emit`
 
 #### Scenario: Probe before any emit returns the closed error
-
-- **WHEN** the caller POSTs to `/restore` with `machineId: "explore-idea@1"` on a chat with no persisted machine
-- **THEN** the probe returns that machine's initial `{stage, next}` with no state or snapshot fields
+- **WHEN** the caller looks for a `/restore` probe with machineId `explore-idea@1` on a chat with no persisted machine
+- **THEN** no `/restore` verb exists and no initial probe is documented; state starts only via `spawn` then `emit`
 
 #### Scenario: Probe without machineId returns INVALID_EVENT
-
-- **WHEN** the caller POSTs to `/restore` with no `machineId`
+- **WHEN** the caller emits without `machineId`
 - **THEN** the response is the closed-vocabulary `INVALID_EVENT` error with no state, snapshot, or stage fields
 
 ### Requirement: Cross-process idempotency across restarts
-
-The sidecar SHALL persist a minimal per-machine ledger (`rev`, `lastEventId`, `lastOutcome`) and SHALL replay the persisted last outcome when the same `eventId` is retried after a process restart, without re-applying the transition, so the same `eventId` never double-applies across restarts. Retries of non-latest `eventId` values are out of coverage because `eventId` values are not reused in practice.
+The sidecar SHALL persist a minimal per-machine ledger (`rev`, `lastEventId`, `lastOutcome`) in the session file without enforcing replay: the persisted ledger exists for observability, but `bin/sai-state.js` does not compare the incoming `eventId` against `lastEventId`, so the same `eventId` MUST NOT be specified as replaying the stored outcome without re-applying the transition.
 
 #### Scenario: Same eventId after restart replays without re-applying
-
-- **WHEN** the sidecar process dies after persisting a machine outcome and the caller respawns and re-emits the same `eventId`
-- **THEN** the sidecar returns the stored last outcome byte-identically and the machine state does not advance twice
+- **WHEN** the sidecar process restarts after persisting a machine outcome and the caller re-emits the same `eventId`
+- **THEN** the specification guarantees no double-apply promise beyond what the code implements; the ledger is persisted for observability only, and the same `eventId` MUST NOT be specified as replaying the stored outcome without re-applying
 
 ### Requirement: Session-file degradation warnings
 

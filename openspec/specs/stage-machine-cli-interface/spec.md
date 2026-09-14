@@ -4,42 +4,29 @@
 TBD - created by archiving change replace-state-sidecar-with-cli. Update Purpose after archive.
 ## Requirements
 ### Requirement: Local CLI three-verb interface
-
-The stage machine store SHALL provide four CLI verbs via `sai-state` binary:
-1. `spawn --key <stable-key>` — Initializes or locates a session, deriving a deterministic UUIDv4 from the stable key, returning `{id}` on success
-2. `emit <id> <machineId> <eventJson>` — Applies a transition, accepting the session id, target machine id, and JSON event object, returning minimal wire outcome
-3. `reset <id> <machineId>` — Clears only that machine's state to its initialState with an atomic write, leaving other machines in the same session untouched, returning `{reset: <machineId>}` on success
-4. `close <id>` — Terminates a session by deleting the session file, returning `{closed: id}` on success
-
-Each verb writes minimal JSON to stdout on success and writes error text to stderr on failure. Exit code 0 indicates success; exit code 1 or 2 indicates failure.
+The stage machine store SHALL provide four CLI verbs via the `sai-state` script: 1. `spawn --key <stable-key>` — initializes or locates a session, deriving a deterministic UUIDv4 from the stable key, returning `{id}` on success 2. `emit <id> <machineId> <eventJson>` — applies a transition, accepting the session id, target machine id, and JSON event object, returning minimal wire outcome 3. `reset <id> <machineId>` — clears only that machine's state to its initialState with an atomic write, leaving other machines untouched, returning `{reset: <machineId>}` on success 4. `close <id>` — terminates a session by deleting the session file, returning `{closed: id}` on success. Each verb writes minimal JSON to stdout on success and writes error text to stderr on failure. Exit code 0 indicates success; exit code 1 or 2 indicates failure.
 
 #### Scenario: CLI spawn returns session id
-
 - **WHEN** the caller invokes `sai-state spawn --key <key>` for a new or existing session
 - **THEN** the process outputs a JSON `{id}` with exit code 0
 
 #### Scenario: CLI emit returns minimal wire outcome
-
 - **WHEN** the caller invokes `sai-state emit <id> <machineId> <eventJson>`
 - **THEN** the process outputs JSON `{stage, next, rejected?, warnings?}` and exits with code 0 on success, or exits with code 1 and outputs `{error: <name>, next: {follow, hint}}` on failure
 
 #### Scenario: CLI reset clears one machine and returns confirmation
-
 - **WHEN** the caller invokes `sai-state reset <id> <machineId>` with a registered machine id
 - **THEN** that machine's state is reset to its initialState with an atomic write, other machines in the session remain untouched, and the process outputs `{reset: <machineId>}` with exit code 0
 
 #### Scenario: CLI reset with missing arguments returns usage error
-
 - **WHEN** the caller invokes `sai-state reset` with missing id or machineId
 - **THEN** the process exits with code 2 and writes a usage message to stderr
 
 #### Scenario: CLI reset with unknown machine returns error
-
 - **WHEN** the caller invokes `sai-state reset <id>` with a machine id not in the registry
 - **THEN** the process outputs `{error: "UNKNOWN_MACHINE"}` with exit code 1
 
 #### Scenario: CLI close deletes and returns confirmation
-
 - **WHEN** the caller invokes `sai-state close <id>`
 - **THEN** the session file is deleted from the store directory and the process outputs `{closed: id}` with exit code 0
 
@@ -121,13 +108,11 @@ The machine's internal state remains in the session file; no snapshot or state o
 - **THEN** the stdout JSON contains only `{reset: <machineId>}` without `state`, `snapshot`, or other internal fields
 
 ### Requirement: Session file version and idempotency
-
-Each session file SHALL carry a `stateVersion` field matching the CLI tool's version. The per-machine ledger (entry.lastEventId, entry.lastOutcome) enables idempotency: re-emitting the same `eventId` returns the identical prior outcome without re-applying the transition.
+Each session file SHALL carry a `stateVersion` field matching the CLI tool's version. The per-machine ledger (entry.lastEventId, entry.lastOutcome) SHALL be persisted for observability, but the implementation SHALL NOT enforce idempotent replay: `bin/sai-state.js` persists with a fixed empty eventId and does not compare incoming eventIds, so re-emitting the same `eventId` MUST NOT be specified as returning the identical prior outcome without re-applying the transition.
 
 #### Scenario: Replay of same eventId returns stored outcome
-
-- **WHEN** `emit <id> <machineId> {...eventId: E1...}` is called twice
-- **THEN** the second invocation returns the identical JSON response as the first without advancing the machine state
+- **WHEN** `emit <id> <machineId>` is called twice with the same event identifier
+- **THEN** the specification documents ledger persistence only and makes no identical-response-without-advance promise; the second invocation MUST NOT be specified as returning the identical prior outcome without re-applying
 
 ### Requirement: No inter-process HTTP, no port discovery, no tokens
 

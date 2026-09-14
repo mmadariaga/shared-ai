@@ -4,13 +4,11 @@
 TBD - created by archiving change rename-sidecar-to-stage-machine. Update Purpose after archive.
 ## Requirements
 ### Requirement: Runtime baseline
-
-The store CLI tool SHALL run on Node >= 22, SHALL depend only on the Node standard library with no native dependencies, and SHALL ship as a single binary distributed via the current `npx` channel.
+The store CLI tool SHALL be a Node standard-library-only script (`bin/sai-state.js`) with no native dependencies. It SHALL NOT enforce a minimum Node 22 startup gate and SHALL NOT ship as a single binary via an `npx` channel; the implemented entry point is the repository script invoked with `node`.
 
 #### Scenario: Minimum runtime check
-
-- **WHEN** the store CLI tool starts on a runtime below Node 22 or with a native dependency required
-- **THEN** startup is refused with a closed-vocabulary error naming the unmet baseline instead of running in a degraded mode (unchanged principle, CLI-based enforcement)
+- **WHEN** the store CLI tool starts on any supported Node runtime as a plain script `bin/sai-state.js`
+- **THEN** startup proceeds without a closed-vocabulary baseline refusal and without binary distribution semantics; no minimum Node 22 gate is enforced and no single binary is shipped
 
 ### Requirement: Cross-platform and harness parity
 
