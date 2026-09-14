@@ -73,3 +73,30 @@ The same-turn crystallization close SHALL preserve the inline-refusal path, the 
 - **WHEN** a crystallization turn follows the inline-refusal path, the uncertainty POC pause, or store or panel failure
 - **THEN** the turn keeps its current behavior with no same-turn selector fusion
 
+### Requirement: Pre-selector checkpoint blocks selector until ordered close completes
+
+The shared crystallization close SHALL NOT present the route selector until all three hold in order: the visible `Ready to Propose` block(s) are emitted, the stage TODO is cleared, and the `recordedList` is emitted; only then it SHALL present the selector per `route-selector.md`.
+
+#### Scenario: Selector waits for ordered close state
+
+- **WHEN** a crystallization turn reaches the shared close with blocks emitted
+- **THEN** the selector is presented only after the visible block, cleared TODO, and emitted recordedList hold in order
+
+### Requirement: Single shared checkpoint runs once after last separator
+
+The checkpoint SHALL run once after the last `---` for single and sliced paths alike and SHALL never run one per block; `sai/commands/explore/instructions.md` SHALL hold the sole checkpoint definition and `crystallization-protocol.md` items 5 and 6 SHALL inherit it by reference with no restatement.
+
+#### Scenario: Sliced path uses one checkpoint after last block
+
+- **WHEN** a sliced crystallization turn emits several blocks ending at separators
+- **THEN** a single shared checkpoint runs once after the last separator and no per-block checkpoint runs
+
+### Requirement: Checkpoint preserves exclusion and failure behavior
+
+The `inline-refusal` path SHALL stay excluded with immediate handoff and no selector and no checkpoint; store or panel failure SHALL never skip the checkpoint with degraded mode applying and the selector never presented blind; `fast-track` SHALL neither auto-select nor skip the checkpoint.
+
+#### Scenario: Failure and fast-track keep checkpoint guarantees
+
+- **WHEN** the close encounters store or panel failure or runs under fast-track
+- **THEN** the checkpoint still applies with degraded mode on failure and no auto-selection or skip under fast-track
+
