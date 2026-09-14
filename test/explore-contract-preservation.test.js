@@ -13,6 +13,8 @@ const commitHash = 'b4fb5e30';
 // Lines that are deliberately different between pre-split and split versions
 // These are keyed by distinctive prefixes to catch any new changes
 const allowedDifferences = [
+  // explore-instructions-renumber-cleanup: 2a renumbered to 3 for continuous 1-11 (file-local; steps files keep their own 3)
+  '2a. **Research ladder discard logging',
   // Items 3, 4, 11 were reformatted into file headers in step files
   '3. **Language gate for artifact reviews',
   '4. **Slicing assessment',

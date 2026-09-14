@@ -8,7 +8,7 @@ Accepted
 
 ## Context
 
-The crystallization-turn close was restated across items 5, 6, and 7 of `sai/commands/explore/instructions.md`, while item 10 separately described the `Manual` branch in language that read as if it re-emitted the keep-window recommendation. That split left emission count and position ambiguous even though the intended product behavior is already a single recommendation-before-selector close (ADR 0146a).
+The crystallization-turn close was restated across items 5, 6, and 7 of `sai/commands/explore/steps/crystallization-protocol.md`, while item 10 of `sai/commands/explore/instructions.md` separately described the `Manual` branch in language that read as if it re-emitted the keep-window recommendation. That split left emission count and position ambiguous even though the intended product behavior is already a single recommendation-before-selector close (ADR 0146a).
 
 ## Decision
 
