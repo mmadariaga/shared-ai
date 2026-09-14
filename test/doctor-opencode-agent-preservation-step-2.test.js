@@ -80,7 +80,7 @@ test('customized managed agents are accepted by name presence', async () => {
   const opencodeBase = path.join(projectRoot, 'opencode');
   try {
     installOpencode(opencodeBase);
-    writeConfig(opencodeBase, JSON.stringify({ agent: {
+    writeConfig(opencodeBase, JSON.stringify({ subagent_depth: 2, experimental: { subagent_depth: 2 }, agent: {
       'sai-1-spec-proposal-worker': { mode: 'subagent', model: 'user-spec-model' },
       'sai-2-design-worker': { mode: 'subagent', model: 'user-design-model', variant: 'low' },
       'sai-3-implementation-worker': { mode: 'subagent', model: 'user-implementation-model', permission: { edit: 'deny' } },
@@ -195,7 +195,7 @@ test('doctor validation is independent of the opencode configuration agent map',
     ['absent', null],
     ['unparsable', '{{ not valid jsonc'],
     ['non-object root', '[]'],
-    ['malformed agent map', JSON.stringify({ agent: ['not', 'an', 'object'] })],
+    ['malformed agent map', JSON.stringify({ subagent_depth: 2, experimental: { subagent_depth: 2 }, agent: ['not', 'an', 'object'] })],
   ];
 
   for (const [label, content] of cases) {

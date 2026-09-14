@@ -617,8 +617,8 @@ test('copyOpencodeConfig preserves comments, trailing commas, and unrelated keys
   assert.ok(raw.includes('"theme"'), 'theme key should survive');
   const parsed = jsonc.parse(raw);
   assert.equal(parsed.theme, 'dark', 'theme value should be unchanged');
-  assert.deepEqual(Object.keys(parsed).sort(), ['permission', 'subagent_depth', 'theme'].sort(),
-    'only permission, theme, and subagent_depth should be top-level keys');
+  assert.deepEqual(Object.keys(parsed).sort(), ['permission', 'subagent_depth', 'experimental', 'theme'].sort(),
+    'only permission, theme, subagent_depth, and experimental should be top-level keys');
   assert.equal(Object.hasOwn(parsed, 'agent'), false, 'no agent block should be added');
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
@@ -659,7 +659,7 @@ test('copyOpencodeConfig preserves a tuned agent.explore.model without adding si
 
 test('copyOpencodeConfig is idempotent when fully configured with helper agents and permission', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
-  const config = { permission: { external_directory: { [SAI_EXTERNAL_DIRECTORY]: 'allow' } }, agent: {} };
+  const config = { permission: { external_directory: { [SAI_EXTERNAL_DIRECTORY]: 'allow' } }, agent: {}, subagent_depth: 2, experimental: { subagent_depth: 2 } };
   for (const key of AGENT_KEYS) config.agent[key] = { ...AGENT_PLACEHOLDER };
   fs.writeFileSync(path.join(tmpDir, 'opencode.json'), JSON.stringify(config, null, 2));
   const beforeBytes = fs.readFileSync(path.join(tmpDir, 'opencode.json'));
@@ -674,7 +674,7 @@ test('copyOpencodeConfig is idempotent when fully configured with helper agents 
 
 test('copyOpencodeConfig prints a migration notice naming every redundant agent key and never the retired add-notice', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
-  const config = { permission: { external_directory: { [SAI_EXTERNAL_DIRECTORY]: 'allow' } }, agent: {} };
+  const config = { permission: { external_directory: { [SAI_EXTERNAL_DIRECTORY]: 'allow' } }, agent: {}, subagent_depth: 2, experimental: { subagent_depth: 2 } };
   for (const key of AGENT_KEYS) config.agent[key] = { ...AGENT_PLACEHOLDER };
   fs.writeFileSync(path.join(tmpDir, 'opencode.json'), JSON.stringify(config, null, 2));
   const beforeBytes = fs.readFileSync(path.join(tmpDir, 'opencode.json'));
@@ -1343,11 +1343,15 @@ test('Step 2 canonical opencode config sample defines no agent', () => {
     'specs/opencode-config-install/spec.md: the sample should retain $schema');
   assert.ok(Object.hasOwn(sample, 'subagent_depth'),
     'specs/managed-worker-registry/spec.md: the sample should retain subagent_depth');
+  assert.ok(Object.hasOwn(sample, 'experimental'),
+    'the sample should retain experimental for v2 subagent_depth');
+  assert.equal(sample.subagent_depth, 2, 'the sample top-level subagent_depth should be 2');
+  assert.equal(sample.experimental?.subagent_depth, 2, 'the sample experimental.subagent_depth should be 2');
   assert.ok(sample.permission, 'specs/managed-worker-registry/spec.md: the sample should retain permission');
   assert.equal(Object.hasOwn(sample, 'agent'), false,
     'specs/managed-worker-registry/spec.md: the canonical opencode configuration sample defines no agent');
-  assert.deepEqual(Object.keys(sample).sort(), ['$schema', 'permission', 'subagent_depth'].sort(),
-    'specs/opencode-config-install/spec.md: top-level keys should be exactly $schema, subagent_depth, permission');
+  assert.deepEqual(Object.keys(sample).sort(), ['$schema', 'permission', 'subagent_depth', 'experimental'].sort(),
+    'specs/opencode-config-install/spec.md: top-level keys should be exactly $schema, subagent_depth, experimental, permission');
   assert.equal(sample.permission.external_directory[SAI_EXTERNAL_DIRECTORY], 'allow',
     'specs/managed-worker-registry/spec.md: the sample should ship the narrow external-directory rule');
   assert.equal(sample.permission.external_directory[OPENCODE_COMMANDS_EXTERNAL_DIRECTORY], 'allow',

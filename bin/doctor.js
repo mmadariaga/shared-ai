@@ -424,6 +424,75 @@ function managedAssetRecords(harness, repoRoot) {
   return [];
 }
 
+function isPlainObjectValue(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isValidDepthValue(value) {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 2;
+}
+
+function opencodeConfigDepthRecords(opencodeBase) {
+  const section = '[Opencode]';
+  const name = 'opencode config depth';
+  const hasJson = fs.existsSync(path.join(opencodeBase, 'opencode.json'));
+  const hasJsonc = fs.existsSync(path.join(opencodeBase, 'opencode.jsonc'));
+  if (!hasJson && !hasJsonc) {
+    return [{ section, name, severity: 'ok', message: 'no opencode config file present, skipping depth check' }];
+  }
+  const target = path.join(opencodeBase, hasJson ? 'opencode.json' : 'opencode.jsonc');
+  const short = shorten(target);
+  let jsoncParser = null;
+  try {
+    jsoncParser = require('jsonc-parser');
+  } catch {
+    jsoncParser = null;
+  }
+  let text;
+  try {
+    text = fs.readFileSync(target, 'utf8');
+  } catch {
+    return [{ section, name, severity: 'warn', message: `could not read ${short}`, recommendation: 'Verify the opencode config file is readable' }];
+  }
+  if (!jsoncParser) {
+    return [{ section, name, severity: 'warn', message: `skipping depth check for ${short}: jsonc-parser unavailable` }];
+  }
+  const errors = [];
+  const root = jsoncParser.parse(text, errors, { allowTrailingComma: true });
+  if (errors.length > 0 || !isPlainObjectValue(root)) {
+    return [{ section, name, severity: 'warn', message: `could not parse ${short} as JSONC object, skipping depth content validation`, recommendation: 'Verify the opencode config file parses as a JSON object' }];
+  }
+  const topPresent = Object.hasOwn(root, 'subagent_depth');
+  const topValue = topPresent ? root.subagent_depth : undefined;
+  const topValid = topPresent && isValidDepthValue(topValue);
+  let expPresent = false;
+  let expValue;
+  let expContainerInvalid = false;
+  if (root.experimental === undefined) {
+    expPresent = false;
+  } else if (isPlainObjectValue(root.experimental)) {
+    expPresent = Object.hasOwn(root.experimental, 'subagent_depth');
+    if (expPresent) expValue = root.experimental.subagent_depth;
+  } else {
+    expPresent = true;
+    expContainerInvalid = true;
+  }
+  const expValid = !expContainerInvalid && expPresent && isValidDepthValue(expValue);
+  if (!topPresent && !expPresent) {
+    return [{ section, name, severity: 'error', message: `missing subagent_depth in ${short}: expected at least one of top-level subagent_depth or experimental.subagent_depth >= 2`, recommendation: 'Re-run the installer to backfill subagent_depth at 2' }];
+  }
+  if (topPresent && !topValid) {
+    return [{ section, name, severity: 'error', message: `invalid top-level subagent_depth in ${short}: expected a number >= 2`, recommendation: 'Set top-level subagent_depth to 2 or higher' }];
+  }
+  if (expContainerInvalid) {
+    return [{ section, name, severity: 'error', message: `invalid experimental in ${short}: expected an object with subagent_depth >= 2`, recommendation: 'Set experimental.subagent_depth to 2 or higher' }];
+  }
+  if (expPresent && !expValid) {
+    return [{ section, name, severity: 'error', message: `invalid experimental.subagent_depth in ${short}: expected a number >= 2`, recommendation: 'Set experimental.subagent_depth to 2 or higher' }];
+  }
+  return [{ section, name, severity: 'ok', message: `subagent_depth valid in ${short}` }];
+}
+
 function versionSkewRecords(harness, expectedEntries, latest) {
   const section = `[${harness.id}]`;
   const marker = readMarker(harness.base);
@@ -471,6 +540,9 @@ async function main(options = {}) {
     sectionRecords.push(...fetchResolutionRecords(h, entries, { projectRoot }));
     sectionRecords.push(...managedAssetRecords(h, repoRoot));
     sectionRecords.push(...versionSkewRecords(h, entries, latest));
+    if (h.kind === 'opencode') {
+      sectionRecords.push(...opencodeConfigDepthRecords(h.base));
+    }
     records.push(...sectionRecords);
   }
 
@@ -491,4 +563,4 @@ async function main(options = {}) {
   return code;
 }
 
-module.exports = { main, checkProjectHealth, aggregateExit, groupSections, renderHuman, shorten, detectHarnesses, retiredFileRecords, inventoryHarness, parseFetchRefs, resolveFetchRefs, fetchResolutionRecords, checkSkillStaleness, readGeneratedBy, readMarker, diffAgainstBundled, versionSkewRecords, managedClaudeWorkerRecords, managedOpencodeAgentRecords, managedAssetRecords, defaultFetchLatestVersion };
+module.exports = { main, checkProjectHealth, aggregateExit, groupSections, renderHuman, shorten, detectHarnesses, retiredFileRecords, inventoryHarness, parseFetchRefs, resolveFetchRefs, fetchResolutionRecords, checkSkillStaleness, readGeneratedBy, readMarker, diffAgainstBundled, versionSkewRecords, managedClaudeWorkerRecords, managedOpencodeAgentRecords, managedAssetRecords, defaultFetchLatestVersion, opencodeConfigDepthRecords };

@@ -1180,6 +1180,24 @@ function mergeOpencodeAgents(text, permissionContext = createPermissionMatchCont
     }
   }
 
+  // Dual subagent_depth backfill (v1 top-level + v2 experimental nested):
+  // preserve any present value (even invalid/wrong-type), backfill only absent keys at 2.
+  const hasTopDepth = Object.hasOwn(root, 'subagent_depth');
+  let hasExpDepth;
+  if (root.experimental === undefined) {
+    hasExpDepth = false;
+  } else if (isPlainObject(root.experimental)) {
+    hasExpDepth = Object.hasOwn(root.experimental, 'subagent_depth');
+  } else {
+    hasExpDepth = true;
+  }
+  if (!hasTopDepth) {
+    out = applyEdits(out, modify(out, ['subagent_depth'], 2, { formattingOptions }));
+  }
+  if (!hasExpDepth) {
+    out = applyEdits(out, modify(out, ['experimental', 'subagent_depth'], 2, { formattingOptions }));
+  }
+
   return { text: out, messages, redundantKeys };
 }
 
