@@ -2,19 +2,33 @@
 TTY-only post-setup customization menu and isolated harness adapters that apply a selected model and optional effort or variant to project-local worker and command overrides for both supported harnesses, with an explicit scope screen and per-family checklist labeling.
 ## Requirements
 ### Requirement: Post-setup customization menu
-The setup flow MUST present a post-setup menu only after all existing setup operations have completed. The menu MUST provide exactly two actions: `Customize models` and `Exit`. The menu MUST be presented as a navigable single-select list: up/down arrows move the `>` cursor and Enter (or space) confirms the highlighted action.
+
+The setup flow MUST present a post-setup menu only after all existing setup operations have completed. The menu MUST provide exactly five actions: `Customize models`, `Reset to default models`, `Save preset`, `Load preset`, and `Exit`. The menu MUST be presented as a navigable single-select list: up/down arrows move the `>` cursor and Enter (or space) confirms the highlighted action. Selecting `Save preset` or `Load preset` MUST route harness selection to the save-preset or load-preset screen with no scope screen.
 
 #### Scenario: User exits from the post-setup menu
+
 - **WHEN** setup completes its existing work and the user selects `Exit`
 - **THEN** the setup flow MUST finish without selecting a harness, scope, or any target
 
 #### Scenario: User enters model customization
+
 - **WHEN** setup completes its existing work and the user selects `Customize models`
 - **THEN** the flow MUST continue to exclusive harness selection
 
 #### Scenario: User navigates the post-setup menu with arrow keys
+
 - **WHEN** the user moves the `>` cursor with the arrow keys and confirms with Enter
 - **THEN** the flow MUST act on exactly the highlighted action
+
+#### Scenario: User enters save preset from the post-setup menu
+
+- **WHEN** the user selects `Save preset` at the post-setup menu and chooses a harness
+- **THEN** the flow MUST route to the save-preset screen without presenting scope or settings screens
+
+#### Scenario: User enters load preset from the post-setup menu
+
+- **WHEN** the user selects `Load preset` at the post-setup menu and chooses a harness
+- **THEN** the flow MUST route to the load-preset screen without presenting scope or settings screens
 
 ### Requirement: TTY-only interaction
 The setup flow MUST determine whether interaction is available through its injectable TTY check before presenting the post-setup menu, the navigable harness picker, the customization scope screen, the target-selection checklist, the Claude Code combined model/effort frame, or any OpenCode provider, model, or variant screen. When no TTY is available, it MUST skip the menu and all customization adapters without adding menu-specific prompts, checklist renders, or output, and `runPostSetupMenu` MUST return 'skipped' so `setup.js` completes normally — the configurator MUST NOT hard-exit like the installer.
@@ -257,19 +271,28 @@ The navigator SHALL expose an opt-in guard for multi-select confirmation with no
 - **THEN** the installer SHALL preserve its existing `Nothing selected. Exiting.` branch and exit behavior
 
 ### Requirement: Visible selection-screen back affordance
-Every model-customization harness, scope, target, and settings selection screen SHALL render a key legend that announces left-arrow/Esc back navigation and q/Ctrl-C cancellation. Single-select screens SHALL use the default legend `Up/Down move · Space/Enter confirm · ←/Esc back · q/Ctrl-C cancel`; the multi-select target screen SHALL retain the existing `Up/Down move · Space toggle · Enter confirm · ←/Esc back · q/Ctrl-C cancel` legend. The post-setup menu SHALL call through the `promptSelect` path with an explicit no-footer override and SHALL not announce back navigation because back at that first screen only redraws the menu. `promptSelect` SHALL unconditionally forward the default single-select legend to `runNavigator` whenever no footer override is supplied. The seven production `promptChoice` invocations are the post-setup menu, harness selector, scope selector, Claude settings selector, and OpenCode provider, model, and variant selectors; `promptChoice` SHALL default to `promptSelect` at the Claude adapter, OpenCode adapter, and post-setup menu binding sites. The installer first screen uses `promptChecklist`, not `promptSelect`, and SHALL retain its existing footer behavior. Regression coverage SHALL statically assert the seven `promptChoice` invocations, the three `promptSelect` default bindings, and the explicit menu override.
+
+Every model-customization harness, scope, target, and settings selection screen SHALL render a key legend that announces left-arrow/Esc back navigation and q/Ctrl-C cancellation. Single-select screens SHALL use the default legend `Up/Down move · Space/Enter confirm · ←/Esc back · q/Ctrl-C cancel`; the multi-select target screen SHALL retain the existing `Up/Down move · Space toggle · Enter confirm · ←/Esc back · q/Ctrl-C cancel` legend. The post-setup menu SHALL call through the `promptSelect` path with an explicit no-footer override and SHALL not announce back navigation because back at that first screen only redraws the menu. `promptSelect` SHALL unconditionally forward the default single-select legend to `runNavigator` whenever no footer override is supplied. The eleven production `promptChoice` invocations are the post-setup menu, harness selector, scope selector, save confirm, save overwrite, load selector, load confirm, Claude settings selector, and OpenCode provider, model, and variant selectors; `promptChoice` SHALL default to `promptSelect` at the Claude adapter, OpenCode adapter, and post-setup menu binding sites. The installer first screen uses `promptChecklist`, not `promptSelect`, and SHALL retain its existing footer behavior.
 
 #### Scenario: Single-select screens announce back
+
 - **WHEN** the harness, scope, Claude settings, or any OpenCode provider, model, or variant screen is rendered
 - **THEN** its footer SHALL announce left-arrow/Esc back, q/Ctrl-C cancellation, and Space confirmation
 
 #### Scenario: The checklist announces back and toggle behavior
+
 - **WHEN** the model-customization target checklist is rendered
 - **THEN** its footer SHALL announce left-arrow/Esc back, q/Ctrl-C cancellation, and Space toggling without changing its existing multi-select legend semantics
 
 #### Scenario: The first menu does not announce back
+
 - **WHEN** the post-setup customization menu is rendered
 - **THEN** its footer SHALL not claim that left-arrow/Esc leaves the menu
+
+#### Scenario: Eleven selectors retain legends and bindings
+
+- **WHEN** the post-setup, harness, scope, save, load, Claude, and OpenCode selector screens render
+- **THEN** each single-select screen SHALL announce back navigation while the menu retains its no-footer override and default bindings
 
 ### Requirement: Persistent local override
 For every traversed target, the selected harness adapter MUST invoke a local-override operation after settings selection, passing the collected settings for that target — the selected model and optional effort for Claude Code, and the selected model with optional variant for opencode. The operation MUST materialize the result as the target's project-local file and MUST report the result as persistent only after that file has been written successfully. Worker overrides MUST write under `.claude/agents/<worker>.md` and `.opencode/agents/<worker>.md` and MUST apply the project-local source, preservation, path, and failure rules defined by the `project-local-agent-overrides` capability. Command overrides MUST write under `.claude/commands/<command>.md` and `.opencode/commands/<command>.md`; when the project-local destination is absent, the operation MUST use the same-named installed global command as its source (`~/.claude/commands/<command>.md` for Claude Code or `~/.config/opencode/commands/<command>.md` for opencode), and MUST NOT substitute a repository-bundled command source or write the override into the global command directory. For commands, the operation MUST apply the same preservation, missing-source, and failure rules as the worker path: an existing project-local command is the file that is read and patched in place, preserving its body and non-tunable frontmatter; a selected command that is missing from the installed global root and has no project-local destination SHALL be reported as skipped with a diagnostic while the remaining targets continue; a target whose source file has no valid frontmatter block SHALL report a persistence failure without aborting the other targets. When a selected target's frontmatter lacks a tunable key that the settings selected (for example a command that ships with no `model` line), the operation SHALL add that key with the selected value; when the chosen Claude model has no effort list, the operation SHALL remove any existing top-level `effort` line from the target's frontmatter. When a command declares a model absent from the settings catalog, the operation SHALL replace that declared model with the selected catalog value.

@@ -13,7 +13,7 @@ const {
   CHECKLIST_SEPARATOR,
 } = require('./install-flow.js');
 
-const MENU_OPTIONS = Object.freeze(['Customize models', 'Reset to default models', 'Exit']);
+const MENU_OPTIONS = Object.freeze(['Customize models', 'Reset to default models', 'Save preset', 'Load preset', 'Exit']);
 const HARNESS_OPTIONS = Object.freeze(['OpenCode', 'Claude Code']);
 const SCOPE_OPTIONS = Object.freeze(['All', 'Agents', 'Orchestrators', 'Workers', 'Utilities']);
 const MODEL_CHECKLIST_LEGEND = 'Up/Down move · Space toggle · Enter confirm · ←/Esc back · q/Ctrl-C cancel';
@@ -971,6 +971,130 @@ function createOpencodeAdapter({
   };
 }
 
+function defaultPromptInput(question) {
+  const readline = require('readline');
+  return new Promise((resolve) => {
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+    rl.question(question, (answer) => {
+      rl.close();
+      resolve(answer);
+    });
+  });
+}
+
+function resolvePresetPath(presetDir, name) {
+  if (typeof name !== 'string') return { ok: false, error: 'Preset name must be text.' };
+  const trimmed = name.trim();
+  if (trimmed === '') return { ok: false, error: 'Preset name is required.' };
+  let candidate;
+  try {
+    candidate = path.resolve(presetDir, `${trimmed}.json`);
+  } catch (error) {
+    return { ok: false, error: error && error.message ? error.message : 'Invalid preset name.' };
+  }
+  const resolvedDir = path.resolve(presetDir);
+  if (candidate !== resolvedDir && !candidate.startsWith(resolvedDir + path.sep)) {
+    return { ok: false, error: `Invalid preset name "${trimmed}": stays inside presets/ with no directory escape.` };
+  }
+  return { ok: true, name: trimmed, path: candidate };
+}
+
+function listPresetNames(presetDir) {
+  const names = [];
+  const walk = (dir) => {
+    let entries;
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        walk(full);
+      } else if (entry.isFile() && entry.name.endsWith('.json')) {
+        try {
+          const rel = path.relative(presetDir, full);
+          if (rel === '' || rel.startsWith('..')) continue;
+          const withoutExt = rel.slice(0, -'.json'.length).split(path.sep).join('/');
+          if (withoutExt !== '') names.push(withoutExt);
+        } catch {
+          continue;
+        }
+      }
+    }
+  };
+  try {
+    if (!fs.existsSync(presetDir)) return [];
+    walk(presetDir);
+  } catch {
+    return [];
+  }
+  return names.sort();
+}
+
+function isPlainPresetObject(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isValidPresetEntry(entry, harnessKey) {
+  if (!isPlainPresetObject(entry)) return false;
+  if (typeof entry.model !== 'string' || entry.model.trim() === '') return false;
+  if (harnessKey === 'claude') {
+    if ('effort' in entry && (typeof entry.effort !== 'string' || entry.effort.trim() === '')) return false;
+    return true;
+  }
+  if ('variant' in entry && (typeof entry.variant !== 'string' || entry.variant.trim() === '')) return false;
+  return true;
+}
+
+function effectiveRawSetting(targetEntry, projectPath, globalAgentRoot, globalCommandRoot, harnessKey) {
+  const directory = targetEntry.family === 'command' || targetEntry.family === 'utility' ? 'commands' : 'agents';
+  const localRoot = harnessKey === 'claude'
+    ? path.join(projectPath, '.claude', directory)
+    : path.join(projectPath, '.opencode', directory);
+  const globalRoot = directory === 'commands' ? globalCommandRoot : globalAgentRoot;
+  const tunableKeys = harnessKey === 'claude' ? ['model', 'effort'] : ['model', 'variant'];
+  const tryRead = (filePath) => {
+    try {
+      if (!filePath || !fs.existsSync(filePath)) return null;
+      const text = fs.readFileSync(filePath, 'utf8');
+      const split = splitFrontmatter(text);
+      if (!split) return null;
+      const values = {};
+      for (const line of split.lines.slice(1, split.endIndex)) {
+        const match = TOP_LEVEL_SCALAR.exec(line);
+        if (match && tunableKeys.includes(match[1]) && !(match[1] in values)) {
+          const value = match[2].trim();
+          if (value !== '') values[match[1]] = value;
+        }
+      }
+      if (!values.model) return null;
+      return values;
+    } catch {
+      return null;
+    }
+  };
+  return tryRead(path.join(localRoot, `${targetEntry.name}.md`))
+    || tryRead(globalRoot ? path.join(globalRoot, `${targetEntry.name}.md`) : null)
+    || null;
+}
+
+function formatRawSetting(raw, harnessKey) {
+  if (!raw || typeof raw.model !== 'string' || raw.model === '') return 'unavailable';
+  if (harnessKey === 'claude') {
+    return `anthropic/${raw.model}${raw.effort ? ` (${raw.effort})` : ''}`;
+  }
+  return `${raw.model}${raw.variant ? ` (${raw.variant})` : ''}`;
+}
+
+function allTableHeader(nameWidth) {
+  return [
+    `${MODEL_TABLE_INDENT}${'TYPE'.padEnd(MODEL_TABLE_TYPE_WIDTH)}${MODEL_TABLE_GUTTER}${'TARGET'.padEnd(nameWidth)}${MODEL_TABLE_GUTTER}${MODEL_TABLE_COMPLEXITY_HEADER.padEnd(MODEL_TABLE_COMPLEXITY_WIDTH)}${MODEL_TABLE_GUTTER}SETTING`,
+    `${MODEL_TABLE_INDENT}${'─'.repeat(MODEL_TABLE_TYPE_WIDTH)}${MODEL_TABLE_GUTTER}${'─'.repeat(nameWidth)}${MODEL_TABLE_GUTTER}${'─'.repeat(MODEL_TABLE_COMPLEXITY_WIDTH)}${MODEL_TABLE_GUTTER}${'─'.repeat('SETTING'.length)}`,
+  ];
+}
+
 function skippedOutcome(reason, diagnostics = []) {
   return { status: 'skipped', reason, skippedAgents: [], diagnostics };
 }
@@ -982,12 +1106,21 @@ async function runPostSetupMenu({
   opencodeGlobalAgentRoot,
   claudeGlobalCommandRoot = DEFAULT_CLAUDE_GLOBAL_COMMAND_ROOT,
   opencodeGlobalCommandRoot,
+  claudePresetDir,
+  opencodePresetDir,
   isTTY = process.stdin.isTTY,
   promptChoice = promptSelect,
   promptChecklist = installFlowPromptChecklist,
+  promptInput = defaultPromptInput,
 } = {}) {
   const effectiveOpencodeAgentRoot = opencodeGlobalAgentRoot !== undefined ? opencodeGlobalAgentRoot : defaultOpencodeGlobalAgentRoot();
   const effectiveOpencodeCommandRoot = opencodeGlobalCommandRoot !== undefined ? opencodeGlobalCommandRoot : defaultOpencodeGlobalCommandRoot();
+  const effectiveClaudePresetDir = claudePresetDir !== undefined
+    ? claudePresetDir
+    : path.join(path.dirname(claudeGlobalAgentRoot), 'sai', 'presets');
+  const effectiveOpencodePresetDir = opencodePresetDir !== undefined
+    ? opencodePresetDir
+    : path.join(path.dirname(effectiveOpencodeAgentRoot), 'sai', 'presets');
   if (!isTTY) return skippedOutcome('non-tty');
 
   for (;;) {
@@ -1019,6 +1152,16 @@ async function runPostSetupMenu({
           screen = 'harness';
           continue;
         }
+        if (action === 'Save preset') {
+          mode = 'save-preset';
+          screen = 'harness';
+          continue;
+        }
+        if (action === 'Load preset') {
+          mode = 'load-preset';
+          screen = 'harness';
+          continue;
+        }
         return skippedOutcome('cancelled');
       }
 
@@ -1031,7 +1174,327 @@ async function runPostSetupMenu({
         if (chosen === null) return skippedOutcome('cancelled');
         if (chosen !== 'OpenCode' && chosen !== 'Claude Code') return skippedOutcome('cancelled');
         harness = chosen;
-        screen = mode === 'reset' ? 'reset-targets' : 'scope';
+        if (mode === 'reset') screen = 'reset-targets';
+        else if (mode === 'save-preset') screen = 'save-preset';
+        else if (mode === 'load-preset') screen = 'load-preset';
+        else screen = 'scope';
+        continue;
+      }
+
+      if (screen === 'save-preset') {
+        adapter = harness === 'OpenCode'
+          ? module.exports.createOpencodeAdapter({
+            projectPath,
+            packageRoot,
+            globalAgentRoot: effectiveOpencodeAgentRoot,
+            globalCommandRoot: effectiveOpencodeCommandRoot,
+            promptChoice,
+          })
+          : module.exports.createClaudeAdapter({
+            projectPath,
+            packageRoot,
+            globalAgentRoot: claudeGlobalAgentRoot,
+            globalCommandRoot: claudeGlobalCommandRoot,
+            promptChoice,
+          });
+        const harnessKey = harness === 'OpenCode' ? 'opencode' : 'claude';
+        const presetDir = harness === 'OpenCode' ? effectiveOpencodePresetDir : effectiveClaudePresetDir;
+        const presetGlobalAgentRoot = harness === 'OpenCode' ? effectiveOpencodeAgentRoot : claudeGlobalAgentRoot;
+        const presetGlobalCommandRoot = harness === 'OpenCode' ? effectiveOpencodeCommandRoot : claudeGlobalCommandRoot;
+        const presetFamilies = typeof adapter.enumerateTargets === 'function'
+          ? adapter.enumerateTargets()
+          : {
+            worker: typeof adapter.enumerateWorkers === 'function' ? adapter.enumerateWorkers() : [],
+            agent: [],
+            command: typeof adapter.enumerateCommands === 'function' ? adapter.enumerateCommands() : [],
+            utility: [],
+          };
+        const presetAllEntries = buildChecklistTargets('All', presetFamilies);
+        const presetSelectable = presetAllEntries.filter(entry => !entry.separator);
+        if (presetSelectable.length === 0) {
+          console.log('No customization targets are available for the selected scope.');
+          screen = 'harness';
+          continue;
+        }
+        const rawName = await promptInput('Preset name: ');
+        if (rawName === BACK) {
+          screen = 'harness';
+          continue;
+        }
+        if (rawName === null || rawName === undefined) return skippedOutcome('cancelled');
+        const trimmedName = typeof rawName === 'string' ? rawName.trim() : '';
+        if (trimmedName === '') {
+          console.log('Preset name is required.');
+          screen = 'harness';
+          continue;
+        }
+        const resolved = resolvePresetPath(presetDir, trimmedName);
+        if (!resolved.ok) {
+          console.error(`Invalid preset name: ${resolved.error}`);
+          screen = 'harness';
+          continue;
+        }
+        const presetNameWidth = Math.max(...presetSelectable.map(entry => entry.name.length));
+        const presetHeader = allTableHeader(presetNameWidth);
+        const presetLabels = presetAllEntries.map((entry) => {
+          if (entry.separator) return '';
+          let setting = 'unavailable';
+          try {
+            if (typeof adapter.effectiveSetting === 'function') {
+              setting = adapter.effectiveSetting(entry) || 'unavailable';
+            }
+          } catch {
+            setting = 'unavailable';
+          }
+          if (typeof setting !== 'string' || setting === '') setting = 'unavailable';
+          return `${displayFamily(entry.family).padEnd(MODEL_TABLE_TYPE_WIDTH)}${MODEL_TABLE_GUTTER}${entry.name.padEnd(presetNameWidth)}${MODEL_TABLE_GUTTER}${taskComplexityFor(entry).padEnd(MODEL_TABLE_COMPLEXITY_WIDTH)}${MODEL_TABLE_GUTTER}${setting}`;
+        });
+        console.log(`Preset "${resolved.name}" will capture ${presetSelectable.length} models:`);
+        for (const line of presetHeader) console.log(line);
+        for (const label of presetLabels) {
+          if (label === '') console.log('');
+          else console.log(`${MODEL_TABLE_INDENT}${label}`);
+        }
+        const saveConfirm = await promptChoice(`Save preset "${resolved.name}" with the above models?`, ['Yes', 'No']);
+        if (saveConfirm === BACK) {
+          screen = 'harness';
+          continue;
+        }
+        if (saveConfirm === null) return skippedOutcome('cancelled');
+        if (saveConfirm !== 'Yes') {
+          screen = 'menu';
+          mode = null;
+          harness = null;
+          adapter = null;
+          continue;
+        }
+        let presetExists = false;
+        try {
+          presetExists = fs.existsSync(resolved.path);
+        } catch {
+          presetExists = false;
+        }
+        if (presetExists) {
+          const overwriteConfirm = await promptChoice(`Preset "${resolved.name}" already exists. Overwrite?`, ['Yes', 'No']);
+          if (overwriteConfirm === BACK) {
+            screen = 'harness';
+            continue;
+          }
+          if (overwriteConfirm === null) return skippedOutcome('cancelled');
+          if (overwriteConfirm !== 'Yes') {
+            screen = 'menu';
+            mode = null;
+            harness = null;
+            adapter = null;
+            continue;
+          }
+        }
+        const presetData = {};
+        for (const entry of presetSelectable) {
+          const raw = effectiveRawSetting(entry, projectPath, presetGlobalAgentRoot, presetGlobalCommandRoot, harnessKey);
+          if (raw === null) continue;
+          if (harnessKey === 'claude') {
+            const filtered = { model: raw.model };
+            if (raw.effort) filtered.effort = raw.effort;
+            presetData[entry.value] = filtered;
+          } else {
+            const filtered = { model: raw.model };
+            if (raw.variant) filtered.variant = raw.variant;
+            presetData[entry.value] = filtered;
+          }
+        }
+        const presetText = `${JSON.stringify(presetData, null, 2)}\n`;
+        const presetWriteError = atomicReplace(resolved.path, presetText);
+        if (presetWriteError !== null) {
+          const diagnostic = `Unable to save preset "${resolved.name}": ${presetWriteError.message}`;
+          console.error(`Post-setup customization: ${diagnostic}`);
+          return { status: 'persistence-failed', failedAgents: [], diagnostics: [diagnostic] };
+        }
+        console.log(`Saved preset "${resolved.name}" (${Object.keys(presetData).length} models).`);
+        screen = 'menu';
+        mode = null;
+        harness = null;
+        adapter = null;
+        continue;
+      }
+
+      if (screen === 'load-preset') {
+        adapter = harness === 'OpenCode'
+          ? module.exports.createOpencodeAdapter({
+            projectPath,
+            packageRoot,
+            globalAgentRoot: effectiveOpencodeAgentRoot,
+            globalCommandRoot: effectiveOpencodeCommandRoot,
+            promptChoice,
+          })
+          : module.exports.createClaudeAdapter({
+            projectPath,
+            packageRoot,
+            globalAgentRoot: claudeGlobalAgentRoot,
+            globalCommandRoot: claudeGlobalCommandRoot,
+            promptChoice,
+          });
+        const harnessKey = harness === 'OpenCode' ? 'opencode' : 'claude';
+        const presetDir = harness === 'OpenCode' ? effectiveOpencodePresetDir : effectiveClaudePresetDir;
+        const presetGlobalAgentRoot = harness === 'OpenCode' ? effectiveOpencodeAgentRoot : claudeGlobalAgentRoot;
+        const presetGlobalCommandRoot = harness === 'OpenCode' ? effectiveOpencodeCommandRoot : claudeGlobalCommandRoot;
+        const presetNames = listPresetNames(presetDir);
+        if (presetNames.length === 0) {
+          console.log(harness === 'OpenCode' ? 'No presets saved for OpenCode.' : 'No presets saved for Claude Code.');
+          screen = 'harness';
+          continue;
+        }
+        const chosenPreset = await promptChoice('Choose a preset:', presetNames);
+        if (chosenPreset === BACK) {
+          screen = 'harness';
+          continue;
+        }
+        if (chosenPreset === null) return skippedOutcome('cancelled');
+        if (!presetNames.includes(chosenPreset)) return skippedOutcome('cancelled');
+        const resolved = resolvePresetPath(presetDir, chosenPreset);
+        if (!resolved.ok) {
+          console.error(`Invalid preset name: ${resolved.error}`);
+          screen = 'harness';
+          continue;
+        }
+        let parsedPreset;
+        try {
+          parsedPreset = JSON.parse(fs.readFileSync(resolved.path, 'utf8'));
+        } catch (error) {
+          console.error(`Unable to load preset "${chosenPreset}": corrupt or invalid preset JSON reports an error and applies nothing partial.${error && error.message ? ` (${error.message})` : ''}`);
+          screen = 'menu';
+          mode = null;
+          harness = null;
+          adapter = null;
+          continue;
+        }
+        if (parsedPreset === null || typeof parsedPreset !== 'object' || Array.isArray(parsedPreset)) {
+          console.error(`Unable to load preset "${chosenPreset}": corrupt preset (expected an object) and applies nothing partial.`);
+          screen = 'menu';
+          mode = null;
+          harness = null;
+          adapter = null;
+          continue;
+        }
+        const loadFamilies = typeof adapter.enumerateTargets === 'function'
+          ? adapter.enumerateTargets()
+          : {
+            worker: typeof adapter.enumerateWorkers === 'function' ? adapter.enumerateWorkers() : [],
+            agent: [],
+            command: typeof adapter.enumerateCommands === 'function' ? adapter.enumerateCommands() : [],
+            utility: [],
+          };
+        const loadAllEntries = buildChecklistTargets('All', loadFamilies);
+        const loadSelectable = loadAllEntries.filter(entry => !entry.separator);
+        if (loadSelectable.length === 0) {
+          console.log('No customization targets are available for the selected scope.');
+          screen = 'harness';
+          continue;
+        }
+        const knownValues = new Set(loadSelectable.map(entry => entry.value));
+        let presetCorruptEntry = null;
+        for (const [key, value] of Object.entries(parsedPreset)) {
+          if (!knownValues.has(key)) continue;
+          if (!isValidPresetEntry(value, harnessKey)) {
+            presetCorruptEntry = key;
+            break;
+          }
+        }
+        if (presetCorruptEntry !== null) {
+          console.error(`Unable to load preset "${chosenPreset}": corrupt preset entry for "${presetCorruptEntry}" and applies nothing partial.`);
+          screen = 'menu';
+          mode = null;
+          harness = null;
+          adapter = null;
+          continue;
+        }
+        const presetKnown = {};
+        for (const [key, value] of Object.entries(parsedPreset)) {
+          if (!knownValues.has(key)) continue;
+          if (harnessKey === 'claude') {
+            const filtered = { model: value.model };
+            if (typeof value.effort === 'string' && value.effort !== '') filtered.effort = value.effort;
+            presetKnown[key] = filtered;
+          } else {
+            const filtered = { model: value.model };
+            if (typeof value.variant === 'string' && value.variant !== '') filtered.variant = value.variant;
+            presetKnown[key] = filtered;
+          }
+        }
+        const loadNameWidth = Math.max(...loadSelectable.map(entry => entry.name.length));
+        const loadHeader = allTableHeader(loadNameWidth);
+        const loadLabels = loadAllEntries.map((entry) => {
+          if (entry.separator) return '';
+          let raw = presetKnown[entry.value] || null;
+          if (!raw) {
+            try {
+              raw = effectiveRawSetting(entry, projectPath, presetGlobalAgentRoot, presetGlobalCommandRoot, harnessKey);
+            } catch {
+              raw = null;
+            }
+          }
+          const setting = formatRawSetting(raw, harnessKey);
+          return `${displayFamily(entry.family).padEnd(MODEL_TABLE_TYPE_WIDTH)}${MODEL_TABLE_GUTTER}${entry.name.padEnd(loadNameWidth)}${MODEL_TABLE_GUTTER}${taskComplexityFor(entry).padEnd(MODEL_TABLE_COMPLEXITY_WIDTH)}${MODEL_TABLE_GUTTER}${setting}`;
+        });
+        console.log(`Preset "${chosenPreset}" will apply to current project (${Object.keys(presetKnown).length} models):`);
+        for (const line of loadHeader) console.log(line);
+        for (const label of loadLabels) {
+          if (label === '') console.log('');
+          else console.log(`${MODEL_TABLE_INDENT}${label}`);
+        }
+        const applyConfirm = await promptChoice(`Apply preset "${chosenPreset}" to current project?`, ['Yes', 'No']);
+        if (applyConfirm === BACK) {
+          screen = 'harness';
+          continue;
+        }
+        if (applyConfirm === null) return skippedOutcome('cancelled');
+        if (applyConfirm !== 'Yes') {
+          screen = 'menu';
+          mode = null;
+          harness = null;
+          adapter = null;
+          continue;
+        }
+        const loadFailed = [];
+        const loadDiagnostics = [];
+        for (const entry of loadSelectable) {
+          const presetEntry = presetKnown[entry.value];
+          if (!presetEntry) continue;
+          let loadResult;
+          try {
+            loadResult = adapter.createLocalOverride(entry, presetEntry);
+          } catch (error) {
+            loadResult = {
+              status: 'persistence-failed',
+              agent: entry.name,
+              diagnostic: error && error.message ? error.message : `Target ${entry.name} has no valid frontmatter block.`,
+            };
+          }
+          if (loadResult.status === 'persisted') continue;
+          if (loadResult.status === 'skipped') {
+            loadDiagnostics.push(loadResult.diagnostic || `Skipped ${entry.name}: installed source is unavailable.`);
+            continue;
+          }
+          if (loadResult.status !== 'persistence-failed') {
+            throw new Error(`Unexpected local override outcome for ${entry.name}: ${loadResult.status}`);
+          }
+          if (typeof loadResult.diagnostic !== 'string' || loadResult.diagnostic === '') {
+            throw new Error(`Persistence failure for ${entry.name} did not include a diagnostic.`);
+          }
+          loadFailed.push(entry.name);
+          loadDiagnostics.push(loadResult.diagnostic);
+        }
+        for (const diagnostic of loadDiagnostics) {
+          console.error(`Post-setup customization: ${diagnostic}`);
+        }
+        if (loadFailed.length > 0) {
+          return { status: 'persistence-failed', failedAgents: loadFailed, diagnostics: loadDiagnostics };
+        }
+        console.log(`Applied preset "${chosenPreset}" to current project.`);
+        screen = 'menu';
+        mode = null;
+        harness = null;
+        adapter = null;
         continue;
       }
 
@@ -1322,6 +1785,8 @@ module.exports = {
   MODEL_CHECKLIST_LEGEND,
   NO_VARIANT,
   BACK,
+  MENU_OPTIONS,
+  HARNESS_OPTIONS,
   createOpencodeAdapter,
   createClaudeAdapter,
   buildClaudeSettingsEntries,
@@ -1345,4 +1810,11 @@ module.exports = {
   patchFrontmatter,
   materializeLocalOverride,
   atomicReplace,
+  defaultPromptInput,
+  resolvePresetPath,
+  listPresetNames,
+  isValidPresetEntry,
+  effectiveRawSetting,
+  formatRawSetting,
+  allTableHeader,
 };

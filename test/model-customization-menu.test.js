@@ -883,8 +883,8 @@ test('production prompt bindings retain the expected shared-selector surface and
   const defaultPromptSelectBindings = customizationSource.match(/\bpromptChoice\s*=\s*promptSelect\b/g) || [];
   const noFooterOverrides = customizationSource.match(/\bpromptChoice\s*\([^)]*\bnull\b[^)]*\)/g) || [];
 
-  assert.equal(promptChoiceInvocations.length, 7,
-    'the model-customization flow should have exactly seven promptChoice invocations');
+  assert.equal(promptChoiceInvocations.length, 11,
+    'the model-customization flow should have exactly eleven promptChoice invocations (menu, harness, scope, save confirm, save overwrite, load selector, load confirm, claude combined, opencode provider/model/variant)');
   assert.equal(defaultPromptSelectBindings.length, 3,
     'the three selector-owning surfaces should retain default promptSelect bindings');
   assert.equal(noFooterOverrides.length, 1,
