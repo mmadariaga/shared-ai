@@ -97,3 +97,17 @@ When continuation is supported, the main agent resumes the same explorer for the
 ## Docs-vs-code drift check
 
 Documentation is a lead; code is ground truth for current behavior. When an ADR, DDR, spec, `docs/` file, or `openspec/specs/` file is cited as the normative basis for a correctness claim about how the code behaves today, confirm the 1-2 load-bearing claims that sustain the answer with a ladder-governed targeted lookup plus one read each, then stop. Incidental mention, background, or history never fires. A pure documentation read that only summarizes requires no verification; verification is required only when the document is later used to assert how the code behaves today. An unmappable claim is reported as unverified/unknown, never as drift. Code outside the project root or otherwise inaccessible is not widened: record it in `out_of_root_requests` and report it as unverified. Confirmed drift is a low/informative non-blocking note citing both sides (`doc path` + claim vs `code path` + observation); it never gates the answer. An absent ADR/DDR index is a non-event with no verification, log, or mention; when an index entry is cited as in force, that claim is verified like any other. When the ceiling is exhausted, stop and declare what was left unverified explicitly rather than omitting it silently.
+
+## Two-Phase Startup handshake (sai-explore only)
+
+Pre-crystallization main explore → budget-explorer dispatches run in two phases, modelled on the canonical Two-Phase Startup Handshake in `sai/orchestration/worker-core.md` with no change to that contract. Supervised crystallization-close spec/design dispatches keep their routed two-phase with no double wrap.
+
+- **Phase 1 ready-only:** the initial dispatch carries base instructions only. It is strict-zero: no goal, output contract, change/topic, or provenance travels before ready. The ready prompt never names a tool; the tool-preference ladder governs tool choice.
+- **Ready return:** the explorer returns exactly `event: ready` with empty `changed_files` and performs no expensive work before that return.
+- **Phase 2 task:** the goal plus output contract travels only in the post-ready continuation on the same task handle.
+- **Independent ready:** each parallel explorer performs its own independent ready; no shared batch ready exists.
+- **No guard window:** retain the handle for continuation only; no guard snapshot or `guard_base` opens for explore ready. Explore stays read-only, so no mutation guard applies.
+- **Ready absence:** a missing ready is a dispatch failure. Relaunch fresh with the original minimal envelope, with no timeouts, no new failure handling, and no resume-before-ready.
+- **Split retry:** ready and task retry separately under `sai/policies/bounded-dispatch-retry.md` with identical prompts, at most two retries per operation. A closed result is never retried here.
+- **Unchanged rules:** the ladder, output contract, and per-segment 40-call ceiling hold across both phases. There is no triviality bypass: single-file reads also pay two round-trips.
+- **No progress plan:** explore declares no `progress_plan`; idea-list panel handling is unchanged.

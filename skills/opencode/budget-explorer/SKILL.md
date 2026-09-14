@@ -44,3 +44,7 @@ This subagent runs on a commodity model. Its tier is controlled by the `model` f
 ## Tool-call caps
 
 Per-spawn cap for `explore` subagents: ≤40 tool calls. If a task exceeds the cap, spawn an additional subagent rather than raising the cap.
+
+## Two-Phase Startup handshake (sai-explore only)
+
+Pre-crystallization explore → explore runs in two phases with no `run_in_background` change; this binding stays synchronous and the dispatch-safety invariant remains the containing rule. The initial `task` dispatch is ready-only under strict-zero: base instructions only, with no goal, output contract, change/topic, or provenance. The explorer returns exactly `event: ready` with empty `changed_files` before any expensive work. The goal plus output contract travels only in the post-ready same-task continuation via `task(task_id: "<captured task ID>", prompt: "<goal + output contract>")`. Each parallel explorer performs its own independent ready with no shared batch ready. Retain the task ID for continuation only with no guard snapshot. Ready and task retry separately with identical prompts under the shared bounded retry budget (at most two retries per operation); a missing ready relaunches fresh with the original minimal envelope and no resume-before-ready. The ladder, output contract, and 40-call ceiling hold across both phases; the ready prompt never names a tool. Supervised crystallization-close spec/design dispatches keep their routed two-phase with no double wrap. Explore declares no progress plan. Full semantics live in the fetched explore-agent policy.
