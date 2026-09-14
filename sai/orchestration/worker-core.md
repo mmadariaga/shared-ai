@@ -275,7 +275,6 @@ The ready return is exactly:
 
 ```yaml
 event: ready
-emitted_on: string
 changed_files: string[]
 ```
 

@@ -17,3 +17,10 @@ A payload carrying a legacy time field SHALL stay valid with that field ignored.
 - **WHEN** a payload carries required fields plus an unknown legacy time field
 - **THEN** validation returns valid with that field ignored and observation time from the validator
 
+### Requirement: Ready handshake carries only event and changed_files
+The ready return SHALL carry exactly event ready plus empty changed_files with no emitted_on field and no time field, consistent with timeless payloads that never read a clock.
+
+#### Scenario: Ready validates timeless
+- **WHEN** a worker returns ready
+- **THEN** the payload SHALL contain only event ready and empty changed_files with no time field
+

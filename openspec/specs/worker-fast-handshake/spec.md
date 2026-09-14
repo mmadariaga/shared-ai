@@ -47,3 +47,10 @@ The coordinator SHALL run the snapshot sub-command only after the dispatch harne
 - **WHEN** a handle has been captured and retained for a dispatch-to-result stretch
 - **THEN** the guard SHALL snapshot guard_base then and verify that base after every result before the coordinator acts, with no coordinator HEAD mutation inside the window
 
+### Requirement: Literal ready example preserves handle-first handshake timing
+Adding the literal ready example to the initial dispatch prompt SHALL NOT alter handle-first timing: every routed worker SHALL still return event ready as its first nonterminal return before any expensive work with empty changed_files, and the coordinator SHALL still retain the harness-native handle before any guard snapshot.
+
+#### Scenario: Example leaves timing unchanged
+- **WHEN** any routed worker opens a stretch with the example-bearing prompt
+- **THEN** its first return SHALL be ready before any subagent dispatch, excess read, artifact write, or analysis
+
