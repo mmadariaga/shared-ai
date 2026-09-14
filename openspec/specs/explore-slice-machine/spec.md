@@ -95,3 +95,10 @@ A `complete` intent while Plan is at `implement` SHALL reject with `READINESS_IS
 - **WHEN** the caller emits `next-slice` while `explore-slice@1` is at `sai-1`
 - **THEN** the response carries `rejected: READINESS_IS_NOT_INTENT` and `stage` stays `sai-1`
 
+### Requirement: Next-slice close ownership lives in slice
+`sai/commands/explore/steps/slice.md` SHALL own the Plan and Manual next-slice close with bare-token and dominant-intent recognition, and Direct Build SHALL never use next-slice with Archive completion marking the slice done.
+
+#### Scenario: Slice close resolves in slice step
+- **WHEN** a Plan or Manual slice closes
+- **THEN** the slice ownership rules govern completion with no Direct Build next-slice
+

@@ -505,3 +505,10 @@ The idea progress list SHALL preserve a completed slice's progress states while 
 - **WHEN** a clean Auto-fast completion is followed by pending slices
 - **THEN** completed entries are not cleared, rewound, or reclassified
 
+### Requirement: Idea-list detail lives in idea-list step
+`sai/commands/explore/steps/idea-list.md` SHALL hold the full idea-list Phase A and Phase B detail with stage-ownership and route-ownership prefixes unmixed, while `sai/commands/explore/instructions.md` item 11 SHALL keep only a marker loaded via next.follow at choice resolution.
+
+#### Scenario: Panel detail resolves from idea-list step
+- **WHEN** the idea panel renders before or after emission
+- **THEN** the idea-list step rules govern ownership with boot carrying only the marker
+
