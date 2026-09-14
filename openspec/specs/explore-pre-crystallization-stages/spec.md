@@ -247,3 +247,10 @@ After crystallization, Plan and Manual SHALL close the active slice only on the 
 - **WHEN** the user sends the bare token `next-slice` after crystallization on Manual
 - **THEN** the active slice is closed and a turn that only mentions, quotes, or negates `next-slice` does not close it
 
+### Requirement: Early staged-progression ownership lives in common
+`sai/commands/explore/steps/common.md` SHALL own the pre-crystallization TODO, next-step advancement, and persistence mechanics for B5 early, while post-crystallization next-slice close SHALL live only in `steps/slice.md` with recordedList-before-selector order preserved.
+
+#### Scenario: Early progression resolves in common
+- **WHEN** a pre-crystallization stage advances
+- **THEN** the common ownership rules govern TODO rendering and advancement
+

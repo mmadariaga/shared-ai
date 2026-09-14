@@ -100,3 +100,10 @@ The `inline-refusal` path SHALL stay excluded with immediate handoff and no sele
 - **WHEN** the close encounters store or panel failure or runs under fast-track
 - **THEN** the checkpoint still applies with degraded mode on failure and no auto-selection or skip under fast-track
 
+### Requirement: Shared close single-source lives in crystallization protocol
+`sai/commands/explore/steps/crystallization-protocol.md` SHALL hold the sole full shared crystallization-turn close sequence with checkpoint, recordedList-before-selector order, and fast-track never-auto-selects behavior, while `sai/commands/explore/instructions.md` SHALL invoke it by reference only.
+
+#### Scenario: Close sequence resolves from protocol
+- **WHEN** a crystallization turn emits its block set
+- **THEN** the protocol single-source sequence governs the close with ordered checkpoint
+

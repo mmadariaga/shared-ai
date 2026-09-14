@@ -59,3 +59,10 @@ The source instruction structure SHALL remain harness-neutral. The Claude Code a
 - **WHEN** the Claude Code and opencode idea-list renderers are inspected
 - **THEN** each renderer references the split surfaces and retains its own machine-readable carrier without asserting identical Phase A and Phase B ownership behavior
 
+### Requirement: Boot keeps minimal guard with deferred exception detail
+The explore boot in `sai/commands/explore/instructions.md` SHALL keep only the minimal resident guard and pointer lines for B1-partial, B5, B6, B7, and B8, and SHALL defer full exception and pipeline detail to `steps/pipeline-plan-unattended.md`, `steps/pipeline-direct-build.md`, and the owning step files with no restatement in boot.
+
+#### Scenario: Boot loads without pipeline detail
+- **WHEN** an explore session starts
+- **THEN** the boot presents minimal guard pointers and pipeline detail loads only through its owning step file
+
