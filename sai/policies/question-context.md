@@ -22,32 +22,23 @@ Every user-facing decision prompt SHALL carry all five elements:
 
 An informational message (the design-only notice) SHALL carry: what is being reported, why it matters, the essential state context, and plain wording. The options element SHALL NOT be required, because a notice is informational, not a decision prompt.
 
-## Pinned exemptions
+## Concise-format rule (picker brevity)
 
-The following prompts are registered exemptions to the full anatomy. Each
-keeps its own defining contract as the single source of its exact wording,
-options, and invalid-input semantics; this list is the centralized registry,
-and no consuming surface may add, remove, or reinterpret an exemption here.
+Every closed-choice prompt SHALL split decision context from the picker call:
 
-1. **Change-picker prompts** — `Use change '{name}'?` and `Which change?`,
-   pinned by `sai/policies/change-picker.md`.
-2. **Status-picker prompts** — the change-selection prompts pinned by
-   `sai/policies/status-picker.md`.
-3. **Artifact-feedback-gate texts** — the gate's fixed picker labels and the
-   canonical feedback prompt (`Share your feedback on {artifacts} below.`),
-   pinned byte-for-byte by `sai/policies/artifact-feedback-gate.md`.
-4. **Crystallization-close selector** — sai-explore's `Plan - Unattended` /
-   `Direct Build - Unattended` / `Manual` selector, pinned by
-   `sai/commands/explore/instructions.md` item 10.
-5. **Plain-text sí/no review invitation** — sai-explore's post-crystallization
-   global invitation (item 9), a deliberate narrow exception to the
-   native-picker presentation rule in `remember.md`.
-6. **Commit authorization ask** — sai-commit's short "Run `git commit` on the staged changes above?" decision prompt, pinned by `sai/commands/commit/worker.md`. The staged file inventory with Totals plus the proposed subject/body render as ordinary text above the picker, unaltered and in fixed order; the short question plus those visible blocks together carry the essential state context. The secret-file confirmation and the already-pushed amend warning keep full context and are excluded from this shortening.
+- **Mandatory split**: everything except options goes to preceding plain text; the question tool holds only the ultra-synthesized summary question plus options.
+- **Emission order**: full context renders as ordinary chat immediately before the `needs_input` / question tool call, with no body duplication between surfaces except the summary.
+- **Operational limits**: as an operational SHOULD on rendered text without markup, the summary question stays ≤ ~200 chars and each option stays ≤ ~100 chars; excess moves to plain text.
+- **Self-sufficient plain text**: preceding plain text gives all necessary context to understand the question and options with no inference from the tool.
+- **Universal with no exemptions**: this rule applies to every user-facing decision prompt, including long or pinned prompts, which are rewritten to comply in the same change; no grace period, no exemption registry.
+- **Literals intact**: identifiers, paths, kebab change names, and literals stay verbatim with visual wrap allowed; limits never justify truncation, abbreviation, or translation; option order and machine values stay unchanged.
+- **No-picker fallback**: without a picker, render the same split in plain text — context, then summary question, then numbered options — with identical semantics.
+- No deterministic validator in this change: compliance is verified by manual review; lint is future work, out of scope.
 
-The full anatomy SHALL apply to every other user-facing decision prompt.
+The full anatomy plus this concise-format rule SHALL apply to every user-facing decision prompt.
 
 ## Single source
 
-This file is the single source of the anatomy. Every consuming surface SHALL reference it as `@sai/policies/question-context.md` and SHALL NOT restate or redefine the anatomy inline.
+This file is the single source of the anatomy and the concise-format rule. Every consuming surface SHALL reference it as `@sai/policies/question-context.md` and SHALL NOT restate or redefine either inline.
 
 </question_context_policy>

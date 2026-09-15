@@ -3,7 +3,6 @@
 ## Purpose
 
 TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
-
 ## Requirements
 ### Requirement: Wrapper MUST NOT fetch the change-picker
 
@@ -32,3 +31,10 @@ When `/sai-backfill` is invoked with an empty `$ARGUMENTS`, the boot MUST forwar
 
 - **WHEN** `/sai-backfill` runs (with or without arguments)
 - **THEN** no surface in the chain executes `openspec list` for picker purposes, presents a numbered change list, or prompts the user with "Which change? Enter a number (1-N)"
+
+### Requirement: Concise change-name proposal with preceding context
+The change-name proposal SHALL state the inference in ordinary chat per the concise-format rule and SHALL ask the short summary question with yes and no options.
+#### Scenario: Short change-name question follows context
+- **WHEN** a block-supplied or derived change name is proposed
+- **THEN** preceding plain text states the proposal and the picker asks only the short summary question
+

@@ -227,8 +227,8 @@ Do NOT write any file until this phase completes.
 
 Derive the change name using this priority order:
 1. If the request body carries an explicit kebab-case identifier, use it as the name; a block-supplied `**Change name**` present at the same time is ignored.
-2. Otherwise, when a crystallized block supplied a `**Change name**`: with `fast_track_active` false, propose it as a `needs_input` result: "I'll use `{proposed-name}` as the change name. Is that correct? (yes/no)" with options `yes` / `no`; with `fast_track_active` true, accept it directly with no ask.
-3. If no name exists yet but one can be clearly inferred from the diff file paths or interview answers, propose it as a `needs_input` result: "I'll use `{proposed-name}` as the change name. Is that correct? (yes/no)" with options `yes` / `no`.
+2. Otherwise, when a crystallized block supplied a `**Change name**`: with `fast_track_active` false, state the proposed name in ordinary chat per the concise-format rule in `@sai/policies/question-context.md` and propose it as a `needs_input` result: "Use `{proposed-name}` as the change name?" with options `yes` / `no`; with `fast_track_active` true, accept it directly with no ask.
+3. If no name exists yet but one can be clearly inferred from the diff file paths or interview answers, state the inference in ordinary chat per the same rule and propose it as a `needs_input` result: "Use `{proposed-name}` as the change name?" with options `yes` / `no`.
 4. If no name can be derived: return a terminal payload whose summary is exactly `Change name required. Run: /sai-backfill <name>` and stop.
 
 Do NOT compose any draft for a write until the name is confirmed (or fast-track-accepted per rule 2); after confirmation, every subsequent result carries `resolved_change_name`.

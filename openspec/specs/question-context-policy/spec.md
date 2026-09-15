@@ -3,9 +3,7 @@
 ## Purpose
 
 Defines the canonical question-context policy (`sai/policies/question-context.md`) — the five-element anatomy of every user-facing decision prompt in the pipeline, its single-source ownership, its installation across harnesses, and the rule that compliance is satisfied at the surface that authors the prompt.
-
 ## Requirements
-
 ### Requirement: Register the fixed crystallization-close selector exemption
 
 The question-context policy SHALL identify sai-explore's crystallization-close selector as the `Plan - Unattended` / `Build - Unattended` / `Manual` selector and SHALL preserve its narrow exemption from the general decision-prompt anatomy.
@@ -144,3 +142,10 @@ The worker-authored global strategy question and options SHALL be forwarded unch
 
 - **WHEN** the strategy confirmation is presented
 - **THEN** its ordered values remain `apply-strategy`, `revise-strategy`, and `decline-strategy`
+
+### Requirement: Concise-format section replaces exemption registry
+The policy file SHALL define the concise-format rule with split, limits, self-sufficiency, universal scope, literal preservation, and fallback, and SHALL NOT retain a pinned exemption registry.
+#### Scenario: Policy carries concise rule without exemptions
+- **WHEN** the question-context policy is read
+- **THEN** it presents the concise-format rule and contains no exemption registry
+
