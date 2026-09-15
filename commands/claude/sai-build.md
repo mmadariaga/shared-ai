@@ -2,7 +2,7 @@
 description: Build a change through implementation planning and apply in one routed composition.
 argument-hint: "[change-name]"
 model: opus
-effort: low
+effort: medium
 allowed-tools: Read, Glob, Skill, Agent, SendMessage, AskUserQuestion, TaskCreate, TaskUpdate, TaskGet, TaskList
 ---
 Fetch @skills/fetch/SKILL.md

@@ -1,7 +1,8 @@
 ---
 description: Read-only progress panel for one OpenSpec change — the 10 sai-workflow artifacts, specs approval, implementation progress, and a Next: hint. Writes nothing.
 argument-hint: "[change-name]"
-model: haiku
+model: sonnet
+effort: medium
 allowed-tools: Read, Glob, Grep, Bash(openspec:*), AskUserQuestion, Skill
 ---
 Fetch @skills/fetch/SKILL.md

@@ -98,7 +98,7 @@
           "agentName": "sai-2-design-worker",
           "description": "Owns the complete technical design phase and returns structured lifecycle metadata.",
           "model": "opus",
-          "effort": "high",
+          "effort": "medium",
           "tools": "Read, Glob, Grep, Bash, Edit, Write, Agent, Skill, SendMessage"
         },
         "opencodeAgent": {
@@ -306,8 +306,8 @@
         "claudeAgent": {
           "agentName": "sai-commit-worker",
           "description": "Owns the complete technical commit-message authoring phase and returns structured lifecycle metadata.",
-          "model": "haiku",
-          "effort": "low",
+          "model": "sonnet",
+          "effort": "medium",
           "tools": "Read, Glob, Grep, Bash, Skill, SendMessage"
         },
         "opencodeAgent": {
@@ -340,8 +340,8 @@
         "claudeAgent": {
           "agentName": "sai-archive-worker",
           "description": "Owns the archive pre-flight and gate authoring phase plus explicitly authorized Direct-build sync, move, staging, and commit execution, and returns structured lifecycle metadata.",
-          "model": "haiku",
-          "effort": "low",
+          "model": "sonnet",
+          "effort": "medium",
           "tools": "Read, Glob, Grep, Bash, Skill, SendMessage"
         },
         "opencodeAgent": {
@@ -375,8 +375,8 @@
         "claudeAgent": {
           "agentName": "sai-backfill-worker",
           "description": "Owns the backfill inspection, interviewing, draft-composition, and explicitly authorized Direct-build draft execution phase and returns structured lifecycle metadata.",
-          "model": "haiku",
-          "effort": "low",
+          "model": "opus",
+          "effort": "medium",
           "tools": "Read, Glob, Grep, Bash, Write, Skill, SendMessage"
         },
         "opencodeAgent": {
@@ -411,8 +411,8 @@
         "claudeAgent": {
           "agentName": "sai-merge-worker",
           "description": "Owns the merge analysis, conflict-resolution proposal, verification, ADR/DDR collision scanning, and resolution content writing phase and returns structured lifecycle metadata.",
-          "model": "haiku",
-          "effort": "low",
+          "model": "opus",
+          "effort": "medium",
           "tools": "Read, Glob, Grep, Bash, Edit, Write, Skill, SendMessage"
         },
         "opencodeAgent": {
@@ -445,8 +445,8 @@
         "claudeAgent": {
           "agentName": "sai-4-red-worker",
           "description": "Owns the RED apply phase and returns structured lifecycle metadata.",
-          "model": "haiku",
-          "effort": "low",
+          "model": "sonnet",
+          "effort": "medium",
           "tools": "Read, Glob, Grep, Bash, Edit, Write, Agent, Skill, SendMessage"
         },
         "opencodeAgent": {
@@ -479,8 +479,8 @@
         "claudeAgent": {
           "agentName": "sai-4-green-worker",
           "description": "Owns the GREEN apply phase and returns structured lifecycle metadata.",
-          "model": "haiku",
-          "effort": "low",
+          "model": "opus",
+          "effort": "medium",
           "tools": "Read, Glob, Grep, Bash, Edit, Write, Agent, Skill, SendMessage"
         },
         "opencodeAgent": {
@@ -518,8 +518,8 @@
         "claudeAgent": {
           "agentName": "sai-direct-build-worker",
           "description": "Owns the block-driven direct implementation phase of explore's Direct Build (unattended) option and returns structured lifecycle metadata.",
-          "model": "haiku",
-          "effort": "low",
+          "model": "opus",
+          "effort": "medium",
           "tools": "Read, Glob, Grep, Bash, Edit, Write, Skill, SendMessage"
         },
         "opencodeAgent": {

@@ -2,7 +2,7 @@
 description: Granular implementation plan through the canonical coordinator contract and a routed worker.
 argument-hint: "[change-name]"
 model: opus
-effort: low
+effort: medium
 allowed-tools: Read, Glob, Skill, Agent, SendMessage, AskUserQuestion, TaskCreate, TaskUpdate, TaskGet, TaskList
 ---
 Fetch @skills/fetch/SKILL.md

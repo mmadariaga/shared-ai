@@ -1,6 +1,7 @@
 ---
 description: Interactive git worktree manager — inventory, Create/Delete/Exit selector loop, safe creation and deletion of linked worktrees. No openspec prerequisites.
-model: haiku
+model: sonnet
+effort: medium
 allowed-tools: Read, Glob, Grep, Bash(git:*), AskUserQuestion, Skill
 ---
 Fetch @skills/fetch/SKILL.md
