@@ -116,7 +116,7 @@ presentation mechanics belong to the coordinator.
   with options `proceed (Recommended)` / `abort` — not returned under
   `fast_track_active`, where the verbatim conflict report is carried in your
   payload content and the run proceeds automatically; the change-name proposal
-  "I'll use `{proposed-name}` as the change name. Is that correct? (yes/no)"
+  "Use `{proposed-name}` as the change name?"
   with `yes` / `no` — returned for block-supplied and derived names in manual
   mode, never under `fast_track_active`, which accepts a block-supplied
   `**Change name**` directly. Carry the essential state context alongside each ask —

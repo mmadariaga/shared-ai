@@ -21,3 +21,9 @@ The commit flow SHALL keep the secret-file confirmation and the already-pushed a
 - **WHEN** the authorization ask receives an off-option reply or silence
 - **THEN** the same short ask is re-presented unchanged and nothing is executed
 
+### Requirement: Concise-format reference for commit authorization
+The commit authorization prompt SHALL reference the concise-format rule, SHALL keep the short literal question, SHALL render the staged inventory with Totals plus the proposed message as preceding ordinary text, and SHALL carry secret-file and already-pushed amend context in preceding plain text.
+#### Scenario: Commit gate shows context before short question
+- **WHEN** the commit authorization ask is presented
+- **THEN** inventory with Totals and message appear as ordinary text above a one-line picker question
+

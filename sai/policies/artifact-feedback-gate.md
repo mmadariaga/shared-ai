@@ -60,15 +60,15 @@ The following presentation applies only when `mode` is `interactive` or omitted 
 
 The interactive gate keeps the existing picker mapping and ordering: `Give feedback (Recommended)` is emitted before `proceed-label` on iteration 0 (`Finish step` for sai-1 and `Continue` for sai-2), with the exact labels and descriptions below.
 
-Present exactly two choices through the harness's native option-picker per the "Closed-choice prompts" rule in `sai/policies/remember.md`. The question text is:
+Present exactly two choices through the harness's native option-picker per the "Closed-choice prompts" rule in `sai/policies/remember.md`. Per the concise-format rule in `@sai/policies/question-context.md`, state the full decision context in ordinary chat immediately before the picker — what is being decided, why it matters, the artifact list, and the free-text channel — and keep the picker question to the short summary below. The question text is:
 
 Immediately before the question below, emit one non-option informational note explaining that the user can use the literal command `sai-explore` with the literal `review-loop` token to obtain an artifact review and paste the findings here. This note is not a third picker option, feedback input, approval, or progress event. Render the surrounding prose in the user's language per `sai/policies/remember.md`; keep only the literal command `sai-explore` and token `review-loop` verbatim in English.
 
-> Share your feedback on {artifacts} below. You can also type feedback directly in the free-text box.
+> Share feedback on {artifacts}?
 
 Replace `{artifacts}` with the supplied artifact list and render the question in the user's language per `sai/policies/remember.md`.
 
-1. **`Give feedback (Recommended)` when in-conversation iteration counter == 0, else `Give more feedback`** — feedback on the artifacts written in this step. Name every entry in `artifacts` so the user knows exactly what is open to feedback. The feedback option description is `Feedback on {artifacts}; you can also type feedback directly in the free-text box.` Replace `{artifacts}` with the supplied artifact list and render the description in the user's language per `sai/policies/remember.md`. The feedback option is emitted FIRST in every presentation (ordering is unaffected by the iteration counter).
+1. **`Give feedback (Recommended)` when in-conversation iteration counter == 0, else `Give more feedback`** — feedback on the artifacts written in this step. Name every entry in `artifacts` in the preceding plain text so the user knows exactly what is open to feedback. The feedback option description is `Feedback on {artifacts}.` Replace `{artifacts}` with the supplied artifact list and render the description in the user's language per `sai/policies/remember.md`. The feedback option is emitted FIRST in every presentation (ordering is unaffected by the iteration counter).
 
 The question text, feedback option description, proceed option label, proceed option description, and harness option-picker path stay byte-for-byte identical across every iteration; only this short label changes between the first presentation and any re-presentation. On every re-presentation after a feedback turn (iteration counter > 0), NO option carries the `Recommended` marker — neither the feedback option nor the proceed option.
 

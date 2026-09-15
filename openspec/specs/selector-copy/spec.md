@@ -35,3 +35,9 @@ The Manual selector description SHALL direct the user to proceed manually by pas
 - **WHEN** the Manual selector description is read
 - **THEN** it SHALL NOT contain the literal `/sai-1-spec <change-name>`
 
+### Requirement: Concise selector presentation with bounded options
+The crystallization-close selector SHALL present through the native picker with emitted Ready to Propose blocks as preceding context, SHALL keep the short summary question, SHALL keep each option description within about 100 characters, and SHALL use the shortened Manual copy.
+#### Scenario: Selector stays scannable with short Manual copy
+- **WHEN** the route choice is presented
+- **THEN** the picker shows a short summary question with bounded descriptions including the shortened Manual option
+
