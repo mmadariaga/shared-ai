@@ -63,7 +63,7 @@ For every modified file, perform a multi-pass review against the categories belo
 Review categories (apply each pass to the full diff):
 
 1. **Domain Alignment** — Does the change fulfill the feature goal in `proposal.md`? Does it satisfy the per-capability acceptance criteria in `specs/**/*.md`? Does it contradict any recorded decision? Is anything in scope that was explicitly discarded?
-2. **Correctness & Bugs** — Logic errors, off-by-one, null/undefined handling, race conditions, incorrect API usage, broken edge cases.
+2. **Correctness & Bugs** — Logic errors, off-by-one, null/undefined handling, race conditions, incorrect API usage, broken edge cases. Excludes retry/timeout/circuit-breaker/idempotency/fallback — owned exclusively by the Resilience pass; do not duplicate them here.
 3. **Security (triage only — DO NOT deep audit)** — Detect whether the diff touches **security surface**:
      - Authentication / authorization paths
      - User input parsing, deserialization, file/path handling
@@ -81,7 +81,7 @@ Review categories (apply each pass to the full diff):
      - New dependencies (bundle size, transitive cost)
      - Loops or data transformations over user-controlled or unbounded inputs
      - Caching layers added, removed, or invalidated
-     Your job here is **not** to run EXPLAIN, profile, or measure CWV. Only flag *surface touched: yes/no* and list the specific files. If yes, recommend `/sai-7-performance` in the report. Do not raise individual performance findings unless they are blatant (e.g. nested loop on a known-large collection, `SELECT *` inside a per-row loop, render-blocking `<script>` without `defer`) — those go as High or Critical with a note that `/sai-7-performance` will cover the rest.
+     Your job here is **not** to run EXPLAIN, profile, or measure CWV. Only flag *surface touched: yes/no* and list the specific files. If yes, recommend `/sai-7-performance` in the report. Do not raise individual performance findings unless they are blatant (e.g. nested loop on a known-large collection, `SELECT *` inside a per-row loop, render-blocking `<script>` without `defer`) — those go as High or Critical with a note that `/sai-7-performance` will cover the rest. Retry/timeout/circuit-breaker/idempotency/fallback are owned exclusively by the Resilience pass; assess throughput/backpressure only and do not duplicate them here.
 5. **Accessibility (triage only — DO NOT deep audit)** — Detect whether the diff touches **UI surface**:
      - Files with extensions `.tsx`/`.jsx`/`.astro`/`.html`/`.vue`/`.svelte`/`.css`
      - Component-bearing markdown
@@ -92,22 +92,23 @@ Review categories (apply each pass to the full diff):
 8. **Consistency with Codebase** — Does the change follow existing architectural patterns, naming, error handling, and logging conventions discoverable in the repo? Does it respect the Expertise Profile from the change artifacts?
 9. **Domain Language Consistency** — Only if `GLOSSARY.md` exists at repo root: delegate to a **`budget-explorer`** subagent — include the `<glossary_format>` block from context in the subagent prompt — and return ≤30 canonical terms (Language, Relationships, Example dialogue, Flagged ambiguities sections). Then check new identifiers (classes, functions, files, variables) against those terms. Flag deviations as Low. If no `GLOSSARY.md`, skip this category entirely.
 10. **Documentation & Migrations** — Are ADRs/DDRs, READMEs, OpenAPI/typedefs, or DB migrations updated when the change requires it?
-11. **Mutation Analysis** — Verify test *sensitivity* (not just coverage) by running the configured deterministic mutation engine against diff-scoped production code and checking whether the test suite catches each mutation. This pass **writes to the working tree and runs tests**, so it is NOT executed inside this read-only Step 2: run it per the dedicated **`### Mutation Analysis (Pass 11)`** protocol section below (activation gate and deterministic-tool protocol). Step 4 renders its outcomes.
+11. **Resilience (deep — raise own findings)** — Review fault-tolerance of the diff's I/O paths: missing timeouts, unbounded retries, missing circuit-breaker, non-idempotent retry/redelivery handlers, missing fallback or degraded path. Scope is external I/O, handlers, and consumers only; docs/CSS-only diffs without I/O yield no findings (skip rule, never a finding). Raise idempotency findings only when retry or redelivery exists. When the repo has no existing resilience pattern for the case, cap at Question/Low — never demand a new pattern as High/Critical. This pass owns retry/timeout/circuit-breaker/idempotency/fallback exclusively. Severity: Critical only for cascade/outage, data loss, or duplicate side-effects with concrete impact; otherwise High/Medium/Low by blast radius.
+12. **Mutation Analysis** — Verify test *sensitivity* (not just coverage) by running the configured deterministic mutation engine against diff-scoped production code and checking whether the test suite catches each mutation. This pass **writes to the working tree and runs tests**, so it is NOT executed inside this read-only Step 2: run it per the dedicated **`### Mutation Analysis (Pass 12)`** protocol section below (activation gate and deterministic-tool protocol). Step 4 renders its outcomes.
 
-### Mutation Analysis (Pass 11)
+### Mutation Analysis (Pass 12)
 
-Pass 11 runs after passes 1–10. Unlike them it **writes to the working tree** and **runs the test suite**, so it is specified here as a standalone protocol rather than as a read-only Step 2 bullet. It measures test *sensitivity*: whether the suite would actually fail if the diffed production code regressed.
+Pass 12 runs after passes 1–11. Unlike them it **writes to the working tree** and **runs the test suite**, so it is specified here as a standalone protocol rather than as a read-only Step 2 bullet. It measures test *sensitivity*: whether the suite would actually fail if the diffed production code regressed.
 
 #### Activation Gate
 
-Run pass 11 only when BOTH conditions hold:
+Run pass 12 only when BOTH conditions hold:
 
 1. The diff against the parent branch contains **testable production code** (not docs or config only).
 2. The repository contains **at least one test file**.
 
-If either condition is false, emit exactly `Mutation Analysis (Pass 11): skipped — {no testable production code in diff | repository has no test files}. No mutation findings.` using the applicable reason, emit no mutation findings, and do not mutate any production file.
+If either condition is false, emit exactly `Mutation Analysis (Pass 12): skipped — {no testable production code in diff | repository has no test files}. No mutation findings.` using the applicable reason, emit no mutation findings, and do not mutate any production file.
 
-If the activation gate admits the pass but the diff-scoped production-code set contains no eligible mutation targets, emit exactly `Mutation Analysis (Pass 11): skipped — no eligible mutation targets. No mutation findings.` and continue without treating the empty target set as a positive result.
+If the activation gate admits the pass but the diff-scoped production-code set contains no eligible mutation targets, emit exactly `Mutation Analysis (Pass 12): skipped — no eligible mutation targets. No mutation findings.` and continue without treating the empty target set as a positive result.
 
 #### Mutation Scope
 
@@ -126,11 +127,11 @@ Inspect the project's manifest files to detect whether a supported mutation tool
 | `Cargo.toml` | cargo-mutants |
 | `CMakeLists.txt` | mull |
 
-A tool counts as available **only when its package is declared as a project dependency**. If a tool is detected, run that tool with its checked-in project configuration, restrict its mutation scope to the eligible diff files, and parse its surviving mutants. This is the only mutation path; mutation results must come from the tool's real execution and never from inference. If no supported tool is declared in any manifest, report `Mutation Analysis (Pass 11): unavailable — no deterministic mutation tool declared. No mutation findings.` and continue the review without mutating files or simulating results. If the declared tool cannot execute or its result cannot be parsed, report the concrete failure and emit no mutation findings.
+A tool counts as available **only when its package is declared as a project dependency**. If a tool is detected, run that tool with its checked-in project configuration, restrict its mutation scope to the eligible diff files, and parse its surviving mutants. This is the only mutation path; mutation results must come from the tool's real execution and never from inference. If no supported tool is declared in any manifest, report `Mutation Analysis (Pass 12): unavailable — no deterministic mutation tool declared. No mutation findings.` and continue the review without mutating files or simulating results. If the declared tool cannot execute or its result cannot be parsed, report the concrete failure and emit no mutation findings.
 
 #### Deterministic Execution and Outcomes
 
-Run the declared tool's configured test command and let the engine own baseline execution, mutation application, timeout, revert, and result collection. Restrict the engine to the eligible diff files; never apply a hand-authored or inferred mutation. Parse the engine's report and hand its surviving, timed-out, uncovered, or impediment outcomes to Step 4. If the baseline fails, use exactly `Mutation Analysis (Pass 11): unavailable — deterministic baseline failed. No mutation findings.` If tool execution fails, use exactly `Mutation Analysis (Pass 11): unavailable — deterministic tool execution failed. No mutation findings.` If the report is absent, unavailable, or cannot be parsed, use exactly `Mutation Analysis (Pass 11): unavailable — deterministic report could not be parsed. No mutation findings.` In each case continue the review without mutation findings and never replace a missing tool result with model-generated evidence.
+Run the declared tool's configured test command and let the engine own baseline execution, mutation application, timeout, revert, and result collection. Restrict the engine to the eligible diff files; never apply a hand-authored or inferred mutation. Parse the engine's report and hand its surviving, timed-out, uncovered, or impediment outcomes to Step 4. If the baseline fails, use exactly `Mutation Analysis (Pass 12): unavailable — deterministic baseline failed. No mutation findings.` If tool execution fails, use exactly `Mutation Analysis (Pass 12): unavailable — deterministic tool execution failed. No mutation findings.` If the report is absent, unavailable, or cannot be parsed, use exactly `Mutation Analysis (Pass 12): unavailable — deterministic report could not be parsed. No mutation findings.` In each case continue the review without mutation findings and never replace a missing tool result with model-generated evidence.
 
 ### Step 3: Classify and Prioritize Findings
 

@@ -59,7 +59,7 @@
 
 #### C1 — {Short title}
 - **Location:** `path/to/file.ext:LINE` (or range `LINE-LINE`)
-- **Category:** {Correctness | Security | Domain Alignment | ...}
+- **Category:** {Correctness | Security | Resilience | Domain Alignment | ...}
 - **Problem:** {Concrete description of what is wrong and the concrete impact.}
 - **Evidence:** {Quote the offending code or diff hunk if useful.}
 - **Suggested fix:** {Specific change. If multiple valid options, list up to 3 with trade-offs.}
@@ -95,21 +95,21 @@
 
 ---
 
-## Mutation Analysis (Pass 11)
+## Mutation Analysis (Pass 12)
 
-> Include this section only when pass 11 ran. If the activation gate was not met, no deterministic mutation tool was declared, the deterministic baseline failed, the tool could not execute, or its report could not be parsed, replace the entire section body with exactly one applicable skipped or unavailable note and emit no mutation findings:
+> Include this section only when pass 12 ran. If the activation gate was not met, no deterministic mutation tool was declared, the deterministic baseline failed, the tool could not execute, or its report could not be parsed, replace the entire section body with exactly one applicable skipped or unavailable note and emit no mutation findings:
 >
-> *Mutation Analysis (Pass 11): skipped — {no testable production code in diff | repository has no test files}. No mutation findings.*
+> *Mutation Analysis (Pass 12): skipped — {no testable production code in diff | repository has no test files}. No mutation findings.*
 >
-> *Mutation Analysis (Pass 11): skipped — no eligible mutation targets. No mutation findings.*
+> *Mutation Analysis (Pass 12): skipped — no eligible mutation targets. No mutation findings.*
 >
-> *Mutation Analysis (Pass 11): unavailable — no deterministic mutation tool declared. No mutation findings.*
+> *Mutation Analysis (Pass 12): unavailable — no deterministic mutation tool declared. No mutation findings.*
 >
-> *Mutation Analysis (Pass 11): unavailable — deterministic baseline failed. No mutation findings.*
+> *Mutation Analysis (Pass 12): unavailable — deterministic baseline failed. No mutation findings.*
 >
-> *Mutation Analysis (Pass 11): unavailable — deterministic tool execution failed. No mutation findings.*
+> *Mutation Analysis (Pass 12): unavailable — deterministic tool execution failed. No mutation findings.*
 >
-> *Mutation Analysis (Pass 11): unavailable — deterministic report could not be parsed. No mutation findings.*
+> *Mutation Analysis (Pass 12): unavailable — deterministic report could not be parsed. No mutation findings.*
 
 **Strategy:** Deterministic — `{tool}`
 **Test command:** `{detected test command}`

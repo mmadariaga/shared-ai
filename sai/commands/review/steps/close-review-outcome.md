@@ -12,6 +12,8 @@ Assign each finding one of:
 - **Low** — Nice to fix. Naming, small refactors, low-impact polish.
 - **Question** — Genuine uncertainty needing user input. Use sparingly.
 
+Resilience severity and ownership: Resilience findings use `Category: Resilience` on the same scale, but **Critical** only for cascade/outage, data loss, or duplicate side-effects with concrete impact; otherwise High/Medium/Low by blast radius. Retry/timeout/circuit-breaker/idempotency/fallback belong exclusively to Resilience — do not duplicate them as Correctness or Performance findings. Exemptions are pass rules, never findings: docs/CSS-only diffs without I/O yield no Resilience findings; frontend code without external I/O is out of scope (external I/O, handlers, and consumers only); when no existing resilience pattern exists, cap at Question/Low; raise idempotency only when retry or redelivery exists. Resilience is a deep pass, not a triage — it adds no audit-recommendation line.
+
 Drop findings that are purely stylistic if the codebase has no enforced convention for them.
 
 ### Step 4: Produce the Review Report
