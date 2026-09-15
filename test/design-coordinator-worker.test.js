@@ -179,7 +179,7 @@ test('design wrappers activate routed Claude/opencode entry and preserve phase b
 
     assert.match(claude, /^model: opus$/m);
     assert.match(claude, /^effort: medium$/m);
-     assert.match(claude, /^allowed-tools: Read, Glob, Skill, Agent, SendMessage, AskUserQuestion, TaskCreate, TaskUpdate, TaskGet, TaskList$/m);
+     assert.match(claude, /^allowed-tools: Read, Glob, Skill, Agent, SendMessage, AskUserQuestion, TaskCreate, TaskUpdate, TaskGet, TaskList, Bash\(node \.claude\/sai\/tools\/worker-report-validator\.js:\*\), Bash\(node ~\/\.claude\/sai\/tools\/worker-report-validator\.js:\*\), Bash\(node \.claude\/sai\/tools\/no-commit-guard\.js:\*\), Bash\(node ~\/\.claude\/sai\/tools\/no-commit-guard\.js:\*\), Bash\(node \.claude\/sai\/bin\/sai-state\.js:\*\), Bash\(node ~\/\.claude\/sai\/bin\/sai-state\.js:\*\)$/m);
     assert.doesNotMatch(claude, /sai-2-design-worker/);
    assert.doesNotMatch(claude, /sai-3-implementation-worker/);
      assert.match(claude, /sai\/commands\/design\/command-bootstrap\.md/);
@@ -884,17 +884,34 @@ test('routed Claude wrappers expose the exact coordinator and panel tool scope',
     'commands/claude/sai-8-accessibility.md',
   ];
   const routedTools = ['Read', 'Glob', 'Skill', 'Agent', 'SendMessage', 'AskUserQuestion', 'TaskCreate', 'TaskUpdate', 'TaskGet', 'TaskList'];
+  const nodeGrants = [
+    'Bash(node .claude/sai/tools/worker-report-validator.js:*)',
+    'Bash(node ~/.claude/sai/tools/worker-report-validator.js:*)',
+    'Bash(node .claude/sai/tools/no-commit-guard.js:*)',
+    'Bash(node ~/.claude/sai/tools/no-commit-guard.js:*)',
+    'Bash(node .claude/sai/bin/sai-state.js:*)',
+    'Bash(node ~/.claude/sai/bin/sai-state.js:*)',
+  ];
+  const expectedTools = [...routedTools, ...nodeGrants];
 
   for (const relativePath of routedWrappers) {
     const source = artifact(relativePath);
     const match = source.match(/^allowed-tools:\s*(.+)$/m);
     assert.ok(match, `${relativePath} should declare allowed-tools`);
     const toolNames = match[1].split(',').map(tool => tool.trim());
-    assert.deepEqual(toolNames, routedTools,
-      `${relativePath} should keep the exact routed scope with panel tools`);
-    for (const forbidden of ['Edit', 'Write', 'Grep', 'Bash']) {
+    assert.deepEqual(toolNames, expectedTools,
+      `${relativePath} should keep the exact routed scope with panel tools plus the closed node-scoped grant`);
+    for (const forbidden of ['Edit', 'Write', 'Grep']) {
       assert.equal(match[1].includes(forbidden), false,
         `${relativePath} must not expose ${forbidden}`);
+    }
+    assert.doesNotMatch(match[1], /(?:^|,\s*)Bash(?:,|$)/,
+      `${relativePath} must not expose an unscoped Bash grant`);
+    for (const tool of toolNames) {
+      if (tool.startsWith('Bash(')) {
+        assert.ok(tool.startsWith('Bash(node '),
+          `${relativePath} Bash grants must be node-scoped`);
+      }
     }
   }
 });
@@ -1412,8 +1429,8 @@ test('Step 2: the design coordinator renders task-list stamps coordinator-only v
     'the policy should state stamp attachment is coordinator-only');
   assert.match(policy, /never from a worker subagent/i,
     'the policy should state attachment never originates from the worker subagent');
-  assert.doesNotMatch(claudeWrapper, /Bash\(/,
-    'the wrapper should carry no shell grant now that stamps come from validated_at');
+  assert.match(claudeWrapper, /Bash\(node .*worker-report-validator\.js:\*\).*Bash\(node .*no-commit-guard\.js:\*\).*Bash\(node .*sai-state\.js:\*\)/,
+    'the wrapper should carry only the closed node-scoped grant (validator plus guard plus store, both roots) now that stamps come from validated_at');
   assert.doesNotMatch(coordinator, /date \+%H:%M|Get-Date/,
     'per-harness wall-clock commands no longer live in the coordinator body');
 });
