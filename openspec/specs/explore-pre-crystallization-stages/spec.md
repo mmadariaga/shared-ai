@@ -254,3 +254,17 @@ After crystallization, Plan and Manual SHALL close the active slice only on the 
 - **WHEN** a pre-crystallization stage advances
 - **THEN** the common ownership rules govern TODO rendering and advancement
 
+### Requirement: Caller-side next-step recognition
+
+The explore caller SHALL advance the pre-crystallization progression only on explicit next-step recognition: a bare token with optional trivial punctuation or greeting, or dominant intent naming the next stage, requesting crystallization, or semantic confirmation of the proposed list at Review edge cases or Implementation details. Mere containment of next-step SHALL NOT fire, and a turn that negates, defers, quotes, or discusses the token SHALL NOT advance. Semantic confirmation at either list stage SHALL record the agreed list and advance in the same turn.
+
+#### Scenario: Bare token and dominant intent advance
+
+- **WHEN** the user sends the bare next-step token or makes progression advancement the turn dominant intent
+- **THEN** the progression advances to the next stage and the stage TODO re-renders with it in progress
+
+#### Scenario: Containment and non-advancing uses stay put
+
+- **WHEN** the user turn merely contains next-step, or negates, defers, quotes, or discusses the token
+- **THEN** the progression does not advance and the stage TODO stays unchanged
+

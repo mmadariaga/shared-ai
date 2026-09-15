@@ -161,3 +161,22 @@ The sidecar SHALL distinguish an absent session file (legal fresh-chat semantics
 - **WHEN** the session file is absent (swept, cleaned, or a fresh chat) while the sidecar process is live
 - **THEN** the next emit seeds or continues from the in-memory state with no warning and rewrites the store
 
+### Requirement: Explore-idea intent allowlist
+
+The explore-idea machine SHALL advance only on the exact next-step intent signal and SHALL reject any other, missing, or empty intent in-band with rejected READINESS_IS_NOT_INTENT and unchanged stage state. RecordedList recording without advancement and empty-list auto-advance on a later no-intent emit SHALL remain unchanged.
+
+#### Scenario: Stray intent does not advance
+
+- **WHEN** the caller emits banana, missing, or empty intent at explore-change without a recorded empty list condition
+- **THEN** the machine returns the current stage with READINESS_IS_NOT_INTENT and does not advance
+
+#### Scenario: Exact next-step advances one stage
+
+- **WHEN** the caller emits the exact next-step intent
+- **THEN** the machine advances exactly one stage per emit through review-edge-cases and implementation-details to crystallize
+
+#### Scenario: Recorded lists preserve existing semantics
+
+- **WHEN** the caller emits recordedList with a non-empty or empty list, followed where applicable by a later no-intent emit
+- **THEN** recording alone does not advance and a recorded empty list at a list stage auto-advances only on the later no-intent emit
+

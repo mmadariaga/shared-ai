@@ -63,8 +63,10 @@ function advanceState(current) {
   };
 }
 
-function hasIntent(signal) {
-  return Boolean(signal && typeof signal === 'object' && typeof signal.intent === 'string' && signal.intent.length > 0);
+const ADVANCE_INTENT = 'next-step';
+
+function isAdvanceIntent(signal) {
+  return Boolean(signal && typeof signal === 'object' && signal.intent === ADVANCE_INTENT);
 }
 
 function project(state) {
@@ -136,7 +138,11 @@ function transition(state, signal) {
     };
   }
 
-  if (!hasIntent(signal)) {
+  // Intent allowlist: only the exact `next-step` intent advances. Any other
+  // intent (including any non-empty stray string) stays put with the in-band
+  // rejection, mirroring explore-slice.js. Missing/empty intent rejects the
+  // same way. Empty-list auto-advance above is unchanged.
+  if (!isAdvanceIntent(sig)) {
     const staying = {
       stage: current.stage,
       ideaList: current.ideaList.slice(),
