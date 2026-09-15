@@ -9,6 +9,7 @@ const { loadInstallManifest } = require('./install-manifest.js');
 const {
   promptSelect,
   promptChecklist: installFlowPromptChecklist,
+  prepareLineInput,
   BACK,
   CHECKLIST_SEPARATOR,
 } = require('./install-flow.js');
@@ -973,6 +974,11 @@ function createOpencodeAdapter({
 
 function defaultPromptInput(question) {
   const readline = require('readline');
+  try {
+    if (typeof prepareLineInput === 'function') prepareLineInput(process.stdin);
+  } catch {
+    // Cooked-mode restore is best effort; readline still owns its own errors.
+  }
   return new Promise((resolve) => {
     const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
     rl.question(question, (answer) => {

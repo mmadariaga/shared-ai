@@ -705,6 +705,31 @@ function releaseRawInput(input) {
   if (typeof pendingRelease.unref === 'function') pendingRelease.unref();
 }
 
+// Line-input screens (readline.question) cannot share the navigator's
+// deferred raw-mode session: the pending setImmediate would pause stdin while
+// the question is waiting, emptying the event loop so Node exits right after
+// printing the prompt. Flush the pending release synchronously and restore
+// cooked mode before creating a readline interface.
+function prepareLineInput(input = process.stdin) {
+  if (pendingRelease !== null) {
+    clearImmediate(pendingRelease);
+    const previous = pendingReleaseInput;
+    pendingRelease = null;
+    pendingReleaseInput = null;
+    if (previous && previous !== input) runRelease(previous);
+  }
+  try {
+    if (input && input.isTTY && typeof input.setRawMode === 'function') input.setRawMode(false);
+  } catch {
+    // Cooked-mode restore is best effort; readline still owns its own errors.
+  }
+  try {
+    if (input && typeof input.resume === 'function') input.resume();
+  } catch {
+    // Resume is best effort; readline resumes its input on creation.
+  }
+}
+
 async function runNavigator({
   mode,
   question,
@@ -1331,6 +1356,7 @@ module.exports = {
   promptChecklist,
   promptSelect,
   runNavigator,
+  prepareLineInput,
   BACK,
   CHECKLIST_SEPARATOR,
   isChecklistSeparator,
