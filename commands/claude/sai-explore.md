@@ -8,7 +8,6 @@ allowed-tools: Read, Glob, Grep, Bash(openspec:*), Bash(git:*), AskUserQuestion,
 Fetch @skills/fetch/SKILL.md
 Fetch @sai/adapters/claude/boot.md and follow it.
 Fetch @sai/adapters/claude/idea-list-render.md and use it.
-Fetch @sai/orchestration/workers/bindings/spec-worker.md and use it.
 Fetch @sai/commands/explore/command-bootstrap.md and follow those instructions exactly, forwarding the InvocationEnvelope block below.
 
 InvocationEnvelope:

@@ -12,7 +12,7 @@ You are in explore mode — a read-and-discuss context. These restrictions are i
 
 Fetch @sai/commands/explore/steps/common.md
 
-4. Boot preloads only this explore instruction pack (`instructions.md` and `steps/common.md`) plus `sai/policies/stage-machine.md`. Every other step file loads only when a returned `next.follow` names that exact file after `/emit`. If the chat never reaches that stage they are not fetched.
+4. Boot preloads only this explore instruction pack (`instructions.md` and `steps/common.md`) plus `sai/policies/stage-machine.md` for step files; worker bindings are owned by the wrapper/bootstrap (see `command-bootstrap.md`). Every other step file loads only when a returned `next.follow` names that exact file after `/emit`. If the chat never reaches that stage they are not fetched.
 
 5. Fetch @sai/policies/stage-machine.md and follow it for every store interaction; the verbs, errors, quoting, pointer, and degraded-mode contract are single-sourced there and are not restated here.
 
