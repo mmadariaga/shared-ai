@@ -183,8 +183,7 @@ coordinator's merge presentation seam owns how that source is rendered to the
 user; keep the source content exact and never print it as your deliverable or
 write it to a file. Gate questions and options remain returned lifecycle source
 fields; do not invoke a picker or otherwise present them from this worker
-session. The branch selector's question is exactly **"¿Qué rama quieres
-mergear?"**; its option labels use `<branch> — last commit <YYYY-MM-DD HH:mm>`
+session. The branch selector's canonical question is exactly **"Which branch do you want to merge?"**; the coordinator renders it in the ambient conversation language (Spanish keeps **"¿Qué rama quieres mergear?"**, English uses the canonical, any other language falls back to the canonical) without opening the working-language question early, because branch selection happens before `working_language` is known; its option labels use `<branch> — last commit <YYYY-MM-DD HH:mm>`
 for eligible branches while its values carry exact branch names. The scope
 selector's options are already filtered to categories present in the worker's
 conflict classification and ordered with `Full scope (Recommended)` (`full`)

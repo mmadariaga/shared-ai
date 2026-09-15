@@ -80,7 +80,7 @@ equal timestamps. This tie-break is mandatory so the picker is deterministic.
 If the filtered list is empty, return a terminal `completed` payload whose summary is exactly
 **"No other local branches to merge."** and close the run.
 
-Return `needs_input` asking exactly **"¿Qué rama quieres mergear?"**. Build one
+Return `needs_input` asking exactly **"Which branch do you want to merge?"**. This is the canonical English source; the coordinator's presentation seam renders it in the ambient conversation language (Spanish keeps **"¿Qué rama quieres mergear?"**, English uses the canonical, any other language falls back to the canonical) without opening the working-language question early, because branch selection happens before `working_language` is known. Build one
 option per candidate with:
 
 - `value`: the exact local branch name, unchanged;
