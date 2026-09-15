@@ -7,7 +7,6 @@ const DIRECT_BUILD_MODE = 'direct-build';
 const PLAN_MODE = 'plan';
 const DIRECT_BUILD_STEPS = Object.freeze(['build-implement', 'backfill', 'archive']);
 const PLAN_STEPS = Object.freeze(['sai-1', 'sai-2', 'implement']);
-const ANON_SLICE = 'current';
 
 const SLICE_STEP = 'sai/commands/explore/steps/slice.md';
 const ROUTE_SELECTOR_STEP = 'sai/commands/explore/steps/route-selector.md';
@@ -114,7 +113,10 @@ function startRoute(current, mode, steps) {
     return outcome(current, 'ALREADY_RUNNING');
   }
   const pending = pendingOf(current);
-  current.active = pending.length > 0 ? pending[0] : ANON_SLICE;
+  if (pending.length === 0) {
+    return outcome(current, 'NO_PENDING_SLICE');
+  }
+  current.active = pending[0];
   current.mode = mode;
   current.stage = steps[0];
   return outcome(current);

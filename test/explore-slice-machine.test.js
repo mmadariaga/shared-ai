@@ -37,7 +37,8 @@ test('Direct Build cursor travels in stage: build-implement → backfill → arc
 });
 
 test('E8 fail/cancel and E9 already-running and E2 next-slice do not mark done', () => {
-  const started = slice.transition(slice.initialState, { intent: 'direct-build' });
+  const recorded = slice.transition(slice.initialState, { recordedList: ['a'] });
+  const started = slice.transition(recorded.state, { intent: 'direct-build' });
   const again = slice.transition(started.state, { intent: 'direct-build' });
   assert.equal(again.rejected, 'ALREADY_RUNNING');
   assert.equal(again.state.stage, 'build-implement');
@@ -97,7 +98,8 @@ test('Plan cursor travels idle → sai-1 → sai-2 → implement → idle; last 
 });
 
 test('E1 next-slice on sai-1/sai-2 stays put; E2 fail keeps pending; E3 already-running across modes', () => {
-  const started = slice.transition(slice.initialState, { intent: 'plan' });
+  const recorded = slice.transition(slice.initialState, { recordedList: ['a'] });
+  const started = slice.transition(recorded.state, { intent: 'plan' });
   const earlySlice = slice.transition(started.state, { intent: 'next-slice' });
   assert.equal(earlySlice.rejected, 'READINESS_IS_NOT_INTENT');
   assert.equal(earlySlice.state.stage, 'sai-1');
@@ -114,7 +116,8 @@ test('E1 next-slice on sai-1/sai-2 stays put; E2 fail keeps pending; E3 already-
   const cross = slice.transition(started.state, { intent: 'direct-build' });
   assert.equal(cross.rejected, 'ALREADY_RUNNING');
   assert.equal(cross.state.mode, 'plan');
-  const db = slice.transition(slice.initialState, { intent: 'direct-build' });
+  const dbRecorded = slice.transition(slice.initialState, { recordedList: ['a'] });
+  const db = slice.transition(dbRecorded.state, { intent: 'direct-build' });
   const dbCross = slice.transition(db.state, { intent: 'plan' });
   assert.equal(dbCross.rejected, 'ALREADY_RUNNING');
   assert.equal(dbCross.state.mode, 'direct-build');
@@ -135,4 +138,60 @@ test('idea stages 2–3 hint follow-already-loaded; first stages hint load and f
   assert.equal(cryst.state.stage, 'crystallize');
   assert.match(cryst.next.hint, /^load and follow /);
   assert.equal(cryst.next.follow, 'sai/commands/explore/steps/crystallization-protocol.md');
+});
+
+test('empty pending rejects NO_PENDING_SLICE with unchanged state; non-empty starts pending[0]', () => {
+  const emptyPlan = slice.transition(slice.initialState, { intent: 'plan' });
+  assert.equal(emptyPlan.rejected, 'NO_PENDING_SLICE');
+  assert.equal(emptyPlan.state.stage, 'idle');
+  assert.equal(emptyPlan.state.active, null);
+  assert.equal(emptyPlan.state.mode, null);
+  assert.deepEqual(emptyPlan.state.set, []);
+  assert.deepEqual(emptyPlan.state.done, []);
+  const emptyBuild = slice.transition(slice.initialState, { intent: 'direct-build' });
+  assert.equal(emptyBuild.rejected, 'NO_PENDING_SLICE');
+  assert.equal(emptyBuild.state.stage, 'idle');
+  assert.equal(emptyBuild.state.active, null);
+  assert.equal(emptyBuild.state.mode, null);
+  const recorded = slice.transition(slice.initialState, { recordedList: ['a', 'b'] });
+  const planStart = slice.transition(recorded.state, { intent: 'plan' });
+  assert.equal(planStart.state.active, 'a');
+  assert.equal(planStart.state.stage, 'sai-1');
+  assert.ok(!('rejected' in planStart));
+  const buildStart = slice.transition(recorded.state, { intent: 'direct-build' });
+  assert.equal(buildStart.state.active, 'a');
+  assert.equal(buildStart.state.stage, 'build-implement');
+  assert.ok(!('rejected' in buildStart));
+});
+
+test('ALREADY_RUNNING keeps precedence over NO_PENDING_SLICE; exhausted set rejects like empty', () => {
+  const runningEmptyPending = slice.transition(
+    { stage: 'build-implement', set: ['a'], active: 'a', done: ['a'], mode: 'direct-build' },
+    { intent: 'direct-build' },
+  );
+  assert.equal(runningEmptyPending.rejected, 'ALREADY_RUNNING');
+  assert.equal(runningEmptyPending.state.active, 'a');
+  const recorded = slice.transition(slice.initialState, { recordedList: ['a'] });
+  const start = slice.transition(recorded.state, { intent: 'direct-build' });
+  const mid = slice.transition(start.state, { intent: 'complete' });
+  const arch = slice.transition(mid.state, { intent: 'complete' });
+  const done = slice.transition(arch.state, { intent: 'complete' });
+  assert.equal(done.state.stage, 'idle');
+  assert.equal(done.state.active, null);
+  assert.deepEqual(done.state.done, ['a']);
+  const againPlan = slice.transition(done.state, { intent: 'plan' });
+  assert.equal(againPlan.rejected, 'NO_PENDING_SLICE');
+  assert.equal(againPlan.state.stage, 'idle');
+  assert.equal(againPlan.state.active, null);
+  const againBuild = slice.transition(done.state, { intent: 'direct-build' });
+  assert.equal(againBuild.rejected, 'NO_PENDING_SLICE');
+  assert.equal(againBuild.state.stage, 'idle');
+  assert.equal(againBuild.state.active, null);
+});
+
+test('route-selector acknowledges NO_PENDING_SLICE as missing inventory without dispatch', () => {
+  const selector = fs.readFileSync(path.join(__dirname, '..', 'sai', 'commands', 'explore', 'steps', 'route-selector.md'), 'utf8');
+  assert.match(selector, /NO_PENDING_SLICE/);
+  assert.match(selector, /no change has been crystallized/);
+  assert.match(selector, /block-first/);
 });

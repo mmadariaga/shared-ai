@@ -56,12 +56,17 @@ A `fail` or `cancel` intent SHALL leave the active Direct Build or Plan step pen
 
 ### Requirement: Anonymous active slice when inventory is empty
 
-When Direct Build or Plan starts and no pending inventory name exists, the machine SHALL set `active` to `current`.
+When Direct Build or Plan starts and no pending inventory name exists, the machine SHALL reject with NO_PENDING_SLICE instead of setting active to current. The rejection SHALL leave stage idle with active null and mode null and SHALL dispatch nothing and change nothing in set or done. A non-empty pending set SHALL start with pending[0]. An active run SHALL keep ALREADY_RUNNING precedence over NO_PENDING_SLICE. An exhausted set after slice completion SHALL reject like the empty case without starting current. Store or panel failure SHALL keep degraded mode with no blind selector. The prior active-is-current behavior is explicitly superseded and SHALL NOT be used.
 
 #### Scenario: Empty inventory uses current as active
 
-- **WHEN** the caller emits `direct-build` while `set` is empty or every name is already in `done`
-- **THEN** `active` is `current` and `stage` is `build-implement`
+- **WHEN** the caller emits direct-build while set is empty or every name is already in done under the prior behavior
+- **THEN** the prior active-is-current behavior is superseded by NO_PENDING_SLICE rejection with stage idle, active null, mode null, and no dispatch
+
+#### Scenario: Empty inventory rejects without dispatch
+
+- **WHEN** the caller emits direct-build while set is empty or every name is already in done
+- **THEN** the response carries rejected NO_PENDING_SLICE with stage idle, active null, mode null, and unchanged set and done and no dispatch
 
 ### Requirement: Required machineId with no first-machine fallback
 

@@ -75,12 +75,17 @@ The same-turn crystallization close SHALL preserve the inline-refusal path, the 
 
 ### Requirement: Pre-selector checkpoint blocks selector until ordered close completes
 
-The shared crystallization close SHALL NOT present the route selector until all three hold in order: the visible `Ready to Propose` block(s) are emitted, the stage TODO is cleared, and the `recordedList` is emitted; only then it SHALL present the selector per `route-selector.md`.
+The shared crystallization close SHALL NOT present the route selector until the visible Ready to Propose blocks are emitted, the stage TODO is cleared, and the recordedList is emitted in order. The slice machine SHALL enforce emission-before-selector order by rejecting Plan or Direct Build intent with NO_PENDING_SLICE when no pending inventory exists, so a selector can never start an anonymous route before the block.
 
 #### Scenario: Selector waits for ordered close state
 
 - **WHEN** a crystallization turn reaches the shared close with blocks emitted
 - **THEN** the selector is presented only after the visible block, cleared TODO, and emitted recordedList hold in order
+
+#### Scenario: Machine enforces block-first order
+
+- **WHEN** a Plan or Direct Build intent reaches explore-slice@1 with no pending crystallized inventory
+- **THEN** the machine rejects with NO_PENDING_SLICE and no route starts until the Ready to Propose block is emitted first
 
 ### Requirement: Single shared checkpoint runs once after last separator
 
