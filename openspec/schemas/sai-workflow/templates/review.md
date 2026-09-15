@@ -22,6 +22,9 @@
 ## Accessibility Surface Triage
 <!-- Describe whether the reviewed change touches an accessibility-sensitive surface. -->
 
+## Resilience Surface Triage
+<!-- Describe whether the reviewed change touches a resilience-sensitive surface. -->
+
 ## Findings
 <!-- Record the review findings and their supporting context. -->
 

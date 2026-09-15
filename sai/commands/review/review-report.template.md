@@ -53,6 +53,14 @@
 
 ---
 
+## Resilience Surface Triage
+
+- **Surface touched:** {Yes / No — Yes only when the diff touches external I/O, retryable handlers, consumers/queues, or timeout boundaries; UI files without I/O, docs-only, comments, CSS without I/O, or renames are no surface}
+- **Areas affected:** {unbounded retries / missing timeouts / missing idempotency / absent fallback / circuit-breaker — list only the ones that apply, with file paths}
+- **Notes:** {Idempotency applies only when retry, redelivery or double submit is possible; never require a pattern absent from the repo — at most Question or Low in that case; Critical only for cascade, loss or duplication risk with impact}
+
+---
+
 ## Findings
 
 ### Critical
