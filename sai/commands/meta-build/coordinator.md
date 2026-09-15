@@ -86,7 +86,7 @@
   ## Re-entry
   Re-entry after interruption or partial apply goes through the implement segment again, including implement Step 1b collapse (COMPLETO / FALLO MENOR / INCOMPLETO). Never resume the apply loop directly while skipping implement
   re-planning. On-disk `implementation.md` checkbox state remains the recovery
-  record.
+  record. Implement collapse remains the default: a human-authorized retry reuses the current `implementation.md` and worktree state without a full collapse only when the plan contents are unchanged and the on-disk checkbox state is preserved; a changed plan collapses normally.
 
   ## Non-removable stops
   Do not suppress apply's non-removable stops: routing-tree STOP, GREEN-conflict STOP, recovery-pool exhaustion after three same-GREEN-worker attempts, and
