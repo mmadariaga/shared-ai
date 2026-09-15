@@ -52,8 +52,8 @@
 
   | Result status | `--overview-lang` present | `--overview-lang` absent |
   | --- | --- | --- |
-  | `completed` (pre-gate) | Leave `overview` unmarked until generation continuation | Reconcile all unmarked steps in unopted plan |
-  | `completed` (post-generation) | Reconcile all unmarked except evidence-marked `review` | N/A (no generation) |
+  | `completed` (pre-gate) | Leave list as-is; not a reconciliation trigger | Leave list as-is; not a reconciliation trigger |
+  | `completed` (post-gate) | Reconcile all unmarked except evidence-marked `review` | Reconcile all unmarked steps in unopted plan |
   | `failed` | Do not reconcile; leave list as-is | Do not reconcile; leave list as-is |
   | `cancelled` | Do not reconcile; leave list as-is | Do not reconcile; leave list as-is |
   | `needs_input` | Leave list as-is; not run-closing | Leave list as-is; not run-closing |
@@ -70,7 +70,7 @@
 
   When the artifact-feedback gate proceeds, `Continue` follows exactly one mutually exclusive route after the gate closes and all source artifacts (`design.md`, `tasks.md`, `interfaces.md`) verify successfully. If the raw `--overview-lang` token is present and the worker has validated a selected language, Continue triggers the worker-owned overview-generation pass through a same-worker continuation (the active binding's continuation mechanism — SendMessage-style / task-id resume — carrying a generation-trigger payload with exactly the resolved change name, the generation scope marker (generate `change-overview.md` only; no source regeneration), the selected `overview_language`, and the worker's journal reconstruction fields). Map the opted-in generation terminal deterministically: `status: completed` → reconcile every eligible unmarked step except an evidence-marked `review`, emit the existing design completion sentence — the ONLY point at which that sentence may be emitted — and stop; `status: failed` (a failed overview-generation result including a parent-reported dispatch failure) → do NOT emit the success terminal, report the blocking failure details, perform no reconciliation, and leave the change incomplete for a later re-invoked `/sai-2-design` retry from `failed`; continuation failure (the worker never resumes, run lost before any state transition) → report the run as ending without materialization (no overview, state absent/`unmaterialized`) for a fresh re-invocation. Forward the generation terminal's `changed_files` (change-overview.md plus .openspec.yaml when a state transition was committed) without re-deriving them.
 
-  If the `--overview-lang` option is absent, `Continue` closes a no generation terminal without materialization: it does not resume the worker for generation, dispatch a generator, emit overview progress, write overview state or failure metadata, or synthesize English. It may retain an existing stale overview without claiming current. The absent-token route carries no language and the opted-in route carries the selected worker-owned `overview_language` only for the current invocation; no persisted preference is used. Offer no continuation question, copy no lifecycle state, and end without entering the implementation phase.
+  If the `--overview-lang` option is absent, `Continue` closes a no generation terminal without materialization and reconciles all unmarked steps in the unopted plan: it does not resume the worker for generation, dispatch a generator, emit overview progress, write overview state or failure metadata, or synthesize English. It may retain an existing stale overview without claiming current. The absent-token route carries no language and the opted-in route carries the selected worker-owned `overview_language` only for the current invocation; no persisted preference is used. Offer no continuation question, copy no lifecycle state, and end without entering the implementation phase.
 
   ## Lifecycle step 6: Completion and hand-off
 
