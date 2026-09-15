@@ -25,6 +25,7 @@ In split-flow, every RED return is an intermediate result until the coordinator 
 - An out-of-scope, unresolved, vetoed (`unrecoverable: true`), duplicate, transport-loss, coordinator-rejection, or exhausted diagnosis does **not** dispatch GREEN. It hands the Step back or stops for human intervention with the concrete artifact and point when available.
 - A coordinator-proven **false veto** remains recovery-eligible when the evidence establishes a safe in-scope correction; a veto is not converted into a GREEN authorization by itself.
 - A RED return with `STOP reached? yes`, including an unpassable RED failure, is diagnosed before any recovery continuation or GREEN dispatch. An unpassable RED closes with `status: failed`, `failure_class: blocking-contradiction`, boolean `unrecoverable`, concrete non-raw evidence, and STOP; it grants no GREEN authorization.
+- A GREEN `blocking-contradiction` that proves a test-infra point (setup, adapter, seed, import wiring) rather than an assertion body routes as an in-scope RED-owner correction: resume the same-Step RED owner with `continue_after_recovery` before any hand-back. The retry preserves blindness, spends one ledger slot for a new key and zero for a duplicate, and never relaxes assertions.
 
 Only a valid RED result — from the initial blind dispatch or from an eligible same-worker recovery continuation — unlocks the split-flow GREEN dispatch. `passes`, `wrong-failure`, non-clean, failed, vetoed, unresolved, out-of-scope, duplicate, and STOP results never unlock GREEN.
 
