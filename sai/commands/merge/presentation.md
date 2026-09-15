@@ -345,8 +345,7 @@ content strings; neither the seam nor the coordinator may derive a file by
 applying a region replacement, concatenating alternatives, or reading resolution
 prose.
 
-For branch selection, render the concise question **"¿Qué rama quieres mergear?"**
-with the readable `YYYY-MM-DD HH:mm` labels. Render the detailed current
+For branch selection, the canonical English question is **"Which branch do you want to merge?"**; render its concise wording in the ambient conversation language (Spanish keeps **"¿Qué rama quieres mergear?"**, English uses the canonical, any other language falls back to the canonical) with the readable `YYYY-MM-DD HH:mm` labels. Branch selection happens before `working_language` is known, so use the current ambient language and never open the working-language question early. Option values stay exact branch names and labels stay `<branch> — last commit <YYYY-MM-DD HH:mm>`. The adjacent gate summary stays in the ambient conversation language. Render the detailed current
 branch, candidate timestamps, and merge rationale in the gate summary rather
 than inside the question. For authorization, render the compact summary below
 instead of the worker's full staged-file context. A missing test suite remains
