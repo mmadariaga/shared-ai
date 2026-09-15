@@ -26,8 +26,8 @@ Fetch @sai/commands/explore/steps/common.md
 
 10. **Crystallization-close selector (sai-explore only)** — summary only; full contract lives in `sai/commands/explore/steps/` (load via `next.follow` at close). After the final `---`, present the three-option **Plan - Unattended** / **Direct Build - Unattended** / **Manual** choice; see `route-selector.md` for presentation and `pipeline-selector.md` for supervision.
 
-11. **Idea Progress List (sai-explore only)** — marker only; full spec lives in `steps/idea-list.md`.
+11. **Idea Progress List (sai-explore only)** — marker only; Phase A single source lives in `steps/common.md`, Phase B full spec lives in `steps/idea-list.md`.
 
-   Detail lives in `steps/idea-list.md`.
+   Detail lives in those files, not here.
 
-   Phase A stage TODO owns panel before emission (`sai-explore-stage:`); Phase B route list owns it after choice (`sai-idea-list:`); prefixes unmixed. Load via `next.follow` at choice resolution.
+   Phase A stage TODO owns panel before emission (`sai-explore-stage:`, `steps/common.md` preloaded); Phase B route list owns it after choice (`sai-idea-list:`, load via `next.follow` at choice resolution); prefixes unmixed.
