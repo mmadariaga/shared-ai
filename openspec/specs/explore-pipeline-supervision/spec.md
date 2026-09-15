@@ -403,17 +403,22 @@ Every dispatch of a Direct Build (unattended) run SHALL be guarded by the determ
 
 ### Requirement: Direct Build slice-machine emits
 
-On a Direct Build (unattended) selection, explore SHALL POST `/emit` with `{machineId: "explore-slice@1", eventId, event: {intent: "direct-build"}}`. If the response carries `rejected: ALREADY_RUNNING`, including when Plan is already active, explore SHALL acknowledge already running and dispatch nothing. After each high-level route item converges (`Build/Implement`, then `Backfill`, then `Archive`), explore SHALL POST `/emit` with `{machineId: "explore-slice@1", eventId, event: {intent: "complete"}}`. Completing Archive is the machine's done signal: it marks the slice done and clears `active`. Direct Build SHALL NEVER emit `next-slice`. Fail or cancel SHALL leave the active step pending and SHALL NOT mark the slice done.
+On a Direct Build (unattended) selection, explore SHALL emit intent direct-build to explore-slice@1. If the response carries rejected ALREADY_RUNNING, including when Plan is already active, explore SHALL acknowledge already running and dispatch nothing. If the response carries rejected NO_PENDING_SLICE explore SHALL acknowledge missing inventory, dispatch nothing, and prompt block-first. After each high-level route item converges (Build/Implement, then Backfill, then Archive), explore SHALL emit intent complete. Completing Archive is the machine's done signal: it marks the slice done and clears active. Direct Build SHALL NEVER emit next-slice. Fail or cancel SHALL leave the active step pending and SHALL NOT mark the slice done.
 
 #### Scenario: Direct Build selection emits direct-build
 
-- **WHEN** the user selects Direct Build - Unattended and `explore-slice@1` has no active slice
-- **THEN** explore emits `{intent: "direct-build"}` to `explore-slice@1` and starts the Build/Implement route item
+- **WHEN** the user selects Direct Build - Unattended and explore-slice@1 has no active slice
+- **THEN** explore emits intent direct-build to explore-slice@1 and starts the Build/Implement route item
 
 #### Scenario: Already-running Direct Build dispatches nothing
 
-- **WHEN** Direct Build is selected again while `explore-slice@1` returns `rejected: ALREADY_RUNNING`
+- **WHEN** Direct Build is selected again while explore-slice@1 returns rejected ALREADY_RUNNING
 - **THEN** explore acknowledges already running and dispatches no worker
+
+#### Scenario: Empty inventory rejects Direct Build start
+
+- **WHEN** the user selects Direct Build Unattended while explore-slice@1 has no pending slice
+- **THEN** explore emits direct-build intent and on rejected NO_PENDING_SLICE acknowledges missing inventory and dispatches nothing
 
 ### Requirement: Direct Build archive failure correction routing
 
@@ -431,15 +436,20 @@ The supervision SHALL evaluate an archive preparation or execution failure as a 
 
 ### Requirement: Plan slice-machine emits
 
-On a Plan (unattended) selection, explore SHALL POST `/emit` with `{machineId: "explore-slice@1", eventId, event: {intent: "plan"}}`. If the response carries `rejected: ALREADY_RUNNING`, including when Direct Build is already active, explore SHALL acknowledge already running and dispatch nothing. After spec convergence, explore SHALL POST `/emit` with `{intent: "complete"}` (`sai-1` → `sai-2`). After a clean terminal design result, explore SHALL POST `/emit` with `{intent: "complete"}` (`sai-2` → `implement`). `pipeline-plan-unattended.md` SHALL be `next.follow` for all three Plan stages. Fail, cancel, STOP, or exhausted recovery on sai-1 or sai-2 SHALL leave that step pending, keep prior completed steps, and leave the slice retryable, with no skip to implement. Implement has no worker. Implement completes only on `next-slice` (or equivalent natural language); that emit marks the slice done, clears `active`, and returns `stage` to `idle` (rest; it does not restart Plan). If pending slices remain, explore SHALL re-present the selector, as after Archive. `next-slice` while Plan is on sai-1 or sai-2 SHALL NOT complete Implement and SHALL NOT mark the slice done.
+On a Plan (unattended) selection, explore SHALL emit intent plan to explore-slice@1. If the response carries rejected ALREADY_RUNNING, including when Direct Build is already active, explore SHALL acknowledge already running and dispatch nothing. If the response carries rejected NO_PENDING_SLICE explore SHALL acknowledge missing inventory, dispatch nothing, and prompt block-first. After spec convergence, explore SHALL emit intent complete (sai-1 to sai-2). After a clean terminal design result, explore SHALL emit intent complete (sai-2 to implement). pipeline-plan-unattended.md SHALL be next.follow for all three Plan stages. Fail, cancel, STOP, or exhausted recovery on sai-1 or sai-2 SHALL leave that step pending, keep prior completed steps, and leave the slice retryable, with no skip to implement. Implement has no worker. Implement completes only on next-slice; that emit marks the slice done, clears active, and returns stage to idle. If pending slices remain, explore SHALL re-present the selector, as after Archive. next-slice while Plan is on sai-1 or sai-2 SHALL NOT complete Implement and SHALL NOT mark the slice done.
 
 #### Scenario: Plan selection emits plan
 
-- **WHEN** the user selects Plan - Unattended and `explore-slice@1` has no active slice
-- **THEN** explore emits `{intent: "plan"}` to `explore-slice@1` and starts the sai-1 route item
+- **WHEN** the user selects Plan - Unattended and explore-slice@1 has no active slice
+- **THEN** explore emits intent plan to explore-slice@1 and starts the sai-1 route item
 
 #### Scenario: next-slice on Implement marks the slice done
 
-- **WHEN** Plan is at Implement and the user sends `next-slice`
-- **THEN** explore emits `{intent: "next-slice"}` to `explore-slice@1`, the slice is marked done, `active` is cleared, and `stage` returns to `idle`
+- **WHEN** Plan is at Implement and the user sends next-slice
+- **THEN** explore emits next-slice to explore-slice@1, the slice is marked done, active is cleared, and stage returns to idle
+
+#### Scenario: Empty inventory rejects Plan start
+
+- **WHEN** the user selects Plan Unattended while explore-slice@1 has no pending slice
+- **THEN** explore emits plan intent and on rejected NO_PENDING_SLICE acknowledges missing inventory and dispatches nothing
 
