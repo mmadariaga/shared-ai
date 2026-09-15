@@ -1,7 +1,8 @@
 ---
 description: Archive a completed change — wraps opsx:archive skill. Moves openspec/changes/{name}/ into the archive folder once tasks are done.
 argument-hint: "[change-name] [--fast-track]"
-model: haiku
+model: opus
+effort: medium
 ---
 Fetch @skills/fetch/SKILL.md
 Fetch @sai/adapters/claude/boot.md and follow it.

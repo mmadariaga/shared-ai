@@ -1,7 +1,7 @@
 ---
 description: Post-hoc backfill — reconstructs proposal.md and capability specs for changes that skipped the SAI workflow.
 argument-hint: "<change-name>"
-model: sonnet
+model: opus
 effort: medium
 ---
 Fetch @skills/fetch/SKILL.md

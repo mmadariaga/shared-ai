@@ -1,7 +1,8 @@
 ---
 description: Merge a local branch into the current branch — conflict resolution with criteria, ADR/DDR collision repair, gated behind explicit authorization
 argument-hint: "[--fast-track]"
-model: haiku
+model: opus
+effort: medium
 ---
 Fetch @skills/fetch/SKILL.md
 Fetch @sai/adapters/claude/boot.md and follow it.

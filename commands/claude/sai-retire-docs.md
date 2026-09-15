@@ -1,6 +1,7 @@
 ---
 description: Analyze active ADRs, DDRs, and related specifications for bounded, confirmation-gated archival. No OpenSpec prerequisite.
-model: haiku
+model: opus
+effort: medium
 allowed-tools: Read, Glob, Grep, Bash, Edit, Write, AskUserQuestion, Skill
 ---
 Fetch @skills/fetch/SKILL.md
