@@ -29,8 +29,18 @@ lifecycle status that is not run-closing — it pauses the run for the
 forwarded answer, and the loop processes the next result. A worker's `completed`
 status closes its current dispatch phase but does not end its resumability for
 recovery purposes; worker resumability ends only when the run closes or the
-segment boundary is crossed. Validate terminal result payloads by running
-`sai/tools/worker-report-validator.js validate --kind terminal` with the
+segment boundary is crossed. Resolve the validator tool path per
+`@sai/policies/tool-resolution.md`, substituting `worker-report-validator.js`
+for `<name>`: first existing candidate per harness, copied verbatim, never
+composed from a root string, with the opencode XDG fallback only when neither
+verbatim candidate exists. The first existing copy wins and defines the
+version. Resolve on every Result Loop turn; if no candidate exists, name the
+tried candidates and stop — a missing validator never skips validation and
+there is no prose fallback. Whichever candidate wins, every invocation below
+is byte-identical (`node <tool-path> validate --kind <kind>` with the payload
+on stdin, plus `--json --cwd` where the tool accepts them), so a single
+whitelist entry per root covers them. Validate terminal result payloads by running
+`node <tool-path> validate --kind terminal` with the
 payload on stdin and reading its verdict; the tool validates the status, string
 `summary`, and field shapes; `needs_input` also requires its question, ordered
 options where applicable, and binding-owned continuation metadata; do not
@@ -40,7 +50,7 @@ fields are ignored with no explicit legacy handling. A design notice is the sepa
 
 An adapter may also declare a phase-defined closed nonterminal extension in
 `allowed_nonterminal_extensions`. Validate extension payloads by running
-`sai/tools/worker-report-validator.js validate --kind <extension-event>` with
+`node <tool-path> validate --kind <extension-event>` with
 the payload on stdin and reading its verdict; the tool validates the
 discriminator, `summary`, and every additional field in the
 adapter's exact extension shape; do not re-derive the checks in prose. An
@@ -50,7 +60,7 @@ handler's exact same-worker continuation. Do not infer a question, answer, or
 mutation from an extension payload. In the merge phase, `event: conflict_detected`
 carries an `affected_files` inventory and a `continuation_state` of
 `language-selection|strategy-analysis`; validate with
-`sai/tools/worker-report-validator.js validate --kind conflict_detected`; it coexists with ready without replacing
+`node <tool-path> validate --kind conflict_detected`; it coexists with ready without replacing
 it and runs after ready, never before. The coordinator uses that extension to announce the conflict, ask for a working
 language only on the first state, and re-enter strategy analysis without asking
 again on the second state.
@@ -63,7 +73,7 @@ Every closed payload — terminal status, notice, and progress event alike —
 carries no time field. Worker payloads are timeless in every phase; a missing
 required field (never a missing time field) is a malformed payload, handled
 through the same route as any other closed-shape violation (validated by
-`sai/tools/worker-report-validator.js`). On valid results the validator emits an
+`node <tool-path>` — the same resolved copy). On valid results the validator emits an
 additive display-only `validated_at` sidecar (validator-observed validation
 timestamp in `YYYY-MM-DDTHH:MM:SS±HH:MM` form — local wall-clock with numeric
 offset, never `Z`); invalid results carry no timestamp. Forward the verdict
@@ -81,13 +91,13 @@ next result through this loop. When a phase explicitly permits an empty option
 set as open input, present its exact question through that phase's ordinary
 conversation channel, forward the user's exact free-form answer, and process
 the next result through the same loop; do not synthesize options. For a notice,
-validate with `sai/tools/worker-report-validator.js validate --kind notice` and
+validate with `node <tool-path> validate --kind notice` and
 read its verdict; invoke the design adapter's notice extension and forward its
 fixed acknowledgement. Notices are not a worker status.
 
 A progress event is the separate closed shape
 `{event: "progress", step_ids: string[], changed_files: string[]}`;
-validate with `sai/tools/worker-report-validator.js validate --kind progress` and
+validate with `node <tool-path> validate --kind progress` and
 read its verdict.
 Mark reported ids against the adapter's declared `progress_plan` when one is
 present, or against the declared `step_pointer_map` when the adapter uses a

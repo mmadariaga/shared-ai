@@ -26,7 +26,10 @@ Optional flags in `$ARGUMENTS`:
 
 ### Step 1: Collect Staged State
 
-Call `node sai/tools/commit.js collect --json --cwd <repo>` (or with `--amend` if the `--amend` flag was passed) to retrieve:
+Resolve the tool path per `@sai/policies/tool-resolution.md`, substituting
+`commit.js` for `<name>` (first existing candidate per harness, copied
+verbatim; if none exists, name the tried candidates and stop with no prose
+fallback). Then call `node <tool-path> collect --json --cwd <repo>` (or with `--amend` if the `--amend` flag was passed) to retrieve:
 - `has_staged`: whether there are staged changes (exit code 0 = staged or amending, 1 = none and not amending)
 - `file_count`, `total_insertions`, `total_deletions`: quantitative summary (0 if nothing staged)
 - `files`: array of `{path, insertions, deletions}` for each staged file (empty if nothing staged)
@@ -87,14 +90,14 @@ The coordinator calls the apply tool with the authorized message on stdin using 
 
 **For a new commit:**
 ```bash
-node sai/tools/commit.js apply --json --cwd <repo> <<'EOF'
+node <tool-path> apply --json --cwd <repo> <<'EOF'
 {message}
 EOF
 ```
 
 **For an amendment** (if the `--amend` flag was passed in ARGUMENTS):
 ```bash
-node sai/tools/commit.js apply --amend --json --cwd <repo> <<'EOF'
+node <tool-path> apply --amend --json --cwd <repo> <<'EOF'
 {message}
 EOF
 ```
@@ -109,13 +112,13 @@ If the tool returns exit code 1 with a sensitive-file block:
   - On confirmation, re-invoke with acknowledgement using a quoted-delimiter heredoc (with `--amend` if applicable):
 
 ```bash
-node sai/tools/commit.js apply --acknowledge-secrets {comma-separated list} --json --cwd <repo> <<'EOF'
+node <tool-path> apply --acknowledge-secrets {comma-separated list} --json --cwd <repo> <<'EOF'
 {message}
 EOF
 ```
 or with amend:
 ```bash
-node sai/tools/commit.js apply --amend --acknowledge-secrets {comma-separated list} --json --cwd <repo> <<'EOF'
+node <tool-path> apply --amend --acknowledge-secrets {comma-separated list} --json --cwd <repo> <<'EOF'
 {message}
 EOF
 ```

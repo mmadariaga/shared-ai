@@ -156,9 +156,16 @@
       directory preserving `<tmp>/specs/<capability>/spec.md` layout (create
       it from the project root with
       `node -e "console.log(require('fs').mkdtempSync(require('path').join(require('os').tmpdir(),'sai-delta-preflight-')))"`),
-      run `node sai/tools/check-delta-headers.js <name> --delta-dir <tmp>/specs`
-      with the confirmed change name (main specs resolve from the project
-      root), then remove the temp directory best-effort. Exit 0 proceeds;
+      resolve the tool path per `@sai/policies/tool-resolution.md`,
+      substituting `check-delta-headers.js` for the filename placeholder
+      `<name>` (first existing candidate per harness, copied verbatim; if none
+      exists, name the tried candidates and stop with no prose fallback), then
+      run `node <tool-path> <change-name> --delta-dir <tmp>/specs`
+      with the confirmed change name in `<change-name>` (main specs resolve
+      from the project root), then remove the temp directory best-effort.
+      Whichever candidate wins, the invocation keeps the tool's own accepted
+      flags (`--json` plus `--root`/`--delta-dir`/`--specs-dir`; no `--cwd`)
+      byte-identical; changing nothing else. Exit 0 proceeds;
       exit 1 means misclassified ADDED/MODIFIED/REMOVED headers — write
       nothing into `openspec/changes/{name}/`, continue the same worker with
       the verbatim script report plus the cited headers and the Phase 6c

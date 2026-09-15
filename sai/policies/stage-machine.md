@@ -36,6 +36,19 @@ per-machine files.
 
 ## Verbs
 
+Resolve the CLI path per `@sai/policies/tool-resolution.md` for
+`bin/sai-state.js`: first existing candidate per harness, copied verbatim,
+never composed from a root string, with the opencode XDG fallback only when
+neither verbatim candidate exists. The first existing copy wins and defines
+the version. If no candidate exists, name the tried candidates and stop the
+coordinator per the step-machine contract — never fall back to prose, and a
+store failure stops `step_machine` coordinators, which surface the error and
+wait for user instructions. Whichever candidate wins, every invocation below
+is byte-identical (`node <tool-path> <verb> ...` with the verb's own
+arguments; the verbs take neither `--json` nor `--cwd`), so a single whitelist
+entry per root covers each form. Below, `sai-state <verb>` is shorthand for that resolved
+`node <tool-path> <verb>` invocation.
+
 - **Spawn**: `sai-state spawn --key <stable-key>` initializes or locates the
   session for that key and returns `{id}`. The id is a deterministic UUIDv4
   derived from the key and may be reused across invocations with the same

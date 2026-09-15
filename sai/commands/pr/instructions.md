@@ -30,7 +30,10 @@ Before executing the workflow, verify:
 
 ### Step 1: Collect Branch State
 
-Run `sai/tools/pr.js collect` with `--json --change {change-name}` to gather:
+Resolve the tool path per `@sai/policies/tool-resolution.md`, substituting
+`pr.js` for `<name>` (first existing candidate per harness, copied verbatim;
+if none exists, name the tried candidates and stop with no prose fallback).
+Then run `node <tool-path> collect` with `--json --change {change-name} --cwd <project-root>` to gather:
 - Current branch name
 - Derived parent branch
 - Commits in scope
@@ -70,7 +73,7 @@ If user says "no" or does not respond, STOP and tell them they can copy the body
 
 On user confirmation ("yes"):
 1. If the branch has no upstream, first ask for authorization to push with `git push -u origin {current-branch}`.
-2. Use `sai/tools/pr.js apply` to create the PR. Pass title and body via stdin in the format:
+2. Use the same resolved copy (`node <tool-path> apply --cwd <project-root>`) to create the PR. The invocation stays byte-identical — `apply` takes `--cwd` (plus `--parent` where needed) and no `--json` (`--json` and `--change` are `collect`-only); do not change semantics beyond path resolution. Pass title and body via stdin in the format:
    ```
    {title}
    
@@ -89,8 +92,8 @@ Fetch @sai/commands/pr/pr-body.template.md
 - **Never modify production code.**
 - **Never run `gh pr create`, `gh pr edit`, or `git push` without explicit user authorization.**
 - **Never amend or force-push.**
-- **Title ≤70 characters**, imperative, Conventional Commits prefix. No emoji. No trailing period. The `sai/tools/pr.js apply` command will validate the title before PR creation.
-- **Faithful to the diff.** Every claim in the body must be backed by the commits and files reported by `sai/tools/pr.js collect`.
+- **Title ≤70 characters**, imperative, Conventional Commits prefix. No emoji. No trailing period. The resolved `pr.js` `apply` command will validate the title before PR creation.
+- **Faithful to the diff.** Every claim in the body must be backed by the commits and files reported by the resolved `pr.js` `collect`.
 - **Omit empty sections.** Drop Design Decisions and Out of Scope if there is nothing to populate them. Leave audit checkboxes unchecked when the audit artefact is absent.
 - **No `Co-Authored-By` or AI-generated attribution footer/trailers** unless the user explicitly requests them.
 

@@ -21,11 +21,14 @@ Run the tool, read its verdict, and follow the verdict handling below. Do not
 run the underlying git probes yourself in place of the tool, do not
 second-guess a verdict, and do not repair one.
 
-Use the copy that lives beside this policy file: a copy under a different root
-is a different version. Do **not** build its path by joining a root string to a
-suffix — composed absolute paths are known to drop a segment (see the "Path
-composition" rule in the fetch skill). Take the **first candidate below that
-exists**, copied **verbatim**, exactly as written:
+Use the copy that lives beside this policy file: resolution order is owned by
+`@sai/policies/tool-resolution.md` (substituting `no-commit-guard.js` for
+`<name>`); the candidates below are mirrored verbatim from there — do not edit
+here. A copy under a different root is a different version. Do **not** build
+its path by joining a root string to a suffix — composed absolute paths are
+known to drop a segment (see the "Path composition" rule in the fetch skill).
+Take the **first candidate below that exists**, copied **verbatim**, exactly as
+written:
 
 On **Claude Code**, in this order:
 
@@ -36,7 +39,7 @@ On **opencode**, in this order:
 
 1. `.opencode/sai/tools/no-commit-guard.js` — the project-local root, relative to the working directory.
 2. `~/.config/opencode/sai/tools/no-commit-guard.js` — the default user-global config root.
-3. Only when neither exists: run `opencode debug paths`, take the config directory **exactly as that command prints it** (an XDG override moves it), and use the fixed suffix `sai/tools/no-commit-guard.js` inside it. This is the one place a path is joined at all, and only to a path the harness itself printed.
+3. Only when neither exists: run `opencode debug paths`, take the config directory **exactly as that command prints it** (an XDG override moves it), and use the fixed suffix `sai/tools/no-commit-guard.js` inside it. This is the one place a path is joined at all, and only to a path the harness itself printed. The first existing copy wins and defines the version.
 
 Whichever candidate wins, the invocations are byte-identical, so a single
 whitelist entry per root covers both:

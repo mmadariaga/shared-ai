@@ -152,7 +152,12 @@
          content for the cited headers only — never a full regeneration.
          Validate it against the sai-workflow delta format, verify it by
          staging the corrected specs to OS-temp and running
-         `node sai/tools/check-delta-headers.js <name> --delta-dir <tmp>/specs`
+         `node <tool-path> <change-name> --delta-dir <tmp>/specs`
+         (resolved per `@sai/policies/tool-resolution.md`, substituting
+         `check-delta-headers.js` for the filename placeholder `<name>` —
+         first existing candidate per harness, copied verbatim; `<change-name>`
+         is the confirmed change name; if no candidate exists, name the tried
+         candidates and stop with no prose fallback)
          exactly like the backfill preflight, write the corrected specs on
          pass, and retry the CLI archive exactly once. Any second failure —
          from the retry, the validation, or the fix continuation itself —

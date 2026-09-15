@@ -29,7 +29,7 @@ in the closed worker-core shapes, each carrying a concrete English `summary`, an
 
 Follow the staged-message procedure of `sai/commands/commit/instructions.md` Steps 1–6 (worker-owned):
 
-1. **Step 1: Collect** — call `node sai/tools/commit.js collect --json --cwd <repo>` and read the JSON output. This is read-only and does not violate the mutation prohibition.
+1. **Step 1: Collect** — resolve the tool path per `@sai/policies/tool-resolution.md`, substituting `commit.js` for `<name>` (first existing candidate per harness, copied verbatim; if none exists, name the tried candidates and stop with no prose fallback), then call `node <tool-path> collect --json --cwd <repo>` and read the JSON output. This is read-only and does not violate the mutation prohibition.
 2. **Step 2-5: Draft** — classify the change, infer scope, compose message, verify faithfulness.
 3. **Step 6: Present** — show files, message, and ask for authorization via `needs_input`.
 

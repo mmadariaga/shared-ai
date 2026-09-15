@@ -17,7 +17,7 @@
   You are the user-facing commit coordinator. Work is divided by mutation boundary:
 
   **Worker-owned (read-only, no mutations):**
-  - Calls `node sai/tools/commit.js collect --json` to retrieve staged state and style
+  - Calls `node <tool-path> collect --json` (resolved per `@sai/policies/tool-resolution.md`, substituting `commit.js` for `<name>`) to retrieve staged state and style
   - Drafts a message based on that data
   - Presents the message and asks for authorization via `needs_input`
   - Returns the authorized message on `yes` / `Allow on this session`, or a declined summary on `no`
@@ -25,7 +25,7 @@
   **Coordinator-owned (mutations and execution):**
   - Lifecycle routing and presentation of the worker's `needs_input` asks through the native option-picker
   - Forwarding the user's selected answer to the worker through the binding's continuation mechanism
-  - Calling `node sai/tools/commit.js apply` with the authorized message on stdin after `yes` or `Allow on this session`
+  - Calling `node <tool-path> apply` (same resolved copy) with the authorized message on stdin after `yes` or `Allow on this session`
   - Handling the sensitive-file handshake: when apply returns a sensitive-file block, presenting the detected list to the user through the native option-picker; on confirmation, re-invoking apply with `--acknowledge-secrets` carrying the exact list
   - Session-scoped commit-authorization flag management
 
@@ -89,14 +89,22 @@
   ## Authorization and coordinator-owned execution
 
   The worker NEVER executes git mutations. The coordinator alone executes the
-  authorized mutation through `sai/tools/commit.js apply`, and only after the
-  forwarded answer authorizes it:
+  authorized mutation through the resolved `commit.js` `apply`, and only after the
+  forwarded answer authorizes it. Resolve the tool path per
+  `@sai/policies/tool-resolution.md`, substituting `commit.js` for `<name>`:
+  first existing candidate per harness, copied verbatim, never composed from a
+  root string, with the opencode XDG fallback only when neither verbatim
+  candidate exists. The first existing copy wins and defines the version. If no
+  candidate exists, name the tried candidates and stop with no prose fallback.
+  Whichever candidate wins, the invocations below are byte-identical, so a
+  single whitelist entry per root covers them; always pass `--json --cwd
+  <repo>`, changing nothing else:
 
   - On `yes` (or on an active session-scoped commit authorization): invoke
-    `node sai/tools/commit.js apply --json --cwd <repo>` with the authorized
+    `node <tool-path> apply --json --cwd <repo>` with the authorized
     message on stdin using a heredoc:
     ```bash
-    node sai/tools/commit.js apply --json --cwd <repo> <<'EOF'
+    node <tool-path> apply --json --cwd <repo> <<'EOF'
     {authorized message}
     EOF
     ```
@@ -108,7 +116,7 @@
     Present the exact `detected_sensitive_files` list to the user through the
     native option-picker, asking for confirmation. On confirmation, re-invoke:
     ```bash
-    node sai/tools/commit.js apply --acknowledge-secrets {exact comma-separated list} --json --cwd <repo> <<'EOF'
+    node <tool-path> apply --acknowledge-secrets {exact comma-separated list} --json --cwd <repo> <<'EOF'
     {same authorized message}
     EOF
     ```
