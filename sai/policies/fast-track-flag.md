@@ -39,8 +39,17 @@ These divergences are intentional and stay byte-stable; do not "unify" them:
 - `sai-backfill` parses `--fast-track` and the diff-source tokens
   (`--staged | --unstaged | --diff <sha>`) in its own worker card
   (phase-owned parse, no banner).
-- `/sai-build` and `/sai-review` strip an explicit `--fast-track` token as a
-  behavioral no-op: they neither activate fast-track nor emit a banner.
+- `/sai-review` strips an explicit `--fast-track` token as a pure
+  behavioral no-op: it neither activates fast-track nor emits a banner.
+- `/sai-build` strips an explicit `--fast-track` token as a build-local
+  no-op: no build-local activation and no banner at strip time — the
+  explicit token decides nothing. The supervisor always injects
+  `fast_track_active=true` as invocation-scoped session state (never written
+  to a file) for the chained apply segment and prints the single
+  `> FAST-TRACK MODE ACTIVE` supervisor banner once at apply activation,
+  zero times when apply never activates. Builds with and without the explicit
+  token behave identically; the chained apply's skipped shell prints no
+  second banner.
 - `sai-explore`'s uncertainty pause (viability POC) does NOT auto-approve Ask 1
   (go/no-go for POC) or post-POC menus (viable/not-viable pickers) under
   `--fast-track`. The asks are always presented; fast-track bypasses only the
