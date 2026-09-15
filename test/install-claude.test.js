@@ -246,7 +246,7 @@ test('installClaude copies commands/claude/*.md to dest/commands/', () => {
   const design = fs.readFileSync(path.join(cmdDir, 'sai-2-design.md'), 'utf8');
   assert.match(design, /^model: opus$/m);
   assert.match(design, /^effort: medium$/m);
-   assert.match(design, /^allowed-tools: Read, Glob, Skill, Agent, SendMessage, AskUserQuestion, TaskCreate, TaskUpdate, TaskGet, TaskList$/m);
+   assert.match(design, /^allowed-tools: Read, Glob, Skill, Agent, SendMessage, AskUserQuestion, TaskCreate, TaskUpdate, TaskGet, TaskList, Bash\(node \.claude\/sai\/tools\/worker-report-validator\.js:\*\), Bash\(node ~\/\.claude\/sai\/tools\/worker-report-validator\.js:\*\), Bash\(node \.claude\/sai\/tools\/no-commit-guard\.js:\*\), Bash\(node ~\/\.claude\/sai\/tools\/no-commit-guard\.js:\*\), Bash\(node \.claude\/sai\/bin\/sai-state\.js:\*\), Bash\(node ~\/\.claude\/sai\/bin\/sai-state\.js:\*\)$/m);
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 

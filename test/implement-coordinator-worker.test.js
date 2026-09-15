@@ -880,8 +880,8 @@ test('Step 2: the implementation coordinator renders task-list stamps coordinato
     'the policy should state stamp attachment is coordinator-only');
   assert.match(policy, /never from a worker subagent/i,
     'the policy should state attachment never originates from the worker subagent');
-  assert.doesNotMatch(claudeWrapper, /Bash\(/,
-    'the wrapper should carry no shell grant now that stamps come from validated_at');
+  assert.match(claudeWrapper, /Bash\(node .*worker-report-validator\.js:\*\).*Bash\(node .*no-commit-guard\.js:\*\).*Bash\(node .*sai-state\.js:\*\)/,
+    'the wrapper should carry only the closed node-scoped grant (validator plus guard plus store, both roots) now that stamps come from validated_at');
   assert.doesNotMatch(coordinator, /date \+%H:%M|Get-Date/,
     'per-harness wall-clock commands no longer live in the coordinator body');
 });
