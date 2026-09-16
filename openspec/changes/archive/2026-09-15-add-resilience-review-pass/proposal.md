@@ -1,18 +1,20 @@
 > **⚠ POST-HOC RECORD** — This proposal was backfilled after implementation against a user-supplied statement of intent. It describes a decision already made, not one being proposed.
 ## Why
-Resilience defects in sai-5-review were scattered between the Correctness pass and Performance-triage with no single owner, so retry storms and missing timeouts slipped through review. This change gives fault-tolerance its own deep review pass with its own findings and severity mapping.
+Resilience defects in sai-5-review were scattered between the Correctness pass and Performance-triage with no single owner, so retry storms and missing timeouts slipped through review, while unbounded retries and missing timeouts on critical paths cause cascading failures, loss or duplication. This change gives fault-tolerance its own dedicated Resilience review pass with single ownership of retries, timeouts, circuit-breaker, idempotency and fallback, with its own findings, surface scoping, and severity mapping.
 ## What Changes
-- `sai/commands/review/steps/resolve-review-analysis.md`: review passes 1–10 extended to 1–11; Correctness and Performance-triage cut retry/timeout/circuit-breaker/idempotency/fallback with exclusive-ownership notes; new 11. Resilience deep pass added (external I/O, handlers, and consumers only; idempotency only with retry/redelivery; no-pattern cases capped at Question/Low; Critical only for cascade/outage, data loss, or duplicate side-effects); Mutation Analysis renumbered 11→12.
+- `sai/commands/review/steps/resolve-review-analysis.md`: review passes 1–10 extended to 1–11; Correctness and Performance-triage cut retry/timeout/circuit-breaker/idempotency/fallback with exclusive-ownership notes; new 11. Resilience dedicated pass added (resilience surface: external I/O, retryable handlers, consumers and queues, timeout boundaries; UI without I/O exempt; idempotency only with retry/redelivery/double-submit; no-pattern cases capped at Question/Low; Critical only for cascade/outage, data loss, or duplicate side-effects with impact; no-surface recorded, never an empty pass); Mutation Analysis renumbered 11→12.
 - `sai/commands/review/instructions.md`: legacy mirror of the same pass changes, ownership cuts, Resilience pass text, and Pass 11→12 renames.
-- `sai/commands/review/review-report.template.md`: finding Category list gains Resilience; Mutation Analysis section heading and skipped/unavailable notes renumbered Pass 11→12.
+- `sai/commands/review/review-report.template.md`: finding Category list gains Resilience plus Resilience Surface Triage (surface, areas, notes); Mutation Analysis section heading and skipped/unavailable notes renumbered Pass 11→12.
 - `sai/commands/review/steps/close-review-outcome.md`: Resilience severity and ownership rules recorded (Critical-only-cascade scale, exclusive ownership, exemptions as pass rules, deep pass with no audit-recommendation line).
 - `sai/commands/review/steps/resolve-mutation-analysis.md`: Pass 11→12 renames (runs after passes 1–11, activation gate, scope, tool, and outcome texts).
 - `sai/commands/review/worker.md`: passes 1-10→1-11, Pass 11→12 progress-plan and mutation texts.
+- `openspec/schemas/sai-workflow/templates/review.md`: added Resilience Surface Triage section (surface, affected areas, constraint notes).
 ## Capabilities
 ### New Capabilities
 - resilience-pass: dedicated Resilience review pass with its own findings and severity mapping for sai-5-review.
+- resilience-check: detect unbounded retries, missing timeouts on critical I/O, missing idempotency where retry or redelivery exists, and absent fallback where impact warrants it, with single ownership, scoped surface, conditional idempotency, impact-gated severities, and no-convention restraint.
 ### Modified Capabilities
-- None — the mechanical Pass 11→12 mutation renumber is captured as a requirement of resilience-pass, not as a separate modified capability.
+- None — the mechanical Pass 11→12 mutation renumber is captured as a requirement of resilience-pass, not as a separate modified capability; no existing capability behavior is modified outside review pass ownership and numbering.
 ## Impact
 Modified files:
 - `sai/commands/review/steps/resolve-review-analysis.md`
@@ -21,5 +23,6 @@ Modified files:
 - `sai/commands/review/steps/close-review-outcome.md`
 - `sai/commands/review/steps/resolve-mutation-analysis.md`
 - `sai/commands/review/worker.md`
-Known limitations and debt: three-file edit plus template (resolve-review-analysis, instructions mirror, report template, close-review-outcome, plus the two Pass 11→12 parity files) instead of a single file, to keep mirrors consistent; exemptions E2/E3/E5 encoded as pass rules, never as findings; no new audit command — resilience stays inside sai-5-review.
+- `openspec/schemas/sai-workflow/templates/review.md` (added Resilience Surface Triage)
+Known limitations and debt: multi-file edit plus templates to keep mirrors consistent; exemptions encoded as pass rules, never as findings; no new audit command — resilience stays inside sai-5-review.
 Out of scope: design.md, tasks.md, implementation.md — not generated by /sai-backfill
