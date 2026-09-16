@@ -9,7 +9,7 @@ cards reference it; they SHALL NOT restate or redefine the model inline.
 1. **Owner** — the coordinator (or the main session on surfaces without a
    routed coordinator) owns BOTH the parse and the banner for every opt-in
    command except `sai-2-design` and `sai-backfill` (`sai-explore`,
-   `sai-4-apply`, `sai-archive`, `sai-merge`). Workers never parse
+   `sai-3-implement`, `sai-4-apply`, `sai-archive`, `sai-merge`). Workers never parse
    `--fast-track` for activation and never emit the activation banner, except
    where a documented exception below assigns phase-owned parse
    (`sai-2-design`, `sai-backfill`).
@@ -56,11 +56,12 @@ These divergences are intentional and stay byte-stable; do not "unify" them:
   no-op: no build-local activation and no banner at strip time — the
   explicit token decides nothing. The supervisor always injects
   `fast_track_active=true` as invocation-scoped session state (never written
-  to a file) for the chained apply segment and prints the single
-  `> FAST-TRACK MODE ACTIVE` supervisor banner once at apply activation,
-  zero times when apply never activates. Builds with and without the explicit
-  token behave identically; the chained apply's skipped shell prints no
-  second banner.
+  to a file) for the chained implement segment and the chained apply segment
+  and prints the single `> FAST-TRACK MODE ACTIVE` supervisor banner once at
+  the first fast-track activation of the build (implement activation), never
+  twice — zero times when neither segment activates. Builds with and without
+  the explicit token behave identically; the chained segments' skipped shells
+  print no second banner.
 - `sai-explore`'s uncertainty pause (viability POC) does NOT auto-approve Ask 1
   (go/no-go for POC) or post-POC menus (viable/not-viable pickers) under
   `--fast-track`. The asks are always presented; fast-track bypasses only the

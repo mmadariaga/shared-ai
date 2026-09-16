@@ -23,7 +23,7 @@
   - `allowed_nonterminal_extensions`: progress events — `{event: "progress", step_ids: string[], changed_files: string[]}` as the sole nonterminal extension
   - `extension_handlers`: empty
   - `recovery_policy: true` — bounded recovery is enabled for this planning phase (parity with spec and design); recovery semantics follow `@sai/policies/bounded-recovery.md`. The worker-owned, authorized, path-bounded non-clean read set for recovery inspection is only `openspec/changes/{change-name}/implementation.md`; same-worker correction on that surface regenerates or repairs the plan in place, and the coordinator has zero write or repair authority on it.
-  - `replacement_reconstruction_fields`: `resolved_change_name` when already known, ordered `opaque_input_history`, the fixed durable-artifact reconstruction instruction, and the worker's `active_step_id`
+  - `replacement_reconstruction_fields`: `resolved_change_name` when already known, ordered `opaque_input_history`, the fixed durable-artifact reconstruction instruction, the worker's `active_step_id`, and `fast_track_active`
   - `terminal_navigation` — parameterized binding over two terminal actions; selection is positional:
     - sole adapter (direct `/sai-3-implement`) → shell-owned standalone completion action (exact pinned literal + stop)
     - final adapter in a multi-adapter sequence → same shell-owned standalone completion action
@@ -76,9 +76,23 @@
   accumulated coordinator changed-file union, the prior worker journal, design
   state, or binding identifiers.
 
-  Construct exactly the opaque `arguments_value` envelope field as specified by the active wrapper. Use the active `sai-3-implementation-worker` binding's `dispatch_operation` to dispatch exactly one worker. `continuation_reference` is binding-owned and never worker output; binding-owned `continuation_reference` is not worker output.
+  Construct the opaque `arguments_value` envelope field from the fast-track-cleaned remainder (the active wrapper's value after the Fast-track parse strip below). Use the active `sai-3-implementation-worker` binding's `dispatch_operation` to dispatch exactly one worker and declare `fast_track_active` alongside the envelope as invocation-scoped session state (never an envelope key, never written to any file). `continuation_reference` is binding-owned and never worker output; binding-owned `continuation_reference` is not worker output.
 
   Keep an invocation-scoped ordered union of `payload.changed_files`; add each path once and never reset it. Validate every result: the payload status must be exactly one of `completed`, `needs_input`, `failed`, or `cancelled`, with string `summary` and string-list `changed_files`. `needs_input` requires its question and ordered options where applicable. Every post-resolution payload, including `completed`, requires `resolved_change_name`.
+
+  ## Fast-track parse
+
+  Follow the canonical model in `@sai/policies/fast-track-flag.md` — this coordinator owns BOTH the parse and the banner. Before dispatch, inspect the boot-provided `arguments_value` for the positional token `--fast-track`:
+  - If the token is present anywhere in `arguments_value`:
+    1. Set the invocation-scoped boolean `fast_track_active` to true.
+    2. Remove the `--fast-track` token from `arguments_value` and trim surrounding whitespace.
+    3. Print the exact line `> FAST-TRACK MODE ACTIVE` exactly once per invocation as ordinary conversation text (do not write it to any file); the banner never repeats within the run, including across replacement reconstruction.
+    4. Use the cleaned remainder as the effective request for the dispatch envelope and all downstream steps.
+  - If the token is absent:
+    1. Leave `fast_track_active` false.
+    2. Use `arguments_value` verbatim.
+
+  Presence-plus-strip only: while parsing fast-track inspect no other token's semantics. The activation signal travels everywhere as invocation-scoped session state named exactly `fast_track_active` (never written to `.openspec.yaml`, configuration, or any file) and is declared alongside the envelope for the worker's fast-track branches. The worker never parses `--fast-track` and never emits the banner.
 
   ## No-commit guard
 

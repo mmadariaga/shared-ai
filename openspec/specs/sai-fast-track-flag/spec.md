@@ -105,32 +105,27 @@ When `sai-archive` runs with `--fast-track`, the unchecked-items gate SHALL auto
 - **THEN** the confirmation or collision stop remains required and fast-track does not bypass it
 
 ### Requirement: The --fast-track flag is parsed from arguments_value before the picker
-
-Exactly six commands — `sai-explore`, `sai-2-design`, `sai-4-apply`, `sai-archive`, `sai-backfill`, and `sai-merge` — SHALL accept a `--fast-track` token in their arguments. The token SHALL be parsed from `arguments_value` before downstream resolution: in the shared body file for `sai-explore`, `sai-2-design`, and `sai-4-apply`, in the `sai-archive` coordinator card before the change-picker, in the `sai-backfill` worker card per its Envelope Tokens procedure, which also parses the diff-source tokens and reads the trimmed remainder as the request body, and in the `sai-merge` coordinator card before forwarding the cleaned remainder to its worker. After extraction the token SHALL be removed from `arguments_value`, and the cleaned remainder SHALL remain authoritative downstream. `/sai-build` remains outside this parser membership and may inject apply fast-track through composition. No wrapper-echo field is forwarded or used to find or clean a change name.
-
-For `sai-2-design`, `sai-4-apply`, and `sai-archive`, the cleaned `arguments_value` SHALL reach the shared change-picker before it resolves a name. `sai-4-apply` and `sai-archive` SHALL NOT strip a residual `--fast-track` token from the picker's resolved value or perform a second flag-removal pass after picking. `sai-backfill` consumes no change-picker; its cleaned request body is read by its own technical flow.
-
-The parse SHALL be single-sourced in one location per command — the shared body file, the coordinator card for `sai-archive`, or the worker card for `sai-backfill` — so that all harness thin wrappers inherit identical behavior.
+Exactly seven commands — sai-explore, sai-2-design, sai-3-implement, sai-4-apply, sai-archive, sai-backfill, and sai-merge — SHALL accept a --fast-track token in their arguments. The token SHALL be parsed from arguments_value before downstream resolution: in the shared body file for sai-explore, sai-2-design, and sai-4-apply, in the sai-3-implement coordinator card before dispatch, in the sai-archive coordinator card before the change-picker, in the sai-backfill worker card per its Envelope Tokens procedure, which also parses the diff-source tokens and reads the trimmed remainder as the request body, and in the sai-merge coordinator card before forwarding the cleaned remainder to its worker. After extraction the token SHALL be removed from arguments_value, and the cleaned remainder SHALL remain authoritative downstream. Sai-build remains outside this parser membership and may inject implement plus apply fast-track through composition. No wrapper-echo field is forwarded or used to find or clean a change name. For sai-2-design, sai-3-implement, sai-4-apply, and sai-archive, the cleaned arguments_value SHALL reach downstream resolution before it resolves a name. Sai-4-apply and sai-archive SHALL NOT strip a residual --fast-track token from the pickers resolved value or perform a second flag-removal pass after picking. Sai-backfill consumes no change-picker; its cleaned request body is read by its own technical flow. The parse SHALL be single-sourced in one location per command so that all harness thin wrappers inherit identical behavior.
 
 #### Scenario: Flag is stripped and the change-name passes through cleanly
-
-- **WHEN** a user runs `/sai-4-apply oauth2-auth --fast-track` (in any token order)
-- **THEN** the body file activates fast-track mode, removes the `--fast-track` token from `arguments_value` before picking, and the change-picker receives `oauth2-auth` with no residual flag text
+- **WHEN** a user runs /sai-4-apply oauth2-auth --fast-track in any token order
+- **THEN** the body file activates fast-track mode, removes the --fast-track token from arguments_value before picking, and the change-picker receives oauth2-auth with no residual flag text
 
 #### Scenario: Backfill strips tokens worker-side
-
-- **WHEN** a user runs `/sai-backfill my-change --staged --fast-track`
-- **THEN** the worker card activates fast-track, resolves `--staged` as the diff source, and reads `my-change` as the explicit request-body identifier with no residual token text
+- **WHEN** a user runs /sai-backfill my-change --staged --fast-track
+- **THEN** the worker card activates fast-track, resolves --staged as the diff source, and reads my-change as the explicit request-body identifier with no residual token text
 
 #### Scenario: Absent flag leaves behavior identical to today
-
-- **WHEN** a user runs `/sai-4-apply oauth2-auth` with no `--fast-track` token
+- **WHEN** a user runs /sai-4-apply oauth2-auth with no --fast-track token
 - **THEN** fast-track mode is inactive and every gate behaves exactly as it did before this capability existed
 
 #### Scenario: The flag is confined to the named commands
-
-- **WHEN** a `--fast-track` token is passed to any command other than `sai-explore`, `sai-2-design`, `sai-4-apply`, `sai-archive`, or `sai-backfill` (for example `sai-1-spec`, `sai-3-implement`, `sai-5-review`, `sai-pr`)
+- **WHEN** a --fast-track token is passed to any command other than sai-explore, sai-2-design, sai-3-implement, sai-4-apply, sai-archive, sai-backfill, or sai-merge for example sai-1-spec, sai-5-review, sai-pr
 - **THEN** that command SHALL NOT gain fast-track behavior from this capability — the flag is not defined for it and its gates are unaffected
+
+#### Scenario: Implement coordinator parses fast-track before dispatch
+- **WHEN** sai-3-implement receives --fast-track with a change name
+- **THEN** the coordinator strips the token, prints the banner once, and declares fast_track_active alongside the envelope
 
 ### Requirement: Fast-track mode announces itself with a single-line banner at run start
 When `--fast-track` is active, the owning coordinator or main-session card SHALL print the exact line `> FAST-TRACK MODE ACTIVE` exactly once per invocation at run start as ordinary conversation text; compositions own their chained-segment banner so every path yields exactly one visible confirmation; routed-shaped `sai-backfill` parses worker-side and SHALL emit no banner anywhere in the run. The banner SHALL NOT be written to disk.
@@ -146,32 +141,50 @@ When `--fast-track` is active, the owning coordinator or main-session card SHALL
 - **THEN** no `FAST-TRACK MODE ACTIVE` banner is printed
 
 ### Requirement: Composition-injected apply fast-track under sai-build
-`/sai-build` SHALL always inject normalized apply fast-track true when activating its chained apply segment without becoming a seventh body-file parser. Explicit `--fast-track` on build SHALL not change phase order, injection, gates, or banner behavior; safe-operations and other non-opted-out gates remain in force.
+Sai-build SHALL always inject fast_track_active true as invocation-scoped session state never written to a file for both the chained implement segment and the chained apply segment without becoming a body-file parser. An explicit --fast-track token on build SHALL remain a build-local no-op that changes no phase order, injection, gates, or banner behavior.
 
 #### Scenario: Build injects apply fast-track
-- **WHEN** build activates apply
-- **THEN** apply receives fast-track true while build remains outside the six parser members
+- **WHEN** build activates its implement segment and later its apply segment
+- **THEN** both segments receive injected fast_track_active while build remains outside parser membership with identical phase order and gates with or without the explicit token
+
+#### Scenario: Build injects fast-track for implement and apply
+- **WHEN** build activates its implement segment and later its apply segment
+- **THEN** both segments receive injected fast_track_active with identical phase order and gates with or without the explicit token
 
 ### Requirement: Composition owns the chained banner
-When chained apply receives composition-injected fast-track true, the supervising coordinator SHALL emit `> FAST-TRACK MODE ACTIVE` exactly once at activation and zero times if apply never activates. Standalone parser-member behavior remains unchanged.
+When chained segments receive composition-injected fast-track true, the supervising coordinator SHALL emit > FAST-TRACK MODE ACTIVE exactly once at implement-segment activation as the first fast-track activation of the build, print no second banner at apply activation, and print zero banners when neither segment activates. Skipped segment shells SHALL print no banner. Standalone parser-member behavior remains unchanged.
 
 #### Scenario: Build banner is activation-scoped
-- **WHEN** build transitions successfully to apply
-- **THEN** the coordinator prints one banner and the skipped apply shell does not print another
+- **WHEN** a build activates its implement segment with injected fast-track and later transitions to apply
+- **THEN** the supervisor prints one banner at implement activation and the skipped apply shell does not print another
 
 #### Scenario: Failed build has no banner
-- **WHEN** implement fails or is cancelled before apply
+- **WHEN** a build fails or is cancelled before implement activation
 - **THEN** no composition banner is printed
 
 #### Scenario: Banner prints once when the flag is present
-
-- **WHEN** any banner-emitting parser-member command starts a run with `--fast-track` active
-- **THEN** the agent prints the exact line `> FAST-TRACK MODE ACTIVE` in the conversation before proceeding, and writes nothing to disk to record it
+- **WHEN** any banner-emitting parser-member command starts a run with --fast-track active
+- **THEN** the agent prints the exact line > FAST-TRACK MODE ACTIVE in the conversation before proceeding, and writes nothing to disk to record it
 
 #### Scenario: No banner without the flag
+- **WHEN** a command runs without --fast-track
+- **THEN** no FAST-TRACK MODE ACTIVE banner is printed
 
-- **WHEN** a command runs without `--fast-track`
-- **THEN** no `FAST-TRACK MODE ACTIVE` banner is printed
+#### Scenario: Build banner fires once at implement activation
+- **WHEN** a build activates its implement segment with injected fast-track
+- **THEN** the supervisor prints the single banner once at implement activation
+
+#### Scenario: No second banner at apply activation
+- **WHEN** a build completes implement and activates the chained apply segment
+- **THEN** the supervisor prints no additional banner and the chained apply shell prints no banner
+
+#### Scenario: Zero banners when neither segment activates
+- **WHEN** a build closes without activating implement nor apply
+- **THEN** no banner is printed
+
+#### Scenario: Failed build before implement prints none
+- **WHEN** a build fails or is cancelled before implement activation
+- **THEN** no composition banner is printed
 
 ### Requirement: Apply fast-track restores its two gate opt-outs
 
@@ -239,7 +252,7 @@ On every surface that also validates other options, the fast-track presence-plus
 - **THEN** the fast-track token is stripped and its banner printed before the overview-language validation examines the cleaned remainder
 
 ### Requirement: Fast-track membership and parse ownership
-The set of commands that accept and parse --fast-track SHALL remain exactly sai-explore, sai-2-design, sai-4-apply, sai-archive, sai-backfill, and sai-merge per the canonical model in sai/policies/fast-track-flag.md. The design worker SHALL own parse-plus-strip of --fast-track on every route, routed and supervised, and the design coordinator SHALL never parse. Banner ownership SHALL stay with the coordinator on the routed route via a nonterminal notice with dedup, and with the supervising composition on the supervised route.
+The set of commands that accept and parse --fast-track SHALL remain exactly sai-explore, sai-2-design, sai-3-implement, sai-4-apply, sai-archive, sai-backfill, and sai-merge per the canonical model in sai/policies/fast-track-flag.md. The design worker SHALL own parse-plus-strip of --fast-track on every route, routed and supervised, and the design coordinator SHALL never parse. The sai-3-implement coordinator SHALL own parse-plus-strip with banner emission exactly once on every route. Banner ownership SHALL stay with the coordinator on the routed route via a nonterminal notice with dedup, and with the supervising composition on the supervised route.
 
 #### Scenario: Design parses worker-side on routed route
 - **WHEN** /sai-2-design receives an envelope containing --fast-track on the routed route with the banner-dedup field false
@@ -250,5 +263,23 @@ The set of commands that accept and parse --fast-track SHALL remain exactly sai-
 - **THEN** it strips the token before name resolution, returns no fast-track notice, and the supervising composition supplies the single visible activation confirmation
 
 #### Scenario: Review stays a no-op stripper
-- **WHEN** `/sai-review` receives `--fast-track`
+- **WHEN** /sai-review receives --fast-track
 - **THEN** it strips the token before change resolution without activating fast-track or printing a banner
+
+#### Scenario: Implement coordinator owns parse plus banner
+- **WHEN** sai-3-implement receives --fast-track on its routed route
+- **THEN** the coordinator strips the token before dispatch, prints the banner once, and declares fast_track_active alongside the envelope
+
+### Requirement: Implement fast-track auto-corrects single preserving sai-2 fix
+With fast_track_active true, sai-3-implement SHALL auto-correct a defective sai-2 artifact only when exactly one correction path preserves the proposal objective, writing design.md, tasks.md, or interfaces.md in place and then regenerating implementation.md with the same effect as a user-chosen amend.
+
+#### Scenario: Single preserving fix continues without escalation
+- **WHEN** fast-track implement encounters a defective sai-2 artifact with exactly one preserving correction
+- **THEN** it writes the sai-2 artifacts in place and regenerates implementation.md without escalating
+
+### Requirement: Implement fast-track escalates sai-1 empty and ambiguous blocks
+With fast_track_active true, sai-3-implement SHALL always escalate defects in sai-1 proposal or specs, defects with no correction path, and defects with multiple preserving paths, and SHALL never auto-pick among ambiguous options nor write fast_track_active to any file.
+
+#### Scenario: Ambiguous sai-2 defect escalates without writes
+- **WHEN** fast-track implement encounters a sai-2 defect with multiple preserving corrections
+- **THEN** it escalates for ambiguity without writing any sai-2 artifact
