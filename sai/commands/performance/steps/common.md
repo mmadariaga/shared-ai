@@ -41,7 +41,7 @@ Before executing the workflow, verify and load:
         - State the inferred parent branch explicitly to the user before proceeding.
 3. **Tier filter** (optional): `--tier backend|frontend|db|queue` to scope to a single tier. Default: all detected tiers.
 
-If `proposal.md` is missing, respond with: **"`openspec/changes/{change-name}/proposal.md` not found. Ensure the change name is correct and that `/sai-1-spec` has been run for this change."** and STOP.
+If `proposal.md` is missing, return `failed` with exactly `openspec/changes/{change-name}/proposal.md not found. Ensure the change name is correct and that /sai-1-spec has been run for this change.`
 
 ## Severity Taxonomy
 

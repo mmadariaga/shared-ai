@@ -3,7 +3,7 @@ description: Read-only progress panel for one OpenSpec change — the 10 sai-wor
 argument-hint: "[change-name]"
 model: sonnet
 effort: medium
-allowed-tools: Read, Glob, Grep, Bash(openspec:*), AskUserQuestion, Skill
+allowed-tools: Read, Glob, Grep, Bash(openspec:*), Bash(node .claude/sai/tools/change-picker.js:*), Bash(node ~/.claude/sai/tools/change-picker.js:*), Bash(node .claude/sai/tools/status.js:*), Bash(node ~/.claude/sai/tools/status.js:*), AskUserQuestion, Skill
 ---
 Fetch @skills/fetch/SKILL.md
 Fetch @sai/adapters/claude/boot.md and follow it.

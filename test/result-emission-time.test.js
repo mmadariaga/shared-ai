@@ -98,8 +98,8 @@ test('the three planning wrappers carry no shell grant now that stamps need no c
     const wrapper = artifact(relativePath);
     const line = wrapper.match(/^allowed-tools:\s*(.+)$/m);
     assert.ok(line, `${relativePath} should declare allowed-tools`);
-    assert.equal(line[1].trim(), 'Read, Glob, Skill, Agent, SendMessage, AskUserQuestion, TaskCreate, TaskUpdate, TaskGet, TaskList, Bash(node .claude/sai/tools/worker-report-validator.js:*), Bash(node ~/.claude/sai/tools/worker-report-validator.js:*), Bash(node .claude/sai/tools/no-commit-guard.js:*), Bash(node ~/.claude/sai/tools/no-commit-guard.js:*), Bash(node .claude/sai/bin/sai-state.js:*), Bash(node ~/.claude/sai/bin/sai-state.js:*)',
-      `${relativePath} should carry the routed coordinator list with panel tools plus the closed node-only grant (validator plus guard plus store, both roots)`);
+    assert.equal(line[1].trim(), 'Read, Glob, Skill, Agent, SendMessage, AskUserQuestion, TaskCreate, TaskUpdate, TaskGet, TaskList, Bash(node .claude/sai/tools/worker-report-validator.js:*), Bash(node ~/.claude/sai/tools/worker-report-validator.js:*), Bash(node .claude/sai/tools/no-commit-guard.js:*), Bash(node ~/.claude/sai/tools/no-commit-guard.js:*), Bash(node .claude/sai/bin/sai-state.js:*), Bash(node ~/.claude/sai/bin/sai-state.js:*), Bash(git reset:*)',
+      `${relativePath} should carry the routed coordinator list with panel tools plus the closed scoped grant (validator plus guard plus store, both roots, plus the mixed reset)`);
   }
 });
 

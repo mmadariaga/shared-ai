@@ -115,7 +115,7 @@ Every numbered phase runs the same shape: a **coordinator** in your main session
 
 Both harnesses preserve the same durable artifacts, gate wordings, and stop texts. Claude Code and opencode differ only in dispatch mechanics and model IDs.
 
-- `/sai-2-design` — Claude Code uses a low-effort coordinator with a high-effort design worker (`sai-2-design-worker`); opencode declares `opencode-go/muse-spark-1.3-contributor` with `variant: xhigh` on the wrapper. The fixed notice is acknowledged with `continue_after_notice`. Design ends at design completion — run `/sai-3-implement {name}` in a new chat. Proposal Complexity stays descriptive, never a routing gate.
+- `/sai-2-design` — Claude Code uses a medium-effort coordinator with a medium-effort design worker (`sai-2-design-worker`); opencode declares `opencode-go/muse-spark-1.3-contributor` with `variant: xhigh` on the wrapper. The fixed notice is acknowledged with `continue_after_notice`. Design ends at design completion — run `/sai-3-implement {name}` in a new chat. Proposal Complexity stays descriptive, never a routing gate.
 - `/sai-3-implement` — the worker writes the full coding playbook to `openspec/changes/{change-name}/implementation.md`; `/sai-4-apply` follows it and copies each step's code verbatim, adjusting only for compilation errors or test failures.
 - `/sai-4-apply` — the coordinator never edits code. It dispatches the RED and GREEN workers on the budget tier, re-verifies each result, prints a pre-commit files-modified report cross-checked against `tasks.md`, and asks before each commit.
 - `/sai-commit`, `/sai-merge` — same shape without any openspec dependency. The worker drafts, the coordinator alone runs git.
@@ -366,14 +366,14 @@ We set these defaults to models that have worked best for us, you may find bette
 
 | Command | Opencode | Variant | Claude Code |
 |-------|----------|---------|-------------|
-| explore | `opencode/muse-spark-1.3-contributor-free` | `high` | `sonnet` - medium |
+| explore | `opencode/muse-spark-1.3-contributor-free` | `high` | `opus` - medium |
 | spec (1) | `opencode-go/muse-spark-1.3-contributor`; worker `sai-1-spec-proposal-worker` | `xhigh` | coordinator `opus` - medium; worker `opus` - medium |
 | design (2) | `opencode-go/muse-spark-1.3-contributor`; worker `sai-2-design-worker` | `xhigh` | coordinator `opus` - medium; worker `opus` - high |
-| implement (3) | `opencode-go/muse-spark-1.3-contributor` | `xhigh` | coordinator `opus` - low; worker `opus` - medium |
-| apply (4) | `opencode-go/muse-spark-1.3-contributor` | `xhigh` | `sonnet` - low |
-| build | `opencode-go/muse-spark-1.3-contributor` | `xhigh` | `opus` - low |
+| implement (3) | `opencode-go/muse-spark-1.3-contributor` | `xhigh` | coordinator `opus` - medium; worker `opus` - medium |
+| apply (4) | `opencode-go/muse-spark-1.3-contributor` | `xhigh` | `opus` - medium |
+| build | `opencode-go/muse-spark-1.3-contributor` | `xhigh` | `opus` - medium |
 | review (5) | `opencode-go/deepseek-v4.1-flash` | `max` | `opus` - medium |
-| sai-review | `opencode-go/muse-spark-1.3-contributor` | `xhigh` | `opus` - low |
+| sai-review | `opencode-go/muse-spark-1.3-contributor` | `xhigh` | `opus` - medium |
 | security (6) | `opencode-go/deepseek-v4.1-flash` | `max` | `opus` - xhigh |
 | performance (7) | `opencode-go/deepseek-v4.1-flash` | `max` | `opus` - medium |
 | accessibility (8) | `opencode-go/deepseek-v4.1-flash` | `max` | `opus` - medium |

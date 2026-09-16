@@ -31,7 +31,7 @@ No other `node` invocation is permitted on this wrapper.
 ### `sai-5-review`, `sai-6-security`, `sai-7-performance`,
 ### `sai-8-accessibility`, `sai-build`, `sai-review`)
 
-Exactly three tools, each in both roots:
+Exactly three `node` tools, each in both roots, plus one scoped remediation grant:
 
 - `node .claude/sai/tools/worker-report-validator.js` + `node
   ~/.claude/sai/tools/worker-report-validator.js` (`validate --kind <kind>`
@@ -42,14 +42,44 @@ Exactly three tools, each in both roots:
   <project-root>`)
 - `node .claude/sai/bin/sai-state.js` + `node ~/.claude/sai/bin/sai-state.js`
   (`<verb> ...`; verbs take neither `--json` nor `--cwd`)
+- `Bash(git reset:*)` — the exact mixed `git reset <guard_base>` remediation
+  only, never `--hard`, `--soft`, `--keep`, checkout, or branch operations,
+  under the existing safe-operations carve-out.
 
-No other `node` invocation is permitted on these wrappers.
+No other `node` invocation is permitted on these wrappers. No wrapper gains
+an unscoped `Bash` grant.
+
+### Worktree (`commands/claude/sai-worktree.md`)
+
+Exactly one `node` tool, in both roots, alongside the existing scoped
+`Bash(git:*)`:
+
+- `node .claude/sai/tools/worktree.js` + `node
+  ~/.claude/sai/tools/worktree.js` (`<sub-command> [arguments] --json --cwd
+  <invoking-directory>`)
+
+No other `node` invocation is permitted on this wrapper.
+
+### Status (`commands/claude/sai-status.md`)
+
+Exactly two `node` tools, each in both roots, alongside the existing scoped
+`Bash(openspec:*)`:
+
+- `node .claude/sai/tools/change-picker.js` + `node
+  ~/.claude/sai/tools/change-picker.js` (`resolve "<arguments_value>"
+  --bulk-option --json --cwd <project-root>`)
+- `node .claude/sai/tools/status.js` + `node ~/.claude/sai/tools/status.js`
+  (`panel <change-name> --json --cwd <project-root>` / `bulk --json --cwd
+  <project-root>`)
+
+No other `node` invocation is permitted on this wrapper.
 
 ### Unchanged surface
 
 `sai-4-apply`, `sai-commit`, `sai-archive`, `sai-backfill`, and `sai-merge`
 keep their current execution surface unchanged (full `Bash` or unrestricted
-where declared). No other wrapper gains a `node` entry under this change.
+where declared). No other wrapper gains a `node` entry beyond the closed sets
+above.
 
 ## Failure semantics
 

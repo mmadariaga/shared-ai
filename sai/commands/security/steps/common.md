@@ -40,7 +40,7 @@ Before executing the workflow, verify and load:
         - If unset, try `master`, then `main` — verify each with `git rev-parse --verify <branch>`.
         - State the inferred parent branch explicitly to the user before proceeding.
 
-If `proposal.md` is missing, respond with: **"`openspec/changes/{change-name}/proposal.md` not found. Ensure the change name is correct and that `/sai-1-spec` has been run for this change."** and STOP.
+If `proposal.md` is missing, return `failed` with exactly `openspec/changes/{change-name}/proposal.md not found. Ensure the change name is correct and that /sai-1-spec has been run for this change.`
 
 ## Severity Taxonomy
 
