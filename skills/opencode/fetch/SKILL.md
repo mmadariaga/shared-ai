@@ -27,8 +27,6 @@ Every agent that loads fetch inherits this rule, on both harnesses. It governs h
 
 Observed: composed absolute paths have dropped a path segment — a worker whose working directory was `C:\Projects\mine\shared-ai.worktree-1` produced `C:\Projects\mine\bin` and `C:\Projects\mine\sai\commands` for directories that exist inside the repository. Relative paths and literal absolute paths resolved correctly in every observed run; composed absolute paths failed in two of three.
 
-On opencode this rule is load-bearing: a mis-composed path becomes a permission prompt that never renders at subagent depth ≥ 2 and hangs the session (https://github.com/anomalyco/opencode/issues/13715).
-
 ## Fetch @ resolution rules (apply to EVERY instruction)
 
 When you encounter `"Fetch @<path>"` or `"Also fetch @<path>"` in any instruction text, resolve it using these rules:

@@ -204,6 +204,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0169b — Idea-list treats Diagnosis Round as recovery, not review](./0169b-idea-list-diagnosis-round-is-recovery-not-review.md) — Refs 0116, Refs 0137b, Refs 0168b
 - [0171a — Item-10 diagnosis entry is shared non-clean set plus Explore cancellation exception](./0171a-item-10-diagnosis-entry-shared-non-clean-plus-cancelled.md) — **Amends** 0168b, Refs 0167c, Refs 0158b
 - [0172d — Sibling worker dispatch for the fast lane](./0172d-sibling-worker-dispatch-for-the-fast-lane.md) — Refs ddr:0157, Refs ddr:0145b
+- [0185 — Remove hang rationale from sibling dispatch, keep recovery isolation](./0185-remove-hang-rationale-from-sibling-dispatch.md) — **Amends** 0172d
 
 ### `/sai-backfill`
 
@@ -612,6 +613,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 | [0171c](./0171c-single-string-invocation-envelope.md) | supersedes | [0166](./archive/0166-envelope-only-change-name-resolution.md) |
 | [0171c](./0171c-single-string-invocation-envelope.md) | reframes | [0159b](./0159b-marker-grammar-stays-on-two-string-envelope.md) |
 | [0184](./0184-budget-explorer-resolver-lives-behind-canonical-skills.md) | amends | [0001](./0001-sai-separate-harness-files.md) |
+| [0185](./0185-remove-hang-rationale-from-sibling-dispatch.md) | amends | [0172d](./0172d-sibling-worker-dispatch-for-the-fast-lane.md) |
 | [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0033](./archive/0033-echo-line-format-and-placement.md) |
 | [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0034](./archive/0034-resolution-precedence-wrapper-echo-first.md) |
 | [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0035](./archive/0035-harness-specific-adapter-carve-out.md) |
