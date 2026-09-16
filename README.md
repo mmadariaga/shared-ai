@@ -366,7 +366,7 @@ We set these defaults to models that have worked best for us, you may find bette
 
 | Command | Opencode | Variant | Claude Code |
 |-------|----------|---------|-------------|
-| explore | `opencode/muse-spark-1.3-contributor-free` | `high` | `opus` - medium |
+| explore | `opencode-go/muse-spark-1.3-contributor-free` | `xhigh` | `opus` - medium |
 | spec (1) | `opencode-go/muse-spark-1.3-contributor`; worker `sai-1-spec-proposal-worker` | `xhigh` | coordinator `opus` - medium; worker `opus` - medium |
 | design (2) | `opencode-go/muse-spark-1.3-contributor`; worker `sai-2-design-worker` | `xhigh` | coordinator `opus` - medium; worker `opus` - high |
 | implement (3) | `opencode-go/muse-spark-1.3-contributor` | `xhigh` | coordinator `opus` - medium; worker `opus` - medium |
