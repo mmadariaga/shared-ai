@@ -22,20 +22,19 @@ payloads omit it.
 
 ## Progress Reporting
 
-Use the canonical `progress_plan`, `step_pointer_map`, and progress result shape from `@sai/policies/spec-phase-contract.md`. After prerequisite checks pass and change resolution completes, return the startup progress event for `prereqs-and-change` before dispatching any subagent, reading beyond resolution, writing an artifact, or beginning research. The research batch returns `research`; the completed `proposal.md` write returns `proposal`; the completed `specs/**` write returns `specs`; and artifact validation plus decision-summary derivation returns `validation`. A `review` event is returned only for a valid externally supplied `sai-explore` findings block whose base-form `Summary: High=0 Medium=<count> Low=<count>` explicitly reports `High=0`, and only while `review` is unmarked.
+Use the canonical `progress_plan` and progress result shape from `@sai/policies/spec-phase-contract.md`, and follow the coordinator-provided step-machine pointer for routing. After prerequisite checks pass and change resolution completes, return the startup progress event for `prereqs-and-change` before dispatching any subagent, reading beyond resolution, writing an artifact, or beginning research. The research batch returns `research`; the completed `proposal.md` write returns `proposal`; the completed `specs/**` write returns `specs`; and artifact validation plus decision-summary derivation returns `validation`. A `review` event is returned only for a valid externally supplied `sai-explore` findings block whose base-form `Summary: High=0 Medium=<count> Low=<count>` explicitly reports `High=0`, and only while `review` is unmarked.
 
 Progress events are returned lifecycle results, not text written into the
-worker session. Every event uses the closed timeless progress shape. Progress step ids are reported in canonical plan/map order and
+worker session. Every event uses the closed timeless progress shape. Progress step ids are reported in canonical plan order and
 only when newly complete; marks are monotonic and the worker never reopens or
 re-reports an earlier id. The coordinator alone applies visual rendering,
 pointer routing, milestone stamps, `changed_files` unioning, and result
-validation. Progress never replaces the one terminal lifecycle status. Explore may suppress the visual plan while retaining the pointer map. The worker does not dispatch or own an artifact reviewer, an automatic review loop, review counters, reviewer retry outcomes, or user-requested reviewer passes.
+validation. Progress never replaces the one terminal lifecycle status. Explore may suppress the visual plan while retaining step-machine routing. The worker does not dispatch or own an artifact reviewer, an automatic review loop, review counters, reviewer retry outcomes, or user-requested reviewer passes.
 
 ## Active Step Execution
 
 Instruction stretches are delivered just-in-time, one step file at a time.
-Each progress-event continuation carries the pointer selected by the
-coordinator's canonical map — `Active step: <id> — follow <path>` — and the
+Each progress-event continuation carries the coordinator-provided step-machine pointer — `Active step: <id> — follow <path>` — and the
 worker executes only that named file. Never prefetch, open, or follow another
 step instruction file. The worker contract plus `common.md` is the sealed
 initial surface; `prereqs-and-change` runs from it before the first progress

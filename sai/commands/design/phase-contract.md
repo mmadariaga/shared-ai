@@ -58,30 +58,20 @@ by raw `--overview-lang` token presence. Both are exactly:
 - `interfaces` — "Write interfaces.md"
 - `review` — "Review artifacts"
 
-### `DesignStepPointerMap`
+### Step-machine routing
 
-The canonical `step_pointer_map` is:
-
-| step id | just-in-time instruction pointer |
-| --- | --- |
-| `prereqs-resolution` | none |
-| `research` | `@sai/commands/design/steps/research.md` |
-| `design` | `@sai/commands/design/steps/design.md` |
-| `tasks` | `@sai/commands/design/steps/tasks.md` |
-| `interfaces` | `@sai/commands/design/steps/interfaces.md` |
-| `review` | `@sai/commands/design/steps/review.md` |
-| `overview` | `@sai/commands/design/steps/overview.md` |
+Step-pointer routing runs exclusively through the `design-standalone@1` step machine registered in `sai-state/machines/design-standalone.js`. The machine owns the step cursor and its `STAGE_FILES` mapping; this contract declares no static `step_pointer_map`.
 
 Progress-plan rendering and step-pointer routing are separate operations. When
-the map is active, a progress continuation carries the protocol continuation
+the machine is consulted, a progress continuation carries the protocol continuation
 line followed by the pointer for the first unmarked step in the active plan;
 after all declared steps in the active plan are marked, it carries the exact
 `Active step: none — complete remaining work and return your terminal result.`
 Artifact-feedback and recovery continuations carry no pointer line.
 
 When no coordinator is sending pointer lines (supervised route or standalone worker),
-the worker derives its active step from this map itself, taking the first unmarked
-step in the active plan and the corresponding pointer from the table above. This
+the worker derives its active step from the machine's `STAGE_FILES` via the coordinator's continuation, taking the first unmarked
+step in the active plan. This
 self-derivation path allows the worker to reach its step instructions without
 relying on coordinator continuation lines.
 

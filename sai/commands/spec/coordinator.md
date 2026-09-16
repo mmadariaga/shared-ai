@@ -36,7 +36,7 @@
 
   ### 1. Render the progress plan and initialize state
 
-  Declare the exact canonical six-step `progress_plan` and static `step_pointer_map` from `@sai/policies/spec-phase-contract.md`. The plan is the coordinator's visual rendering source; the pointer map is the just-in-time routing source. Keep both immutable for the adapter segment, never put either in the dispatch envelope or reconstruction fields, and use the shared runner's deterministic pointer derivation. Pointer routing remains active even when a panel is unavailable or rendering is intentionally suppressed.
+  Declare the exact canonical six-step `progress_plan` from `@sai/policies/spec-phase-contract.md`. The plan is the coordinator's visual rendering source. Keep it immutable for the adapter segment, never put it in the dispatch envelope or reconstruction fields, and route step pointers exclusively through the declared `step_machine` per `@sai/policies/stage-machine.md` § Step machines. Pointer routing remains active even when a panel is unavailable or rendering is intentionally suppressed.
 
   Fetch @sai/policies/stage-machine.md and follow it for every store interaction; verbs, errors, quoting, pointer, and degraded-mode handling are single-sourced there and are not restated here.
 

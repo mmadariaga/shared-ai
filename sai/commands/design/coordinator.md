@@ -3,7 +3,7 @@
   Fetch @sai/policies/verified-precondition-handback.md
   Fetch @sai/policies/bounded-recovery.md and follow it as part of the shared runner.
   Fetch @sai/policies/artifact-feedback-gate.md before applying the completion gate. Supply `artifacts = design.md, tasks.md, interfaces.md`, `proceed-label = Continue`, and `next-action = the existing design completion sentence and stop`.
-  Fetch @sai/commands/design/phase-contract.md and use its canonical progress plans, step pointer map, write surface, and result union. The coordinator forwards these as-is and adds no phase-specific modifications.
+  Fetch @sai/commands/design/phase-contract.md and use its canonical progress plans, step-machine routing, write surface, and result union (no static map). The coordinator forwards these as-is and adds no phase-specific modifications.
 
   ## Lifecycle step 1: Initialization and prerequisites
 
@@ -32,7 +32,7 @@
 
   ## Lifecycle step 2: Plan declaration and dispatch
 
-  Declare the canonical static progress plans and step pointer map from `@sai/commands/design/phase-contract.md` without modification. The plan follows the raw-token-presence rule above; the coordinator does not inspect or validate the token's value. The pointer map maps every declared step id to its just-in-time instruction pointer as declared in the phase contract.
+  Declare the canonical static progress plans from `@sai/commands/design/phase-contract.md` without modification. The plan follows the raw-token-presence rule above; the coordinator does not inspect or validate the token's value. Step-pointer routing runs exclusively through the declared `step_machine` per `@sai/policies/stage-machine.md` § Step machines.
 
   Fetch @sai/policies/stage-machine.md and follow it for every store interaction; verbs, errors, quoting, pointer, and degraded-mode handling are single-sourced there and are not restated here.
 

@@ -1138,6 +1138,29 @@ test('Step 3: the design coordinator and worker both reference the canonical pha
   assertPlanVariants(phaseContract, 'the phase contract');
 });
 
+test('step-gated: the design coordinator declares step_machine and loads stage-machine.md', () => {
+  const coordinator = artifact('sai/commands/design/coordinator.md');
+  const phaseContract = artifact('sai/commands/design/phase-contract.md');
+  const worker = artifact('sai/commands/design/worker.md');
+
+  assert.match(coordinator, /step_machine: design-standalone@1/,
+    'the coordinator should declare step_machine: design-standalone@1');
+  assert.match(coordinator, /Fetch @sai\/policies\/stage-machine\.md/,
+    'the coordinator should load stage-machine.md');
+  assert.doesNotMatch(coordinator, /step_pointer_map/,
+    'the static step_pointer_map should not be declared');
+  assert.doesNotMatch(phaseContract, /### `DesignStepPointerMap`/,
+    'the static DesignStepPointerMap table should not remain');
+  assert.match(phaseContract, /design-standalone@1/,
+    'the phase contract should route via the design step machine');
+  assert.match(worker, /coordinator-provided step-machine pointer|canonical step-machine routing/,
+    'the worker should follow generic step-machine routing without naming an ID');
+  assert.doesNotMatch(worker, /standalone@1/,
+    'the worker must not name a stage machine ID');
+  assert.doesNotMatch(worker, /DesignStepPointerMap/,
+    'the static DesignStepPointerMap reference should not remain');
+});
+
 test('Step 3: coordinator plan selection is presence-only and preserves opt-in shape for malformed, missing-value, and duplicate flags', () => {
   const coordinator = artifact('sai/commands/design/coordinator.md');
   const worker = artifact('sai/commands/design/worker.md');
