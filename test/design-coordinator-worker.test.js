@@ -179,7 +179,7 @@ test('design wrappers activate routed Claude/opencode entry and preserve phase b
 
     assert.match(claude, /^model: opus$/m);
     assert.match(claude, /^effort: medium$/m);
-     assert.match(claude, /^allowed-tools: Read, Glob, Skill, Agent, SendMessage, AskUserQuestion, TaskCreate, TaskUpdate, TaskGet, TaskList, Bash\(node \.claude\/sai\/tools\/worker-report-validator\.js:\*\), Bash\(node ~\/\.claude\/sai\/tools\/worker-report-validator\.js:\*\), Bash\(node \.claude\/sai\/tools\/no-commit-guard\.js:\*\), Bash\(node ~\/\.claude\/sai\/tools\/no-commit-guard\.js:\*\), Bash\(node \.claude\/sai\/bin\/sai-state\.js:\*\), Bash\(node ~\/\.claude\/sai\/bin\/sai-state\.js:\*\)$/m);
+     assert.match(claude, /^allowed-tools: Read, Glob, Skill, Agent, SendMessage, AskUserQuestion, TaskCreate, TaskUpdate, TaskGet, TaskList, Bash\(node \.claude\/sai\/tools\/worker-report-validator\.js:\*\), Bash\(node ~\/\.claude\/sai\/tools\/worker-report-validator\.js:\*\), Bash\(node \.claude\/sai\/tools\/no-commit-guard\.js:\*\), Bash\(node ~\/\.claude\/sai\/tools\/no-commit-guard\.js:\*\), Bash\(node \.claude\/sai\/bin\/sai-state\.js:\*\), Bash\(node ~\/\.claude\/sai\/bin\/sai-state\.js:\*\), Bash\(git reset:\*\)$/m);
     assert.doesNotMatch(claude, /sai-2-design-worker/);
    assert.doesNotMatch(claude, /sai-3-implementation-worker/);
      assert.match(claude, /sai\/commands\/design\/command-bootstrap\.md/);
@@ -891,6 +891,7 @@ test('routed Claude wrappers expose the exact coordinator and panel tool scope',
     'Bash(node ~/.claude/sai/tools/no-commit-guard.js:*)',
     'Bash(node .claude/sai/bin/sai-state.js:*)',
     'Bash(node ~/.claude/sai/bin/sai-state.js:*)',
+    'Bash(git reset:*)',
   ];
   const expectedTools = [...routedTools, ...nodeGrants];
 
@@ -900,7 +901,7 @@ test('routed Claude wrappers expose the exact coordinator and panel tool scope',
     assert.ok(match, `${relativePath} should declare allowed-tools`);
     const toolNames = match[1].split(',').map(tool => tool.trim());
     assert.deepEqual(toolNames, expectedTools,
-      `${relativePath} should keep the exact routed scope with panel tools plus the closed node-scoped grant`);
+      `${relativePath} should keep the exact routed scope with panel tools plus the closed node-scoped grant and the scoped mixed-reset grant`);
     for (const forbidden of ['Edit', 'Write', 'Grep']) {
       assert.equal(match[1].includes(forbidden), false,
         `${relativePath} must not expose ${forbidden}`);
@@ -909,8 +910,8 @@ test('routed Claude wrappers expose the exact coordinator and panel tool scope',
       `${relativePath} must not expose an unscoped Bash grant`);
     for (const tool of toolNames) {
       if (tool.startsWith('Bash(')) {
-        assert.ok(tool.startsWith('Bash(node '),
-          `${relativePath} Bash grants must be node-scoped`);
+        assert.ok(tool.startsWith('Bash(node ') || tool === 'Bash(git reset:*)',
+          `${relativePath} Bash grants must be scoped (node-scoped or the mixed git reset)`);
       }
     }
   }
@@ -935,9 +936,13 @@ test('restore-coordinator-instruction-loading Step 1: explore and status preserv
   assert.doesNotMatch(exploreTools[1], /(?:^|,\s*)(?:Edit|Write)(?:,|$)/);
 
   const status = artifact('commands/claude/sai-status.md');
-  assert.match(status, /^allowed-tools: Read, Glob, Grep, Bash\(openspec:\*\), AskUserQuestion, Skill$/m);
+  assert.match(status, /^allowed-tools: Read, Glob, Grep, Bash\(openspec:\*\), Bash\(node \.claude\/sai\/tools\/change-picker\.js:\*\), Bash\(node ~\/\.claude\/sai\/tools\/change-picker\.js:\*\), Bash\(node \.claude\/sai\/tools\/status\.js:\*\), Bash\(node ~\/\.claude\/sai\/tools\/status\.js:\*\), AskUserQuestion, Skill$/m);
   assert.match(status, /Fetch @sai\/adapters\/claude\/boot\.md and follow it\./);
   assert.doesNotMatch(status, /allowed-tools:[^\n]*(?:Edit|Write|Bash\s*,)/m);
+  assert.doesNotMatch(status, /(?:^|,\s*)Bash\(git(?::|\s|,)/,
+    'sai-status must not gain a free git grant');
+  const worktree = artifact('commands/claude/sai-worktree.md');
+  assert.match(worktree, /^allowed-tools: Read, Glob, Grep, Bash\(git:\*\), Bash\(node \.claude\/sai\/tools\/worktree\.js:\*\), Bash\(node ~\/\.claude\/sai\/tools\/worktree\.js:\*\), AskUserQuestion, Skill$/m);
 });
 
 test('sai-2 feedback gate advertises and accepts direct free-text replies', () => {
@@ -1429,8 +1434,8 @@ test('Step 2: the design coordinator renders task-list stamps coordinator-only v
     'the policy should state stamp attachment is coordinator-only');
   assert.match(policy, /never from a worker subagent/i,
     'the policy should state attachment never originates from the worker subagent');
-  assert.match(claudeWrapper, /Bash\(node .*worker-report-validator\.js:\*\).*Bash\(node .*no-commit-guard\.js:\*\).*Bash\(node .*sai-state\.js:\*\)/,
-    'the wrapper should carry only the closed node-scoped grant (validator plus guard plus store, both roots) now that stamps come from validated_at');
+  assert.match(claudeWrapper, /Bash\(node .*worker-report-validator\.js:\*\).*Bash\(node .*no-commit-guard\.js:\*\).*Bash\(node .*sai-state\.js:\*\).*Bash\(git reset:\*\)/,
+    'the wrapper should carry the closed scoped grant (validator plus guard plus store, both roots, plus the mixed reset) now that stamps come from validated_at');
   assert.doesNotMatch(coordinator, /date \+%H:%M|Get-Date/,
     'per-harness wall-clock commands no longer live in the coordinator body');
 });
