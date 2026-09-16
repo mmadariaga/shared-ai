@@ -8,6 +8,20 @@ Rules originating here: Complexity Derivation Rubric. Rules referenced from else
 
 Before completion run the Artifact Verification Checklist from `steps/common.md`, then apply Rule #1 and Rule #2 from `steps/common.md`. A failed check is corrected before this step completes.
 
+## Cited-path existence gate (blocking)
+
+Before completion run the deterministic cited-path existence checker `check-cited-paths.js` in `sai-1` mode against the current change. Resolve the tool by taking the **first candidate below that exists**, copied **verbatim**:
+
+**Claude Code**:
+1. `.claude/sai/tools/check-cited-paths.js` — project-local
+2. `~/.claude/sai/tools/check-cited-paths.js` — user-global
+
+**opencode**:
+1. `.opencode/sai/tools/check-cited-paths.js` — project-local
+2. `~/.config/opencode/sai/tools/check-cited-paths.js` — user-global
+
+If no candidate exists, report that and proceed without the check; do not attempt to compose a path. If the tool exists, run `node <tool> sai-1 <change-name> --cwd <project-root>`. A non-zero exit is blocking: fix every cited evidence path in `proposal.md` and `specs/**` (using the tool's basename candidates as suggestions only — the tool never rewrites artifacts) and re-run until it passes. This gate is read-only and performs no auto-fix.
+
 ## Structured validation report
 
 The validation step does not print warnings. For every warning from Rule #1
