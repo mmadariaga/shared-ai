@@ -130,3 +130,18 @@ test('Step 6 compatibility inherits diagnosis-driven recovery through apply and 
     /(?:recovery_policy|continue_after_recovery|diagnosis_key|design-overview-repair|Coverage Signature|Known-False Report Recovery|sole runtime registry|surface_id\s*\|)/i,
     'build must not rewrite or register recovery behavior');
 });
+
+test('Claude sai-build keeps exact apply parity for the chained apply segment', () => {
+  const buildWrapper = readRequired('commands/claude/sai-build.md');
+  const applyWrapper = readRequired('commands/claude/sai-4-apply.md');
+  const buildTools = buildWrapper.match(/^allowed-tools:\s*(.+)$/m);
+  const applyTools = applyWrapper.match(/^allowed-tools:\s*(.+)$/m);
+
+  assert.ok(buildTools, 'sai-build should declare allowed-tools');
+  assert.ok(applyTools, 'sai-4-apply should declare allowed-tools');
+  assert.equal(buildTools[1].trim(), applyTools[1].trim(),
+    'sai-build should keep exact apply parity for coordinator-owned git, checklist, and verification work');
+  assert.match(buildWrapper,
+    /^allowed-tools: Read, Glob, Grep, Edit, Write, Bash, Skill, Agent, SendMessage, AskUserQuestion, TaskCreate, TaskUpdate, TaskGet, TaskList$/m,
+    'sai-build should pin the wide execution set without node-scoped narrowing');
+});

@@ -123,7 +123,7 @@ test('review worker contract enumerates the five ids and pins the batch semantic
   );
   assert.match(worker, /startup act/i);
   assert.match(worker, /resolve-change/);
-  assert.match(worker, /Pass 11[\s\S]{0,240}(?:gate|not applicable|skip)/i);
+  assert.match(worker, /Pass 12[\s\S]{0,240}(?:gate|not applicable|skip)/i);
   assert.match(worker, /empty diff[\s\S]{0,240}(?:cancelled|establish-diff-scope)/i);
   assert.match(worker, /no Milestone Stamp/i);
   assert.match(worker, /never[\s\S]{0,160}(?:before resolution|in place of a terminal|needs_input)/i);
