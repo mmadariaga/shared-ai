@@ -8,11 +8,11 @@ Accepted
 
 ## Context
 
-The `/sai-3-implement` step-gated instruction delivery experiment carves the worker's instruction mass into per-progress-plan-step files under `sai/commands/implement/steps/`, making that library the worker-canonical rule home for the step-gated flow. `sai/commands/implement/instructions.md` (and `invocation.md`) remain byte-for-byte untouched because `/sai-4-apply` still consumes them. Two canonical sources therefore describe the same phase policy — `steps/` for the step-gated worker, `instructions.md`/`invocation.md` for the apply consumer — with no mechanism keeping them in sync.
+The `/sai-3-implement` step-gated instruction delivery experiment carves the worker's instruction mass into per-progress-plan-step files under `sai/commands/implement/steps/`, making that library the worker-canonical rule home for the step-gated flow. `sai/commands/implement/instructions.md` remains as a cited reference (for example `sai/commands/review/` and `sai/commands/implement/steps/plan-generation.md`). Two canonical sources therefore describe the same phase policy — `steps/` for the step-gated worker, `instructions.md` as a cited reference — with no mechanism keeping them in sync.
 
 ## Decision
 
-Keep both sources. `sai/commands/implement/steps/` is the worker-canonical rule home under the experiment; `sai/commands/implement/instructions.md` and `invocation.md` stay byte-for-byte untouched for `/sai-4-apply`. No synchronization mechanism is built; divergence between the two sources is accepted as experiment scope.
+Keep both sources. `sai/commands/implement/steps/` is the worker-canonical rule home under the experiment; `sai/commands/implement/instructions.md` stays as a cited reference. No synchronization mechanism is built; divergence between the two sources is accepted as experiment scope.
 
 ## Alternatives Considered
 
@@ -22,7 +22,7 @@ Keep both sources. `sai/commands/implement/steps/` is the worker-canonical rule 
 ## Consequences
 
 - Dual-canonical source risk between `steps/` and `instructions.md` persists while the experiment runs.
-- Rollback is removing the `step_pointer_map` declaration from the implement coordinator card; the step files simply stop being delivered and `instructions.md`/`invocation.md` remain authoritative for apply, untouched.
+- Rollback is removing the `step_pointer_map` declaration from the implement coordinator card; the step files simply stop being delivered and `instructions.md` remains as a cited reference, untouched.
 - Refs ADR 0172c (the `/sai-1-spec` step-gated experiment this change replicates).
 
 ## Related

@@ -107,7 +107,7 @@ The openspec-dependent `sai-*` commands halt with a clear error if either is mis
 | `skills/opencode/` | opencode harness skills. |
 | `skills/` | Universal skills installed globally (not project-local). Fetched by wrappers via `~/.claude/skills/` or `~/.config/opencode/skills/`. |
 | `skills/universal/sai-commands/SKILL.md` | SAI command registry — lists all /sai-* commands and enforces fetch-before-execute discipline. Loaded to prevent LLM from skipping command files. |
-| `skills/universal/safe-operations/SKILL.md` | Safe operations skill — enforces reversibility and impact awareness, requires user confirmation before destructive/hard-to-reverse/shared-system operations. Loaded by 9 sai-* command wrappers. |
+| `skills/universal/safe-operations/SKILL.md` | Safe operations skill — enforces reversibility and impact awareness, requires user confirmation before destructive/hard-to-reverse/shared-system operations. Loaded by 10 sai-* commands. |
 | `skills/universal/` | Universal skills (no vendor). Fetched by all wrappers. |
 | `skills/claude/` | Claude Code-specific skills (subagent dispatch rules, etc.). Fetched by wrappers that spawn subagents. Routed workers load neutral bindings directly from installed `sai/orchestration/workers/bindings/` paths. |
 | `skills/opencode/` | Opencode-specific skills (subagent dispatch rules, etc.). Fetched by wrappers that spawn subagents. Routed workers load neutral bindings directly from installed `sai/orchestration/workers/bindings/` paths. |

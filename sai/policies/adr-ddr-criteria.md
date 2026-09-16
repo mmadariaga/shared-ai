@@ -1,6 +1,6 @@
 # ADR/DDR Criteria and Routing Test (shared instruction)
 
-Shared decision-record criteria fetched by `sai/commands/design/steps/design.md` (which records the resolved family) and `sai/commands/implement/instructions.md` Step 3 (which acts on it). The criteria and the routing test live ONLY here — neither fetching body restates them inline.
+Shared decision-record criteria fetched by `sai/commands/design/steps/design.md` (which records the resolved family), `sai/commands/implement/instructions.md` Step 3 and `sai/commands/implement/steps/artifact-analysis.md` (which act on it), and `sai/commands/explore/steps/pipeline-direct-build.md` (Direct Build pass). The criteria and the routing test live ONLY here — no fetching body restates them inline.
 
 This instruction is flat: it takes no parameters and the fetch site supplies nothing.
 
