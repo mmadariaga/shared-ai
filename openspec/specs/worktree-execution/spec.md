@@ -1,7 +1,7 @@
 # worktree-execution Specification
 
 ## Purpose
-TBD - created by archiving change fix-execution-permissions-guard-worktree-status. Update Purpose after archive.
+Define the node-scoped `worktree.js` execution surface the `sai-worktree` wrapper permits in both roots alongside its scoped `Bash(git:*)` grant, and the closed scope of that surface.
 
 ## Requirements
 

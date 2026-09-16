@@ -1,7 +1,7 @@
 # resilience-pass Specification
 
 ## Purpose
-TBD - created by archiving change add-resilience-review-pass. Update Purpose after archive.
+Define the dedicated Resilience review pass over the diff's fault-tolerance surface, its exclusive ownership, severity mapping, exemption rules, and the resulting renumbering of mutation analysis to Pass 12.
 ## Requirements
 ### Requirement: Resilience review pass
 The review SHALL include a dedicated Resilience pass that reviews fault-tolerance of the diff's I/O paths: missing timeouts, unbounded retries, missing circuit-breaker, non-idempotent retry/redelivery handlers, and missing fallback or degraded path.

@@ -31,7 +31,7 @@ Drop findings that are purely stylistic if the codebase has no enforced conventi
      Accessibility→ { ⚠️  Run `/sai-8-accessibility {change-name}` | ✅ Not required }
      ```
 
-5. **Close terminally.** Return `completed` with the summary and audit block; print the changed-files union, then `Review done.`, and stop. Do not pause for feedback, present a picker, or open a feedback gate. Do not issue `needs_input` for review feedback. Do not modify production code. Fixes are the responsibility of a follow-up implementation pass driven by the user. User follow-up after close stays in conversation and does not reopen the closed run.
+5. **Close terminally.** Return `completed` with the summary and audit block, and stop. Do not print the changed-files union and do not print a `Review done.` line — the coordinator owns terminal presentation. Do not pause for feedback, present a picker, or open a feedback gate. Do not issue `needs_input` for review feedback. Do not modify production code. Fixes are the responsibility of a follow-up implementation pass driven by the user. User follow-up after close stays in conversation and does not reopen the closed run.
 
 ## Output Template
 

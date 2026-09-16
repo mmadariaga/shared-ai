@@ -1,7 +1,7 @@
 # doc-accuracy Specification
 
 ## Purpose
-TBD - created by archiving change low-severity-docs-contracts-hygiene. Update Purpose after archive.
+Define the model and effort assignments AGENTS.md and the README must state for the Build, Meta-review, Design, and Spec coordinator/worker routing lines.
 
 ## Requirements
 

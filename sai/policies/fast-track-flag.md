@@ -8,10 +8,11 @@ cards reference it; they SHALL NOT restate or redefine the model inline.
 
 1. **Owner** — the coordinator (or the main session on surfaces without a
    routed coordinator) owns BOTH the parse and the banner for every opt-in
-   command except `sai-2-design` (`sai-explore`, `sai-4-apply`, `sai-archive`,
-   `sai-backfill`, `sai-merge`). Workers never parse `--fast-track` for
-   activation and never emit the activation banner, except where a documented
-   exception below assigns phase-owned parse (`sai-2-design`, `sai-backfill`).
+   command except `sai-2-design` and `sai-backfill` (`sai-explore`,
+   `sai-4-apply`, `sai-archive`, `sai-merge`). Workers never parse
+   `--fast-track` for activation and never emit the activation banner, except
+   where a documented exception below assigns phase-owned parse
+   (`sai-2-design`, `sai-backfill`).
 2. **Parse** — inspect the opaque request string for the positional token
    `--fast-track`. On presence: activate fast-track, remove the token, trim
    surrounding whitespace, and use the cleaned remainder downstream.

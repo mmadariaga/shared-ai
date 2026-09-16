@@ -1,7 +1,7 @@
 # build-composition-execution Specification
 
 ## Purpose
-TBD - created by archiving change fix-review-pass12-sai-build-tools. Update Purpose after archive.
+Define the execution surface the Claude `sai-build` wrapper declares so its chained apply segment runs at apply parity, and the test that pins that wide set.
 
 ## Requirements
 

@@ -1,20 +1,20 @@
 # design-phase-consolidation Specification
 
 ## Purpose
-TBD - created by archiving change collapse-design-command-monolith. Update Purpose after archive.
+Define the consolidated design phase: `sai/commands/design/phase-contract.md` as the authoritative source for the plans, routing, write surface, and result union; coordinator/worker plan parity; coordinator-supplied step pointers; and where the file-manifest fold and resolved-change-name placeholder rules live.
 ## Requirements
 ### Requirement: phase-contract-is-canonical
-The routed design coordinator and the design planning worker SHALL reference `sai/commands/design/phase-contract.md` as the authoritative and exclusive source for the `DesignProgressPlan`, `DesignStepPointerMap`, `DesignWriteSurface`, and `DesignResultUnion` declarations. Neither the coordinator card nor the worker card SHALL carry an inline redeclaration or restatement of those declarations.
+The routed design coordinator and the design planning worker SHALL reference `sai/commands/design/phase-contract.md` as the authoritative and exclusive source for the `DesignProgressPlan`, the `design-standalone@1` step-machine routing declaration, `DesignWriteSurface`, and `DesignResultUnion` declarations. Neither the coordinator card nor the worker card SHALL carry an inline redeclaration or restatement of those declarations.
 
 #### Scenario: Coordinator references the phase contract
 - **WHEN** the design coordinator initializes at invocation start
-- **THEN** it fetches `sai/commands/design/phase-contract.md` and takes both progress-plan variants and the step pointer map from it
+- **THEN** it fetches `sai/commands/design/phase-contract.md` and takes both progress-plan variants and the step-machine routing declaration from it
 - **AND** `sai/commands/design/coordinator.md` carries no inline enumeration of those declarations
 
 #### Scenario: Worker references the phase contract
 - **WHEN** the design planning worker initializes at invocation start
 - **THEN** it fetches `sai/commands/design/phase-contract.md` and selects its progress-plan variant from the declarations there
-- **AND** `sai/commands/design/worker.md` carries no inline enumeration of the plans, the pointer map, the write surface, or the result union
+- **AND** `sai/commands/design/worker.md` carries no inline enumeration of the plans, the step-machine routing declaration, the write surface, or the result union
 
 ### Requirement: coordinator-and-worker-plan-parity
 The coordinator and the worker SHALL resolve to the same progress-plan variant for a given invocation, selected from raw `--overview-lang` token presence: a present token selects the opted-in seven-step plan, an absent token selects the unopted six-step plan. Because both read the same canonical declaration, parity holds by construction rather than by duplicated enumeration.
@@ -28,8 +28,8 @@ The coordinator and the worker SHALL resolve to the same progress-plan variant f
 - **THEN** both surfaces resolve the plan whose ordered step ids are `prereqs-resolution`, `research`, `design`, `tasks`, `interfaces`, `review`
 - **AND** the `overview` step is omitted with no replacement step in its position
 
-### Requirement: static-step-pointer-map-is-fully-known
-The phase contract SHALL declare a static `DesignStepPointerMap` covering the union of both plan variants' step ids, fully known at dispatch and immutable for the invocation. Pointer derivation SHALL consult only the step ids of the active plan, so an unopted activation never derives the `overview` entry.
+### Requirement: step-machine-stage-files-are-fully-known
+The phase contract SHALL declare routing through the `design-standalone@1` step machine and no static `DesignStepPointerMap`. That machine's `STAGE_FILES` mapping covers the union of both plan variants' step ids, is fully known at dispatch, and is immutable for the invocation. Pointer derivation SHALL consult only the step ids of the active plan, so an unopted activation never derives the `overview` entry.
 
 #### Scenario: Unopted activation never derives the overview pointer
 - **WHEN** the unopted plan is active and every one of its six steps has been marked
@@ -38,15 +38,15 @@ The phase contract SHALL declare a static `DesignStepPointerMap` covering the un
 
 #### Scenario: Pointer map is absent from transport
 - **WHEN** the coordinator dispatches the worker or reconstructs a replacement
-- **THEN** the pointer map travels in neither the dispatch envelope nor any reconstruction field
+- **THEN** the `STAGE_FILES` mapping travels in neither the dispatch envelope nor any reconstruction field
 
-### Requirement: worker-derives-pointers-without-a-coordinator
-When no coordinator is present to send pointer lines, the design planning worker SHALL derive its own active step from the canonical `DesignStepPointerMap`, taking the first unmarked step in the active plan. This keeps the step-sealing rule intact on a coordinator-less dispatch instead of requiring the worker to open every step file.
+### Requirement: pointers-always-arrive-as-coordinator-continuation-lines
+Every step pointer SHALL reach the design planning worker as a coordinator continuation line; the worker SHALL NOT derive its own active step. On the standalone route the coordinator consults `design-standalone@1` and wraps its `next.follow` in the continuation; on the supervised route Explore's adapter occupies the coordinator role and consults the same machine as a routing-only declaration. This keeps the step-sealing rule intact without requiring the worker to open every step file or to consult the step machine itself.
 
-#### Scenario: Supervised dispatch resolves its own step pointers
-- **WHEN** the design worker runs on a route where no coordinator issues progress continuations
-- **THEN** it resolves the active step itself from the canonical map
-- **AND** it opens only the step file that resolution names
+#### Scenario: Supervised dispatch receives its step pointers from the adapter
+- **WHEN** the design worker runs on the supervised route, where no standalone coordinator issues progress continuations
+- **THEN** Explore's supervised adapter supplies the active-step pointer in every progress continuation
+- **AND** the worker opens only the step file that pointer names
 
 ### Requirement: file-manifest-algorithm-lives-with-its-input
 The deterministic net-fold algorithm that produces the `### File Manifest` subsection SHALL be specified in `sai/commands/design/steps/tasks.md`, where its input — the per-step `**Files Affected**` entries — is authored. `sai/commands/design/steps/design.md` SHALL state that the section exists and where it is authored, and SHALL NOT restate the algorithm.

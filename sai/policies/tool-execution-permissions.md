@@ -29,7 +29,7 @@ No other `node` invocation is permitted on this wrapper.
 
 ### Worker coordinators (`sai-1-spec`, `sai-2-design`, `sai-3-implement`,
 ### `sai-5-review`, `sai-6-security`, `sai-7-performance`,
-### `sai-8-accessibility`, `sai-build`, `sai-review`)
+### `sai-8-accessibility`, `sai-review`)
 
 Exactly three `node` tools, each in both roots, plus one scoped remediation grant:
 
@@ -46,8 +46,8 @@ Exactly three `node` tools, each in both roots, plus one scoped remediation gran
   only, never `--hard`, `--soft`, `--keep`, checkout, or branch operations,
   under the existing safe-operations carve-out.
 
-No other `node` invocation is permitted on these wrappers. No wrapper gains
-an unscoped `Bash` grant.
+No other `node` invocation is permitted on these wrappers. None of the
+wrappers in this section gains an unscoped `Bash` grant.
 
 ### Worktree (`commands/claude/sai-worktree.md`)
 
@@ -76,10 +76,14 @@ No other `node` invocation is permitted on this wrapper.
 
 ### Unchanged surface
 
-`sai-4-apply`, `sai-commit`, `sai-archive`, `sai-backfill`, and `sai-merge`
-keep their current execution surface unchanged (full `Bash` or unrestricted
-where declared). No other wrapper gains a `node` entry beyond the closed sets
-above.
+`sai-4-apply`, `sai-build`, `sai-commit`, `sai-archive`, `sai-backfill`, and
+`sai-merge` keep their current execution surface unchanged (full `Bash` or
+unrestricted where declared). `sai-4-apply` and `sai-build` declare an
+unscoped `Bash` in `allowed-tools`; `sai-commit`, `sai-archive`,
+`sai-backfill`, and `sai-merge` declare no `allowed-tools` key at all.
+`sai-retire-docs` also keeps an unscoped `Bash` in its `allowed-tools`, and
+`sai-pr` declares no `allowed-tools` key. No other wrapper gains a `node`
+entry beyond the closed sets above.
 
 ## Failure semantics
 

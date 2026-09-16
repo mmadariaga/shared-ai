@@ -1,7 +1,7 @@
 # archive-immutability-guard Specification
 
 ## Purpose
-TBD - created by archiving change review-close-archive-guard. Update Purpose after archive.
+Define the guard that blocks direct edits under `openspec/changes/archive/` outside the authorized sai-archive creation flow while keeping normal archive creation allowed.
 
 ## Requirements
 

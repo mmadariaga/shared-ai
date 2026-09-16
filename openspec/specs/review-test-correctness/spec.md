@@ -1,7 +1,7 @@
 # review-test-correctness Specification
 
 ## Purpose
-TBD - created by archiving change fix-review-pass12-sai-build-tools. Update Purpose after archive.
+Define the alignment between the review coordinator-worker contract test and the live worker card, pinning the Pass 12 mutation-analysis activation gate.
 
 ## Requirements
 

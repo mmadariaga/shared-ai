@@ -1,7 +1,7 @@
 # specs-write-guard Specification
 
 ## Purpose
-TBD - created by archiving change review-close-archive-guard. Update Purpose after archive.
+Define the guard that blocks direct writes to `openspec/specs/` when no active change exists, directing the author to the proposal flow.
 
 ## Requirements
 

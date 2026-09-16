@@ -1,7 +1,7 @@
 # launcher-test-coverage Specification
 
 ## Purpose
-TBD - created by archiving change review-close-archive-guard. Update Purpose after archive.
+Define the launcher test coverage that keeps the forward-only archive guard and the specs-write guard separately enforced, with the `IMMUTABLE_HISTORY` exclusion scan-scope only.
 
 ## Requirements
 

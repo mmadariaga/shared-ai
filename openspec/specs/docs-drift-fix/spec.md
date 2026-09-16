@@ -1,7 +1,7 @@
 # docs-drift-fix Specification
 
 ## Purpose
-TBD - created by archiving change fix-step-pointer-map-docs-drift. Update Purpose after archive.
+Define machine-only step routing as the documented truth: per-phase `step_machine` identifiers with no static `step_pointer_map` table, across AGENTS.md, the spec and design contracts, their consumers, and the tests that pin them.
 
 ## Requirements
 

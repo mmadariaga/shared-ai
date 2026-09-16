@@ -1,7 +1,7 @@
 # guard-remediation Specification
 
 ## Purpose
-TBD - created by archiving change fix-execution-permissions-guard-worktree-status. Update Purpose after archive.
+Define the scoped `Bash(git reset:*)` grant the planning and audit coordinators use for the mixed `git reset <guard_base>` remediation after a guard violation, and how that closed grant is recorded.
 
 ## Requirements
 

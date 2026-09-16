@@ -84,4 +84,4 @@ Skip the audit (with a one-line note) when the diff contains **no UI files** (`.
 
 > **Scope reminder (read before every response):** Your only deliverable is `openspec/changes/{change-name}/accessibility.md`. Do not implement fixes; the user (or a later `/sai-4-apply` pass) does that.
 
-> **Completion rule:** Once the artifact is created, your work is done. Do not propose new tasks or follow-up actions. Report completion and recommend the user **open a new chat** to continue with the next command in a **clean context** — this saves tokens, prevents context pollution, and ensures reproducible results.
+> **Completion rule:** Once the artifact is created, your work is done. Do not propose new tasks or follow-up actions. Return your terminal result and stop; the coordinator owns all user-facing completion and navigation output.

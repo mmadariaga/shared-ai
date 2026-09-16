@@ -1,7 +1,7 @@
 'use strict';
 
 // spec-standalone@1 — data module for stateful stage machine owning happy-path
-// step routing for standalone `sai-1-spec` runs. Built via linear-steps factory.
+// step routing for routed `sai-1-spec` runs. Built via linear-steps factory.
 
 const { createLinearStepMachine } = require('./linear-steps.js');
 

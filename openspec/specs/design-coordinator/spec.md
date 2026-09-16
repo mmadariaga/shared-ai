@@ -275,7 +275,7 @@ The design phase adapter and the design worker contract SHALL declare one of two
 - `review` — "Review artifacts"
 - `overview` — "Generate change-overview.md"
 
-The unopted-in plan SHALL contain exactly the first six steps in the same order and labels and SHALL contain no `overview` or replacement `skipped` step. Both declarations SHALL compare equal for the selected variant. The plan is static and fully known before worker dispatch; it is not carried in the envelope, emitted as a lifecycle field, or inferred from a worker result. The plan SHALL NOT contain a standalone `specs-approval` step. While the static `step_pointer_map` is in force, every progress-event continuation payload SHALL additionally carry the deterministic `Active step:` pointer line derived from that map, and artifact-feedback and `continue_after_recovery` continuations SHALL carry no pointer line so the worker's active step persists across them.
+The unopted-in plan SHALL contain exactly the first six steps in the same order and labels and SHALL contain no `overview` or replacement `skipped` step. Both declarations SHALL compare equal for the selected variant. The plan is static and fully known before worker dispatch; it is not carried in the envelope, emitted as a lifecycle field, or inferred from a worker result. The plan SHALL NOT contain a standalone `specs-approval` step. While the declared `design-standalone@1` step machine is in force, every progress-event continuation payload SHALL additionally carry the deterministic `Active step:` pointer line derived from that machine, and artifact-feedback and `continue_after_recovery` continuations SHALL carry no pointer line so the worker's active step persists across them.
 
 #### Scenario: Opted-in design plan is declared
 
@@ -343,9 +343,9 @@ After design artifacts and the feedback gate are complete, an opted-in invocatio
 - **THEN** the coordinator emits the existing design completion sentence at the no-generation terminal
 - **AND** it does not dispatch a generator, write a new overview state, or dispatch `/sai-3-implement`
 
-### Requirement: Design coordinator declares a static step_pointer_map over both plans' superset
+### Requirement: Design coordinator routes both plans' superset through its declared step machine
 
-The design coordinator card SHALL declare a static optional `step_pointer_map` — fully known at dispatch, immutable for the invocation, and never carried in the dispatch envelope or any reconstruction field — mapping every declared step id from both plans' superset to its just-in-time instruction pointer: `prereqs-resolution` to none and `research`, `design`, `tasks`, `interfaces`, `review`, and `overview` each to their file under `sai/commands/design/steps/`. Base-plan activations SHALL NOT derive the inert `overview` pointer entry; pointer derivation SHALL consult only steps declared in the active plan. Replacement reconstruction SHALL require the departing worker's `active_step_id`, and the replacement's first continuation SHALL carry the correct pointer line for that active step.
+The design coordinator card SHALL declare `step_machine: design-standalone@1` and SHALL NOT declare a static `step_pointer_map`. The machine registered in `sai-state/machines/design-standalone.js` SHALL own the step cursor and the `STAGE_FILES` mapping — immutable for the invocation and never carried in the dispatch envelope or any reconstruction field — from every declared step id in both plans' superset to its just-in-time instruction pointer: `prereqs-resolution` to none and `research`, `design`, `tasks`, `interfaces`, `review`, and `overview` each to their file under `sai/commands/design/steps/`. Base-plan activations SHALL NOT derive the inert `overview` pointer entry; pointer derivation SHALL consult only steps declared in the active plan. Replacement reconstruction SHALL require the departing worker's `active_step_id`, and the replacement's first continuation SHALL carry the correct pointer line for that active step.
 
 #### Scenario: base-plan activation never derives the inert entry
 

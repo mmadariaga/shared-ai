@@ -1,7 +1,7 @@
 # cosmetic-doc-consistency Specification
 
 ## Purpose
-TBD - created by archiving change fix-cosmetic-doc-drift. Update Purpose after archive.
+Define the cosmetic accuracy corrections the shared documentation carries — consumer counts, boot example paths, rationale wording, punctuation, ADR/DDR coverage, apply projection references, and fetch resolution table completeness.
 
 ## Requirements
 

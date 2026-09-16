@@ -61,7 +61,9 @@ Skills you load and files you fetch may themselves contain `Fetch @` directives.
 
 | Reference | Resolves to |
 |-----------|-------------|
-| `@sai/commands/X.md` | `~/.claude/sai/commands/X.md` |
-| `@commands/X.md` | `~/.claude/commands/X.md` |
+| `@sai/commands/X.md` (project-local) | `.claude/sai/commands/X.md` |
+| `@sai/commands/X.md` (user-global) | `~/.claude/sai/commands/X.md` |
+| `@commands/X.md` (project-local) | `.claude/commands/X.md` |
+| `@commands/X.md` (user-global) | `~/.claude/commands/X.md` |
 
 Always read the full resolved path — do NOT assume two `@` references point to the same file because their filenames match.

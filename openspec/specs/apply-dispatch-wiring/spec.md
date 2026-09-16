@@ -1,7 +1,7 @@
 # apply-dispatch-wiring Specification
 
 ## Purpose
-TBD - created by archiving change load-apply-bindings-via-runner. Update Purpose after archive.
+Define how the apply runner loads its RED and GREEN worker bindings through neutral, harness-agnostic Fetch resolution so standalone and chained dispatches always run the active binding.
 
 ## Requirements
 

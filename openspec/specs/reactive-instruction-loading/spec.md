@@ -12,9 +12,9 @@ The machine SHALL map `prereqs-and-change` to `follow: none` with a no-fetch hin
 - **WHEN** the caller projects the initial state and the terminal done stage
 - **THEN** both carry follow none with the no-fetch and all-complete hints respectively
 
-### Requirement: Standalone-only per-event consult with byte-identical wire
+### Requirement: Per-event consult with byte-identical wire
 
-Standalone runs SHALL consult the sidecar per progress event and wrap next follow in the unchanged two-line continuation with the step id and path, and with every step marked emit the exact Active step none literal. The shared command-runner contract SHALL stay untouched. The supervised adapter SHALL keep its routing-only map and SHALL never consult this machine. No shared sessions or state SHALL exist.
+Standalone runs SHALL consult the sidecar per progress event and wrap next follow in the unchanged two-line continuation with the step id and path, and with every step marked emit the exact Active step none literal. The shared command-runner contract SHALL stay untouched. The supervised adapter SHALL consult this same machine as a routing-only declaration. No shared sessions or state SHALL exist.
 
 #### Scenario: Happy-path walk ends with the none literal
 
@@ -56,7 +56,7 @@ The machine SHALL map `prereqs-resolution` to follow none with a no-fetch hint, 
 - **THEN** the next follow names the research step file with skip-if-already-loaded wording
 
 ### Requirement: Design standalone consult with parked continuations
-Standalone runs SHALL consult the sidecar per progress event and wrap its next follow in the unchanged two-line continuation carrying the step id and path. Feedback and recovery continuations SHALL carry no pointer line so the worker active step file persists across them. The shared command-runner contract SHALL stay untouched and the machine SHALL never write artifacts. The supervised adapter SHALL keep its routing-only map and SHALL never consult this machine.
+Standalone runs SHALL consult the sidecar per progress event and wrap its next follow in the unchanged two-line continuation carrying the step id and path. Feedback and recovery continuations SHALL carry no pointer line so the worker active step file persists across them. The shared command-runner contract SHALL stay untouched and the machine SHALL never write artifacts. The supervised adapter SHALL consult this same machine as a routing-only declaration, with no shared session or state.
 
 #### Scenario: Progress event delivers machine pointer
 - **WHEN** the worker reports research complete on a standalone run

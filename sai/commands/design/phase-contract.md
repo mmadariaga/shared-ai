@@ -69,11 +69,13 @@ after all declared steps in the active plan are marked, it carries the exact
 `Active step: none — complete remaining work and return your terminal result.`
 Artifact-feedback and recovery continuations carry no pointer line.
 
-When no coordinator is sending pointer lines (supervised route or standalone worker),
-the worker derives its active step from the machine's `STAGE_FILES` via the coordinator's continuation, taking the first unmarked
-step in the active plan. This
-self-derivation path allows the worker to reach its step instructions without
-relying on coordinator continuation lines.
+Explore's supervised adapter uses the same `design-standalone@1` step machine as a
+routing-only declaration and intentionally declares no visual `progress_plan`. It
+still tracks worker progress ids for pointer derivation and never renders a second
+design task list over the Explore idea list. The worker never derives its own
+active step: every step pointer reaches it as a coordinator continuation line,
+with this adapter occupying the coordinator role for pointer delivery on the
+supervised route.
 
 ## `DesignWriteSurface`
 

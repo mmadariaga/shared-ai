@@ -1,7 +1,7 @@
 # contract-clarity Specification
 
 ## Purpose
-TBD - created by archiving change low-severity-docs-contracts-hygiene. Update Purpose after archive.
+Define the failed-lifecycle reporting contract the four audit `steps/common.md` files apply when a change's `proposal.md` is missing.
 
 ## Requirements
 

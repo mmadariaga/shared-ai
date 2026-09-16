@@ -1,16 +1,16 @@
 'use strict';
 
 // design-standalone@1 — stateful stage machine owning happy-path step routing
-// for standalone `sai-2-design` runs (I1). Mirrors `explore-idea@1` cursor
+// for routed `sai-2-design` runs (I1). Mirrors `explore-idea@1` cursor
 // pattern and the sibling `spec-standalone@1` machine: stage machine owns the stage
 // table, pointer routing, transition rules, and progression state; the
 // coordinator consults it per progress event and wraps its `next.follow` in
 // the unchanged two-line continuation (wire byte-identical). Routing-only:
 // the machine never writes artifacts.
 //
-// Standalone-only scope (I4): the supervised adapter keeps its routing-only
-// map and never consults this machine; no shared sessions or state. Shared
-// `command-runner` contract untouched.
+// Supervised scope (I4): Explore's supervised adapter uses this same machine
+// as a routing-only declaration and declares no visual `progress_plan`; no
+// shared sessions or state. Shared `command-runner` contract untouched.
 //
 // Stage table (I2) replicates the seven design steps from
 // `sai/commands/design/phase-contract.md` as-is, happy-path only, no
@@ -37,7 +37,8 @@
 // parks until the next progress event (E6, I5). Replacement re-resolves via
 // `project()` from the surviving stage machine session (E6, I5). Every standalone
 // run opens a fresh stage machine session and never reuses prior marks; supervised
-// runs never touch this machine; the session closes when the run closes with
+// runs consult it through Explore's routing-only declaration and share no
+// session or state; the session closes when the run closes with
 // no machine auto-retry (E6, I5). Emit or follow-load failure stops the run,
 // shows the error, and waits; nothing is guessed, never through Bounded
 // Recovery (E7, I5).

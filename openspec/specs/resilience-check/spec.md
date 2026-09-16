@@ -1,7 +1,7 @@
 # resilience-check Specification
 
 ## Purpose
-TBD - created by archiving change add-resilience-review-pass. Update Purpose after archive.
+Define the resilience review check itself: what it flags (unbounded retries, missing timeouts, idempotency, fallback), how its severities are gated, its no-surface recording, and the Resilience Surface Triage section of the review report.
 ## Requirements
 ### Requirement: Resilience pass SHALL be the single owner for retries, timeouts, circuit-breaker, idempotency and fallback
 Resilience owns these points; Correctness and Performance-triage MUST NOT duplicate them.
