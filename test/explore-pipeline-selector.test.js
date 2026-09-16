@@ -1326,12 +1326,12 @@ test('Step 4: Manual remains uncapped and each re-emission emits one handoff bef
 
 test('Step 4: successful Plan (unattended) emits the build handoff and never dispatches implementation', () => {
   const source = exploreContract();
-  const success = 'A successful Plan (unattended) run emits the `Next step: run /sai-build {name}.` handoff and performs no implementation-phase dispatch';
+  const success = 'A successful Plan (unattended) run emits the expanded successful close above (review here → `/sai-build {name}` in another chat → titled `next-slice`) and performs no implementation-phase dispatch';
   const successIndex = source.indexOf(success);
 
   assert.ok(successIndex >= 0, 'the successful Plan outcome should be specified');
-  assert.match(source.slice(successIndex, successIndex + 320), /`Next step: run \/sai-build \{name\}\.`/i,
-    'successful Plan should hand off to the build composition');
+  assert.match(source.slice(successIndex, successIndex + 320), /\/sai-build \{name\}.*another chat.*next-slice/is,
+    'successful Plan should hand off to the build composition with the expanded close');
   assert.doesNotMatch(source.slice(successIndex, successIndex + 320), /`sai-3 was not run\.`/i,
     'successful Plan should not emit the obsolete terminal text');
 });
