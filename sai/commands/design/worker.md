@@ -50,7 +50,7 @@ amendments per @sai/commands/design/steps/design.md (Spec-problem handling).
 
 The startup act is one batch: it parses fast-track, runs prerequisites, resolves the change, and commits the selected immutable plan. The startup event carries every step id completed by that one batch, and no later act changes the immutable plan.
 
-Fetch @sai/commands/design/phase-contract.md and use its canonical `DesignProgressPlan` variants and `DesignStepPointerMap`. This worker does not redeclare them, add a third plan, or alter them after startup.
+Fetch @sai/commands/design/phase-contract.md and use its canonical `DesignProgressPlan` variants and its canonical step-machine routing. This worker does not redeclare them, add a third plan, or alter them after startup.
 
 Select the immutable progress plan exactly once before the startup event, using raw token presence only: a present `--overview-lang` token selects the opted-in seven-step plan, and an absent token selects the unopted six-step plan. Malformed, missing-value, and duplicate occurrences remain present for this selection; this worker alone validates them before resolution, and no other surface halts them first.
 

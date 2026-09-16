@@ -125,7 +125,12 @@ test('supervised explore runs keep visual plan rendering disabled while retainin
 
   assert.match(explore, /declares no visual `progress_plan`/);
   assert.match(explore, /no task-list step is marked and no milestone stamp is rendered/i);
-  assert.match(explore, /canonical routing-only `SpecStepPointerMap`/);
+  assert.match(explore, /spec-standalone@1/,
+    'pointer routing should remain active under supervision');
+  assert.match(explore, /declares the machine as routing-only/,
+    'the supervised adapter should declare the machine as routing-only');
+  assert.doesNotMatch(explore, /SpecStepPointerMap/,
+    'the static SpecStepPointerMap reference should not remain');
 });
 
 test('panel degradation is declared for routed phases, apply projection, and explore', () => {

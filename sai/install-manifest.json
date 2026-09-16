@@ -56,7 +56,7 @@
           "Agent",
           "Skill"
         ],
-        "progressDeclaration": "Use @sai/policies/spec-phase-contract.md for SpecProgressPlan, SpecStepPointerMap, SpecResultUnion, and SpecValidationReport; report only its declared progress ids and metadata.",
+        "progressDeclaration": "Use @sai/policies/spec-phase-contract.md for SpecProgressPlan, SpecResultUnion, and SpecValidationReport with step routing via spec-standalone@1; report only its declared progress ids and metadata.",
         "overviewGeneration": "",
         "noticeContinuation": "",
         "claudeAgent": {

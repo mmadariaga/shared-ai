@@ -812,7 +812,7 @@ test('Step 2: workers have no automatic reviewer loop under supervision and the 
     'the worker contract should state the supervised boundary');
   assert.match(worker, /does not dispatch or own an artifact reviewer, an automatic review loop, review counters/i,
     'the worker must not retain a worker-owned automatic reviewer or its counters');
-  assert.match(worker, /Explore\s+may suppress the visual plan while retaining the pointer map/i,
+  assert.match(worker, /Explore\s+may suppress the visual plan while retaining step-machine routing/i,
     'the supervised selector must retain pointer routing without visual progress');
   assert.doesNotMatch(worker, /coexists with and never replaces the supervised pipeline's (?:independent convergence loop|supervised review rounds|in[- ]session review rounds)/i,
     'supervision must not retain a second worker-owned review layer');
@@ -820,8 +820,12 @@ test('Step 2: workers have no automatic reviewer loop under supervision and the 
     'the supervised adapter should suppress only the visual progress plan');
   assert.match(supervision, /no task-list step is marked and no milestone stamp is rendered/i,
     'no routed task list should render under supervision');
-  assert.match(supervision, /canonical routing-only `SpecStepPointerMap`/,
+  assert.match(supervision, /spec-standalone@1/,
     'pointer routing should remain active under supervision');
+  assert.match(supervision, /declares the machine as routing-only/,
+    'the supervised adapter should declare the machine as routing-only');
+  assert.doesNotMatch(supervision, /SpecStepPointerMap/,
+    'the static SpecStepPointerMap reference should not remain');
 });
 
 // â”€â”€â”€ Step 3: spec-design-review-progress-step (supervised design review) â”€â”€â”€â”€

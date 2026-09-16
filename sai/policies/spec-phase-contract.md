@@ -49,28 +49,19 @@ The spec adapter's canonical `progress_plan` is exactly this ordered list:
 The retired five-step plan is not valid. The plan is a rendering declaration;
 it is not worker instruction content.
 
-### `SpecStepPointerMap`
+### Step-machine routing
 
-The canonical `step_pointer_map` is:
-
-| step id | just-in-time instruction pointer |
-| --- | --- |
-| `prereqs-and-change` | none |
-| `research` | `@sai/commands/spec/steps/research.md` |
-| `proposal` | `@sai/commands/spec/steps/proposal.md` |
-| `specs` | `@sai/commands/spec/steps/specs.md` |
-| `validation` | `@sai/commands/spec/steps/validation.md` |
-| `review` | `@sai/commands/spec/steps/review.md` |
+Step-pointer routing runs exclusively through the `spec-standalone@1` step machine registered in `sai-state/machines/spec-standalone.js`. The machine owns the step cursor and its `STAGE_FILES` mapping; this contract declares no static `step_pointer_map`.
 
 Progress-plan rendering and step-pointer routing are separate operations. A
 coordinator may suppress or degrade the visual task list, including in
 Explore-supervised execution, without suppressing pointer delivery to the
-worker. When the map is active, a progress continuation carries the protocol
+worker. When the machine is consulted, a progress continuation carries the protocol
 continuation line followed by the pointer for the first unmarked step; after
 all steps are marked it carries the exact `Active step: none` completion
 pointer. Feedback and recovery continuations carry no pointer line.
 
-Explore's supervised adapter uses this pointer map as a routing-only
+Explore's supervised adapter uses the same `spec-standalone@1` step machine as a routing-only
 declaration and intentionally declares no visual `progress_plan`. It still
 tracks worker progress ids for pointer derivation and never renders a second
 spec task list over the Explore idea list.
@@ -152,7 +143,7 @@ renderer preserves it verbatim and does not invent a second warning format.
 ## Entry-path delta
 
 Standalone and supervised execution use the same `SpecResultUnion`,
-`SpecWriteSurface`, progress ids, and pointer map. The only deliberate
+`SpecWriteSurface`, progress ids, and step machine. The only deliberate
 differences are lifecycle presentation: standalone presents the interactive
 artifact feedback gate and ends at its existing mandatory stop; Explore
 supplies supervised gate parameters, owns auto-answer/escalation and review

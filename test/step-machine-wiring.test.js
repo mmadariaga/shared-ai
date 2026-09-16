@@ -120,50 +120,60 @@ test('coordinator progress plans match their registered machines (source-driven)
   }
 });
 
-test('step pointer maps match machine STAGE_FILES (source-driven)', () => {
+test('step machines own STAGE_FILES with no static pointer tables (source-driven)', () => {
   const coordinators = discoverStepMachineCoordinators();
   const specPhaseContract = fs.readFileSync(path.join(__dirname, '../sai/policies/spec-phase-contract.md'), 'utf8');
   const designPhaseContract = fs.readFileSync(path.join(__dirname, '../sai/commands/design/phase-contract.md'), 'utf8');
+
+  assert.doesNotMatch(specPhaseContract, /### `SpecStepPointerMap`/,
+    'spec-phase-contract.md should not retain the static SpecStepPointerMap table');
+  assert.doesNotMatch(designPhaseContract, /### `DesignStepPointerMap`/,
+    'design phase-contract.md should not retain the static DesignStepPointerMap table');
+  assert.match(specPhaseContract, /spec-standalone@1/,
+    'spec-phase-contract.md should route via the spec step machine');
+  assert.match(designPhaseContract, /design-standalone@1/,
+    'design phase-contract.md should route via the design step machine');
+
+  const expectedSpecStageFiles = {
+    'prereqs-and-change': 'none',
+    research: 'sai/commands/spec/steps/research.md',
+    proposal: 'sai/commands/spec/steps/proposal.md',
+    specs: 'sai/commands/spec/steps/specs.md',
+    validation: 'sai/commands/spec/steps/validation.md',
+    review: 'sai/commands/spec/steps/review.md',
+  };
+  const expectedDesignStageFiles = {
+    'prereqs-resolution': 'none',
+    research: 'sai/commands/design/steps/research.md',
+    design: 'sai/commands/design/steps/design.md',
+    tasks: 'sai/commands/design/steps/tasks.md',
+    interfaces: 'sai/commands/design/steps/interfaces.md',
+    review: 'sai/commands/design/steps/review.md',
+    overview: 'sai/commands/design/steps/overview.md',
+  };
 
   for (const coord of coordinators) {
     const machine = registry.get(coord.machineId);
     assert.ok(machine, `${coord.machineId} must be registered`);
 
-    let extractedRows;
     if (coord.name === 'spec') {
-      // Extract from spec-phase-contract.md SpecStepPointerMap section
-      const specMapMatch = specPhaseContract.match(/### `SpecStepPointerMap`[\s\S]*?(?=### )/);
-      assert.ok(specMapMatch, 'spec-phase-contract.md should have SpecStepPointerMap section');
-      extractedRows = pointerRows(specMapMatch[0]);
-
-      // Verify pointer rows match STAGE_FILES
-      for (const [id, target] of extractedRows) {
-        assert.equal(target, machine.STAGE_FILES[id],
+      const machineSteps = Array.from(machine.STEPS).sort();
+      assert.deepEqual(machineSteps, Object.keys(expectedSpecStageFiles).sort(),
+        'spec machine STEPS must cover the canonical six steps');
+      for (const [id, target] of Object.entries(expectedSpecStageFiles)) {
+        assert.equal(machine.STAGE_FILES[id], target,
           `spec ${id} pointer must match STAGE_FILES[${id}]`);
       }
-      // Verify coverage: extracted rows must cover all steps
-      const rowIds = extractedRows.map(r => r[0]).sort();
-      const machineSteps = Array.from(machine.STEPS).sort();
-      assert.deepEqual(rowIds, machineSteps,
-        'spec pointer map rows must cover all STEPS');
     } else if (coord.name === 'design') {
-      // Extract from design phase-contract.md DesignStepPointerMap section
-      const designMapMatch = designPhaseContract.match(/### `DesignStepPointerMap`[\s\S]*?(?=## )/);
-      assert.ok(designMapMatch, 'design phase-contract.md should have DesignStepPointerMap section');
-      extractedRows = pointerRows(designMapMatch[0]);
-
-      // Verify pointer rows match STAGE_FILES
-      for (const [id, target] of extractedRows) {
-        assert.equal(target, machine.STAGE_FILES[id],
+      const machineOptedSteps = Array.from(machine.OPTED_IN_STEPS).sort();
+      assert.deepEqual(machineOptedSteps, Object.keys(expectedDesignStageFiles).sort(),
+        'design machine OPTED_IN_STEPS must cover the canonical seven steps');
+      for (const [id, target] of Object.entries(expectedDesignStageFiles)) {
+        assert.equal(machine.STAGE_FILES[id], target,
           `design ${id} pointer must match STAGE_FILES[${id}]`);
       }
-      // Verify coverage: extracted rows must cover opted-in steps (design variant)
-      const rowIds = extractedRows.map(r => r[0]).sort();
-      const machineOptedSteps = Array.from(machine.OPTED_IN_STEPS).sort();
-      assert.deepEqual(rowIds, machineOptedSteps,
-        'design pointer map rows must cover all OPTED_IN_STEPS');
     }
-    // Note: implement and review do not have step_pointer_map tables; they use step_machine
+    // Note: all seven phases use step_machine; no phase retains a static step_pointer_map table
   }
 });
 

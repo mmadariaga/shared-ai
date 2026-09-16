@@ -74,11 +74,15 @@ test('spec phase contract is the canonical technical instruction source', () => 
 
   for (const declaration of [
     'SpecProgressPlan',
-    'SpecStepPointerMap',
     'SpecWriteSurface',
     'SpecResultUnion',
     'SpecValidationReport',
   ]) assert.match(contract, new RegExp(declaration));
+
+  assert.match(contract, /spec-standalone@1/,
+    'the contract should route via the spec step machine');
+  assert.doesNotMatch(contract, /SpecStepPointerMap/,
+    'the static SpecStepPointerMap table should not remain');
 
   assert.match(common, /Fetch @sai\/policies\/spec-phase-contract\.md/);
   assert.doesNotMatch(common, /Fetch @sai\/commands\/spec\/instructions\.md/,
@@ -429,15 +433,22 @@ test('Step 2: the spec coordinator renders task-list stamps coordinator-only via
 
 // ─── Step 2: spec-design-review-progress-step (spec coordinator/worker) ───────
 
-test('Step 2: the spec coordinator references the canonical plan and pointer map', () => {
+test('Step 2: the spec coordinator references the canonical plan and step machine', () => {
   const contract = artifact(SPEC_COORDINATOR_ARTIFACTS.phaseContract);
   const coordinator = artifact(SPEC_COORDINATOR_ARTIFACTS.coordinator);
 
   assert.match(coordinator, /canonical six-step `progress_plan`/);
-  assert.match(coordinator, /static `step_pointer_map`/);
+  assert.match(coordinator, /step_machine: spec-standalone@1/);
+  assert.match(coordinator, /Fetch @sai\/policies\/stage-machine\.md/);
+  assert.doesNotMatch(coordinator, /step_pointer_map/,
+    'the static step_pointer_map should not be declared');
   assert.match(contract, /`prereqs-and-change`[\s\S]{0,300}`proposal`[\s\S]{0,300}`specs`[\s\S]{0,300}`validation`[\s\S]{0,300}`review`/);
   for (const id of SPEC_PLAN_IDS) assert.match(contract, new RegExp(`\`${id}\``));
   assert.doesNotMatch(contract, /prereqs-resolution|proposal-and-specs|verification-summary/);
+  assert.doesNotMatch(contract, /### `SpecStepPointerMap`/,
+    'the static SpecStepPointerMap table should not remain');
+  assert.match(contract, /spec-standalone@1/,
+    'the contract should route via the spec step machine');
 });
 
 test('Step 2: the canonical plan is shared by standalone and supervised consumers', () => {
@@ -450,7 +461,12 @@ test('Step 2: the canonical plan is shared by standalone and supervised consumer
   assert.match(coordinator, /spec-phase-contract\.md/);
   assert.match(worker, /spec-phase-contract\.md/);
   assert.match(explore, /spec-phase-contract\.md/);
-  assert.match(explore, /pointer map as routing-only|routing-only.*SpecStepPointerMap/i);
+  assert.match(explore, /spec-standalone@1/,
+    'the supervised adapter should route via the spec step machine');
+  assert.match(explore, /declares the machine as routing-only/,
+    'the supervised adapter should declare the machine as routing-only');
+  assert.doesNotMatch(explore, /SpecStepPointerMap/,
+    'the static SpecStepPointerMap reference should not remain');
   assert.equal(planList(coordinator).length, 0);
   assert.equal(planList(worker).length, 0);
 });
@@ -472,8 +488,14 @@ test('Step 2: the spec worker emits one progress event per act carrying the cano
     'each progress event should preserve the changed-file union contract');
   assert.match(worker, /changed_files/,
     'the worker contract should keep the changed_files field');
-  assert.match(worker, /Progress step ids are reported in canonical plan\/map order/i,
-    'progress event ids should be reported in canonical plan/map order');
+  assert.match(worker, /Progress step ids are reported in canonical plan order/i,
+    'progress event ids should be reported in canonical plan order');
+  assert.match(worker, /coordinator-provided step-machine pointer/,
+    'the worker should follow the coordinator-provided step-machine pointer');
+  assert.doesNotMatch(worker, /standalone@1/,
+    'the worker must not name a stage machine ID');
+  assert.doesNotMatch(worker, /canonical `progress_plan`, `step_pointer_map`/,
+    'the retired dual plan-plus-map phrasing should not remain');
 });
 
 test('Step 2: external findings alone may mark spec review from a valid base-form High=0 Summary', () => {
