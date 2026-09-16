@@ -90,11 +90,19 @@ function read(relativePath) {
   return fs.readFileSync(fullPath, 'utf8');
 }
 
+// Scan-scope only: excluding immutable history from the wrapper_echo_value
+// surface scan is not permission to edit. Archive protection lives in the
+// separate forward-only guard below and in sai/commands/archive/instructions.md.
 const IMMUTABLE_HISTORY = [
   /^docs\/(?:adr|ddr)\//,
   /^openspec\/changes\//,
   /^openspec\/specs\/_archived\//,
 ];
+
+// Separate forward-only guard: archived history is immutable outside the
+// authorized sai-archive creation flow. This allowlist is the only archive
+// write the immutability tests accept.
+const ARCHIVE_AUTHORIZED_CREATION = /archive\/YYYY-MM-DD-\{name\}\/.*openspec archive <name> --yes --json/s;
 
 function activeSurfaceFiles(root) {
   const files = [];
@@ -392,4 +400,36 @@ test('Command Bootstrap glossary term and relationship remain canonical', () => 
   const glossary = read('GLOSSARY.md');
   assert.match(glossary, /\*\*Command Bootstrap\*\*: "The harness-neutral per-command card at `sai\/commands\/\{name\}\/command-bootstrap\.md`/);
   assert.match(glossary, /- A \*\*Command Bootstrap\*\* is loaded by one \/sai-\* wrapper after its \*\*Harness Boot Adapter\*\*/);
+});
+
+test('forward-only history guard blocks direct archive edits without reusing the scan exclusion as permission', () => {
+  const instructions = read('sai/commands/archive/instructions.md');
+
+  assert.match(instructions, /## Forward-only history guard/,
+    'archive instructions should declare the separate forward-only guard');
+  assert.match(instructions, /Archived history under `openspec\/changes\/archive\/` is immutable/,
+    'guard should state archived history immutability');
+  assert.match(instructions, /Archived history is immutable: <path> is under `openspec\/changes\/archive\/`/,
+    'guard should carry the immutable-history error with the offending path');
+  assert.match(instructions, /Only `sai-archive` may create `archive\/YYYY-MM-DD-\{name\}\/` via `openspec archive <name> --yes --json`/,
+    'guard should name the authorized creation flow in the error');
+  assert.match(instructions, /Normal `sai-archive` creation of `archive\/YYYY-MM-DD-\{name\}\/`.*stays allowed and is not a violation/s,
+    'guard should allowlist normal sai-archive creation');
+  assert.match(instructions, /scope only and never permission to edit/,
+    'guard should state a scan exclusion is scope only, never permission');
+  assert.match(instructions, /`IMMUTABLE_HISTORY` exclusion does not authorize edits/,
+    'guard should name IMMUTABLE_HISTORY as non-permission without reusing it as permission');
+  assert.match(ARCHIVE_AUTHORIZED_CREATION.source, /archive/,
+    'the separate allowlist check should exist alongside IMMUTABLE_HISTORY');
+});
+
+test('specs-write guard requires an active change and directs to the proposal flow', () => {
+  const instructions = read('sai/commands/archive/instructions.md');
+
+  assert.match(instructions, /Direct writes to `openspec\/specs\/` without an active change are blocked/,
+    'guard should block direct specs writes without an active change');
+  assert.match(instructions, /No active change: direct writes to `openspec\/specs\/` are blocked\. Run `\/sai-1-spec` to create a change and use the proposal flow/,
+    'guard should direct to the proposal flow with the active-change error');
+  assert.match(instructions, /Legitimate specs writes via the proposal flow.*stay allowed and are not a violation/s,
+    'guard should allowlist legitimate specs writes via the proposal flow');
 });
