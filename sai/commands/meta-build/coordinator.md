@@ -48,6 +48,8 @@
   - **Implement envelope**:
     `{arguments_value: {name}}`
     The resolved segment value is `arguments_value: {name}`.
+    Normalized fast-track true is supervisor session state injected alongside the
+    envelope, not an additional required envelope key.
   - **Apply envelope** (composition-built chained-apply shape):
     `command_name: apply` (shape compatibility only — not boot/card selection),
     `arguments_value: "{name}"`,
@@ -69,18 +71,18 @@
 
   `Implementation plan done in openspec/changes/{name}/. Review and run `/sai-4-apply {name}` (--fast-track) **in a new chat** when ready.`
 
-  ## Unconditional apply fast-track and banner ownership
-  When activating the apply segment, always inject fast-track true. Because
-  chained apply skips the standalone shell parse, this supervising coordinator
+  ## Unconditional implement + apply fast-track and banner ownership
+  When activating the implement segment, always inject fast-track true. Because
+  chained implement skips the standalone coordinator parse, this supervising coordinator
   owns banner emission: print exactly one line `> FAST-TRACK MODE ACTIVE` exactly
-  once at apply-segment activation, as ordinary in-conversation text, and write
-  nothing to disk to record it. Print the banner zero times when apply never activates. Apply's skipped shell must not print a second banner.
+  once at implement-segment activation (the first fast-track activation of the build), as ordinary in-conversation text, and write
+  nothing to disk to record it. When activating the apply segment, always inject fast-track true but print no second banner. Print the banner zero times when apply never activates and implement never activated; when implement activated, its single banner stands with no second banner. Neither segment's skipped shell prints a second banner.
 
   Injected fast-track still means: commit pre-authorization, non-detached branch auto-stay, and deferred combined Human Verification as a post-commit report after Final sweep (not an approval gate). Detached HEAD still presents the existing three-option branch prompt. Safe-operations confirmations remain required — never auto-approve them because fast-track is injected.
 
   ## Phase-1 failure blocks apply
   If the implement segment returns `failed` or `cancelled`, close the invocation
-  without activating apply, without printing the FAST-TRACK banner, and without claiming apply completion. Report the failure or clean-stop summary and the
+  without activating apply, without printing the FAST-TRACK banner a second time, and without claiming apply completion. Report the failure or clean-stop summary and the
   accumulated changed-files union.
 
   ## Re-entry

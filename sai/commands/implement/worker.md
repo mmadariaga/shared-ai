@@ -49,6 +49,12 @@ same planning operation, return `cancelled` for a deliberate decline, and
 return `failed` for blockers. Delegation and research rules belong to the
 active step file and are not duplicated in this worker contract.
 
+## Fast-track state
+
+The coordinator declares `fast_track_active` alongside the envelope as invocation-scoped session state (never an envelope key, never written to any file). Honor it only in the fast-track branches defined in `steps/plan-generation.md` and `steps/validation.md`; without it behavior is unchanged. Never parse `--fast-track` from `arguments_value` — the coordinator already stripped it — never emit the activation banner, and never write `fast_track_active` to any file, `.openspec.yaml`, or configuration. `change-overview.md` is regenerated through the design overview lifecycle, never directly corrected here.
+
+When a fast-track auto-correction applies, record it in the terminal `summary` (corrected `sai-2` paths plus the single preserving rationale) and ensure `implementation.md` carries the fast-track correction note required by `steps/plan-generation.md`; the note is the audit trail and never carries the state value itself.
+
 ## Active Step Execution
 
 Instruction stretches are delivered just-in-time, one step file at a time. Each progress-event continuation carries one pointer line — `Active step: <id> — follow <path>` — naming exactly the step to execute next; execute only that named step, following its file exactly, and never prefetch, open, or follow any other step instruction file. Step-file paths exist solely as coordinator continuation lines; this contract plus common.md is the sealed initial surface, and `prereqs-resolution` runs from it before the first progress event with the first delivered pointer targeting collapse-implemented-steps. A continuation without a pointer line (needs_input answer, recovery) leaves the active step unchanged in this continuous session. Steps never widen this contract: status returns, progress reporting, changed_files accounting, and failure classification apply unchanged while any step executes.
