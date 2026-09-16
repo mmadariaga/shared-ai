@@ -1,5 +1,8 @@
 # Apply Runner
 
+Fetch @sai/orchestration/workers/bindings/red-worker.md and use it.
+Fetch @sai/orchestration/workers/bindings/green-worker.md and use it.
+
 Coordinator-owned checklist execution for `/sai-4-apply`. This card is fetched by the apply coordinator; it owns no change resolution, no worker dispatch, and no worker technical writes.
 
 ## Worker Request Shape
