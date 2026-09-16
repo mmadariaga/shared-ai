@@ -3,18 +3,8 @@
 ## Purpose
 
 Enables the `--fast-track` per-invocation flag on `sai-explore`, `sai-2-design`, `sai-4-apply`, `sai-archive`, `sai-backfill`, and `sai-merge`, defining each command's opt-out set, auto-stay behavior under fast-track mode, the single-canonical-membership rule, and the cross-command guardrails that survive fast-track.
+
 ## Requirements
-
-### Requirement: Fast-track opt-in membership
-The set of commands that accept and parse `--fast-track` SHALL be exactly `sai-explore`, `sai-2-design`, `sai-4-apply`, `sai-archive`, `sai-backfill`, and `sai-merge`, per the canonical model single-sourced in `sai/policies/fast-track-flag.md`. `sai-explore` and `sai-4-apply` parse in their main-session body cards; `sai-2-design` parses in its coordinator card since the flag-parsing unification — its coordinator card owns BOTH the parse and the banner, and the design worker neither parses the token nor emits a banner nor keeps dedup state; routed-shaped `sai-archive` parses in its coordinator card; routed-shaped `sai-backfill` parses in its worker card alongside the diff-source tokens, with no banner (a deliberate documented exception); routed-shaped `sai-merge` parses in its coordinator card. A composition command outside this set MAY inject apply fast-track without becoming a parser member, and MAY strip an explicit `--fast-track` token as a behavioral no-op without activating any mode — `/sai-build` and `/sai-review` do exactly this before change resolution.
-
-#### Scenario: Design parses coordinator-side
-- **WHEN** `/sai-2-design` receives an envelope containing `--fast-track`
-- **THEN** the design coordinator performs the presence-plus-strip parse, prints the single banner itself, and forwards the cleaned remainder, while the design worker returns no notice and keeps no banner-dedup state
-
-#### Scenario: Review stays a no-op stripper
-- **WHEN** `/sai-review` receives `--fast-track`
-- **THEN** it strips the token before change resolution without activating fast-track or printing a banner
 
 ### Requirement: Preserve fast-track's explore language behavior
 
@@ -248,3 +238,17 @@ On every surface that also validates other options, the fast-track presence-plus
 - **WHEN** `sai-explore` receives `{name} --overview-lang fr --fast-track`
 - **THEN** the fast-track token is stripped and its banner printed before the overview-language validation examines the cleaned remainder
 
+### Requirement: Fast-track membership and parse ownership
+The set of commands that accept and parse --fast-track SHALL remain exactly sai-explore, sai-2-design, sai-4-apply, sai-archive, sai-backfill, and sai-merge per the canonical model in sai/policies/fast-track-flag.md. The design worker SHALL own parse-plus-strip of --fast-track on every route, routed and supervised, and the design coordinator SHALL never parse. Banner ownership SHALL stay with the coordinator on the routed route via a nonterminal notice with dedup, and with the supervising composition on the supervised route.
+
+#### Scenario: Design parses worker-side on routed route
+- **WHEN** /sai-2-design receives an envelope containing --fast-track on the routed route with the banner-dedup field false
+- **THEN** the design worker strips the token before name resolution, returns the notice carrying > FAST-TRACK MODE ACTIVE, and the coordinator prints it once and resumes with continue_after_notice
+
+#### Scenario: Supervised dispatch suppresses worker notice
+- **WHEN** the design worker is dispatched supervised with an envelope carrying --fast-track
+- **THEN** it strips the token before name resolution, returns no fast-track notice, and the supervising composition supplies the single visible activation confirmation
+
+#### Scenario: Review stays a no-op stripper
+- **WHEN** `/sai-review` receives `--fast-track`
+- **THEN** it strips the token before change resolution without activating fast-track or printing a banner

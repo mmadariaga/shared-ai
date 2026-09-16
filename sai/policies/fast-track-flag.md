@@ -8,9 +8,10 @@ cards reference it; they SHALL NOT restate or redefine the model inline.
 
 1. **Owner** — the coordinator (or the main session on surfaces without a
    routed coordinator) owns BOTH the parse and the banner for every opt-in
-   command (`sai-explore`, `sai-2-design`, `sai-4-apply`, `sai-archive`,
+   command except `sai-2-design` (`sai-explore`, `sai-4-apply`, `sai-archive`,
    `sai-backfill`, `sai-merge`). Workers never parse `--fast-track` for
-   activation and never emit the activation banner.
+   activation and never emit the activation banner, except where a documented
+   exception below assigns phase-owned parse (`sai-2-design`, `sai-backfill`).
 2. **Parse** — inspect the opaque request string for the positional token
    `--fast-track`. On presence: activate fast-track, remove the token, trim
    surrounding whitespace, and use the cleaned remainder downstream.
@@ -36,6 +37,15 @@ cards reference it; they SHALL NOT restate or redefine the model inline.
 
 These divergences are intentional and stay byte-stable; do not "unify" them:
 
+- `sai-2-design` parses `--fast-track` in its own worker card
+  (phase-owned parse): the worker owns parse-plus-strip on every route,
+  routed and supervised, and the coordinator never parses. On the routed
+  route the worker returns a nonterminal notice carrying
+  `> FAST-TRACK MODE ACTIVE` with dedup (`fast_track_banner_emitted`
+  initialized and updated by the coordinator, carried in the worker
+  reconstruction fields); the coordinator prints it. On the supervised
+  route the worker parses and strips with no notice and Explore owns the
+  chained-segment banner. The worker never prints the banner line directly.
 - `sai-backfill` parses `--fast-track` and the diff-source tokens
   (`--staged | --unstaged | --diff <sha>`) in its own worker card
   (phase-owned parse, no banner).
