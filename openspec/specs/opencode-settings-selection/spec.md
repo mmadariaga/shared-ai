@@ -2,7 +2,9 @@
 
 ## Purpose
 _TBD: purpose not yet written._
+
 ## Requirements
+
 ### Requirement: Dependent provider-to-model-to-variant selection
 For an OpenCode customization run with a non-empty confirmed agent subset, the OpenCode settings selector SHALL present exactly two mandatory dependent navigable single-select screens in this order: provider, then model scoped to the selected provider. The selector SHALL present one conditional variant screen after the model screen, only when the selected model exposes variants. The provider screen SHALL be offered only for the OpenCode harness; the Claude Code harness SHALL keep its own placeholder model/effort selection and SHALL NOT present a provider screen.
 
@@ -84,17 +86,13 @@ The OpenCode settings selector SHALL run exactly once for the whole confirmed ag
 - **THEN** the OpenCode settings selector is not invoked and customization completes without configuring any agent
 
 ### Requirement: Cancellation and failure abort without settings or overrides
-The OpenCode customization SHALL cancel without settings only on user cancellation, empty selection, or model-catalog discovery failure. Variant-discovery failure SHALL NOT cancel the run; it SHALL degrade to model-only shared settings for the confirmed subset and proceed to the per-target local-override operation. The run SHALL complete normally without hard-exiting the process, and SHALL NOT fall back to placeholder options.
-
+The OpenCode customization SHALL cancel without settings only on user cancellation, empty selection, or model-catalog discovery failure. Variant-discovery failure against the current `opencode api model.list` query SHALL NOT cancel the run; it SHALL degrade to model-only shared settings for the confirmed subset and proceed to the per-target local-override operation. The run SHALL complete normally without hard-exiting the process, and SHALL NOT fall back to placeholder options.
 #### Scenario: cancel at the provider screen aborts the run
 - **WHEN** the user presses `q` or Ctrl-C at the provider screen
 - **THEN** customization is cancelled with no agent configured and the flow completes normally
-
 #### Scenario: cancel at the variant screen aborts the run
 - **WHEN** the user presses `q` or Ctrl-C at the variant screen
 - **THEN** customization is cancelled with no agent configured and the flow completes normally
-
 #### Scenario: discovery failure produces no invalid settings or override
-- **WHEN** model catalog discovery fails or v2 variant discovery fails or exposes no variants during the dependent flow
+- **WHEN** model catalog discovery fails or model-list variant discovery fails or exposes no variants during the dependent flow
 - **THEN** catalog failure SHALL cancel with no placeholder fallback and no settings or override produced, while variant failure SHALL degrade to model-only settings and continue to override materialization
-

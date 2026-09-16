@@ -786,7 +786,7 @@ async function opencodeSelectSettings(subsetLabel, promptChoice, runCommand) {
   // Provider, model and variant form a dependent chain: stepping back from one
   // screen re-opens the previous one with the catalog already in hand, and
   // stepping back off the provider screen hands control to the caller.
-  // Variants come from a single cached `opencode api v2.model.list` source,
+  // Variants come from a single cached `opencode api model.list` source,
   // fetched once per setup run and reused for every selected model.
   let screen = 'provider';
   let provider = null;
@@ -823,7 +823,7 @@ async function opencodeSelectSettings(subsetLabel, promptChoice, runCommand) {
       let apiOutcome = null;
       let apiFailed = false;
       try {
-        apiOutcome = runCommand('opencode', ['api', 'v2.model.list']);
+        apiOutcome = runCommand('opencode', ['api', 'model.list']);
       } catch (error) {
         console.error(`Unable to query OpenCode model variants: ${error.message}`);
         apiFailed = true;

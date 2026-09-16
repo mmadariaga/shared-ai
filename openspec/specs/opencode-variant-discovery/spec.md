@@ -2,29 +2,26 @@
 
 ## Purpose
 _TBD: purpose not yet written._
-## Requirements
-### Requirement: Provider-scoped verbose query after model selection
-The OpenCode settings selector SHALL obtain variants from a single cached `opencode api v2.model.list` query per setup run and SHALL NOT execute a per-provider verbose query. The runner SHALL receive the executable plus the provider-free argument array, and the fetched list SHALL be reused for every selected model including across back navigation without re-querying. The command SHALL NOT pass `--refresh`. On Windows, the default runner MUST invoke `powershell.exe` and pass the provider-free argument array as JSON environment data for decoded PowerShell splatting; on non-Windows platforms, direct argument-vector execution SHALL remain unchanged.
 
+## Requirements
+
+### Requirement: Provider-scoped verbose query after model selection
+The OpenCode settings selector SHALL obtain variants from a single cached `opencode api model.list` query per setup run and SHALL NOT execute a per-provider verbose query. The runner SHALL receive the executable plus the provider-free argument array, and the fetched list SHALL be reused for every selected model including across back navigation without re-querying. The command SHALL NOT pass `--refresh`. On Windows, the default runner MUST invoke `powershell.exe` and pass the provider-free argument array as JSON environment data for decoded PowerShell splatting; on non-Windows platforms, direct argument-vector execution SHALL remain unchanged.
 #### Scenario: verbose query carries the selected provider
 - **WHEN** the user selects model `deepseek-v4-flash` under provider `opencode-go`
-- **THEN** the selector SHALL execute `opencode api v2.model.list` with a provider-free vector and filter the cached list by that provider and model
-
+- **THEN** the selector SHALL execute `opencode api model.list` with a provider-free vector and filter the cached list by that provider and model
 #### Scenario: verbose query passes the provider as an argument-array element
-- **WHEN** the selector executes the cached v2 list query
-- **THEN** the runner SHALL receive the executable plus the argument array `api v2.model.list` with no provider value interpolated into shell syntax
-
+- **WHEN** the selector executes the cached model-list query
+- **THEN** the runner SHALL receive the executable plus the argument array `api model.list` with no provider value interpolated into shell syntax
 #### Scenario: verbose query never passes the refresh flag
-- **WHEN** the selector executes the cached v2 list query
+- **WHEN** the selector executes the cached model-list query
 - **THEN** the executed command line SHALL contain no `--refresh` flag
-
 #### Scenario: Windows verbose discovery preserves the provider argument
 - **WHEN** variant discovery runs on Windows
-- **THEN** the runner SHALL resolve the OpenCode npm shim through PowerShell and pass the provider-free v2 list vector as decoded argument data with no provider text interpolated
-
+- **THEN** the runner SHALL resolve the OpenCode npm shim through PowerShell and pass the provider-free model-list vector as decoded argument data with no provider text interpolated
 #### Scenario: Non-Windows verbose discovery keeps direct execution
 - **WHEN** variant discovery runs on a non-Windows platform
-- **THEN** the runner SHALL invoke `opencode` directly with the provider-free v2 list vector
+- **THEN** the runner SHALL invoke `opencode` directly with the provider-free model-list vector
 
 ### Requirement: Multiline model-record parsing
 The selector SHALL parse the v2 list stdout with BOM-tolerant JSON parsing and SHALL read the model list from the `.data` array with fallback to a plain array payload. The parser SHALL strip NUL bytes and a leading BOM before parsing, SHALL treat empty output or output without a data array as a parsing failure, and SHALL treat unparseable output as a parsing failure that degrades to model-only.
@@ -72,25 +69,19 @@ The selector SHALL extract the selected model variants from the matched entry `v
 - **THEN** the selector SHALL expose no variants, derive no names from the invalid value, and degrade to model-only without a variant screen
 
 ### Requirement: Variant discovery failure is non-fatal cancellation
-When the v2 query launch throws, the query exits non-zero, its stdout cannot be parsed, no parsed entry matches the selected model, or the matched entry exposes no variants, the OpenCode customization SHALL degrade to model-only settings with no variant screen presented and no placeholder variant offered. The degraded path SHALL emit an actionable diagnostic identifying the failed v2 query, preserving stderr when available or reporting the exit status when stderr is empty. The customization run SHALL complete normally without hard-exiting the process.
-
+When the model-list query launch throws, the query exits non-zero, its stdout cannot be parsed, no parsed entry matches the selected model, or the matched entry exposes no variants, the OpenCode customization SHALL degrade to model-only settings with no variant screen presented and no placeholder variant offered. The degraded path SHALL emit an actionable diagnostic identifying the failed model-list query, preserving stderr when available or reporting the exit status when stderr is empty. The customization run SHALL complete normally without hard-exiting the process.
 #### Scenario: verbose query failure cancels without an override
-- **WHEN** the v2 query exits non-zero or its output cannot be parsed
+- **WHEN** the model-list query exits non-zero or its output cannot be parsed
 - **THEN** the selector SHALL degrade to model-only settings with no variant screen presented
-
 #### Scenario: unmatched model cancels without a placeholder variant
 - **WHEN** no parsed entry matches the selected model
 - **THEN** the selector SHALL degrade to model-only settings with no placeholder or default variant substituted
-
 #### Scenario: invalid variants value cancels without derived names
 - **WHEN** the matched entry carries an absent, empty, or unusable `variants` value
 - **THEN** the selector SHALL expose no variants and degrade to model-only with no names derived from the invalid value
-
 #### Scenario: Verbose launch failure reports the cause
-- **WHEN** the v2 command runner throws while querying model variants
+- **WHEN** the model-list command runner throws while querying model variants
 - **THEN** the selector SHALL log an `Unable to query OpenCode model variants` diagnostic containing the launch error and degrade to model-only settings
-
 #### Scenario: Verbose non-zero exit reports stderr or status
-- **WHEN** the v2 command exits with a non-zero status
+- **WHEN** the model-list command exits with a non-zero status
 - **THEN** the selector SHALL log the command failure detail and degrade to model-only without showing a variant screen
-

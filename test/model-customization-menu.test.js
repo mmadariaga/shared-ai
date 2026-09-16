@@ -778,8 +778,8 @@ test('full dependent-flow traversal walks menu, harness, checklist, and provider
       assert.equal(screenIndex, 3,
         'provider, model, and variant screens are presented exactly once each, in that order');
       assert.deepEqual(runner.calls.map(call => call.args),
-        [['models'], ['api', 'v2.model.list']],
-        'the traversal invokes the catalog and v2 model-list queries as argument vectors, never --refresh');
+        [['models'], ['api', 'model.list']],
+        'the traversal invokes the catalog and model-list queries as argument vectors, never --refresh');
       assert.equal(overrides.length, OPENCODE_WORKERS.length,
         'createLocalOverride should run exactly once per selected agent');
       for (const entry of overrides) {
@@ -1891,13 +1891,13 @@ test('extractApiVariants returns [] for empty, absent, or non-array variants and
 // --- Step 2: dependent opencode model-discovery flow ---
 
 // Scripted runner that records raw invocation vectors and serves the catalog
-// and v2 model-list stdout fixtures. `runner.calls` holds { executable, args } for
+// and model-list stdout fixtures. `runner.calls` holds { executable, args } for
 // every invocation in order.
 function makeCatalogRunner(catalogStdout, apiStdout) {
   const calls = [];
   const runner = (executable, args) => {
     calls.push({ executable, args });
-    if (args[0] === 'api' || args.includes('v2.model.list')) {
+    if (args[0] === 'api' || args.includes('model.list')) {
       return { stdout: apiStdout, status: 0 };
     }
     return { stdout: catalogStdout, status: 0 };
@@ -2005,8 +2005,8 @@ test('the runner is invoked as argument vectors, never with --refresh, twice in 
   assert.deepEqual(settings, { model: 'opencode-go/deepseek-v4-flash', variant: 'high' },
     'the completed flow resolves the selected variant');
   assert.deepEqual(runner.calls.map(call => call.args),
-    [['models'], ['api', 'v2.model.list']],
-    'the catalog and v2 model-list queries are exact argument vectors in discovery order, never --refresh');
+    [['models'], ['api', 'model.list']],
+    'the catalog and model-list queries are exact argument vectors in discovery order, never --refresh');
   for (const call of runner.calls) {
     assert.ok(Array.isArray(call.args), 'args are passed as an argument array, never a shell string');
     assert.ok(!call.args.includes('--refresh'), 'the refresh flag is never passed');
@@ -2014,7 +2014,7 @@ test('the runner is invoked as argument vectors, never with --refresh, twice in 
   }
 });
 
-test('a provider containing shell metacharacters never reaches the shell: the v2 list is provider-free', async () => {
+test('a provider containing shell metacharacters never reaches the shell: the model-list is provider-free', async () => {
   const runner = makeCatalogRunner(
     'open;code/deepseek-v4-flash\n',
     makeApiFixture([
@@ -2030,9 +2030,9 @@ test('a provider containing shell metacharacters never reaches the shell: the v2
   assert.deepEqual(settings, { model: 'open;code/deepseek-v4-flash', variant: 'high' },
     'a metacharacter-bearing provider flows through the whole dependent selection');
   const apiCalls = runner.calls.filter(call => call.args[0] === 'api');
-  assert.equal(apiCalls.length, 1, 'the v2 model-list query runs exactly once for the selected model');
-  assert.deepEqual(apiCalls[0].args, ['api', 'v2.model.list'],
-    'the v2 list carries no provider argument and is never interpreted as command syntax');
+  assert.equal(apiCalls.length, 1, 'the model-list query runs exactly once for the selected model');
+  assert.deepEqual(apiCalls[0].args, ['api', 'model.list'],
+    'the model-list carries no provider argument and is never interpreted as command syntax');
   assert.ok(runner.calls.every(call => !call.args.includes('open;code')),
     'provider text must not be interpolated into CLI arguments');
 });
@@ -2142,10 +2142,10 @@ test('a malformed catalog line and an empty catalog each cancel with no partial 
   }
 });
 
-test('v2-list failure, unparseable output, and a missing model degrade to model-only after the screens', async () => {
+test('model-list failure, unparseable output, and a missing model degrade to model-only after the screens', async () => {
   const cases = [
-    { name: 'non-zero v2 exit', apiStdout: '', apiStatus: 1 },
-    { name: 'unparseable v2 output', apiStdout: 'not json\n', apiStatus: 0 },
+    { name: 'non-zero model-list exit', apiStdout: '', apiStatus: 1 },
+    { name: 'unparseable model-list output', apiStdout: 'not json\n', apiStatus: 0 },
     { name: 'no entry matching the selected model',
       apiStdout: makeApiFixture([
         { providerID: 'opencode-go', id: 'glm-5.2', variants: variantIdsToRecords(['high']) },
@@ -2160,16 +2160,16 @@ test('v2-list failure, unparseable output, and a missing model degrade to model-
     const promptSpy = async (question, options) => {
       if (screenIndex === 0) {
         screenIndex += 1;
-        assert.ok(options.includes('opencode-go'), 'provider screen appears before the v2 query');
+        assert.ok(options.includes('opencode-go'), 'provider screen appears before the model-list query');
         return 'opencode-go';
       }
       if (screenIndex === 1) {
         screenIndex += 1;
-        assert.ok(options.includes('deepseek-v4-flash'), 'model screen appears before the v2 query');
+        assert.ok(options.includes('deepseek-v4-flash'), 'model screen appears before the model-list query');
         return 'deepseek-v4-flash';
       }
       screenIndex += 1;
-      assert.fail('no variant screen may appear after the v2 query degrades');
+      assert.fail('no variant screen may appear after the model-list query degrades');
     };
     const runner = (executable, args) => args[0] === 'api'
       ? { stdout: item.apiStdout, status: item.apiStatus }
@@ -2197,7 +2197,7 @@ test('q at the provider screen cancels after exactly one catalog launch', async 
   assert.equal(settings, null, 'q at the provider screen cancels the selection with null');
   assert.equal(promptCalls, 1, 'only the provider screen is prompted before q cancels');
   assert.deepEqual(runner.calls.map(call => call.args), [['models']],
-    'exactly one catalog launch precedes the provider screen, no v2 query');
+    'exactly one catalog launch precedes the provider screen, no model-list query');
 });
 
 test('q at the variant screen cancels with no settings after two launches', async () => {
@@ -2227,8 +2227,8 @@ test('q at the variant screen cancels with no settings after two launches', asyn
   assert.equal(settings, null, 'q at the variant screen cancels the selection with null');
   assert.equal(screenIndex, 3, 'q is answered at the variant screen after the provider and model screens');
   assert.deepEqual(runner.calls.map(call => call.args),
-    [['models'], ['api', 'v2.model.list']],
-    'the v2 query runs before the variant screen, for exactly two launches');
+    [['models'], ['api', 'model.list']],
+    'the model-list query runs before the variant screen, for exactly two launches');
 });
 
 test('a model without variants skips the variant screen and yields a model-only override', async () => {
