@@ -41,7 +41,7 @@ Before executing the workflow, verify and load:
         - State the inferred parent branch explicitly to the user before proceeding.
 3. **Runtime mode** (optional): `--runtime` to enable browser-based axe/Lighthouse/keyboard walks. Default: static-only. Runtime requires the user to start the dev server and explicitly authorize each command.
 
-If `proposal.md` is missing, respond with: **"`openspec/changes/{change-name}/proposal.md` not found. Ensure the change name is correct and that `/sai-1-spec` has been run for this change."** and STOP.
+If `proposal.md` is missing, return `failed` with exactly `openspec/changes/{change-name}/proposal.md not found. Ensure the change name is correct and that /sai-1-spec has been run for this change.`
 
 Skip the audit (with a one-line note) when the diff contains **no UI files** (`.tsx`, `.jsx`, `.astro`, `.html`, `.vue`, `.svelte`, `.css`, component-bearing markdown).
 

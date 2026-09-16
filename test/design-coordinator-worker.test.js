@@ -754,7 +754,7 @@ test('documentation records the active design compatibility boundary and managed
   assert.match(readme, /sai-2-design-worker/);
   assert.match(agents, /sai-2-design-worker/);
 
-  assert.match(readme, /Claude Code.*low-effort.*coordinator.*high-effort.*design worker/i);
+  assert.match(readme, /Claude Code.*medium-effort.*coordinator.*medium-effort.*design worker/i);
   assert.match(readme, /opencode.*muse-spark-1\.3-contributor.*variant: xhigh/i);
   assert.match(readme, /continue_after_notice/);
   assert.match(readme, /new chat[\s\S]{0,80}\/sai-3-implement|\/sai-3-implement[\s\S]{0,80}new chat/i);
