@@ -62,7 +62,9 @@ Skills you load may themselves contain `Fetch @` directives. Apply the same reso
 
 | Reference | Resolves to |
 |-----------|-------------|
-| `@sai/commands/X.md` | `~/.config/opencode/sai/commands/X.md` |
-| `@commands/X.md` | `~/.config/opencode/commands/X.md` |
+| `@sai/commands/X.md` (project-local) | `.opencode/sai/commands/X.md` |
+| `@sai/commands/X.md` (user-global) | `~/.config/opencode/sai/commands/X.md` |
+| `@commands/X.md` (project-local) | `.opencode/commands/X.md` |
+| `@commands/X.md` (user-global) | `~/.config/opencode/commands/X.md` |
 
 Always read the full resolved path — do NOT assume two `@` references point to the same file because their filenames match.
