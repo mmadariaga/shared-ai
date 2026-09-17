@@ -3,7 +3,9 @@
 ## Purpose
 
 TBD
+
 ## Requirements
+
 ### Requirement: Stable ideas trigger one edge-case review
 
 When the user advances to the `Review edge cases` stage of the pre-crystallization staged progression (`explore-pre-crystallization-stages`), or explicitly asks to crystallize before the review has reached agreement (`explore-edge-case-gate`), `sai-explore` SHALL enter one edge-case review for the current stable idea. The review SHALL run at most once for that stable idea, retain its state in conversation only, and number each in-scope proposed behavior consecutively as `E1` through `En`. Only behaviors that define a scope boundary for the proposed change are eligible; edge cases unrelated to the change SHALL be excluded and remain Non-Goals. The review SHALL NOT be triggered by `sai-explore`'s own judgment that the idea is solid; the one-line readiness signal remains governed by `explore-crystallization-on-demand` and never starts the review.
@@ -30,7 +32,7 @@ When the user advances to the `Review edge cases` stage of the pre-crystallizati
 
 ### Requirement: The edge-case review presents numbered behaviors and a semantic agreement question
 
-The edge-case review SHALL present the candidate scope-boundary behaviors as numbered `E1` through `En` proposed behavior statements, then run the lightweight probes as defined by `lightweight-probe`, then ask one plain conversational question asking whether the list accurately captures the change's relevant edge cases or needs adjustment. The emission SHALL be one message: the formal list first, then the probes, then the question, with nothing between them. When fewer than 2 material probe scenarios exist, the review SHALL show what the probes produced and SHALL state explicitly that there are no more material scenarios, without padding the emission with non-material probes. The question SHALL name the `next-step` token as the advancement action to the next stage, SHALL be understandable in the conversation's ambient language and SHALL NOT depend on a fixed agreement phrase or a native yes/no option picker. Agreement in another language SHALL be valid when its intent is clearly affirmative.
+The edge-case review SHALL present the candidate scope-boundary behaviors as numbered `E1` through `En` proposed behavior statements, then run the lightweight probes as defined by `lightweight-probe`, then ask one plain conversational question asking whether the list accurately captures the change's relevant edge cases or needs adjustment. The emission SHALL be one message: the formal list first, then the probes, then the question, with nothing between them. When fewer than 2 material probe scenarios exist, the review SHALL show what the probes produced and SHALL state explicitly that there are no more material scenarios, without padding the emission with non-material probes. The question SHALL name the `next-step` token as the advancement action to the next stage and SHALL state that a bare `next-step` turn confirms the list as written and advances in the same turn. The question SHALL be understandable in the conversation's ambient language and SHALL NOT depend on a fixed agreement phrase or a native yes/no option picker. Agreement in another language SHALL be valid when its intent is clearly affirmative.
 
 #### Scenario: Proposed behaviors are numbered for discussion
 
@@ -41,6 +43,11 @@ The edge-case review SHALL present the candidate scope-boundary behaviors as num
 
 - **WHEN** the edge-case review asks its agreement question
 - **THEN** the question names the `next-step` token as the action that advances the progression
+
+#### Scenario: The question states that a bare next-step confirms the list
+
+- **WHEN** the edge-case review asks its agreement question for a non-empty list
+- **THEN** the question states that a bare `next-step` confirms the list as written and advances in the same turn
 
 #### Scenario: One-message emission order
 
@@ -99,4 +106,3 @@ When the user advances to the `Review edge cases` stage and no behavior bounds t
 
 - **WHEN** the user advances into `Review edge cases` with an empty in-scope list while `--fast-track` is active
 - **THEN** the same deterministic empty-set advancement runs with no probes, and no gate or questionnaire is skipped or weakened by the fast-track signal
-

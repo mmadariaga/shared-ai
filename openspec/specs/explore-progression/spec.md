@@ -7,21 +7,31 @@ TBD - created by archiving change implicit-next-step-agreement. Update Purpose a
 
 ### Requirement: Bare next-step records agreement at Review edge cases
 
-The system SHALL treat a bare `next-step` turn at the `Review edge cases` gate with a non-empty list as confirmation: it records the current ordered list as agreed and advances to `Implementation details` within the same turn with no separate confirmation.
+The system SHALL treat a bare `next-step` turn at the `Review edge cases` gate with a non-empty list as confirmation: it records the current ordered list as agreed and advances to `Implementation details` within the same turn with no separate confirmation. A bare `next-step` turn SHALL NOT be classified as an ambiguous response and SHALL NOT be routed to the clarify-and-re-ask branch.
 
 #### Scenario: Bare token advances from edge-case review
 
 - **WHEN** the turn at `Review edge cases` is a bare `next-step` with a non-empty list
 - **THEN** the current ordered list is recorded as agreed and the stage advances to `Implementation details` in the same turn
 
+#### Scenario: Bare token is never treated as ambiguous
+
+- **WHEN** the turn at `Review edge cases` with a non-empty list is a bare `next-step`
+- **THEN** it is classified as confirmation rather than as an ambiguous response, and the gate question is not re-asked
+
 ### Requirement: Bare next-step records agreement at Implementation details
 
-The system SHALL treat a bare `next-step` turn at the `Implementation details` gate with a non-empty list as confirmation: it records the current ordered list as agreed, completes the stage, and advances into `Crystallize` within the same turn with no separate confirmation.
+The system SHALL treat a bare `next-step` turn at the `Implementation details` gate with a non-empty list as confirmation: it records the current ordered list as agreed, completes the stage, and advances into `Crystallize` within the same turn with no separate confirmation. A bare `next-step` turn SHALL NOT be classified as an ambiguous response and SHALL NOT be routed to the clarify-and-re-ask branch.
 
 #### Scenario: Bare token advances from implementation details
 
 - **WHEN** the turn at `Implementation details` is a bare `next-step` with a non-empty list
 - **THEN** the current ordered list is recorded as agreed and the stage advances into `Crystallize` in the same turn
+
+#### Scenario: Bare token is never treated as ambiguous
+
+- **WHEN** the turn at `Implementation details` with a non-empty list is a bare `next-step`
+- **THEN** it is classified as confirmation rather than as an ambiguous response, and the confirmation question is not re-asked
 
 ### Requirement: Same-turn revision dominates navigation
 
