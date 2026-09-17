@@ -507,6 +507,11 @@ const CODEGRAPH_MCP_INSTALL_CMD = 'codegraph install';
 const CODEGRAPH_WIRING_HINT = 'MCP wiring: run `codegraph install` if not already wired';
 const OPENSPEC_INSTALL_CMD = 'npm i -g @fission-ai/openspec';
 
+function emitInstallerNotice(notices, line) {
+  if (Array.isArray(notices)) notices.push(line);
+  else console.log(line);
+}
+
 function probeOpencode() {
   const result = childProcess.spawnSync('opencode --version', { shell: true, stdio: 'ignore' });
   return !result.error && result.status === 0;
@@ -556,13 +561,14 @@ async function offerOpencodeInstall({
   runInstall = runOpencodeInstall,
   promptYesNo = promptYesNoReadline,
   isTTY = process.stdin.isTTY,
+  notices,
 } = {}) {
   if (probe()) {
     return;
   }
 
   if (!isTTY) {
-    console.log(OPENCODE_INSTALL_CMD);
+    emitInstallerNotice(notices, OPENCODE_INSTALL_CMD);
     return;
   }
 
@@ -570,10 +576,10 @@ async function offerOpencodeInstall({
   if (answer) {
     const success = runInstall();
     if (!success) {
-      console.log(OPENCODE_INSTALL_CMD);
+      emitInstallerNotice(notices, OPENCODE_INSTALL_CMD);
     }
   } else {
-    console.log(OPENCODE_INSTALL_CMD);
+    emitInstallerNotice(notices, OPENCODE_INSTALL_CMD);
   }
 }
 
@@ -582,16 +588,16 @@ async function offerCodegraphInstall({
   runInstall = runCodegraphInstall,
   promptYesNo = promptYesNoReadline,
   isTTY = process.stdin.isTTY,
+  notices,
 } = {}) {
   if (probe()) {
-    console.log();
-    console.log(CODEGRAPH_WIRING_HINT);
+    emitInstallerNotice(notices, CODEGRAPH_WIRING_HINT);
     return;
   }
 
   if (!isTTY) {
-    console.log(CODEGRAPH_CLI_INSTALL_CMD);
-    console.log(CODEGRAPH_MCP_INSTALL_CMD);
+    emitInstallerNotice(notices, CODEGRAPH_CLI_INSTALL_CMD);
+    emitInstallerNotice(notices, CODEGRAPH_MCP_INSTALL_CMD);
     return;
   }
 
@@ -599,12 +605,12 @@ async function offerCodegraphInstall({
   if (answer) {
     const success = runInstall();
     if (!success) {
-      console.log(CODEGRAPH_CLI_INSTALL_CMD);
-      console.log(CODEGRAPH_MCP_INSTALL_CMD);
+      emitInstallerNotice(notices, CODEGRAPH_CLI_INSTALL_CMD);
+      emitInstallerNotice(notices, CODEGRAPH_MCP_INSTALL_CMD);
     }
   } else {
-    console.log(CODEGRAPH_CLI_INSTALL_CMD);
-    console.log(CODEGRAPH_MCP_INSTALL_CMD);
+    emitInstallerNotice(notices, CODEGRAPH_CLI_INSTALL_CMD);
+    emitInstallerNotice(notices, CODEGRAPH_MCP_INSTALL_CMD);
   }
 }
 
@@ -883,9 +889,9 @@ function destinationRoots(harness, roots) {
   return { commands: path.join(roots.base, 'commands'), sai: path.join(roots.base, 'sai'), skills: path.join(roots.base, 'skills'), agents: path.join(roots.base, 'agents'), config: roots.base, root: roots.base };
 }
 
-function installProjection(projection, targetPath) {
+function installProjection(projection, targetPath, notices) {
   if (projection.strategy === 'merge-jsonc') {
-    copyOpencodeConfig(targetPath);
+    copyOpencodeConfig(targetPath, { notices });
     return;
   }
   if (projection.strategy === 'tunable-seed') {
@@ -1009,7 +1015,7 @@ function installClaude(destBase) {
   writeVersionMarker(targetPath);
 }
 
-function installOpencode(destBase, { spawnSync: spawnFn, env: runEnv } = {}) {
+function installOpencode(destBase, { spawnSync: spawnFn, env: runEnv, notices } = {}) {
   assertHarnessCommandsUseOneStringEnvelope('opencode');
   validateOpencodeWorkerBindings();
   assertInstalledMarkdownSourcesUseOneStringEnvelope();
@@ -1020,21 +1026,29 @@ function installOpencode(destBase, { spawnSync: spawnFn, env: runEnv } = {}) {
   const projections = expandForInstall('opencode', { base: targetPath });
   assertProjectionInputsUseOneStringEnvelope(projections, 'Opencode');
   cleanupRetiredProjections('opencode', { base: targetPath });
-  for (const projection of projections) installProjection(projection, targetPath);
+  for (const projection of projections) installProjection(projection, targetPath, notices);
 
   writeVersionMarker(targetPath);
 }
 
-function printOpencodeConfigMessage(base, opencodeBaseForPattern) {
+function printOpencodeConfigMessage(base, opencodeBaseForPattern, notices) {
   const pattern = opencodeSaiPermissionPatternFor(opencodeBaseForPattern);
   const agentsDisplay = opencodeAgentsDisplayFor(opencodeBaseForPattern);
-  console.log(`\nOpencode config already exists at ${base}. Verify that you have these settings properly configured:\n`);
-  console.log('  "permission": {');
-  console.log('    "external_directory": {');
-  console.log(`      "${pattern}": "allow"`);
-  console.log('    }');
-  console.log('  }');
-  console.log(`\nThis narrow external-directory authorization is the only setting the installer merges into an existing config. The generic agents (explore, executor, budget) are managed agent files under ${agentsDisplay} and need no config entry.`);
+  const lines = [
+    `Opencode config already exists at ${base}. Verify that you have these settings properly configured:`,
+    '  "permission": {',
+    '    "external_directory": {',
+    `      "${pattern}": "allow"`,
+    '    }',
+    '  }',
+    'See configs/opencode.jsonc for a reference example.',
+    `This narrow external-directory authorization is the only setting the installer merges into an existing config. The generic agents (explore, executor, budget) are managed agent files under ${agentsDisplay} and need no config entry.`,
+  ];
+  if (Array.isArray(notices)) {
+    for (const line of lines) notices.push(line);
+    return;
+  }
+  for (const line of lines) console.log(line);
 }
 
 const OPENCODE_SAI_PERMISSION_PATTERN = OPENCODE_SAI_PERMISSION_PATTERN_FALLBACK;
@@ -1226,7 +1240,7 @@ function mergeOpencodeAgents(text, permissionContext = createPermissionMatchCont
   return { text: out, messages, redundantKeys };
 }
 
-function copyOpencodeConfig(destBase, { opencodeBaseForPattern, spawnSync: spawnFn, env: runEnv } = {}) {
+function copyOpencodeConfig(destBase, { opencodeBaseForPattern, spawnSync: spawnFn, env: runEnv, notices } = {}) {
   const resolveOptions = {};
   if (spawnFn !== undefined) resolveOptions.spawnSync = spawnFn;
   if (runEnv !== undefined) resolveOptions.env = runEnv;
@@ -1246,6 +1260,7 @@ function copyOpencodeConfig(destBase, { opencodeBaseForPattern, spawnSync: spawn
     initial = rewritten;
     const merged = mergeOpencodeAgents(initial, createPermissionMatchContext(), patternBase);
     if (merged && merged.text !== initial) fs.writeFileSync(target, merged.text);
+    emitInstallerNotice(notices, `Created Opencode config at ${target} from configs/opencode.jsonc reference example.`);
     return;
   }
 
@@ -1254,7 +1269,7 @@ function copyOpencodeConfig(destBase, { opencodeBaseForPattern, spawnSync: spawn
   const merged = mergeOpencodeAgents(fs.readFileSync(target, 'utf8'), createPermissionMatchContext(), patternBase);
 
   if (!merged) {
-    printOpencodeConfigMessage(base, patternBase);
+    printOpencodeConfigMessage(base, patternBase, notices);
     return;
   }
 
@@ -1263,9 +1278,9 @@ function copyOpencodeConfig(destBase, { opencodeBaseForPattern, spawnSync: spawn
   }
   if (merged.redundantKeys.length > 0) {
     const agentsDisplay = opencodeAgentsDisplayFor(patternBase);
-    console.log(`Migration notice: redundant opencode agent keys detected in ${target}: ${merged.redundantKeys.join(', ')}. The projected agent files under ${agentsDisplay} now take precedence — agent files take precedence for the keys they declare, including model — a tuned model in the config is no longer effective. Config-only keys the agent files do not declare (for example tools or options) still apply. To keep a tuned model, edit the model line in the matching agent file (${agentsDisplay}{explore,executor,budget}.md), which the tunable-seed lifecycle preserves. Removing the now-redundant keys from the config is your decision; the installer never edits the config.`);
+    emitInstallerNotice(notices, `Migration notice: redundant opencode agent keys detected in ${target}: ${merged.redundantKeys.join(', ')}. The projected agent files under ${agentsDisplay} now take precedence — agent files take precedence for the keys they declare, including model — a tuned model in the config is no longer effective. Config-only keys the agent files do not declare (for example tools or options) still apply. To keep a tuned model, edit the model line in the matching agent file (${agentsDisplay}{explore,executor,budget}.md), which the tunable-seed lifecycle preserves. Removing the now-redundant keys from the config is your decision; the installer never edits the config.`);
   }
-  for (const message of merged.messages) console.log(message);
+  for (const message of merged.messages) emitInstallerNotice(notices, message);
 }
 
 function detectInstalledEditors(overrides = {}) {
@@ -1311,28 +1326,41 @@ async function main() {
     process.exit(0);
   }
 
+  const notices = [];
+
   if (choices.includes('Claude Code')) {
     installClaude();
-    console.log();
     console.log(`Claude commands installed to: ${path.join(CLAUDE_BASE, 'commands')}`);
     console.log(`Claude SAI commands/instructions installed to: ${path.join(CLAUDE_BASE, 'sai')}`);
     console.log(`Claude skills installed to: ${path.join(CLAUDE_BASE, 'skills')}`);
   }
 
   if (choices.includes('Opencode')) {
-    console.log();
-    await offerOpencodeInstall();
-    installOpencode(resolvedOpencodeBase);
-    copyOpencodeConfig(resolvedOpencodeBase);
+    if (choices.includes('Claude Code')) console.log();
+    await offerOpencodeInstall({ notices });
+    installOpencode(resolvedOpencodeBase, { notices });
     console.log(`Opencode commands installed to: ${path.join(resolvedOpencodeBase, 'commands')}`);
     console.log(`Opencode SAI commands/instructions installed to: ${path.join(resolvedOpencodeBase, 'sai')}`);
     console.log(`Opencode skills installed to: ${path.join(resolvedOpencodeBase, 'skills')}`);
   }
 
-  await offerCodegraphInstall();
+  await offerCodegraphInstall({ notices });
 
+  const seenNotices = new Set();
+  const uniqueNotices = [];
+  for (const line of notices) {
+    if (seenNotices.has(line)) continue;
+    seenNotices.add(line);
+    uniqueNotices.push(line);
+  }
+  if (uniqueNotices.length > 0) {
+    console.log();
+    for (const line of uniqueNotices) console.log(line);
+  }
+
+  console.log();
   console.log(
-    "\nReminder: run 'npx github:mmadariaga/shared-ai setup' in each project to configure the SAI workflow."
+    "Reminder: run 'npx github:mmadariaga/shared-ai setup' in each project to configure the SAI workflow."
   );
 }
 
