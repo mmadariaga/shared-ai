@@ -326,8 +326,8 @@ test('Step 2 the appendices keep Plan vs Final Implementation before Execution T
     'specs/apply-execution-telemetry-appendix/spec.md: the telemetry section must be created once');
   assert.match(combined, /before the commit|before[\s\S]{0,80}commit/i,
     'specs/apply-execution-telemetry-appendix/spec.md: telemetry must append before the commit');
-  assert.match(combined, /Human Verification/i,
-    'specs/apply-execution-telemetry-appendix/spec.md: telemetry must append after the verification/human gates');
+  assert.match(combined, /after the coordinator's verification passes/i,
+    "specs/apply-execution-telemetry-appendix/spec.md: telemetry must append after the coordinator's verification passes");
 });
 
 // ─── specs/apply-step-routing-tree/spec.md — routing tree ───────────────────

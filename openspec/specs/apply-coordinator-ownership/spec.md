@@ -3,7 +3,9 @@
 ## Purpose
 
 Defines what stays in the `/sai-4-apply` coordinator (main session) under the routed architecture: validation, the `changed_files` union, human gates, and commits are never delegated to the RED or GREEN workers.
+
 ## Requirements
+
 ### Requirement: coordinator-owns-validation
 
 The apply coordinator SHALL perform the coordinator-owned verification itself: after every worker dispatch it SHALL unconditionally sweep the per-change scratch path, re-run the Step's Verification Checklist (quiet confirmation only, not the RED→GREEN cycle), and independently compare the checklist, changed paths, allowed files, baseline, and worker report before checkbox marking or commit gating. The workers SHALL NOT perform the coordinator's verification; their results are validated by the coordinator.
@@ -38,16 +40,13 @@ The coordinator SHALL keep an invocation-scoped ordered duplicate-free union of 
 - **THEN** the union contains no scratch path and the pre-commit add-list cannot target scratch
 
 ### Requirement: coordinator-owns-human-gates
-
-The apply human gates SHALL stay in the coordinator (main session): the Human Verification gate (presenting the Step's `- [ ]` checkboxes and waiting for user confirmation), the fast-track deferred combined list, the commit authorization gates (per-Step STOP & COMMIT and the terminal documentation commit), and the GREEN-conflict escalation. No worker SHALL present a gate to the user or decide a gate outcome.
+The apply user-facing gates SHALL stay in the coordinator (main session): the commit authorization gates (per-Step STOP & COMMIT and the terminal documentation commit) and the GREEN-conflict escalation. Apply SHALL have no per-Step Human Verification gate and no fast-track deferred combined list. No worker SHALL present a gate to the user or decide a gate outcome, and no worker SHALL mark a checkbox or edit `implementation.md`.
 
 #### Scenario: Human Verification stays in the coordinator
-
-- **WHEN** a Step's Human section contains at least one `- [ ]` checkbox
-- **THEN** the coordinator presents those checks to the user and waits; the RED or GREEN worker never presents or confirms them
+- **WHEN** a Step's Functional section contains at least one `- [ ]` checkbox
+- **THEN** no gate is presented by anyone, because the Human Verification gate no longer exists; the terminal functional review re-exercises those checks later in the run
 
 #### Scenario: commit authorization stays in the coordinator
-
 - **WHEN** a STOP & COMMIT marker is reached
 - **THEN** the coordinator prints the pre-commit file visibility report, proposes the message, and asks through the closed-choice picker — the worker never stages or commits
 
@@ -90,4 +89,3 @@ Each RED, GREEN, or green-exception dispatch — and each same-worker continuati
 - **WHEN** a RED or GREEN worker returns its result for a Step
 - **THEN** the coordinator verifies the window's HEAD immobility before the scratch sweep, the comparisons, and any action on the result
 - **AND** the coordinator's own `git add` and `git commit` at the commit-authorization gates run only between windows
-

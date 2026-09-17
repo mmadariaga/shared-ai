@@ -35,7 +35,7 @@ A completed non-final implement segment SHALL communicate its summary and change
 - **THEN** apply activates immediately and no standalone `/sai-4-apply` invitation is printed
 
 ### Requirement: Apply fast-track is injected and composition-owned
-Apply SHALL receive fast-track true unconditionally when activated. The build coordinator SHALL print `> FAST-TRACK MODE ACTIVE` exactly once at apply activation and zero times when apply never starts. Injected fast-track SHALL retain commit pre-authorization, non-detached branch auto-stay, deferred combined Human Verification, and all safe-operations and other non-removable stops; detached HEAD SHALL retain its three-option branch prompt.
+Apply SHALL receive fast-track true unconditionally when activated. The build coordinator SHALL print `> FAST-TRACK MODE ACTIVE` exactly once at apply activation and zero times when apply never starts. Injected fast-track SHALL retain commit pre-authorization, non-detached branch auto-stay, and all safe-operations and other non-removable stops; detached HEAD SHALL retain its three-option branch prompt. Injected fast-track SHALL NOT defer a combined Human Verification report and SHALL NOT change functional-check handling.
 
 #### Scenario: Apply activation prints one banner
 - **WHEN** build transitions to apply
@@ -44,6 +44,10 @@ Apply SHALL receive fast-track true unconditionally when activated. The build co
 #### Scenario: Failed phase one has no banner
 - **WHEN** implement returns `failed` or `cancelled`
 - **THEN** apply is not activated and the banner is not printed
+
+#### Scenario: Injected fast-track keeps only its two opt-outs
+- **WHEN** build activates apply with fast-track injected
+- **THEN** commit pre-authorization and branch auto-stay apply while functional checks follow the ordinary terminal functional review path with no deferred combined list
 
 ### Requirement: Phase-one failure blocks apply
 Failed or cancelled implementation SHALL close the invocation without RED/GREEN dispatch, apply completion, or a successful transition.
@@ -74,11 +78,11 @@ When apply completes successfully as the final segment, build SHALL print exactl
 - **THEN** the pinned apply completion message is printed
 
 ### Requirement: Fast-track Human Verification is a report
-Under injected fast-track, Human Verification items SHALL be accumulated and presented as one combined post-commit report after Final sweep, not as an approval gate.
+Under injected fast-track, functional checks SHALL be handled exactly as without fast-track: apply's terminal functional review marks the checks it verified and reports the rest as pending human review in the ordinary terminal print cluster. There SHALL be no approval gate and no separate fast-track deferred list.
 
 #### Scenario: Human checks do not block final completion
-- **WHEN** Final sweep completes with deferred human checks
-- **THEN** the combined list is reported without blocking solely for approval
+- **WHEN** Final sweep completes with functional checks the review could not verify
+- **THEN** those checks are reported as pending human review in the ordinary print cluster without blocking completion
 
 ### Requirement: Large plans are accepted and changed files span phases
 Build SHALL declare no Step-count ceiling and SHALL preserve one ordered duplicate-free changed-files union across implement and apply.

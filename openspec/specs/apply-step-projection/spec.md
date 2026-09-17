@@ -21,17 +21,14 @@ TBD — placeholder purpose for the apply step projection capability.
 - **THEN** the appended steps render as entries like any other step heading, in plan order
 
 ### Requirement: mark-on-verified-completion
-
-A projected entry SHALL be marked `completed` in the same batched update where the coordinator marks that Step's checkboxes `[x]` in `implementation.md` — after the Step's Verification Checklist passes and, when applicable, the human verification gate confirms. The two representations of the same progress SHALL stay in step within a run.
+A projected entry SHALL be marked `completed` in the same batched update where the coordinator marks that Step's **Automated** checkboxes `[x]` in `implementation.md` — after the Step's Verification Checklist passes. No human-verification confirmation SHALL condition that marking, and unmarked Functional checkboxes SHALL NOT hold an entry `pending`. The two representations of the same progress SHALL stay in step within a run.
 
 #### Scenario: verified step marks entry and checkboxes together
-
-- **WHEN** the coordinator marks all of a Step's checkboxes `[x]` in `implementation.md` after verification passes
-- **THEN** the corresponding projected entry is marked `completed` in the same update, so the harness list and the on-disk checkboxes never disagree
+- **WHEN** the coordinator marks all of a Step's Automated checkboxes `[x]` in `implementation.md` after verification passes
+- **THEN** the corresponding projected entry is marked `completed` in the same update even though the Step's Functional checkboxes remain `- [ ]`
 
 #### Scenario: unverified step stays unmarked
-
-- **WHEN** a Step's verification has not passed (or a human gate for it is still open)
+- **WHEN** a Step's verification has not passed
 - **THEN** the projected entry for that Step is not marked `completed`
 
 ### Requirement: mirror-not-replace

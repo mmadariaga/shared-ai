@@ -2,7 +2,9 @@
 
 ## Purpose
 TBD - created by archiving change apply-standalone-state-machine. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: apply-standalone machine owns the Step cursor
 
 The apply coordinator SHALL spawn the `apply-standalone@1` machine once per run at the harness-session-derived stable key. The machine SHALL hold the Step inventory, the completed Steps, the active Step, that Step's routing mode, and its stage within that routing. The machine SHALL be re-seeded at every spawn from `implementation.md`; it SHALL NOT persist a cursor across runs, and where machine state and file disagree the file SHALL win.
@@ -16,16 +18,15 @@ The apply coordinator SHALL spawn the `apply-standalone@1` machine once per run 
 - **THEN** the cursor derives from the current `implementation.md` state, and any divergence from a previous run resolves in the file's favour
 
 ### Requirement: Machine derivation implements the Step cursor rule
-
-The machine's `transition()` SHALL implement the derivation formerly stated as prose in `coordinator.md`: a Step whose checkboxes are fully marked `[x]` is `done`, the first not-fully-marked Step in plan order is `active`, and the remainder are `pending`. That derivation SHALL exist in exactly one place; the coordinator SHALL NOT restate it.
+The machine's `transition()` SHALL implement the derivation formerly stated as prose in `coordinator.md`: a Step whose **Automated** checkboxes are all marked `[x]` is `done`, the first Step with an unmarked Automated checkbox in plan order is `active`, and the remainder are `pending`. Functional checkbox state SHALL NOT participate in the derivation, so an unmarked Functional checkbox never re-seeds a finished Step as active and never triggers a re-dispatch. That derivation SHALL exist in exactly one place; the coordinator SHALL NOT restate it.
 
 #### Scenario: fully-marked Step is done
-- **WHEN** the machine is seeded and a Step's checkboxes are all marked `[x]`
+- **WHEN** the machine is seeded and a Step's Automated checkboxes are all marked `[x]` while a Functional checkbox is still `- [ ]`
 - **THEN** the machine classifies that Step as done
 
 #### Scenario: first not-fully-marked Step is active
 - **WHEN** the machine is seeded
-- **THEN** the first not-fully-marked Step in plan order becomes active and the remainder are pending
+- **THEN** the first Step with an unmarked Automated checkbox in plan order becomes active and the remainder are pending
 
 ### Requirement: Machine provides routing file pointers via self-gating
 
@@ -56,11 +57,10 @@ The machine SHALL perform no file I/O. The coordinator SHALL read `implementatio
 - **THEN** it derives the cursor without reading any file
 
 ### Requirement: Partially-completed Steps re-enter at their entry stage
-
-A partially-marked Step SHALL re-seed as `active` with its stage reset to the Step's entry stage. The machine SHALL NOT restore an inner red, green, or checklist position, because checkbox granularity carries no inner-stage information.
+A Step with at least one unmarked **Automated** checkbox SHALL re-seed as `active` with its stage reset to the Step's entry stage. The machine SHALL NOT restore an inner red, green, or checklist position, because checkbox granularity carries no inner-stage information.
 
 #### Scenario: partially-marked Step re-enters at entry
-- **WHEN** a re-run re-seeds a Step whose checkboxes are partly marked
+- **WHEN** a re-run re-seeds a Step whose Automated checkboxes are partly marked
 - **THEN** that Step is active and its stage is the entry stage, so routing begins at that Step's entry file
 
 ### Requirement: No progress protocol is introduced
@@ -94,4 +94,3 @@ An apply segment running inside a larger composition SHALL address apply state u
 #### Scenario: sibling machines are unaffected
 - **WHEN** the apply segment emits to `apply-standalone@1`
 - **THEN** other machines live in the same session under their own ids keep their state unchanged
-

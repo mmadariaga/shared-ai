@@ -187,15 +187,13 @@ When chained segments receive composition-injected fast-track true, the supervis
 - **THEN** no composition banner is printed
 
 ### Requirement: Apply fast-track restores its two gate opt-outs
-
-When the apply fast-track signal is active, the coordinator SHALL pre-activate session-scoped commit authorization and SHALL auto-resolve the implementation plan's branch-selection prompt to staying on a non-empty current branch. All safe-operations, GREEN-conflict, Human Verification, and reporting requirements remain in force.
+When the apply fast-track signal is active, the coordinator SHALL pre-activate session-scoped commit authorization and SHALL auto-resolve the implementation plan's branch-selection prompt to staying on a non-empty current branch. All safe-operations, GREEN-conflict, and reporting requirements remain in force. Fast-track SHALL NOT carry a functional-check branch of its own: functional checks follow the terminal functional review path identically with and without fast-track.
 
 #### Scenario: Fast-track stays on a current branch
 - **WHEN** the fast-track signal is active and the current branch is non-empty
 - **THEN** the coordinator skips the three-option branch prompt, creates or switches to no branch, and prints `> Fast-track: staying on current branch "{current-branch}"`
 
 #### Scenario: Branch-base sub-prompt needs no handling because stay is a git no-op
-
 - **WHEN** the branch prompt is auto-resolved to "Stay on current branch" under fast-track
 - **THEN** the branch-base sub-prompt is not reached — it is surfaced only for new branches — so the auto-selection introduces no additional prompt to suppress
 
@@ -204,9 +202,12 @@ When the apply fast-track signal is active, the coordinator SHALL pre-activate s
 - **THEN** the coordinator presents the original three-option branch prompt and prints no auto-stay announcement
 
 #### Scenario: Auto-stay does not relax any other apply gate
-
 - **WHEN** `sai-4-apply {name} --fast-track` auto-stays on the current branch and later reaches a safe-operations confirmation or the commit-authorization gate
 - **THEN** the safe-operations confirmation is still required and the commit gate still prints its pre-commit file visibility report and proposed message; auto-staying opts out of the branch prompt only, nothing else
+
+#### Scenario: Fast-track changes no functional-check handling
+- **WHEN** the fast-track signal is active and a run reaches the terminal functional review
+- **THEN** the review marks the checks it verified and reports the rest as pending human review exactly as it does without fast-track
 
 ### Requirement: The fast-track flag opts out only of the gates named per command, never others
 

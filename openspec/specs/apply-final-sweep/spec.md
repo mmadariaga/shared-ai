@@ -2,16 +2,20 @@
 
 ## Purpose
 TBD - created by archiving change enhanced-apply-steps. Update Purpose after archive.
-## Requirements
-### Requirement: Agent SHALL perform a final checkbox sweep after all steps complete
 
-When all steps in `implementation.md` are complete, the apply agent MUST scan the entire file and verify that every checkbox that should be checked is marked `[x]`. Any unchecked items MUST be reported to the user before the implementation is declared done.
+## Requirements
+
+### Requirement: Agent SHALL perform a final checkbox sweep after all steps complete
+When all Steps in `implementation.md` are complete, the apply agent MUST scan the entire file and verify that every **Automated** checkbox is marked `[x]`. Any unchecked Automated item MUST be reported and MUST block entry into the terminal lifecycle. Unmarked **Functional** checkboxes MUST be reported as pending human review and MUST NOT block the sweep.
 
 #### Scenario: All checkboxes marked
-- **WHEN** all steps are complete and every checkbox in `implementation.md` is `[x]`
-- **THEN** the agent declares the implementation done without additional output
+- **WHEN** all Steps are complete and every Automated checkbox in `implementation.md` is `[x]`
+- **THEN** the sweep passes and the run enters the terminal lifecycle
 
 #### Scenario: Unchecked items remain
-- **WHEN** all steps are complete but one or more checkboxes remain `[ ]`
-- **THEN** the agent reports the unchecked items to the user and does NOT declare the implementation done until the user resolves them
+- **WHEN** all Steps are complete but one or more Automated checkboxes remain `[ ]`
+- **THEN** the agent reports the unchecked Automated items to the user and does NOT declare the implementation done until they are resolved
 
+#### Scenario: Unmarked Functional checks do not block
+- **WHEN** the sweep finds unmarked Functional checkboxes and no unmarked Automated checkbox
+- **THEN** the agent reports those checks as pending human review and the sweep passes

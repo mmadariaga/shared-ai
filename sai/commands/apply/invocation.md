@@ -45,17 +45,16 @@
 
   ## Completion
   "Done" means ALL of the following, together — a single Step finishing (or its commit landing) is NOT completion:
-  - Every Step in `openspec/changes/{change-name}/implementation.md` has all its checkboxes `[x]`, confirmed by the Final sweep.
-  - All human verification gates have been reviewed.
+  - Every Step in `openspec/changes/{change-name}/implementation.md` has all its **Automated** checkboxes `[x]`, confirmed by the Final sweep, plus a report of any Functional checkbox still pending human review.
   - All commits are done.
 
-  Under fast-track, the Human Verification evaluation changes: accumulate each Step's Human `- [ ]` checkboxes in the coordinator's in-conversation memory as they are reached, mark them `[x]` after that Step's automated checks pass, and hold the combined list for the print cluster below — it prints only there, as item (b), immediately before the MANDATORY STOP literal. Steps with zero Human checkboxes (italic note only) contribute nothing.
-  
-  Terminal functional review execute lives in `sai/commands/apply/steps/terminal-lifecycle.md` and is not repeated here; this section owns print order only. Emit only the held print cluster as the last consecutive user-visible block before STOP — (a) findings slot (each held fail/unverifiable check with its reason plus one recommendation line in the user input language: Spanish when the user writes Spanish, English fallback; silent when every check passes or there are no Human checks), then (b) under fast-track only the deferred HV list immediately before the literal, then (c) the literal below; without fast-track there is no (b) and findings sit immediately before the literal. Do not re-exercise checks here. Findings are non-blocking warnings and do not change Done above; the synthetic entry completes even with findings. Screen-only, no selector, no artifact write, no extra commit. The Final sweep, learnings, visibility listing, and terminal documentation commit occur before this cluster, never between (a), (b), and (c); the literal itself is unchanged.
+  Functional checkboxes (legacy header: `**Human (...)**`) do not gate completion: the terminal functional review marks the ones it verified, and the rest are reported as pending human review. Fast-track has no separate functional-marking branch; the path is identical with and without it.
 
-  If any Step remains unchecked, your work is NOT complete: do not print the completion message, do not mention `/sai-5-review`, and do not end — dispatch the next unchecked Step instead.
+  Terminal functional review execute lives in `sai/commands/apply/steps/terminal-lifecycle.md` and is not repeated here; this section owns print order only. Emit only the held print cluster as the last consecutive user-visible block before STOP — (a) findings slot (each held fail/unverifiable check with its reason, reported as pending human review, plus one recommendation line in the user input language: Spanish when the user writes Spanish, English fallback; silent when every check passes or there are no Functional checks), then (b) the literal below. Do not re-exercise checks here. Findings are non-blocking warnings and do not change Done above; the synthetic entry completes even with findings. Screen-only, no selector, no extra commit; the review's own Functional checkbox marking already happened at execute. The Final sweep, learnings, visibility listing, and terminal documentation commit occur before this cluster, never between (a) and (b); the literal itself is unchanged.
 
-  This section is the sole authority for the standalone completion action. "Done" requires every Step checked, human verification reviewed, and all commits done (including the fast-track deferred human-check rules above).
+  If any Step still has an unmarked Automated checkbox, your work is NOT complete: do not print the completion message, do not mention `/sai-5-review`, and do not end — dispatch the next unchecked Step instead. A Step whose Automated checkboxes are all marked is never re-dispatched because a Functional checkbox is still unmarked.
+
+  This section is the sole authority for the standalone completion action. "Done" requires every Step's Automated checkboxes marked and all commits done.
 
   MANDATORY STOP: Only once all the conditions above hold, your work is COMPLETE, STOP and print exactly: "Implementation applied. Run `/sai-5-review {name}` in a new chat when ready."
 

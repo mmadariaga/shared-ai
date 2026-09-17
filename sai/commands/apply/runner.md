@@ -70,7 +70,13 @@ MUST NOT broaden recovery eligibility or authorize removal of another unexpected
 path; an unrelated out-of-scope path keeps its existing recovery or
 human-intervention handling.
 
-The terminal functional review (`sai/commands/apply/steps/terminal-lifecycle.md` § Terminal functional review) runs as a read-only extension of this checklist execution: the coordinator re-exercises the aggregated Human checks empirically with no writes, no dispatch, and no verification-run side effects.
+### Step checkbox marking (Automated)
+
+After the coordinator's own verification of the Step passes, the coordinator marks that Step's **Automated** checkboxes `[x]` in `openspec/changes/{change-name}/implementation.md` in exactly one batched update, in the same slot as the appendix writes below. Only Automated checkboxes are marked here; the Step's **Functional** checkboxes (legacy header: `**Human (...)**`) are never marked in this slot — they belong to the terminal functional review. A Step whose own verification did not pass has none of its checkboxes marked.
+
+The marking is per Step and batched, never per item: this supersedes the per-item checkbox discipline of `@sai/policies/remember.md` for `/sai-4-apply` only, because the coordinator does not execute items itself and receives a Step-level worker report (`docs/adr/0018-checkbox-override-scoped-to-apply-not-remember.md`). RED and GREEN workers never mark a checkbox and never edit `implementation.md`.
+
+The terminal functional review (`sai/commands/apply/steps/terminal-lifecycle.md` § Terminal functional review) runs as an extension of this checklist execution: the coordinator re-exercises the aggregated Functional checks empirically, with no dispatch and no verification-run side effects, and its only write is marking the Functional checkboxes it verified.
 
 ## Dispatch-Kind Report Table
 
@@ -101,7 +107,7 @@ Field 8 is required in every report kind: An explicitly present empty `Files mod
 
 ### Appendix: Plan vs Final Implementation
 
-After the coordinator's verification passes and, when applicable, the Human Verification gate confirms, append the report's deviations to the `## Appendix: Plan vs Final Implementation` section at the end of `openspec/changes/{change-name}/implementation.md`. Create the section on the first deviation and append below the existing entries thereafter; a Step with zero deviations adds no empty entry. Block format:
+After the coordinator's verification passes — in the same slot as the Automated checkbox marking above — append the report's deviations to the `## Appendix: Plan vs Final Implementation` section at the end of `openspec/changes/{change-name}/implementation.md`. Create the section on the first deviation and append below the existing entries thereafter; a Step with zero deviations adds no empty entry. Block format:
 
 ```markdown
 ### Step N — <Short title of the deviation>
@@ -113,7 +119,7 @@ After the coordinator's verification passes and, when applicable, the Human Veri
 
 ### Appendix: Execution Telemetry
 
-In the same slot as the deviations appendix — after the coordinator's verification passes and, when applicable, the Human Verification gate confirms, and before the commit — append one row per field-9 entry to the `## Appendix: Execution Telemetry` section. Create the section once on the first row and append below the existing rows thereafter; never create a second section. The section holds exactly one table, with these columns in this fixed order:
+In the same slot as the deviations appendix — after the coordinator's verification passes and before the commit — append one row per field-9 entry to the `## Appendix: Execution Telemetry` section. Create the section once on the first row and append below the existing rows thereafter; never create a second section. The section holds exactly one table, with these columns in this fixed order:
 
 ```markdown
 | Step | dispatch | phase | attempts | first_failure | note |

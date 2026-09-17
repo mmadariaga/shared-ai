@@ -60,7 +60,7 @@ The generation rules below (complete production code, RED → GREEN, deferred ve
 - Commit to a single implementation path per step. Do not include alternative paths or optional decisions.
 - Implement every step in the exact order defined by `tasks.md`. Do not skip steps unless explicitly marked as skipped in the plan. Do not change the structure or order.
 - Adopt the Expertise Profile from `tasks.md` as a non-negotiable contract. Do not deviate from it. If `## Implementation Context` is missing, STOP per the STOP condition above.
-- **Deferred verifications:** Human checks that cannot be performed at their step (because the component is not yet rendered in the app) must be deferred — not omitted — to the step where they first become observable. At that integration step, list them in labeled blocks before the step's own Human checks: `*Deferred from Step N ({name}):*`. Every deferred check must appear exactly once in the plan.
+- **Deferred verifications:** Functional checks that cannot be performed at their step (because the component is not yet rendered in the app) must be deferred — not omitted — to the step where they first become observable. At that integration step, list them in labeled blocks before the step's own Functional checks: `*Deferred from Step N ({name}):*`. Every deferred check must appear exactly once in the plan.
 - **RED → GREEN:** For testable steps, always write the test first (RED) and verify it fails before writing the implementation (GREEN). This proves the test is real and not tautological.
 - **RED phase code contract:** The RED phase may ONLY contain:
   1. The **test** that asserts the missing behaviour.

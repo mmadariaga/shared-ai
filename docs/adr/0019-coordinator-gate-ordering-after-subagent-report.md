@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Superseded by [ADR 0186](./0186-gate-order-without-per-step-human-gate.md)
 
 ## Context
 

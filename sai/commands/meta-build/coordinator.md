@@ -78,7 +78,7 @@
   once at implement-segment activation (the first fast-track activation of the build), as ordinary in-conversation text, and write
   nothing to disk to record it. When activating the apply segment, always inject fast-track true but print no second banner. Print the banner zero times when apply never activates and implement never activated; when implement activated, its single banner stands with no second banner. Neither segment's skipped shell prints a second banner.
 
-  Injected fast-track still means: commit pre-authorization, non-detached branch auto-stay, and deferred combined Human Verification as a post-commit report after Final sweep (not an approval gate). Detached HEAD still presents the existing three-option branch prompt. Safe-operations confirmations remain required — never auto-approve them because fast-track is injected.
+  Injected fast-track still means: commit pre-authorization and non-detached branch auto-stay. It changes nothing about functional checks: apply's terminal functional review marks the checks it verified and prints the rest as pending human review in the ordinary terminal print cluster, identically with and without fast-track (no approval gate either way). Detached HEAD still presents the existing three-option branch prompt. Safe-operations confirmations remain required — never auto-approve them because fast-track is injected.
 
   ## Phase-1 failure blocks apply
   If the implement segment returns `failed` or `cancelled`, close the invocation

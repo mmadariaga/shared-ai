@@ -77,7 +77,7 @@ test('build coordinator owns fast-track activation and blocks apply after phase-
   assertContains(source, 'Print the banner zero times when apply never activates');
   assertContains(source, 'commit pre-authorization');
   assertContains(source, 'non-detached branch auto-stay');
-  assertContains(source, 'deferred combined Human Verification as a post-commit report');
+  assertContains(source, 'identically with and without fast-track');
   assertContains(source, 'Detached HEAD still presents the existing three-option branch prompt');
   assertContains(source, 'Safe-operations confirmations remain required');
   assertContains(source, 'If the implement segment returns `failed` or `cancelled`');
