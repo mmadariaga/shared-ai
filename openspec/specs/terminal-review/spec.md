@@ -6,10 +6,13 @@ TBD - created by archiving change apply-functional-review. Update Purpose after 
 ## Requirements
 
 ### Requirement: Terminal functional review execution
-The system SHALL perform exactly one coordinator-owned read-only terminal functional review after the Step loop, Human Verification gates, per-Step commit gates, and appendices have completed, and before the Final sweep, with no worker dispatch, no RED/GREEN cycle, no recovery slot, no writes, and no extra commit.
+The system SHALL perform exactly one coordinator-owned read-only terminal functional review execution after the Step loop, Human Verification gates, per-Step commit gates, and appendices have completed, and before the Final sweep, with no worker dispatch, no RED/GREEN cycle, no recovery slot, no writes, and no extra commit, SHALL assign verdicts and hold them in invocation memory, and SHALL NOT print at execute time; print is not part of execution.
 #### Scenario: Review runs pre-sweep without dispatch
 - **WHEN** the Step loop, Human Verification gates, commit gates, and appendices have completed
-- **THEN** the coordinator re-exercises the aggregated Human checks empirically before the Final sweep without dispatching a worker or writing a file
+- **THEN** the coordinator re-exercises the aggregated Human checks empirically before the Final sweep without dispatching a worker or writing a file, holds verdicts in invocation memory, and prints nothing at execute time
+#### Scenario: Execute holds verdicts silently pre-sweep
+- **WHEN** the Step loop, Human Verification gates, commit gates, and appendices have completed
+- **THEN** the coordinator re-exercises aggregated Human checks once before the Final sweep, holds verdicts in invocation memory, and prints nothing at that moment
 
 ### Requirement: Aggregated Human coverage
 The system SHALL cover the aggregated Human checkboxes from implementation.md across all Steps including Deferred from Step N blocks, SHALL contribute nothing from italic parenthetical notes and Steps without Human checks, and SHALL NOT re-run Automated checks.
@@ -24,7 +27,10 @@ The system SHALL assign exactly one verdict per Human check — pass, fail, or u
 - **THEN** the check receives exactly one of pass, fail, or unverifiable with a reason
 
 ### Requirement: Synthetic terminal projection entry
-The system SHALL allow exactly one coordinator-derived synthetic terminal entry for the terminal functional review in the run-start Step Projection, with no Step heading, no checkbox, and no dispatch, rendering pending until its warnings print and completed when they do, independent of findings.
+The system SHALL allow exactly one coordinator-derived synthetic terminal entry for the terminal functional review in the run-start Step Projection, with no Step heading, no checkbox, and no dispatch, staying pending through execute, sweep, learnings, and commit and becoming completed when the print slot is emitted, including when the slot is empty, independent of findings.
 #### Scenario: Synthetic entry completes on warnings print
 - **WHEN** the run-start projection renders with the terminal review entry present
-- **THEN** the entry stays pending through review execution and flips to completed when its warnings print even when findings exist
+- **THEN** the entry stays pending through execute, sweep, learnings, and commit and flips to completed when the print slot is emitted even when the findings slot is silent
+#### Scenario: Synthetic entry completes on print-slot emission including empty
+- **WHEN** the run-start projection renders with the terminal review entry present
+- **THEN** the entry stays pending through execute, sweep, learnings, and commit and flips to completed when the print slot is emitted even when the findings slot is silent
