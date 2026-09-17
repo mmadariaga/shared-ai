@@ -8,7 +8,7 @@ These are the eight numbered phase commands. `/sai-build` chains `implement` →
 |---------|-------|--------|---------|
 | `/sai-1-spec` | feature description | `{c}/proposal.md`, `specs/**` | Describe what you want to build. The AI writes a proposal and acceptance criteria for you to review and approve — nothing else happens until you say yes. Creates only proposal/spec artifacts plus permitted glossary updates. |
 | `/sai-2-design` | {change-name} | `{c}/design.md`, `tasks.md`, `interfaces.md` | Turns approved specs into a technical plan: architecture decisions, trade-offs, a concrete task list, and a per-step interface contract (`interfaces.md`) listing the new/modified public signatures and exact test assertions for each step. Ends at design completion — run `/sai-3-implement {name}` in a new chat. Supports `--fast-track` to auto-approve specs. |
-| `/sai-3-implement` | {change-name} | `{c}/implementation.md` | Writes the full coding playbook — the "on-paper" implementation — to `openspec/changes/{change-name}/implementation.md`, then stops. `/sai-4-apply` follows it verbatim. |
+| `/sai-3-implement` | {change-name} | `{c}/implementation.md` | Writes the full coding playbook — the "on-paper" implementation — to `openspec/changes/{change-name}/implementation.md`, then stops. `/sai-4-apply` follows it verbatim. Supports `--fast-track` to auto-correct a single-path `sai-2` defect and auto-approve the documentation-area permission. |
 | `/sai-4-apply` | {change-name} | code | Real implementation. Each testable step is split across two blind workers: **RED** authors the test from the `interfaces.md` assertions and confirms it fails by assertion, then **GREEN** copies the playbook code in and makes it pass — with no permission to modify the tests. Asks before each commit. Supports `--fast-track` to auto-commit and defer human checks to end-of-run. |
 | `/sai-5-review` | {change-name} + diff | `{c}/review.md` | Runs 11 read-only analysis passes plus gated deterministic mutation analysis, then recommends specialized audits based on what changed. |
 | `/sai-6-security` | {change-name} + diff | `{c}/security.md` | Finds security vulnerabilities in the diff — points to exact file and line, explains the risk, and maps findings to known standards (OWASP, CVE). |
@@ -30,12 +30,15 @@ Both harnesses preserve the same durable artifacts, gate wordings, and stop text
 
 ## Fast-track mode (`--fast-track`)
 
-For low-risk or high-trust runs, six commands accept a `--fast-track` argument that auto-advances their approval gates instead of stopping to ask. A `> FAST-TRACK MODE ACTIVE` banner prints at the start of the run so the relaxed gating is never silent. `/sai-build` and `/sai-review` are not members: each strips an explicit `--fast-track` token as a no-op — build always injects fast-track for its chained apply segment, and review owns no questions of its own.
+For low-risk or high-trust runs, seven commands accept a `--fast-track` argument that auto-advances a fixed set of approval gates instead of stopping to ask. A `> FAST-TRACK MODE ACTIVE` banner prints when the mode activates so the relaxed gating is never silent (`/sai-backfill` honors the flag with no banner). `/sai-build` and `/sai-review` are not members: each strips an explicit `--fast-track` token as a no-op — build always injects fast-track for both its chained implement segment and its chained apply segment (one banner at implement activation), and review owns no questions of its own.
+
+The on-demand members are also listed in [On-demand commands](on-demand-commands.md#fast-track-mode---fast-track).
 
 | Command | What `--fast-track` skips |
 |---------|---------------------------|
-| `/sai-explore` | Skips both language gates (artifact review and crystallization). At a later Plan (unattended) activation, skips the overview-language ask and resolves `overview_language` to `None`. |
-| `/sai-2-design` | Auto-approves the specs gate and records the approval in `.openspec.yaml`. |
+| `/sai-explore` | Skips both language gates (artifact review and crystallization). At a later Plan (unattended) activation, skips the overview-language ask and resolves `overview_language` to `None`. An explicit `--overview-lang` still suppresses the ask in every mode; under Direct Build (unattended) it is a no-op. |
+| `/sai-2-design` | Auto-approves the specs approval gate. |
+| `/sai-3-implement` | Auto-corrects a `sai-2` defect that has exactly one preserving correction path; auto-approves the documentation-area permission ask. Defects in `sai-1` always escalate. |
 | `/sai-4-apply` | Pre-authorizes every commit for the run, defers all human-verification checks into one combined list presented after the final sweep, and auto-stays on the current branch. |
 | `/sai-archive` | Auto-proceeds the unchecked-items confirmation. |
 | `/sai-backfill` | Skips the generated reconciliation questions, auto-proceeds the spec-conflict gate after reporting it verbatim, and accepts a crystallized `**Change name**` without confirming. |
