@@ -6,11 +6,11 @@ Start with one command: **`/sai-explore`**. It helps you clarify the idea and ch
 
 Built on top of [OpenSpec](https://github.com/Fission-AI/OpenSpec): OpenSpec owns the lifecycle and artifact structure. Shared-AI owns the code, quality and cost efficiency layers.
 
-Works great on **opencode** with an **opencode-go** subscription + any frontier model provider sub (Anthropic / OpenAI / OpenCode Zen). Can also run on **Claude Code**.
+Works great on **opencode v2** with an **opencode-go** subscription + any frontier model provider sub (Anthropic / OpenAI / OpenCode Zen). Can also run on **Claude Code**.
 
 ## TL;DR
 
-Spec-driven: agree on purpose and acceptance criteria before development. For small changes that start in code, Direct Build and **`/sai-backfill`** can reconstruct the specification afterward.
+Spec-driven: agree on purpose and acceptance criteria before development. For urgent or small changes that start in code, **`/sai-backfill`** can reconstruct the specification afterward.
 
 Structured as a framework, closer to Superpowers than to Matt Pocock-style skills: no loose tips, but still quite flexible.
 
@@ -30,9 +30,8 @@ npx github:mmadariaga/shared-ai
 - [Utility commands](#utility-commands)
 - [Cost-Effective Strategies](#cost-effective-strategies)
 - [Project highlights](#project-highlights)
-- [Installation](#global-installation-multi-project)
-- [Model defaults](#default-models-by-command-and-provider)
-- [Diagnosing an install](#diagnosing-an-install--doctor)
+- [Installation](#installation)
+- [Model defaults](#default-opencode-models)
 
 ## Why use this
 
@@ -42,18 +41,27 @@ npx github:mmadariaga/shared-ai
 
 **Knowledge stays in the project.** Each phase writes its own artifact under `openspec/changes/{change-name}/` and `openspec/specs`. When you come back months later — or hand it off to someone else — the reasoning is already there, organized by concern instead of buried in chat history.
 
-**Cost-effective by design.** The workflow controls cost in several ways:
+**[Cost-effective by design.](#cost-effective-strategies)**
 
 - Each task runs on the cheapest model that can do the job. A CLI tool lets you customize models and effort levels for each project.
-- Reuses agents that already understand the change for adversarial reviews: more effective and much cheaper than spawning new agents from scratch.
 - The YAGNI philosophy (You Aren't Gonna Need It) focuses work on what the change actually requires, so tokens aren't wasted on unnecessary scope.
+- When CodeGraph is available, structural queries use the code graph instead of scanning the tree.
+- Framework advantage: SAI already writes specs, ADRs, and DDRs and maintains their indexes, so research counts on it and knows where to start.
 
-**Testing is not optional.** The workflow enforces RED → GREEN:
+**Testing is not optional.**
 
+- Documentation can say something is done; tests demonstrate it. There is no better documentation.
+- The workflow enforces RED → GREEN.
 - Test assertions are defined during design, and tests are written before production code is applied.
 - Different agents own the tests and the implementation, producing higher-quality tests through independent perspectives.
 - The implementation agent cannot modify the tests, preventing it from weakening assertions or otherwise cheating to make them pass.
 - In the more interactive strategies, behavior that cannot be covered automatically — visual behavior and end-to-end flows — becomes an explicit verification request at the earliest point where you can observe it.
+
+**Adversarial review out of the box.**
+
+- A dedicated review pass checks the change for bugs, weak tests, maintainability, and resilience.
+- Security, performance, and accessibility audits run when the diff warrants them.
+- Reuses agents that already understand the change — more effective and much cheaper than spawning new reviewers from scratch.
 
 ## How to use it
 
@@ -103,7 +111,7 @@ Taking manual control? Run the numbered commands step by step — full reference
 |---------|------|--------|
 | `/sai-explore` | Discover, crystallize, and choose an implementation route | Ready-to-propose plan or completed Direct Build |
 | `/sai-build` | Chain `sai-3-implement` → `sai-4-apply` | Implementation plan and code |
-| `/sai-review` | Chain `sai-5-review` → audits selected by triage | `{c}/review.md` and applicable audit reports |
+| `/sai-review` | Chain `sai-5-review` → audits selected by triage | `review.md` and applicable audit reports |
 | `/sai-archive` | Sync specs and archive the completed change | Archived change and optional local commit |
 
 The core planning, build, and review phases are also exposed as eight numbered commands — full reference in [docs/sequential-pipeline.md](docs/sequential-pipeline.md). Review audit triage lives in [docs/review-triage.md](docs/review-triage.md).
@@ -117,6 +125,7 @@ Claude Code and opencode route these core phases through a coordinator and a man
 | `/sai-retire-docs` | Read-only, index-driven analysis of active ADRs, DDRs, and related specs. Asks for explicit per-candidate confirmation before any archival move. |
 | `/sai-status` | Read-only progress panel — single change or table over every active change. Never writes anything. |
 | `/sai-worktree` | Interactive git worktree manager — inventory, create, and delete linked worktrees. No OpenSpec prerequisites. |
+| `/sai-merge` | Merge a local branch into the current branch — conflict resolution, ADR/DDR collision repair, gated behind explicit authorization. No OpenSpec prerequisites. |
 
 Full unnumbered reference in [docs/on-demand-commands.md](docs/on-demand-commands.md).
 
@@ -129,7 +138,7 @@ Every phase in this pipeline is optimized to minimize token consumption without 
 All agents think and reason internally in English, regardless of the user's input language. English tokenizers produce fewer tokens per unit of meaning than most other languages [—non-English languages can cost 2–3× more tokens for the same meaning](https://x.com/arankomatsuzaki/status/2049125048792006965). This keeps reasoning efficient while user-facing chat always responds in the user's own language (Spanish, French, German, etc.). Generated artifacts (`proposal.md`, `design.md`, `implementation.md`, `review.md`, code, commit messages, PRs) are written in English unless the user explicitly requests another language.
 
 ### Task-Matched Model Selection
-Coordinators and workers can use different models: coordinators handle routing and gates, while managed workers perform the technical work. Defaults balance reasoning quality and cost by role, and every installed agent's model tuning remains user-owned. See the [default model tables](#default-models-by-command-and-provider) below.
+Coordinators and workers can use different models: coordinators handle routing and gates, while managed workers perform the technical work. Defaults balance reasoning quality and cost by role, and every installed agent's model tuning remains user-owned. See the [default opencode models](#default-opencode-models) below.
 
 ### Explore Sub-Agent
 Research or exploratory tasks are delegated to **sub-agents running cost-effective models** matched to the subtask complexity. By default, sub-agents do not inherit the main session's token window, keeping costs predictable. Each subagent call declares an **output contract** (exact fields, length cap, no raw content) so only distilled signal enters the main context. The main agent never calls WebFetch directly — all external doc lookups go through the cheap explore subagent. Caps: ≤8 research-subagent invocations per audit; in audit mode, ≤15 main-agent reads + ≤30 main-agent `Grep`/`Glob` calls per pass.
@@ -146,7 +155,7 @@ Verbose shell commands (tests, builds, lints) are delegated to the **executor su
 
 ### Budget Sub-Agent
 
-General-purpose task delegation (file reads, searches, writes, code analysis) is handed off to the **budget sub-agent** (running a cheap model). The budget sub-agent executes exactly one task, returns a structured completion report (`status` / `actions_taken` / `failures`), and aborts on permission blocks rather than waiting. A soft ~30-call cap prevents scope drift on multi-step work. Available as skills for Claude Code and opencode.
+General-purpose task delegation (file reads, searches, writes, code analysis) is handed off to the **budget sub-agent** (running a cheap model). The budget sub-agent executes exactly one task, returns a structured completion report (`status` / `actions_taken` / `failures`), and aborts on permission blocks rather than waiting. A soft ~30-call cap prevents scope drift on multi-step work. Available as skills for Claude Code and opencode — full reference in [docs/skills.md](docs/skills.md).
 
 ## Project highlights
 
@@ -157,7 +166,7 @@ The change artifacts are the source of truth for the entire pipeline: `proposal.
 The pipeline enforces the same practices experienced developers rely on: build only what you need now, keep each piece focused on one thing, name things so they explain themselves, reuse what already exists, favor extension over modification (the open-closed principle), and ship the smallest change that works. Testable acceptance criteria are backed by tests; behavior that needs visual or end-to-end confirmation becomes an explicit human-verification step. The result is code that's easier to read, easier to change, and easier to trust — no matter your experience level.
 
 ### Independent review context
-Review runs in a fresh worker context rather than asking the planning conversation to assess its own output. The shipped opencode defaults also use a different worker model for review and implementation planning; Claude Code keeps the same model family but still preserves phase isolation. Either way, review reconstructs its conclusions from the artifacts and diff instead of inheriting the plan agent's reasoning.
+Worker output is reviewed automatically rather than trusted as-is.
 
 ### Multi-Pass Review
 The review agent runs eleven read-only analysis passes across the full diff: Domain Alignment, Correctness & Bugs, Security triage, Performance triage, Accessibility triage, Maintainability, Testing, Consistency with Codebase, Domain Language Consistency, Documentation & Migrations, and Resilience. A gated twelfth pass runs deterministic mutation analysis when the diff contains testable production code, the repository has tests, and a supported mutation tool is declared. Missing or failed tooling is reported explicitly; mutation results are never inferred.
@@ -188,47 +197,49 @@ Every command starts with zero inherited context — the boot adapter opens each
 ### Ubiquitous Language via GLOSSARY.md
 Domain terms are captured in a living `GLOSSARY.md` at the project root. Spec reads and appends new terms inline (no batching), Plan uses canonical terms for all new identifiers, and Review validates language consistency in the diff. This enforces a DDD-style ubiquitous language across the entire pipeline — every agent and every artifact speaks the same vocabulary.
 
-## Global installation (multi-project)
+## Installation
 
 Commands are designed as **user globals**, not per project. A single copy in the CLI's global directory makes them available in any repo. Maintained phase assets use the grouped `sai/commands/{spec,design,implement,apply}/` command-card trees; the `/sai-build` composition uses `sai/commands/meta-build/command-bootstrap.md` and `coordinator.md`.
 
-### Automatic npx installer (recommended)
+### npx installer
 
 ```bash
 # 1. Install shared-AI commands globally
 npx github:mmadariaga/shared-ai
 ```
 
-Presents an interactive checklist to select Claude Code and/or opencode as targets, then expands `sai/install-manifest.json` into deterministic OS-aware projections. If you pick opencode and its CLI isn't on PATH, the installer offers to install it for you. It also offers (once, editor-agnostic) to install the **CodeGraph** CLI and wire its MCP server — see [Third Party Tools](#third-party-tools). Both offers only prompt on a TTY; in CI they just print the command and never block the file copy.
+Presents an interactive checklist to select Claude Code and/or opencode as targets. If you pick opencode and its CLI isn't on PATH, the installer offers to install it for you. It also offers (once, editor-agnostic) to install the **CodeGraph** CLI and wire its MCP server — see [Third Party Tools](#third-party-tools).
 
 ```bash
 # 2. In each project where you want to use shared-AI:
 npx github:mmadariaga/shared-ai setup /path/to/your/project
 ```
 
-Installs the openspec CLI if missing (offers on a TTY; prints the command in CI), runs `openspec init` if needed, sets `schema: sai-workflow` in `openspec/config.yaml`, and copies the schema templates into the project. When the CodeGraph CLI is available, it also builds the project index with `codegraph init` (skipped cleanly if CodeGraph isn't installed — it never blocks setup). It ends with interactive CLI menus to customize command and agent models per project — any model available in opencode can be selected; on Claude Code it works with Anthropic models.
+- Asks to install the openspec CLI if missing
+- Runs `openspec init` if needed
+- Sets `schema: sai-workflow` in `openspec/config.yaml`
+- Copies the schema templates into the project
+- Builds the project index with `codegraph init` when the CodeGraph CLI is available
+- Ends with interactive CLI menus to customize command and agent models per project — any model available in opencode can be selected; on Claude Code it works with Anthropic models
 
-## Per project installation / override
-
-Per-project commands are still possible: a file placed in a supported harness's project-local command folder at the repo root overrides the user-global wrapper of the same name. Globals act as a base; project-local files override them by filename.
-
-| Harness | Project-local command folder | Overrides by filename? |
-|---------|------------------------------|------------------------|
-| opencode | `.opencode/commands/` | ✅ Yes |
-| Claude Code | `.claude/commands/` | ✅ Yes |
-
-Two override patterns are supported:
-
-- **Swap a wrapper's model for one project** — copy the canonical wrapper (e.g. `sai-3-implement`) into your harness's folder above and edit its `model` field. The project-local copy takes precedence over the global.
-- **Create a custom variant command** — copy the canonical wrapper into the folder under a new name (e.g. `sai-3-implement-opus`, `sai-3-implement-gpt`) and set its `model` field. This is the supported replacement for the removed upstream `-low`/`-high` implement variants.
+If something looks off after install or setup, run a read-only health check — full reference in [docs/doctor.md](docs/doctor.md).
 
 ## Post Install
 
-`npx github:mmadariaga/shared-ai setup` ends with an interactive **Customize models** menu. It walks provider → model → variant per target and writes project-local overrides, so you can retune a phase without editing any wrapper by hand. On opencode any available model can be selected; on Claude Code it works with Anthropic models. Pick `Exit` to keep the shipped defaults.
+`npx github:mmadariaga/shared-ai setup` ends with an interactive **Customize models** menu. It walks provider → model → variant per target and writes project-local overrides, so you can retune a phase without editing any wrapper by hand. You can also save and load presets. The write is surgical: only `model` and `effort`/`variant` change; the rest of the file is left untouched. On opencode any available model can be selected; on Claude Code it works with Anthropic models.
 
-To change a model by hand instead, copy the wrapper into your harness's project-local command folder and edit its `model` field — project-local wins over user-global by filename. Opencode declares model and variant on the wrapper itself; no named coordinator agent is shipped for either harness.
+### Per project installation / override
 
-### Default models by command and provider
+Per-project commands and agents are still possible: a file placed in a supported harness's project-local folder at the repo root overrides the user-global file of the same name. Globals act as a base; project-local files override them by filename.
+
+| Harness | Commands | Agents |
+|---------|----------|--------|
+| opencode | `.opencode/commands/` | `.opencode/agents/` |
+| Claude Code | `.claude/commands/` | `.claude/agents/` |
+
+Copy the canonical command or agent into your harness's folder above and edit its `model` field, append new instructions, invoke skills, etc. Project-local wins over user-global by filename. Just leave the shipped `Fetch @` imports untouched so the override stays compatible with future updates.
+
+### Default opencode models
 
 Shipped opencode defaults, tunable per project via the setup model menu (`model` + `variant`/`effort` are user-owned). You may find better alternatives for your project.
 
@@ -283,30 +294,20 @@ This chart may help you identify which models to test. The intelligence axis is 
 
 The x-axis (cost) is usually more reliable, but again, do your own tests. Note that costs can vary depending on the provider — the same model may be priced differently across API providers, subscriptions, and regions.
 
-![Intelligence vs Cost (Jul 2026)](Intelligence-vs-Cost-(27-Jul-'26).png)
+![Intelligence vs Cost (Sep 2026)](Intelligence-vs-Cost-(16-Sep-'26).png)
 
-Another ranking of models focused on front-end web development tasks: https://arena.ai/leaderboard/code/webdev
+Other rankings that can help you choose:
+
+- Edge case and code quality focused benchmark: https://aicodingdaily.com/leaderboard
+- Bug Hunt Bench (score vs cost): https://bughunt.productcompass.pm/?preset=featured&view=scatter
+- Cybersecurity benchmark (CVE rediscovery): https://x.com/pilvar222/status/2097623905007476820
+- Front-end web development: https://arena.ai/leaderboard/code/webdev
 
 ## Third Party Tools
 
 Consider combining SAI with **[CodeGraph](https://github.com/colbymchenry/codegraph)** — a pre-indexed, 100% local code knowledge graph that exposes your codebase as an MCP server. Instead of scanning files with grep/glob/Read, agents query a SQLite symbol graph directly, cutting costs ~35%, token usage ~57%, and tool calls ~71% on average. Works with Claude Code, opencode, Cursor, Codex CLI, and more.
 
-## Diagnosing an install — `doctor`
-
-Run a read-only health check of your shared-ai install across Claude Code and
-opencode plus the project's OpenSpec state:
-
-    npx github:mmadariaga/shared-ai doctor
-
-It reports, per harness (Claude Code, opencode): manifest-allowlisted
-missing/unexpected files, content drift, dangling `Fetch @` references, and
-version skew against `main`; plus a
-`[Project health]` section (openspec binary, `openspec/` dir, `schema: sai-workflow`)
-and OpenSpec-skill staleness. It never changes anything — it only recommends
-fixes (re-run the installer, `openspec init`).
-
-- Exit code `0` when green, `1` when any error-severity check fails (CI-usable).
-- Add `--json` for machine-readable output.
+SAI does not bundle CodeGraph. The global installer can offer (once, editor-agnostic, TTY-only) to install the CodeGraph CLI and wire its MCP server; it never indexes a project. Per-project `setup` is what configures it in a repo: when the CLI is on PATH it runs `codegraph init` to build the index; if CodeGraph isn't installed, that step is skipped and setup never blocks.
 
 ## Uninstall
 
@@ -324,11 +325,11 @@ The `uninstall` command reverses the installation process:
 
 **Idempotent re-runs**: Running `uninstall` again after a successful uninstall is safe — it checks what's still present and produces a plan with nothing to do.
 
-**Empty-directory pruning**: After removing tracked files, the uninstaller prunes empty ancestor directories up to the editor base directory (`~/.claude/`, `~/.config/opencode/`, or VS Code's `User/` folder). It never removes the base directory itself or files it didn't place.
+**Empty-directory pruning**: After removing tracked files, the uninstaller prunes empty ancestor directories up to the editor base directory (`~/.claude/`, `~/.config/opencode/`). It never removes the base directory itself or files it didn't place.
 
 **Excluded targets**: The following are **never touched** by the uninstaller:
 - opencode config merges — `opencode.json` / `opencode.jsonc` are left intact
 - Per-project `setup` artifacts — `openspec/config.yaml`, `openspec/schemas/sai-workflow/`
 - External CLIs — `openspec`, `opencode-ai`, and `@colbymchenry/codegraph` are never uninstalled
 
-**Version-skew guidance**: If you upgraded shared-AI and some files were updated, run `npx shared-ai install` first to sync the installed files, then `npx shared-ai uninstall` to remove them cleanly.
+**Version-skew guidance**: If you upgraded shared-AI and some files were updated, run `npx github:mmadariaga/shared-ai install` first to sync the installed files, then `npx github:mmadariaga/shared-ai uninstall` to remove them cleanly.

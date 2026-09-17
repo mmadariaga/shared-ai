@@ -6,6 +6,8 @@ Each `sai-*` command loads only the skills it needs. You can also trigger the sk
 
 | Skill | Purpose | Trigger |
 |-------|---------|---------|
+| `sai-commands` | Lists all `/sai-*` commands and requires loading the command file before executing any of them, so the agent does not skip the wrappers. | `/sai-*` commands |
+| `fetch` | Resolves `Fetch @` paths in instructions. Auto-loaded on opencode; Claude Code has the same mechanism built in. | auto-loaded |
 | `safe-operations` | Enforces reversibility and impact awareness — agent must ask before destructive, hard-to-reverse, or shared-system operations, and must not use destructive shortcuts. | `"dangerous"`, `"destructive"`, `"git push --force"`, `"rm -rf"`, `"delete files/branches"` |
 | `token-efficient-languages` | Enforces a 3-rule language contract: (1) think/reason in English, (2) respond in user's language, (3) write artifacts in English unless the user explicitly requests another language. English tokenizers produce fewer tokens per unit of meaning. | `"budget language"`, `"cheap language"` |
 | `budget-explorer` | Low-cost agent for research, exploration, and doc-lookup tasks. Claude Code resolves model selection from the matching `budget-explorer.md` agent file (`~/.claude/agents/budget-explorer.md`, project-local `.claude/agents/budget-explorer.md` wins) via the `budget-explorer` dispatch literal with no per-spawn model; opencode resolves from the managed `explore.md` agent file (`~/.config/opencode/agents/explore.md`). Enforces a 30-call maximum and output contracts (exact fields, length cap, no raw content). | `"budget explorer"`, `"cheap explorer"` |

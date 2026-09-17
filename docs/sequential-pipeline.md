@@ -21,7 +21,7 @@ Every numbered phase runs the same shape: a **coordinator** in your main session
 
 Both harnesses preserve the same durable artifacts, gate wordings, and stop texts. Claude Code and opencode differ only in dispatch mechanics and model IDs.
 
-- `/sai-2-design` — Claude Code uses a medium-effort coordinator with a medium-effort design worker (`sai-2-design-worker`); opencode declares `opencode-go/muse-spark-1.3-contributor` with `variant: xhigh` on the wrapper. The fixed notice is acknowledged with `continue_after_notice`. Design ends at design completion — run `/sai-3-implement {name}` in a new chat. Proposal Complexity stays descriptive, never a routing gate.
+- `/sai-2-design` — Claude Code uses a medium-effort coordinator with a medium-effort design worker (`sai-2-design-worker`); opencode declares `opencode-go/muse-spark-1.3-contributor` with `variant: xhigh` on the wrapper and `variant: high` on the worker. The fixed notice is acknowledged with `continue_after_notice`. Design ends at design completion — run `/sai-3-implement {name}` in a new chat. Proposal Complexity stays descriptive, never a routing gate.
 - `/sai-3-implement` — the worker writes the full coding playbook to `openspec/changes/{change-name}/implementation.md`; `/sai-4-apply` follows it and copies each step's code verbatim, adjusting only for compilation errors or test failures.
 - `/sai-4-apply` — the coordinator never edits code. It dispatches the RED and GREEN workers on the budget tier, re-verifies each result, prints a pre-commit files-modified report cross-checked against `tasks.md`, and asks before each commit.
 - `/sai-commit`, `/sai-merge` — same shape without any openspec dependency. The worker drafts, the coordinator alone runs git.
@@ -34,7 +34,7 @@ For low-risk or high-trust runs, six commands accept a `--fast-track` argument t
 
 | Command | What `--fast-track` skips |
 |---------|---------------------------|
-| `/sai-explore` | Both language gates take their English path without asking. |
+| `/sai-explore` | Skips both language gates (artifact review and crystallization). At a later Plan (unattended) activation, skips the overview-language ask and resolves `overview_language` to `None`. |
 | `/sai-2-design` | Auto-approves the specs gate and records the approval in `.openspec.yaml`. |
 | `/sai-4-apply` | Pre-authorizes every commit for the run, defers all human-verification checks into one combined list presented after the final sweep, and auto-stays on the current branch. |
 | `/sai-archive` | Auto-proceeds the unchecked-items confirmation. |
