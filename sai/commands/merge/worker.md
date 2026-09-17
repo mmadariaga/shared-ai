@@ -16,11 +16,12 @@ history. There is no change resolution in this phase: payloads never carry
 projects without openspec.
 
 The coordinator declares `fast_track_active` alongside the envelope as session
-state. Honor it only in the fast-track branches documented in the instruction's
-Step 5 (runtime scope gate): it may skip only that scope question. It never
-selects `ours`, `theirs`, or `synthesis`, and it never suppresses a required
-contextual decision, the pre-merge environment checks, the verification loop,
-or the incremental ADR/DDR collision pass.
+state. Honor it only in the documented fast-track branches: pin the method to
+`merge` without asking (skip the Step 1B method gate), never show the Step 2B
+squash gate, and skip only the Step 5 runtime scope gate (auto-apply `full`).
+It never selects `ours`, `theirs`, or `synthesis`, and it never suppresses a
+required contextual decision, the pre-merge environment checks, the
+verification loop, or the incremental ADR/DDR collision pass.
 
 After branch selection, the coordinator carries invocation-scoped merge
 provenance outside `arguments_value`: `target_sha`, `source_sha`, `merge_base`,
@@ -82,11 +83,15 @@ thereafter, and an ordered duplicate-free
 
 Perform the read-only and content-writing procedure of
 `sai/commands/merge/instructions.md`: the pre-merge environment checks (E1
-dirty-worktree gate, E2 in-progress-merge guard), the branch selection
-(local branches from `git branch --no-merged HEAD` whose commits are not already
+dirty-worktree gate, E2 in-progress-merge guard, E2b in-progress-rebase
+guard), the method-first gate (Step 1B method selection pinned to `merge`
+under fast-track), the branch selection (local branches from `git branch --no-merged HEAD` whose commits are not already
 reachable from the current branch, sorted by full commit timestamp descending and exact
 branch name ascending for equal timestamps, with `YYYY-MM-DD HH:mm` labels and
-exact branch-name values), the post-merge conflict analysis (ours/theirs/base
+exact branch-name values), the conditional squash gate (Step 2B, rebase path in
+normal mode only), the proposed integration (Step 3: `git merge` unchanged,
+`git rebase` plain, or squash-unify then `git rebase`), the post-integration
+conflict analysis (ours/theirs/base
 for each conflicted file, classification into specs / ADR-DDR / code), the
 resolution analysis (semantic merge for specs, guided fusion for code, E3
 escalation for true contradictions), the contextual objective comparison and
@@ -183,8 +188,23 @@ coordinator's merge presentation seam owns how that source is rendered to the
 user; keep the source content exact and never print it as your deliverable or
 write it to a file. Gate questions and options remain returned lifecycle source
 fields; do not invoke a picker or otherwise present them from this worker
-session. The branch selector's canonical question is exactly **"Which branch do you want to merge?"**; the coordinator renders it in the ambient conversation language (Spanish keeps **"¿Qué rama quieres mergear?"**, English uses the canonical, any other language falls back to the canonical) without opening the working-language question early, because branch selection happens before `working_language` is known; its option labels use `<branch> — last commit <YYYY-MM-DD HH:mm>`
-for eligible branches while its values carry exact branch names. The scope
+session. The method selector's canonical question is exactly **"Which
+integration method do you want to use?"** with ordered options `Merge`
+(`merge`) / `Rebase` (`rebase`); it is skipped under fast-track (pinned to
+`merge`) and abandoning it mutates nothing. The branch selector's canonical
+question is method-aware: for method `merge` it is exactly **"Which branch do
+you want to merge?"**; for method `rebase` it is exactly **"Which branch do
+you want to rebase onto?"**; the coordinator renders the merge variant in the
+ambient conversation language (Spanish keeps **"¿Qué rama quieres mergear?"**,
+English uses the canonical, any other language falls back to the canonical)
+and the rebase variant likewise (Spanish **"¿Sobre qué rama quieres hacer
+rebase?"**) without opening the working-language question early, because branch
+selection happens before `working_language` is known; its option labels use `<branch> — last commit <YYYY-MM-DD HH:mm>`
+for eligible branches while its values carry exact branch names. The squash
+selector appears only for method `rebase` in normal mode with canonical
+question exactly **"Squash the commits to be rebased into a single commit
+before rebasing?"** and ordered options `Yes` (`yes`) / `No` (`no`); it is
+skipped for method `merge` and never appears under fast-track. The scope
 selector's options are already filtered to categories present in the worker's
 conflict classification and ordered with `Full scope (Recommended)` (`full`)
 first, followed by `Artifacts only (specs + ADR/DDR)` (`artifacts`) and `Code only`
@@ -282,18 +302,26 @@ checkout, authored files have been spliced by you.
 Preserve the instruction's stop texts exactly: an in-progress merge returns a
 terminal payload whose summary is exactly **"Merge already in progress.
 Resolve or abort the current merge first (`git merge --continue` or
-`git merge --abort`)."** and closes the run; no other local branches returns
+`git merge --abort`)."** and closes the run; an in-progress rebase returns a
+terminal payload whose summary is exactly **"Rebase already in progress.
+Resolve or abort the current rebase first (`git rebase --continue` or
+`git rebase --abort`)."** and closes the run; no other local branches returns
 **"No other local branches to merge."**.
 
 ## Authorization ask
 
 After the incremental ADR/DDR pass completes (or is skipped because the source
 frontier is empty) and the coordinator has executed all renames and reference
-updates, return `needs_input` asking **"Run `git commit` to
-finalize the merge?"** with ordered options `yes (Recommended)` / `no`,
+updates, return `needs_input` with the method-aware authorization question:
+for method `merge` ask **"Run `git commit` to
+finalize the merge?"**; for method `rebase` ask **"Finalize the rebase onto
+<selected-branch>?"** with the exact selected branch name. Both carry ordered
+options `yes (Recommended)` / `no`,
 complying with the five-element anatomy of
-`@sai/policies/question-context.md`. Carry a compact merge summary with the
-target branch, source branch, verification status, conflict result, collision
+`@sai/policies/question-context.md`. Carry a compact integration summary with
+the method (plus squash choice on the rebase path), the
+target branch, source branch (rebase target), verification status, conflict
+result (rebase conflicts reuse the same resolution flow), collision
 result (including `not applicable` when the source introduced no final
 ADR/DDR record or neither directory exists), and staged-file count. Carry the
 corresponding collision-applicability value.
@@ -302,19 +330,23 @@ a returned lifecycle result, never an inline picker call from this session.
 
 When the coordinator forwards the selected answer value, process it without
 re-presenting the prompt and without executing anything: on `yes`, return
-`completed` whose summary restates the exact authorized `git commit`
-invocation for coordinator execution; on `no`, return `completed` whose
-summary documents the exact repo state per the instruction's Step 8 refusal
-branch (E9), including the full staged-file list only in that refusal summary.
+`completed` whose summary restates the exact authorized finalization
+for coordinator execution (`git commit` for method `merge`; completing the
+rebase with `git rebase --continue` for method `rebase`); on `no`, return
+`completed` whose summary documents the exact repo state per the instruction's
+Step 8 refusal branch (E9), including the method, the full staged-file list
+only in that refusal summary, and the method-aware manual finalization and
+revert paths.
 
 ## State-changing git prohibition
 
-NEVER execute state-changing git commands. NEVER run `git merge`, `git add`,
-`git commit`, `git checkout`, `git stash`, `git reset`, or any git command
-that mutates state. You may write content to conflicted files within your scope
-(conflict-region text splices and ADR/DDR reference updates in files), and you
-may apply verification-loop corrections to the working tree. You must not
-rename files or run any git command. The merge launch, git checkout operations,
-git renames, final staging, and commit execution belong exclusively to the
-coordinator. Do not write to files outside your scope or attempt git
-operations of any kind.
+NEVER execute state-changing git commands. NEVER run `git merge`, `git rebase`,
+`git add`, `git commit`, `git checkout`, `git stash`, `git reset`, or any git
+command that mutates state. You may write content to conflicted files within
+your scope (conflict-region text splices and ADR/DDR reference updates in
+files), and you may apply verification-loop corrections to the working tree.
+You must not rename files or run any git command. The integration launch
+(merge or rebase), the conditional squash unification, git checkout
+operations, git renames, final staging, rebase continuation, and commit
+execution belong exclusively to the coordinator. Do not write to files outside
+your scope or attempt git operations of any kind.

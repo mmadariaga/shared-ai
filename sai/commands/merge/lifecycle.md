@@ -30,19 +30,28 @@ state has invariants that must hold before transitioning to the next state:
 
 ```text
 preflight
-  → branch-selection
-    → merge-outcome
-      → [clean path] → adr-ddr → authorization → terminal
-      → [conflict path] → language-selection → scope-selection →
-        contextual-analysis → resolution → verification →
-        adr-ddr → authorization → terminal
+  → method-selection
+    → branch-selection
+      → squash-selection
+        → merge-outcome
+          → [clean path] → adr-ddr → authorization → terminal
+          → [conflict path] → language-selection → scope-selection →
+            contextual-analysis → resolution → verification →
+            adr-ddr → authorization → terminal
 ```
+
+Fast-track skips `method-selection` (method pinned to `merge`) and
+`squash-selection` (never shown); the merge method skips `squash-selection`.
+`merge-outcome` covers both `git merge` and `git rebase` launches (plus the
+conditional squash unification that precedes a squashed rebase).
 
 State invariants:
 
-- **preflight** — environment checks complete, no merge operation started.
-- **branch-selection** — source branch selected, merge provenance captured.
-- **merge-outcome** — merge executed, outcome recorded (clean or conflicted).
+- **preflight** — environment checks complete, no integration operation started.
+- **method-selection** — integration method (`merge`/`rebase`) selected; abandoning mutates nothing.
+- **branch-selection** — source branch selected (merge source / rebase target), merge provenance captured.
+- **squash-selection** — rebase squash choice (`yes`/`no`) selected; applies only to the rebase path in normal mode.
+- **merge-outcome** — integration executed (`git merge` or `git rebase`, with squash unification first when selected), outcome recorded (clean or conflicted).
 - **language-selection** — conflict detected, working language selected.
 - **scope-selection** — conflict scope selected.
 - **contextual-analysis** — semantic analysis in progress or complete.
@@ -85,8 +94,12 @@ not listed is `invalid`. Each row names the precondition that
 ```text
 current_state         target_state           precondition
 ─────────────────────────────────────────────────────────────────────
-preflight             branch-selection       environment checks complete
-branch-selection      merge-outcome          branch selected, merge provenance captured
+preflight             method-selection       environment checks complete
+preflight             branch-selection       environment checks complete, fast-track pins method to merge
+method-selection      branch-selection       method selected (merge|rebase)
+branch-selection      squash-selection       method = rebase, normal mode, branch selected, merge provenance captured
+branch-selection      merge-outcome          branch selected, merge provenance captured, method and squash resolved (merge path or fast-track)
+squash-selection      merge-outcome          squash selected (yes|no), merge provenance captured
 merge-outcome         adr-ddr                merge_outcome = clean
 merge-outcome         language-selection     merge_outcome = conflicted
 language-selection    scope-selection        working_language resolved to a non-empty token;
@@ -106,20 +119,31 @@ adr-ddr               terminal               non-committing closure: authorizati
 
 ### Precondition details
 
-- **preflight → branch-selection**: `environment checks complete` — the
-  dirty-worktree gate has passed and the branch list is available. No merge
-  operation has started.
+- **preflight → method-selection**: `environment checks complete` — the
+  dirty-worktree gate has passed and no integration operation has started.
+  Abandoning the method question mutates nothing.
+- **preflight → branch-selection**: fast-track fast path — `environment checks
+  complete` plus `fast_track_active` pinning the method to `merge` without
+  asking.
+- **method-selection → branch-selection**: `method selected` — a `merge` or
+  `rebase` value is stored.
+- **branch-selection → squash-selection**: `method = rebase, normal mode` — a
+  branch value is stored, and `target_sha`, `source_sha`, `merge_base`, and
+  `source_introduced_adr_ddr_records` are captured before the integration
+  launch; the squash gate appears only here.
 - **branch-selection → merge-outcome**: `branch selected, merge provenance
   captured` — a branch value is stored, and `target_sha`, `source_sha`,
   `merge_base`, and `source_introduced_adr_ddr_records` are captured before
-  the merge launch.
-- **merge-outcome → adr-ddr**: `merge_outcome = clean` — the merge completed
+  the integration launch, plus the method and squash are resolved (merge path
+  skips squash; fast-track pins method to `merge`).
+- **squash-selection → merge-outcome**: `squash selected` — a `yes` or `no`
+  value is stored with the captured provenance before the rebase launch
+  (including the squash unification when `yes`).
+- **merge-outcome → adr-ddr**: `merge_outcome = clean` — the merge or rebase completed
   without conflicts. The clean path skips every conflict-only state
   (language-selection, scope-selection, contextual-analysis, resolution,
   verification).
-- **merge-outcome → language-selection**: `merge_outcome = conflicted` — the
-  merge produced conflicts. The conflicted path MUST enter language-selection
-  before any conflict analysis.
+- **merge-outcome → language-selection**: `merge_outcome = conflicted` — the merge or rebase produced conflicts. The conflicted path MUST enter language-selection before any conflict analysis; a rebase conflict reuses the same merge resolution flow.
 - **language-selection → scope-selection**: `working_language resolved` — the
   working-language question has been answered with a non-empty language
   token. Under fast-track, the scope item may be auto-selected, but the
@@ -167,8 +191,12 @@ rejected transition.
 
 The lifecycle validation seam integrates at these coordinator-owned boundaries:
 
-1. **Before merge launch** — validate transition from `branch-selection` to
-   `merge-outcome`.
+1. **Before merge launch** — validate transition from
+   `branch-selection` (merge path or fast-track) or `squash-selection`
+   (rebase path) to `merge-outcome` (`git merge` or `git rebase` launch). Also validate the preceding
+   `preflight` → `method-selection` (or fast-track `preflight` →
+   `branch-selection`), `method-selection` → `branch-selection`, and where
+   applicable `branch-selection` → `squash-selection` gates.
 2. **Before conflict analysis** — validate transition from `merge-outcome` to
    `language-selection` (conflicted path only).
 3. **Before scope selection** — validate transition from `language-selection`

@@ -31,12 +31,15 @@ mutation from the worker.
 ## Required Inputs
 
 The user invokes `/sai-merge` with optional flags in `$ARGUMENTS`:
-- `--fast-track` — auto-applies full scope (artifacts + code) when conflicts
-  exist; parsed by the coordinator and forwarded as `fast_track_active` session
-  state.
+- `--fast-track` — pins the method to `Merge` without asking, never shows the
+  squash question, and auto-applies full scope (artifacts + code) when
+  conflicts exist; parsed by the coordinator and forwarded as `fast_track_active`
+  session state.
 
-No other inputs are required. The coordinator resolves the branch selection
-through a native picker driven by your `needs_input` returns.
+No other inputs are required. The coordinator resolves the method, branch, and
+conditional squash selections through native pickers driven by your
+`needs_input` returns. Method is always asked before branch selection; squash
+is asked only for `Rebase` in normal mode.
 
 ---
 
@@ -48,11 +51,20 @@ Run in parallel:
 - `git status --porcelain` — detect dirty worktree
 - `test -f .git/MERGE_HEAD` (or `git rev-parse --verify MERGE_HEAD`) — detect
   in-progress merge
+- `test -d .git/rebase-merge -o -d .git/rebase-apply` (or
+  `git rev-parse --verify REBASE_HEAD`) — detect in-progress rebase
 
 **E2 — In-progress merge guard:** if `MERGE_HEAD` exists, return a terminal
 `completed` payload whose summary is exactly **"Merge already in progress.
 Resolve or abort the current merge first (`git merge --continue` or
 `git merge --abort`)."** and close the run. Do not proceed to Step 2.
+
+**E2b — In-progress rebase guard:** if a rebase is in progress
+(`.git/rebase-merge`, `.git/rebase-apply`, or `REBASE_HEAD` exists) and no
+`MERGE_HEAD` exists, return a terminal `completed` payload whose summary is
+exactly **"Rebase already in progress. Resolve or abort the current rebase
+first (`git rebase --continue` or `git rebase --abort`)."** and close the run.
+Do not proceed to Step 2.
 
 **E1 — Dirty worktree gate:** if `git status --porcelain` reports any modified,
 untracked, or staged files, return `needs_input` asking **"Working tree has
@@ -63,7 +75,29 @@ state context. On a forwarded `no`, return a terminal `completed` payload whose
 summary states that the merge was not performed. On a forwarded `yes`, proceed
 to Step 2.
 
-A clean worktree proceeds directly to Step 2.
+A clean worktree proceeds directly to Step 1B.
+
+### Step 1B: Method selection (method-first gate)
+
+When `fast_track_active` is false, return `needs_input` asking exactly
+**"Which integration method do you want to use?"**, complying with the
+five-element anatomy of `@sai/policies/question-context.md`, with ordered
+options:
+
+- `{label: "Merge", value: "merge"}`;
+- `{label: "Rebase", value: "rebase"}`.
+
+The result summary must carry the detailed context: the current branch, what
+each method does (`Merge` integrates the selected branch into the current
+branch with `git merge`; `Rebase` replays the current branch onto the
+selected branch with `git rebase`), and that abandoning the question mutates
+nothing. On a forwarded `merge` or `rebase` answer, proceed to Step 2.
+
+When `fast_track_active` is true, pin the method to `merge` without asking
+and proceed directly to Step 2. The squash question never appears in that
+mode.
+
+Abandoning the method question mutates nothing.
 
 ### Step 2: Branch selection
 
@@ -80,7 +114,16 @@ equal timestamps. This tie-break is mandatory so the picker is deterministic.
 If the filtered list is empty, return a terminal `completed` payload whose summary is exactly
 **"No other local branches to merge."** and close the run.
 
-Return `needs_input` asking exactly **"Which branch do you want to merge?"**. This is the canonical English source; the coordinator's presentation seam renders it in the ambient conversation language (Spanish keeps **"¿Qué rama quieres mergear?"**, English uses the canonical, any other language falls back to the canonical) without opening the working-language question early, because branch selection happens before `working_language` is known. Build one
+Return `needs_input` asking the method-aware branch question. For method
+`merge`, ask exactly **"Which branch do you want to merge?"**. This is the
+canonical English source; the coordinator's presentation seam renders it in the
+ambient conversation language (Spanish keeps **"¿Qué rama quieres mergear?"**,
+English uses the canonical, any other language falls back to the canonical)
+without opening the working-language question early, because branch selection
+happens before `working_language` is known. For method `rebase`, ask exactly
+**"Which branch do you want to rebase onto?"** (Spanish:
+**"¿Sobre qué rama quieres hacer rebase?"**; any other language falls back to
+the canonical). Build one
 option per candidate with:
 
 - `value`: the exact local branch name, unchanged;
@@ -98,15 +141,57 @@ list, each candidate's full commit timestamp, and why a source branch is
 needed. The returned question and options still comply with the five-element
 anatomy of `@sai/policies/question-context.md` when rendered with that summary.
 
-When the coordinator forwards the selected branch name, proceed to Step 3.
+When the coordinator forwards the selected branch name, continue by method:
+- for method `merge`, proceed to Step 3;
+- for method `rebase` when `fast_track_active` is true, proceed to Step 3
+  (fast-track never reaches this branch because the method is pinned to
+  `merge`, so this is a defensive no-ask path);
+- for method `rebase` when `fast_track_active` is false, proceed to Step 2B.
 
-### Step 3: Propose the merge
+Abandoning the branch question mutates nothing. The selected branch is the
+merge source for method `merge` and the rebase target for method `rebase`.
 
-Return a terminal `completed` payload whose summary restates the exact
-`git merge <branch>` invocation the coordinator should execute into the
-current branch.
+### Step 2B: Conditional squash gate (rebase path, normal mode only)
 
-Before executing that command, the coordinator MUST capture the merge
+This gate appears only when the selected method is `rebase` and
+`fast_track_active` is false. For method `merge`, or whenever fast-track is
+active, skip this gate entirely.
+
+Return `needs_input` asking exactly **"Squash the commits to be rebased into
+a single commit before rebasing?"**, complying with the five-element anatomy
+of `@sai/policies/question-context.md`, with ordered options `Yes` (`yes`) /
+`No` (`no`). Carry as essential summary context: the current branch, the
+selected rebase target, that `Yes` first unifies the commits unique to the
+current branch (`merge_base..HEAD`) into one local commit so conflicts appear
+at most at one point, that `No` replays commit by commit so conflicts may
+appear on each commit, and that abandoning mutates nothing.
+
+On a forwarded `yes` or `no`, proceed to Step 3.
+
+### Step 3: Propose the integration
+
+For method `merge`, return a terminal `completed` payload whose summary
+restates the exact `git merge <branch>` invocation the coordinator should
+execute into the current branch. The merge path runs the current flow
+unchanged.
+
+For method `rebase` without squash (`no`), return a terminal `completed`
+payload whose summary restates the exact `git rebase <selected-branch>`
+invocation the coordinator should execute: rebase of the current branch onto
+the selected one, replayed commit by commit with possible conflicts per
+commit.
+
+For method `rebase` with squash (`yes`), return a terminal `completed`
+payload whose summary restates the exact two-phase sequence the coordinator
+should execute: first unify the commits to be rebased (`merge_base..HEAD`)
+into a single local commit (via `git reset --soft <merge_base>` followed by a
+single `git commit` preserving the squashed change), then run
+`git rebase <selected-branch>` for that single commit so conflicts appear at
+most at one point. Pushed-branch rewrite risk stays the user's
+responsibility; no push-safety handling is performed.
+
+Before executing that command (for rebase with squash, before the
+unification step), the coordinator MUST capture the merge
 provenance from the unchanged target and source refs:
 
 - `target_sha` — `git rev-parse --verify HEAD`;
@@ -156,16 +241,19 @@ git show <target_sha|source_sha>:<path>
 The coordinator keeps these governing specs indexed by branch (`target_rules`,
 `source_rules`) and path, and forwards them with the merge outcome. The worker
 must not reconstruct that provenance from post-merge `HEAD` or a moved source
-ref. The coordinator captures the merge outcome (clean or conflicted) and
+ref. The coordinator captures the integration outcome (clean or conflicted,
+for either `git merge` or `git rebase`) and
 resumes you at Step 4.
 
-### Step 4: Post-merge conflict analysis
+### Step 4: Post-integration conflict analysis
 
-The coordinator reports the merge outcome. If the merge was clean (no
-conflicts), skip to Step 7 (ADR/DDR collision pass).
+The coordinator reports the integration outcome. If the merge or rebase was
+clean (no conflicts), skip to Step 7 (ADR/DDR collision pass).
 
-If the merge produced conflicts, run `git diff --name-only --diff-filter=U` to
-obtain the exact ordered list of conflicted files. For each conflicted file, read the three versions:
+If the merge or rebase produced conflicts, run `git diff --name-only --diff-filter=U` to
+obtain the exact ordered list of conflicted files. A rebase conflict reuses
+the same merge resolution flow: conflicts may appear per replayed commit
+without squash, or at most at one point with squash. For each conflicted file, read the three versions:
 
 - `git show :1:<file>` (base / common ancestor)
 - `git show :2:<file>` (ours / current branch)
@@ -953,18 +1041,22 @@ result.
 ### Step 8: Authorization ask
 
 After the coordinator executes the renames and reference updates (if any) and
-stages all changes, compose a compact merge summary and return `needs_input`
-asking **"Run `git commit` to finalize the merge?"** with ordered options `yes
-(Recommended)` / `no`, complying with the five-element anatomy of
-`@sai/policies/question-context.md`. The summary must contain only the
-decision-oriented merge facts below, not a full staged-file dump:
+stages all changes, compose a compact integration summary and return
+`needs_input` with the method-aware authorization question, complying with the
+five-element anatomy of `@sai/policies/question-context.md`. For method
+`merge`, ask **"Run `git commit` to finalize the merge?"**. For method
+`rebase`, ask **"Finalize the rebase onto <selected-branch>?"** (with the
+exact selected branch name). Both carry ordered options `yes
+(Recommended)` / `no`. The summary must contain only the
+decision-oriented facts below, not a full staged-file dump:
 
-- **Target branch** — the current branch;
-- **Source branch** — the selected branch;
-- **Verification status** — passed, not required for a clean merge, continued
+- **Method** — `merge` or `rebase` (plus `squash: yes/no` for the rebase path);
+- **Target branch** — the current branch (rebase: the branch rebased);
+- **Source branch** — the selected branch (rebase: the rebase target);
+- **Verification status** — passed, not required for a clean integration, continued
   without a detectable suite, or failed after the applicable round;
 - **Conflict result** — clean, resolved, or unresolved with its escalation
-  count;
+  count (rebase conflicts reuse the same resolution flow);
 - **Collision result** — not applicable (the source introduced no final ADR/DDR
   record or neither ADR nor DDR directory exists), no collisions, repaired
   collision count, or reported collision/escalation count; carry the
@@ -976,30 +1068,34 @@ answers `no`; they remain required for the E9 repository-state record but do
 not belong in the authorization question's compact summary.
 
 On a forwarded `yes`, return `completed` whose summary restates the exact
-authorized `git commit` invocation for coordinator execution. The coordinator
+authorized finalization for coordinator execution: for method `merge`, the
+`git commit` invocation; for method `rebase`, completing the rebase
+(`git rebase --continue` until the rebase completes, with staged resolutions)
+and showing the resulting HEAD SHA and subject. The coordinator
 captures and shows the resulting commit SHA and subject.
 
 On a forwarded `no`, return `completed` whose summary states that the
 resolved+staged state remains and documents the exact repo state:
 - Current branch
-- Merged branch (if applicable)
+- Selected branch (merge source / rebase target) and method (plus squash choice)
 - Staged files
-- How to commit manually (`git commit`)
-- How to revert (`git reset HEAD~1` if committed, `git merge --abort` if
-  still in progress)
+- How to finalize manually (`git commit` for merge; `git rebase --continue` for rebase)
+- How to revert (`git reset HEAD~1` if a merge was committed, `git merge --abort` if
+  a merge is still in progress; `git rebase --abort` if a rebase is still in progress)
 
-This is the **E9** edge case: the user declines the final-commit authorization.
+This is the **E9** edge case: the user declines the final authorization.
 
 ---
 
 ## State-changing git prohibition
 
-NEVER execute state-changing git commands. NEVER run `git merge`, `git add`,
-`git commit`, `git checkout`, `git stash`, `git reset`, or any git command
-that mutates state. You may write content to conflicted files within your scope
+NEVER execute state-changing git commands. NEVER run `git merge`, `git rebase`,
+`git add`, `git commit`, `git checkout`, `git stash`, `git reset`, or any git
+command that mutates state. You may write content to conflicted files within your scope
 (conflict-region text splices and ADR/DDR reference updates in files), and you
 may apply verification-loop corrections to the working tree. You must not
-rename files or run any git command. The merge launch, git checkout operations,
-git renames, final staging, and commit execution belong exclusively to the
-coordinator. Do not write to files outside your scope or attempt git
-operations of any kind.
+rename files or run any git command. The integration launch (merge or rebase),
+the conditional squash unification (`git reset --soft` + `git commit`), git
+checkout operations, git renames, final staging, rebase continuation, and
+commit execution belong exclusively to the coordinator. Do not write to files
+outside your scope or attempt git operations of any kind.

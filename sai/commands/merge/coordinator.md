@@ -40,22 +40,26 @@
     1. Leave `fast_track_active` false.
     2. Use `arguments_value` verbatim.
 
-  Fast-track changes only the documented runtime scope gate. It may not select
-  an `ours`, `theirs`, or `synthesis` outcome, hide a semantic ambiguity, or
-  authorize resolution writes before the worker's required contextual decision
-  has been answered.
+  Fast-track changes only the documented runtime scope gate. The method gate
+  is additionally pinned to `merge` in fast-track mode (no method or squash
+  question) and full scope is auto-applied. It may not select an `ours`, `theirs`, or `synthesis` outcome,
+  hide a semantic ambiguity, or authorize resolution writes before the worker's
+  required contextual decision has been answered.
 
   ## Merge phase adapter
 
   You are the user-facing merge coordinator. The worker owns every read-only
-  procedure of the technical phase: pre-merge environment checks, branch
-  selection, conflict detection, conflict classification, contextual objective
+  procedure of the technical phase: pre-merge environment checks, method
+  selection, branch selection, conditional squash selection, conflict
+  detection, conflict classification, contextual objective
   analysis, complete global resolution strategies and alternatives,
   verification loop analysis, and incremental ADR/DDR collision scanning. You
   own the merge presentation seam, lifecycle routing, the conflict-triggered language
   question, the two coordinator presentation channels, the adaptive merge
-  TODO, and ALL mutating execution: the merge launch, resolution file writes,
-  ADR/DDR renames, reference updates, staging, and the final commit. Route
+  TODO, and ALL mutating execution: the integration launch (merge or rebase
+  plus the conditional squash unification), resolution file writes,
+  ADR/DDR renames, reference updates, staging, rebase continuation, and the
+  final commit. Route
   every validated worker result through the fetched merge presentation seam
   before presenting it or continuing the lifecycle. Never perform the worker's
   read-only analysis on its behalf; never let the worker run `git merge`, write
@@ -70,7 +74,9 @@
     (`Fetch @sai/orchestration/workers/bindings/merge-worker.md`) using the
     original envelope, and declare `fast_track_active` alongside the envelope
     as coordinator-owned session state (never an additional envelope key). The
-    worker uses that signal for the documented fast-track auto-apply branch.
+    worker uses that signal for the documented fast-track branches: pinned
+    `merge` method (no method or squash question) plus auto-applied full
+    scope.
   - `continuation_operation` — continue the same worker through the binding's
     continuation mechanism, forwarding the selected answer value or the
     post-merge outcome report together with the captured invocation-scoped merge
@@ -137,7 +143,8 @@
   first, `git reset <guard_base>` (mixed), one pinned incident line per
   `@sai/policies/autonomy-audit-log.md`, then continue the route. The fresh
   snapshot before every continuation is what keeps the coordinator's own git
-  mutations (merge launch, `git checkout --ours/--theirs`, `git mv`, staging,
+  mutations (integration launch, squash unification via `git reset --soft` +
+  `git commit`, `git rebase` and `git rebase --continue`, `git checkout --ours/--theirs`, `git mv`, staging,
   the authorized merge commit) outside every guard window: those operations
   always run between windows and never inside one. No merge window carries
   `allow_commit`.
@@ -206,8 +213,9 @@
 
   ## Needs-input routing
 
-  On a worker `needs_input` result — the dirty-worktree gate, the branch
-  selector, the runtime scope gate, the global strategy confirmation, a
+  On a worker `needs_input` result — the dirty-worktree gate, the method
+  selector, the branch selector, the conditional squash gate, the runtime
+  scope gate, the global strategy confirmation, a
   contextual semantic decision, the no-suite escalation, or the authorization
   ask — first create the seam's gate presentation record from the worker source
   and current merge presentation state. When `options` is non-empty, present
@@ -256,10 +264,10 @@
   proceed to select and execute the operation. The validation does not change
   worker ownership, mutation ownership, or the presentation seam.
 
-  - **Merge launch** — after the worker returns the branch-selection completion
-    and the user has selected a branch, capture the merge provenance before any
-    merge mutation and before any ref can move: `target_sha` from
-    `git rev-parse --verify HEAD`, `source_sha` from
+  - **Integration launch (method-aware)** — after the worker returns the
+    method, branch, and conditional squash selections
+    and the user has answered each presented gate, capture the merge provenance before any merge mutation and before any ref can move: `target_sha`
+    from `git rev-parse --verify HEAD`, `source_sha` from
     `git rev-parse --verify <selected-branch>^{commit}`, and `merge_base` from
     `git merge-base <target_sha> <source_sha>`. From that captured
     `merge_base` and `source_sha`, record only exact `A` paths from
@@ -270,29 +278,44 @@
      and copies are excluded, including copies whose unchanged source is outside
      the diff.
      Keep all four values (the three SHAs plus the ordered source-introduced
-     inventory) in invocation-scoped merge provenance outside
-     `arguments_value`/`original_envelope` and forward them unchanged with the
-     post-merge outcome; never recompute them from post-merge `HEAD`.
-    Then execute `git merge <branch>` on the current branch. Immediately after
-    branch selection and before this launch, call `render_progress(presentation_state)`
+     inventory) plus the selected `method` (`merge`/`rebase`) and `squash`
+     (`yes`/`no`/`not-applicable`) in invocation-scoped merge provenance
+     outside `arguments_value`/`original_envelope` and forward them unchanged with the post-merge outcome; never recompute them from post-merge
+     `HEAD`.
+    Then execute by method:
+    - method `merge`: execute `git merge <branch>` on the current branch;
+    - method `rebase` without squash: execute `git rebase <selected-branch>`
+      (rebase of the current branch onto the selected one, replayed commit by
+      commit);
+    - method `rebase` with squash: first unify the commits to be rebased
+      (`merge_base..HEAD`) into a single local commit via
+      `git reset --soft <merge_base>` followed by a single `git commit`
+      preserving the squashed change, then execute
+      `git rebase <selected-branch>` for that single commit. No push-safety
+      handling is performed; rewriting published commits stays the user's
+      responsibility.
+    Immediately after the final selection gate and before this launch, call
+    `render_progress(presentation_state)`
     to render the first adaptive merge TODO. The TODO is never rendered before
-    source-branch selection. Capture the outcome (clean or conflicted), report it
-    together with the provenance to the worker as a continuation, and record it
-    in the seam state. A clean outcome continues directly to the incremental
-    ADR/DDR pass. A conflicted outcome must first return the worker's closed
+    method and source-branch selection. Capture the outcome (clean or
+    conflicted), report it together with the provenance (including method and
+    squash) to the worker as a continuation, and record it in the seam state.
+    A clean outcome continues directly to the incremental ADR/DDR pass. A
+    conflicted outcome must first return the worker's closed
     `conflict_detected` extension; do not let the worker read conflict versions
     or expose semantic analysis before the coordinator has printed the concise
-    conflict notice and completed the working-language question. Reconcile the
-    TODO to the actual path after the outcome: a clean merge removes scope,
-    contextual-analysis, resolution, and verification steps instead of leaving
-    them pending; a conflicted merge retains only the applicable scope,
-    contextual-analysis, and resolution path, then verification.
+    conflict notice and completed the working-language question. A rebase
+    conflict reuses the same merge resolution flow. Reconcile the
+    TODO to the actual path after the outcome: a clean integration removes
+    scope, contextual-analysis, resolution, and verification steps instead of
+    leaving them pending; a conflicted integration retains only the applicable
+    scope, contextual-analysis, and resolution path, then verification.
     Add a collision step only after the worker reports an affected collision
     applicability of `repair-required` or `escalation-required`, followed by
     authorization. A source frontier with no final-state record, a skipped
     collision scan, or a scan with no affected collisions removes that step
-    rather than leaving it pending. A clean merge skips conflict-resolution
-    presentation entirely.
+    rather than leaving it pending. A clean integration skips
+    conflict-resolution presentation entirely.
   - **Contextual decision gate — global strategy** — after the working language and scope are
     selected, update the seam to `contextual-analysis` and render the
     contextual TODO item. Present the worker's complete global strategy,
@@ -302,8 +325,9 @@
     `options` result is an open context/correction request and is presented as
     ordinary text, not a picker. A `more-context` or `revise-strategy` answer
     continues the same worker with the same pending alternatives and remains
-    mutation-free. Fast-track may omit only the scope item; it must still ask
-    for the working language and require this strategy confirmation. Mark
+    mutation-free. Fast-track pins the method to `merge` and may omit only the
+    scope item; it must still ask for the working language and require this
+    strategy confirmation. Mark
      contextual analysis complete only after `apply-strategy` is confirmed and
      the worker returns the matching complete alternatives and has written the
      authorized resolution content to the working tree. The strategy
@@ -413,19 +437,23 @@
      Never stage the installed presentation contract or another globally
      installed seam. A repository-local seam copy may be staged only after the
      existence and target-repository-ownership checks above succeed.
-  - **Commit authorization** — the worker returns the authorization ask as
-     `needs_input`. Build `compact_authorization_summary` from the current
-     target/source branches, verification status, conflict result, incremental
-     collision result and collision applicability (including a skipped
-     source-frontier result), and staged-file count; present that
-     summary with the exact worker question and options through the native
-     picker. Do not include the full staged-file list in this gate. On `yes`:
-     execute the merge commit using
+  - **Commit authorization** — the worker returns the method-aware
+     authorization ask as `needs_input`. Build `compact_authorization_summary`
+     from the selected method (plus squash choice on the rebase path), the
+     current target/source branches (rebase target), verification status,
+     conflict result, incremental collision result and collision applicability
+     (including a skipped source-frontier result), and staged-file count;
+     present that summary with the exact worker question and options through
+     the native picker. Do not include the full staged-file list in this gate.
+     On `yes`: for method `merge`, execute the merge commit using
     the HEREDOC form
     `git commit -m "$(cat <<'EOF' ... EOF)"` with a message composed by
      applying `sai/commands/commit/instructions.md` steps 1-5 with
      `@sai/policies/commit-rules.md` as the single source of commit-message
-     rules. Capture and show the resulting commit SHA and subject. Record
+     rules. For method `rebase`, complete the rebase by running
+     `git rebase --continue` until the rebase finishes (staging already done),
+     then capture the resulting HEAD SHA and subject. Capture and show the
+     resulting commit SHA and subject. Record
      `authorization_status: committed`, mark the authorization TODO completed,
      set `commit_executed: true`, clear the merge-marked TODO surface in
      terminal navigation, and then run `terminal_navigation`. On `no`, record
@@ -437,19 +465,21 @@
   ## Content assignment
 
   The split of technical content is fixed: `@sai/commands/merge/instructions.md`
-  (pre-merge checks, branch selection, conflict detection, conflict
-  classification, contextual objective analysis, complete global resolution
-  strategies and alternatives, scope gate, verification analysis, ADR/DDR
-  scanning, authorization ask) belongs to the WORKER as read-only analysis,
-  proposal procedure, plus source gate data, plus resolution-content writes
-  (authored-file regions and within-file reference updates). `@sai/commands/merge/presentation.md`
+  (pre-merge checks, method selection, branch selection, conditional squash
+  selection, conflict detection, conflict classification, contextual objective
+  analysis, complete global resolution strategies and alternatives, scope gate,
+  verification analysis, ADR/DDR scanning, authorization ask) belongs to the
+  WORKER as read-only analysis, proposal procedure, plus source gate data, plus
+  resolution-content writes (authored-file regions and within-file reference
+  updates). `@sai/commands/merge/presentation.md`
   belongs HERE as the coordinator-owned lifecycle, language hand-off,
   information/question channels, gate-summary, terminal, and progress-rendering
-  seam. The seam owns the concise branch/scope/strategy/contextual-decision/
-  authorization rendering and the adaptive TODO. Git mutations — merge
-  launch, git checkout (--ours/--theirs), git mv, git add, git commit — and the
-  post-resolution review gate belong exclusively to the coordinator. The
-  division separates authored content (worker) from git-command execution
+  seam. The seam owns the concise method/branch/squash/scope/strategy/
+  contextual-decision/authorization rendering and the adaptive TODO. Git
+  mutations — integration launch (merge or rebase), squash unification, git
+  checkout (--ours/--theirs), git mv, git add, rebase continuation, git commit
+  — and the post-resolution review gate belong exclusively to the coordinator.
+  The division separates authored content (worker) from git-command execution
   (coordinator) and reserves coordinator review as the verification that the
   materialized resolution matches the approved strategy.
 

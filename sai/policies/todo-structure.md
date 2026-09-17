@@ -91,7 +91,7 @@ every full render. The canonical item set is:
 
 | id | native label | inclusion |
 | --- | --- | --- |
-| `merge` | `Merge <source> into <target>` | Always after source-branch selection. |
+| `merge` | `Merge <source> into <target>` for method `merge`; `Rebase <target> onto <source>` for method `rebase` (same id, method-aware label) | Always after method and source-branch selection (plus the squash choice on the rebase path in normal mode). |
 | `scope` | `Select resolution scope` | A conflicted route when fast-track is inactive. |
 | `contextual-analysis` | `Analyze conflict alternatives` | Every conflicted route after the conflict-triggered language hand-off and scope selection; it covers the complete global strategy, completes only after that strategy is confirmed, and stays active while semantic decisions or `more-context`/revision continuations are pending. |
 | `resolve-artifacts` | `Resolve artifact conflicts` | A conflicted route whose selected scope is `artifacts`. |
@@ -113,8 +113,9 @@ finding.
 - **Before branch selection:** render no merge TODO. A stale merge surface may
   be cleared according to the active binding's ownership rules, but no item is
   synthesized.
-- **After branch selection:** render `[~] Merge <source> into <target>` as
-  `merge: in_progress`; no possible conflict item is present yet.
+- **After method and branch selection:** render the method-aware `merge` item
+  (`Merge <source> into <target>` for merge, `Rebase <target> onto <source>`
+  for rebase) as `merge: in_progress`; no possible conflict item is present yet.
 - **Clean route:** after a clean merge, mark `merge` `completed` and remove
   `scope`, every `resolve-*` item, and `verification`. Wait for the collision
   result. For `not-applicable` or `no-collision`, add `authorization` as

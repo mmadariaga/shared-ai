@@ -81,12 +81,15 @@ boundary; an `invalid` validation result produces no presentation update.
 Initialize one state object for the invocation with these fields:
 
 ```text
-phase: preflight | branch-selection | merge-outcome | language-selection |
+phase: preflight | method-selection | branch-selection | squash-selection |
+       merge-outcome | language-selection |
        scope-selection | contextual-analysis | resolution | verification |
        adr-ddr | authorization | terminal
 presentation_mode: concise
 current_branch
 merged_branch
+selected_method: merge | rebase
+squash_selection: yes | no | not-applicable
 target_sha
 source_sha
 merge_base
@@ -141,20 +144,27 @@ new_index_label
 Update the state only at the corresponding lifecycle boundary:
 
 - Start in `preflight`. A dirty-worktree gate remains in `preflight`; the
-  branch selector is `branch-selection` and does not advance until a branch is
-  selected. Store the worker-authored exact branch values and
+  method selector is `method-selection` (skipped under fast-track with the
+  method pinned to `merge`); the branch selector is `branch-selection` and
+  does not advance until a branch is selected. Store the selected method in
+  `selected_method`, the worker-authored exact branch values and
   `YYYY-MM-DD HH:mm` labels for only branches whose commits are not already
-  reachable from the current branch in `branch_options`.
-- After branch selection, record the current and merged branches, capture
+  reachable from the current branch in `branch_options`. The squash selector
+  is `squash-selection`: it appears only for method `rebase` in normal mode
+  and stores `yes`/`no` in `squash_selection` (otherwise `not-applicable`).
+  Abandoning any of these questions mutates nothing.
+- After the final selection gate, record the current and selected branches
+  (merge source / rebase target), the method and squash choice, capture
   `target_sha`, `source_sha`, and `merge_base` plus the ordered
   `source_introduced_adr_ddr_records` inventory before the coordinator-owned
-  merge, render the adaptive TODO, run the merge, and record
-  `merge_outcome`. A clean merge advances directly to the incremental
-  `adr-ddr` check; it never enters `language-selection`, asks for a working
-  language, or presents a strategy.
-  A conflicted merge first enters `language-selection` when the worker returns
-  `event: conflict_detected` and then advances through `scope-selection`,
-  `contextual-analysis`, and `resolution`.
+  integration (merge, plain rebase, or squash-unify then rebase), render the
+  adaptive TODO, run the integration, and record `merge_outcome`. A clean
+  integration advances directly to the incremental `adr-ddr` check; it never
+  enters `language-selection`, asks for a working language, or presents a
+  strategy. A rebase conflict reuses the same merge resolution flow.
+  A conflicted integration first enters `language-selection` when the worker
+  returns `event: conflict_detected` and then advances through
+  `scope-selection`, `contextual-analysis`, and `resolution`.
 - At the first conflict event, store the exact affected-file inventory, render
   only a concise conflict notice as ordinary text, and ask for
   `working_language`. Do not expose semantic analysis before that question is
@@ -282,9 +292,15 @@ presentation state is never added to that history and is never sent as an
 envelope field.
 
 The seam owns the presentation location for the existing dirty-worktree,
-branch, runtime-scope, global-strategy, contextual semantic-decision, no-suite,
-and commit-authorization gates, plus the conflict-triggered language question.
-It does not add a gate, alter answer values, or change continuation order. For
+method, branch, conditional squash, runtime-scope, global-strategy,
+contextual semantic-decision, no-suite, and commit-authorization gates, plus
+the conflict-triggered language question.
+It does not add a gate, alter answer values, or change continuation order. The
+method gate uses exact question **"Which integration method do you want to
+use?"** with ordered `Merge` (`merge`) / `Rebase` (`rebase`); the squash gate
+appears only for `rebase` in normal mode with exact question **"Squash the
+commits to be rebased into a single commit before rebasing?"** and ordered
+`Yes` (`yes`) / `No` (`no`). For
 the runtime scope gate, validate that the
 worker's `eligible_scope_options` matches `conflict_files_by_category` before
 rendering: `full` represents all detected categories and is rendered first as
@@ -345,15 +361,28 @@ content strings; neither the seam nor the coordinator may derive a file by
 applying a region replacement, concatenating alternatives, or reading resolution
 prose.
 
-For branch selection, the canonical English question is **"Which branch do you want to merge?"**; render its concise wording in the ambient conversation language (Spanish keeps **"¿Qué rama quieres mergear?"**, English uses the canonical, any other language falls back to the canonical) with the readable `YYYY-MM-DD HH:mm` labels. Branch selection happens before `working_language` is known, so use the current ambient language and never open the working-language question early. Option values stay exact branch names and labels stay `<branch> — last commit <YYYY-MM-DD HH:mm>`. The adjacent gate summary stays in the ambient conversation language. Render the detailed current
+For branch selection, the canonical English question is method-aware: for
+method `merge` it is **"Which branch do you want to merge?"**; for method
+`rebase` it is **"Which branch do you want to rebase onto?"**. Render its
+concise wording in the ambient conversation language (Spanish keeps
+**"¿Qué rama quieres mergear?"** for merge and **"¿Sobre qué rama quieres
+hacer rebase?"** for rebase, English uses the canonical, any other language
+falls back to the canonical) with the readable `YYYY-MM-DD HH:mm` labels.
+Branch selection happens before `working_language` is known, so use the
+current ambient language and never open the working-language question early.
+Option values stay exact branch names and labels stay `<branch> — last commit
+<YYYY-MM-DD HH:mm>`. The adjacent gate summary stays in the ambient
+conversation language. Render the detailed current
 branch, candidate timestamps, and merge rationale in the gate summary rather
 than inside the question. For authorization, render the compact summary below
 instead of the worker's full staged-file context. A missing test suite remains
 an explicit `needs_input` decision, not an automatic skip.
 
-The authorization question, option order, refusal rule, and authorized HEREDOC
-commit surface remain unchanged. The seam presents these improved summaries;
-it never selects an answer or authorizes a mutation.
+The authorization question is method-aware (merge keeps the `git commit`
+wording; rebase finalizes the rebase), option order, refusal rule, and
+authorized commit/rebase-continuation surface preserve the merge path
+unchanged. The seam presents these improved summaries; it never selects an
+answer or authorizes a mutation.
 
 ### Compact authorization summary
 
@@ -362,9 +391,10 @@ Immediately before the final authorization picker, derive
 decision facts:
 
 ```text
+Method: <merge | rebase (+ squash yes/no for the rebase path)>
 Target branch: <current branch>
-Source branch: <merged branch>
-Verification status: <passed | not required (clean merge) | continued without a detectable suite | failed after round N>
+Source branch: <selected branch (merge source / rebase target)>
+Verification status: <passed | not required (clean integration) | continued without a detectable suite | failed after round N>
 Conflict result: <clean | resolved (N files) | unresolved (N escalations)>
 Collision result: <not applicable | none detected | N repaired | N reported (N escalations)>
 Staged files: <N>
@@ -393,17 +423,22 @@ foreign entries and no restoration is promised.
 
 `render_progress(presentation_state)` follows these boundaries:
 
-1. Before source-branch selection, keep `panel_ownership: unclaimed`, clear
-   only stale entries bearing `sai-merge-todo` if the harness binding requires
-   a surface start clear, and render no TODO. Foreign entries remain intact
-   until the first merge render claims the panel.
-2. Immediately after the user selects a source branch, render the initial
-   canonical `merge` item with the selected source and target visible:
+1. Before method and source-branch selection, keep `panel_ownership:
+   unclaimed`, clear only stale entries bearing `sai-merge-todo` if the
+   harness binding requires a surface start clear, and render no TODO. Foreign
+   entries remain intact until the first merge render claims the panel.
+2. Immediately after the user selects the method and source branch (plus the
+   squash choice on the rebase path in normal mode), render the initial
+   canonical `merge` item method-aware with the selected source and target
+   visible:
 
    ```text
    [~] Merge <source> into <target>
+   [~] Rebase <target> onto <source>
    ```
 
+   Use the first line for method `merge` and the second for method `rebase`
+   (with the squash choice recorded in presentation state, not in the label).
    Set `panel_ownership: exclusive` on this first full render. No possible
    conflict work is shown before the outcome is known.
 3. At a clean outcome, mark canonical `merge` `completed` and remove
@@ -446,8 +481,10 @@ foreign entries and no restoration is promised.
    renames and canonical reference updates have finished. Add
    `authorization` only after final staging and leave it `in_progress` while
    the native picker is pending. On `yes`, mark it completed only after the
-   commit succeeds. On `no` or any other non-committing terminal closure,
-   remove and clear it rather than leaving a pending commit action.
+   method-appropriate finalization succeeds (`git commit` for merge,
+   `git rebase --continue` completion for rebase). On `no` or any other
+   non-committing terminal closure, remove and clear it rather than leaving a
+   pending commit action.
 
 The list may change shape at the merge-outcome boundary by removing impossible
 steps; it remains coordinator-emitted, and progress state is never used to
