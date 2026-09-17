@@ -38,13 +38,22 @@ const APPLY_ROLES = Object.freeze([
 // Closed direct-build role identities appended after the apply roles. The
 // implementer remains an explore-owned fast-lane worker; Direct-build mutation
 // execution is deliberately routed through the existing backfill and archive
-// phase workers rather than a third role.
+// phase workers rather than a third role. The review-fix role is the
+// findings-driven sai-review close worker; it reuses the direct-build
+// prohibitions by reference without modifying the explore implementer.
 const DIRECT_BUILD_ROLES = Object.freeze([
   Object.freeze({
     phase: 'direct-build',
     workerName: 'sai-direct-build-worker',
     workerContract: 'sai/commands/explore/direct-build-worker.md',
     bindingStem: 'direct-build',
+    tier: 'budget',
+  }),
+  Object.freeze({
+    phase: 'review-fix',
+    workerName: 'sai-review-fix-worker',
+    workerContract: 'sai/commands/meta-review/review-fix-worker.md',
+    bindingStem: 'review-fix',
     tier: 'budget',
   }),
 ]);

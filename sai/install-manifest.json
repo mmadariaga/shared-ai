@@ -528,6 +528,45 @@
           "variantLine": "variant: high",
           "permissionBlock": "    budget: allow\n    explore: allow"
         }
+      },
+      {
+        "phase": "review-fix",
+        "workerName": "sai-review-fix-worker",
+        "workerContract": "sai/commands/meta-review/review-fix-worker.md",
+        "bindingStem": "review-fix",
+        "tier": "budget",
+        "dispatchPrimitive": "task",
+        "initialDispatch": "dispatch sai-review-fix-worker",
+        "continuationLiteral": "continue sai-review-fix-worker",
+        "replacementFields": [
+          "model",
+          "effort"
+        ],
+        "helperPermissions": [
+          "Read",
+          "Glob",
+          "Grep",
+          "Bash",
+          "Edit",
+          "Write",
+          "Skill"
+        ],
+        "progressDeclaration": "none — review Direct Build close declares no progress_plan",
+        "overviewGeneration": "",
+        "noticeContinuation": "",
+        "claudeAgent": {
+          "agentName": "sai-review-fix-worker",
+          "description": "Owns the findings-driven review fix phase of sai-review Direct Build close and returns structured lifecycle metadata.",
+          "model": "opus",
+          "effort": "medium",
+          "tools": "Read, Glob, Grep, Bash, Edit, Write, Skill, SendMessage"
+        },
+        "opencodeAgent": {
+          "description": "Owns the findings-driven review fix phase of sai-review Direct Build close and returns structured lifecycle metadata.",
+          "model": "opencode-go/muse-spark-1.3-contributor",
+          "variantLine": "variant: high",
+          "permissionBlock": "    budget: allow\n    explore: allow"
+        }
       }
     ]
   },
@@ -1445,6 +1484,44 @@
       "matrix": {
         "kind": "agent",
         "phase": "direct-build"
+      }
+    },
+    {
+      "id": "claude-sai-review-fix-worker",
+      "source": "agents/claude/worker-template.md",
+      "destination": {
+        "class": "agents",
+        "path": "sai-review-fix-worker.md"
+      },
+      "harnesses": [
+        "claude"
+      ],
+      "strategy": "tunable-seed",
+      "recursive": false,
+      "ownership": "managed",
+      "drift": "content",
+      "matrix": {
+        "kind": "agent",
+        "phase": "review-fix"
+      }
+    },
+    {
+      "id": "opencode-sai-review-fix-worker",
+      "source": "agents/opencode/worker-template.md",
+      "destination": {
+        "class": "agents",
+        "path": "sai-review-fix-worker.md"
+      },
+      "harnesses": [
+        "opencode"
+      ],
+      "strategy": "tunable-seed",
+      "recursive": false,
+      "ownership": "managed",
+      "drift": "content",
+      "matrix": {
+        "kind": "agent",
+        "phase": "review-fix"
       }
     },
     {

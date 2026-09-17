@@ -27,7 +27,7 @@
   inside the batch. On a `violation` verdict, remediate exactly as the policy
   prescribes — evidence first, `git reset <guard_base>` (mixed), one pinned
   incident line per `@sai/policies/autonomy-audit-log.md`, then continue the
-  route. No meta-review window carries `allow_commit`.
+  route. No review or audit window carries `allow_commit`; only the Direct Build close execute window below carries it for the one pre-authorized local commit.
 
   ## Pre-resolution envelope normalization
   Before change resolution, strip every `--fast-track` token from the selected
@@ -135,9 +135,54 @@
 
      and stop.
 
-  When one or more audits were activated, print the combined terminal and stop.
-  Do not invent a distinct meta-review-only success message that replaces the
-  pinned completion texts.
+  When one or more audits were activated, print the combined terminal. Do not
+  invent a distinct meta-review-only success message that replaces the
+  pinned completion texts. Then apply the Direct Build close below and stop.
+
+  ## Direct Build close (findings-driven)
+
+  This lane is code-first beside the plan lane, not a replacement for
+  `/sai-build` (`meta-build`) nor the explore `direct-build-unattended`
+  lane (`sai-direct-build-worker`). Selecting it consents delegated writes
+  AND pre-authorizes the one local commit below; it dispatches nothing unless
+  explicitly selected.
+
+  - **E1 clean close**: when `review.md` and every activated audit report no
+    remaining findings, offer no selector; the run closes with the normal
+    terminal above.
+  - **Two-option selector**: only when findings remain, present exactly two
+    options through the native picker — `Direct Build (Recommended)` /
+    `Run sai-build manually`. Manual means dispatch nothing and close with
+    guidance to run `/sai-build {name}` by hand.
+  - **E2 input**: `review.md` plus `security.md`, `performance.md`, and
+    `accessibility.md` only when each audit was activated and regenerated in
+    this same run; a non-recommended audit is never touched nor regenerated.
+  - **Fix dispatch**: on explicit Direct Build selection, fetch
+    `@sai/orchestration/workers/bindings/review-fix-worker.md` and use it.
+    Dispatch the distinct `sai-review-fix-worker` with the one-string envelope
+    whose `arguments_value` is the marker line `--review-fix` + newline + the
+    findings input. The worker reuses by reference the prohibitions, fix-loop
+    shape, guard posture, and budget tier of
+    `sai/commands/explore/direct-build-worker.md` without modifying that
+    production worker. It writes code only — never under `openspec/`, never
+    `implementation.md` or `tasks.md`. Guard it like a normal window:
+    guard `snapshot` immediately before the dispatch and each same-worker
+    continuation, `verify` immediately after every returned result.
+  - **Fix loop (3-round cap)**: review the resulting diff against the input
+    findings. A round with findings continues THE SAME fix worker with exactly
+    the ordered finding list. A third completed round carrying findings is
+    non-convergence (E4): make no commit, report for the manual route, and
+    stop without staging or commit.
+  - **E3 conditional backfill**: only when a finding changes requirement or
+    design, apply the fix in code and reconcile at the end through the
+    EXISTING `sai-backfill-worker`; a pure implementation fix needs no
+    backfill. Artifact writes belong to backfill only in that case.
+  - **E5/E6 single-commit local close**: on convergence, stage only the
+    fix union paths (path-scoped `git add`; unrelated dirty files never
+    enter) under the pre-authorized commit, author the message from staged
+    state under `@sai/policies/commit-rules.md`, and perform one HEREDOC
+    local commit in the execute window with `--allow-commit`. Never push,
+    amend, retry outside the validated order, or stage an unrelated path.
 
   ## Edge cases
   - **E1**: empty or ambiguous arguments resolve through the standard change-picker exactly once, before any dispatch.
@@ -148,7 +193,7 @@
   - **E6**: a `needs_input` pauses only its own segment via the native picker; multiple pending ones process sequentially security→performance→accessibility.
   - **E7**: an audit failure/cancellation never aborts siblings; per-audit status appears in the combined terminal; nothing retries or re-runs review.
   - **E8**: `--fast-track` is stripped as a behavioral no-op (build parity); it suppresses nothing because sai-review owns no questions.
-  - **E9**: writes stay within the four `.md` artifacts via delegated workers; zero production code, commits, pushes, archives, or PRs.
+  - **E9**: pre-selector writes stay within the four `.md` artifacts via delegated workers; zero production code, commits, pushes, archives, or PRs. The Direct Build close above is the sole exception: code fix plus one pre-authorized local commit, never push.
 
   ## Changed-files union
   Preserve one ordered, duplicate-free changed-files union across all segment
@@ -158,9 +203,10 @@
   ## Workers
   Position 0 dispatches the existing `sai-5-review-worker`. Activated audit
   segments dispatch their respective existing workers (`sai-6-security-worker`,
-  `sai-7-performance-worker`, `sai-8-accessibility-worker`). Meta-review does
-  not declare a managed worker, worker binding, or worker matrix entry of its
-  own.
+  `sai-7-performance-worker`, `sai-8-accessibility-worker`). The Direct Build
+  close dispatches the distinct `sai-review-fix-worker` and, only for E3
+  requirement-or-design findings, the existing `sai-backfill-worker`.
+  Meta-review declares no other managed worker of its own.
 
   ## No intermediate approval gate
   A successful review segment transitions immediately to the activated audit

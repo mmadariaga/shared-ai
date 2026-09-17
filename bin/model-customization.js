@@ -40,6 +40,7 @@ const TASK_COMPLEXITY = Object.freeze({
   'worker:sai-backfill-worker': '↑↑',
   'worker:sai-commit-worker': '↑',
   'worker:sai-direct-build-worker': '↑↑',
+  'worker:sai-review-fix-worker': '↑↑',
   'worker:sai-merge-worker': '↑↑',
   'agent:budget': '↑',
   'agent:executor': '↑',

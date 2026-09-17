@@ -149,6 +149,7 @@ const MANAGED_WORKER_ORDER = Object.freeze([
   'sai-4-red-worker',
   'sai-4-green-worker',
   'sai-direct-build-worker',
+  'sai-review-fix-worker',
 ]);
 
 function matrixRenderings(harness) {
@@ -311,8 +312,8 @@ function parseClaudeInitialDispatches(text, bindingPath) {
 function validateClaudeWorkerBindings() {
   assertBindingDirectoryUsesOneStringEnvelope(CLAUDE_BINDINGS_DIR);
   const roster = matrixWorkerRoster('claude');
-  if (roster.length !== 14) {
-    throw new Error('Claude worker roster cannot be derived from the validated Worker Matrix; expected the ordered fourteen-worker roster.');
+  if (roster.length !== 15) {
+    throw new Error('Claude worker roster cannot be derived from the validated Worker Matrix; expected the ordered fifteen-worker roster.');
   }
   const seenBy = new Map();
   for (const binding of matrixBindings('claude')) {
@@ -390,8 +391,8 @@ function validateOpencodeWorkerBindings(bindingsDir = OPENCODE_BINDINGS_DIR) {
         throw new Error(`Opencode worker "${workerName}" has no binding with a validated initial task dispatch.`);
       }
     }
-    if (seenBy.size !== 14) {
-      throw new Error('Opencode worker roster must contain exactly the ordered fourteen-worker roster.');
+    if (seenBy.size !== 15) {
+      throw new Error('Opencode worker roster must contain exactly the ordered fifteen-worker roster.');
     }
       return [...seenBy.keys()].sort((left, right) =>
         left.split(path.sep).join('/').localeCompare(right.split(path.sep).join('/')));

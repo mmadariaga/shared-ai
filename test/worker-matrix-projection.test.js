@@ -50,6 +50,7 @@ const WORKER_ROSTER = [
   ...Object.values(WORKER_NAME),
   ...Object.keys(APPLY_WORKER_NAME),
   'sai-direct-build-worker',
+  'sai-review-fix-worker',
 ];
 
 const PHASE_CONTRACT_PATH = Object.freeze(Object.fromEntries(
@@ -161,6 +162,20 @@ function fullMatrixEntries() {
       claudeAgent: { name: 'sai-direct-build-worker', model: 'claude-model', keyword: 'claude-direct-build' },
       opencodeAgent: { name: 'sai-direct-build-worker', model: 'opencode-model', keyword: 'opencode-direct-build' },
     },
+    {
+      phase: 'review-fix',
+      workerName: 'sai-review-fix-worker',
+      workerContract: 'sai/commands/meta-review/review-fix-worker.md',
+      bindingStem: 'review-fix',
+      dispatchPrimitive: 'task',
+      initialDispatch: 'dispatch sai-review-fix-worker',
+      continuationLiteral: 'continue sai-review-fix-worker',
+      replacementFields: ['model'],
+      helperPermissions: ['read'],
+      progressDeclaration: 'review-fix milestones',
+      claudeAgent: { name: 'sai-review-fix-worker', model: 'claude-model', keyword: 'claude-review-fix' },
+      opencodeAgent: { name: 'sai-review-fix-worker', model: 'opencode-model', keyword: 'opencode-review-fix' },
+    },
   ];
 }
 
@@ -178,7 +193,7 @@ function isMatrixBindingDestination(projection, destinationRoot) {
     .startsWith('orchestration/workers/bindings');
 }
 
-test('matrix expansion yields exactly fourteen worker bindings and fourteen managed agents per harness with no retired per-phase sources', () => {
+test('matrix expansion yields exactly fifteen worker bindings and fifteen managed agents per harness with no retired per-phase sources', () => {
   const manifest = loadInstallManifest(REPO_ROOT);
   for (const harness of ['claude', 'opencode']) {
     const destinationRoot = destinationRoots(path.join(os.tmpdir(), `sai-matrix-active-${harness}-`));
@@ -190,8 +205,8 @@ test('matrix expansion yields exactly fourteen worker bindings and fourteen mana
       projection.destinationPath.startsWith(destinationRoot.agents) &&
       WORKER_ROSTER.includes(path.basename(projection.destinationPath, '.md'));
     const bindingProjections = active.filter(isMatrixBinding);
-    assert.equal(bindingProjections.length, 14,
-      `${harness} should project exactly fourteen active worker bindings`);
+    assert.equal(bindingProjections.length, 15,
+      `${harness} should project exactly fifteen active worker bindings`);
     const phaseBindingNames = bindingProjections
       .map(projection => path.basename(projection.destinationPath))
       .filter(name => PHASE_ORDER.includes(name.replace(/-worker\.md$/, '')));
@@ -210,6 +225,11 @@ test('matrix expansion yields exactly fourteen worker bindings and fourteen mana
       .filter(name => ['direct-build'].includes(name.replace(/-worker\.md$/, '')));
     assert.equal(directBuildBindingNames.length, 1,
       `${harness} should project exactly one direct-build role binding beside the phase bindings`);
+    const reviewFixBindingNames = bindingProjections
+      .map(projection => path.basename(projection.destinationPath))
+      .filter(name => ['review-fix'].includes(name.replace(/-worker\.md$/, '')));
+    assert.equal(reviewFixBindingNames.length, 1,
+      `${harness} should project exactly one review-fix role binding beside the phase bindings`);
     assert.equal(new Set(applyBindingNames).size, applyBindingNames.length,
       `${harness} apply bindings should carry distinct destination identities`);
     assert.equal(bindingProjections.some(projection =>
@@ -218,8 +238,8 @@ test('matrix expansion yields exactly fourteen worker bindings and fourteen mana
     const allBindingNames = active
       .filter(projection => isMatrixBindingDestination(projection, destinationRoot))
       .map(projection => path.basename(projection.destinationPath));
-    assert.equal(allBindingNames.length, 14,
-      `${harness} should keep only the fourteen routed worker bindings in the matrix destination`);
+    assert.equal(allBindingNames.length, 15,
+      `${harness} should keep only the fifteen routed worker bindings in the matrix destination`);
     const ideaList = active.find(projection =>
       relSource(projection) === `sai/adapters/${harness}/idea-list-render.md`);
     assert.ok(ideaList, `${harness} should project the adapter idea-list render source outside the matrix`);
@@ -229,12 +249,12 @@ test('matrix expansion yields exactly fourteen worker bindings and fourteen mana
     );
 
     const agentProjections = active.filter(isMatrixAgent);
-    assert.equal(agentProjections.length, 14,
-      `${harness} should project exactly fourteen active managed agents`);
+    assert.equal(agentProjections.length, 15,
+      `${harness} should project exactly fifteen active managed agents`);
     assert.deepEqual(
       agentProjections.map(projection => path.basename(projection.destinationPath, '.md')).sort(),
       [...WORKER_ROSTER].sort(),
-      `${harness} managed agents should be exactly the fourteen worker identities`
+      `${harness} managed agents should be exactly the fifteen worker identities`
     );
     assert.equal(agentProjections.some(projection =>
       ['budget', 'executor', 'explore'].includes(path.basename(projection.destinationPath, '.md'))), false,
@@ -494,8 +514,8 @@ test('missing, duplicated, or misassigned matrix entries fail at manifest expans
   assert.doesNotThrow(() => expand(manifest), 'the real manifest expansion must throw nothing');
   const matrix = defineMatrixOrNull(fullMatrixEntries());
   assert.ok(matrix, 'the canonical entry set should validate');
-  assert.equal(matrix.entries.length, 14,
-    'the canonical entry set should carry fourteen entries');
+  assert.equal(matrix.entries.length, 15,
+    'the canonical entry set should carry fifteen entries');
 
   const duplicated = cloneManifest();
   duplicated['worker-matrix'].entries[1] = JSON.parse(JSON.stringify(duplicated['worker-matrix'].entries[0]));
@@ -562,12 +582,12 @@ test('missing, duplicated, or misassigned matrix entries fail at manifest expans
   );
 });
 
-test('the canonical manifest declares the fourteen-entry matrix with RED then GREEN apply identities followed by the direct-build implementer', () => {
+test('the canonical manifest declares the fifteen-entry matrix with RED then GREEN apply identities followed by the direct-build implementer and review-fix worker', () => {
   const manifest = loadInstallManifest(REPO_ROOT);
   const entries = manifest['worker-matrix'].entries;
   assert.ok(Array.isArray(entries), 'the manifest should carry a worker-matrix entry list');
-  assert.equal(entries.length, 14,
-    'the canonical manifest should declare fourteen matrix entries');
+  assert.equal(entries.length, 15,
+    'the canonical manifest should declare fifteen matrix entries');
   assert.deepEqual(entries.slice(0, PHASE_ORDER.length).map(entry => entry.phase), [...PHASE_ORDER],
     'the canonical phase identities should precede the apply entries unchanged');
   assert.deepEqual(entries.slice(0, PHASE_ORDER.length).map(entry => entry.workerName), [...WORKER_NAMES],
@@ -586,19 +606,21 @@ test('the canonical manifest declares the fourteen-entry matrix with RED then GR
     'the two apply entries should carry unique binding stems');
   const directBuildEntries = entries.slice(PHASE_ORDER.length + 2);
   assert.deepEqual(directBuildEntries.map(entry => entry.workerName),
-    ['sai-direct-build-worker'],
-    'the direct-build implementer should follow the apply entries');
+    ['sai-direct-build-worker', 'sai-review-fix-worker'],
+    'the direct-build implementer and review-fix worker should follow the apply entries');
   assert.equal(directBuildEntries[0].workerContract, 'sai/commands/explore/direct-build-worker.md',
     'the direct-build implement entry should pin its explore-owned contract');
+  assert.equal(directBuildEntries[1].workerContract, 'sai/commands/meta-review/review-fix-worker.md',
+    'the review-fix entry should pin its meta-review contract');
   assert.equal(new Set(entries.map(entry => entry.workerName)).size, entries.length,
     'every manifest worker identity should be unique');
 });
 
-test('the harness binding validators require the fourteen-worker managed roster', () => {
+test('the harness binding validators require the fifteen-worker managed roster', () => {
   assert.deepEqual([...matrixWorkerRoster('claude')].sort(), [...WORKER_ROSTER].sort(),
-    'the Claude roster derived from the canonical manifest should contain exactly the fourteen managed workers');
+    'the Claude roster derived from the canonical manifest should contain exactly the fifteen managed workers');
   assert.doesNotThrow(() => validateClaudeWorkerBindings(),
-    'validateClaudeWorkerBindings should accept the fourteen-worker Claude roster');
+    'validateClaudeWorkerBindings should accept the fifteen-worker Claude roster');
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-fourteen-roster-'));
   try {
     installOpencode(tmpDir);
@@ -608,13 +630,13 @@ test('the harness binding validators require the fourteen-worker managed roster'
       .map(entry => (typeof entry === 'string' ? entry : entry && entry.name))
       .sort();
     assert.deepEqual(names, [...WORKER_ROSTER].sort(),
-      'the opencode binding roster should contain exactly the fourteen managed workers');
+      'the opencode binding roster should contain exactly the fifteen managed workers');
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 });
 
-test('install, doctor, and uninstall derive the fourteen-worker roster and retired destinations without projection-ID collisions', async () => {
+test('install, doctor, and uninstall derive the fifteen-worker roster and retired destinations without projection-ID collisions', async () => {
   const manifest = loadInstallManifest(REPO_ROOT);
   const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-matrix-fourteen-parity-'));
   const claudeBase = path.join(projectRoot, 'claude');
@@ -636,11 +658,11 @@ test('install, doctor, and uninstall derive the fourteen-worker roster and retir
           `${harness} should leave no unresolved matrix token in projection metadata`);
       }
       const bindings = active.filter(projection => isMatrixBindingDestination(projection, roots));
-       assert.equal(bindings.length, 14, `${harness} should install fourteen worker bindings`);
+       assert.equal(bindings.length, 15, `${harness} should install fifteen worker bindings`);
       const agents = active.filter(projection =>
         projection.destinationPath.startsWith(roots.agents) &&
         WORKER_ROSTER.includes(path.basename(projection.destinationPath, '.md')));
-       assert.equal(agents.length, 14, `${harness} should install fourteen managed agents`);
+       assert.equal(agents.length, 15, `${harness} should install fifteen managed agents`);
       const matrixDestinations = [...bindings, ...agents].map(projection => projection.destinationPath);
       assert.equal(new Set(matrixDestinations).size, matrixDestinations.length,
         `${harness} matrix projections should carry distinct destinations with no projection collision`);
@@ -660,14 +682,14 @@ test('install, doctor, and uninstall derive the fourteen-worker roster and retir
       execOpenspec: execOk,
       out: capture.stream,
     });
-    assert.equal(code, 0, 'doctor should run cleanly on the fourteen-worker fixture');
+    assert.equal(code, 0, 'doctor should run cleanly on the fifteen-worker fixture');
     for (const [harness, base] of [['claude', claudeBase], ['opencode', opencodeBase]]) {
       const entries = harness === 'claude' ? enumerateClaude(base) : enumerateOpencode(base);
       const basenames = entries
         .filter(entry => entry.assetType === 'claude-managed-agent')
         .map(entry => path.basename(entry.dest, '.md'));
       assert.ok(WORKER_ROSTER.every(name => basenames.includes(name)),
-        `${harness} uninstall should enumerate all fourteen managed workers`);
+        `${harness} uninstall should enumerate all fifteen managed workers`);
     }
   } finally {
     fs.rmSync(projectRoot, { recursive: true, force: true });
