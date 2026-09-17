@@ -52,7 +52,7 @@ test('Step 1 accepts a plan with ordered coverage, RED before GREEN, verificatio
     /every task in order/i,
     /verification and STOP markers/i,
     /RED\s+before GREEN/i,
-    /human-check encoding/i,
+    /functional-check encoding/i,
     /executed no implementation step/i,
   ]) {
     assert.match(worker, requirement);

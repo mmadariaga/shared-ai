@@ -75,17 +75,14 @@ This session grant is a deliberate, scoped exception to the general "ask every t
 - **THEN** the flag is inactive, no file on disk records it, and the per-commit gate applies again until the user opts in anew
 
 ### Requirement: Apply coordinator defines session-scoped commit authorization
-
-The routed apply coordinator card SHALL define the in-memory `session_commit_authorized` lifecycle, including activation from `Allow on this session`, fast-track pre-activation, reset at a new chat or `/sai-*` invocation, and scope limited to the per-Step STOP & COMMIT gate and the terminal documentation commit gate.
+The routed apply coordinator card SHALL define the in-memory `session_commit_authorized` lifecycle, including activation from `Allow on this session`, fast-track pre-activation, reset at a new chat or `/sai-*` invocation, and scope limited to the per-Step STOP & COMMIT gate and the terminal documentation commit gate. The scope boundary SHALL state that the grant does not bypass the GREEN-conflict STOP, and SHALL NOT reference an apply Human Verification gate, which no longer exists.
 
 #### Scenario: Fast-track pre-activates the session flag
-
 - **WHEN** apply starts with the fast-track signal active
 - **THEN** the coordinator treats `session_commit_authorized` as active before either apply commit gate while still printing each required visibility report and proposed message
 
 #### Scenario: Session flag does not bypass other gates
-
-- **WHEN** the session flag is active and apply reaches a GREEN-conflict STOP or Human Verification gate
+- **WHEN** the session flag is active and apply reaches a GREEN-conflict STOP
 - **THEN** the workflow still stops at that gate
 
 ### Requirement: Terminal documentation gate uses the common authorization option set

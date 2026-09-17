@@ -2,7 +2,9 @@
 
 ## Purpose
 TBD - created by archiving change extract-commit-rules-shared-instruction. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: Coordinator dispatches each Step to a worker on every iteration
 During `sai-4-apply`, the main thread SHALL act as a coordinator: for each Step in `implementation.md` it SHALL identify the next unchecked Step and dispatch a managed Step-execution worker (the RED or GREEN worker, per the routing decision tree) to execute that Step's implementation body. The coordinator itself SHALL NOT perform the read-before-write reads, RED-test runs, or GREEN iteration of the Step — those happen inside the dispatched worker(s) so their output never enters the coordinator's context. Each worker invocation SHALL be self-contained: the dispatch SHALL include all necessary context (Step text, RED→GREEN rules, read-before-write rule, allowed-file list, relevant technical learnings) so the worker does not need to refer back to prior conversation.
 
@@ -53,11 +55,11 @@ The workers SHALL NOT be dispatched to `budget-explorer` (read-only) and SHALL N
 - **THEN** the resolved model is the budget tier — the coordinator does NOT force the worker to inherit its own model
 
 ### Requirement: Checkboxes are marked per Step, not per item
-The coordinator SHALL mark a Step's checkboxes after it receives the subagent's report and verifies the Step (per `apply-coordinator-verification`). This per-Step granularity supersedes the prior "mark each item immediately, do not batch" rule for the `sai-4-apply` phase.
+The coordinator SHALL mark a Step's **Automated** checkboxes `[x]` in `implementation.md` in exactly one batched update after it receives the worker's report and its own re-run of the Step's Verification Checklist passes (per `apply-coordinator-verification`). This per-Step granularity supersedes the prior "mark each item immediately, do not batch" rule for the `sai-4-apply` phase. The Step's **Functional** checkboxes (legacy header `**Human (...)**`) SHALL NOT be marked in that slot; they belong exclusively to the terminal functional review.
 
 #### Scenario: Step completes and is verified
 - **WHEN** the subagent reports a Step done and the coordinator's own re-run of the Step's Verification Checklist passes
-- **THEN** the coordinator marks all of that Step's completed checkboxes `[x]` in one update, rather than marking each item the instant it was executed
+- **THEN** the coordinator marks all of that Step's Automated checkboxes `[x]` in one update, rather than marking each item the instant it was executed, and leaves every Functional checkbox `- [ ]`
 
 ### Requirement: Subagent is barred from git, commits, and the STOP & COMMIT boundary
 The Step-execution subagent SHALL NOT run any git operation, SHALL NOT create commits, and SHALL NOT cross a STOP & COMMIT marker. When a subagent's Step reaches a STOP & COMMIT, the subagent SHALL stop and report the STOP rather than acting on it.
@@ -108,24 +110,27 @@ When `apply.md` is executed and a STOP & COMMIT marker is encountered, the main 
 - **THEN** the coordinator proposes the commit message and asks via a closed-choice yes/no prompt, committing only on explicit `yes` and otherwise describing the staged changes for the user to commit themselves
 
 ### Requirement: Agent SHALL perform a final checkbox sweep after all steps complete
-When all steps in `implementation.md` are complete, the apply agent MUST scan the entire file and verify that every checkbox that should be checked is marked `[x]`. Any unchecked items MUST be reported to the user before the implementation is declared done.
+When all Steps in `implementation.md` are complete, the apply agent MUST scan the entire file and verify that every **Automated** checkbox is marked `[x]`. Any unchecked Automated item MUST be reported and MUST block entry into the terminal lifecycle. Unmarked **Functional** checkboxes MUST be reported as pending human review and MUST NOT block the sweep.
 
 #### Scenario: All checkboxes marked
-- **WHEN** all steps are complete and every checkbox in `implementation.md` is `[x]`
-- **THEN** the agent declares the implementation done without additional output
+- **WHEN** all Steps are complete and every Automated checkbox in `implementation.md` is `[x]`
+- **THEN** the sweep passes and the run enters the terminal lifecycle
 
 #### Scenario: Unchecked items remain
-- **WHEN** all steps are complete but one or more checkboxes remain `[ ]`
-- **THEN** the agent reports the unchecked items to the user and does NOT declare the implementation done until the user resolves them
+- **WHEN** all Steps are complete but one or more Automated checkboxes remain `[ ]`
+- **THEN** the agent reports the unchecked Automated items to the user and does NOT declare the implementation done until they are resolved
+
+#### Scenario: Unmarked Functional checks do not block
+- **WHEN** the sweep finds unmarked Functional checkboxes and no unmarked Automated checkbox
+- **THEN** the agent reports those checks as pending human review and the sweep passes
 
 ### Requirement: Apply agent completion message
-When `/sai-4-apply` reaches its completion phase, the agent's stop condition SHALL require that: (1) the implementation is done, (2) all human verification gates have been reviewed, and (3) commits are done. The completion message printed to the user SHALL be: "Implementation applied. Run `/sai-5-review {name}` in a new chat when ready."
+When `/sai-4-apply` reaches its completion phase, the agent's stop condition SHALL require that: (1) every Step's **Automated** checkboxes are marked `[x]`, (2) any Functional checkbox still unmarked is reported as pending human review, and (3) commits are done. There is no human-verification review condition, because apply no longer has a human verification gate. The completion message printed to the user SHALL be: "Implementation applied. Run `/sai-5-review {name}` in a new chat when ready."
 
 #### Scenario: Apply agent reaches completion
-- **WHEN** `/sai-4-apply` has applied all implementation steps, all human verification gates have been reviewed by the user, and all commits have been created
+- **WHEN** `/sai-4-apply` has marked every Step's Automated checkboxes, reported any Functional check still pending human review, and created all commits
 - **THEN** the agent prints exactly: "Implementation applied. Run `/sai-5-review {name}` in a new chat when ready." and stops
 
 #### Scenario: Human verification gates not yet reviewed
-- **WHEN** `/sai-4-apply` has applied implementation steps but human verification gates have not been reviewed
-- **THEN** the agent MUST NOT print the completion message — it must present the verification gates to the user first
-
+- **WHEN** `/sai-4-apply` has marked every Step's Automated checkboxes and created all commits while Functional checks remain unverified
+- **THEN** the former blocking behavior no longer applies — the agent presents no verification gate, prints the completion message, and reports the unverified checks as pending human review

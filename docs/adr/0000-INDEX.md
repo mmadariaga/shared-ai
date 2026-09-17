@@ -113,7 +113,6 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0006 — Load commit-rules at Git Operations Section Header in apply.md](./0006-commit-rules-fetch-placement-in-apply.md) — Refs 0005
 - [0017 — Same-model Step-execution dispatch via omitted `model:` parameter](./0017-same-model-dispatch-via-omitted-model-param.md)
 - [0018 — Per-Step checkbox override scoped locally to apply.md, not remember.md](./0018-checkbox-override-scoped-to-apply-not-remember.md)
-- [0019 — Fixed gate ordering after a Step-execution subagent's report](./0019-coordinator-gate-ordering-after-subagent-report.md)
 - [0020 — Ephemeral in-context technical-learnings memory for the apply coordinator](./0020-ephemeral-in-context-technical-learnings-memory.md) — Refs 0019
 - [0025 — Blind test-writer receives injected context; implementation dispatch is barred from test files](./0025-blind-test-writer-impl-test-prohibition.md)
 - [0040 — Session-scoped commit authorization lives in in-conversation working memory only](./0040-session-auth-in-memory-only.md)
@@ -143,6 +142,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0171b — Routed runner owns the terminal documentation lifecycle](./0171b-routed-runner-owns-terminal-documentation-lifecycle.md)
 - [0171c — Single-string invocation envelope across active SAI surfaces](./0171c-single-string-invocation-envelope.md) — Supersedes 0166, **Reframes** 0159b, Refs 0136, Refs ddr:0114
 - [0183 — Apply self-gating via standalone state machine](./0183-apply-self-gating-via-standalone-state-machine.md) — Refs 0172c
+- [0186 — Gate order after a Step worker report, without a per-Step human gate](./0186-gate-order-without-per-step-human-gate.md) — Supersedes 0019, Refs 0018
 
 ### `/sai-5-review`
 
@@ -471,7 +471,6 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 ### Subagent dispatch & report contract
 
 - [0017 — Same-model Step-execution dispatch via omitted `model:` parameter](./0017-same-model-dispatch-via-omitted-model-param.md)
-- [0019 — Fixed gate ordering after a Step-execution subagent's report](./0019-coordinator-gate-ordering-after-subagent-report.md)
 - [0020 — Ephemeral in-context technical-learnings memory for the apply coordinator](./0020-ephemeral-in-context-technical-learnings-memory.md) — Refs 0019
 - [0025 — Blind test-writer receives injected context; implementation dispatch is barred from test files](./0025-blind-test-writer-impl-test-prohibition.md)
 - [0075 — Normalize coordinator-worker exchange around an invocation envelope and lifecycle payload](./0075-normalized-invocation-envelope-and-lifecycle-payload.md) — Pair with 0076
@@ -502,6 +501,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0167c — Named Explore Auto cancellation exception in Bounded Recovery](./0167c-explore-auto-cancellation-exception-in-bounded-recovery.md) — **Amends** 0158b, Refs 0159a
 - [0171c — Single-string invocation envelope across active SAI surfaces](./0171c-single-string-invocation-envelope.md) — Supersedes 0166, **Reframes** 0159b, Refs 0136, Refs ddr:0114
 - [0175 — Merge renders user-facing output through a coordinator-owned presentation seam](./0175a-merge-renders-through-a-coordinator-owned-presentation-seam.md) — Refs 0075, Refs 0083, Refs 0086
+- [0186 — Gate order after a Step worker report, without a per-Step human gate](./0186-gate-order-without-per-step-human-gate.md) — Supersedes 0019, Refs 0018
 
 ### Testability routing & RED → GREEN
 
@@ -614,6 +614,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 | [0171c](./0171c-single-string-invocation-envelope.md) | reframes | [0159b](./0159b-marker-grammar-stays-on-two-string-envelope.md) |
 | [0184](./0184-budget-explorer-resolver-lives-behind-canonical-skills.md) | amends | [0001](./0001-sai-separate-harness-files.md) |
 | [0185](./0185-remove-hang-rationale-from-sibling-dispatch.md) | amends | [0172d](./0172d-sibling-worker-dispatch-for-the-fast-lane.md) |
+| [0186](./0186-gate-order-without-per-step-human-gate.md) | supersedes | [0019](./0019-coordinator-gate-ordering-after-subagent-report.md) |
 | [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0033](./archive/0033-echo-line-format-and-placement.md) |
 | [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0034](./archive/0034-resolution-precedence-wrapper-echo-first.md) |
 | [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0035](./archive/0035-harness-specific-adapter-carve-out.md) |
@@ -624,6 +625,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0002 — Both harness resolver files live under ~/.claude/instructions/sai/](./0002-sai-harness-files-under-claude-instructions.md) — *Superseded by [0004](./0004-source-layout-and-install-path-restructure.md)*
 - [0003 — Fetch Path Convention for Shared Command Bodies](./0003-fetch-path-convention-commands-sai.md) — *Superseded by [0004](./0004-source-layout-and-install-path-restructure.md), root-exception rule superseded by [0146b](./0146b-command-owned-files-live-in-their-consuming-command-directory.md)*
 - [0013 — Dedicated mMUT-N finding namespace and Mutation Analysis output section](./0013-mmut-n-finding-namespace-for-mutation-analysis.md) — *Superseded by [0107b](./0107b-unified-audit-severity-vocabulary.md)*
+- [0019 — Fixed gate ordering after a Step-execution subagent's report](./0019-coordinator-gate-ordering-after-subagent-report.md) — *Superseded by [0186](./0186-gate-order-without-per-step-human-gate.md)*
 - [0024 — Split into two dispatches ONLY for testable Steps, keyed by the already-authored RED block](./0024-split-only-testable-steps.md) — *Superseded by [0071](./0071-two-part-dispatch-routing-condition.md)*
 - [0029 — Surgical merge of the opencode `agent` block via jsonc-parser](./0029-jsonc-parser-surgical-merge-for-opencode-agent-block.md) — Refs 0031 — *Historical: the agent-block merge is retired*
 - [0033 — Echo line format and placement](./archive/0033-echo-line-format-and-placement.md) — *ARCHIVED to ./archive/ — the labelled wrapper-echo transport it mandates no longer exists; superseded by [0166](./archive/0166-envelope-only-change-name-resolution.md), retired by [0171c](./0171c-single-string-invocation-envelope.md)*

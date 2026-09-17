@@ -70,14 +70,14 @@ When `interfaces.md` is absent, sai-4-apply will expand the scenario description
 - [ ] GREEN verified — `{test-command}` passes
 - [ ] `{command}` — {expected result}
 
-**Human (verify in browser before committing):**
+**Functional (verify by exercising the behavior in the browser):**
 - [ ] {Specific observable behavior in the browser}
 
 #### Step 1 STOP & COMMIT
 
 **sai-4-apply:** Run all Automated checks above and confirm they pass before stopping.
 
-**STOP & COMMIT:** Wait for the human to verify all Human checks in the browser, then stage and commit before continuing.
+**STOP & COMMIT:** Stage and commit after Automated checks pass. The Functional checks above are re-exercised by the terminal functional review at the end of the run; any it cannot verify is reported as pending human review.
 
 #### Step 2: {Action — creates component not yet integrated into any page}
 
@@ -95,7 +95,7 @@ When `interfaces.md` is absent, sai-4-apply will expand the scenario description
 **Automated (agent runs before stopping):**
 - [ ] `{command}` — {expected result}
 
-*(No Human checks — component not yet rendered in the app. Browser verifications deferred to Step N where it is first integrated.)*
+*(No Functional checks — component not yet rendered in the app. Browser verifications deferred to Step N where it is first integrated.)*
 
 #### Step 2 STOP & COMMIT
 
@@ -105,7 +105,7 @@ When `interfaces.md` is absent, sai-4-apply will expand the scenario description
 
 #### Step 3: {Action — service-side / non-UI step with no observable browser behavior}
 
-*(Service-side / non-UI step — standard format. No human check anywhere because nothing is rendered for a human to observe. Distinct from Step 2, whose checks are deferred, not absent.)*
+*(Service-side / non-UI step — standard format. No functional check anywhere because nothing is rendered to observe. Distinct from Step 2, whose checks are deferred, not absent.)*
 
 - [ ] {Specific Instruction 1}
 - [ ] Copy and paste code below into `{file}`:
@@ -119,7 +119,7 @@ When `interfaces.md` is absent, sai-4-apply will expand the scenario description
 **Automated (agent runs before stopping):**
 - [ ] `{command}` — {expected result}
 
-*(No Human checks — service-side step with no observable browser behavior. Unlike Step 2 these checks are not deferred; there is no human check for this step anywhere. Never substitute a `- [ ] No human check required` checkbox.)*
+*(No Functional checks — service-side step with no observable behavior. Unlike Step 2 these checks are not deferred; there is no functional check for this step anywhere. Never substitute a `- [ ] No functional check required` checkbox.)*
 
 #### Step 3 STOP & COMMIT
 
@@ -136,7 +136,7 @@ When `interfaces.md` is absent, sai-4-apply will expand the scenario description
 **Automated (agent runs before stopping):**
 - [ ] `{command}` — {expected result}
 
-**Human (verify in browser before committing):**
+**Functional (verify by exercising the behavior in the browser):**
 
 *Deferred from Step 2 ({Component name}):*
 - [ ] {Browser behavior deferred from Step 2}
@@ -149,5 +149,5 @@ When `interfaces.md` is absent, sai-4-apply will expand the scenario description
 
 **sai-4-apply:** Run all Automated checks above and confirm they pass before stopping.
 
-**STOP & COMMIT:** Wait for the human to verify all Human checks above (including all deferred ones) in the browser, then stage and commit before continuing.
+**STOP & COMMIT:** Stage and commit after Automated checks pass. The Functional checks above (including all deferred ones) are re-exercised by the terminal functional review at the end of the run; any it cannot verify is reported as pending human review.
 
