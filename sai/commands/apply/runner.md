@@ -70,6 +70,8 @@ MUST NOT broaden recovery eligibility or authorize removal of another unexpected
 path; an unrelated out-of-scope path keeps its existing recovery or
 human-intervention handling.
 
+The terminal functional review (`sai/commands/apply/steps/terminal-lifecycle.md` § Terminal functional review) runs as a read-only extension of this checklist execution: the coordinator re-exercises the aggregated Human checks empirically with no writes, no dispatch, and no verification-run side effects.
+
 ## Dispatch-Kind Report Table
 
 The apply phase declares an ordered report extension carried inside the terminal lifecycle envelope, with exactly nine report fields:

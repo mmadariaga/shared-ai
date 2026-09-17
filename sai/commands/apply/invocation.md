@@ -50,6 +50,8 @@
   - All commits are done.
 
   Under fast-track, the Human Verification evaluation changes: accumulate each Step's Human `- [ ]` checkboxes in the coordinator's in-conversation memory as they are reached, mark them `[x]` after that Step's automated checks pass, and defer presentation to a single combined list printed after the Final sweep and before the MANDATORY STOP. Steps with zero Human checkboxes (italic note only) contribute nothing.
+  
+  Terminal functional review (sai/commands/apply/steps/terminal-lifecycle.md): the coordinator re-exercises the aggregated Human checks after the Step loop and before the Final sweep and prints each fail/unverifiable check with its reason plus one recommendation line in the user input language (Spanish when the user writes Spanish, English fallback) — screen-only, no selector, no artifact write, no extra commit. Findings are non-blocking warnings and do not change Done above; the entry completes even with findings. Fixed print order under fast-track is findings, then the deferred HV list, then the literal below; the literal itself is unchanged.
 
   If any Step remains unchecked, your work is NOT complete: do not print the completion message, do not mention `/sai-5-review`, and do not end — dispatch the next unchecked Step instead.
 
