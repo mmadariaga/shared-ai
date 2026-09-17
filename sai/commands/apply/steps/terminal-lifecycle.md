@@ -5,6 +5,14 @@
 The coordinator enters this section only after the Step loop, every applicable Human Verification gate, every required per-Step commit gate, and the existing appendices have completed. A run that halts before this Final sweep performs neither learnings promotion nor terminal documentation evaluation.
 The retired monolithic apply instruction is not an executable source.
 
+### Terminal functional review
+
+The coordinator performs exactly one terminal functional review after the Step loop, every applicable Human Verification gate, every required per-Step commit gate, and the existing appendices have completed, and before the Final sweep (E1). The review is coordinator-owned read-only empirical re-verification of the aggregated Human checks — an extension of Coordinator Checklist Execution with no writes, no worker dispatch, no RED/GREEN cycle, no recovery slot, and no extra commit (I2, E5).
+
+Coverage is the aggregated Human `- [ ]` checkboxes from `openspec/changes/{change-name}/implementation.md` across all Steps, including `*Deferred from Step N*` blocks; italic parenthetical notes contribute nothing and Steps without Human checks contribute nothing (E4). Automated checks are not re-run (E2). Re-exercise each Human check empirically against current working-tree state where a runnable surface exists; assign exactly one verdict per check — `pass`, `fail`, or `unverifiable` with a one-line reason — where `unverifiable` means the check needs human senses with no runnable surface to re-exercise (E3).
+
+Lax semantics: findings are non-blocking warnings only — the entry completes even with findings, the Final sweep passes independently of them, and there is no auto-fix, no recovery continuation, and no selector (E5, I4, I5). The report is screen-only with no artifact write: print each `fail`/`unverifiable` check with its reason plus one recommendation line in the user's input language (Spanish when the user writes Spanish, English fallback), preceding the unchanged completion literal (I4, I5). Warnings are ephemeral — a re-entry re-derives them from the current `implementation.md` and previous findings are lost (E7). Under fast-track the fixed print order is findings, then the deferred HV list, then the literal (E6, I6). The run-start Step Projection MAY carry exactly one coordinator-derived synthetic terminal entry for this review (no `#### Step N:` heading, no checkbox, no dispatch); see `sai/commands/apply/coordinator.md` § Run-Start Step Projection (I1).
+
 ### Final sweep
 
 Scan the complete `openspec/changes/{change-name}/implementation.md` file and verify that every checkbox that should be checked is `[x]`. Report any unchecked item and do not enter the terminal lifecycle until the sweep passes. This is the final checkbox sweep, not a new Step dispatch.
