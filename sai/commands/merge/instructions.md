@@ -31,15 +31,17 @@ mutation from the worker.
 ## Required Inputs
 
 The user invokes `/sai-merge` with optional flags in `$ARGUMENTS`:
-- `--fast-track` — pins the method to `Merge` without asking, never shows the
-  squash question, and auto-applies full scope (artifacts + code) when
+- `--fast-track` — pins the method to `Merge` without asking, shows no squash
+  choice, and auto-applies full scope (artifacts + code) when
   conflicts exist; parsed by the coordinator and forwarded as `fast_track_active`
   session state.
 
-No other inputs are required. The coordinator resolves the method, branch, and
-conditional squash selections through native pickers driven by your
-`needs_input` returns. Method is always asked before branch selection; squash
-is asked only for `Rebase` in normal mode.
+No other inputs are required. The coordinator resolves the method and branch
+selections through native pickers driven by your
+`needs_input` returns. Method is always asked before branch selection; the
+third method label (`Rebase with squash`) is a presentation shortcut that maps
+below to the existing pair `method=rebase` + `squash=yes` with no new method
+value or state. No standalone squash gate exists.
 
 ---
 
@@ -59,8 +61,9 @@ means batch, absence means the singular `question`/`options` form, which stays
 valid for backward compatibility (E7). Only closed questions ride a batch
 (I2); open requests (`revise-strategy`, `more-context`, free-form corrections)
 always run in their own round. Batches carry no conditional items (I3):
-squash stays a singular gate outside the batches because it depends on
-`method = rebase` (E6), and the global strategy plus authorization each stay
+no conditional item exists — the former squash gate is retired and its choice
+rides the method selector as `Rebase with squash` — and the global strategy
+plus authorization each stay
 in their own trip because later content really depends on earlier answers.
 
 Todo-o-nada plus history (I4, E8, E1): the coordinator presents a batch's
@@ -75,7 +78,8 @@ Batch 1 (I5): dirty + method + branch in normal mode; dirty + branch in
 fast-track (method pinned to `merge`, squash never shown). The dirty item
 appears only when the worktree is dirty and uses the Step 1 question/options
 below; `no` aborts the whole batch. The branch candidate list is independent
-of the method — only the method-aware question text varies — and a
+of the method — the branch question uses single neutral text for all three
+method options because the batch renders before the method answer exists — and a
 single-candidate list still returns its one option (E2). An empty candidate
 list still closes with the exact stop text before any batch.
 
@@ -133,16 +137,24 @@ five-element anatomy of `@sai/policies/question-context.md`, with ordered
 options:
 
 - `{label: "Merge", value: "merge"}`;
-- `{label: "Rebase", value: "rebase"}`.
+- `{label: "Rebase", value: "rebase"}`;
+- `{label: "Rebase with squash", value: "rebase-squash"}`.
+
+The third label is a presentation shortcut only: below it fixes the existing
+pair `method=rebase` + `squash=yes` with no new method value or state.
 
 The result summary must carry the detailed context: the current branch, what
 each method does (`Merge` integrates the selected branch into the current
 branch with `git merge`; `Rebase` replays the current branch onto the
-selected branch with `git rebase`), and that abandoning the question mutates
-nothing. On a forwarded `merge` or `rebase` answer, proceed to Step 2.
+selected branch with `git rebase` commit by commit so conflicts may appear on
+each commit; `Rebase with squash` first unifies the commits unique to the
+current branch (`merge_base..HEAD`) into one local commit so conflicts appear
+at most at one point, then rebases that single commit), and that abandoning
+the question mutates nothing. On a forwarded `merge`, `rebase`, or
+`rebase-squash` answer, proceed to Step 2.
 
 When `fast_track_active` is true, pin the method to `merge` without asking
-and proceed directly to Step 2. The squash question never appears in that
+and proceed directly to Step 2. No squash choice appears in that
 mode.
 
 Abandoning the method question mutates nothing.
@@ -162,16 +174,14 @@ equal timestamps. This tie-break is mandatory so the picker is deterministic.
 If the filtered list is empty, return a terminal `completed` payload whose summary is exactly
 **"No other local branches to merge."** and close the run.
 
-Return `needs_input` asking the method-aware branch question. For method
-`merge`, ask exactly **"Which branch do you want to merge?"**. This is the
+Return `needs_input` asking the single neutral branch question for all three
+method options, because Batch 1 renders before the method answer exists. Ask
+exactly **"Which branch do you want to operate on?"**. This is the
 canonical English source; the coordinator's presentation seam renders it in the
-ambient conversation language (Spanish keeps **"¿Qué rama quieres mergear?"**,
-English uses the canonical, any other language falls back to the canonical)
-without opening the working-language question early, because branch selection
-happens before `working_language` is known. For method `rebase`, ask exactly
-**"Which branch do you want to rebase onto?"** (Spanish:
-**"¿Sobre qué rama quieres hacer rebase?"**; any other language falls back to
-the canonical). Build one
+ambient conversation language (Spanish keeps **"¿Sobre qué rama quieres
+operar?"**, English uses the canonical, any other language falls back to the
+canonical) without opening the working-language question early, because branch
+selection happens before `working_language` is known. Build one
 option per candidate with:
 
 - `value`: the exact local branch name, unchanged;
@@ -184,39 +194,37 @@ value.
 
 The option value is the only branch identifier forwarded on continuation; do
 not parse the label to recover it. The result summary, not the question, must
-carry the detailed context: the current target branch, the ordered candidate
+carry the detailed context: the current branch plus the explicit direction
+(the selected branch is the merge source for method `merge` and the rebase
+target for method `rebase` / `rebase-squash`), the ordered candidate
 list, each candidate's full commit timestamp, and why a source branch is
 needed. The returned question and options still comply with the five-element
 anatomy of `@sai/policies/question-context.md` when rendered with that summary.
 
-When the coordinator forwards the selected branch name, continue by method:
-- for method `merge`, proceed to Step 3;
-- for method `rebase` when `fast_track_active` is true, proceed to Step 3
-  (fast-track never reaches this branch because the method is pinned to
-  `merge`, so this is a defensive no-ask path);
-- for method `rebase` when `fast_track_active` is false, proceed to Step 2B.
+When the coordinator forwards the selected branch name, continue by resolved
+pair:
+- for `merge` (`method=merge`, `squash=not-applicable`), proceed to Step 3;
+- for `rebase` (`method=rebase`, `squash=no`), proceed to Step 3;
+- for `rebase-squash` (`method=rebase`, `squash=yes`), proceed to Step 3.
+Fast-track pins the method to `merge`, so its branch continuation is a
+defensive no-ask path to Step 3.
 
 Abandoning the branch question mutates nothing. The selected branch is the
-merge source for method `merge` and the rebase target for method `rebase`.
+merge source for method `merge` and the rebase target for method `rebase`
+(including the `rebase-squash` shortcut).
 
-### Step 2B: Conditional squash gate (rebase path, normal mode only)
+### Step 2B: Retired (folded into Step 1B)
 
-This gate appears only when the selected method is `rebase` and
-`fast_track_active` is false. For method `merge`, or whenever fast-track is
-active, skip this gate entirely.
-
-Return `needs_input` asking exactly **"Squash the commits to be rebased into
-a single commit before rebasing?"**, complying with the five-element anatomy
-of `@sai/policies/question-context.md`, with ordered options `Yes` (`yes`) /
-`No` (`no`). Carry as essential summary context: the current branch, the
-selected rebase target, that `Yes` first unifies the commits unique to the
-current branch (`merge_base..HEAD`) into one local commit so conflicts appear
-at most at one point, that `No` replays commit by commit so conflicts may
-appear on each commit, and that abandoning mutates nothing.
-
-On a forwarded `yes` or `no`, proceed to Step 3.
+The conditional squash gate is removed. The `Rebase with squash` method label
+carries the former `yes` path (`method=rebase` + `squash=yes`); `Rebase` alone
+carries the former `no` path (`method=rebase` + `squash=no`). No gate is asked
+here; the Step 2 branch continuation proceeds directly to Step 3.
 
 ### Step 3: Propose the integration
+
+Choosing `Rebase with squash` runs exactly the current `Rebase + Yes` flow;
+choosing `Rebase` alone equals the current `Rebase + No`; choosing `Merge`
+never shows squash and runs the current flow unchanged.
 
 For method `merge`, return a terminal `completed` payload whose summary
 restates the exact `git merge <branch>` invocation the coordinator should
@@ -1153,7 +1161,7 @@ command that mutates state. You may write content to conflicted files within you
 (conflict-region text splices and ADR/DDR reference updates in files), and you
 may apply verification-loop corrections to the working tree. You must not
 rename files or run any git command. The integration launch (merge or rebase),
-the conditional squash unification (`git reset --soft` + `git commit`), git
+the squash unification (`git reset --soft` + `git commit`), git
 checkout operations, git renames, final staging, rebase continuation, and
 commit execution belong exclusively to the coordinator. Do not write to files
 outside your scope or attempt git operations of any kind.

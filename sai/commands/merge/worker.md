@@ -17,8 +17,9 @@ projects without openspec.
 
 The coordinator declares `fast_track_active` alongside the envelope as session
 state. Honor it only in the documented fast-track branches: pin the method to
-`merge` without asking (skip the Step 1B method gate), never show the Step 2B
-squash gate, and skip only the Step 5 runtime scope gate (auto-apply `full`).
+`merge` without asking (skip the Step 1B method gate) and skip only the Step 5
+runtime scope gate (auto-apply `full`). The Step 2B squash gate is retired and
+never appears in any mode.
 It never selects `ours`, `theirs`, or `synthesis`, and it never suppresses a
 required contextual decision, the pre-merge environment checks, the
 verification loop, or the incremental ADR/DDR collision pass.
@@ -88,8 +89,8 @@ guard), the method-first gate (Step 1B method selection pinned to `merge`
 under fast-track), the branch selection (local branches from `git branch --no-merged HEAD` whose commits are not already
 reachable from the current branch, sorted by full commit timestamp descending and exact
 branch name ascending for equal timestamps, with `YYYY-MM-DD HH:mm` labels and
-exact branch-name values), the conditional squash gate (Step 2B, rebase path in
-normal mode only), the proposed integration (Step 3: `git merge` unchanged,
+exact branch-name values), the retired squash gate (Step 2B folded into Step 1B;
+`Rebase with squash` maps below to `method=rebase` + `squash=yes`), the proposed integration (Step 3: `git merge` unchanged,
 `git rebase` plain, or squash-unify then `git rebase`), the post-integration
 conflict analysis (ours/theirs/base
 for each conflicted file, classification into specs / ADR-DDR / code), the
@@ -190,23 +191,22 @@ write it to a file. Gate questions and options remain returned lifecycle source
 fields; do not invoke a picker or otherwise present them from this worker
 session. The method selector's canonical question is exactly **"Which
 integration method do you want to use?"** with ordered options `Merge`
-(`merge`) / `Rebase` (`rebase`); it is skipped under fast-track (pinned to
-`merge`) and abandoning it mutates nothing. The dirty gate's canonical
+(`merge`) / `Rebase` (`rebase`) / `Rebase with squash` (`rebase-squash`); it is skipped under fast-track (pinned to
+`merge`) and abandoning it mutates nothing. The `rebase-squash` value is a
+presentation shortcut only and maps below to the existing pair
+`method=rebase` + `squash=yes` with no new method value or state. The dirty gate's canonical
 question is exactly **"Working tree has uncommitted changes. Continue
 anyway?"** with ordered options `yes` / `no`. The branch selector's canonical
-question is method-aware: for method `merge` it is exactly **"Which branch do
-you want to merge?"**; for method `rebase` it is exactly **"Which branch do
-you want to rebase onto?"**; the coordinator renders the merge variant in the
-ambient conversation language (Spanish keeps **"¿Qué rama quieres mergear?"**,
-English uses the canonical, any other language falls back to the canonical)
-and the rebase variant likewise (Spanish **"¿Sobre qué rama quieres hacer
-rebase?"**) without opening the working-language question early, because branch
+question is neutral for all three method options: exactly **"Which branch do
+you want to operate on?"**; the coordinator renders it in the
+ambient conversation language (Spanish keeps **"¿Sobre qué rama quieres
+operar?"**, English uses the canonical, any other language falls back to the
+canonical) without opening the working-language question early, because branch
 selection happens before `working_language` is known; its option labels use `<branch> — last commit <YYYY-MM-DD HH:mm>`
-for eligible branches while its values carry exact branch names. The squash
-selector appears only for method `rebase` in normal mode with canonical
-question exactly **"Squash the commits to be rebased into a single commit
-before rebasing?"** and ordered options `Yes` (`yes`) / `No` (`no`); it is
-skipped for method `merge` and never appears under fast-track. The scope
+for eligible branches while its values carry exact branch names. The gate
+summary compensates direction with the current branch plus the explicit
+direction (merge source / rebase target). The squash
+selector is retired: no squash question is asked in any mode. The scope
 selector's options are already filtered to categories present in the worker's
 conflict classification and ordered with `Full scope (Recommended)` (`full`)
 first, followed by `Artifacts only (specs + ADR/DDR)` (`artifacts`) and `Code only`
@@ -232,7 +232,7 @@ with `questions: [{id, question, options}]` (stable ids, ordered, closed
 questions only, no conditional items). Presence of `questions` means batch;
 absence keeps the singular `question`/`options` form valid. Batch 1 carries
 `dirty` (only when dirty) + `method` + `branch` in normal mode and `dirty` +
-`branch` in fast-track; the squash gate stays singular outside batches. Batch
+`branch` in fast-track; no squash gate exists in any mode. Batch
 2 carries `language` + `scope` in normal mode and `language` only in
 fast-track (scope auto-`full`); perform the three-version reads,
 categorization, and eligible-scope derivation before the hand-off (same work,
@@ -367,7 +367,7 @@ command that mutates state. You may write content to conflicted files within
 your scope (conflict-region text splices and ADR/DDR reference updates in
 files), and you may apply verification-loop corrections to the working tree.
 You must not rename files or run any git command. The integration launch
-(merge or rebase), the conditional squash unification, git checkout
+(merge or rebase), the squash unification, git checkout
 operations, git renames, final staging, rebase continuation, and commit
 execution belong exclusively to the coordinator. Do not write to files outside
 your scope or attempt git operations of any kind.

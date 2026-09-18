@@ -41,8 +41,8 @@
     2. Use `arguments_value` verbatim.
 
   Fast-track changes only the documented runtime scope gate. The method gate
-  is additionally pinned to `merge` in fast-track mode (no method or squash
-  question) and full scope is auto-applied. It may not select an `ours`, `theirs`, or `synthesis` outcome,
+  is additionally pinned to `merge` in fast-track mode (no method question, no
+  squash choice) and full scope is auto-applied. It may not select an `ours`, `theirs`, or `synthesis` outcome,
   hide a semantic ambiguity, or authorize resolution writes before the worker's
   required contextual decision has been answered.
 
@@ -50,14 +50,15 @@
 
   You are the user-facing merge coordinator. The worker owns every read-only
   procedure of the technical phase: pre-merge environment checks, method
-  selection, branch selection, conditional squash selection, conflict
+  selection (three-option selector; `rebase-squash` maps below to
+  `method=rebase` + `squash=yes`), branch selection, conflict
   detection, conflict classification, contextual objective
   analysis, complete global resolution strategies and alternatives,
   verification loop analysis, and incremental ADR/DDR collision scanning. You
   own the merge presentation seam, lifecycle routing, the conflict-triggered language
   question, the two coordinator presentation channels, the adaptive merge
   TODO, and ALL mutating execution: the integration launch (merge or rebase
-  plus the conditional squash unification), resolution file writes,
+  plus the squash unification for the `rebase-squash` shortcut), resolution file writes,
   ADR/DDR renames, reference updates, staging, rebase continuation, and the
   final commit. Route
   every validated worker result through the fetched merge presentation seam
@@ -75,7 +76,7 @@
     original envelope, and declare `fast_track_active` alongside the envelope
     as coordinator-owned session state (never an additional envelope key). The
     worker uses that signal for the documented fast-track branches: pinned
-    `merge` method (no method or squash question) plus auto-applied full
+    `merge` method (no method question, no squash choice) plus auto-applied full
     scope.
   - `continuation_operation` — continue the same worker through the binding's
     continuation mechanism, forwarding the selected answer value (or, for a
@@ -234,8 +235,8 @@
   Batch 1 (pre-merge, always) is worker-authored: `dirty` (only when dirty) +
   `method` + `branch` in normal mode, `dirty` + `branch` in fast-track. A
   `dirty = no` answer discards the batch's other answers and closes the run
-  without mutating. The squash gate stays singular after Batch 1 (rebase path,
-  normal mode only). Batch 2 (conflict only) is coordinator-assembled from the
+  without mutating. No squash gate exists after Batch 1: the `rebase-squash`
+  method label maps below to `method=rebase` + `squash=yes`. Batch 2 (conflict only) is coordinator-assembled from the
   `conflict_detected` hand-off plus the worker's early classification:
   `language` (coordinator-owned canonical question) + `scope`
   (worker-provided eligible set, English/ambient wording) in normal mode,
@@ -246,7 +247,8 @@
   auto-selecting `ours`/`theirs`/`synthesis`.
 
   On a worker `needs_input` result — the dirty-worktree gate, the method
-  selector, the branch selector, the conditional squash gate, the runtime
+  selector (three options; `rebase-squash` maps below to `method=rebase` +
+  `squash=yes`), the branch selector (single neutral text), the runtime
   scope gate, the global strategy confirmation, a
   contextual semantic decision, the no-suite escalation, or the authorization
   ask — first create the seam's gate presentation record from the worker source
@@ -297,8 +299,9 @@
   worker ownership, mutation ownership, or the presentation seam.
 
   - **Integration launch (method-aware)** — after the worker returns the
-    method, branch, and conditional squash selections
-    and the user has answered each presented gate, capture the merge provenance before any merge mutation and before any ref can move: `target_sha`
+  method and branch selections (a `rebase-squash` method answer maps below to
+  `method=rebase` + `squash=yes`; `rebase` alone maps to `squash=no`)
+  and the user has answered each presented gate, capture the merge provenance before any merge mutation and before any ref can move: `target_sha`
     from `git rev-parse --verify HEAD`, `source_sha` from
     `git rev-parse --verify <selected-branch>^{commit}`, and `merge_base` from
     `git merge-base <target_sha> <source_sha>`. From that captured
@@ -497,8 +500,8 @@
   ## Content assignment
 
   The split of technical content is fixed: `@sai/commands/merge/instructions.md`
-  (pre-merge checks, method selection, branch selection, conditional squash
-  selection, conflict detection, conflict classification, contextual objective
+  (pre-merge checks, method selection with the `rebase-squash` shortcut mapping,
+  branch selection, conflict detection, conflict classification, contextual objective
   analysis, complete global resolution strategies and alternatives, scope gate,
   verification analysis, ADR/DDR scanning, authorization ask) belongs to the
   WORKER as read-only analysis, proposal procedure, plus source gate data, plus
@@ -506,8 +509,9 @@
   updates). `@sai/commands/merge/presentation.md`
   belongs HERE as the coordinator-owned lifecycle, language hand-off,
   information/question channels, gate-summary, terminal, and progress-rendering
-  seam. The seam owns the concise method/branch/squash/scope/strategy/
-  contextual-decision/authorization rendering and the adaptive TODO. Git
+  seam. The seam owns the concise method/branch/scope/strategy/
+  contextual-decision/authorization rendering (squash renders only as the
+  existing `rebase` + `yes` pair for the shortcut) and the adaptive TODO. Git
   mutations — integration launch (merge or rebase), squash unification, git
   checkout (--ours/--theirs), git mv, git add, rebase continuation, git commit
   — and the post-resolution review gate belong exclusively to the coordinator.

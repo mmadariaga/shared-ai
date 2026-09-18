@@ -6,7 +6,10 @@ TBD - created by archiving change merge-batched-questions. Update Purpose after 
 ## Requirements
 
 ### Requirement: Pre-merge Batch 1 batches dirty, method, and branch in one trip
-Batch 1 SHALL present dirty (only when dirty), method, and branch together in normal mode and dirty + branch in fast-track (method pinned to merge), with all-or-nothing semantics where Dirty=no discards the batch's other answers and closes without mutating, and a partial abandonment SHALL forward nothing.
+Batch 1 SHALL present dirty (only when dirty), three-option method, and branch together in normal mode and dirty plus branch in fast-track with method pinned to `merge`, with all-or-nothing semantics where Dirty=no discards the batch other answers and closes without mutating, and SHALL declare no conditional items and no squash gate outside batches.
+#### Scenario: Batch 1 carries three-option method without squash gate
+- **WHEN** Batch 1 renders in normal mode with the three method labels available
+- **THEN** method and branch answers arrive together in one trip with no post-batch squash question
 #### Scenario: Dirty-no aborts the batch
 - **WHEN** the user answers Dirty=no in Batch 1
 - **THEN** the run discards method and branch answers and closes without mutation
@@ -36,7 +39,10 @@ When a batch exceeds the harness picker capacity the coordinator SHALL render it
 - **THEN** it renders as plain text with order and values intact
 
 ### Requirement: Strategy, squash, and authorization stay in own trips
-The global strategy confirmation and authorization SHALL each stay in their own trip, squash SHALL stay a singular gate outside batches (rebase path, normal mode only), open requests (revise-strategy, more-context, corrections) SHALL run in their own rounds, and fast-track SHALL still require language and strategy confirmation while never auto-selecting ours/theirs/synthesis and never pre-authoring strategies for discarded scopes.
+The global strategy confirmation and authorization SHALL each stay in their own trip, no squash gate SHALL exist in any mode, open requests SHALL run in their own rounds, and fast-track SHALL still require language and strategy confirmation while never auto-selecting ours, theirs, or synthesis.
+#### Scenario: No squash trip remains
+- **WHEN** a merge run completes Batch 1 with any method in any mode
+- **THEN** the flow proceeds without a squash trip and keeps strategy and authorization each in their own trip
 #### Scenario: Fast-track keeps language mandatory
 - **WHEN** fast-track is active on a conflicted merge
 - **THEN** Batch 2 carries language only with scope auto-full and strategy confirmation remains required

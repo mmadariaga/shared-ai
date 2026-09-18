@@ -81,7 +81,7 @@ boundary; an `invalid` validation result produces no presentation update.
 Initialize one state object for the invocation with these fields:
 
 ```text
-phase: preflight | method-selection | branch-selection | squash-selection |
+phase: preflight | method-selection | branch-selection |
        merge-outcome | language-selection |
        scope-selection | contextual-analysis | resolution | verification |
        adr-ddr | authorization | terminal
@@ -145,14 +145,17 @@ Update the state only at the corresponding lifecycle boundary:
 
 - Start in `preflight`. A dirty-worktree gate remains in `preflight`; the
   method selector is `method-selection` (skipped under fast-track with the
-  method pinned to `merge`); the branch selector is `branch-selection` and
+  method pinned to `merge`) with three labels (`Merge` / `Rebase` /
+  `Rebase with squash`); the branch selector is `branch-selection` and
   does not advance until a branch is selected. Store the selected method in
   `selected_method`, the worker-authored exact branch values and
   `YYYY-MM-DD HH:mm` labels for only branches whose commits are not already
-  reachable from the current branch in `branch_options`. The squash selector
-  is `squash-selection`: it appears only for method `rebase` in normal mode
-  and stores `yes`/`no` in `squash_selection` (otherwise `not-applicable`).
-  Abandoning any of these questions mutates nothing.
+  reachable from the current branch in `branch_options`. A `rebase-squash`
+  method answer maps below to `selected_method=rebase` with `squash_selection=yes`
+  (`rebase` alone maps to `squash_selection=no`); no new state is stored and no
+  standalone squash selector exists. The branch question uses single neutral
+  text for all three options; the gate summary carries the current branch plus
+  the explicit direction. Abandoning any of these questions mutates nothing.
 - After the final selection gate, record the current and selected branches
   (merge source / rebase target), the method and squash choice, capture
   `target_sha`, `source_sha`, and `merge_base` plus the ordered
@@ -297,15 +300,16 @@ presentation state is never added to that history and is never sent as an
 envelope field.
 
 The seam owns the presentation location for the existing dirty-worktree,
-method, branch, conditional squash, runtime-scope, global-strategy,
+method, branch, runtime-scope, global-strategy,
 contextual semantic-decision, no-suite, and commit-authorization gates, plus
 the conflict-triggered language question.
 It does not add a gate, alter answer values, or change continuation order. The
 method gate uses exact question **"Which integration method do you want to
-use?"** with ordered `Merge` (`merge`) / `Rebase` (`rebase`); the squash gate
-appears only for `rebase` in normal mode with exact question **"Squash the
-commits to be rebased into a single commit before rebasing?"** and ordered
-`Yes` (`yes`) / `No` (`no`). For
+use?"** with ordered `Merge` (`merge`) / `Rebase` (`rebase`) /
+`Rebase with squash` (`rebase-squash`); the third label maps below to the
+existing pair `method=rebase` + `squash=yes` with no new state. The method gate
+summary carries the squash explanatory context (unify `merge_base..HEAD` into
+one commit vs. replay commit by commit). No squash gate exists. For
 the runtime scope gate, validate that the
 worker's `eligible_scope_options` matches `conflict_files_by_category` before
 rendering: `full` represents all detected categories and is rendered first as
@@ -366,19 +370,17 @@ content strings; neither the seam nor the coordinator may derive a file by
 applying a region replacement, concatenating alternatives, or reading resolution
 prose.
 
-For branch selection, the canonical English question is method-aware: for
-method `merge` it is **"Which branch do you want to merge?"**; for method
-`rebase` it is **"Which branch do you want to rebase onto?"**. Render its
+For branch selection, the canonical English question is neutral for all three
+method options: **"Which branch do you want to operate on?"**. Render its
 concise wording in the ambient conversation language (Spanish keeps
-**"¿Qué rama quieres mergear?"** for merge and **"¿Sobre qué rama quieres
-hacer rebase?"** for rebase, English uses the canonical, any other language
-falls back to the canonical) with the readable `YYYY-MM-DD HH:mm` labels.
+**"¿Sobre qué rama quieres operar?"**, English uses the canonical, any other
+language falls back to the canonical) with the readable `YYYY-MM-DD HH:mm` labels.
 Branch selection happens before `working_language` is known, so use the
 current ambient language and never open the working-language question early.
 Option values stay exact branch names and labels stay `<branch> — last commit
 <YYYY-MM-DD HH:mm>`. The adjacent gate summary stays in the ambient
 conversation language. Render the detailed current
-branch, candidate timestamps, and merge rationale in the gate summary rather
+branch plus the explicit direction (merge source / rebase target), candidate timestamps, and merge rationale in the gate summary rather
 than inside the question. For authorization, render the compact summary below
 instead of the worker's full staged-file context. A missing test suite remains
 an explicit `needs_input` decision, not an automatic skip.
@@ -432,8 +434,9 @@ foreign entries and no restoration is promised.
    unclaimed`, clear only stale entries bearing `sai-merge-todo` if the
    harness binding requires a surface start clear, and render no TODO. Foreign
    entries remain intact until the first merge render claims the panel.
-2. Immediately after the user selects the method and source branch (plus the
-   squash choice on the rebase path in normal mode), render the initial
+2. Immediately after the user selects the method and source branch (the
+   `rebase-squash` shortcut records `method=rebase` + `squash=yes` in
+   presentation state), render the initial
    canonical `merge` item method-aware with the selected source and target
    visible:
 
