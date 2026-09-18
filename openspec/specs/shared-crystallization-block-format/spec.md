@@ -1,10 +1,14 @@
 # Shared Crystallization Block Format Specification
 
-## ADDED Requirements
+## Purpose
+
+Canonical Ready to Propose block format shared by explore crystallization and its spec-phase consumers.
+
+## Requirements
 
 ### Requirement: Canonical Ready to Propose block format
 
-The `Ready to Propose` block format — the crystallized handoff between explore and spec phases — SHALL be single-sourced and canonicalized in `sai/policies/ready-to-propose-format.md`. The specification file defines the mandatory structure, field order, mandatory sections, field rules, OpenSpec exclusions, and provenance citation rules. Explore's crystallization protocol SHALL reference this policy file via fetch directive and emit blocks conforming to its specified structure without restating inline template text.
+The `Ready to Propose` block format — the crystallized handoff between explore and spec phases — SHALL be single-sourced and canonicalized in `sai/policies/ready-to-propose-format.md`. The specification file defines the mandatory structure, field order, mandatory sections, field rules, OpenSpec exclusions, and provenance citation rules. Explore's crystallization protocol SHALL reference this policy file via fetch directive and emit blocks conforming to its specified structure without restating inline template text. The wording-preserved rule for Edge Cases and Implementation Details SHALL mean identifiers and order, not source language, and SHALL NOT block translation under the crystallization language gate.
 
 #### Scenario: format is single-sourced in policy file
 
@@ -17,6 +21,11 @@ The `Ready to Propose` block format — the crystallized handoff between explore
 - **WHEN** a second consuming surface needs to reference the `Ready to Propose` block format
 - **THEN** it fetches `@sai/policies/ready-to-propose-format.md` by reference
 - **AND** no format duplication occurs across multiple files
+
+#### Scenario: wording preservation permits gate translation
+
+- **WHEN** agreed E1-En and I1-In statements are emitted under the crystallization language gate
+- **THEN** identifiers and order are preserved while the statement language follows the chosen block language
 
 ### Requirement: Behavior is unchanged
 

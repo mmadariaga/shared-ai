@@ -52,6 +52,8 @@ The five sections between `**Capabilities in scope**` and `**Key constraints**` 
 
 Place `**Terms**` immediately after `**Key constraints**`; render the agreed terms in their established order, or exactly one `- None` bullet when no term was agreed. Place `**Edge Cases**` immediately after `**Terms**`; render the agreed `E1`…`En` behavior statements in their established order, or exactly one `- None` bullet when the agreed list is empty. Place `**Implementation Details**` immediately after `**Edge Cases**`, carrying the agreed `I1`…`In` statements in their established order with identifiers and wording preserved, or exactly one `- None` bullet when the agreed list is empty; place `**Overview language**: <explicit \`--overview-lang\` option value or literal None>` immediately after it, before the `---` separator. The line reflects only what is knowable at print time; a gate-9-selected value never appears in an already-emitted block.
 
+`wording preserved` means identifiers and order, not source language, and does not block translation under the crystallization language gate.
+
 ## Field rules
 
 - **Change name**: kebab-case suggestion
