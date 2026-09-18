@@ -42,6 +42,6 @@ The on-demand members are also listed in [On-demand commands](on-demand-commands
 | `/sai-4-apply` | Pre-authorizes every commit for the run, defers all human-verification checks into one combined list presented after the final sweep, and auto-stays on the current branch. |
 | `/sai-archive` | Auto-proceeds the unchecked-items confirmation. |
 | `/sai-backfill` | Skips the generated reconciliation questions, auto-proceeds the spec-conflict gate after reporting it verbatim, and accepts a crystallized `**Change name**` without confirming. |
-| `/sai-merge` | Applies the full resolution scope without the scope gate. Clean merges never ask anything either way. |
+| `/sai-merge` | Applies the full resolution scope without the scope gate, pins the method to `Merge`, and never shows a squash choice. Clean integrations never ask anything either way. |
 
 Everything else stays intact. Fast-track never suppresses a safe-operations confirmation, never skips an input question (a missing diff-source token still asks), and never bypasses `/sai-explore`'s close selector or its POC go/no-go — the gates that authorize delegated writes are deliberately outside its reach.
