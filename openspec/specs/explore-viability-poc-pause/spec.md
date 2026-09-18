@@ -66,3 +66,31 @@ After a POC, `sai-explore` SHALL determine whether the result is viable from gre
 
 - **WHEN** `--fast-track` is active after a POC reaches either a viable or not-viable verdict
 - **THEN** the applicable post-POC picker is still presented and is not auto-approved
+
+### Requirement: The viability POC lane is an independently loadable step
+
+The viability-POC lane SHALL be stated in exactly one step file, `sai/commands/explore/steps/poc-lane.md`, which owns the uncertainty pause, Ask 1, the Direct Build `--no-specs` execution, the verdict, and both post-POC menus. `sai/commands/explore/steps/crystallization-protocol.md` SHALL state no part of the lane and SHALL instead emit the routing-only `poc-lane` intent to `explore-idea@1` and follow the returned `next.follow`. The lane file SHALL be follow-loaded through `next.follow` and SHALL NOT be reached by a nested `Fetch @` directive. The extraction SHALL be behavior-preserving: the trigger condition, the Ask 1 context and its two options in their fixed order, the verdict determination, and both post-POC menus remain as previously stated, and `--fast-track` still neither auto-approves nor bypasses Ask 1 or the post-POC menus.
+
+#### Scenario: the pause is entered through the lane step
+
+- **WHEN** the technical-uncertainty assessment fires during an explicit crystallization request
+- **THEN** the crystallization protocol emits the `poc-lane` intent and the pause is presented from `poc-lane.md`, with no feature block and no crystallization-language question emitted first
+
+#### Scenario: the lane file is the single source of the lane text
+
+- **WHEN** the crystallization protocol is read
+- **THEN** it contains no Ask 1 option label, no post-POC menu entry, and no `Fetch` directive naming `poc-lane.md`, while `poc-lane.md` contains all of them
+
+### Requirement: Crystallization resumes through the lane return route
+
+The lane SHALL re-enter the crystallization protocol only on the branches that resume it — Ask 1 `No. Crystallize the full change`, and `Crystallize full` after a viable POC — by emitting the routing-only `crystallize-resume` intent to `explore-idea@1` and following the returned `next.follow`. On a resume without a POC the initial size and friction assessments SHALL still hold; on a resume after a completed POC size and friction SHALL be re-assessed against the post-POC repository before the single-change or sliced protocol runs. The `Exit`, `Free text`, `Re-explore with feedback`, and `Exit, idea dead` branches SHALL NOT emit the return intent and SHALL keep their existing behavior.
+
+#### Scenario: declining the POC returns to crystallization
+
+- **WHEN** the user selects `No. Crystallize the full change`
+- **THEN** the lane emits `crystallize-resume`, the pointer returns to the crystallization protocol, and the applicable protocol runs with the initial size and friction assessments
+
+#### Scenario: exit branches do not return through the machine
+
+- **WHEN** the user selects `Exit` after a viable POC or `Exit, idea dead` after a not-viable POC
+- **THEN** no `crystallize-resume` intent is emitted and the existing closure behavior for that branch applies

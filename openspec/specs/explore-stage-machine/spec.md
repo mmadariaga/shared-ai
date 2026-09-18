@@ -2,7 +2,9 @@
 
 ## Purpose
 TBD - created by archiving change state-machine-sidecar. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: Deterministic stage transitions
 
 The `explore-idea` machine SHALL advance stages only on explicit caller-supplied intent signals plus the deterministic content-based empty-set rules, and SHALL never advance on model readiness judgment. The content-based rules are: at the `review-edge-cases` stage, when the recorded edge-case list is empty, the machine advances without requiring intent; at the `implementation-details` stage, when the recorded implementation-details list is empty, the machine advances without requiring intent. These rules fire only on their own stages' recorded lists; all other stage transitions require explicit intent. To distinguish recorded empty from unrecorded, the state carries `edgeCaseList` and `implementationDetailsList` as null when unrecorded and as an array (including empty array) when recorded. The machine SHALL consume a `recordedList` event: a non-null `recordedList` records the supplied list into the current stage's own list (`ideaList` at `explore-change`, `edgeCaseList` at `review-edge-cases`, `implementationDetailsList` at `implementation-details`) without advancing the stage; recording and advancing remain separate emits, and a recorded empty list advances only on a later no-intent emit per the content-based empty-set rule. The explore command (the primary caller) retains intent recognition, dominant-intent classification, and list-agreement semantics on the caller side. The machine id SHALL be `explore-idea@1`. Emit of retired `explore-stage@1` SHALL be `UNKNOWN_MACHINE` with no alias.
@@ -165,6 +167,8 @@ The sidecar SHALL distinguish an absent session file (legal fresh-chat semantics
 
 The explore-idea machine SHALL advance only on the exact next-step intent signal and SHALL reject any other, missing, or empty intent in-band with rejected READINESS_IS_NOT_INTENT and unchanged stage state. RecordedList recording without advancement and empty-list auto-advance on a later no-intent emit SHALL remain unchanged.
 
+In addition, the machine SHALL accept exactly two routing-only lane intents, `poc-lane` and `crystallize-resume`, and only at the `crystallize` stage. A routing-only intent SHALL set or clear the active lane without advancing the stage, without recording or altering any list, and without a rejection, and the returned `next.follow` SHALL name the resulting pointer. Either intent emitted at any other stage SHALL be rejected with READINESS_IS_NOT_INTENT and an unchanged stage and lane.
+
 #### Scenario: Stray intent does not advance
 
 - **WHEN** the caller emits banana, missing, or empty intent at explore-change without a recorded empty list condition
@@ -180,3 +184,26 @@ The explore-idea machine SHALL advance only on the exact next-step intent signal
 - **WHEN** the caller emits recordedList with a non-empty or empty list, followed where applicable by a later no-intent emit
 - **THEN** recording alone does not advance and a recorded empty list at a list stage auto-advances only on the later no-intent emit
 
+#### Scenario: A lane intent routes without advancing
+
+- **WHEN** the caller emits `poc-lane` at the crystallize stage
+- **THEN** the stage stays `crystallize`, every recorded list is unchanged, no rejection is returned, and `next.follow` is `sai/commands/explore/steps/poc-lane.md`
+
+#### Scenario: A lane intent outside its stage is rejected
+
+- **WHEN** the caller emits `poc-lane` or `crystallize-resume` at explore-change
+- **THEN** the machine returns READINESS_IS_NOT_INTENT with an unchanged stage and a `null` route
+
+### Requirement: Lane routing pointer is derived from persisted state
+
+The explore-idea machine SHALL carry an active lane in a persisted `route` field, where `null` means the current stage's own step file. `project` and every `transition` outcome SHALL derive the returned `next.follow` from the persisted `route` before falling back to the stage's file, so the lane pointer survives a snapshot write and a later non-advancing emit. An unrecognized `route` value SHALL be normalized to `null`. Advancing a stage SHALL clear the active lane.
+
+#### Scenario: the lane pointer survives projection and a non-advancing emit
+
+- **WHEN** the machine enters the lane and is then projected, and afterwards receives an emit carrying no valid intent
+- **THEN** both results return `sai/commands/explore/steps/poc-lane.md` as `next.follow`, and the non-advancing emit is still rejected with READINESS_IS_NOT_INTENT
+
+#### Scenario: leaving the lane restores the stage file
+
+- **WHEN** the machine leaves the lane
+- **THEN** the projected `next.follow` is the crystallize stage's own step file and `route` is `null`

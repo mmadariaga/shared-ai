@@ -265,9 +265,9 @@ test('contract preservation: all reachable step files exist and are mentioned', 
     .filter(file => file.endsWith('.md'))
     .sort();
 
-  // E3: All eleven files should exist, including the follow-loaded slice step
-  assert.equal(stepsFiles.length, 11,
-    `Expected 11 step files, found ${stepsFiles.length}: ${stepsFiles.join(', ')}`);
+  // E3: All twelve files should exist, including the follow-loaded slice and POC lane steps
+  assert.equal(stepsFiles.length, 12,
+    `Expected 12 step files, found ${stepsFiles.length}: ${stepsFiles.join(', ')}`);
 
   // Verify the specific expected files exist
   const expectedFiles = [
@@ -279,6 +279,7 @@ test('contract preservation: all reachable step files exist and are mentioned', 
     'pipeline-direct-build.md',
     'pipeline-plan-unattended.md',
     'pipeline-selector.md',
+    'poc-lane.md',
     'review-loop.md',
     'slice.md',
     'slicing-assessment.md'

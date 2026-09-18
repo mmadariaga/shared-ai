@@ -25,6 +25,7 @@ function findFetchDirectives(filePath) {
 
 const FOLLOW_LOADED = [
   'crystallization-protocol.md',
+  'poc-lane.md',
   'slice.md',
   'pipeline-direct-build.md',
   'pipeline-plan-unattended.md',
@@ -138,10 +139,33 @@ test('follow-load is driven by next.follow with no whitelist and a stop-on-failu
 test('sidecar STAGE_FILES still name the follow-loaded step files', () => {
   const idea = fs.readFileSync(path.join(__dirname, '..', 'sai-state', 'machines', 'explore-idea.js'), 'utf8');
   const slice = fs.readFileSync(path.join(__dirname, '..', 'sai-state', 'machines', 'explore-slice.js'), 'utf8');
-  assert.match(idea, /crystallize: 'sai\/commands\/explore\/steps\/crystallization-protocol\.md'/);
+  assert.match(idea, /const CRYSTALLIZATION_STEP = 'sai\/commands\/explore\/steps\/crystallization-protocol\.md'/);
+  assert.match(idea, /crystallize: CRYSTALLIZATION_STEP/);
+  assert.match(idea, /const POC_LANE_STEP = 'sai\/commands\/explore\/steps\/poc-lane\.md'/);
   assert.match(slice, /const SLICE_STEP = 'sai\/commands\/explore\/steps\/slice\.md'/);
   assert.match(slice, /const DIRECT_BUILD_STEP = 'sai\/commands\/explore\/steps\/pipeline-direct-build\.md'/);
   assert.match(slice, /const PLAN_STEP = 'sai\/commands\/explore\/steps\/pipeline-plan-unattended\.md'/);
+});
+
+test('the POC lane is a follow-loaded step entered and left through next.follow', () => {
+  const protocol = fs.readFileSync(path.join(explorerStepsDir, 'crystallization-protocol.md'), 'utf8');
+  const lane = fs.readFileSync(path.join(explorerStepsDir, 'poc-lane.md'), 'utf8');
+
+  // The crystallization protocol routes into the lane instead of stating it.
+  assert.match(protocol, /explore-idea@1 '\{"intent":"poc-lane"\}'/);
+  assert.match(protocol, /follow the returned `next\.follow` \(`poc-lane\.md`\)/);
+  assert.doesNotMatch(protocol, /Yes, create a POC before continuing/);
+  assert.doesNotMatch(protocol, /Not viable\*\* \(POC tests red/);
+  assert.doesNotMatch(protocol, /Re-explore with feedback/);
+  assert.ok(!findFetchDirectives(path.join(explorerStepsDir, 'crystallization-protocol.md')).includes('poc-lane.md'),
+    'poc-lane.md is follow-loaded, never nested-fetched');
+
+  // The lane owns the whole pause and returns through the machine.
+  assert.match(lane, /Yes, create a POC before continuing/);
+  assert.match(lane, /No\. Crystallize the full change/);
+  assert.match(lane, /Crystallize full/);
+  assert.match(lane, /Exit, idea dead/);
+  assert.match(lane, /explore-idea@1 '\{"intent":"crystallize-resume"\}'/);
 });
 
 test('should have all step files reachable through fetch chain', () => {
