@@ -7,7 +7,7 @@ TBD
 
 ### Requirement: Technical uncertainty is assessed at the close of stage 1, never in the slicing assessment
 
-The technical-uncertainty axis SHALL be evaluated at the close of the `Explore change` stage and SHALL NOT be part of the pre-crystallization slicing assessment. `sai/commands/explore/steps/slicing-assessment.md` SHALL state that it does not assess technical uncertainty and SHALL name the POC lane as the owner of that axis. The axis SHALL remain orthogonal to size and friction: size asks whether the change is too big, friction asks whether the integration site is hostile, and uncertainty asks whether competing candidates must be discriminated before the idea's details can be fixed. Because the axis is resolved before `Review edge cases` and the POC is discarded by abandoning its isolation, the size and integration-point friction judgments SHALL always evaluate the original repository, and no post-POC re-assessment SHALL run.
+The technical-uncertainty axis SHALL be evaluated at the close of the `Explore change` stage and SHALL NOT be part of the pre-crystallization slicing assessment. `sai/commands/explore/steps/slicing-assessment.md` SHALL state that it does not assess technical uncertainty and SHALL name the POC lane as the owner of that axis. The axis SHALL remain orthogonal to size and friction: size asks whether the change is too big, friction asks whether the integration site is hostile, and uncertainty asks whether competing candidates must be discriminated before the idea's details can be fixed. Because the axis is resolved before `Review edge cases` and the POC is discarded by abandoning its isolation, the size and integration-point friction judgments SHALL always evaluate the original repository, and no post-POC re-assessment SHALL run. A user who explicitly asks for a POC while the slicing assessment's stage is running SHALL leave for the lane under the `common.md` late-entry gate and SHALL return through `Review edge cases`, so the assessment runs again afterwards on a repository the lane left as it found it; the assessment SHALL NOT evaluate the uncertainty axis itself at any stage.
 
 #### Scenario: the slicing assessment does not evaluate uncertainty
 
@@ -18,3 +18,8 @@ The technical-uncertainty axis SHALL be evaluated at the close of the `Explore c
 
 - **WHEN** a POC ran earlier in the progression and the slicing assessment later runs
 - **THEN** size and friction evaluate the repository as it was before the POC, with no re-assessment step
+
+#### Scenario: a late POC leaves the assessment and re-runs it afterwards
+
+- **WHEN** the user explicitly asks for a POC during the `Crystallize` stage
+- **THEN** the progression leaves for the lane with no `Ready to Propose` block emitted, returns through `Review edge cases`, and the size and friction judgments run again later on the repository the lane left as it found it

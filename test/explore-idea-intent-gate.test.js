@@ -126,6 +126,43 @@ test('the lane entry intent is rejected outside the explore-change stage', () =>
   assert.equal(retired.next.follow, 'sai/commands/explore/steps/crystallization-protocol.md');
 });
 
+test('the late entry intent enters the same lane from stages 2 through 4 without touching agreed lists', () => {
+  for (const stage of ['review-edge-cases', 'implementation-details', 'crystallize']) {
+    const late = idea.transition(
+      { stage, ideaList: ['a'], edgeCaseList: ['E1'], implementationDetailsList: ['I1'] },
+      { intent: 'poc-lane-late' },
+    );
+
+    assert.equal(late.state.stage, 'poc-lane');
+    assert.equal(late.state.pocLane, true);
+    assert.equal(late.next.follow, 'sai/commands/explore/steps/poc-lane.md');
+    assert.ok(!('rejected' in late));
+    // An agreed edge-case or implementation-detail list survives the detour.
+    assert.deepEqual(late.state.edgeCaseList, ['E1']);
+    assert.deepEqual(late.state.implementationDetailsList, ['I1']);
+    assert.equal(late.state.candidateList, null);
+
+    // The lane closes back into stage 2 whichever stage it was entered from.
+    const back = idea.transition(late.state, { intent: 'next-step' });
+    assert.equal(back.state.stage, 'review-edge-cases');
+    assert.deepEqual(back.state.edgeCaseList, ['E1']);
+    assert.deepEqual(back.state.implementationDetailsList, ['I1']);
+    assert.equal(back.state.pocLane, true);
+  }
+});
+
+test('the late entry intent is rejected at stage 1 and inside the lane itself', () => {
+  const atStage1 = idea.transition(idea.initialState, { intent: 'poc-lane-late' });
+  assert.equal(atStage1.state.stage, 'explore-change');
+  assert.equal(atStage1.state.pocLane, false);
+  assert.equal(atStage1.rejected, 'READINESS_IS_NOT_INTENT');
+
+  const lane = idea.transition(idea.initialState, { intent: 'poc-lane' });
+  const reEntry = idea.transition(lane.state, { intent: 'poc-lane-late' });
+  assert.equal(reEntry.state.stage, 'poc-lane');
+  assert.equal(reEntry.rejected, 'READINESS_IS_NOT_INTENT');
+});
+
 test('caller-side next-step recognition lives in common.md and slice.md points at it', () => {
   const common = fs.readFileSync(path.join(__dirname, '..', 'sai', 'commands', 'explore', 'steps', 'common.md'), 'utf8');
   const slice = fs.readFileSync(path.join(__dirname, '..', 'sai', 'commands', 'explore', 'steps', 'slice.md'), 'utf8');

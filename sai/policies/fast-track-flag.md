@@ -66,5 +66,7 @@ These divergences are intentional and stay byte-stable; do not "unify" them:
   under `--fast-track`: the go/no-go at the close of stage 1, the `C1..Cn`
   candidate-list agreement, and the verdict menu. All three are always
   presented, and fast-track cannot alter the lane's pinned Direct Build
-  `--no-specs` profile. Fast-track bypasses only the crystallization language
+  `--no-specs` profile. The late explicit entry into the lane from stages 2
+  through 4 is a user request, not a stop: fast-track neither triggers it nor
+  suppresses it. Fast-track bypasses only the crystallization language
   gate and the overview-language ask, never the POC lane machinery.

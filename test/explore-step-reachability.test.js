@@ -173,6 +173,26 @@ test('the POC lane is a follow-loaded conditional stage entered from the stage-1
   assert.doesNotMatch(lane, /crystallize-resume/);
 });
 
+test('the late explicit lane entry is owned by common.md and routes to the same step', () => {
+  const common = fs.readFileSync(path.join(explorerStepsDir, 'common.md'), 'utf8');
+  const protocol = fs.readFileSync(path.join(explorerStepsDir, 'crystallization-protocol.md'), 'utf8');
+  const lane = fs.readFileSync(path.join(explorerStepsDir, 'poc-lane.md'), 'utf8');
+
+  // The explicit gate, its emit, and its stage range live in common.md only.
+  assert.match(common, /\*\*Late explicit POC entry \(stages 2 through 4\)\.\*\*/);
+  assert.match(common, /\{"intent":"poc-lane-late"\}/);
+  assert.match(common, /follow the returned `next\.follow` \(`poc-lane\.md`\)/);
+  assert.match(common, /Nothing enters the lane automatically after stage 1/);
+  assert.match(common, /never skips, weakens, or re-opens an already agreed/);
+
+  // The lane accepts both entries and always returns to stage 2.
+  assert.match(lane, /\{"intent":"poc-lane-late"\}/);
+
+  // Crystallization points at the shared gate instead of restating the emit.
+  assert.doesNotMatch(protocol, /\{"intent":"poc-lane-late"\}/);
+  assert.match(protocol, /Late explicit POC entry/);
+});
+
 test('should have all step files reachable through fetch chain', () => {
   const allStepFiles = getAllStepFiles();
   const reachableFiles = getReachableStepFiles();

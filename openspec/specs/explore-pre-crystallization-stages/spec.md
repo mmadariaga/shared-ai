@@ -10,7 +10,7 @@ TBD
 
 While a candidate idea is under active exploration (Closure State `active-uncrystallized`), `sai-explore` SHALL render a four-item stage TODO with the labels `Explore change`, `Review edge cases`, `Implementation details`, and `Crystallize`, in that order. The current stage SHALL render `in_progress`, completed stages SHALL render `completed`, and remaining stages SHALL render `pending`. The TODO SHALL render on the native task panel through the per-harness idea-list render binding's phase-A machinery, SHALL render from the first turn in which a candidate idea exists, and SHALL re-render exactly once per turn that changes stage state. The TODO SHALL NOT render while no candidate idea exists.
 
-The POC lane is a conditional stage and SHALL add no entry until it fires: the list SHALL stay at four entries for every idea whose POC trigger did not fire and for every idea whose go/no-go was declined. When the lane is entered, the list SHALL grow to five entries by inserting `POC` between `Explore change` and `Review edge cases`, and SHALL keep that fifth entry for the rest of the idea's progression, with `POC` rendering `completed` once the lane is left, exactly like any other completed stage. Each stage-TODO entry SHALL carry the stage-ownership marker `sai-explore-stage:<stage-id>` with stage ids `explore-change`, `poc-lane`, `review-edge-cases`, `implementation-details`, and `crystallize`.
+The POC lane is a conditional stage and SHALL add no entry until it fires: the list SHALL stay at four entries for every idea whose POC trigger did not fire, and for every idea whose go/no-go was declined and which never asked for the lane later. When the lane is entered — at the close of stage 1 or through the late explicit request at `Review edge cases`, `Implementation details`, or `Crystallize` — the list SHALL grow to five entries by inserting `POC` between `Explore change` and `Review edge cases`, and SHALL keep that fifth entry for the rest of the idea's progression, with `POC` rendering `completed` once the lane is left, exactly like any other completed stage. On a late entry the five-entry list SHALL be painted from the position the progression now holds by the ordinary paint rule and with no extra bookkeeping, so `Explore change` renders `completed`, `POC` renders `in_progress`, and the stages that follow render `pending` because the progression passes through them again; the repaint SHALL NOT touch their agreed lists. Each stage-TODO entry SHALL carry the stage-ownership marker `sai-explore-stage:<stage-id>` with stage ids `explore-change`, `poc-lane`, `review-edge-cases`, `implementation-details`, and `crystallize`.
 
 #### Scenario: A fresh idea renders the four stages
 
@@ -27,6 +27,11 @@ The POC lane is a conditional stage and SHALL add no entry until it fires: the l
 - **WHEN** the user accepts the go/no-go and the progression enters the POC lane
 - **THEN** the TODO renders five entries with `POC` between `Explore change` and `Review edge cases` and `POC` `in_progress`
 
+#### Scenario: A late entry repaints the five entries from the current position
+
+- **WHEN** the user explicitly asks for a POC at `Implementation details` and the progression enters the lane
+- **THEN** the TODO grows to five entries with `Explore change` `completed`, `POC` `in_progress`, and `Review edge cases`, `Implementation details`, and `Crystallize` `pending`, and their agreed lists are untouched by the repaint
+
 #### Scenario: The fifth entry survives the lane
 
 - **WHEN** the progression leaves the POC lane for `Review edge cases`
@@ -34,7 +39,7 @@ The POC lane is a conditional stage and SHALL add no entry until it fires: the l
 
 #### Scenario: A declined go/no-go keeps four entries
 
-- **WHEN** the POC trigger did not fire, or the user selected `No, continue without a POC`
+- **WHEN** the POC trigger did not fire, or the user selected `No, continue without a POC`, and no explicit late request for the lane is made
 - **THEN** the TODO renders exactly four entries for the rest of that idea's progression
 
 ### Requirement: Stages advance only on explicit user intent

@@ -10,7 +10,7 @@ Enables the `--fast-track` per-invocation flag on `sai-explore`, `sai-2-design`,
 
 Explore fast-track SHALL bypass gate 9 without an explicit overview-language option and SHALL resolve `None`; explicit `--overview-lang` SHALL override that default only on the supervised route. Direct Build - Unattended SHALL treat the explicit option as a no-op and SHALL never generate `change-overview.md`.
 
-The fast-track signal SHALL NOT auto-approve or skip any of the POC lane's three stops: the go/no-go evaluated at the close of the `Explore change` stage, the `C1..Cn` candidate-list agreement, and the verdict menu. All three SHALL always be presented and SHALL require the user's explicit choice. Fast-track SHALL NOT alter the lane's pinned Direct Build `--no-specs` profile: it SHALL NOT add back a skipped step and SHALL NOT remove one of Steps 1 and 2. Fast-track bypasses only the crystallization language gate and the overview-language ask, never the POC lane machinery.
+The fast-track signal SHALL NOT auto-approve or skip any of the POC lane's three stops: the go/no-go evaluated at the close of the `Explore change` stage, the `C1..Cn` candidate-list agreement, and the verdict menu. All three SHALL always be presented and SHALL require the user's explicit choice. Fast-track SHALL NOT alter the lane's pinned Direct Build `--no-specs` profile: it SHALL NOT add back a skipped step and SHALL NOT remove one of Steps 1 and 2. The late explicit entry into the lane from stages 2 through 4 SHALL be treated as a user request rather than a stop: fast-track SHALL NEITHER trigger it NOR suppress it. Fast-track bypasses only the crystallization language gate and the overview-language ask, never the POC lane machinery.
 
 #### Scenario: auto-fast remains overview-free
 
@@ -21,6 +21,11 @@ The fast-track signal SHALL NOT auto-approve or skip any of the POC lane's three
 
 - **WHEN** `--fast-track` is active and the POC trigger fires at the close of the `Explore change` stage
 - **THEN** the go/no-go, the candidate-list agreement, and the verdict menu are each presented and require the user's explicit choice
+
+#### Scenario: fast-track neither triggers nor suppresses the late entry
+
+- **WHEN** `--fast-track` is active while the progression sits at `Review edge cases`, `Implementation details`, or `Crystallize`
+- **THEN** the lane is not entered on the flag's account, and an explicit user request for a POC enters it exactly as it does without the flag
 
 #### Scenario: fast-track does not alter the pinned profile
 

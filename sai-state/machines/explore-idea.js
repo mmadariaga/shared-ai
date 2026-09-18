@@ -4,9 +4,10 @@ const machineId = 'explore-idea@1';
 
 // `poc-lane` is a CONDITIONAL stage. It sits between `explore-change` and
 // `review-edge-cases` and belongs to an idea's progression only when the
-// uncertainty axis fired at the close of stage 1 and the user took the POC.
-// Ordinary advancement never enters it: it is entered exclusively by its own
-// entry intent, and `next-step` from `explore-change` skips straight to
+// uncertainty axis fired at the close of stage 1 and the user took the POC,
+// or when the user asked for the lane explicitly from a later stage.
+// Ordinary advancement never enters it: it is entered exclusively by one of
+// its entry intents, and `next-step` from `explore-change` skips straight to
 // `review-edge-cases`.
 const STAGES = Object.freeze(['explore-change', 'poc-lane', 'review-edge-cases', 'implementation-details', 'crystallize']);
 
@@ -25,9 +26,18 @@ const STAGE_FILES = Object.freeze({
   crystallize: CRYSTALLIZATION_STEP,
 });
 
-// intent -> { the stage the intent is valid at, the conditional stage it enters }
+// intent -> { the stages the intent is valid at, the conditional stage it enters }
+// `poc-lane` is the stage-1 close entry, taken from the automatic go/no-go.
+// `poc-lane-late` is the explicit user-invoked entry available from stages 2
+// through 4; it enters the same conditional stage from wherever the
+// progression currently sits, and leaving the lane returns to
+// `review-edge-cases` through ordinary advancement like any other lane run.
 const CONDITIONAL_ENTRIES = Object.freeze({
-  'poc-lane': { from: 'explore-change', stage: 'poc-lane' },
+  'poc-lane': { from: Object.freeze(['explore-change']), stage: 'poc-lane' },
+  'poc-lane-late': {
+    from: Object.freeze(['review-edge-cases', 'implementation-details', 'crystallize']),
+    stage: 'poc-lane',
+  },
 });
 
 const initialState = Object.freeze({
@@ -137,12 +147,14 @@ function transition(state, signal) {
     }
   }
 
-  // Conditional-stage entry: the declared entry intent emitted at its own
-  // originating stage moves the progression into the conditional stage without
-  // touching a recorded list. Emitted at any other stage it is not a valid
-  // advance intent and falls through to the rejection below.
+  // Conditional-stage entry: a declared entry intent emitted at one of its own
+  // originating stages moves the progression into the conditional stage without
+  // touching a recorded list, so an already agreed edge-case or
+  // implementation-detail list survives a late entry untouched. Emitted at any
+  // other stage it is not a valid advance intent and falls through to the
+  // rejection below.
   const entry = typeof sig.intent === 'string' ? CONDITIONAL_ENTRIES[sig.intent] : undefined;
-  if (entry && current.stage === entry.from) {
+  if (entry && entry.from.includes(current.stage)) {
     const entered = Object.assign(cloneState(current), { stage: entry.stage, pocLane: true });
     return result(entered);
   }

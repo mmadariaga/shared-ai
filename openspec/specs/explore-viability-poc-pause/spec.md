@@ -7,7 +7,7 @@ TBD
 
 ### Requirement: The viability POC lane is an independently loadable step
 
-The POC lane SHALL be stated in exactly one step file, `sai/commands/explore/steps/poc-lane.md`, which owns the lane from candidate agreement onward: the `C1..Cn` agreement stop, the pinned Direct Build `--no-specs` execution, the reversible isolation, the verdict, and the verdict menu. The trigger — the two motives, the no-fire test, and the go/no-go ask — SHALL be stated once in `sai/commands/explore/steps/common.md` and SHALL NOT be restated or re-litigated in the lane file. `sai/commands/explore/steps/crystallization-protocol.md` SHALL state no part of the lane and SHALL NOT enter or resume it. The lane file SHALL be follow-loaded through `next.follow` and SHALL NOT be reached by a nested `Fetch @` directive. The lane SHALL NOT be a slice of the crystallized set, SHALL NOT appear on the Idea Progress List, SHALL NOT renumber friction or skeleton slices, and SHALL NOT clear the stage TODO. While the lane is the current stage, the pre-crystallization closure SHALL be satisfied by the lane's own pending stop and no stage-aware reminder SHALL be appended.
+The POC lane SHALL be stated in exactly one step file, `sai/commands/explore/steps/poc-lane.md`, which owns the lane from candidate agreement onward: the `C1..Cn` agreement stop, the pinned Direct Build `--no-specs` execution, the reversible isolation, the verdict, and the verdict menu. The trigger — the two motives, the no-fire test, and the go/no-go ask — SHALL be stated once in `sai/commands/explore/steps/common.md` and SHALL NOT be restated or re-litigated in the lane file, which SHALL also name the late explicit entry intent as the lane's second entry without restating that gate's own recognition rules. `sai/commands/explore/steps/crystallization-protocol.md` SHALL own no part of the lane: it SHALL NOT trigger it, SHALL NOT resume a suspended one, and SHALL ask nothing about it; its single exception SHALL be user-authored, an explicit POC request during the `Crystallize` stage that leaves crystallization for the lane under the `common.md` late-entry gate. The lane file SHALL be follow-loaded through `next.follow` and SHALL NOT be reached by a nested `Fetch @` directive. The lane SHALL NOT be a slice of the crystallized set, SHALL NOT appear on the Idea Progress List, SHALL NOT renumber friction or skeleton slices, and SHALL NOT clear the stage TODO. While the lane is the current stage, the pre-crystallization closure SHALL be satisfied by the lane's own pending stop and no stage-aware reminder SHALL be appended. The lane SHALL behave identically whichever entry intent brought it there: the same candidate agreement, the same pinned profile, the same verdict vocabulary, the same verdict menu, and the same return into `Review edge cases`.
 
 #### Scenario: the pause is entered through the lane step
 
@@ -17,11 +17,16 @@ The POC lane SHALL be stated in exactly one step file, `sai/commands/explore/ste
 #### Scenario: the lane file is the single source of the lane text
 
 - **WHEN** the crystallization protocol is read
-- **THEN** it contains no go/no-go option label, no verdict menu entry, no `poc-lane` intent, and no `Fetch` directive naming `poc-lane.md`, while `poc-lane.md` contains the candidate agreement stop, the execution, the verdict, and the verdict menu
+- **THEN** it contains no go/no-go option label, no verdict menu entry, no `poc-lane` or `poc-lane-late` intent emit, and no `Fetch` directive naming `poc-lane.md`, while `poc-lane.md` contains the candidate agreement stop, the execution, the verdict, and the verdict menu
+
+#### Scenario: crystallization points at the shared gate instead of restating it
+
+- **WHEN** the crystallization protocol describes what happens if the user asks for a POC during the `Crystallize` stage
+- **THEN** it names the `common.md` late-entry gate as the owner and restates neither the intent emit nor the recognition rules
 
 ### Requirement: The POC trigger is evaluated at the close of stage 1
 
-`sai-explore` SHALL judge exactly once, before the progression leaves the `Explore change` stage, whether the idea warrants a disposable POC, and that trigger SHALL be stated in exactly one place, `sai/commands/explore/steps/common.md`. A POC is an experiment that discriminates between competing candidates, so the trigger SHALL fire only when competing candidates exist, on either of two motives: **technical viability**, when the technical or integration approach is unproven because the idea depends on a third party, service, or API the project has not integrated and the available documentation, examples, or prior art do not demonstrate the required integration pattern, in which case the candidates are the competing strategies; or **bug diagnosis**, when the idea fixes a bug whose cause is not established and several root-cause theories compete to explain the observed behavior, in which case the candidates are those theories. The trigger SHALL NOT fire for product or UX uncertainty, and SHALL NOT fire when mutually exclusive candidates with a discriminating observable cannot be formulated. When it fires, `sai-explore` SHALL present a go/no-go through the harness-native picker with exactly two options in this order: `Yes, run a POC before continuing`, which emits the `poc-lane` intent to `explore-idea@1` and follows the returned `next.follow`; and `No, continue without a POC`, which continues the progression to `Review edge cases` with the technical risk accepted and SHALL NOT raise the axis again for that idea.
+`sai-explore` SHALL judge exactly once, before the progression leaves the `Explore change` stage, whether the idea warrants a disposable POC, and that trigger SHALL be stated in exactly one place, `sai/commands/explore/steps/common.md`. A POC is an experiment that discriminates between competing candidates, so the trigger SHALL fire only when competing candidates exist, on either of two motives: **technical viability**, when the technical or integration approach is unproven because the idea depends on a third party, service, or API the project has not integrated and the available documentation, examples, or prior art do not demonstrate the required integration pattern, in which case the candidates are the competing strategies; or **bug diagnosis**, when the idea fixes a bug whose cause is not established and several root-cause theories compete to explain the observed behavior, in which case the candidates are those theories. The trigger SHALL NOT fire for product or UX uncertainty, and SHALL NOT fire when mutually exclusive candidates with a discriminating observable cannot be formulated. When it fires, `sai-explore` SHALL present a go/no-go through the harness-native picker with exactly two options in this order: `Yes, run a POC before continuing`, which emits the `poc-lane` intent to `explore-idea@1` and follows the returned `next.follow`; and `No, continue without a POC`, which continues the progression to `Review edge cases` with the technical risk accepted. Declining SHALL close the automatic prompt for that idea and SHALL NOT close the lane itself: the axis SHALL NOT be re-evaluated and SHALL NOT be raised again for that idea on `sai-explore`'s own initiative, while the user's explicit late entry from stages 2 through 4 SHALL remain available.
 
 #### Scenario: an unproven integration fires the viability motive
 
@@ -46,7 +51,7 @@ The POC lane SHALL be stated in exactly one step file, `sai/commands/explore/ste
 #### Scenario: declining the go/no-go is final for that idea
 
 - **WHEN** the user selects `No, continue without a POC`
-- **THEN** the progression continues to `Review edge cases` with the technical risk accepted and the axis is not raised again for that idea
+- **THEN** the progression continues to `Review edge cases` with the technical risk accepted, and the automatic prompt is closed for that idea: the axis is never re-evaluated and the question is never raised again at any later stage transition, leaving only the user's own explicit late request as a way into the lane
 
 ### Requirement: The candidate list is agreed before the POC runs
 
@@ -99,3 +104,34 @@ Before the POC runs, `sai-explore` SHALL isolate it reversibly by running it on 
 
 - **WHEN** the slicing assessment runs after a POC has been taken for the idea
 - **THEN** the size and friction judgments evaluate the repository as it was before the POC
+
+### Requirement: The POC lane can be entered explicitly from stages 2 through 4
+
+`sai-explore` SHALL accept an explicit user request for a POC at the `Review edge cases`, `Implementation details`, and `Crystallize` stages and SHALL enter the lane from wherever the progression currently sits. The gate SHALL be stated in exactly one place, `sai/commands/explore/steps/common.md`, and SHALL be recognized by the same bare-token or dominant-intent machinery that recognizes `next-step`: the literal token `poc-lane`, or a turn whose dominant intent is asking to run a POC before continuing. Mere containment of the string, and a turn that negates, defers, quotes, or discusses it, SHALL NOT enter the lane. When the gate fires, `sai-explore` SHALL emit `{"intent":"poc-lane-late"}` to `explore-idea@1` and SHALL follow the returned `next.follow` at `poc-lane.md`, which owns the candidate agreement, the execution, the verdict, and the verdict menu exactly as it does for a stage-1 entry. A late entry SHALL carry no trigger re-evaluation and no go/no-go, SHALL be available whether or not the stage-1 trigger fired and whether or not its go/no-go was declined, and SHALL close into `Review edge cases` whichever stage it was entered from. Nothing SHALL enter the lane automatically after stage 1, and `sai-explore` SHALL NEVER request the lane on the user's behalf.
+
+The late entry SHALL be a detour, not a reset: it SHALL NOT skip, weaken, or re-open an already agreed `E1..En` or `I1..In` list. When the progression re-enters a stage whose list is already agreed, the agreement SHALL stand — the stage SHALL emit no new list, SHALL run no second review or confirmation question, and SHALL be left by ordinary `next-step` advancement. Only a genuine material change authored by the user SHALL reset the progression and its agreed lists.
+
+#### Scenario: a late request enters the lane from a later stage
+
+- **WHEN** the user explicitly asks for a POC at `Review edge cases`, `Implementation details`, or `Crystallize`
+- **THEN** the `poc-lane-late` intent is emitted, the lane is entered through the returned `next.follow` at `poc-lane.md`, and the candidate agreement runs with no go/no-go and no trigger re-evaluation
+
+#### Scenario: a declined go/no-go does not close the door
+
+- **WHEN** the user declined the stage-1 go/no-go and later explicitly asks for a POC at stage 2, 3, or 4
+- **THEN** the lane is entered on that explicit request, with the uncertainty axis never re-evaluated and the question never re-asked on `sai-explore`'s own initiative
+
+#### Scenario: an agreed list survives the detour
+
+- **WHEN** the lane is entered late from `Implementation details` and later closes into `Review edge cases` whose `E1..En` list is already agreed
+- **THEN** the agreed list stands unchanged, the stage emits no new list and no second confirmation question, and the progression is left by ordinary `next-step` advancement
+
+#### Scenario: a request at Crystallize emits no block
+
+- **WHEN** the user explicitly asks for a POC while the `Crystallize` stage is running
+- **THEN** the crystallization sequence is left with no `Ready to Propose` block emitted, the progression returns to `Review edge cases` when the lane closes, and crystallization is re-entered later only through ordinary advancement
+
+#### Scenario: containment and non-advancing uses do not enter the lane
+
+- **WHEN** a turn at stage 2, 3, or 4 merely contains the token, or negates, defers, quotes, or discusses a POC
+- **THEN** the lane is not entered and the progression stays at its current stage

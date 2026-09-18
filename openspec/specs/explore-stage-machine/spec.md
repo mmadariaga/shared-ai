@@ -167,7 +167,7 @@ The sidecar SHALL distinguish an absent session file (legal fresh-chat semantics
 
 The explore-idea machine SHALL advance only on the exact next-step intent signal and SHALL reject any other, missing, or empty intent in-band with rejected READINESS_IS_NOT_INTENT and unchanged stage state. RecordedList recording without advancement and empty-list auto-advance on a later no-intent emit SHALL remain unchanged.
 
-In addition, the machine SHALL accept exactly one conditional-stage entry intent, `poc-lane`, and only at the `explore-change` stage. The entry intent SHALL move the progression into the `poc-lane` stage without recording or altering any list and without a rejection, and the returned `next.follow` SHALL name the conditional stage's step file. The intent emitted at any other stage SHALL be rejected with READINESS_IS_NOT_INTENT and an unchanged stage. The retired `crystallize-resume` intent SHALL have no special handling and SHALL be treated as an unknown intent at every stage.
+In addition, the machine SHALL accept exactly two conditional-stage entry intents for the `poc-lane` stage: `poc-lane`, valid only at the `explore-change` stage, and `poc-lane-late`, valid only at the `review-edge-cases`, `implementation-details`, and `crystallize` stages. Each entry intent SHALL declare the set of stages it is valid at, and an entry intent emitted at a stage in its own set SHALL move the progression into the `poc-lane` stage without recording or altering any list and without a rejection, with the returned `next.follow` naming the conditional stage's step file. An entry intent emitted at any stage outside its own set SHALL be rejected with READINESS_IS_NOT_INTENT and an unchanged stage. The retired `crystallize-resume` intent SHALL have no special handling and SHALL be treated as an unknown intent at every stage.
 
 #### Scenario: Stray intent does not advance
 
@@ -191,8 +191,13 @@ In addition, the machine SHALL accept exactly one conditional-stage entry intent
 
 #### Scenario: A lane intent outside its stage is rejected
 
-- **WHEN** the caller emits `poc-lane` at review-edge-cases, implementation-details, or crystallize
+- **WHEN** the caller emits `poc-lane` at review-edge-cases, implementation-details, or crystallize, or emits `poc-lane-late` at explore-change or at the poc-lane stage itself
 - **THEN** the machine returns READINESS_IS_NOT_INTENT with an unchanged stage and `pocLane` unchanged
+
+#### Scenario: The late entry intent routes from stages 2 through 4
+
+- **WHEN** the caller emits `poc-lane-late` at review-edge-cases, implementation-details, or crystallize
+- **THEN** the machine enters the conditional `poc-lane` stage from that stage with no rejection, records no list, and returns `sai/commands/explore/steps/poc-lane.md` as `next.follow`
 
 #### Scenario: The retired resume intent is an unknown intent
 
@@ -201,7 +206,7 @@ In addition, the machine SHALL accept exactly one conditional-stage entry intent
 
 ### Requirement: The POC lane is a conditional stage of explore-idea
 
-The `explore-idea` machine SHALL carry `poc-lane` as a conditional stage positioned between `explore-change` and `review-edge-cases`, declared in a dedicated conditional-stage list. Ordinary advancement SHALL step over every conditional stage, so a `next-step` intent at `explore-change` SHALL land on `review-edge-cases`, and the conditional stage SHALL be reachable only through its own entry intent. The `poc-lane` stage SHALL own a `candidateList` in state, recorded by a `recordedList` event without advancing the stage and distinguishing unrecorded (`null`) from recorded-empty (an empty array); a recorded empty candidate list SHALL NOT auto-advance the lane on a later no-intent emit. Entering the stage SHALL set a persisted boolean `pocLane` that SHALL survive leaving the stage, so the caller can keep the conditional panel entry painted for the rest of the progression. Leaving the lane SHALL use the ordinary `next-step` advancement into `review-edge-cases`. The stage's step pointer SHALL be `sai/commands/explore/steps/poc-lane.md` with a stage-static `load and follow` hint, and SHALL be derived from the persisted stage by `project` and by every `transition` outcome, including a non-advancing rejected emit.
+The `explore-idea` machine SHALL carry `poc-lane` as a conditional stage positioned between `explore-change` and `review-edge-cases`, declared in a dedicated conditional-stage list. Ordinary advancement SHALL step over every conditional stage, so a `next-step` intent at `explore-change` SHALL land on `review-edge-cases`, and the conditional stage SHALL be reachable only through one of its declared entry intents: `poc-lane` from `explore-change`, or `poc-lane-late` from `review-edge-cases`, `implementation-details`, or `crystallize`. Entering through either intent SHALL leave every recorded list untouched, so an already agreed edge-case or implementation-detail list survives a late entry. The `poc-lane` stage SHALL own a `candidateList` in state, recorded by a `recordedList` event without advancing the stage and distinguishing unrecorded (`null`) from recorded-empty (an empty array); a recorded empty candidate list SHALL NOT auto-advance the lane on a later no-intent emit. Entering the stage SHALL set a persisted boolean `pocLane` that SHALL survive leaving the stage, so the caller can keep the conditional panel entry painted for the rest of the progression. Leaving the lane SHALL use the ordinary `next-step` advancement into `review-edge-cases`, whichever stage the lane was entered from. The stage's step pointer SHALL be `sai/commands/explore/steps/poc-lane.md` with a stage-static `load and follow` hint, and SHALL be derived from the persisted stage by `project` and by every `transition` outcome, including a non-advancing rejected emit.
 
 #### Scenario: ordinary advancement skips the conditional stage
 
@@ -212,6 +217,11 @@ The `explore-idea` machine SHALL carry `poc-lane` as a conditional stage positio
 
 - **WHEN** the caller emits the `poc-lane` intent at `explore-change`
 - **THEN** the stage becomes `poc-lane`, `pocLane` becomes true, no list is recorded, and `next.follow` is `sai/commands/explore/steps/poc-lane.md`
+
+#### Scenario: the late entry intent enters the same stage from a later stage
+
+- **WHEN** the caller emits the `poc-lane-late` intent at `review-edge-cases`, `implementation-details`, or `crystallize` with an edge-case or implementation-detail list already recorded
+- **THEN** the stage becomes `poc-lane`, `pocLane` becomes true, `candidateList` stays unrecorded, and every already recorded list is returned unchanged
 
 #### Scenario: the candidate list records without advancing
 
@@ -227,3 +237,8 @@ The `explore-idea` machine SHALL carry `poc-lane` as a conditional stage positio
 
 - **WHEN** the caller emits `next-step` at `poc-lane`
 - **THEN** the stage becomes `review-edge-cases` and `pocLane` remains true
+
+#### Scenario: a late lane run returns to stage 2 with its lists intact
+
+- **WHEN** the caller emits `next-step` at `poc-lane` after entering it with `poc-lane-late` from `implementation-details` or `crystallize`
+- **THEN** the stage becomes `review-edge-cases`, `pocLane` remains true, and the previously recorded edge-case and implementation-detail lists are returned unchanged
