@@ -2,25 +2,23 @@
 
 ## Purpose
 Define the lazy, trigger-point delivery structure for the read-only `sai-explore` instruction contract.
-## Requirements
-### Requirement: Split the explore contract into a startup nucleus and reachable steps
 
-`sai-explore` SHALL retain its read-only restrictions and research-tooling check in `sai/commands/explore/instructions.md` as the one-line literal-print rule for the `literal` already run from `body.md`, SHALL fetch `steps/common.md` directly before shared staged-progression and closure rules are evaluated, and SHALL provide exactly eleven named Markdown step files under `sai/commands/explore/steps/`. Probe execution SHALL be owned by `sai/commands/explore/body.md` immediately after the prereqs pass and before Load behaviors and first research. Boot SHALL preload only that explore instruction pack (`instructions.md` and `steps/common.md`) and SHALL NOT fetch `crystallization-protocol.md`, `slice.md`, `pipeline-direct-build.md`, or `pipeline-plan-unattended.md` at session start. Each remaining step file SHALL be reachable from the nucleus through direct or transitive `Fetch @sai/commands/explore/steps/...` directives, or through the stage machine store's `next.follow` pointer for those four follow-loaded files.
+## Requirements
+
+### Requirement: Split the explore contract into a startup nucleus and reachable steps
+`sai-explore` SHALL retain its read-only restrictions in `sai/commands/explore/instructions.md` without any literal-print rule; it SHALL carry the ladder-discard logging rule as item 2 with items renumbered accordingly. Probe execution SHALL NOT be owned by `sai/commands/explore/body.md`; that file SHALL carry the normative delegation line instead. Boot SHALL preload only that explore instruction pack plus stage-machine policy as before.
 
 #### Scenario: all ten steps are reachable
-
 - **WHEN** the explore instruction source, its transitive Fetch directives, and the stage machine store's `next.follow` pointers are evaluated
-- **THEN** exactly eleven step files exist and every one is reachable from `instructions.md` without an unreachable step or missing fetched file (updated from "sidecar `next.follow`" to "stage machine store `next.follow`")
+- **THEN** the reachable step set contains no research-tooling literal-print step and delegation governs research
 
 #### Scenario: boot pack excludes follow-loaded step files
-
 - **WHEN** a `sai-explore` session starts
-- **THEN** the boot pack does not fetch `crystallization-protocol.md`, `slice.md`, `pipeline-direct-build.md`, or `pipeline-plan-unattended.md` (unchanged from prior behavior)
+- **THEN** the boot pack still excludes the follow-loaded files and includes no probe literal
 
 #### Scenario: research-tooling check prints the script literal
-
 - **WHEN** `sai-explore` reaches the research-tooling check instruction
-- **THEN** it prints the script-returned literal verbatim in English without re-deriving, repeating, or translating it
+- **THEN** no such instruction exists, no literal is printed, and the delegation line governs instead
 
 ### Requirement: Fetch deferred content at its trigger point
 
@@ -93,4 +91,3 @@ The explore instruction SHALL NOT fetch the review-loop step at boot and SHALL t
 #### Scenario: review loop waits for token
 - **WHEN** a session runs without the literal review-loop trigger
 - **THEN** the review-loop step is not loaded and boot carries only the trigger line
-

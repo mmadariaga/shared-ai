@@ -7,6 +7,18 @@ Every spawn MUST declare an output contract in its prompt:
 
 Summaries are caller-owned: the caller performs the final synthesis, and the explore agent must never return raw output.
 
+## Delegated research (sai-explore only)
+
+All discovery research in sai-explore is delegated to the explore subagent with goal + output contract; the main session reasons and synthesizes and never researches code directly. Delegation is the efficient path: it keeps principal context clean and lets tool choice happen where visibility is real, inside the explorer.
+
+The main session reads directly only `openspec/` artifacts, instruction and policy files from its own fetch route, and stage-machine state; any source-code read, search, or external doc lookup is delegated. `WebFetch`/`WebSearch` stay available to the principal but off the normative path — direct use is a punctual exception, never routine. `Glob`/`Grep`/`Read` stay as an escape valve — principal use for research is a documented exception for punctual verification or when the explorer is unavailable, never the normal flow.
+
+## Explorer-owned availability
+
+CodeGraph availability self-detection lives only in the explorer, in its own session: MCP presence including deferred/searchable tools not yet loaded, `codegraph` binary on PATH, shell availability, git availability, and whether the working tree is a git repository. The main session runs no probe, prints no literal, and computes no `--mcp-present`; per-segment `ladder_discards` is the only signal.
+
+When the explorer is unavailable the principal may use punctual `Glob`, `Grep`, or `Read` without reintroducing any probe or literal, and re-delegates as soon as possible. This discipline is identical on Claude Code and opencode; only Claude Code enforces it additionally via `allowed-tools`.
+
 ## Tool-preference ladder
 
 When researching the project, prefer research tools in this fixed order:
