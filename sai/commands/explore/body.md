@@ -8,11 +8,8 @@
   - exit 0 (`verdict: pass`) — continue exploration.
   - exit 1 (`verdict: halt`) — print the matching remediation literal from `sai/policies/prereqs-check.md` for the tool's `failed_check` unchanged (no prefix, suffix, summary, or rephrasing) and stop without writing any file.
   - exit 2, unlocatable tool, or unparseable payload — the prerequisite check could not be completed; report it as-is (naming the tried candidates when unlocatable), print no remediation literal, and do not continue as if the checks passed, never as `verdict: pass` and never as a halt with an invented literal.
-  ## Research-tooling check
-  Run the research-tooling availability probe inline — one direct run of `sai/tools/research-tools-check.js` with `--json --cwd <project-root>` plus explicit `--mcp-present true|false` (inspect the session's available tools for any name matching `codegraph_*` or `mcp__codegraph__*`, including deferred/searchable tools not yet loaded — `true` when any matches, else `false`; the script never infers MCP itself) — in the main session with no subagent, immediately after the prereqs `verdict: pass` and before Load behaviors and the `openspec-explore` skill's `openspec list --json` and first research. Use the first existing tool-location candidate in `@sai/policies/prereqs-check.md` order (project-local relative path first, then verbatim global) substituting `research-tools-check.js` for `prereqs.js`; do not compose a tool path by joining a root string to a suffix and do not re-derive the check in prose. Run once per session; later turns do not reprint. Relay advisory, never halting and never writing files:
-  - exit 0 — print the payload's `literal` verbatim in English regardless of the conversation language (no prefix, suffix, summary, or rephrasing) and continue.
-  - exit 2, unlocatable tool, or unparseable payload — report as-is (naming the tried candidates when unlocatable), print no notice, and continue exploration without a notice.
-  Do not run when the prereqs verdict is `halt` or could not be completed; print no notice there.
+  ## Delegated research
+  All discovery research is delegated to the explore subagent with goal + output contract via `@skills/budget/SKILL.md`; the main session reasons and synthesizes, reading directly only `openspec/` artifacts, its own fetch-route instruction and policy files, and stage-machine state, and never researches code directly (see `@sai/policies/explore-agent.md` for the efficient path).
   Fetch @skills/safe-operations/SKILL.md and use it
 
   ## Fast-track parse
