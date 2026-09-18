@@ -1,7 +1,9 @@
 ## Purpose
 
 Define the language-selection gate used when `sai-explore` crystallizes a handoff.
+
 ## Requirements
+
 ### Requirement: Localize selector question and descriptions while retaining English titles
 
 The crystallization language gate SHALL render the selector question and all option descriptions in the user's language. The option titles MUST remain exactly `Plan - Unattended`, `Build - Unattended`, and `Manual`. The literals `review-loop`, `/sai-1-spec`, and `/sai-2-design` SHALL remain verbatim English. The retired `/sai-1-spec <change-name>` literal SHALL NOT appear in the preserved-English list, because the name-only creation path is retired by `spec-require-block-input`.
@@ -89,7 +91,7 @@ The gate SHALL present exactly two options. The question prompt and the non-Engl
 
 ### Requirement: Translation scoping — prose translated, scaffolding English
 
-When a non-English language is chosen, the chosen language SHALL govern the block's **free-text prose** and the path-specific next-step handoff prose emitted before the selector: the `What`, `Why`, capability descriptions, `Decisions & Rationale`, `Alternatives`, `Trade-offs`, `Model / Re-framings`, `Key constraints`, slice headers, and the handoff's surrounding sentences. The following **scaffolding** SHALL remain in English regardless of the chosen language: the bold field labels — including the `**Implementation Details**` section label and the `**Overview language**` reminder line added by the staged pre-crystallization flow — the kebab-case Change name value, the command literals `/sai-1-spec` and `/sai-2-design`, and the standing-path literal `review-loop`. The handoff's surrounding prose, including the instruction to open a new chat, SHALL be rendered in the chosen language. The gate SHALL NOT alter any OpenSpec artifact file's format or content.
+When a non-English language is chosen, the chosen language SHALL govern the block's **free-text prose** and the path-specific next-step handoff prose emitted before the selector: the `What`, `Why`, capability descriptions, `Decisions & Rationale`, `Alternatives`, `Trade-offs`, `Model / Re-framings`, `Key constraints`, slice headers, and the handoff's surrounding sentences. The following **scaffolding** SHALL remain in English regardless of the chosen language: the bold field labels — including the `**Implementation Details**` section label and the `**Overview language**` reminder line added by the staged pre-crystallization flow — the kebab-case Change name value, the command literals `/sai-1-spec` and `/sai-2-design`, and the standing-path literal `review-loop`. The handoff's surrounding prose, including the instruction to open a new chat, SHALL be rendered in the chosen language. The gate SHALL NOT alter any OpenSpec artifact file's format or content. Agreed `E1`…`En` and `I1`…`In` statements SHALL additionally render in the chosen language at emission, preserving identifiers and order, while `- None` markers SHALL stay as-is with no translation.
 
 #### Scenario: mixed-language block on a non-English choice
 
@@ -102,6 +104,11 @@ When a non-English language is chosen, the chosen language SHALL govern the bloc
 
 - **WHEN** the gate resolves to any language
 - **THEN** no OpenSpec artifact file's format or content is changed by the gate
+
+#### Scenario: agreed E and I lists follow the chosen language
+
+- **WHEN** a Ready to Propose block is emitted in the chosen language with agreed E/I statements
+- **THEN** every E1-En and I1-In statement is rendered in that language with identifiers and order preserved while scaffolding and - None markers stay in English
 
 ### Requirement: Gate persistence tracks the crystallized idea
 
@@ -128,13 +135,18 @@ If the user declines to answer or responds non-committally, the agent SHALL fall
 
 ### Requirement: Sliced crystallization fires the gate once for the whole set
 
-When crystallization is sliced into multiple `Ready to Propose` blocks, the gate SHALL fire once for the whole slice set, and the chosen language SHALL apply to the free-text prose of every emitted block. Per-slice scaffolding SHALL remain in English.
+When crystallization is sliced into multiple `Ready to Propose` blocks, the gate SHALL fire once for the whole slice set, and the chosen language SHALL apply to the free-text prose of every emitted block. Per-slice scaffolding SHALL remain in English. The chosen language SHALL additionally apply to the E/I statements of every emitted block in the set, including English fast-track emission with no language question.
 
 #### Scenario: one gate governs every slice block
 
 - **WHEN** the user issues an explicit crystallize request that resolves to a sliced set of `Ready to Propose` blocks in a non-English language
 - **THEN** the agent asks the gate question once for the whole set
 - **AND** applies the chosen language to the free-text prose of every emitted block while keeping each block's scaffolding in English
+
+#### Scenario: every slice block carries translated E and I lists
+
+- **WHEN** a sliced crystallization emits multiple Ready to Propose blocks in the chosen language
+- **THEN** each block renders its E/I statements in that language with identifiers and order preserved while each block scaffolding stays English
 
 ### Requirement: Localize selector controls
 
@@ -145,3 +157,11 @@ The selector question and `Auto`/`Manual` labels SHALL follow crystallization la
 - **WHEN** a non-English crystallization reaches selector presentation
 - **THEN** selector prose is localized and required command literals remain unchanged
 
+### Requirement: Fast-track English emission translates agreed E and I lists
+
+English fast-track crystallization SHALL apply the same E/I translation with no language question and SHALL NOT skip or auto-select the crystallization-close selector.
+
+#### Scenario: fast-track English block translates E and I without asking
+
+- **WHEN** a crystallize request runs under fast-track in English with E/I agreed in another language
+- **THEN** the emitted block renders those E/I statements in English with identifiers and order preserved and still presents the close selector for an explicit choice
