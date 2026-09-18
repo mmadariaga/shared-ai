@@ -5,92 +5,97 @@ TBD
 
 ## Requirements
 
-### Requirement: pause feature emission for an explicit viability decision
-
-When the technical-uncertainty assessment fires, `sai-explore` SHALL withhold feature `Ready to Propose` blocks and present Ask 1 through the active harness-native picker. The fixed context SHALL explain the unused third party, the documentation gap, the disposable POC, the Direct Build `--no-specs` profile, the absence of backfill/spec/archive work, and the fact that the POC is not a feature slice.
-
-Ask 1 SHALL present exactly these options in order:
-
-- `Yes, create a POC before continuing`
-- `No. Crystallize the full change`
-
-`--fast-track` SHALL not auto-approve or bypass Ask 1.
-
-#### Scenario: uncertainty pauses before the language gate
-
-- **WHEN** the technical-uncertainty assessment fires during an explicit crystallization request
-- **THEN** no feature block or crystallization-language question is emitted until Ask 1 resolves
-
-#### Scenario: the user declines the POC
-
-- **WHEN** the user selects `No. Crystallize the full change`
-- **THEN** `sai-explore` proceeds to the applicable single-block or sliced protocol with the initial size and friction assessment and does not re-litigate the POC choice
-
-#### Scenario: fast-track preserves Ask 1
-
-- **WHEN** `--fast-track` is active while the technical-uncertainty assessment has fired
-- **THEN** Ask 1 is still presented and the flag does not bypass the uncertainty pause
-
-### Requirement: post-POC menus remain explicit and verdict-specific
-
-After a POC, `sai-explore` SHALL determine whether the result is viable from green POC tests or explicit human confirmation, or not viable from red POC tests or explicit human rejection. A viable result SHALL present exactly `Crystallize full`, `Exit`, and `Free text` in order. A not-viable result SHALL collect failure feedback and present exactly `Re-explore with feedback` and `Exit, idea dead` in order.
-
-`Exit` after a viable POC SHALL not mark the idea discarded. `Exit, idea dead` after a not-viable POC SHALL mark the idea discarded. `Free text` and `Re-explore with feedback` SHALL not advance without the required additional input or re-exploration.
-
-#### Scenario: viable POC offers crystallization or exit
-
-- **WHEN** the POC tests are green or the user confirms that the POC works
-- **THEN** the picker presents `Crystallize full`, `Exit`, and `Free text` in that order
-
-#### Scenario: viable crystallization re-evaluates routing
-
-- **WHEN** the user selects `Crystallize full` after a viable POC
-- **THEN** `sai-explore` re-runs size and friction assessment and then emits feature blocks through the applicable crystallization protocol
-
-#### Scenario: viable exit preserves the active idea
-
-- **WHEN** the user selects `Exit` after a viable POC
-- **THEN** explore emits no feature block and leaves the idea `active-uncrystallized` rather than marking it discarded
-
-#### Scenario: not-viable POC collects feedback
-
-- **WHEN** the POC tests are red or the user says that the POC fails
-- **THEN** explore collects feedback about what went wrong before presenting the not-viable picker
-
-#### Scenario: not-viable exit discards the idea
-
-- **WHEN** the user selects `Exit, idea dead` after a not-viable POC
-- **THEN** the Closure State becomes `discarded` and no feature block is emitted
-
-#### Scenario: fast-track preserves post-POC menus
-
-- **WHEN** `--fast-track` is active after a POC reaches either a viable or not-viable verdict
-- **THEN** the applicable post-POC picker is still presented and is not auto-approved
-
 ### Requirement: The viability POC lane is an independently loadable step
 
-The viability-POC lane SHALL be stated in exactly one step file, `sai/commands/explore/steps/poc-lane.md`, which owns the uncertainty pause, Ask 1, the Direct Build `--no-specs` execution, the verdict, and both post-POC menus. `sai/commands/explore/steps/crystallization-protocol.md` SHALL state no part of the lane and SHALL instead emit the routing-only `poc-lane` intent to `explore-idea@1` and follow the returned `next.follow`. The lane file SHALL be follow-loaded through `next.follow` and SHALL NOT be reached by a nested `Fetch @` directive. The extraction SHALL be behavior-preserving: the trigger condition, the Ask 1 context and its two options in their fixed order, the verdict determination, and both post-POC menus remain as previously stated, and `--fast-track` still neither auto-approves nor bypasses Ask 1 or the post-POC menus.
+The POC lane SHALL be stated in exactly one step file, `sai/commands/explore/steps/poc-lane.md`, which owns the lane from candidate agreement onward: the `C1..Cn` agreement stop, the pinned Direct Build `--no-specs` execution, the reversible isolation, the verdict, and the verdict menu. The trigger — the two motives, the no-fire test, and the go/no-go ask — SHALL be stated once in `sai/commands/explore/steps/common.md` and SHALL NOT be restated or re-litigated in the lane file. `sai/commands/explore/steps/crystallization-protocol.md` SHALL state no part of the lane and SHALL NOT enter or resume it. The lane file SHALL be follow-loaded through `next.follow` and SHALL NOT be reached by a nested `Fetch @` directive. The lane SHALL NOT be a slice of the crystallized set, SHALL NOT appear on the Idea Progress List, SHALL NOT renumber friction or skeleton slices, and SHALL NOT clear the stage TODO. While the lane is the current stage, the pre-crystallization closure SHALL be satisfied by the lane's own pending stop and no stage-aware reminder SHALL be appended.
 
 #### Scenario: the pause is entered through the lane step
 
-- **WHEN** the technical-uncertainty assessment fires during an explicit crystallization request
-- **THEN** the crystallization protocol emits the `poc-lane` intent and the pause is presented from `poc-lane.md`, with no feature block and no crystallization-language question emitted first
+- **WHEN** the user accepts the go/no-go at the close of the `Explore change` stage
+- **THEN** the `poc-lane` intent is emitted and the lane is entered through the returned `next.follow` at `poc-lane.md`, with no pause at crystallization and no feature block withheld
 
 #### Scenario: the lane file is the single source of the lane text
 
 - **WHEN** the crystallization protocol is read
-- **THEN** it contains no Ask 1 option label, no post-POC menu entry, and no `Fetch` directive naming `poc-lane.md`, while `poc-lane.md` contains all of them
+- **THEN** it contains no go/no-go option label, no verdict menu entry, no `poc-lane` intent, and no `Fetch` directive naming `poc-lane.md`, while `poc-lane.md` contains the candidate agreement stop, the execution, the verdict, and the verdict menu
 
-### Requirement: Crystallization resumes through the lane return route
+### Requirement: The POC trigger is evaluated at the close of stage 1
 
-The lane SHALL re-enter the crystallization protocol only on the branches that resume it — Ask 1 `No. Crystallize the full change`, and `Crystallize full` after a viable POC — by emitting the routing-only `crystallize-resume` intent to `explore-idea@1` and following the returned `next.follow`. On a resume without a POC the initial size and friction assessments SHALL still hold; on a resume after a completed POC size and friction SHALL be re-assessed against the post-POC repository before the single-change or sliced protocol runs. The `Exit`, `Free text`, `Re-explore with feedback`, and `Exit, idea dead` branches SHALL NOT emit the return intent and SHALL keep their existing behavior.
+`sai-explore` SHALL judge exactly once, before the progression leaves the `Explore change` stage, whether the idea warrants a disposable POC, and that trigger SHALL be stated in exactly one place, `sai/commands/explore/steps/common.md`. A POC is an experiment that discriminates between competing candidates, so the trigger SHALL fire only when competing candidates exist, on either of two motives: **technical viability**, when the technical or integration approach is unproven because the idea depends on a third party, service, or API the project has not integrated and the available documentation, examples, or prior art do not demonstrate the required integration pattern, in which case the candidates are the competing strategies; or **bug diagnosis**, when the idea fixes a bug whose cause is not established and several root-cause theories compete to explain the observed behavior, in which case the candidates are those theories. The trigger SHALL NOT fire for product or UX uncertainty, and SHALL NOT fire when mutually exclusive candidates with a discriminating observable cannot be formulated. When it fires, `sai-explore` SHALL present a go/no-go through the harness-native picker with exactly two options in this order: `Yes, run a POC before continuing`, which emits the `poc-lane` intent to `explore-idea@1` and follows the returned `next.follow`; and `No, continue without a POC`, which continues the progression to `Review edge cases` with the technical risk accepted and SHALL NOT raise the axis again for that idea.
 
-#### Scenario: declining the POC returns to crystallization
+#### Scenario: an unproven integration fires the viability motive
 
-- **WHEN** the user selects `No. Crystallize the full change`
-- **THEN** the lane emits `crystallize-resume`, the pointer returns to the crystallization protocol, and the applicable protocol runs with the initial size and friction assessments
+- **WHEN** the idea depends on a third party the project has not integrated and the available documentation does not demonstrate the required integration pattern
+- **THEN** the go/no-go is presented at the close of `Explore change` with `Yes, run a POC before continuing` and `No, continue without a POC` in that order
 
-#### Scenario: exit branches do not return through the machine
+#### Scenario: competing root-cause theories fire the diagnosis motive
 
-- **WHEN** the user selects `Exit` after a viable POC or `Exit, idea dead` after a not-viable POC
-- **THEN** no `crystallize-resume` intent is emitted and the existing closure behavior for that branch applies
+- **WHEN** the idea fixes a bug whose cause is not established and several root-cause theories compete to explain the observed behavior
+- **THEN** the same go/no-go is presented at the close of `Explore change` with the theories as the candidates
+
+#### Scenario: product uncertainty never fires the trigger
+
+- **WHEN** the uncertainty concerns product demand, UX preference, or whether users want the proposed behavior
+- **THEN** the trigger does not fire and the progression continues to `Review edge cases` without a POC
+
+#### Scenario: no discriminating observable means no POC
+
+- **WHEN** mutually exclusive candidates with a discriminating observable cannot be formulated for the idea
+- **THEN** the axis does not fire, no POC runs, and the progression continues to `Review edge cases`
+
+#### Scenario: declining the go/no-go is final for that idea
+
+- **WHEN** the user selects `No, continue without a POC`
+- **THEN** the progression continues to `Review edge cases` with the technical risk accepted and the axis is not raised again for that idea
+
+### Requirement: The candidate list is agreed before the POC runs
+
+Before running the POC, `sai-explore` SHALL propose the competing candidates as a numbered list `C1` through `Cn`, each one plain sentence naming what would be observed if that candidate were the right one, and SHALL ask one plain conversational question in the ambient conversation language asking whether the list captures the competing candidates or needs adjustment. A candidate SHALL be a strategy to prove under the viability motive or a root-cause theory to rule out under the diagnosis motive, and a single lane run MAY mix both kinds when both motives fired on the same idea, always as one POC and never one POC per motive. The answer SHALL be evaluated by dominant semantic intent with the same mechanics as the `E1..En` gate: clear confirmation or a bare `next-step` turn with a non-empty list records the ordered list as agreed and runs the POC in the same turn; a disagreement, removal, addition, or material revision — including a same-turn revision paired with `next-step` — updates and renumbers the list, keeps the stop open, and re-asks without running the POC; an ambiguous answer stays discussion. The agreed list SHALL be recorded with a `recordedList` emit to `explore-idea@1`, which SHALL NOT advance the stage. The stop SHALL NOT use a native yes/no picker and SHALL NOT require a fixed agreement phrase.
+
+#### Scenario: confirmation runs the POC in the same turn
+
+- **WHEN** the user confirms the proposed `C1..Cn` list or sends a bare `next-step` against a non-empty list
+- **THEN** the ordered list is recorded as agreed without advancing the stage and the POC runs in that same turn
+
+#### Scenario: a revision keeps the stop open
+
+- **WHEN** the user adds, removes, or materially changes a candidate, including in the same turn as `next-step`
+- **THEN** the list is updated and renumbered, the question is re-asked, and no POC runs
+
+#### Scenario: both motives share one candidate list
+
+- **WHEN** both the viability and the diagnosis motive fired on the same idea
+- **THEN** one candidate list mixing strategies and theories is agreed and one POC runs for it
+
+### Requirement: The POC verdict names the winning agreed candidate or none
+
+The POC verdict SHALL be exactly `<Cn> wins` or `none`, where `<Cn>` is one of the agreed candidates. It SHALL NOT be a judgment of the POC's code quality and SHALL NOT name a candidate outside the agreed list: a cause or strategy the POC reveals that was not on the list SHALL make the verdict `none`. `sai-explore` SHALL report the verdict with the concrete observation that produced it and then take exactly one of two branches. On `<Cn> wins` it SHALL present a harness-native picker with exactly two options in order — `Continue with <Cn>`, which emits `next-step` to `explore-idea@1` and advances to `Review edge cases` carrying the proven change when the winner was a strategy or the proposed fix for the confirmed root cause when the winner was a theory; and `Stay here`, which does not advance, does not discard the idea, and runs no crystallization. On `none` it SHALL present no advancement option, SHALL stop the lane, SHALL report what was learned including any cause or strategy outside the agreed candidates, and SHALL wait for instructions with no auto-advance, no progression reset, and no crystallization.
+
+#### Scenario: a winning candidate carries the concrete change into stage 2
+
+- **WHEN** the POC confirms an agreed candidate and the user selects `Continue with <Cn>`
+- **THEN** the progression advances to `Review edge cases` with the proven change or the proposed fix on the table
+
+#### Scenario: an unlisted cause makes the verdict none
+
+- **WHEN** the POC reveals a cause or strategy that was not among the agreed candidates
+- **THEN** the verdict is `none` rather than a new winner
+
+#### Scenario: a none verdict waits for instructions
+
+- **WHEN** the verdict is `none`
+- **THEN** the lane stops, reports what was learned, and presents no advancement option, with no auto-advance, no reset, and no crystallization
+
+### Requirement: The POC runs in reversible isolation and is discarded when the lane closes
+
+Before the POC runs, `sai-explore` SHALL isolate it reversibly by running it on its own branch or worktree created for it, and SHALL abandon that branch or worktree when the lane closes. Only the verdict SHALL survive the lane. The POC code SHALL be discarded by abandoning the isolation and SHALL NOT be discarded by destructive deletion of the working tree, by `git reset --hard` on the user's branch, or by removing files the user owns. Because the repository the lane leaves behind is the one it found, the size and integration-point friction judgments at the `Crystallize` stage SHALL evaluate the original repository and never one carrying throwaway POC code.
+
+#### Scenario: the isolation is abandoned, not deleted
+
+- **WHEN** the POC lane closes after an execution
+- **THEN** the POC's branch or worktree is abandoned, the repository returns to its prior state, and no destructive deletion of the working tree occurs
+
+#### Scenario: stage 4 judges the original repository
+
+- **WHEN** the slicing assessment runs after a POC has been taken for the idea
+- **THEN** the size and friction judgments evaluate the repository as it was before the POC

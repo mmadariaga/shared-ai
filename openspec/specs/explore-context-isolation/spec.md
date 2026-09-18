@@ -2,24 +2,24 @@
 
 ## Purpose
 TBD - created by archiving change tasks-as-scaffold. Update Purpose after archive.
+
 ## Requirements
 
 ### Requirement: Keep delegated writes behind explicit route selection
 
 Explore SHALL remain directly read-only. The explicit Plan (unattended) route MAY dispatch only its existing supervised workers, and the explicit Direct Build (unattended) route MAY dispatch only its existing fast-lane workers under their closed ownership contracts.
 
-The uncertainty pause MAY dispatch the Direct Build `--no-specs` viability POC only after the user explicitly selects `Yes, create a POC before continuing`. That POC is a bounded exception to ordinary explore read-only behavior: only the implementer may write code, tests, or required project configuration outside `openspec/`; it may not write OpenSpec artifacts, create planning artifacts, or run mutating Git commands. The POC does not authorize backfill, spec, archive, or commit work.
+The POC lane MAY dispatch the Direct Build `--no-specs` POC only after the user explicitly selects `Yes, run a POC before continuing` at the close of the `Explore change` stage and the `C1..Cn` candidate list has been agreed. That POC is a bounded exception to ordinary explore read-only behavior: only the implementer may write code, tests, or required project configuration outside `openspec/`, and only inside the lane's own branch or worktree; it may not write OpenSpec artifacts, create planning artifacts, or run mutating Git commands beyond the creation and abandonment of that isolation. The POC does not authorize backfill, spec, archive, or commit work.
 
 #### Scenario: route authorization is explicit
 
-- **WHEN** a crystallization selector answer or Ask 1 answer is received
-- **THEN** only an explicitly selected Plan or Direct Build route, or an explicitly selected Ask 1 POC, may dispatch its authorized workers
-- **AND** no route dispatches merely because the idea is ready or uncertainty was detected
+- **WHEN** a crystallization selector answer or a POC go/no-go answer is received
+- **THEN** only an explicitly selected Plan or Direct Build route, or an explicitly accepted POC, may dispatch its authorized workers
 
 #### Scenario: Ask 1 POC has narrowed authority
 
-- **WHEN** the user selects `Yes, create a POC before continuing`
-- **THEN** only the implementer-only `--no-specs` profile may run and the profile cannot write under `openspec/` or mutate Git state
+- **WHEN** the user selects `Yes, run a POC before continuing` and the candidate list is agreed
+- **THEN** only the implementer-only `--no-specs` profile may run, inside the lane's isolation, and it cannot write under `openspec/` or mutate Git state beyond that isolation
 
 ### Requirement: explore-no-inline-proposal
 
@@ -38,26 +38,24 @@ The uncertainty pause MAY dispatch the Direct Build `--no-specs` viability POC o
 
 ### Requirement: explore-context-preserved
 
-The explore agent MUST remain a read-and-discuss coordinator and MUST NOT create, modify, or delete files directly. It MAY dispatch workers whose explicit phase contracts authorize writes, provided each worker writes only within the scope it owns. Outside an explicitly user-triggered supervised pipeline or Ask 1 POC, explore SHALL NOT invoke a write-producing phase.
+The explore agent MUST remain a read-and-discuss coordinator and MUST NOT create, modify, or delete files directly. It MAY dispatch workers whose explicit phase contracts authorize writes, provided each worker writes only within the scope it owns. Outside an explicitly user-triggered supervised pipeline or an accepted POC, explore SHALL NOT invoke a write-producing phase.
 
-During an Ask 1 POC, only the Direct Build `--no-specs` implementer may write code, tests, or required project configuration outside `openspec/`. The POC SHALL not write proposal, spec, change metadata, planning artifacts, or any other file under `openspec/`, and SHALL not run a mutating Git command. Explore itself remains read-only throughout the POC.
+During a POC, only the Direct Build `--no-specs` implementer may write code, tests, or required project configuration outside `openspec/`, and only within the branch or worktree the lane created for it. The POC SHALL NOT write proposal, spec, change metadata, planning artifacts, or any other file under `openspec/`. Explore itself remains read-only throughout the POC, and the isolation is abandoned rather than destructively deleted when the lane closes.
 
 #### Scenario: explore performs ordinary discussion or review
 
-- **WHEN** no user-triggered supervised pipeline or Ask 1 POC is active
+- **WHEN** no user-triggered supervised pipeline or accepted POC is active
 - **THEN** explore invokes no write-producing phase and no file is written by explore
 
 #### Scenario: dispatched worker writes within owned scope
 
 - **WHEN** a user-triggered supervised pipeline dispatches the spec-proposal worker
 - **THEN** only the worker may write `proposal.md`, `specs/**`, and permitted change metadata within its owned change directory
-- **AND** explore performs no direct write
 
 #### Scenario: viability POC writes only implementation scope
 
-- **WHEN** Ask 1 authorizes a Direct Build `--no-specs` viability POC
-- **THEN** only the implementer may write authorized code, tests, or required project configuration outside `openspec/`
-- **AND** no OpenSpec artifact or Git state is mutated by the POC or explore
+- **WHEN** the POC lane authorizes a Direct Build `--no-specs` POC
+- **THEN** only the implementer writes authorized code, tests, or required project configuration outside `openspec/`, inside the branch or worktree the lane created for it
 
 #### Scenario: write would escape the owned change directory
 

@@ -3,10 +3,14 @@
 ## Purpose
 
 TBD
+
 ## Requirements
+
 ### Requirement: Pre-crystallization lifecycle renders as a four-stage TODO
 
 While a candidate idea is under active exploration (Closure State `active-uncrystallized`), `sai-explore` SHALL render a four-item stage TODO with the labels `Explore change`, `Review edge cases`, `Implementation details`, and `Crystallize`, in that order. The current stage SHALL render `in_progress`, completed stages SHALL render `completed`, and remaining stages SHALL render `pending`. The TODO SHALL render on the native task panel through the per-harness idea-list render binding's phase-A machinery, SHALL render from the first turn in which a candidate idea exists, and SHALL re-render exactly once per turn that changes stage state. The TODO SHALL NOT render while no candidate idea exists.
+
+The POC lane is a conditional stage and SHALL add no entry until it fires: the list SHALL stay at four entries for every idea whose POC trigger did not fire and for every idea whose go/no-go was declined. When the lane is entered, the list SHALL grow to five entries by inserting `POC` between `Explore change` and `Review edge cases`, and SHALL keep that fifth entry for the rest of the idea's progression, with `POC` rendering `completed` once the lane is left, exactly like any other completed stage. Each stage-TODO entry SHALL carry the stage-ownership marker `sai-explore-stage:<stage-id>` with stage ids `explore-change`, `poc-lane`, `review-edge-cases`, `implementation-details`, and `crystallize`.
 
 #### Scenario: A fresh idea renders the four stages
 
@@ -17,6 +21,21 @@ While a candidate idea is under active exploration (Closure State `active-uncrys
 
 - **WHEN** a turn advances the stage progression
 - **THEN** the TODO re-renders exactly once after that turn's stage-state changes, with the new current stage `in_progress`, completed stages `completed`, and remaining stages `pending`
+
+#### Scenario: Entering the lane adds the fifth entry
+
+- **WHEN** the user accepts the go/no-go and the progression enters the POC lane
+- **THEN** the TODO renders five entries with `POC` between `Explore change` and `Review edge cases` and `POC` `in_progress`
+
+#### Scenario: The fifth entry survives the lane
+
+- **WHEN** the progression leaves the POC lane for `Review edge cases`
+- **THEN** the TODO keeps its five entries with `POC` rendering `completed`
+
+#### Scenario: A declined go/no-go keeps four entries
+
+- **WHEN** the POC trigger did not fire, or the user selected `No, continue without a POC`
+- **THEN** the TODO renders exactly four entries for the rest of that idea's progression
 
 ### Requirement: Stages advance only on explicit user intent
 
@@ -268,3 +287,16 @@ The explore caller SHALL advance the pre-crystallization progression only on exp
 - **WHEN** the user turn merely contains next-step, or negates, defers, quotes, or discusses the token
 - **THEN** the progression does not advance and the stage TODO stays unchanged
 
+### Requirement: The post-POC return is not a material change
+
+The automatic advancement out of the POC lane into `Review edge cases` SHALL be treated as stage progression authored by the lane and SHALL NOT be treated as a material change: it SHALL NOT reset the staged progression, SHALL NOT discard the agreed candidate list, and SHALL NOT start a new `active-uncrystallized` lifecycle. A genuine material change authored by the user SHALL still reset the progression exactly as always, whether it occurs inside the lane or outside it. This exception SHALL be declared alongside material-change detection in `sai/commands/explore/steps/common.md`.
+
+#### Scenario: leaving the lane preserves the progression
+
+- **WHEN** the verdict menu advances the progression from the POC lane into `Review edge cases`
+- **THEN** the staged progression is not reset, the agreed lists survive, and no new `active-uncrystallized` lifecycle starts
+
+#### Scenario: a user's material change inside the lane still resets
+
+- **WHEN** the user materially changes the explored idea while the POC lane is the current stage
+- **THEN** the ordinary material-change reset applies exactly as it does at any other stage

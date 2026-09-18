@@ -62,8 +62,9 @@ These divergences are intentional and stay byte-stable; do not "unify" them:
   twice — zero times when neither segment activates. Builds with and without
   the explicit token behave identically; the chained segments' skipped shells
   print no second banner.
-- `sai-explore`'s uncertainty pause (viability POC) does NOT auto-approve Ask 1
-  (go/no-go for POC) or post-POC menus (viable/not-viable pickers) under
-  `--fast-track`. The asks are always presented; fast-track bypasses only the
-  crystallization language gate and overview-language ask, never the uncertainty
-  pause machinery.
+- `sai-explore`'s POC lane does NOT auto-approve or skip any of its three stops
+  under `--fast-track`: the go/no-go at the close of stage 1, the `C1..Cn`
+  candidate-list agreement, and the verdict menu. All three are always
+  presented, and fast-track cannot alter the lane's pinned Direct Build
+  `--no-specs` profile. Fast-track bypasses only the crystallization language
+  gate and the overview-language ask, never the POC lane machinery.

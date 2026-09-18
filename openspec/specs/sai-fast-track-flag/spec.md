@@ -10,7 +10,7 @@ Enables the `--fast-track` per-invocation flag on `sai-explore`, `sai-2-design`,
 
 Explore fast-track SHALL bypass gate 9 without an explicit overview-language option and SHALL resolve `None`; explicit `--overview-lang` SHALL override that default only on the supervised route. Direct Build - Unattended SHALL treat the explicit option as a no-op and SHALL never generate `change-overview.md`.
 
-The fast-track signal SHALL not bypass the technical-uncertainty assessment, Ask 1, the viable post-POC menu, or the not-viable post-POC menu. Those uncertainty decisions remain explicit even when the language questions are bypassed.
+The fast-track signal SHALL NOT auto-approve or skip any of the POC lane's three stops: the go/no-go evaluated at the close of the `Explore change` stage, the `C1..Cn` candidate-list agreement, and the verdict menu. All three SHALL always be presented and SHALL require the user's explicit choice. Fast-track SHALL NOT alter the lane's pinned Direct Build `--no-specs` profile: it SHALL NOT add back a skipped step and SHALL NOT remove one of Steps 1 and 2. Fast-track bypasses only the crystallization language gate and the overview-language ask, never the POC lane machinery.
 
 #### Scenario: auto-fast remains overview-free
 
@@ -19,8 +19,13 @@ The fast-track signal SHALL not bypass the technical-uncertainty assessment, Ask
 
 #### Scenario: fast-track does not bypass uncertainty choices
 
-- **WHEN** `--fast-track` is active and the technical-uncertainty assessment fires
-- **THEN** Ask 1 and the applicable post-POC menu remain presented and require the user's explicit choice
+- **WHEN** `--fast-track` is active and the POC trigger fires at the close of the `Explore change` stage
+- **THEN** the go/no-go, the candidate-list agreement, and the verdict menu are each presented and require the user's explicit choice
+
+#### Scenario: fast-track does not alter the pinned profile
+
+- **WHEN** `--fast-track` is active while the POC lane dispatches its Direct Build `--no-specs` POC
+- **THEN** the profile runs Steps 1 and 2 only, unchanged by the flag
 
 ### Requirement: sai-2-design under fast-track has no specs approval gate to opt out of
 

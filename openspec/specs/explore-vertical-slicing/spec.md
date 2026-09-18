@@ -8,7 +8,7 @@ Ensure `sai-explore` can assess whether a candidate idea fits a single OpenSpec 
 
 ### Requirement: explore-slicing-assessment-before-crystallization
 
-`sai-explore` SHALL assess whether the candidate idea fits a single OpenSpec change before emitting any `Ready to Propose` block. It SHALL run three orthogonal judgments in order: size, integration-point friction, and technical uncertainty.
+`sai-explore` SHALL assess whether the candidate idea fits a single OpenSpec change before emitting any `Ready to Propose` block. It SHALL run two orthogonal judgments in order: size and integration-point friction. Technical uncertainty SHALL NOT be judged here; that axis is evaluated at the close of the `Explore change` stage and, when taken, runs as the conditional POC stage before `Review edge cases`.
 
 The idea is "too big" for one change when any of these scope signals apply:
 - several distinct user tasks with orthogonal concerns (not facets of one behavior);
@@ -17,46 +17,44 @@ The idea is "too big" for one change when any of these scope signals apply:
 
 The integration-point friction assessment remains distinct from size and fires when the exact site has mixed responsibilities or no clean extension seam.
 
-The technical-uncertainty assessment fires only when the same integration depends on an unused third party and available documentation or prior art is insufficient for the required technical or integration case. It does not fire for product or UX uncertainty.
-
 Based on the assessments, `sai-explore` SHALL:
-- route to the single-block crystallization protocol when the idea fits one change, friction does not fire, and uncertainty does not fire;
+- route to the single-block crystallization protocol when the idea fits one change and friction does not fire;
 - route to the sliced crystallization protocol when the idea is too big, identifying a Walking Skeleton plus dependency-ordered review-sized slices;
-- route to the sliced protocol with slice 0 followed by slice 1 when the idea fits one change but friction fires;
-- withhold feature blocks and enter the uncertainty pause when uncertainty fires.
+- route to the sliced protocol with slice 0 followed by slice 1 when the idea fits one change but friction fires.
 
-When uncertainty fires together with size or friction, the POC lane runs first if selected. After a viable POC and a `Crystallize full` choice, size and friction are re-evaluated against the post-POC repository. The POC is not a feature slice, does not appear on the feature Idea Progress List, and does not renumber slice 0, the Walking Skeleton, or backlog slices.
+By the time this assessment runs, any POC has already been decided, run, and discarded, so size and friction SHALL judge the original repository and SHALL NOT be re-evaluated against a post-POC repository. A POC SHALL never be a feature slice, SHALL never appear on the feature Idea Progress List, and SHALL never renumber slice 0, the Walking Skeleton, or backlog slices.
 
-The routing determines how many feature blocks crystallization produces and their order; the uncertainty pause determines whether feature emission may begin.
+The routing determines how many feature blocks crystallization produces and their order.
 
 #### Scenario: idea fits a single change
 
-- **WHEN** the candidate idea passes the size and friction assessments and the technical-uncertainty assessment does not fire
-- **THEN** `sai-explore` uses the single-block crystallization protocol and, when the user explicitly asks to crystallize, emits exactly one `Ready to Propose` block
-- **AND** the block is emitted only after any applicable crystallization-language gate
+- **WHEN** the candidate idea passes the size assessment and the friction assessment does not fire
+- **THEN** `sai-explore` uses the single-block crystallization protocol and, on an explicit crystallize request, emits exactly one `Ready to Propose` block
 
 #### Scenario: idea fits a single change but friction fires
 
-- **WHEN** the size assessment passes, the friction assessment fires, and the technical-uncertainty assessment does not fire
-- **THEN** `sai-explore` routes to the sliced crystallization protocol and, on an explicit crystallize request, emits slice 0 followed by slice 1 instead of a single block
-- **AND** slice numbering remains unchanged by the absence of a POC
+- **WHEN** the size assessment passes and the friction assessment fires
+- **THEN** `sai-explore` routes to the sliced crystallization protocol and emits slice 0 followed by slice 1 instead of a single block
 
 #### Scenario: idea is too big for one change
 
 - **WHEN** the candidate idea trips one or more size scope signals
 - **THEN** `sai-explore` identifies a Walking Skeleton and dependency-ordered backlog slices and uses the sliced crystallization protocol on an explicit crystallize request
-- **AND** a viable POC, if run first, is not included in that feature slice set
 
 #### Scenario: technical uncertainty pauses feature emission
 
-- **WHEN** the candidate idea depends on an unused third party and the documentation for the required integration case is insufficient
-- **THEN** `sai-explore` emits no feature block and enters the uncertainty pause before the crystallization-language gate
+- **WHEN** the candidate idea carries technical uncertainty and the slicing assessment runs
+- **THEN** no uncertainty judgment runs here and no feature emission is paused, because that axis was already evaluated at the close of the `Explore change` stage
 
 #### Scenario: viable POC re-evaluates size and friction
 
-- **WHEN** a viability POC completes successfully and the user selects `Crystallize full`
-- **THEN** `sai-explore` re-runs size and friction against the post-POC repository before emitting feature blocks
-- **AND** the POC remains outside the feature slice numbering
+- **WHEN** a POC ran earlier in the progression and the user then requests crystallization
+- **THEN** size and friction are not re-evaluated against a post-POC repository, because the lane abandoned its isolation and left the original repository in place
+
+#### Scenario: a POC taken earlier does not enter the slicing assessment
+
+- **WHEN** the POC lane ran earlier in the progression and the slicing assessment is reached
+- **THEN** the assessment judges the original repository and the POC is absent from the feature slice set and its numbering
 
 ### Requirement: explore-sliced-crystallization-protocol
 

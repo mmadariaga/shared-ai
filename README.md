@@ -89,7 +89,7 @@ When a change is too large to implement and review safely as one unit, `/sai-exp
 
 - **Slice 0 can be a behavior-preserving refactor** when the current design has no clean extension point for the feature.
 - **Slice 1 can be a Walking Skeleton** that establishes a thin end-to-end path, allowing the remaining independent slices to proceed in parallel.
-- **A throwaway POC can run first** when technical viability is still unclear, proving whether the approach works before the project commits to it.
+- **A throwaway POC can run first** when technical viability is unproven or a bug has competing root-cause theories, running an experiment that discriminates between the candidates you agreed on before the project commits to one.
 
 ### Choose your implementation strategy
 

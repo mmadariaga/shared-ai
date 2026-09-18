@@ -147,25 +147,30 @@ test('sidecar STAGE_FILES still name the follow-loaded step files', () => {
   assert.match(slice, /const PLAN_STEP = 'sai\/commands\/explore\/steps\/pipeline-plan-unattended\.md'/);
 });
 
-test('the POC lane is a follow-loaded step entered and left through next.follow', () => {
+test('the POC lane is a follow-loaded conditional stage entered from the stage-1 close', () => {
+  const common = fs.readFileSync(path.join(explorerStepsDir, 'common.md'), 'utf8');
   const protocol = fs.readFileSync(path.join(explorerStepsDir, 'crystallization-protocol.md'), 'utf8');
   const lane = fs.readFileSync(path.join(explorerStepsDir, 'poc-lane.md'), 'utf8');
 
-  // The crystallization protocol routes into the lane instead of stating it.
-  assert.match(protocol, /explore-idea@1 '\{"intent":"poc-lane"\}'/);
-  assert.match(protocol, /follow the returned `next\.follow` \(`poc-lane\.md`\)/);
-  assert.doesNotMatch(protocol, /Yes, create a POC before continuing/);
-  assert.doesNotMatch(protocol, /Not viable\*\* \(POC tests red/);
-  assert.doesNotMatch(protocol, /Re-explore with feedback/);
-  assert.ok(!findFetchDirectives(path.join(explorerStepsDir, 'crystallization-protocol.md')).includes('poc-lane.md'),
+  // The stage-1 close owns the trigger and routes into the lane.
+  assert.match(common, /\{"intent":"poc-lane"\}/);
+  assert.match(common, /follow the returned `next\.follow` \(`poc-lane\.md`\)/);
+  assert.match(common, /Yes, run a POC before continuing/);
+  assert.match(common, /No, continue without a POC/);
+  assert.ok(!findFetchDirectives(path.join(explorerStepsDir, 'common.md')).includes('poc-lane.md'),
     'poc-lane.md is follow-loaded, never nested-fetched');
 
-  // The lane owns the whole pause and returns through the machine.
-  assert.match(lane, /Yes, create a POC before continuing/);
-  assert.match(lane, /No\. Crystallize the full change/);
-  assert.match(lane, /Crystallize full/);
-  assert.match(lane, /Exit, idea dead/);
-  assert.match(lane, /explore-idea@1 '\{"intent":"crystallize-resume"\}'/);
+  // Crystallization no longer holds any part of the lane.
+  assert.doesNotMatch(protocol, /\{"intent":"poc-lane"\}/);
+  assert.doesNotMatch(protocol, /crystallize-resume/);
+  assert.doesNotMatch(protocol, /go\/no-go/);
+
+  // The lane owns candidate agreement, the verdict, and the return advancement.
+  assert.match(lane, /conditional stage/);
+  assert.match(lane, /`C1\.\.Cn`/);
+  assert.match(lane, /`<Cn> wins` or `none`/);
+  assert.match(lane, /\{"intent":"next-step"\}/);
+  assert.doesNotMatch(lane, /crystallize-resume/);
 });
 
 test('should have all step files reachable through fetch chain', () => {

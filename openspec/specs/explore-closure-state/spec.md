@@ -10,46 +10,44 @@ TBD
 
 `sai-explore` SHALL maintain the current idea's Closure State in conversation only. The state SHALL be exactly one of `active-uncrystallized`, `crystallized`, or `discarded`, and only `active-uncrystallized` SHALL require the actionable closure defined by this change.
 
-The Closure State begins only when the conversation contains a candidate idea under active exploration. Before a candidate idea exists, no Closure State is active. Once a candidate idea exists, it starts as `active-uncrystallized`. Emitting the one-time readiness signal does not transition the state. Running a viability POC does not transition the state, and a viable POC followed by `Exit` leaves the idea `active-uncrystallized`. A viable POC followed by `Crystallize full` transitions the idea to `crystallized` only after the feature `Ready to Propose` block or blocks are emitted. A not-viable POC followed by `Exit, idea dead` transitions the idea to `discarded`. A not-viable POC followed by `Re-explore with feedback` returns to active exploration. An explicit discard likewise transitions the idea to `discarded`. A materially changed idea is treated as a new active-uncrystallized idea.
+The Closure State begins only when the conversation contains a candidate idea under active exploration. Before a candidate idea exists, no Closure State is active. Once a candidate idea exists, it starts as `active-uncrystallized`. Emitting the one-time readiness signal does not transition the state. Running the POC lane SHALL NOT transition the state on any branch: neither a `<Cn> wins` verdict nor a `none` verdict SHALL mark the idea `crystallized` or `discarded`, and the automatic advancement out of the lane SHALL NOT start a new lifecycle. The idea becomes `crystallized` only after the feature `Ready to Propose` block or blocks are emitted, and `discarded` only on an explicit discard. A materially changed idea is treated as a new active-uncrystallized idea.
 
 #### Scenario: no candidate idea exists
 
 - **WHEN** a successful `sai-explore` turn contains no candidate idea under active exploration
 - **THEN** no Closure State is active
-- **AND** this change does not require a question or crystallize reminder
 
 #### Scenario: readiness does not end active exploration
 
 - **WHEN** the idea is solid enough for the existing one-time readiness signal but the user has not explicitly requested crystallization
-- **THEN** the readiness statement is carried inside the closure reminder line when no genuine unresolved question remains
-- **AND** when a genuine unresolved question remains, the response ends with that question and the Closure State remains `active-uncrystallized`
+- **THEN** the Closure State remains `active-uncrystallized`
 
 #### Scenario: explicit crystallization ends pre-crystallization closure
 
-- **WHEN** the user explicitly requests crystallization, the existing assessments, any required uncertainty pause, and language gates complete, and a feature block is emitted
+- **WHEN** the user explicitly requests crystallization, the assessments and language gates complete, and a feature block is emitted
 - **THEN** the Closure State becomes `crystallized`
-- **AND** the question-or-reminder closure is not appended to that crystallization response
 
 #### Scenario: explicit discard ends pre-crystallization closure
 
 - **WHEN** the user explicitly discards the active idea
 - **THEN** the Closure State becomes `discarded`
-- **AND** subsequent successful responses about that discarded idea do not append the question-or-reminder closure
 
 #### Scenario: a materially changed idea starts a new closure lifecycle
 
-- **WHEN** exploration materially changes the current idea into a new stable idea after the prior idea's readiness tracking would otherwise apply
-- **THEN** the new idea is classified as `active-uncrystallized`
-- **AND** closure enforcement and readiness tracking are evaluated for the new idea independently
+- **WHEN** exploration materially changes the current idea into a new stable idea
+- **THEN** the new idea is classified as `active-uncrystallized` and closure enforcement is evaluated for it independently
 
 #### Scenario: viable POC exit preserves active-uncrystallized state
 
-- **WHEN** a viability POC is viable and the user selects `Exit`
-- **THEN** no feature block is emitted and Closure State remains `active-uncrystallized`
-- **AND** the idea is not marked discarded
+- **WHEN** the POC lane reaches a `<Cn> wins` verdict and the user selects `Stay here` instead of advancing
+- **THEN** no feature block is emitted, the Closure State remains `active-uncrystallized`, and the idea is not marked discarded
 
 #### Scenario: not-viable exit marks the idea discarded
 
-- **WHEN** a viability POC is not viable and the user selects `Exit, idea dead`
-- **THEN** Closure State becomes `discarded`
-- **AND** no feature block is emitted
+- **WHEN** the POC lane reaches a `none` verdict and stops
+- **THEN** the idea is not marked discarded and the Closure State remains `active-uncrystallized`, because only an explicit discard transitions it to `discarded`
+
+#### Scenario: the POC lane never transitions the Closure State
+
+- **WHEN** the POC lane runs and reaches either a `<Cn> wins` or a `none` verdict
+- **THEN** the Closure State remains `active-uncrystallized` and the idea is neither crystallized nor discarded

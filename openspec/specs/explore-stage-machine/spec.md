@@ -167,7 +167,7 @@ The sidecar SHALL distinguish an absent session file (legal fresh-chat semantics
 
 The explore-idea machine SHALL advance only on the exact next-step intent signal and SHALL reject any other, missing, or empty intent in-band with rejected READINESS_IS_NOT_INTENT and unchanged stage state. RecordedList recording without advancement and empty-list auto-advance on a later no-intent emit SHALL remain unchanged.
 
-In addition, the machine SHALL accept exactly two routing-only lane intents, `poc-lane` and `crystallize-resume`, and only at the `crystallize` stage. A routing-only intent SHALL set or clear the active lane without advancing the stage, without recording or altering any list, and without a rejection, and the returned `next.follow` SHALL name the resulting pointer. Either intent emitted at any other stage SHALL be rejected with READINESS_IS_NOT_INTENT and an unchanged stage and lane.
+In addition, the machine SHALL accept exactly one conditional-stage entry intent, `poc-lane`, and only at the `explore-change` stage. The entry intent SHALL move the progression into the `poc-lane` stage without recording or altering any list and without a rejection, and the returned `next.follow` SHALL name the conditional stage's step file. The intent emitted at any other stage SHALL be rejected with READINESS_IS_NOT_INTENT and an unchanged stage. The retired `crystallize-resume` intent SHALL have no special handling and SHALL be treated as an unknown intent at every stage.
 
 #### Scenario: Stray intent does not advance
 
@@ -177,7 +177,7 @@ In addition, the machine SHALL accept exactly two routing-only lane intents, `po
 #### Scenario: Exact next-step advances one stage
 
 - **WHEN** the caller emits the exact next-step intent
-- **THEN** the machine advances exactly one stage per emit through review-edge-cases and implementation-details to crystallize
+- **THEN** the machine advances exactly one stage per emit, skipping every conditional stage, through review-edge-cases and implementation-details to crystallize
 
 #### Scenario: Recorded lists preserve existing semantics
 
@@ -186,24 +186,44 @@ In addition, the machine SHALL accept exactly two routing-only lane intents, `po
 
 #### Scenario: A lane intent routes without advancing
 
-- **WHEN** the caller emits `poc-lane` at the crystallize stage
-- **THEN** the stage stays `crystallize`, every recorded list is unchanged, no rejection is returned, and `next.follow` is `sai/commands/explore/steps/poc-lane.md`
+- **WHEN** the caller emits `poc-lane` at the explore-change stage
+- **THEN** the machine sets no lane route and instead enters the conditional `poc-lane` stage, recording no list and returning no rejection, with `next.follow` naming `sai/commands/explore/steps/poc-lane.md`
 
 #### Scenario: A lane intent outside its stage is rejected
 
-- **WHEN** the caller emits `poc-lane` or `crystallize-resume` at explore-change
-- **THEN** the machine returns READINESS_IS_NOT_INTENT with an unchanged stage and a `null` route
+- **WHEN** the caller emits `poc-lane` at review-edge-cases, implementation-details, or crystallize
+- **THEN** the machine returns READINESS_IS_NOT_INTENT with an unchanged stage and `pocLane` unchanged
 
-### Requirement: Lane routing pointer is derived from persisted state
+#### Scenario: The retired resume intent is an unknown intent
 
-The explore-idea machine SHALL carry an active lane in a persisted `route` field, where `null` means the current stage's own step file. `project` and every `transition` outcome SHALL derive the returned `next.follow` from the persisted `route` before falling back to the stage's file, so the lane pointer survives a snapshot write and a later non-advancing emit. An unrecognized `route` value SHALL be normalized to `null`. Advancing a stage SHALL clear the active lane.
+- **WHEN** the caller emits `crystallize-resume` at the crystallize stage
+- **THEN** the machine returns READINESS_IS_NOT_INTENT with an unchanged stage and the crystallize stage's own step file as `next.follow`
 
-#### Scenario: the lane pointer survives projection and a non-advancing emit
+### Requirement: The POC lane is a conditional stage of explore-idea
 
-- **WHEN** the machine enters the lane and is then projected, and afterwards receives an emit carrying no valid intent
-- **THEN** both results return `sai/commands/explore/steps/poc-lane.md` as `next.follow`, and the non-advancing emit is still rejected with READINESS_IS_NOT_INTENT
+The `explore-idea` machine SHALL carry `poc-lane` as a conditional stage positioned between `explore-change` and `review-edge-cases`, declared in a dedicated conditional-stage list. Ordinary advancement SHALL step over every conditional stage, so a `next-step` intent at `explore-change` SHALL land on `review-edge-cases`, and the conditional stage SHALL be reachable only through its own entry intent. The `poc-lane` stage SHALL own a `candidateList` in state, recorded by a `recordedList` event without advancing the stage and distinguishing unrecorded (`null`) from recorded-empty (an empty array); a recorded empty candidate list SHALL NOT auto-advance the lane on a later no-intent emit. Entering the stage SHALL set a persisted boolean `pocLane` that SHALL survive leaving the stage, so the caller can keep the conditional panel entry painted for the rest of the progression. Leaving the lane SHALL use the ordinary `next-step` advancement into `review-edge-cases`. The stage's step pointer SHALL be `sai/commands/explore/steps/poc-lane.md` with a stage-static `load and follow` hint, and SHALL be derived from the persisted stage by `project` and by every `transition` outcome, including a non-advancing rejected emit.
 
-#### Scenario: leaving the lane restores the stage file
+#### Scenario: ordinary advancement skips the conditional stage
 
-- **WHEN** the machine leaves the lane
-- **THEN** the projected `next.follow` is the crystallize stage's own step file and `route` is `null`
+- **WHEN** the caller emits `next-step` at `explore-change`
+- **THEN** the machine advances to `review-edge-cases` and `pocLane` stays false
+
+#### Scenario: the entry intent enters the conditional stage
+
+- **WHEN** the caller emits the `poc-lane` intent at `explore-change`
+- **THEN** the stage becomes `poc-lane`, `pocLane` becomes true, no list is recorded, and `next.follow` is `sai/commands/explore/steps/poc-lane.md`
+
+#### Scenario: the candidate list records without advancing
+
+- **WHEN** the caller emits a `recordedList` event at the `poc-lane` stage
+- **THEN** the supplied list records into `candidateList` and the stage stays `poc-lane`
+
+#### Scenario: a recorded empty candidate list never auto-advances
+
+- **WHEN** an empty `recordedList` is emitted at `poc-lane` and a later emit carries no valid intent
+- **THEN** the stage stays `poc-lane` and the emit is rejected with READINESS_IS_NOT_INTENT
+
+#### Scenario: the conditional entry survives the stage it belongs to
+
+- **WHEN** the caller emits `next-step` at `poc-lane`
+- **THEN** the stage becomes `review-edge-cases` and `pocLane` remains true
