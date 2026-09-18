@@ -59,6 +59,18 @@ function sessionDir() {
   return path.join(base, 'sai-state');
 }
 
+function looksLikeQuoteStrippedJson(raw) {
+  if (typeof raw !== 'string') return false;
+  const t = raw.trim();
+  if (t.length === 0) return false;
+  if (!(t.startsWith('{') && t.endsWith('}'))) return false;
+  if (!t.includes(':')) return false;
+  const withoutQuoted = t.replace(/"[^"\\]*(?:\\.[^"\\]*)*"/g, '');
+  if (/[A-Za-z_][A-Za-z0-9_@.-]*\s*:/.test(withoutQuoted)) return true;
+  if (/:\s*[A-Za-z_][A-Za-z0-9_@.-]+\s*[},]/.test(withoutQuoted)) return true;
+  return false;
+}
+
 function sessionFile(id) { return path.join(sessionDir(), id + '.json'); }
 
 function isUuidv4(value) {
@@ -345,6 +357,18 @@ function commandEmit(id, machineIdArg, eventJsonArg) {
     event = JSON.parse(eventJsonArg);
   } catch (err) {
     const payload = withWarnings({ error: 'INVALID_EVENT', next: pointerFor(session, null) }, loadWarnings);
+    if (looksLikeQuoteStrippedJson(eventJsonArg)) {
+      try {
+        const excerpt = String(eventJsonArg).slice(0, 160);
+        const capped = String(eventJsonArg).length > 160 ? excerpt + '…' : excerpt;
+        process.stderr.write(
+          'emit event JSON failed to parse and looks like Windows PowerShell stripped the double quotes during native-argument passing '
+          + '(received ' + JSON.stringify(capped) + '). '
+          + 'Use the Windows/PowerShell pattern in sai/policies/stage-machine.md \u00A7Quoting (Windows PowerShell) — a variable with escaped doubles. '
+          + 'No transition occurred; INVALID_EVENT with exit 1.\n'
+        );
+      } catch (hintErr) {}
+    }
     process.stdout.write(JSON.stringify(payload) + '\n');
     process.exitCode = 1;
     return;
@@ -540,5 +564,5 @@ function main(argv) {
   process.exitCode = 2;
 }
 
-module.exports = { sessionFile, sessionDir, isUuidv4, STATE_VERSION, entryRev, stateByMachineMap, unionDoneInCanonicalOrder, persistMachineOutcome };
+module.exports = { sessionFile, sessionDir, isUuidv4, STATE_VERSION, entryRev, stateByMachineMap, unionDoneInCanonicalOrder, persistMachineOutcome, looksLikeQuoteStrippedJson };
 if (require.main === module) { main(process.argv.slice(2)); }
