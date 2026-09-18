@@ -103,21 +103,38 @@ the acknowledgement. An `error` response likewise fetches nothing.
 ## Quoting (Windows PowerShell)
 
 `eventJson` is a single shell argument containing JSON with double quotes.
-Always single-quote the whole payload and keep the JSON double quotes
-verbatim:
+
+Bash / interactive PowerShell only — single-quote the whole payload and keep
+the JSON double quotes verbatim (Linux unaffected; this form stays valid on
+Linux and in interactive PowerShell where no native-argument boundary strips
+quotes):
 
 ```text
 sai-state emit <id> explore-slice@1 '{"intent":"plan"}'
 ```
 
-On Windows PowerShell single-quoted strings are literal, so the inner double
-quotes survive untouched — this is the supported form. Never wrap the payload
-in outer double quotes without escaping the inner ones; bare inner doubles
-inside an outer-double-quoted argument split or mangle the payload and the
-store answers `INVALID_EVENT`. When the harness must pass double-quoted
-arguments (or when building the command programmatically), escape every inner
-double quote (`\"`) or construct the argument via `JSON.stringify` and pass it
-as exactly one argument.
+Windows/PowerShell (official) — agent shells hit a second layer: single quotes
+protect against PowerShell parsing only, not against native-argument passing
+to `node.exe`, which strips the inner double quotes (PowerShell 5.1 observed:
+`'{"intent":"plan"}'` arrives as `{intent:plan}` and the store answers
+`INVALID_EVENT`). Build the payload in a variable with escaped doubles and
+pass the variable as exactly one argument (verified on PowerShell 5.1;
+verification on PowerShell 7+ pending):
+
+```powershell
+$evt = '{\"intent\":\"plan\"}'
+node <tool-path> emit <id> explore-slice@1 $evt
+```
+
+Never wrap the payload in outer double quotes without escaping the inner ones;
+bare inner doubles inside an outer-double-quoted argument split or mangle the
+payload and the store answers `INVALID_EVENT`. When the harness must pass
+double-quoted arguments (or when building the command programmatically),
+escape every inner double quote (`\"`) or construct the argument via
+`JSON.stringify` and pass it as exactly one argument. On malformed event JSON
+that shows the quote-stripped signature the store keeps `INVALID_EVENT`
+(exit 1, no transition) and adds a stderr hint pointing back to this section;
+the stdout wire stays byte-identical and the success path is untouched.
 
 ## next.follow
 

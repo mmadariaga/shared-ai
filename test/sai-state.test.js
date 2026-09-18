@@ -8,7 +8,7 @@ const path = require('path');
 const { execSync } = require('child_process');
 const crypto = require('crypto');
 
-const { sessionFile, sessionDir, isUuidv4, STATE_VERSION, persistMachineOutcome } = require('../bin/sai-state.js');
+const { sessionFile, sessionDir, isUuidv4, STATE_VERSION, persistMachineOutcome, looksLikeQuoteStrippedJson } = require('../bin/sai-state.js');
 
 function tmpBase() {
   return process.env.TMPDIR || os.tmpdir();
@@ -465,6 +465,76 @@ test('CLI: concurrent emits to different machines preserve both done sets', () =
     const perfDone = perfEntry && perfEntry.state && perfEntry.state.done;
     assert.ok(Array.isArray(secDone) && secDone.indexOf('resolve-security-scope') !== -1, 'security done should survive concurrent emit');
     assert.ok(Array.isArray(perfDone) && perfDone.indexOf('resolve-performance-scope') !== -1, 'performance done should survive concurrent emit');
+  } finally {
+    cleanup([id]);
+  }
+});
+
+test('quoting hint: detector unit matrix (stripped vs malformed vs valid)', () => {
+  assert.equal(looksLikeQuoteStrippedJson('{intent:next-step}'), true, 'stripped object detects');
+  assert.equal(looksLikeQuoteStrippedJson('{"intent":plan}'), true, 'stripped intent value detects');
+  assert.equal(looksLikeQuoteStrippedJson('{intent:"plan"}'), true, 'stripped intent key detects');
+  assert.equal(looksLikeQuoteStrippedJson('not-json'), false, 'truly malformed stays bare');
+  assert.equal(looksLikeQuoteStrippedJson('{"intent":"plan"}'), false, 'valid JSON stays silent');
+});
+
+test('quoting hint: stripped object yields hint plus INVALID_EVENT with exit 1', () => {
+  const key = 'test-quote-stripped-object-' + Date.now() + '-' + Math.floor(Math.random() * 1000000);
+  const id = JSON.parse(invokeCommand('spawn', '--key', key).stdout).id;
+  try {
+    const result = invokeCommand('emit', id, 'explore-idea@1', '{intent:next-step}');
+    assert.equal(result.exitCode, 1, 'stripped object should fail with exit 1');
+    const json = JSON.parse(result.stdout);
+    assert.equal(json.error, 'INVALID_EVENT', 'stdout error stays INVALID_EVENT');
+    assert.deepEqual(Object.keys(json).sort(), ['error', 'next'], 'stdout wire stays byte-identical');
+    assert.ok(json.next && typeof json.next.follow === 'string' && typeof json.next.hint === 'string', 'next pointer preserved');
+    assert.match(result.stderr, /PowerShell/, 'stderr names the PowerShell cause');
+    assert.match(result.stderr, /sai\/policies\/stage-machine\.md/, 'stderr points at the canonical section');
+  } finally {
+    cleanup([id]);
+  }
+});
+
+test('quoting hint: stripped intent yields hint plus INVALID_EVENT with exit 1', () => {
+  const key = 'test-quote-stripped-intent-' + Date.now() + '-' + Math.floor(Math.random() * 1000000);
+  const id = JSON.parse(invokeCommand('spawn', '--key', key).stdout).id;
+  try {
+    const result = invokeCommand('emit', id, 'explore-idea@1', '{"intent":plan}');
+    assert.equal(result.exitCode, 1, 'stripped intent should fail with exit 1');
+    const json = JSON.parse(result.stdout);
+    assert.equal(json.error, 'INVALID_EVENT', 'stdout error stays INVALID_EVENT');
+    assert.deepEqual(Object.keys(json).sort(), ['error', 'next'], 'stdout wire stays byte-identical');
+    assert.match(result.stderr, /PowerShell/, 'stderr names the PowerShell cause');
+    assert.match(result.stderr, /sai\/policies\/stage-machine\.md/, 'stderr points at the canonical section');
+  } finally {
+    cleanup([id]);
+  }
+});
+
+test('quoting hint: truly malformed yields bare INVALID_EVENT with exit 1 and no hint', () => {
+  const key = 'test-quote-malformed-' + Date.now() + '-' + Math.floor(Math.random() * 1000000);
+  const id = JSON.parse(invokeCommand('spawn', '--key', key).stdout).id;
+  try {
+    const result = invokeCommand('emit', id, 'explore-idea@1', 'not-json');
+    assert.equal(result.exitCode, 1, 'malformed input should fail with exit 1');
+    const json = JSON.parse(result.stdout);
+    assert.equal(json.error, 'INVALID_EVENT', 'stdout error stays INVALID_EVENT');
+    assert.equal((result.stderr || '').trim(), '', 'truly malformed stays hint-free');
+  } finally {
+    cleanup([id]);
+  }
+});
+
+test('quoting hint: valid input yields no hint and normal machine handling', () => {
+  const key = 'test-quote-valid-' + Date.now() + '-' + Math.floor(Math.random() * 1000000);
+  const id = JSON.parse(invokeCommand('spawn', '--key', key).stdout).id;
+  try {
+    const result = invokeCommand('emit', id, 'explore-idea@1', JSON.stringify({ intent: 'next-step' }));
+    assert.equal(result.exitCode, 0, 'valid input should succeed');
+    const json = JSON.parse(result.stdout);
+    assert.ok(json.stage !== undefined, 'valid emit returns stage');
+    assert.ok(json.next && json.next.follow, 'valid emit returns next pointer');
+    assert.equal((result.stderr || '').trim(), '', 'valid path stays hint-free');
   } finally {
     cleanup([id]);
   }
