@@ -84,6 +84,12 @@ lifecycle violation — the current state, target state, and violated
 precondition — without executing or selecting the operation. No mutation,
 worker dispatch, or presentation update follows an `invalid` result.
 
+Batched trips validate each covered boundary in item order within the same
+trip: Batch 1 covers `preflight` → `method-selection` → `branch-selection`
+(fast-track: `preflight` → `branch-selection`); Batch 2 covers
+`language-selection` → `scope-selection`. A partial batch abandonment performs
+no transition and no mutation.
+
 ## Allowed transitions and preconditions
 
 The table below is the exhaustive set of permitted transitions. A transition

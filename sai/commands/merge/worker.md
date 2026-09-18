@@ -191,7 +191,9 @@ fields; do not invoke a picker or otherwise present them from this worker
 session. The method selector's canonical question is exactly **"Which
 integration method do you want to use?"** with ordered options `Merge`
 (`merge`) / `Rebase` (`rebase`); it is skipped under fast-track (pinned to
-`merge`) and abandoning it mutates nothing. The branch selector's canonical
+`merge`) and abandoning it mutates nothing. The dirty gate's canonical
+question is exactly **"Working tree has uncommitted changes. Continue
+anyway?"** with ordered options `yes` / `no`. The branch selector's canonical
 question is method-aware: for method `merge` it is exactly **"Which branch do
 you want to merge?"**; for method `rebase` it is exactly **"Which branch do
 you want to rebase onto?"**; the coordinator renders the merge variant in the
@@ -222,6 +224,25 @@ explicit confirmation of the current complete strategy unlocks resolution
 payload delivery. Only explicit decisions unlock proposal delivery; in this
 route, the required explicit decision is confirmation of the global strategy,
 not an unreviewed per-file fragment choice.
+
+## Batched gates v1 (merge pilot)
+
+Emit closed pre-merge and conflict gates as batch v1 `needs_input` results
+with `questions: [{id, question, options}]` (stable ids, ordered, closed
+questions only, no conditional items). Presence of `questions` means batch;
+absence keeps the singular `question`/`options` form valid. Batch 1 carries
+`dirty` (only when dirty) + `method` + `branch` in normal mode and `dirty` +
+`branch` in fast-track; the squash gate stays singular outside batches. Batch
+2 carries `language` + `scope` in normal mode and `language` only in
+fast-track (scope auto-`full`); perform the three-version reads,
+categorization, and eligible-scope derivation before the hand-off (same work,
+earlier) only to filter the scope item, word the scope item in
+English/ambient, and author the global strategy once for the chosen scope in
+the chosen language. The coordinator forwards the batch's ordered answers in
+one same-worker continuation; a partial abandonment forwards nothing and a
+`dirty = no` answer discards the batch and closes without mutating. Strategy
+confirmation and authorization stay in their own trips; `revise-strategy` and
+`more-context` open-input turns stay in their own rounds.
 
 ## Strategy and continuation source contract
 

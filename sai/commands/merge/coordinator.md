@@ -78,7 +78,8 @@
     `merge` method (no method or squash question) plus auto-applied full
     scope.
   - `continuation_operation` — continue the same worker through the binding's
-    continuation mechanism, forwarding the selected answer value or the
+    continuation mechanism, forwarding the selected answer value (or, for a
+    batch, the ordered id-to-value answers in one continuation) or the
     post-merge outcome report together with the captured invocation-scoped merge
     provenance.
   - `allowed_nonterminal_extensions` — the merge-only closed
@@ -89,12 +90,14 @@
     progress event.
   - `extension_handlers` — for `conflict_detected`, validate the complete
     source payload, record the affected-file inventory without treating it as a
-    worker write, and route the first event to the coordinator's language
-    question or the strategy-analysis event to the selected-language re-entry.
+    worker write, retain the worker's early classification and
+    `eligible_scope_options` carried alongside the hand-off, and route the
+    first event to the coordinator-assembled language + scope batch (Batch 2)
+    or the strategy-analysis event to the selected-language re-entry.
     The handler prints the concise conflict notice as ordinary conversation
-    text, uses the active harness-native question mechanism for the first
-    language decision, and resumes the same worker with the exact selected
-    value. It never adds language to `arguments_value`, worker payload
+    text, presents the Batch 2 items together through the active harness-native
+    question mechanism, and resumes the same worker with the ordered batch
+    answers. It never adds language to `arguments_value`, worker payload
     persistence, artifacts, or configuration.
     This adapter declares NO worker `progress_plan`: no progress event exists
     in this lifecycle and no acknowledgement literal is defined. The merge
@@ -102,7 +105,9 @@
     progress plan, is not transported in the envelope, and does not change
     worker continuation semantics.
   - `replacement_reconstruction_fields` — the complete original envelope, the
-    opaque input history (including forwarded gate answers), `fast_track_active`,
+    opaque input history (including forwarded gate answers as ordered
+    `{id, question, options, answer_value}` pairs, N pairs per batch in order),
+    `fast_track_active`,
     the selected invocation-scoped `working_language` when a conflict has been
     detected, the captured merge provenance (`target_sha`, `source_sha`,
     `merge_base`, and the source-introduced ADR/DDR record inventory), and the
@@ -212,6 +217,33 @@
   context or strategy correction request.
 
   ## Needs-input routing
+
+  ### Batched needs_input v1 (merge pilot)
+
+  A `needs_input` carrying `questions` is a batch: present its items in order
+  in one user trip, collect the answers together, append one
+  `{id, question, options, answer_value}` pair per item in order to the opaque
+  input history (reconstruction replays the same ordered pairs), and forward
+  the ordered answers in one same-worker continuation. A singular result
+  (no `questions`) keeps the routing below unchanged. Batches carry closed
+  questions only with stable ids and no conditional items; open
+  context/correction turns always run in their own round. When a batch exceeds
+  the harness picker's capacity, fall back to plain text preserving every
+  item's order and exact values. A partial abandonment forwards nothing.
+
+  Batch 1 (pre-merge, always) is worker-authored: `dirty` (only when dirty) +
+  `method` + `branch` in normal mode, `dirty` + `branch` in fast-track. A
+  `dirty = no` answer discards the batch's other answers and closes the run
+  without mutating. The squash gate stays singular after Batch 1 (rebase path,
+  normal mode only). Batch 2 (conflict only) is coordinator-assembled from the
+  `conflict_detected` hand-off plus the worker's early classification:
+  `language` (coordinator-owned canonical question) + `scope`
+  (worker-provided eligible set, English/ambient wording) in normal mode,
+  `language` only in fast-track with scope auto-`full`. Store
+  `working_language` from the batch, then forward the ordered batch answers
+  together. The global strategy and authorization trips stay singular, and
+  fast-track still requires the language and strategy confirmation while never
+  auto-selecting `ours`/`theirs`/`synthesis`.
 
   On a worker `needs_input` result — the dirty-worktree gate, the method
   selector, the branch selector, the conditional squash gate, the runtime

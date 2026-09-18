@@ -280,7 +280,12 @@ state_snapshot
 ```
 
 `question` and non-empty `options` come from the validated worker source and
-remain exact and ordered. Branch options use the exact branch name as `value` and
+remain exact and ordered. For a batch, `render_gate` builds one gate record
+per `questions` item in order (each with its stable `id`), presents the items
+together in one trip, and appends one `{id, question, options, answer_value}`
+pair per item in order; when the batch exceeds the harness picker capacity it
+renders as plain text preserving every item's order and exact values.
+Branch options use the exact branch name as `value` and
 `<branch> — last commit <YYYY-MM-DD HH:mm>` as `label`; the worker has already
 filtered them with `git branch --no-merged HEAD` and sorted them by commit
 timestamp descending and branch name ascending for ties. `worker_context`

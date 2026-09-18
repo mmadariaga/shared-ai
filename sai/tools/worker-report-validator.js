@@ -125,10 +125,30 @@ function validateStringArray(payload, fieldName, errors) {
 }
 
 /**
+ * Validate a closed option object ({label: string, value: string}).
+ * Returns an error string or null when valid.
+ */
+function validateOptionObject(opt) {
+  if (typeof opt !== 'object' || opt === null || !('label' in opt) || !('value' in opt)) {
+    return 'options must be an array of objects with label and value fields';
+  }
+  if (typeof opt.label !== 'string' || typeof opt.value !== 'string') {
+    return 'each option must have string label and value';
+  }
+  return null;
+}
+
+/**
  * Validate a terminal status payload.
  * Required fields: status, summary, changed_files. No time field is required;
  * unknown fields are ignored with no explicit legacy handling.
  * Additional validation based on status value.
+ *
+ * needs_input accepts two forms (dual validation, merge batch pilot):
+ * - singular (backward compatible): question + options, no `questions` field.
+ * - batch v1: `questions` present means batch; each item carries a stable `id`
+ *   plus its own closed question + options. Only closed questions are allowed
+ *   in a batch; open input stays in its own singular round.
  */
 function validateTerminal(payload) {
   const errors = [];
@@ -144,21 +164,64 @@ function validateTerminal(payload) {
 
   const { status } = payload;
 
-  // needs_input requires question and options
+  // needs_input requires either the singular question/options pair (when
+  // `questions` is absent) or the batch v1 `questions` array (when present).
   if (status === 'needs_input') {
-    validateStringField(payload, 'question', errors);
-    if (!('options' in payload)) {
-      errors.push('options is missing');
-    } else if (!Array.isArray(payload.options)) {
-      errors.push(`options must be an array, got ${typeof payload.options}`);
-    } else if (
-      !payload.options.every(
-        (opt) => typeof opt === 'object' && opt !== null && 'label' in opt && 'value' in opt
-      )
-    ) {
-      errors.push('options must be an array of objects with label and value fields');
-    } else if (!payload.options.every((opt) => typeof opt.label === 'string' && typeof opt.value === 'string')) {
-      errors.push('each option must have string label and value');
+    if ('questions' in payload) {
+      if (!Array.isArray(payload.questions)) {
+        errors.push(`questions must be an array, got ${typeof payload.questions}`);
+      } else if (payload.questions.length === 0) {
+        errors.push('questions must be a non-empty array');
+      } else {
+        const seenIds = new Set();
+        payload.questions.forEach((item, index) => {
+          const where = `questions[${index}]`;
+          if (typeof item !== 'object' || item === null) {
+            errors.push(`${where} must be an object`);
+            return;
+          }
+          if (!('id' in item) || typeof item.id !== 'string' || item.id.length === 0) {
+            errors.push(`${where}.id is missing (stable non-empty string id required)`);
+          } else if (seenIds.has(item.id)) {
+            errors.push(`${where}.id is duplicated ("${item.id}")`);
+          } else {
+            seenIds.add(item.id);
+          }
+          if (!('question' in item) || typeof item.question !== 'string') {
+            errors.push(`${where}.question is missing`);
+          }
+          if (!('options' in item)) {
+            errors.push(`${where}.options is missing`);
+          } else if (!Array.isArray(item.options)) {
+            errors.push(`${where}.options must be an array, got ${typeof item.options}`);
+          } else if (item.options.length === 0) {
+            errors.push(`${where}.options must be a non-empty array (batch v1 carries closed questions only)`);
+          } else {
+            for (const opt of item.options) {
+              const optionError = validateOptionObject(opt);
+              if (optionError) {
+                errors.push(`${where}.${optionError}`);
+                break;
+              }
+            }
+          }
+        });
+      }
+    } else {
+      validateStringField(payload, 'question', errors);
+      if (!('options' in payload)) {
+        errors.push('options is missing');
+      } else if (!Array.isArray(payload.options)) {
+        errors.push(`options must be an array, got ${typeof payload.options}`);
+      } else {
+        for (const opt of payload.options) {
+          const optionError = validateOptionObject(opt);
+          if (optionError) {
+            errors.push(optionError);
+            break;
+          }
+        }
+      }
     }
   }
 

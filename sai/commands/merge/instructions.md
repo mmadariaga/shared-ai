@@ -45,6 +45,54 @@ is asked only for `Rebase` in normal mode.
 
 ## Workflow
 
+### Batched gates v1 (merge pilot)
+
+Merge batches closed decisions into one user trip per dependency layer. Four
+trips cover the run: Batch 1 (pre-merge, always), Batch 2 (conflict only),
+the global strategy trip (conflict only), and the authorization trip (always).
+A clean run uses Batch 1 plus authorization only (E5).
+
+Batch shape v1 (I1): a `needs_input` result carries
+`questions: [{id, question, options}]` with one stable `id` per item
+(`dirty`, `method`, `branch`, `language`, `scope`); presence of `questions`
+means batch, absence means the singular `question`/`options` form, which stays
+valid for backward compatibility (E7). Only closed questions ride a batch
+(I2); open requests (`revise-strategy`, `more-context`, free-form corrections)
+always run in their own round. Batches carry no conditional items (I3):
+squash stays a singular gate outside the batches because it depends on
+`method = rebase` (E6), and the global strategy plus authorization each stay
+in their own trip because later content really depends on earlier answers.
+
+Todo-o-nada plus history (I4, E8, E1): the coordinator presents a batch's
+items in order in one trip, collects the answers together, appends one
+`{id, question, options, answer_value}` pair per item in order to the opaque
+input history (reconstruction replays the same ordered pairs), and forwards
+the ordered answers in one same-worker continuation. A partial abandonment
+forwards nothing. A `Dirty = no` answer discards the batch's other answers
+and closes the run without mutating.
+
+Batch 1 (I5): dirty + method + branch in normal mode; dirty + branch in
+fast-track (method pinned to `merge`, squash never shown). The dirty item
+appears only when the worktree is dirty and uses the Step 1 question/options
+below; `no` aborts the whole batch. The branch candidate list is independent
+of the method — only the method-aware question text varies — and a
+single-candidate list still returns its one option (E2). An empty candidate
+list still closes with the exact stop text before any batch.
+
+Batch 2 (I6): language + scope in normal mode; language only in fast-track
+(scope auto-applies `full`, E4). Conflict classification (read the three
+versions, categorize, derive the eligible scope set) moves to before the
+language hand-off — the same work, earlier — only to filter the scope
+options. The scope item keeps the Step 5 eligible set and order and is worded
+in English/ambient because the working language is not yet known. The global
+strategy is then authored once for the chosen scope in the chosen language;
+never pre-author strategies for discarded scopes.
+
+Picker fallback (I8, E3): when a batch exceeds the harness picker's capacity,
+render it as plain text preserving every item's order and exact values. The
+validator accepts both forms (I7, merge pilot only; every other phase keeps
+its singular gates).
+
 ### Step 1: Pre-merge environment checks
 
 Run in parallel:
@@ -264,6 +312,13 @@ Classify each conflicted file into one of three categories:
 - **Artifacts — ADR/DDR**: path matches `docs/adr/**` or `docs/ddr/**`
 - **Code**: everything else
 
+Early classification for Batch 2: perform the three-version reads and this
+categorization plus the Step 5 eligible-scope derivation before the language
+hand-off (same work, earlier) only to filter the scope options carried into
+the batch. Return the classification and `eligible_scope_options` in the
+worker source alongside the hand-off so the coordinator can batch language +
+scope in one trip without pre-authoring any strategy.
+
 Return the following closed nonterminal result immediately:
 
 ```yaml
@@ -395,7 +450,10 @@ Keep that order and omit every category-specific option that cannot apply to
 the detected conflict set. Return the classification and the resulting
 `eligible_scope_options` in the worker source so the coordinator's presentation
 seam can validate and render exactly that filtered set. Never offer a scope
-whose category is absent. Return `needs_input` **before** the resolution
+whose category is absent. In batch mode the scope rides Batch 2 as the `scope`
+item (stable id `scope`) with this same eligible set, order, and
+**"Select resolution scope"** question, worded in English/ambient; in singular
+mode return `needs_input` **before** the resolution
 proposals of Step 4, asking **"Select resolution scope"** and complying with
 the five-element anatomy of `@sai/policies/question-context.md`. Carry the
 grouped conflicted-file list, category counts, and the meaning of each offered

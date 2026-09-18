@@ -490,3 +490,59 @@ test('validate conflict_detected with strategy-analysis state', () => {
   const result = tool(JSON.stringify(payload), ['validate', '--kind', 'conflict_detected', '--json']);
   assertValidSidecar(result, 'conflict_detected');
 });
+
+test('validate terminal payload - needs_input batch v1 (valid)', () => {
+  const payload = {
+    status: 'needs_input',
+    summary: 'Pre-merge batch',
+    changed_files: [],
+    questions: [
+      { id: 'dirty', question: 'Working tree has uncommitted changes. Continue anyway?', options: [{ label: 'yes', value: 'yes' }, { label: 'no', value: 'no' }] },
+      { id: 'method', question: 'Which integration method do you want to use?', options: [{ label: 'Merge', value: 'merge' }, { label: 'Rebase', value: 'rebase' }] },
+      { id: 'branch', question: 'Which branch do you want to merge?', options: [{ label: 'feature — last commit 2026-09-18 10:00', value: 'feature' }] },
+    ],
+  };
+  const result = tool(JSON.stringify(payload), ['validate', '--kind', 'terminal', '--json']);
+  assertValidSidecar(result, 'terminal');
+});
+
+test('validate terminal payload - needs_input batch rejects duplicate ids', () => {
+  const payload = {
+    status: 'needs_input',
+    summary: 'Bad batch',
+    changed_files: [],
+    questions: [
+      { id: 'scope', question: 'Select resolution scope', options: [{ label: 'Full scope (Recommended)', value: 'full' }] },
+      { id: 'scope', question: 'Select resolution scope', options: [{ label: 'Full scope (Recommended)', value: 'full' }] },
+    ],
+  };
+  const result = tool(JSON.stringify(payload), ['validate', '--kind', 'terminal', '--json']);
+  assertInvalidNoSidecar(result);
+  assert.ok(result.payload.errors.some((e) => e.includes('duplicated')));
+});
+
+test('validate terminal payload - needs_input batch rejects empty options (closed only)', () => {
+  const payload = {
+    status: 'needs_input',
+    summary: 'Bad batch',
+    changed_files: [],
+    questions: [
+      { id: 'scope', question: 'Select resolution scope', options: [] },
+    ],
+  };
+  const result = tool(JSON.stringify(payload), ['validate', '--kind', 'terminal', '--json']);
+  assertInvalidNoSidecar(result);
+  assert.ok(result.payload.errors.some((e) => e.includes('non-empty array')));
+});
+
+test('validate terminal payload - needs_input batch rejects empty questions array', () => {
+  const payload = {
+    status: 'needs_input',
+    summary: 'Bad batch',
+    changed_files: [],
+    questions: [],
+  };
+  const result = tool(JSON.stringify(payload), ['validate', '--kind', 'terminal', '--json']);
+  assertInvalidNoSidecar(result);
+  assert.ok(result.payload.errors.some((e) => e.includes('non-empty array')));
+});
