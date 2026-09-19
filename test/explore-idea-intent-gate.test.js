@@ -163,6 +163,41 @@ test('the late entry intent is rejected at stage 1 and inside the lane itself', 
   assert.equal(reEntry.rejected, 'READINESS_IS_NOT_INTENT');
 });
 
+test('an empty recorded list does not turn an unrecognized intent into an advance', () => {
+  const stages = [
+    { stage: 'review-edge-cases', edgeCaseList: [], implementationDetailsList: null },
+    { stage: 'implementation-details', edgeCaseList: ['E1'], implementationDetailsList: [] },
+  ];
+
+  for (const base of stages) {
+    const start = Object.assign({ ideaList: ['a'], candidateList: null }, base);
+
+    for (const intent of ['banana', 'crystallize-resume', 'poc-lane']) {
+      const emitted = idea.transition(start, { intent });
+      assert.equal(emitted.state.stage, base.stage);
+      assert.equal(emitted.state.pocLane, false);
+      assert.equal(emitted.rejected, 'READINESS_IS_NOT_INTENT');
+    }
+
+    // E1/E4: the intent-less and `next-step` paths keep their current outcome.
+    const auto = idea.transition(start, {});
+    assert.ok(!('rejected' in auto));
+    const explicit = idea.transition(start, { intent: 'next-step' });
+    assert.ok(!('rejected' in explicit));
+    assert.equal(explicit.state.stage, auto.state.stage);
+    const emptyIntent = idea.transition(start, { intent: '' });
+    assert.equal(emptyIntent.state.stage, auto.state.stage);
+    assert.ok(!('rejected' in emptyIntent));
+
+    // E3: conditional entry is evaluated before the auto-advance, so a valid
+    // late entry still enters the lane from an empty-list stage.
+    const late = idea.transition(start, { intent: 'poc-lane-late' });
+    assert.equal(late.state.stage, 'poc-lane');
+    assert.equal(late.state.pocLane, true);
+    assert.ok(!('rejected' in late));
+  }
+});
+
 test('caller-side next-step recognition lives in common.md and slice.md points at it', () => {
   const common = fs.readFileSync(path.join(__dirname, '..', 'sai', 'commands', 'explore', 'steps', 'common.md'), 'utf8');
   const slice = fs.readFileSync(path.join(__dirname, '..', 'sai', 'commands', 'explore', 'steps', 'slice.md'), 'utf8');

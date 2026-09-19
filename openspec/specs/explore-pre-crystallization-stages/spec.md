@@ -44,7 +44,7 @@ The POC lane is a conditional stage and SHALL add no entry until it fires: the l
 
 ### Requirement: Stages advance only on explicit user intent
 
-The stage progression SHALL advance only when the user explicitly requests it: the literal token `next-step` (bare, optionally with trivial punctuation or a greeting, or as the turn's dominant intent — the same recognition machinery as the `review-loop` token), clear natural-language intent naming the next stage or requesting crystallization, or a semantic confirmation of the proposed list at the `Review edge cases` or `Implementation details` stages. Mere containment of the string `next-step` SHALL NOT fire the token: it fires only when the turn is a bare token or when advancing the progression is the turn's dominant intent, and a turn that negates, defers, quotes, or discusses the token SHALL NOT advance the progression. `sai-explore` SHALL NOT advance a stage on its own judgment that the idea is solid or ready. The recorded empty-list conditions — at the `review-edge-cases` stage when the recorded edge-case list is empty, and at the `implementation-details` stage when the recorded implementation-details list is empty — are content-based rules owned by the `explore-idea` machine and do not constitute readiness judgments. The one-line readiness signal (`explore-crystallization-on-demand`) does not advance the stages. The machine consumes the recorded list state and returns the next stage and step pointer to the caller.
+The stage progression SHALL advance only when the user explicitly requests it: the literal token `next-step` (bare, optionally with trivial punctuation or a greeting, or as the turn's dominant intent — the same recognition machinery as the `review-loop` token), clear natural-language intent naming the next stage or requesting crystallization, or a semantic confirmation of the proposed list at the `Review edge cases` or `Implementation details` stages. Mere containment of the string `next-step` SHALL NOT fire the token: it fires only when the turn is a bare token or when advancing the progression is the turn's dominant intent, and a turn that negates, defers, quotes, or discusses the token SHALL NOT advance the progression. `sai-explore` SHALL NOT advance a stage on its own judgment that the idea is solid or ready. The recorded empty-list conditions — at the `review-edge-cases` stage when the recorded edge-case list is empty, and at the `implementation-details` stage when the recorded implementation-details list is empty — are content-based rules owned by the `explore-idea` machine and do not constitute readiness judgments; they SHALL fire only on an intent-less turn, so a turn carrying an unrecognized intent or a conditional-entry intent emitted outside its own valid stage set SHALL leave the progression where it is even when that stage's own list was recorded empty. The one-line readiness signal (`explore-crystallization-on-demand`) does not advance the stages. The machine consumes the recorded list state and returns the next stage and step pointer to the caller.
 
 #### Scenario: The next token advances the progression
 
@@ -65,6 +65,11 @@ The stage progression SHALL advance only when the user explicitly requests it: t
 
 - **WHEN** the idea becomes solid at the qualitative readiness threshold and the readiness signal fires
 - **THEN** no stage advances without user intent and no stage's work (edge-case review, implementation-details surfacing, or crystallization) auto-fires
+
+#### Scenario: An empty recorded list does not advance a turn carrying another intent
+
+- **WHEN** the turn carries an unrecognized intent, or a conditional-entry intent emitted outside its own valid stage set, at a stage whose own list was recorded empty
+- **THEN** the progression stays on that stage, the stage TODO stays unchanged, and the empty-list content rule does not fire
 
 #### Scenario: Conversational uses do not fire the token
 

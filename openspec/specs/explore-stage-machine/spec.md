@@ -167,12 +167,19 @@ The sidecar SHALL distinguish an absent session file (legal fresh-chat semantics
 
 The explore-idea machine SHALL advance only on the exact next-step intent signal and SHALL reject any other, missing, or empty intent in-band with rejected READINESS_IS_NOT_INTENT and unchanged stage state. RecordedList recording without advancement and empty-list auto-advance on a later no-intent emit SHALL remain unchanged.
 
+The recorded empty-list auto-advance SHALL be advancement by content, not by intent: it SHALL apply only to an intent-less emit, whose `intent` field is absent, null, or the empty string. A signal carrying any other intent SHALL NOT take the auto-advance path at a stage with a recorded empty list and SHALL instead be evaluated by the intent allowlist, so an unrecognized intent or a conditional-entry intent emitted outside its own valid stage set SHALL be rejected with READINESS_IS_NOT_INTENT and an unchanged stage. The conditional-stage entry check SHALL continue to be evaluated before the auto-advance.
+
 In addition, the machine SHALL accept exactly two conditional-stage entry intents for the `poc-lane` stage: `poc-lane`, valid only at the `explore-change` stage, and `poc-lane-late`, valid only at the `review-edge-cases`, `implementation-details`, and `crystallize` stages. Each entry intent SHALL declare the set of stages it is valid at, and an entry intent emitted at a stage in its own set SHALL move the progression into the `poc-lane` stage without recording or altering any list and without a rejection, with the returned `next.follow` naming the conditional stage's step file. An entry intent emitted at any stage outside its own set SHALL be rejected with READINESS_IS_NOT_INTENT and an unchanged stage. The retired `crystallize-resume` intent SHALL have no special handling and SHALL be treated as an unknown intent at every stage.
 
 #### Scenario: Stray intent does not advance
 
 - **WHEN** the caller emits banana, missing, or empty intent at explore-change without a recorded empty list condition
 - **THEN** the machine returns the current stage with READINESS_IS_NOT_INTENT and does not advance
+
+#### Scenario: An empty recorded list does not excuse an unrecognized intent
+
+- **WHEN** the caller emits `banana`, `crystallize-resume`, or an out-of-stage `poc-lane` at `review-edge-cases` with an empty recorded edge-case list, or at `implementation-details` with an empty recorded implementation-details list
+- **THEN** the machine returns READINESS_IS_NOT_INTENT with an unchanged stage and `pocLane` unchanged, and does not take the empty-list auto-advance
 
 #### Scenario: Exact next-step advances one stage
 
@@ -196,7 +203,7 @@ In addition, the machine SHALL accept exactly two conditional-stage entry intent
 
 #### Scenario: The late entry intent routes from stages 2 through 4
 
-- **WHEN** the caller emits `poc-lane-late` at review-edge-cases, implementation-details, or crystallize
+- **WHEN** the caller emits `poc-lane-late` at review-edge-cases, implementation-details, or crystallize, including from a stage whose own list was recorded empty
 - **THEN** the machine enters the conditional `poc-lane` stage from that stage with no rejection, records no list, and returns `sai/commands/explore/steps/poc-lane.md` as `next.follow`
 
 #### Scenario: The retired resume intent is an unknown intent

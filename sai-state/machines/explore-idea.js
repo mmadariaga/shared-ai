@@ -114,6 +114,15 @@ function isAdvanceIntent(signal) {
   return Boolean(signal && typeof signal === 'object' && signal.intent === ADVANCE_INTENT);
 }
 
+// An intent-less emit carries no intent at all: the field is absent, null, or
+// the empty string. The content-based empty-set rule is advancement by content,
+// not by intent, so it applies only to these signals; anything carrying an
+// intent goes through the allowlist below.
+function isIntentless(signal) {
+  const intent = signal ? signal.intent : undefined;
+  return intent === undefined || intent === null || intent === '';
+}
+
 function project(state) {
   const current = cloneState(state);
   return {
@@ -161,10 +170,14 @@ function transition(state, signal) {
 
   // Determine if auto-advance is allowed based on stage and recorded list content.
   // Auto-advance only at stages with content-based empty-set rules: review-edge-cases and implementation-details.
+  // It is reserved for intent-less emits, so an unrecognized or out-of-stage
+  // intent still falls through to the allowlist rejection below instead of
+  // taking a free advance the caller never asked for.
+  const intentless = isIntentless(sig);
   let shouldAutoAdvance = false;
-  if (current.stage === 'review-edge-cases' && current.edgeCaseList !== null && current.edgeCaseList.length === 0) {
+  if (intentless && current.stage === 'review-edge-cases' && current.edgeCaseList !== null && current.edgeCaseList.length === 0) {
     shouldAutoAdvance = true;
-  } else if (current.stage === 'implementation-details' && current.implementationDetailsList !== null && current.implementationDetailsList.length === 0) {
+  } else if (intentless && current.stage === 'implementation-details' && current.implementationDetailsList !== null && current.implementationDetailsList.length === 0) {
     shouldAutoAdvance = true;
   }
 
