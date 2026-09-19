@@ -51,7 +51,7 @@ Slice 0 SHALL live inside the same `Ready to Propose` set as the feature slices 
 #### Scenario: friction promotes a single-block idea into refactor → feature
 
 - **WHEN** the size assessment judged the idea to fit one change and the friction assessment fires
-- **THEN** `sai-explore`, on an explicit crystallize request after any required uncertainty decision, emits a 2-block ordered set with slice 0 followed by slice 1 instead of a single block
+- **THEN** `sai-explore`, on an explicit crystallize request, emits a 2-block ordered set with slice 0 followed by slice 1 instead of a single block
 
 #### Scenario: friction composes with an already-sliced feature
 

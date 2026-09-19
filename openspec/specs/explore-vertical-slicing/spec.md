@@ -41,12 +41,12 @@ The routing determines how many feature blocks crystallization produces and thei
 - **WHEN** the candidate idea trips one or more size scope signals
 - **THEN** `sai-explore` identifies a Walking Skeleton and dependency-ordered backlog slices and uses the sliced crystallization protocol on an explicit crystallize request
 
-#### Scenario: technical uncertainty pauses feature emission
+#### Scenario: technical uncertainty does not pause feature emission
 
 - **WHEN** the candidate idea carries technical uncertainty and the slicing assessment runs
 - **THEN** no uncertainty judgment runs here and no feature emission is paused, because that axis was already evaluated at the close of the `Explore change` stage
 
-#### Scenario: viable POC re-evaluates size and friction
+#### Scenario: an earlier POC does not re-evaluate size and friction
 
 - **WHEN** a POC ran earlier in the progression and the user then requests crystallization
 - **THEN** size and friction are not re-evaluated against a post-POC repository, because the lane abandoned its isolation and left the original repository in place
@@ -68,21 +68,21 @@ When the candidate idea was sliced, `sai-explore` SHALL emit one `Ready to Propo
 
 The sliced protocol composes with the refactor-first friction assessment: when friction fires, a behavior-preserving refactor is prepended as slice 0 ahead of the Walking Skeleton. Every feature slice other than slice 0 remains a user-facing outcome; slice 0 remains enabling and behavior-preserving.
 
-Each emitted feature block SHALL use the standard single-block format. The protocol defines feature-block composition and ordering; uncertainty completion is required before the set may be emitted.
+Each emitted feature block SHALL use the standard single-block format. The protocol defines feature-block composition and ordering. No uncertainty gate runs at emission time: when the POC lane ran at all, it closed through its verdict menu before `Review edge cases`, so nothing about that axis remains pending when the set is emitted.
 
 #### Scenario: sliced feature crystallizes
 
-- **WHEN** the candidate idea was assessed as too big, any required uncertainty pause has completed with either a viable `Crystallize full` or an explicit POC decline, and the user explicitly asks to crystallize
+- **WHEN** the candidate idea was assessed as too big, any POC lane the idea entered has already closed through its verdict menu, and the user explicitly asks to crystallize
 - **THEN** `sai-explore` emits the ordered feature blocks with the Walking Skeleton first, backlog by dependency, and `Depends on:` lines on backlog slices
 - **AND** the POC is not included in the emitted set
 
 #### Scenario: sliced feature crystallizes with a friction-driven slice 0
 
-- **WHEN** the candidate idea was sliced, the refactor-first friction assessment fired, and any required uncertainty pause has completed
+- **WHEN** the candidate idea was sliced, the refactor-first friction assessment fired, and any POC lane the idea entered has already closed
 - **THEN** `sai-explore` prepends slice 0 ahead of the Walking Skeleton and emits the ordered feature set refactor → skeleton → backlog
 - **AND** the POC, if any, does not become slice 0
 
 #### Scenario: user wants to override the split recommendation
 
-- **WHEN** the user prefers to keep a large feature as a single change after `sai-explore` recommended slicing and any required uncertainty decision is complete
+- **WHEN** the user prefers to keep a large feature as a single change after `sai-explore` recommended slicing and any POC lane the idea entered has already closed
 - **THEN** `sai-explore` states the review risk once and briefly, then proceeds with the single-block crystallization protocol without re-litigating the recommendation
