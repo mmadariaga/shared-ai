@@ -34,7 +34,7 @@ This prevents the LLM from skipping command loading and making free interpretati
 | `/sai-status` | `@commands/sai-status.md` | Read-only progress panel for one OpenSpec change — the 10 sai-workflow artifacts, specs approval, implementation progress, and a Next: hint. |
 | `/sai-retire-docs` | `@commands/sai-retire-docs.md` | Bounded, index-driven analysis of active ADRs, DDRs, and related specifications with confirmation-gated archival proposals. |
 | `/sai-commit` | `@commands/sai-commit.md` | Conventional Commits message author from staged changes — generates subject and body, gates commit behind explicit authorization. |
-| `/sai-merge` | `@commands/sai-merge.md` | Merge a local branch into the current branch — conflict resolution with criteria, ADR/DDR collision repair, gated behind explicit authorization. |
+| `/sai-merge` | `@commands/sai-merge.md` | Integrate a local branch with `Merge`, `Rebase`, or `Rebase with squash` — conflict resolution with criteria, ADR/DDR collision repair, and explicit final authorization. |
 | `/sai-backfill` | `@commands/sai-backfill.md` | Post-hoc backfill — reconstructs proposal.md and capability specs for changes that skipped the SAI workflow. |
 | `/sai-worktree` | `@commands/sai-worktree.md` | Interactive git worktree manager — inventory, Create/Delete/Exit selector loop, safe creation and deletion of linked worktrees. |
 

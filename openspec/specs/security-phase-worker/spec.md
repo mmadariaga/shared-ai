@@ -2,6 +2,7 @@
 
 ## Purpose
 TBD - created by syncing change sai-6-security-coordinator-worker-split. Update Purpose after archive.
+
 ## Requirements
 
 ### Requirement: Security worker owns the complete technical workflow
@@ -94,3 +95,9 @@ The security worker SHALL emit worker-authored `emitted_on` through progress and
 - **WHEN** a candidate observation falls below the `Low` severity
 - **THEN** it is omitted from the report under the existing severity floor
 - **AND** it does not appear in the closing tally
+
+### Requirement: Security close runs a pre-save adversarial findings check
+The security close step SHALL challenge the in-memory draft before saving to discard false positives and correct severity. It SHALL skip the adversary on zero findings, otherwise dispatch exactly one budget-explorer subagent receiving only per-finding identifier, file:line, taint flow source to propagation to sink for SAST or CVE plus version range for SCA, and one-line exploit scenario without diff or raw code, scope the adversary to current diff findings only, require per-finding keep or discard or downgrade verdict with why under 40 words and total report under 800 words, let the worker accept or reject each verdict with discards invisible and tally recomputed over kept findings at final severity, and close with worker findings on subagent failure without blocking.
+#### Scenario: Adversarial check filters security draft
+- **WHEN** the in-memory security draft contains findings
+- **THEN** the worker runs one bounded adversary and saves only kept findings with recomputed Summary tally

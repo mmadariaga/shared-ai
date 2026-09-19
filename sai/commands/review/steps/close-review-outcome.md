@@ -18,7 +18,14 @@ Drop findings that are purely stylistic if the codebase has no enforced conventi
 
 ### Step 4: Produce the Review Report
 
-1. Draft the report using the output template loaded below.
+1. Draft the report in memory using the output template loaded below. Do not save yet.
+1b. Adversarial findings check — challenge the in-memory draft to discard false positives and correct severity before saving:
+    - If the draft has zero findings (including zero `mMUT-N` mutation findings), skip the adversary and proceed to save (E1).
+    - Otherwise dispatch exactly one `budget-explorer` subagent (one call per run; no retries beyond the shared bounded-dispatch-retry budget). The subagent receives only the in-memory findings list — per finding: identifier (`C1`/`H1`/`M1`/`L1`/`Q1`/`mMUT-N`), `file:line`, category, and a one-line problem statement. Do not package the diff, raw code blocks, or the full report text. The subagent reads from disk on demand for verification.
+    - Adversary scope is the current diff's findings only — never re-litigate spec or design decisions recorded in `proposal.md`, `design.md`, or `specs/**/*.md` (E6).
+    - Output contract (exact fields, no raw content): per finding `identifier`, `verdict` (`keep` | `discard` | `downgrade-to-High` | `downgrade-to-Medium` | `downgrade-to-Low`), and `why` (≤40 words, what is wrong with the finding and why the verdict follows). No raw code blocks, no diff excerpts, total report ≤800 words.
+    - The worker has the last word: accept or reject each verdict independently. Discards and rejected downgrade proposals stay invisible — never mentioned in the artifact, no audit trail of the dispute (E2). Accepted downgrades appear only at final severity with no mention of the change (E3). Recompute the closing `Summary:` tally over kept findings at final severity only; no template changes for discards.
+    - On subagent failure (dispatch failure, malformed report, or timeout), close with the worker's own findings without blocking (E4).
 2. Save it to: `openspec/changes/{change-name}/review.md`
      - Derive `{feature-name}` from the change name: convert kebab-case to title case (e.g. `oauth2-auth` → `OAuth2 Auth`).
 3. Present a concise summary in chat: counts per severity, the top three Critical findings (when present), and the path to the saved file.

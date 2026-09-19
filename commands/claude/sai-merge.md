@@ -1,5 +1,5 @@
 ---
-description: Merge or rebase a local branch — method selector with conditional squash, conflict resolution with criteria, ADR/DDR collision repair, gated behind explicit authorization
+description: Merge, rebase, or rebase with squash a local branch — conflict resolution with criteria, ADR/DDR collision repair, gated behind explicit authorization
 argument-hint: "[--fast-track]"
 model: opus
 effort: medium

@@ -125,7 +125,7 @@ Claude Code and opencode route these core phases through a coordinator and a man
 | `/sai-retire-docs` | Read-only, index-driven analysis of active ADRs, DDRs, and related specs. Asks for explicit per-candidate confirmation before any archival move. |
 | `/sai-status` | Read-only progress panel — single change or table over every active change. Never writes anything. |
 | `/sai-worktree` | Interactive git worktree manager — inventory, create, and delete linked worktrees. No OpenSpec prerequisites. |
-| `/sai-merge` | Merge a local branch into the current branch — conflict resolution, ADR/DDR collision repair, gated behind explicit authorization. No OpenSpec prerequisites. |
+| `/sai-merge` | Integrate a local branch into the current branch with `Merge`, `Rebase`, or `Rebase with squash` — conflict resolution, ADR/DDR collision repair, and explicit final authorization. No OpenSpec prerequisites. |
 
 Full unnumbered reference in [docs/on-demand-commands.md](docs/on-demand-commands.md).
 
