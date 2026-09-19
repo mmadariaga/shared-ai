@@ -47,9 +47,13 @@ test('direct-build step 4 validation accepts .openspec.yaml metadata file', () =
   assert.match(explore, /4\. \*\*Spec review\*\*[\s\S]*?and accepts `openspec\/changes\/\{name\}\/\.openspec\.yaml`[\s\S]*?as part of the returned draft set/,
     'Step 4 must accept .openspec.yaml as part of the returned draft set');
 
-  // Step 4 must validate the metadata file as the canonical three-key form
-  assert.match(explore, /4\. \*\*Spec review\*\*[\s\S]*?validating it as the canonical three-key form from `sai\/commands\/backfill\/instructions\.md` section 6a[\s\S]*?rather than against the capability schema/,
-    'Step 4 must validate .openspec.yaml as canonical form, not against capability schema');
+  // Step 4 must validate the metadata file against section 6a's canonical forms, not the capability schema
+  assert.match(explore, /4\. \*\*Spec review\*\*[\s\S]*?validating it against the canonical forms of `sai\/commands\/backfill\/instructions\.md` section 6a[\s\S]*?rather than against the capability schema/,
+    'Step 4 must validate .openspec.yaml against the section 6a canonical forms, not against capability schema');
+
+  // Step 4 must carry both canonical key forms: three-key without intent context, four-key with it
+  assert.match(explore, /4\. \*\*Spec review\*\*[\s\S]*?three-key form[\s\S]*?no usable intent context[\s\S]*?four-key form[\s\S]*?`prior_intent: true`[\s\S]*?usable intent context/,
+    'Step 4 must carry both the three-key form (no usable intent context) and the four-key prior_intent form');
 });
 
 test('direct-build artifact set includes .openspec.yaml metadata file', () => {

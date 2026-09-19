@@ -133,7 +133,12 @@
 
      `Review complete. No audits recommended. Run `/sai-archive {name}` in a new chat when ready.`
 
-     and stop.
+     and stop. The zero-audit branch is terminal for this composition: print that
+     literal, dispatch nothing, and do not apply the Direct Build close below —
+     even when `review.md` still carries findings (E2/E5). The review adapter's
+     own standalone Direct Build close belongs to `/sai-5-review` and never runs
+     inside this composition, so using the final adapter's `terminal_navigation`
+     here selects its presentation only, never its selector or dispatches.
 
   When one or more audits were activated, print the combined terminal. Do not
   invent a distinct meta-review-only success message that replaces the

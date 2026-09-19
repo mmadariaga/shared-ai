@@ -93,7 +93,7 @@ The POC verdict SHALL be exactly `<Cn> wins` or `none`, where `<Cn>` is one of t
 
 ### Requirement: The POC runs in reversible isolation and is discarded when the lane closes
 
-Before the POC runs, `sai-explore` SHALL isolate it reversibly by running it on its own branch or worktree created for it, and SHALL abandon that branch or worktree when the lane closes. Only the verdict SHALL survive the lane. The POC code SHALL be discarded by abandoning the isolation and SHALL NOT be discarded by destructive deletion of the working tree, by `git reset --hard` on the user's branch, or by removing files the user owns. Because the repository the lane leaves behind is the one it found, the size and integration-point friction judgments at the `Crystallize` stage SHALL evaluate the original repository and never one carrying throwaway POC code.
+Before the POC runs, `sai-explore` SHALL isolate it reversibly by running it on its own branch or worktree created for it, and SHALL abandon that branch or worktree when the lane closes. Only the verdict SHALL survive the lane. The POC code SHALL be discarded by abandoning the isolation and SHALL NOT be discarded by destructive deletion of the working tree, by `git reset --hard` on the user's branch, or by removing files the user owns. Because the repository the lane leaves behind is the one it found, the size and integration-point friction judgments at the `Crystallize` stage SHALL evaluate the original repository and never one carrying throwaway POC code. The `--no-specs` profile's prohibition on mutating git commands SHALL bind the dispatched implementer only and SHALL NOT bind the lane's own reversible isolation, which `sai-explore` creates and abandons as the coordinator under the POC lane's isolation authority.
 
 #### Scenario: the isolation is abandoned, not deleted
 
@@ -104,6 +104,11 @@ Before the POC runs, `sai-explore` SHALL isolate it reversibly by running it on 
 
 - **WHEN** the slicing assessment runs after a POC has been taken for the idea
 - **THEN** the size and friction judgments evaluate the repository as it was before the POC
+
+#### Scenario: the no-mutating-git prohibition binds the implementer, not the isolation
+
+- **WHEN** the POC lane creates or abandons its branch or worktree while the `--no-specs` profile forbids the dispatched implementer from running mutating git commands
+- **THEN** the isolation is still created and abandoned by `sai-explore` as coordinator, because the prohibition binds the implementer only
 
 ### Requirement: The POC lane can be entered explicitly from stages 2 through 4
 
