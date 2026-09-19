@@ -92,39 +92,39 @@ The `Review edge cases` stage SHALL run the existing edge-case review when the u
 
 ### Requirement: Crystallize stage defers overview-language resolution
 
-The `Crystallize` stage SHALL run the size-based slicing assessment, integration-point friction assessment, and technical-uncertainty assessment before emitting any `Ready to Propose` block. When uncertainty fires, it SHALL run the uncertainty pause and complete the applicable Ask 1 and post-POC path before the crystallization language gate and block emission. The language gate SHALL run only after those checks complete. It MUST NOT run overview-language gate 9 at stage entry; gate 9 belongs to the later supervised Plan (unattended) activation.
+The `Crystallize` stage SHALL run the size-based slicing assessment and the integration-point friction assessment — two orthogonal judgments — before emitting any `Ready to Propose` block. It SHALL NOT run a technical-uncertainty assessment and SHALL NOT run an uncertainty pause at this stage: that axis is evaluated at the close of the `Explore change` stage and, when taken, runs as the conditional POC stage before `Review edge cases`. The language gate SHALL run only after those two checks complete. It MUST NOT run overview-language gate 9 at stage entry; gate 9 belongs to the later supervised Plan (unattended) activation.
 
-Advancing into the `Crystallize` stage SHALL itself count as an explicit crystallization request. The slicing assessment and language-gate sequence SHALL start only after the crystallization step file named by `next.follow` is fetched. Deterministic empty-set advancement into this stage SHALL have the same effect. An explicit crystallize request made from an earlier stage SHALL first run the mandatory edge-case review when the review has not reached agreement, then proceed through all three assessments and any required uncertainty pause.
+Advancing into the `Crystallize` stage SHALL itself count as an explicit crystallization request. The slicing assessment and language-gate sequence SHALL start only after the crystallization step file named by `next.follow` is fetched. Deterministic empty-set advancement into this stage SHALL have the same effect. An explicit crystallize request made from an earlier stage SHALL first run the mandatory edge-case review when the review has not reached agreement, then proceed through both assessments with no uncertainty pause.
 
 A POC is not a crystallized feature slice and does not clear or replace the stage TODO. The stage TODO is cleared only when feature crystallization begins emitting its first feature slice and the idea progress list takes the panel.
 
 #### Scenario: crystallization runs slicing then the crystallization gate
 
 - **WHEN** the user explicitly requests crystallization, including by advancing into the `Crystallize` stage
-- **THEN** the size, friction, and uncertainty assessments run first, followed by any required uncertainty pause and then gate 8 before a `Ready to Propose` block prints
+- **THEN** the size and friction assessments run first and then gate 8 before a `Ready to Propose` block prints, with no uncertainty assessment and no uncertainty pause at this stage
 - **AND** overview-language gate 9 is not run during crystallization emission
 
 #### Scenario: natural-language entry into the stage crystallizes
 
 - **WHEN** the user names the `Crystallize` stage in natural language from the `Implementation details` stage
-- **THEN** the advance counts as the explicit crystallization request and all required assessments and pauses run before a block prints
+- **THEN** the advance counts as the explicit crystallization request and both required assessments run before a block prints
 - **AND** overview-language gate 9 remains deferred
 
 #### Scenario: an empty-list chain reaches crystallization in the same turn
 
 - **WHEN** the in-scope edge-case list and implementation-details list are both empty and the user advances the progression
-- **THEN** deterministic empty-set rules advance through both stages and the `Crystallize` entry runs the assessments and any required uncertainty pause before block emission
-- **AND** the POC, if selected, does not become a feature slice or clear the stage TODO
+- **THEN** deterministic empty-set rules advance through both stages and the `Crystallize` entry runs the size and friction assessments before block emission
+- **AND** a POC taken earlier in the progression does not become a feature slice or clear the stage TODO
 
 #### Scenario: premature crystallize enters the review before slicing
 
 - **WHEN** the user explicitly requests crystallization before the edge-case review has reached agreement
-- **THEN** the review runs with no skip path and the assessments and any uncertainty pause run only after agreement
+- **THEN** the review runs with no skip path and the size and friction assessments run only after agreement
 
 #### Scenario: fast-track preserves stage and gate boundaries
 
 - **WHEN** `--fast-track` is active during crystallization and later supervised Plan (unattended) activation
-- **THEN** language questions resolve by their separate rules without weakening or skipping either stage or the uncertainty pause
+- **THEN** language questions resolve by their separate rules without weakening or skipping any stage, and without auto-approving or skipping any of the POC lane's stops when the lane is the current stage
 - **AND** mandatory edge-case review and staged progression remain neither skipped nor weakened
 
 #### Scenario: Crystallize fetches the follow-named step before assessments

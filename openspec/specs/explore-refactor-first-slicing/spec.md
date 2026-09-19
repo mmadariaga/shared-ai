@@ -14,7 +14,7 @@ The integration point is judged hostile when, at the specific site the feature m
 - mixed responsibilities (the site conflates concerns, so the feature cannot be added without touching unrelated behavior); or
 - no clean extension seam (the feature can only be added by modifying existing code in place, not by extending it).
 
-Technical uncertainty is assessed after friction. If a viability POC is selected and completes successfully, the size and friction assessments SHALL be repeated against the post-POC integration site before the feature slice set is composed.
+Technical uncertainty SHALL NOT be assessed here, nor after friction: that axis is evaluated at the close of the `Explore change` stage and, when taken, runs as the conditional POC stage before `Review edge cases`. Because the POC lane abandons its own branch or worktree, no POC code survives into this assessment, so the friction judgment — like the size judgment — SHALL judge the original repository and SHALL NOT be re-evaluated against a post-POC integration site.
 
 Blast-radius metrics from a code graph MAY be cited as supporting evidence for a friction judgment, but SHALL NOT be a hard threshold that triggers it.
 
@@ -33,10 +33,10 @@ Blast-radius metrics from a code graph MAY be cited as supporting evidence for a
 - **WHEN** the surrounding module carries unrelated tech debt but the specific integration point for the feature is clean
 - **THEN** the friction assessment does not fire because friction is judged at the integration point of the feature at hand, not as a global tech-debt audit
 
-#### Scenario: viable POC re-evaluates the integration point
+#### Scenario: an earlier POC does not re-evaluate the integration point
 
-- **WHEN** a viability POC completes successfully and the user selects `Crystallize full`
-- **THEN** `sai-explore` repeats the local friction judgment against the post-POC integration site before composing slice 0 or feature slices
+- **WHEN** a POC ran earlier in the progression and `sai-explore` later reaches the friction assessment
+- **THEN** the local friction judgment is made against the original repository and is not repeated against a post-POC integration site, because the lane abandoned its isolation and left the repository as it found it
 
 ### Requirement: slice-zero-emission-composition
 

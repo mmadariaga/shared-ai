@@ -15,8 +15,9 @@ The POC lane MAY dispatch the Direct Build `--no-specs` POC only after the user 
 
 - **WHEN** a crystallization selector answer or a POC go/no-go answer is received
 - **THEN** only an explicitly selected Plan or Direct Build route, or an explicitly accepted POC, may dispatch its authorized workers
+- **AND** no route dispatches merely because the idea is ready or the POC trigger fired
 
-#### Scenario: Ask 1 POC has narrowed authority
+#### Scenario: the accepted POC has narrowed authority
 
 - **WHEN** the user selects `Yes, run a POC before continuing` and the candidate list is agreed
 - **THEN** only the implementer-only `--no-specs` profile may run, inside the lane's isolation, and it cannot write under `openspec/` or mutate Git state beyond that isolation

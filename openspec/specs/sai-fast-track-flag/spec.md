@@ -221,7 +221,7 @@ When the apply fast-track signal is active, the coordinator SHALL pre-activate s
 
 ### Requirement: The fast-track flag opts out only of the gates named per command, never others
 
-For each parser-member command, `--fast-track` SHALL opt out of exactly the named gates and nothing else. It is a fixed, audited list of opt-outs, not a generic skip-all-gates switch. Safe-operations confirmations SHALL remain in force under fast-track for every member command. For `sai-explore`, the language-gate opt-outs SHALL not include the technical-uncertainty pause, Ask 1, viable post-POC choices, or not-viable post-POC choices.
+For each parser-member command, `--fast-track` SHALL opt out of exactly the named gates and nothing else. It is a fixed, audited list of opt-outs, not a generic skip-all-gates switch. Safe-operations confirmations SHALL remain in force under fast-track for every member command. For `sai-explore`, the language-gate opt-outs SHALL NOT include any of the POC lane's three stops — the go/no-go evaluated at the close of the `Explore change` stage, the `C1..Cn` candidate-list agreement, and the verdict menu.
 
 #### Scenario: safe-operations confirmations survive fast-track
 
@@ -232,21 +232,21 @@ For each parser-member command, `--fast-track` SHALL opt out of exactly the name
 
 - **WHEN** fast-track is active for `sai-explore`, `sai-2-design`, `sai-4-apply`, `sai-archive`, `sai-backfill`, or `sai-merge`
 - **THEN** no gate beyond each command's named set changes behavior
-- **AND** `sai-explore` still presents Ask 1 and every applicable post-POC menu
+- **AND** `sai-explore` still presents the go/no-go, the `C1..Cn` candidate-list agreement, and the verdict menu
 
 #### Scenario: uncertainty menus are never auto-approved
 
-- **WHEN** `--fast-track` is active and a viability POC reaches either a viable or not-viable verdict
-- **THEN** the corresponding post-POC menu is presented rather than auto-approved
+- **WHEN** `--fast-track` is active and a POC reaches a verdict of `<Cn> wins` or `none`
+- **THEN** the verdict menu is presented rather than auto-approved
 
 ### Requirement: Merge fast-track bypasses only runtime scope
 
-When `/sai-merge` runs with `--fast-track`, it SHALL bypass only the runtime resolution scope question. It SHALL still require conflict-triggered language selection, global strategy confirmation, complete-file payload validation, worker-owned verification, and final commit authorization.
+When `/sai-merge` runs with `--fast-track`, it SHALL opt out of exactly two gates: the runtime resolution scope question, and the method-selection gate — the method SHALL be pinned to `merge` and no squash choice SHALL be shown in any mode. That method pinning is pre-existing behavior, recorded here as part of this command's fixed audited opt-out list so that this capability and `method-selection` agree rather than contradict each other. Fast-track SHALL still require conflict-triggered language selection, global strategy confirmation, complete-file payload validation, worker-owned verification, and final commit authorization.
 
 #### Scenario: Fast-track conflict retains strategy safety
 
 - **WHEN** a fast-track merge contains a semantically ambiguous conflict
-- **THEN** the command skips only scope selection and still requires the contextual decision and every later validation and authorization boundary
+- **THEN** the command skips only scope selection and the method-selection gate, and still requires the contextual decision and every later validation and authorization boundary
 
 ### Requirement: Fast-track behavior is harness-agnostic and documented
 The `--fast-track` behavior SHALL be identical under Claude Code, opencode, and GitHub Copilot, achieved by single-sourcing the parse and gate branches in the shared body files, shared instructions, and routed cards. Any wrapper-level `argument-hint` change SHALL be mirrored across `commands/claude/`, `commands/opencode/`, and `commands/copilot/` in the same commit (Mirror discipline). Where a wrapper shape does not carry an `argument-hint` — specifically the opencode `sai-archive` wrapper — no separate consistency marker is required. `AGENTS.md` SHALL name `--fast-track` and its six affected commands under "Critical conventions", and `README.md` SHALL document the flag in the commands table.
