@@ -2,7 +2,9 @@
 
 ## Purpose
 TBD - created by archiving change sai-5-review-coordinator-worker-split. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: Review worker owns the complete technical workflow
 
 The review worker SHALL own envelope parsing, prerequisite checks, change resolution, parent-branch detection, diff scoping, review passes 1–10, Pass 11 mutation analysis, report generation, report verification, and the lifecycle summary. The coordinator SHALL not share ownership of these activities.
@@ -192,3 +194,9 @@ The review instruction SHALL assign every finding a severity-prefixed identifier
 - **WHEN** the review report is complete
 - **THEN** it closes with a `Summary:` line tallying `Critical`, `High`, `Medium`, `Low`, and `Questions` counts that match the listed findings
 - **AND** the worker completion verification names the top three `Critical` findings when present
+
+### Requirement: Review close runs a pre-save adversarial findings check
+The review close step SHALL challenge the in-memory draft before saving to discard false positives and correct severity. It SHALL skip the adversary when the draft has zero findings including zero mMUT-N findings, otherwise dispatch exactly one budget-explorer subagent receiving only per-finding identifier, file:line, category, and one-line problem statement without diff or raw code, scope the adversary to the current diff findings only, require per-finding keep or discard or downgrade verdict with why under 40 words and total report under 800 words, let the worker accept or reject each verdict with discards invisible and tally recomputed over kept findings at final severity, and close with worker findings on subagent failure without blocking.
+#### Scenario: Adversarial check filters review draft
+- **WHEN** the in-memory review draft contains findings
+- **THEN** the worker runs one bounded adversary and saves only kept findings with recomputed Summary tally

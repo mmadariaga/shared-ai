@@ -2,7 +2,9 @@
 
 ## Purpose
 TBD - created by syncing change audit-step-gated-instructions. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: Performance Audit Carved Step Library
 
 The performance command SHALL deliver its audit instruction mass through a
@@ -44,3 +46,8 @@ opening, or following any other step instruction file.
 - **WHEN** the current pointer names `audit-performance-tiers`
 - **THEN** the worker does not open or follow any other step file in `sai/commands/performance/steps/`
 
+### Requirement: Performance close runs a pre-save adversarial findings check
+The performance close step SHALL challenge the in-memory draft before saving to discard false positives and correct severity. It SHALL skip the adversary on zero findings, otherwise dispatch exactly one budget-explorer subagent receiving only per-finding identifier, location, measured metric plus baseline reference, and one-line validation method without diff or raw code, scope the adversary to current diff findings only, require per-finding keep or discard or downgrade verdict with why under 40 words and total report under 800 words without fabricated numbers, let the worker accept or reject each verdict with discards invisible and tally recomputed over kept findings at final severity, and close with worker findings on subagent failure without blocking.
+#### Scenario: Adversarial check filters performance draft
+- **WHEN** the in-memory performance draft contains findings
+- **THEN** the worker runs one bounded adversary and saves only kept findings with recomputed Summary tally
