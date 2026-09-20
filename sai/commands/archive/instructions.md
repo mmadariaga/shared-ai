@@ -10,7 +10,8 @@
 > `needs_input` result and the coordinator presents them through the native
 > picker; where it conditions on an answer, the coordinator forwards the
 > selected value through the binding continuation; and every mutation it
-> references — the archive move, any delta-spec sync write, and every git
+> references — the archive move, any delta-spec sync write, the conditional
+> `retire_capabilities` declaration, and every git
 > operation of the post-archive commit gate — executes coordinator-side per
 > `sai/commands/archive/coordinator.md` on the ordinary route. In Direct Build (unattended)
 > execution, the coordinator validates and authorizes the closed order before
@@ -59,7 +60,7 @@ Before running the archive skill, perform this check:
      - **If fast-track is active** (`sai-archive --fast-track`; opt-out set per `openspec/specs/sai-fast-track-flag/spec.md`): auto-proceed as if the user answered `yes`. Do NOT return the question below; continue toward the coordinator-owned archive move; write no approval key to `.openspec.yaml`; skip the remaining bullets of this gate.
       - Return the ask as a `needs_input` result: `Continue archiving with N unchecked items?` with options `yes (Recommended)` / `no` (per the "Closed-choice prompts" rule in `remember.md`, which gives the per-harness option-picker mapping), where `N` is the count of unchecked items.
      - The archive move executes coordinator-side ONLY after an explicit `yes` is forwarded. On `no`, on silence, or on any answer other than `yes`, the archive move does not happen and the returned summary reports that archiving was not performed, citing the unchecked items.
-     - This prompt is conversational in chat only: do NOT write any approval key to `.openspec.yaml` and do NOT introduce any new formal approval gate. Only the unchecked-items rule changes; the Classification Check, missing-main-spec handling, and spec-sync behavior are untouched.
+     - This prompt is conversational in chat only: do NOT write any approval key to `.openspec.yaml` and do NOT introduce any new formal approval gate. The only `.openspec.yaml` key archive may ever write is `retire_capabilities`, under the conditions of "Capability-emptying delta retirement" below; approval keys and new formal gates stay prohibited. Only the unchecked-items rule changes; the Classification Check, missing-main-spec handling, and spec-sync behavior are untouched.
    - **If it does not exist**: skip this check entirely. Proceed without any warning about incomplete tasks.
 
 ## Missing main spec handling
@@ -81,13 +82,24 @@ the CLI archives the change without modifying main specs. This policy applies
 regardless of fast-track state. All other archive gates (Classification
 Check, unchecked-items, collision check) remain unchanged.
 
-## Capability-emptying delta refusal
+## Capability-emptying delta retirement
 
 When assessing delta spec sync state during the read-only pre-flight:
 - If a delta spec capability's `## REMOVED Requirements` section names every requirement currently published in `openspec/specs/<capability>/spec.md` with no `## ADDED Requirements` section for that same capability, this is a **capability-emptying delta**.
-- A capability-emptying delta does not proceed: archive refuses before any mutation, naming `/sai-retire-docs` as the path that owns capability retirement.
-- The supported shape for retiring a capability is a separate ADD-only change introducing the replacement capability, after which the retired capability is moved to `openspec/specs/_archived/<capability>/` through `/sai-retire-docs` with its per-candidate confirmation gate. Retired capabilities remain visible to `openspec list --specs` with an `_archived/` id prefix; retirement is namespacing, not removal from CLI discovery.
-- The refusal text states that `openspec validate <capability>` will return green and is not evidence, because the CLI's own fix hint sends the reader there. `openspec validate <change>` checks delta well-formedness only, so the capability-emptying delta validates clean; `openspec archive` rebuilds the spec in memory and validates it during the mutating command (the scenario-preservation guarantee), but that check happens too late; `openspec validate <capability>` inspects the published spec, which archive left unchanged because it was refused here, so returns green. SAI's pre-flight refusal detects the delta shape before any validation step, deliberately without duplicating the CLI's rebuilt-spec validation.
+- Detection stays read-only and stays in the pre-flight, at the same point and by the same method as before. Only the outcome changes: a capability-emptying delta no longer blocks the archive. Archive declares the retirement and lets the CLI perform it.
+- Declaring the retirement means writing the single key `retire_capabilities: true` into `openspec/changes/$ARGUMENTS/.openspec.yaml` before the `openspec archive <name> --yes --json` invocation. The CLI is the only component that deletes anything under `openspec/specs/**`; archive gains no move or delete power there.
+- The written key is not transient: `.openspec.yaml` lives inside the change directory, so the CLI move carries the modified file with the change into `openspec/changes/archive/YYYY-MM-DD-{name}/`, where the declaration stays as the archived record of the retirement's intent.
+- The write is conditional, narrow, and idempotent:
+  - With no capability-emptying delta detected, `.openspec.yaml` is not touched at all.
+  - When the key is already present with the boolean literal `true`, it is neither rewritten nor duplicated.
+  - When the key is present with the boolean literal `false`, that is an explicit user veto: leave it untouched, write nothing, and let the CLI invocation proceed with the veto in force.
+  - The key belongs to the change, not to a capability. A change that empties capability `A` while modifying capability `B` still receives one `retire_capabilities: true`; the CLI deletes only the spec left with no requirements.
+- The retirement is silent: no new question, gate, or per-route branch is introduced. The ordinary route, the Direct Build (unattended) route, and `--fast-track` behave identically. The existing post-archive commit gate remains the human checkpoint, and the absence of a commit is what keeps the deletion recoverable.
+- Silence is not opacity: the archive report names every retired capability so the later commit gate shows what was deleted.
+- If `openspec archive` fails after the key was written, the key stays written in the working tree. Archive does not revert it.
+- Archive does not validate cross-capability references after a retirement: a live capability citing the retired one is left dangling, and detecting that is out of scope here.
+- `/sai-retire-docs` and `openspec/specs/_archived/` are untouched by this path and keep their own ownership. They own retirement that has no change behind it — docs, ADRs, and DDRs — and retire by moving to `openspec/specs/_archived/<capability>/` with a per-candidate confirmation gate; the two paths split by trigger, not by competition.
+- `openspec validate <capability>` is still not evidence about this shape: `openspec validate <change>` checks delta well-formedness only, and `openspec validate <capability>` inspects the published spec. The pre-flight detects the delta shape directly, without duplicating the CLI's rebuilt-spec validation.
 
 ## Forward-only history guard
 

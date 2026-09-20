@@ -2,7 +2,9 @@
 
 ## Purpose
 TBD - created by archiving change worker-owned-autofast-mutations. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: Attribute archive execution to Build
 
 Direct Build (unattended) SHALL use the existing archive worker's read-only preparation followed by one validated CLI archive invocation, owned-path staging, and pre-authorized local commit continuation.
@@ -23,12 +25,17 @@ The archive worker SHALL perform classification, completion, informational delta
 
 ### Requirement: Ordered archive mutations
 
-Authorized archive execution SHALL first run exactly `openspec archive <name> --yes --json` as the sole synchronization-and-move primitive and SHALL parse its JSON result. After successful CLI completion, it SHALL classify every supplied approved path using deletion-aware trackedness and ignore checks before staging, stage only eligible paths, and create one local HEREDOC commit from staged state when eligible paths remain. Untracked ignored paths SHALL be omitted with a warning. Force-add and broad staging commands MUST NOT be used.
+Authorized archive execution SHALL first, and only when the prepared plan recorded one or more `retired_capabilities`, write the single key `retire_capabilities: true` into `openspec/changes/<name>/.openspec.yaml` through the Bash tool under the conditional, idempotent, and veto-honouring rules of the archive instructions, adding that file to `changed_files` when it was written. It SHALL then run exactly `openspec archive <name> --yes --json` as the sole synchronization-and-move primitive and SHALL parse its JSON result. After successful CLI completion, it SHALL classify every supplied approved path using deletion-aware trackedness and ignore checks before staging, stage only eligible paths, and create one local HEREDOC commit from staged state when eligible paths remain. Untracked ignored paths SHALL be omitted with a warning. Force-add and broad staging commands MUST NOT be used. With no recorded `retired_capabilities`, `.openspec.yaml` SHALL NOT be touched, and a failure of the CLI invocation SHALL NOT revert a written declaration.
 
 #### Scenario: A validated order executes once
 
-- **WHEN** the coordinator forwards a validated and authorized Direct Build archive order
-- **THEN** the worker runs the CLI archive first, then exact-path staging and at most one authorized local commit without pushing, amending, or staging unrelated files
+- **WHEN** the coordinator forwards a validated and authorized Direct Build archive order whose prepared plan recorded no retired capability
+- **THEN** the worker does not touch `.openspec.yaml` and runs the CLI archive first, then exact-path staging and at most one authorized local commit without pushing, amending, or staging unrelated files
+
+#### Scenario: A validated order with a recorded retirement executes once
+
+- **WHEN** the coordinator forwards a validated and authorized Direct Build archive order whose prepared plan recorded one or more retired capabilities
+- **THEN** the worker writes the retirement declaration, then runs the CLI archive, then performs exact-path staging and at most one authorized local commit without pushing, amending, or staging unrelated files
 
 #### Scenario: Mixed approved paths
 
@@ -77,4 +84,3 @@ The Direct Build (unattended) archive execute continuation is the only dispatch 
 - **WHEN** the execute continuation's validated closed order performs the one pre-authorized local commit inside its window
 - **THEN** the window's verify runs with `--allow-commit` and resolves verdict `allowed`
 - **AND** the flag is consumed for that window only and never persisted
-

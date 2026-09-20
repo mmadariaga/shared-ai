@@ -76,12 +76,17 @@ the collected ids) and close the run; no AUDIT soft warning accompanies it.
 When the capability-emptying delta assessment detects a delta spec capability
 whose `## REMOVED Requirements` names every requirement currently published in
 `openspec/specs/<capability>/spec.md` with no `## ADDED Requirements` for that
-same capability, return a terminal payload whose summary is exactly
-**"Delta would empty <capability> of all published requirements. Capability
-retirement is owned by `/sai-retire-docs` — reshape as ADD-only or use that
-path. (`openspec validate <capability>` will return green and is not evidence.
-Archive wrote nothing because it was refused here.) Archive blocked."**
-(substituting the capability name) and close the run.
+same capability, the archive is NOT blocked. Record the detected capability
+names as invocation-scoped `retired_capabilities` state and carry them in your
+terminal summary, naming each one, so the coordinator and the later commit gate
+show what the CLI will delete. Declaring the retirement is the single
+`retire_capabilities: true` key described in
+`@sai/commands/archive/instructions.md`; it is written immediately before the
+`openspec archive <name> --yes --json` invocation by whoever runs that
+invocation — the coordinator on the ordinary route, this worker in the
+Direct Build (unattended) execute continuation. Add no question, gate, or
+per-route branch for it, and never move or delete anything under
+`openspec/specs/**` yourself.
 
 ## Pre-mutation gates
 
@@ -110,7 +115,9 @@ executing anything: on `no`, or any non-confirming answer, return a terminal
 performed, citing the unchecked items or the cancellation. On a confirming
 answer, close the run with a terminal `completed` payload whose summary
 restates the change name, schema, the pre-flight collision verdict, the
-combined delta-sync summary (informational), and any carried warnings — so the
+combined delta-sync summary (informational), every capability named in
+`retired_capabilities` (or nothing when that set is empty), and any carried
+warnings — so the
 coordinator can present it verbatim before running the CLI archive on the
 ordinary route, or use it as the validated plan for the Direct Build (unattended)
 execute continuation.
@@ -144,6 +151,17 @@ continuation; if Bash is unavailable, return a closed `failed` result rather
 than simulating a write through another channel. The worker then performs
 exactly this order and nothing else:
 
+0. Retirement declaration, only when the prepared plan recorded one or more
+   `retired_capabilities`: through the Bash tool, write the single key
+   `retire_capabilities: true` into `openspec/changes/<name>/.openspec.yaml`
+   under the conditions of `@sai/commands/archive/instructions.md` — skip the
+   write entirely when the key already reads the boolean literal `true`, and
+   skip it as an explicit user veto when it already reads the boolean literal
+   `false`. Preserve every other key and the file's existing formatting; write
+   no other key and no approval key. Add the file to `changed_files` when it
+   was written. With no recorded `retired_capabilities`, do not touch
+   `.openspec.yaml` at all. If step 1 then fails, leave the written key in
+   place — never revert it. This step adds no gate and no question.
 1. Run `openspec archive <name> --yes --json` as the sole sync + move
    primitive. The CLI validates scenario preservation before writing and
    couples delta-spec synchronization with the archive directory move in one
@@ -194,7 +212,10 @@ a partial plan.
 
 For the ordinary route and the prepare stretch, NEVER move directories. NEVER
 write outside reporting duties — no main-spec sync writes, no `.openspec.yaml`
-keys, no artifact edits. NEVER run git: no `git add`, no `git commit`, no
+keys (the `retire_capabilities` declaration belongs to whoever runs the CLI
+archive: the coordinator on the ordinary route, this worker only inside the
+validated Direct Build (unattended) execution continuation), no artifact edits.
+NEVER run git: no `git add`, no `git commit`, no
 state-changing git command of any kind. The CLI archive invocation and git
 operations remain coordinator-owned unless the worker is in the validated
 Direct Build (unattended) execution continuation above.

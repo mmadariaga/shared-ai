@@ -100,27 +100,39 @@ test('direct-build archive execution keeps the empty-index no-commit result when
   assert.match(commit, /do not author a message or create a commit/);
 });
 
-test('archive contract documents capability-emptying delta refusal with retirement routing', () => {
+test('archive contract completes a capability-emptying delta by declaring the retirement', () => {
   const worker = read('sai/commands/archive/worker.md');
   const instructions = read('sai/commands/archive/instructions.md');
+  const coordinator = read('sai/commands/archive/coordinator.md');
 
   assert.match(worker, /the capability-emptying delta\s+assessment \(detect when a delta spec capability's.*?with no `## ADDED Requirements`/s,
     'archive worker must document the capability-emptying assessment in pre-flight');
-  assert.match(worker, /Delta would empty.*?of all published requirements/,
-    'archive worker must document the capability-emptying stop-text');
-  assert.match(worker, /Capability\s+retirement is owned by `\/sai-retire-docs`/,
-    'archive worker refusal must name /sai-retire-docs as the owning path');
-  assert.match(worker, /reshape as ADD-only/,
-    'archive worker refusal must document reshaping as ADD-only option');
+  assert.doesNotMatch(worker, /Delta would empty/,
+    'archive worker must no longer carry the capability-emptying stop-text');
+  assert.doesNotMatch(worker, /Capability\s+retirement is owned by `\/sai-retire-docs`/,
+    'archive worker must no longer route capability retirement to /sai-retire-docs');
+  assert.match(worker, /the archive is NOT blocked/,
+    'archive worker must state that a capability-emptying delta does not block the archive');
+  assert.match(worker, /`retire_capabilities: true`/,
+    'archive worker must name the retirement declaration key');
 
-  assert.match(instructions, /## Capability-emptying delta refusal/,
-    'instructions must have a Capability-emptying delta refusal section');
+  assert.match(instructions, /## Capability-emptying delta retirement/,
+    'instructions must have a Capability-emptying delta retirement section');
   assert.match(instructions, /capability's `## REMOVED Requirements` section names every requirement.*?with no `## ADDED Requirements`/s,
     'instructions must define capability-emptying delta shape');
-  assert.match(instructions, /moved to `openspec\/specs\/_archived\/<capability>\/`.*?through `\/sai-retire-docs`/s,
-    'instructions must document the /sai-retire-docs retirement path');
-  assert.match(instructions, /`openspec validate <capability>` will return green and is not evidence/,
-    'instructions must explain why openspec validate is not evidence');
+  assert.match(instructions, /writing the single key `retire_capabilities: true` into `openspec\/changes\/\$ARGUMENTS\/\.openspec\.yaml`/,
+    'instructions must define the narrow retirement write');
+  assert.match(instructions, /no new question, gate, or per-route branch/,
+    'instructions must keep the retirement silent on every route');
+  assert.match(instructions, /neither rewritten nor duplicated/,
+    'instructions must keep the retirement write idempotent');
+  assert.match(instructions, /explicit user veto/,
+    'instructions must honour an explicit retire_capabilities: false veto');
+  assert.match(instructions, /archive gains no move or delete power there/,
+    'instructions must keep spec deletion with the OpenSpec CLI');
+
+  assert.match(coordinator, /\*\*Retirement declaration\*\*/,
+    'coordinator must own the ordinary-route retirement declaration');
 });
 
 test('the direct-build backfill execution and archive preparation blocks appear exactly once', () => {

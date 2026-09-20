@@ -50,7 +50,9 @@
   scanning, delta-sync diffing against main specs, target-name collision
   checking, and the authoring of the unchecked-items pre-mutation gate
   question. On the ordinary route, you own lifecycle routing, gate
-  presentation, and ALL mutating execution: the CLI archive invocation
+  presentation, and ALL mutating execution: the conditional
+  `retire_capabilities: true` declaration in the change's own
+  `.openspec.yaml`, the CLI archive invocation
   (`openspec archive <name> --yes --json`) as the sole sync + move primitive,
   and every git operation of the post-archive commit gate. The explicit
   Direct Build (unattended) route is the only exception: you validate the worker's prepared
@@ -129,6 +131,20 @@
    commit in this order (initialise `archive_content_fix_attempted` to false;
    it bounds the single classified content-fix below):
 
+   - **Retirement declaration** — when the worker's summary named one or more
+     retired capabilities (a capability-emptying delta detected in the
+     read-only pre-flight), write the single key `retire_capabilities: true`
+     into `openspec/changes/<name>/.openspec.yaml` before the CLI archive
+     below, under the conditions of
+     `@sai/commands/archive/instructions.md`: skip the write when the key
+     already reads the boolean literal `true`, and skip it as an explicit user
+     veto when it already reads the boolean literal `false`. Preserve every
+     other key and the file's existing formatting; write no other key and no
+     approval key. Add the file to the changed-files union when it was
+     written. When the worker named no retired capability, do not touch
+     `.openspec.yaml` at all. Ask nothing: this declaration introduces no gate
+     and no question on any route. If the CLI archive below fails, leave the
+     written key in place — never revert it.
    - **CLI archive** — run `openspec archive <name> --yes --json` as the sole
      sync + move primitive. The CLI validates scenario preservation before
      writing and couples delta-spec synchronization with the archive directory
