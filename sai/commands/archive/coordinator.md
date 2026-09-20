@@ -136,11 +136,62 @@
      read-only pre-flight), write the single key `retire_capabilities: true`
      into `openspec/changes/<name>/.openspec.yaml` before the CLI archive
      below, under the conditions of
-     `@sai/commands/archive/instructions.md`: skip the write when the key
-     already reads the boolean literal `true`, and skip it as an explicit user
-     veto when it already reads the boolean literal `false`. Preserve every
+     `@sai/commands/archive/instructions.md`. Apply that instruction's
+     declaration preconditions first, so the declaration is issued only when it
+     can succeed:
+     - **Author veto** — when `retire_capabilities` is already present with the
+       parsed value `false`, refuse to declare: write nothing, do NOT run the
+       CLI archive below, and report that the author vetoed the retirement,
+       naming both ways forward (remove the `retire_capabilities: false` entry,
+       or reshape the delta so it does not empty the capability). Never proceed
+       under the veto: the CLI cannot tell `false` from an absent key, so the
+       archive would fail with `archive_spec_validation_failed` on every rerun.
+     - **Unhonoured value** — when `retire_capabilities` is already present and
+       its parsed value is not a boolean (a string such as `"yes"` or `"no"`,
+       `null`, a number), refuse to declare. Name the file, the key, and its
+       current value, and state the way forward: set `retire_capabilities` to
+       `true` to declare the retirement, to `false` to veto it, or remove the
+       key. Never overwrite it: archive never guesses which boolean an
+       unhonoured value meant, and guessing `true` would delete a published
+       spec on a guess — unattended under `fast_track_active` and Direct Build.
+     - **Unaccounted content** — when the worker reported unaccounted content
+       (any `##` section other than `## Purpose` above the requirements) in an
+       emptied capability's published spec, refuse to declare, naming the
+       capability and each offending heading, and state that the content must
+       be moved out of the spec before `sai-archive` is rerun.
+     - **Metadata precondition** — declare only into an
+       `openspec/changes/<name>/.openspec.yaml` that already exists, parses as
+       valid YAML, and carries `schema:`. A missing, unparseable, or
+       schema-less file is a refusal naming the file and the missing key. NEVER
+       create `.openspec.yaml` and NEVER author a `schema:` value.
+     - **All or nothing** — when several capabilities are emptied and any one
+       is blocked, refuse the whole declaration; never declare partially.
+     Every refusal here is a stop, not a question: present it, add no gate and
+     no prompt, and stop without the CLI archive below, identically on the
+     ordinary route, under `fast_track_active`, and on the Direct Build
+     (unattended) route.
+     When every precondition passes, write it as a parse-verified
+     replace-in-place: skip the write when the parsed value of
+     `retire_capabilities` is already the boolean `true`, insert the single key
+     once when it is absent, replace an existing entry's value in place rather
+     than adding a line whenever a present key is written at all, and never
+     append a second
+     `retire_capabilities` entry — a duplicate key makes the file invalid YAML
+     for every CLI surface. Judge the skip, the veto, and the unhonoured value
+     on the parsed YAML
+     value, never on the literal text of the line. Preserve every
      other key and the file's existing formatting; write no other key and no
-     approval key. Add the file to the changed-files union when it was
+     approval key. Re-parse the file after writing: if it no longer parses, or
+     `retire_capabilities` does not read back as the boolean `true`, report
+     that and do NOT run the CLI archive below. This is the one stop archive
+     itself caused — the file parsed before archive wrote to it — so say so and
+     name the way forward: archive does not revert the write, and the file must
+     be restored before `sai-archive` is rerun, with
+     `git checkout HEAD -- openspec/changes/<name>/.openspec.yaml` when the
+     file is tracked, or by hand when it is not. Until it is restored the
+     change is unreadable to `openspec status`, so a rerun fails at the
+     pre-flight rather than at the declaration. Add the file to the
+     changed-files union when it was
      written. When the worker named no retired capability, do not touch
      `.openspec.yaml` at all. Ask nothing: this declaration introduces no gate
      and no question on any route. If the CLI archive below fails, leave the
@@ -205,7 +256,15 @@
   initial `--direct-build-prepare` dispatch runs classification, completion,
   collision detection, and every applicable fast-track gate without mutation.
   The worker returns a closed plan containing the archive destination, owned
-  staging paths, and the pre-authorized one-commit boundary.
+  staging paths, and the pre-authorized one-commit boundary. When the pre-flight
+  detected a capability-emptying delta whose declaration preconditions all pass,
+  the plan and the validated execution order also contain the conditional
+  `retire_capabilities` retirement declaration and the capabilities it retires:
+  it is a named member of the closed-order content enumeration, so the worker
+  validating its own order accepts that step as authorized rather than rejecting
+  the order as altered or writing without authorization. When the pre-flight
+  refused the declaration, the worker returns the refusal instead of a plan and
+  no execution continuation is sent.
 
   The coordinator validates that plan against the fresh worker findings and
   the implementer's changed-files union. After the existing gates and the

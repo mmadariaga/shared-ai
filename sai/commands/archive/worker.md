@@ -88,6 +88,41 @@ Direct Build (unattended) execute continuation. Add no question, gate, or
 per-route branch for it, and never move or delete anything under
 `openspec/specs/**` yourself.
 
+Whenever `retired_capabilities` is non-empty, extend the same read-only
+pre-flight with the declaration preconditions of
+`@sai/commands/archive/instructions.md` and record their outcome as
+invocation-scoped state alongside `retired_capabilities`: the author veto
+(`retire_capabilities` already present with the parsed value `false`), the
+unhonoured value (`retire_capabilities` already present with a parsed value
+that is not a boolean — a string such as `"yes"` or `"no"`, `null`, a number),
+the unaccounted content of each emptied capability's published spec at
+`openspec/specs/<capability>/spec.md` (any `##` section other than
+`## Purpose` above its requirements, recorded with the capability name and each
+offending heading), and the metadata precondition
+(`openspec/changes/<name>/.openspec.yaml` exists, parses as valid YAML, and
+carries `schema:`). All three are reads: open no file for writing here.
+
+Mirror the refusals rather than proceeding. When any recorded condition blocks —
+including the all-or-nothing rule, where one blocked capability refuses the
+whole declaration — close the run with a terminal payload whose summary names
+the blocking condition, the capability or file it concerns, and the way forward
+that instruction states, and reports that archiving was not performed. Carry
+that instruction's remedies verbatim in meaning: for the author veto, remove the
+`retire_capabilities: false` entry or reshape the delta so it does not empty the
+capability; for an unhonoured value, set `retire_capabilities` to `true` to
+declare the retirement, to `false` to veto it, or remove the key — archive never
+guesses which boolean an unhonoured value meant and never overwrites it; for
+unaccounted content, move that content out of the spec and rerun `sai-archive`.
+Never skip a veto and let the CLI archive run anyway: the CLI cannot tell
+`retire_capabilities: false` from an absent key, so the archive fails with
+`archive_spec_validation_failed` on every rerun and the author never gets an
+exit.
+Return no
+mutation plan and no prepared execution order in that closure, so no route can
+treat a refused declaration as authorization. The refusal is a stop, not a
+question: return no `needs_input` for it, and let `fast_track_active` and the
+Direct Build (unattended) route behave exactly like the ordinary route.
+
 ## Pre-mutation gates
 
 After a clean Classification Check, return the unchecked-items decision as a
@@ -129,9 +164,13 @@ classification, gate outcomes, collision verdict, archive destination, owned
 staging set, and commit authorization. It then continues the same worker with
 one opaque payload whose first line is exactly `--direct-build-execute`. The
 remaining content is a closed execution order; it is the only authority for
-mutation and may contain only the resolved change name, the exact date-prefixed
-archive destination, the exact owned staging paths, and the one pre-authorized
-local commit action.
+mutation and may contain only the resolved change name, the conditional
+`retire_capabilities` retirement declaration with the capabilities it retires,
+the exact date-prefixed archive destination, the exact owned staging paths, and
+the one pre-authorized local commit action. The retirement declaration is a
+named member of this enumeration, so an order carrying it is not an altered
+order: validate step 0 as authorized content rather than rejecting the order or
+writing without authorization.
 
 Before acting, the worker validates that the order is complete, duplicate-free,
 consistent with its prepared plan, inside the allowed `openspec/` and
@@ -154,14 +193,39 @@ exactly this order and nothing else:
 0. Retirement declaration, only when the prepared plan recorded one or more
    `retired_capabilities`: through the Bash tool, write the single key
    `retire_capabilities: true` into `openspec/changes/<name>/.openspec.yaml`
-   under the conditions of `@sai/commands/archive/instructions.md` — skip the
-   write entirely when the key already reads the boolean literal `true`, and
-   skip it as an explicit user veto when it already reads the boolean literal
-   `false`. Preserve every other key and the file's existing formatting; write
-   no other key and no approval key. Add the file to `changed_files` when it
-   was written. With no recorded `retired_capabilities`, do not touch
-   `.openspec.yaml` at all. If step 1 then fails, leave the written key in
-   place — never revert it. This step adds no gate and no question.
+   under the conditions of `@sai/commands/archive/instructions.md`.
+   Re-check that instruction's declaration preconditions against the current
+   files first — the author veto, an unhonoured value (a present
+   `retire_capabilities` whose parsed value is not a boolean), unaccounted
+   content in each emptied capability's published spec, and the metadata
+   precondition that
+   `.openspec.yaml` exists, parses, and carries `schema:`. If any of them
+   blocks now, write nothing, do not run step 1, and return a closed `failed`
+   result naming the blocking condition and its way forward; never create
+   `.openspec.yaml` and never author a `schema:` value. Otherwise perform the
+   parse-verified replace-in-place write: skip the write entirely when the
+   parsed value of `retire_capabilities` is already the boolean `true`, insert
+   the single key once when it is absent, replace an existing entry's value in
+   place rather than adding a line whenever a present key is written at all,
+   and never append a second `retire_capabilities` entry. Judge the skip, the
+   veto, and the unhonoured value on the parsed
+   YAML value, not the literal text. Preserve every other key and the file's
+   existing formatting; write no other key and no approval key. Re-parse the
+   file after writing: if it no longer parses as valid YAML, or
+   `retire_capabilities` does not read back as the boolean `true`, return a
+   closed `failed` result with that evidence and do not run step 1. This is the
+   one stop archive itself caused — the file parsed before archive wrote to it
+   — so say so in the result and name the way forward: archive does not revert
+   the write, and the file must be restored before `sai-archive` is rerun, with
+   `git checkout HEAD -- openspec/changes/<name>/.openspec.yaml` when the file
+   is tracked, or by hand when it is not. Report that command as the user's
+   remedy; never run it or any other git command in this step. Until the file
+   is restored the change is unreadable to `openspec status`, so a rerun fails
+   at the pre-flight rather than at the declaration. Add the
+   file to `changed_files` when it was written. With no recorded
+   `retired_capabilities`, do not touch `.openspec.yaml` at all. If step 1 then
+   fails, leave the written key in place — never revert it. This step adds no
+   gate and no question.
 1. Run `openspec archive <name> --yes --json` as the sole sync + move
    primitive. The CLI validates scenario preservation before writing and
    couples delta-spec synchronization with the archive directory move in one

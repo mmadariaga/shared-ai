@@ -100,10 +100,64 @@ test('direct-build archive execution keeps the empty-index no-commit result when
   assert.match(commit, /do not author a message or create a commit/);
 });
 
+const ARCHIVE_CONTRACT_FILES = [
+  'sai/commands/archive/instructions.md',
+  'sai/commands/archive/worker.md',
+  'sai/commands/archive/coordinator.md',
+];
+
+// Each rule must be stated in every archive contract file: a rule present in one
+// and missing from another is drift, and the three files must state one contract.
+const RETIREMENT_DECLARATION_RULES = [
+  ['an explicit retire_capabilities: false is an author veto', [
+    [/author veto/i, 'names the author veto'],
+    [/parsed value (?:is )?`false`/, 'judges the veto on the parsed value `false`'],
+    [/refus(?:e|es|al|ing)/i, 'refuses rather than skipping'],
+    [/reshape the delta so it does not empty the\s+capability/, 'states both ways forward'],
+    [/archive_spec_validation_failed/, 'states why the veto cannot be skipped'],
+  ]],
+  ['a present retire_capabilities whose parsed value is not a boolean refuses the declaration', [
+    [/unhonoured value/i, 'names the unhonoured value'],
+    [/parsed value\s+(?:that\s+)?is not a boolean/, 'defines an unhonoured value'],
+    [/never\s+guesses? which boolean/i, 'never guesses which boolean it meant'],
+    [/`false` to veto it, or remove the\s+key/, 'states the three ways forward'],
+  ]],
+  ['unaccounted content refuses the declaration', [
+    [/unaccounted content/i, 'names unaccounted content'],
+    [/any `##` section other than\s+`## Purpose`/, 'defines unaccounted content'],
+    [/(?:move that content|be moved) out of the spec/, 'states the way forward'],
+  ]],
+  ['the declaration requires existing, parseable, schema-carrying metadata', [
+    [/carries (?:a )?`schema:`/, 'requires the schema key'],
+    [/never\s+creates?\s+`\.openspec\.yaml`/i, 'never creates .openspec.yaml'],
+    [/never\s+authors?\s+a `schema:` value/i, 'never authors a schema value'],
+  ]],
+  ['idempotence and veto are judged on the parsed YAML value', [
+    [/parsed\s+YAML\s+value/, 'judges on the parsed YAML value'],
+    [/literal text/, 'rejects the literal text as the criterion'],
+  ]],
+  ['the write is a parse-verified replace-in-place', [
+    [/replace-in-place/, 'specifies replace-in-place'],
+    [/never\s+append a second\s+`retire_capabilities` entry/i, 'forbids a second entry'],
+    [/re-parse/i, 're-parses the file after writing'],
+    [/does not revert\s+the write/, 'keeps the written key rather than reverting it'],
+    [/must\s+be\s+restored before `sai-archive` is rerun/, 'names restoration as the way forward'],
+    [/git checkout HEAD -- openspec\/changes\/(?:<name>|\$ARGUMENTS)\/\.openspec\.yaml/,
+      'names the restore command for a tracked file'],
+    [/or by hand when it is not/, 'covers an untracked file'],
+  ]],
+  ['a blocked capability refuses the whole declaration', [
+    [/all[- ]or[- ]nothing/i, 'states the all-or-nothing rule'],
+  ]],
+  ['every refusal is a stop, not a question', [
+    [/stop, not a\s+question/, 'states that a refusal is a stop'],
+    [/writes? nothing/i, 'writes nothing on a refusal'],
+  ]],
+];
+
 test('archive contract completes a capability-emptying delta by declaring the retirement', () => {
   const worker = read('sai/commands/archive/worker.md');
   const instructions = read('sai/commands/archive/instructions.md');
-  const coordinator = read('sai/commands/archive/coordinator.md');
 
   assert.match(worker, /the capability-emptying delta\s+assessment \(detect when a delta spec capability's.*?with no `## ADDED Requirements`/s,
     'archive worker must document the capability-emptying assessment in pre-flight');
@@ -116,8 +170,6 @@ test('archive contract completes a capability-emptying delta by declaring the re
   assert.match(worker, /`retire_capabilities: true`/,
     'archive worker must name the retirement declaration key');
 
-  assert.match(instructions, /## Capability-emptying delta retirement/,
-    'instructions must have a Capability-emptying delta retirement section');
   assert.match(instructions, /capability's `## REMOVED Requirements` section names every requirement.*?with no `## ADDED Requirements`/s,
     'instructions must define capability-emptying delta shape');
   assert.match(instructions, /writing the single key `retire_capabilities: true` into `openspec\/changes\/\$ARGUMENTS\/\.openspec\.yaml`/,
@@ -126,13 +178,36 @@ test('archive contract completes a capability-emptying delta by declaring the re
     'instructions must keep the retirement silent on every route');
   assert.match(instructions, /neither rewritten nor duplicated/,
     'instructions must keep the retirement write idempotent');
-  assert.match(instructions, /explicit user veto/,
-    'instructions must honour an explicit retire_capabilities: false veto');
   assert.match(instructions, /archive gains no move or delete power there/,
     'instructions must keep spec deletion with the OpenSpec CLI');
+});
 
-  assert.match(coordinator, /\*\*Retirement declaration\*\*/,
-    'coordinator must own the ordinary-route retirement declaration');
+test('every archive contract file states the same retirement declaration rules', () => {
+  for (const relativePath of ARCHIVE_CONTRACT_FILES) {
+    const contract = read(relativePath);
+    for (const [rule, clauses] of RETIREMENT_DECLARATION_RULES) {
+      for (const [pattern, what] of clauses) {
+        assert.match(contract, pattern,
+          `${relativePath} must state that ${rule}: it ${what}`);
+      }
+    }
+  }
+});
+
+test('the retirement declaration is a named member of the direct-build closed order', () => {
+  const worker = read('sai/commands/archive/worker.md');
+  const coordinator = read('sai/commands/archive/coordinator.md');
+  const enumeration = worker.slice(
+    worker.indexOf('closed execution order; it is the only authority for'),
+    worker.indexOf('Before acting, the worker validates')
+  );
+
+  assert.match(enumeration, /`retire_capabilities` retirement declaration/,
+    'the worker closed-order enumeration must name the retirement declaration');
+  assert.match(enumeration, /not an altered\s+order/,
+    'the worker must accept an order carrying the declaration instead of rejecting it');
+  assert.match(coordinator, /closed-order content enumeration/,
+    'the coordinator must name the retirement declaration in the closed-order enumeration');
 });
 
 test('the direct-build backfill execution and archive preparation blocks appear exactly once', () => {
