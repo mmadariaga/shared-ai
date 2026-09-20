@@ -16,21 +16,56 @@ When the read-only pre-flight detects one or more capability-emptying deltas, ar
 
 ### Requirement: The retirement SHALL be silent on every route
 
-The retirement SHALL introduce no new question, no new gate, and no per-route branch. The ordinary route, the Direct Build (unattended) route, and `--fast-track` SHALL behave identically with respect to it. The existing post-archive commit gate SHALL remain the human checkpoint.
+The retirement SHALL introduce no new question, no new gate, and no per-route branch. The ordinary
+route, the Direct Build (unattended) route, and `--fast-track` SHALL behave identically with
+respect to it. The human decision SHALL be located upstream, in the capability-emptying delta the
+author wrote into the change, and the contract SHALL NOT present the post-archive commit gate as
+the human checkpoint for the retirement, because `--fast-track` suppresses that selector and the
+Direct Build (unattended) route commits unattended, so on both routes the published spec is
+deleted and committed within a single invocation with nobody watching. Recovery SHALL be stated as
+git on every route, and the declared `retire_capabilities: true` SHALL be stated as travelling
+with the change into `openspec/changes/archive/YYYY-MM-DD-{name}/.openspec.yaml` as the durable
+record that the retirement was declared.
 
 #### Scenario: No route gains a retirement question
 
 - **WHEN** a capability-emptying delta is archived on the ordinary route, on the Direct Build route, or under `--fast-track`
-- **THEN** no retirement question or gate is presented on any of them and the existing post-archive commit gate is unchanged
+- **THEN** no retirement question or gate is presented on any of them
+
+#### Scenario: The published justification names the real decision point
+
+- **WHEN** a reader consults the retirement contract for the human checkpoint behind a capability retirement
+- **THEN** the contract names the capability-emptying delta as the decision point, states that the post-archive commit gate is not that checkpoint on the unattended routes, and names git plus the archived `retire_capabilities: true` record as recovery and evidence
 
 ### Requirement: Archive SHALL name every retired capability in its report
 
-The archive worker SHALL record the detected capability names as invocation-scoped `retired_capabilities` state and SHALL name each one in its terminal summary, so the coordinator and the later commit gate show what the CLI will delete. With an empty set, the summary SHALL name nothing.
+The archive worker SHALL record the detected capability names as invocation-scoped
+`retired_capabilities` state and SHALL name each one in its terminal summary. Whenever one or more
+capabilities were retired, the visible archive output SHALL name every retired capability id, and
+the line SHALL be emitted identically on the ordinary route, under `--fast-track`, and under
+Direct Build (unattended); an identical report on all three routes is not a per-route branch. The
+disclosure SHALL be conditioned solely on a retirement having occurred: with an empty
+`retired_capabilities` set the summary SHALL name nothing and no disclosure line SHALL be emitted.
+The disclosure SHALL be pure output — it SHALL carry no options, accept no answer, wait for
+nothing, and SHALL NOT be able to block or fail the invocation. On the ordinary route the
+disclosure SHALL precede `openspec archive <name> --yes --json`, so it names what the CLI is about
+to delete, while the post-archive commit gate comes last and declining the commit there SHALL NOT
+undo the retirement the CLI has already performed on disk.
 
 #### Scenario: The report exposes what will be deleted
 
 - **WHEN** the worker closes a run in which one or more capability-emptying deltas were detected
-- **THEN** its terminal summary names each detected capability
+- **THEN** its terminal summary names every detected capability id, not only the first
+
+#### Scenario: The disclosure is identical under fast-track and Direct Build
+
+- **WHEN** a capability-emptying archive completes under `--fast-track` or on the Direct Build (unattended) route
+- **THEN** the same retired-capability disclosure is emitted as on the ordinary route, with no option set, no answer accepted, and no ability to block the invocation
+
+#### Scenario: No retirement emits no disclosure
+
+- **WHEN** an archive completes with no capability-emptying delta detected
+- **THEN** no retired-capability line is emitted in the visible output or the terminal summary
 
 ### Requirement: The OpenSpec CLI SHALL remain the only deleter under `openspec/specs/**`
 

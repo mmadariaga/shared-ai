@@ -143,3 +143,34 @@ The archive commit gate SHALL NOT use the `yes` / `no` / `Allow on this session`
 
 - **WHEN** any option of the archive commit gate is selected
 - **THEN** the session-scoped commit-authorization flag of the `commit-auth-gate` capability is neither set nor read
+
+### Requirement: The authored commit message body SHALL name every retired capability id
+
+Whenever the archive invocation retired one or more capabilities — the capability-emptying delta
+retirement declared through `retire_capabilities: true` — and a commit is actually created on this
+gate, the authored message SHALL name every retired capability id on its own line in the message
+**body**, not only the first. The two conditions SHALL be independent: a retirement with no commit
+SHALL produce no body line, whether the gate ended through the skip rule, the shared empty-index
+guard, a declined secondary confirmation, or the do-nothing option; and a commit with no
+retirement SHALL produce none either. The line SHALL live in the body only and SHALL NOT enter the
+subject, so the subject remains exactly what `sai/commands/commit/instructions.md` steps 1–5
+derive from the staged state and the Conventional Commits format of `sai/policies/commit-rules.md`
+is unchanged. The rule SHALL apply wherever this gate authors a message — the new-commit path and
+the fast-track path alike — and SHALL NOT apply to `git commit --amend --no-edit`, which authors
+no message. It SHALL add no gate, no prompt, and no extra commit, and SHALL change neither the
+skip rule, the staged paths, the empty-index guard, nor the pushed-HEAD guard.
+
+#### Scenario: A retirement that reaches a commit names its ids in the body
+
+- **WHEN** the invocation retired two capabilities and the gate creates a commit on the new-commit or fast-track path
+- **THEN** the authored message body carries one line per retired capability id and the subject is unchanged
+
+#### Scenario: A retirement with no commit produces no body line
+
+- **WHEN** the invocation retired a capability but the gate ends without creating a commit, through the skip rule, the empty-index guard, or the do-nothing option
+- **THEN** no message is authored and no retired-capability line exists anywhere
+
+#### Scenario: The amend --no-edit path is untouched
+
+- **WHEN** the gate takes the `git commit --amend --no-edit` path after a retirement
+- **THEN** no message is authored and no retired-capability line is added

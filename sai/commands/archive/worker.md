@@ -258,8 +258,24 @@ exactly this order and nothing else:
    warnings, and do not author a message or create a commit. Otherwise, apply
    the commit-message rules to the staged state only, then execute one local
    HEREDOC-form new commit under the already-consumed Direct Build (unattended)
-   commit authorization. Never amend, push, force-push, or ask for a second
+   commit authorization. When the prepared plan recorded one or more
+   `retired_capabilities` and a commit is actually created, the authored message
+   names every retired capability id on its own line in the message **body**,
+   never in the subject: the subject stays exactly what the commit-message rules
+   derive from the staged state, so the Conventional Commits format is unchanged.
+   The two conditions are independent — a retirement with no commit (the
+   empty-index guard above, or any earlier terminal stop) produces no body line,
+   and a commit with no retirement produces none either. This adds no extra
+   commit and no second write: never amend, push, force-push, or ask for a second
    commit.
+
+Whenever the prepared plan recorded one or more `retired_capabilities`, the
+terminal summary of this continuation names every retired capability id, exactly
+as the prepare stretch's summary does, so the disclosure required by
+`@sai/commands/archive/instructions.md` reaches the user identically on the
+ordinary route, under `--fast-track`, and under Direct Build (unattended). It is
+report text only: it carries no options, accepts no answer, and never blocks the
+run. With an empty `retired_capabilities` set, no such line appears.
 
 The worker records each realized path in the ordered duplicate-free
 `changed_files` union. Obtain exact spec paths from the pre-flight inventory

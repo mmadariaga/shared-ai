@@ -93,3 +93,35 @@ The closed Direct Build (unattended) archive execution order SHALL enumerate the
 
 - **WHEN** the worker validates a closed Direct Build archive order whose prepared plan recorded one or more retired capabilities
 - **THEN** it accepts the retirement declaration as authorized content of the order and neither rejects the order as altered nor writes without authorization
+
+### Requirement: The Direct Build commit body and terminal summary SHALL name every retired capability id
+
+When the prepared plan recorded one or more `retired_capabilities` and a commit is actually
+created under the already-consumed Direct Build (unattended) commit authorization, the authored
+message SHALL name every retired capability id on its own line in the message **body** and never
+in the subject: the subject SHALL stay exactly what the commit-message rules derive from the
+staged state, so the Conventional Commits format is unchanged. The two conditions SHALL be
+independent — a recorded retirement with no commit, whether because the empty-index guard fired or
+because an earlier terminal stop occurred, SHALL produce no body line, and a commit with no
+recorded retirement SHALL produce none either. The rule SHALL add no extra commit and no second
+write, and the prohibition on amending, pushing, force-pushing, and asking for a second commit
+SHALL remain in force. Whenever the prepared plan recorded one or more `retired_capabilities`, the
+terminal summary of the execute continuation SHALL name every retired capability id, exactly as
+the prepare stretch's summary does, as report text only: it SHALL carry no options, accept no
+answer, and SHALL NOT block the run. With an empty `retired_capabilities` set, no such line SHALL
+appear.
+
+#### Scenario: An unattended commit records the retired ids
+
+- **WHEN** an authorized Direct Build archive order whose prepared plan recorded retired capabilities passes the empty-index guard and creates its one local commit
+- **THEN** the commit message body names every retired capability id on its own line, the subject is unchanged, and no amend or push occurs
+
+#### Scenario: An empty index after a retirement emits no body line
+
+- **WHEN** the prepared plan recorded a retirement but the empty-index guard prevents the commit
+- **THEN** no message is authored and no retired-capability body line exists, while the terminal summary still names every retired capability id
+
+#### Scenario: No recorded retirement leaves the report unchanged
+
+- **WHEN** an authorized Direct Build archive order whose prepared plan recorded no retired capability completes
+- **THEN** neither the commit message body nor the terminal summary carries a retired-capability line
