@@ -237,3 +237,16 @@ test('selector flows keep overview opt-out and renderer ownership unchanged', ()
     assert.doesNotMatch(renderer, /NativeStageSelectorCapability|keep-iterating|discuss-ideas-feedback|selector-presented|selector-option-received|selector-free-text-received/);
   }
 });
+
+test('direct-looking imperative inputs mature as ideas without early implementation handoff', () => {
+  const source = explore();
+
+  assert.match(source, /direct-looking request/);
+  assert.match(source, /as the initial content of a candidate idea, never as authorization to implement, dispatch, or leave Explore/);
+  assert.match(source, /Preserve its stated objectives, constraints, and acceptance criteria/);
+  assert.match(source, /never triggers a handoff to `\/sai-4-apply` or `\/sai-build`/);
+  assert.match(source, /never advises exiting Explore/);
+  assert.match(source, /`Explore change`, `Review edge cases`, `Implementation details`, and `Crystallize`.*remain mandatory/);
+  assert.match(source, /crystallization-close route selector.*sole route-selection and delegated-write gate/);
+  assert.match(source, /explicit artifact-review deliverable keeps its existing review path/);
+});
