@@ -42,7 +42,7 @@ The Closure State begins only when the conversation contains a candidate idea un
 - **WHEN** the POC lane reaches a `<Cn> wins` verdict and the user selects `Stay here` instead of advancing
 - **THEN** no feature block is emitted, the Closure State remains `active-uncrystallized`, and the idea is not marked discarded
 
-#### Scenario: not-viable exit marks the idea discarded
+#### Scenario: a none verdict does not mark the idea discarded
 
 - **WHEN** the POC lane reaches a `none` verdict and stops
 - **THEN** the idea is not marked discarded and the Closure State remains `active-uncrystallized`, because only an explicit discard transitions it to `discarded`
