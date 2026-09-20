@@ -101,6 +101,29 @@ pushed-HEAD check, then `git add`, then the empty-index check.
    commit authorization: after selection, stage, compose the message from the
    staged diff, and commit without presenting any further authorization prompt.
 
+## Retired capability ids in the message body
+
+Whenever this archive invocation retired one or more capabilities — the
+capability-emptying delta retirement of `sai/commands/archive/instructions.md`,
+declared through `retire_capabilities: true` — and a commit is actually created
+on this gate, the authored message names every retired capability id on its own
+line in the message **body**. Every id is named, not only the first.
+
+The two conditions are independent. A retirement with no commit produces no body
+line: the skip rule, the shared empty-index guard, a declined secondary
+confirmation, and the do-nothing option each end the gate without a commit. A
+commit with no retirement produces none either — the ordinary case is that
+nothing was retired and the message is unchanged.
+
+The line lives in the body only. It never enters the subject, so the subject
+stays exactly what `sai/commands/commit/instructions.md` steps 1–5 derive from
+the staged state and the Conventional Commits format of
+`sai/policies/commit-rules.md` is unchanged. The rule applies wherever this gate
+authors a message — the new-commit path and the fast-track path alike — and not
+to `git commit --amend --no-edit`, which authors no message. It adds no gate, no
+prompt, no extra commit, and changes neither the skip rule, the staged paths,
+the empty-index guard, nor the pushed-HEAD guard.
+
 ## Do nothing
 
 Run no `git add` and no `git commit`. The index stays exactly as it was when
