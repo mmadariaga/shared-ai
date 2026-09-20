@@ -247,14 +247,6 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0181 — Explore-stage, first hosted machine scope](./0181-explore-stage-first-hosted-machine-scope.md)
 - [0182 — CLI-based state machine with single-writer invariant](./0182-cli-state-machine-single-writer-invariant.md) — Supersedes 0176, 0177, 0180
 
-### docker/orca
-
-- [0117b — Orca AppImage is extracted at build time (no FUSE)](./0117b-orca-appimage-build-time-extraction.md)
-- [0118b — Dedicated non-root service user with a validate-and-fail ownership contract](./0118b-orca-environment-nonroot-service-user.md)
-- [0119b — Independent named volumes per state boundary with a common Orca parent](./0119b-orca-environment-independent-state-volumes.md)
-- [0120 — Concurrent three-child FIFO supervision for the headless Orca runtime](./0120-orca-headless-runtime-supervision.md)
-- [0121 — Per-CLI launchers with a strict allowlist credential parser](./0121-orca-launcher-credential-boundary.md)
-
 ### `npx shared-ai` (install / setup / uninstall / doctor)
 
 - [0010 — Raw readline for interactive checklist instead of npm library](./0010-readline-over-npm-for-interactive-checklist.md)
@@ -638,6 +630,11 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0106b — Keep both report template families with pinned skeleton parity](./0106b-keep-both-report-template-families-pinned-parity.md) — *Superseded by [0162b](./0162b-schema-report-templates-point-to-write-time-authority.md)*
 - [0117a — The three planning-phase coordinators receive the scoped `Bash(date:*)` entry as the sole allowed-tools exception](./0117a-planning-coordinators-scoped-shell-entry.md) — *Superseded by [0144](./0144-planning-coordinators-drop-the-scoped-date-shell-entry.md)*
 - [0118a — Per-harness wall-clock commands live in the harness bindings, never in the neutral policy](./0118a-per-harness-wall-clock-commands-in-bindings.md) — Refs 0077 — *Superseded by [ddr:0141](../ddr/0141-milestone-stamp-is-closure-only-and-derived-from-emitted-on.md)*
+- [0117b — Orca AppImage is extracted at build time (no FUSE)](./archive/0117b-orca-appimage-build-time-extraction.md) — *ARCHIVED to ./archive/ — the Orca container was retired by `retire-orca-container`*
+- [0118b — Dedicated non-root service user with a validate-and-fail ownership contract](./archive/0118b-orca-environment-nonroot-service-user.md) — *ARCHIVED to ./archive/ — the Orca container was retired by `retire-orca-container`*
+- [0119b — Independent named volumes per state boundary with a common Orca parent](./archive/0119b-orca-environment-independent-state-volumes.md) — *ARCHIVED to ./archive/ — the Orca container was retired by `retire-orca-container`*
+- [0120 — Concurrent three-child FIFO supervision for the headless Orca runtime](./archive/0120-orca-headless-runtime-supervision.md) — *ARCHIVED to ./archive/ — the Orca container was retired by `retire-orca-container`*
+- [0121 — Per-CLI launchers with a strict allowlist credential parser](./archive/0121-orca-launcher-credential-boundary.md) — *ARCHIVED to ./archive/ — the Orca container was retired by `retire-orca-container`*
 - [0139a — Use fresh read-only reviewers with worker-owned artifact edits](./0139a-fresh-read-only-reviewers-with-worker-owned-edits.md) — Refs ddr:0105 — *Superseded by [0158c](./0158c-delete-worker-owned-planning-artifact-review-loop.md)*
 - [0166 — Envelope-only change-name resolution for shared pickers and four cards](./archive/0166-envelope-only-change-name-resolution.md) — Supersedes 0033, Supersedes 0034, Supersedes 0035, Supersedes 0049, Refs 0075, Refs 0136 — *ARCHIVED to ./archive/ — retains and forwards `wrapper_echo_value`, which the single-string envelope removed; superseded by [0171c](./0171c-single-string-invocation-envelope.md)*
 - [0090 — Centralize Copilot inline planning lifecycle in one adapter](./archive/0090-centralize-copilot-inline-planning-lifecycle.md) — *Superseded by the retire-inline-harness-model change, which removed the Copilot inline adapter*

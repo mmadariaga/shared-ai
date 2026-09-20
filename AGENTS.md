@@ -65,7 +65,6 @@ OpenSpec skills are **internal**. Users invoke the `sai-*` wrappers exclusively.
  skills/claude/                   ← Claude Code harness skills
  skills/opencode/                 ← opencode harness skills
  configs/                         ← config samples (opencode.jsonc)
- docker/orca/                     ← self-contained remote dev appliance (see docker/orca/README.md)
  openspec/schemas/sai-workflow/   ← custom OpenSpec schema (schema.yaml + 11 templates)
 ```
 

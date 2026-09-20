@@ -13,9 +13,3 @@ reports/mutation/
 openspec/changes/**
 !openspec/changes/**/
 !openspec/changes/**/proposal.md
-
-# Orca Environment — local runtime state and operator-supplied credentials
-docker/orca/.env
-docker/orca/credentials/
-
-
