@@ -268,14 +268,20 @@ test('recovery-ledger@1 counts coordinator attempts against a three-attempt budg
   let state = machine.initialState;
 
   for (let i = 0; i < 3; i += 1) {
-    const result = machine.transition(state, { kind: 'coordinator-attempt' });
+    const result = machine.transition(state, {
+      kind: 'coordinator-attempt',
+      key: [`path${i}.md`, `point ${i}`, `boundary${i}`],
+    });
     assert.equal(result.state.stage, String(i + 1), `coordinator attempt ${i + 1} should report its ordinal`);
     assert.equal(result.state.coordinator_attempts, i + 1);
     assert.ok(!result.rejected, 'an attempt inside the budget must not be rejected');
     state = result.state;
   }
 
-  const exhausted = machine.transition(state, { kind: 'coordinator-attempt' });
+  const exhausted = machine.transition(state, {
+    kind: 'coordinator-attempt',
+    key: ['path3.md', 'point 3', 'boundary3'],
+  });
   assert.equal(exhausted.rejected, 'exhaustion', 'a fourth coordinator attempt must exhaust the budget');
   assert.equal(exhausted.state.stage, '');
   assert.equal(exhausted.state.coordinator_attempts, 3);
@@ -284,8 +290,8 @@ test('recovery-ledger@1 counts coordinator attempts against a three-attempt budg
 test('recovery-ledger@1 keeps the coordinator budget separate from the worker slots', () => {
   let state = machine.initialState;
 
-  state = machine.transition(state, { kind: 'coordinator-attempt' }).state;
-  state = machine.transition(state, { kind: 'coordinator-attempt' }).state;
+  state = machine.transition(state, { kind: 'coordinator-attempt', key: ['a.md', 'point a', 'coordinator'] }).state;
+  state = machine.transition(state, { kind: 'coordinator-attempt', key: ['b.md', 'point b', 'coordinator'] }).state;
 
   assert.equal(state.ledger.length, 0, 'coordinator attempts must not consume worker ledger slots');
 
@@ -297,4 +303,139 @@ test('recovery-ledger@1 keeps the coordinator budget separate from the worker sl
 test('recovery-ledger@1 resets both budgets from its initial state', () => {
   assert.equal(machine.initialState.coordinator_attempts, 0);
   assert.deepEqual(machine.initialState.ledger, []);
+});
+
+test('recovery-ledger@1 spends zero on a duplicate coordinator diagnosis', () => {
+  let state = machine.initialState;
+  const key = ['openspec/changes/x/implementation.md', 'Step 2 verification assertion', 'coordinator-plan-repair'];
+
+  let result = machine.transition(state, { kind: 'coordinator-attempt', key });
+  assert.equal(result.state.stage, '1', 'the first coordinator diagnosis spends attempt 1');
+  state = result.state;
+
+  result = machine.transition(state, { kind: 'coordinator-attempt', key });
+  assert.equal(result.rejected, 'duplicate diagnosis', 'a repeated coordinator diagnosis must be rejected');
+  assert.equal(result.state.stage, '', 'a duplicate coordinator diagnosis spends no attempt');
+  assert.equal(result.state.coordinator_attempts, 1, 'the coordinator budget must be untouched by a duplicate');
+
+  // Normalization applies to the coordinator ledger exactly as to the worker ledger.
+  const equivalent = ['openspec/./changes/x/implementation.md', '  Step 2   verification assertion ', 'coordinator-plan-repair'];
+  const normalized = machine.transition(state, { kind: 'coordinator-attempt', key: equivalent });
+  assert.equal(normalized.rejected, 'duplicate diagnosis', 'coordinator keys must be normalized before comparison');
+  assert.equal(normalized.state.coordinator_attempts, 1);
+});
+
+test('recovery-ledger@1 spends zero on a coordinator attempt with no concrete key', () => {
+  const result = machine.transition(machine.initialState, { kind: 'coordinator-attempt' });
+  assert.equal(result.rejected, 'unresolved cause', 'a keyless coordinator attempt is an unresolved cause');
+  assert.equal(result.state.coordinator_attempts, 0, 'an unresolved coordinator attempt spends nothing');
+  assert.equal(result.state.stage, '');
+});
+
+test('recovery-ledger@1 grants a budget on first Step entry and keeps it on re-entry', () => {
+  let state = machine.initialState;
+
+  const first = machine.transition(state, { kind: 'step-entry', step: 'Step 2' });
+  assert.equal(first.step_entry, 'first', 'the first entry to a Step must grant a fresh budget');
+  state = first.state;
+
+  state = machine.transition(state, { key: ['src/a.js', 'line 4', 'green-worker'] }).state;
+  state = machine.transition(state, { kind: 'coordinator-attempt', key: ['src/b.js', 'line 9', 'coordinator'] }).state;
+  assert.equal(state.ledger.length, 1);
+  assert.equal(state.coordinator_attempts, 1);
+
+  const reentry = machine.transition(state, { kind: 'step-entry', step: 'Step 2' });
+  assert.equal(reentry.step_entry, 're-entry', 'a Step already entered must report a re-entry');
+  assert.equal(reentry.state.ledger.length, 1, 're-entry must keep the spent worker slots');
+  assert.equal(reentry.state.coordinator_attempts, 1, 're-entry must keep the spent coordinator attempts');
+
+  const nextStep = machine.transition(reentry.state, { kind: 'step-entry', step: 'Step 3' });
+  assert.equal(nextStep.step_entry, 'first', 'a Step not yet entered must get its own budget');
+  assert.deepEqual(nextStep.state.ledger, [], 'a new Step starts with an empty worker ledger');
+  assert.equal(nextStep.state.coordinator_attempts, 0, 'a new Step starts with a full coordinator budget');
+});
+
+test('recovery-ledger@1 grants nothing for a Step entry with no concrete Step identifier', () => {
+  let state = machine.transition(machine.initialState, { kind: 'step-entry', step: 'Step 1' }).state;
+  state = machine.transition(state, { kind: 'coordinator-attempt', key: ['src/a.js', 'point', 'coordinator'] }).state;
+
+  for (const bad of [undefined, '', '   ', 7]) {
+    const result = machine.transition(state, { kind: 'step-entry', step: bad });
+    assert.equal(result.step_entry, 'unidentified', 'an unnamed Step entry must not claim a first entry');
+    assert.equal(result.state.coordinator_attempts, 1, 'an unnamed Step entry must grant no fresh budget');
+  }
+});
+
+test('recovery-ledger@1 reports both budget tallies and names the exhausted budget', () => {
+  let state = machine.initialState;
+
+  const opening = machine.transition(state, { kind: 'step-entry', step: 'Step 5' });
+  assert.deepEqual(opening.budgets, {
+    worker: { spent: 0, limit: 3 },
+    coordinator: { spent: 0, limit: 3 },
+  }, 'a fresh Step reports both budgets unspent');
+  state = opening.state;
+
+  for (let i = 0; i < 3; i += 1) {
+    state = machine.transition(state, { kind: 'coordinator-attempt', key: [`c${i}.js`, `point ${i}`, 'coordinator'] }).state;
+  }
+  state = machine.transition(state, { key: ['w0.js', 'point w0', 'red-worker'] }).state;
+
+  const coordinatorExhausted = machine.transition(state, { kind: 'coordinator-attempt', key: ['c9.js', 'point 9', 'coordinator'] });
+  assert.equal(coordinatorExhausted.rejected, 'exhaustion');
+  assert.equal(coordinatorExhausted.exhausted, 'coordinator', 'exhaustion must name the budget that ran out');
+  assert.deepEqual(coordinatorExhausted.budgets, {
+    worker: { spent: 1, limit: 3 },
+    coordinator: { spent: 3, limit: 3 },
+  }, 'exhaustion must report what each budget spent');
+
+  state = machine.transition(state, { key: ['w1.js', 'point w1', 'red-worker'] }).state;
+  state = machine.transition(state, { key: ['w2.js', 'point w2', 'red-worker'] }).state;
+  const workerExhausted = machine.transition(state, { key: ['w3.js', 'point w3', 'red-worker'] });
+  assert.equal(workerExhausted.rejected, 'exhaustion');
+  assert.equal(workerExhausted.exhausted, 'worker', 'a worker-slot exhaustion must name the worker budget');
+  assert.deepEqual(workerExhausted.budgets, {
+    worker: { spent: 3, limit: 3 },
+    coordinator: { spent: 3, limit: 3 },
+  });
+});
+
+test('recovery-ledger@1 CLI emit carries budgets, exhaustion and Step-entry outcome on the wire', () => {
+  const sessionId = deriveUuidFromKey('recovery-ledger-budget-wire-' + Date.now());
+  callSaiState('spawn', undefined, undefined, undefined);
+
+  const entry = callSaiState('emit', sessionId, 'recovery-ledger@1', JSON.stringify({ kind: 'step-entry', step: 'Step 2' }));
+  assert.ok(entry.payload, 'a step entry must return valid JSON');
+  assert.equal(entry.payload.step_entry, 'first', 'the wire must report the first entry to a Step');
+  assert.deepEqual(entry.payload.budgets, {
+    worker: { spent: 0, limit: 3 },
+    coordinator: { spent: 0, limit: 3 },
+  });
+
+  for (let i = 0; i < 3; i += 1) {
+    const spend = callSaiState('emit', sessionId, 'recovery-ledger@1', JSON.stringify({
+      kind: 'coordinator-attempt',
+      key: [`c${i}.js`, `point ${i}`, 'coordinator'],
+    }));
+    assert.equal(spend.payload.stage, String(i + 1));
+    assert.equal(spend.payload.budgets.coordinator.spent, i + 1, 'the wire must report the running coordinator tally');
+  }
+
+  const duplicate = callSaiState('emit', sessionId, 'recovery-ledger@1', JSON.stringify({
+    kind: 'coordinator-attempt',
+    key: ['c0.js', 'point 0', 'coordinator'],
+  }));
+  assert.equal(duplicate.payload.rejected, 'duplicate diagnosis', 'a duplicate coordinator key must reject on the wire');
+  assert.equal(duplicate.payload.budgets.coordinator.spent, 3, 'a duplicate must not spend a coordinator attempt');
+
+  const exhausted = callSaiState('emit', sessionId, 'recovery-ledger@1', JSON.stringify({
+    kind: 'coordinator-attempt',
+    key: ['c9.js', 'point 9', 'coordinator'],
+  }));
+  assert.equal(exhausted.payload.rejected, 'exhaustion');
+  assert.equal(exhausted.payload.exhausted, 'coordinator', 'the wire must name the exhausted budget');
+
+  const reentry = callSaiState('emit', sessionId, 'recovery-ledger@1', JSON.stringify({ kind: 'step-entry', step: 'Step 2' }));
+  assert.equal(reentry.payload.step_entry, 're-entry', 'the wire must report a re-entered Step');
+  assert.equal(reentry.payload.budgets.coordinator.spent, 3, 'a re-entered Step keeps its spent budget on the wire');
 });

@@ -21,7 +21,14 @@ additional phase-adapter field.
    on entry to each recovery scope — on entry to each Step for a Step-executing
    adapter, at each composition-segment boundary otherwise — so the next scope gets
    a fresh three-slot pool. A later eligible scope never inherits an earlier scope's
-   depleted or remaining slots. Every later reference below to "that segment's
+   depleted or remaining slots. For a Step-executing adapter that entry is guarded by
+   Step identity: send the machine a `step-entry` signal naming the Step instead of the
+   bare unguarded reset, and the machine grants the fresh pool — worker slots and
+   coordinator attempts together — only on the first entry to that Step in the run. A
+   Step re-entered after a correction or a route retry keeps what it has already spent
+   and draws no second budget; an unguarded reset in a loop would make the cap
+   meaningless. The bare `reset` stays the segment-boundary form for an adapter that
+   executes no Steps. Every later reference below to "that segment's
    ledger" or the segment ledger means the ledger of the active recovery scope.
    The machine normalizes keys, checks for duplicates, and tracks slots; the
    coordinator consults it before recovery dispatch. A slot is consumed only
@@ -137,7 +144,11 @@ additional phase-adapter field.
     diagnosis keys before dispatch: if a key is a duplicate, it spends zero slots,
     does not invoke `continue_after_recovery`, and returns a stopping reason of
     `duplicate diagnosis`. The coordinator hands back the existing diagnosis rather
-    than creating a second attempt. A coordinator-owned rejection with
+    than creating a second attempt. The same duplicate rule binds the coordinator's own
+    budget: a coordinator attempt carries the same normalized diagnosis key, a key the
+    coordinator already attempted in this scope spends zero attempts and returns
+    `duplicate diagnosis`, and an attempt with no concrete key spends zero and returns
+    `unresolved cause`. A coordinator-owned rejection with
     no concrete in-scope correction likewise spends zero slots. These branches
     do not alter the unchanged `changed_files` union.
 
@@ -186,7 +197,11 @@ additional phase-adapter field.
    `Cause`, `Correction`, and `Verification`. A recovery hand-back also names
    the routing diagnosis, `failure_class` when present, Cause Locus,
    `diagnosis_key` (or that it is unresolved), `attempts_spent` (the number of
-   attempts spent), and the stopping reason. Stopping reasons are limited to no policy, unresolved or
+   attempts spent), and the stopping reason. `attempts_spent` is read from the
+   machine's response, which reports `budgets` as `{worker: {spent, limit},
+   coordinator: {spent, limit}}` on every outcome and names the budget that ran out
+   as `exhausted` on an exhaustion, so a long unattended run never has to recall the
+   tallies from conversation. Stopping reasons are limited to no policy, unresolved or
    out-of-scope cause, duplicate diagnosis, worker veto, exhaustion,
    continuation/transport loss, coordinator rejection, input, or cancellation.
    Recovery announcements and hand-backs are conversation text only; they

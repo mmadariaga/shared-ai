@@ -125,6 +125,19 @@ function withWarnings(payload, warnings) {
   return Object.assign({}, payload, { warnings });
 }
 
+// Machine-authored observability fields carried verbatim onto the emit wire.
+// The set is closed: budget tallies, the name of the exhausted budget, and the
+// first-entry/re-entry outcome of a scope entry.
+const OBSERVABILITY_FIELDS = ['budgets', 'exhausted', 'step_entry'];
+
+function attachObservabilityFields(target, source) {
+  if (!target || !source) return target;
+  for (const field of OBSERVABILITY_FIELDS) {
+    if (source[field] !== undefined) target[field] = source[field];
+  }
+  return target;
+}
+
 function entryRev(entry) {
   return (entry && typeof entry === 'object' && !Array.isArray(entry) && typeof entry.rev === 'number') ? entry.rev : 0;
 }
@@ -221,6 +234,7 @@ function persistMachineOutcome(id, record, machineId, nextState, eventId, wire) 
   } catch (err) {}
   const mergedWire = { stage: mergedStage, next: mergedNext };
   if (wire.rejected !== undefined) mergedWire.rejected = wire.rejected;
+  attachObservabilityFields(mergedWire, wire);
 
   const merged = Object.assign({}, baseForMeta);
   merged.createdAt = createdAt;
@@ -243,6 +257,7 @@ function persistMachineOutcome(id, record, machineId, nextState, eventId, wire) 
   }
   const lastOutcome = { stage: mergedWire.stage, next: mergedWire.next };
   if (mergedWire.rejected !== undefined) lastOutcome.rejected = mergedWire.rejected;
+  attachObservabilityFields(lastOutcome, mergedWire);
   merged.stateByMachine[machineId] = {
     state: mergedState,
     rev: newRev,
@@ -413,6 +428,7 @@ function commandEmit(id, machineIdArg, eventJsonArg) {
 
   const wire = { stage: typeof nextState.stage === 'string' ? nextState.stage : undefined, next: nxt };
   if (result.rejected) wire.rejected = result.rejected;
+  attachObservabilityFields(wire, result);
 
   let emitWire = wire;
   let persistedState = nextState;

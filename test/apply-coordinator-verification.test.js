@@ -409,3 +409,46 @@ test('Step 4 budget exhaustion and the enumerated stopping reasons close an unat
   assert.match(ladder, /record one line per autonomous correction[\s\S]{0,320}report the collected lines at run close/i,
     'autonomous corrections must leave a trace reported at run close');
 });
+
+test('Step 4 a re-entered Step keeps its spent budgets and duplicate coordinator diagnoses cost zero', () => {
+  const coordinator = artifact(APPLY_CARDS.coordinator);
+  const ladder = coordinator.slice(coordinator.search(/## Coordinator-led unblock ladder/));
+
+  assert.match(ladder, /`\{kind: step-entry, step: "Step N"\}`/,
+    'the Step budget must be granted by the Step-guarded step-entry signal');
+  assert.match(ladder, /only when this run has not entered that Step before/i,
+    'a fresh budget must be granted on the first entry to a Step only');
+  assert.match(ladder, /re-entered[\s\S]{0,260}keeps the worker slots and coordinator attempts already spent[\s\S]{0,120}never draws a second budget/i,
+    'a re-entered Step must keep its spent budgets');
+  assert.match(ladder, /Do not use the bare `reset <id> recovery-ledger@1` between Steps/,
+    'the unguarded reset must not be used between Steps');
+  assert.match(ladder, /`\{kind: coordinator-attempt, key: \[artifact path, concrete point, authorized correction boundary\]\}`/,
+    'a coordinator attempt must carry a concrete diagnosis key');
+  assert.match(ladder, /already attempted at coordinator level in this Step spends zero[\s\S]{0,200}`rejected: duplicate diagnosis`/i,
+    'a duplicate coordinator diagnosis must spend zero attempts');
+  assert.match(ladder, /no concrete key spends zero[\s\S]{0,80}`rejected: unresolved cause`/i,
+    'a coordinator attempt without a concrete key must spend zero attempts');
+});
+
+test('Step 4 exhaustion is self-describing and the autonomous-correction trace has an enforced format', () => {
+  const coordinator = artifact(APPLY_CARDS.coordinator);
+  const ladder = coordinator.slice(coordinator.search(/## Coordinator-led unblock ladder/));
+
+  assert.match(ladder, /`budgets` as `\{worker: \{spent, limit\}, coordinator: \{spent, limit\}\}`/,
+    'every ledger outcome must report what each budget spent');
+  assert.match(ladder, /`exhausted` as `worker` or `coordinator`/,
+    'an exhaustion must name the budget that ran out');
+  assert.match(ladder, /Take those tallies from the store response rather than from memory of the conversation/,
+    'the escalation tallies must come from the store, not from conversation memory');
+  assert.match(ladder, /coordinator budget is exhausted stops even when worker slots remain/i,
+    'leftover worker slots must open no alternative route once the coordinator budget is gone');
+
+  assert.match(ladder, /Each line is exactly `> Autonomous correction: Step <N> \| <rung> \| key <path> :: <point> :: <boundary> \| <budget> <ordinal> of 3 \| <outcome>`/,
+    'the trace line format must be pinned');
+  assert.match(ladder, /Coverage is every rung the coordinator takes without asking the user, including a zero-cost outcome/,
+    'the trace must cover zero-cost outcomes too');
+  assert.match(ladder, /whether the run ends by completing, by escalating, or by stopping/i,
+    'the trace must be reported at run close even when the run succeeds');
+  assert.match(ladder, /`> Autonomous corrections: none`/,
+    'an empty trace must still be reported');
+});
