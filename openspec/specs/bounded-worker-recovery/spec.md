@@ -171,7 +171,12 @@ For an opted-in adapter, the coordinator SHALL use one recovery-scope-scoped led
 #### Scenario: Each Step of a Step-executing adapter gets a fresh pool
 
 - **WHEN** a Step-executing adapter enters a new Step after an earlier Step consumed recovery slots
-- **THEN** the coordinator SHALL reset the ledger on Step entry so the new Step receives a fresh three-slot pool and inherits no depleted or remaining slot
+- **THEN** the coordinator SHALL send the Step-guarded `step-entry` signal naming that Step so the newly entered Step receives a fresh three-slot pool and inherits no depleted or remaining slot
+
+#### Scenario: A re-entered Step draws no second pool
+
+- **WHEN** a Step-executing adapter re-enters a Step it already entered in this run, after a correction or a route retry
+- **THEN** the coordinator SHALL keep the slots and coordinator attempts already spent in that Step and SHALL grant no second pool
 
 #### Scenario: An adapter that executes no Steps keeps segment scope
 
@@ -517,7 +522,7 @@ When Cause Locus is `owner-in-run` and the owner worker returns a successful `co
 
 ### Requirement: The recovery ledger is owned by a registered stage machine
 
-The per-recovery-scope recovery ledger SHALL be owned by the `recovery-ledger@1` stage machine registered in `sai-state/registry.js`. Before spending a slot the coordinator SHALL consult that machine with the raw ordered tuple `(artifact path, concrete point, authorized correction boundary)`, and the machine SHALL perform the normalization, key-equality comparison, duplicate detection and slot accounting. Normalization SHALL canonicalize the artifact path as a repository-relative path with `/` separators and a leading `./` removed, and SHALL trim and collapse non-semantic whitespace in the concrete point. The machine SHALL report a consumed slot through the existing emit wire `stage` field as a string ordinal, and SHALL report every zero-slot outcome through the existing `rejected` field carrying a value from the closed stopping-reason vocabulary. The machine SHALL route to no step file and SHALL always return `next.follow` as `none`. The machine SHALL additionally own the coordinator's own attempt budget for the same recovery scope: three coordinator attempts per recovery scope, tracked in machine state as `coordinator_attempts` and counted separately from the three worker slots. The machine SHALL accept a coordinator-attempt signal, spend one attempt, and report the resulting ordinal through the existing `stage` field; once three attempts are spent it SHALL reject the next coordinator attempt through the existing `rejected` field with `exhaustion` and SHALL spend nothing. Entering a new recovery scope SHALL clear the ledger with `reset <id> recovery-ledger@1` — on entry to each Step for a Step-executing adapter, at each composition-segment boundary otherwise — clearing the worker slots and the coordinator attempts together and leaving every other machine in the same session untouched. The machine SHALL require no change to the emit wire or to `bin/sai-state.js`, and the coordinator SHALL retain ownership of constructing the diagnosis and assigning Cause Locus.
+The per-recovery-scope recovery ledger SHALL be owned by the `recovery-ledger@1` stage machine registered in `sai-state/registry.js`. Before spending a slot the coordinator SHALL consult that machine with the raw ordered tuple `(artifact path, concrete point, authorized correction boundary)`, and the machine SHALL perform the normalization, key-equality comparison, duplicate detection and slot accounting. Normalization SHALL canonicalize the artifact path as a repository-relative path with `/` separators and a leading `./` removed, and SHALL trim and collapse non-semantic whitespace in the concrete point. The machine SHALL report a consumed slot through the existing emit wire `stage` field as a string ordinal, and SHALL report every zero-slot outcome through the existing `rejected` field carrying a value from the closed stopping-reason vocabulary. The machine SHALL route to no step file and SHALL always return `next.follow` as `none`. The machine SHALL additionally own the coordinator's own attempt budget for the same recovery scope: three coordinator attempts per recovery scope, tracked in machine state as `coordinator_attempts` and counted separately from the three worker slots. A coordinator-attempt signal SHALL carry the same ordered diagnosis tuple as a worker attempt and SHALL be normalized and compared against a coordinator-owned key ledger for the scope: a signal with no concrete key SHALL spend zero attempts and reject with `unresolved cause`, a key already attempted at coordinator level in that scope SHALL spend zero attempts and reject with `duplicate diagnosis`, and only a new key SHALL spend one attempt and report the resulting ordinal through the existing `stage` field; once three attempts are spent it SHALL reject the next coordinator attempt through the existing `rejected` field with `exhaustion` and SHALL spend nothing. Entering a new recovery scope SHALL clear the ledger — for a Step-executing adapter through a `step-entry` signal naming the Step, for an adapter that executes no Steps through `reset <id> recovery-ledger@1` at each composition-segment boundary — clearing the worker slots and the coordinator attempts together and leaving every other machine in the same session untouched. A `step-entry` signal SHALL grant that fresh pair of budgets only on the first entry to that Step in the run, reporting `step_entry` as `first`; a Step already entered SHALL report `step_entry` as `re-entry` and SHALL retain the worker slots and coordinator attempts already spent in it; a signal carrying no usable Step identifier SHALL report `step_entry` as `unidentified` and SHALL grant nothing. Every machine outcome, including the read-only projection, SHALL report `budgets` as `{worker: {spent, limit}, coordinator: {spent, limit}}`, and an exhaustion SHALL additionally report `exhausted` as `worker` or `coordinator` naming the budget that ran out. `bin/sai-state.js` SHALL carry the closed machine-authored observability field set `budgets`, `exhausted` and `step_entry` verbatim onto the emit wire, into the persisted merged wire, and into the stored last outcome, adding no other wire field. The coordinator SHALL retain ownership of constructing the diagnosis and assigning Cause Locus.
 
 #### Scenario: Distinct diagnosis keys consume successive slots
 
@@ -539,13 +544,13 @@ The per-recovery-scope recovery ledger SHALL be owned by the `recovery-ledger@1`
 
 #### Scenario: The segment boundary clears only the ledger
 
-- **WHEN** the coordinator resets `recovery-ledger@1` on entry to an eligible recovery scope — a new Step for a Step-executing adapter, an eligible composition-segment boundary otherwise
+- **WHEN** the coordinator opens an eligible recovery scope — a first `step-entry` signal for a Step-executing adapter, a `reset <id> recovery-ledger@1` at an eligible composition-segment boundary otherwise
 - **THEN** the next consult SHALL report the first slot ordinal again
 - **AND** every other machine registered in the same session SHALL retain its state
 
 #### Scenario: Coordinator attempts are counted against a three-attempt budget
 
-- **WHEN** the coordinator consults `recovery-ledger@1` with a fourth coordinator-attempt signal inside one recovery scope
+- **WHEN** the coordinator consults `recovery-ledger@1` with a fourth coordinator-attempt signal carrying a fourth distinct diagnosis key inside one recovery scope
 - **THEN** the machine SHALL reject it as `exhaustion` without increasing the recorded coordinator attempts
 
 #### Scenario: The coordinator budget is separate from the worker slots
@@ -555,8 +560,43 @@ The per-recovery-scope recovery ledger SHALL be owned by the `recovery-ledger@1`
 
 #### Scenario: A reset clears both budgets
 
-- **WHEN** the ledger machine is reset on entry to a new recovery scope
+- **WHEN** the ledger machine opens a new recovery scope, by a segment-boundary reset or by a first `step-entry` signal for a Step
 - **THEN** its state SHALL return to an empty worker ledger and zero coordinator attempts together
+
+#### Scenario: A repeated coordinator diagnosis spends no attempt
+
+- **WHEN** the coordinator consults the machine with a coordinator-attempt signal whose normalized key was already attempted at coordinator level in that scope
+- **THEN** the machine SHALL reject it as `duplicate diagnosis` and SHALL leave the recorded coordinator attempts unchanged
+
+#### Scenario: A keyless coordinator attempt is an unresolved cause
+
+- **WHEN** the coordinator consults the machine with a coordinator-attempt signal carrying no concrete diagnosis key
+- **THEN** the machine SHALL reject it as `unresolved cause` and SHALL spend no coordinator attempt
+
+#### Scenario: A first Step entry grants both budgets and a re-entry keeps them
+
+- **WHEN** the machine receives a `step-entry` signal naming a Step already entered in this run after slots and attempts were spent in it
+- **THEN** the machine SHALL report `step_entry` as `re-entry` and SHALL preserve the spent worker slots and coordinator attempts instead of granting a second budget
+
+#### Scenario: An unidentified Step entry grants nothing
+
+- **WHEN** the machine receives a `step-entry` signal whose Step identifier is absent, empty, blank, or not a string
+- **THEN** the machine SHALL report `step_entry` as `unidentified` and SHALL leave both budgets exactly as they were
+
+#### Scenario: Every outcome reports both budget tallies
+
+- **WHEN** the coordinator receives any `recovery-ledger@1` outcome, including a read-only projection
+- **THEN** that outcome SHALL carry `budgets` as `{worker: {spent, limit}, coordinator: {spent, limit}}`
+
+#### Scenario: An exhaustion names the budget that ran out
+
+- **WHEN** a coordinator attempt is rejected as exhaustion while worker slots remain unspent
+- **THEN** the outcome SHALL carry `exhausted` as `coordinator` alongside the tallies spent on each budget
+
+#### Scenario: Observability fields reach the emit wire
+
+- **WHEN** a `recovery-ledger@1` signal is emitted through `bin/sai-state.js`
+- **THEN** the emitted payload and the stored last outcome SHALL carry the machine's `budgets`, `exhausted` and `step_entry` values verbatim
 
 ### Requirement: Cause Locus is decided by ownership, not artifact kind
 
@@ -576,3 +616,17 @@ The shared bounded-recovery policy SHALL decide `out-of-scope` by ownership and 
 
 - **WHEN** the Direct Build (unattended) route applies the shared Bounded Recovery policy to a test-located cause
 - **THEN** the cause SHALL remain inside its single implementer's correction boundary exactly as before, because that implementer already owns both tests and production
+
+### Requirement: Recovery hand-backs read budget tallies from the ledger response
+
+A recovery hand-back SHALL take `attempts_spent` and the remaining capacity from the ledger machine's response rather than from recalled conversation text. The machine SHALL supply those tallies on every outcome as `budgets` — `{worker: {spent, limit}, coordinator: {spent, limit}}` — and SHALL name the budget that ran out as `exhausted` on an exhaustion, so a long unattended run never has to remember what each budget spent.
+
+#### Scenario: An escalation names both tallies from the store
+
+- **WHEN** a hand-back reports the attempts spent after a bounded recovery stops without completion
+- **THEN** the coordinator SHALL take the worker and coordinator tallies from the ledger response's `budgets` rather than from conversation memory
+
+#### Scenario: An exhaustion hand-back names the exhausted budget
+
+- **WHEN** a hand-back reports exhaustion inside a recovery scope
+- **THEN** it SHALL name the exhausted budget from the response's `exhausted` value rather than inferring which budget ran out

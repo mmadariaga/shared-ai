@@ -317,12 +317,32 @@ The apply coordinator SHALL traverse the unblock ladder without asking the user 
 
 ### Requirement: The coordinator budget is three attempts per Step held in the state store
 
-On entry to each Step the coordinator SHALL reset the ledger machine with `reset <id> recovery-ledger@1`, clearing the three-slot worker ledger and the coordinator budget together for that Step. The coordinator budget SHALL be three coordinator attempts per Step and SHALL be held in the state store by `recovery-ledger@1` rather than in prose: the coordinator SHALL consult the machine with a coordinator-attempt signal before each coordinator attempt and SHALL announce the returned ordinal in conversation text. Delegating a corrective dispatch SHALL spend one coordinator attempt exactly as a coordinator self-edit does. This single budget SHALL replace the earlier at-most-one-per-segment caps for the plan-artifact repair and for the last-resort infra fix.
+On entry to each Step the coordinator SHALL grant the Step's budgets with the Step-guarded `{kind: step-entry, step: "Step N"}` signal to `recovery-ledger@1`, which clears the three-slot worker ledger and the coordinator budget together only when this run has not entered that Step before, answering `step_entry: first`. A Step re-entered after a correction or a route retry SHALL answer `step_entry: re-entry`, SHALL keep the worker slots and coordinator attempts already spent in it, and SHALL never draw a second budget; a signal carrying no concrete Step identifier SHALL answer `step_entry: unidentified` and SHALL grant nothing. The coordinator SHALL NOT use the bare `reset <id> recovery-ledger@1` between Steps, because that unguarded reset belongs to the composition-segment boundary and would hand a re-entered Step a fresh cap. The coordinator budget SHALL be three coordinator attempts per Step and SHALL be held in the state store by `recovery-ledger@1` rather than in prose: the coordinator SHALL consult the machine with a `{kind: coordinator-attempt, key: [artifact path, concrete point, authorized correction boundary]}` signal before each coordinator attempt and SHALL announce the returned ordinal in conversation text. The key SHALL be required: an attempt whose diagnosis has no concrete key SHALL spend zero and return `rejected: unresolved cause`, and a key already attempted at coordinator level in that Step SHALL spend zero and return `rejected: duplicate diagnosis`, upon which the coordinator SHALL hand back the existing diagnosis instead of opening a second attempt. Delegating a corrective dispatch SHALL spend one coordinator attempt exactly as a coordinator self-edit does, so a Step whose coordinator budget is exhausted SHALL stop even when worker slots remain and those leftover slots SHALL open no alternative route. This single budget SHALL replace the earlier at-most-one-per-segment caps for the plan-artifact repair and for the last-resort infra fix.
 
 #### Scenario: Delegation spends a coordinator attempt
 
 - **WHEN** the coordinator delegates a corrective dispatch inside a Step
 - **THEN** it SHALL spend one coordinator attempt from that Step's budget exactly as a self-edit would
+
+#### Scenario: A re-entered Step keeps its spent budgets
+
+- **WHEN** the coordinator re-enters a Step it already entered in this run and signals `step-entry` for it
+- **THEN** the machine SHALL answer `step_entry: re-entry` and the Step SHALL continue with the worker slots and coordinator attempts it had already spent
+
+#### Scenario: A duplicate coordinator diagnosis opens no second attempt
+
+- **WHEN** the coordinator signals a coordinator attempt whose key it already attempted in that Step
+- **THEN** the attempt SHALL spend zero and return `rejected: duplicate diagnosis`, and the coordinator SHALL hand back the existing diagnosis
+
+#### Scenario: A coordinator attempt without a concrete key spends nothing
+
+- **WHEN** the coordinator signals a coordinator attempt whose diagnosis has no concrete key
+- **THEN** the attempt SHALL spend zero and return `rejected: unresolved cause`
+
+#### Scenario: An exhausted coordinator budget stops the Step despite free worker slots
+
+- **WHEN** a Step's three coordinator attempts are spent while worker ledger slots remain unused
+- **THEN** the Step SHALL stop rather than route the correction through the leftover worker slots
 
 ### Requirement: The coordinator never writes a test file
 
@@ -340,7 +360,7 @@ Under no rung of the unblock ladder SHALL the apply coordinator write a test fil
 
 ### Requirement: Budget exhaustion and the enumerated stopping reasons close a Step
 
-Exhausting either budget inside a Step — the three worker slots or the three coordinator attempts — SHALL stop that Step and escalate to a human, naming the Step, the diagnosis, and the attempts spent on each budget. Apart from exhaustion, the only reasons that SHALL stop the ladder for a human are weakening or deleting an assertion, redefining the agreed contract (`implementation.md` or the change's specs), a destructive or shared-system action gated by safe-operations, a worker `unrecoverable: true` veto, and a pre-existing failure outside the change's radius. No other incident SHALL interrupt an unattended run.
+Exhausting either budget inside a Step — the three worker slots or the three coordinator attempts — SHALL stop that Step and escalate to a human, naming the Step, the diagnosis, and the attempts spent on each budget. Those tallies SHALL be taken from the store response rather than from memory of the conversation: every `recovery-ledger@1` outcome carries `budgets` as `{worker: {spent, limit}, coordinator: {spent, limit}}`, and an exhaustion additionally carries `exhausted` as `worker` or `coordinator`, naming which budget ran out. Having budget left SHALL never authorize a correction the enumerated list forbids, and a destructive or shared-system action SHALL stay gated by `safe-operations` with or without remaining budget. Apart from exhaustion, the only reasons that SHALL stop the ladder for a human are weakening or deleting an assertion, redefining the agreed contract (`implementation.md` or the change's specs), a destructive or shared-system action gated by safe-operations, a worker `unrecoverable: true` veto, and a pre-existing failure outside the change's radius. No other incident SHALL interrupt an unattended run.
 
 #### Scenario: Coordinator budget exhaustion escalates with both tallies named
 
@@ -352,11 +372,41 @@ Exhausting either budget inside a Step — the three worker slots or the three c
 - **WHEN** an incident inside a Step is none of exhaustion, assertion weakening, contract redefinition, a safe-operations-gated action, an `unrecoverable: true` veto, or a pre-existing failure outside the change's radius
 - **THEN** the coordinator SHALL continue the ladder autonomously rather than stopping for a human
 
+#### Scenario: The escalation tallies come from the store response
+
+- **WHEN** the coordinator names the attempts spent on each budget while escalating an exhausted Step
+- **THEN** it SHALL read them from the ledger outcome's `budgets` and `exhausted` values rather than from conversation memory
+
+#### Scenario: Remaining budget never authorizes a forbidden correction
+
+- **WHEN** a correction would weaken or delete an assertion, or redefine `implementation.md` or the change's specs, while coordinator attempts remain
+- **THEN** the Step SHALL stop for a human rather than spend a remaining attempt on it
+
+#### Scenario: A destructive action stays gated with budget remaining
+
+- **WHEN** an unblock rung would take a destructive or shared-system action while budget remains
+- **THEN** the action SHALL stay gated by `safe-operations` exactly as it is when no budget remains
+
 ### Requirement: Autonomous corrections leave a reported trace
 
-The coordinator SHALL record one line per autonomous correction naming the Step, the rung, the normalized `diagnosis_key`, the budget and ordinal spent, and the outcome, and SHALL report the collected lines at run close so an unattended run remains auditable. The trace SHALL be conversation text only and SHALL never mark, extend, rename, or add a progress-plan step.
+The coordinator SHALL record one line per autonomous correction naming the Step, the rung, the normalized `diagnosis_key`, the budget and ordinal spent, and the outcome, and SHALL report the collected lines at run close so an unattended run remains auditable. Each line SHALL be exactly `> Autonomous correction: Step <N> | <rung> | key <path> :: <point> :: <boundary> | <budget> <ordinal> of 3 | <outcome>`, where `<rung>` is one of `red-owner-retry`, `delegated-dispatch`, `plan-artifact-repair`, or `infra-fix`, `<budget>` is `worker` or `coordinator`, `<ordinal>` is the ordinal the machine returned and is `0` for an attempt that spent nothing, and `<outcome>` is `corrected`, `unchanged`, or the returned `rejected` value. Coverage SHALL be every rung the coordinator takes without asking the user, including a zero-cost outcome (`duplicate diagnosis`, `unresolved cause`, `exhaustion`); an autonomous correction with no line is a reporting defect. The collected lines SHALL be reported at run close whether the run ends by completing, by escalating, or by stopping, and `> Autonomous corrections: none` SHALL be printed when the list is empty. The trace SHALL be conversation text only and SHALL never mark, extend, rename, or add a progress-plan step.
 
 #### Scenario: The trace is reported at run close without touching the plan
 
 - **WHEN** autonomous corrections were applied during an unattended run
 - **THEN** the coordinator SHALL report the collected trace lines at run close as conversation text without altering the progress plan
+
+#### Scenario: A zero-cost outcome still leaves a line
+
+- **WHEN** an autonomous rung ends in `duplicate diagnosis`, `unresolved cause`, or `exhaustion` and spends nothing
+- **THEN** the coordinator SHALL still record a trace line for it, carrying ordinal `0` and the returned `rejected` value as the outcome
+
+#### Scenario: An empty trace is still reported
+
+- **WHEN** a run closes with no autonomous correction recorded
+- **THEN** the coordinator SHALL print `> Autonomous corrections: none` at run close
+
+#### Scenario: A successful run still reports its trace
+
+- **WHEN** an unattended run that applied autonomous corrections ends by completing rather than by escalating
+- **THEN** the coordinator SHALL still report the collected trace lines at run close
