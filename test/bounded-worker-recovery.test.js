@@ -173,14 +173,18 @@ test('verified recovery commits current overview state and preserves incomplete-
     'incomplete recovery should report class, attempts spent, and stopping reason');
 });
 
-test('composition scopes the recovery pool per adapter segment and keeps the changed-files union across transitions', () => {
+test('composition scopes the recovery pool per recovery scope and keeps the changed-files union across transitions', () => {
   const runner = artifact('sai/orchestration/command-runner.md');
   const policy = artifact('sai/policies/bounded-recovery.md');
   const composed = `${runner}\n${policy}`;
-  assert.match(composed, /segment-scoped|active adapter segment/i,
-    'recovery pool must be segment-scoped under composition');
-  assert.match(composed, /(?:segment-scoped|per[- ]segment)[\s\S]{0,220}(?:diagnos(?:is|es)|ledger)/i,
-    'the distinct-diagnosis ledger must be scoped to the active segment');
+  assert.match(composed, /recovery scope|segment-scoped|active adapter segment/i,
+    'the recovery pool must be scoped to the active recovery scope');
+  assert.match(composed, /(?:recovery[- ]scope|segment-scoped|per[- ]segment)[\s\S]{0,260}(?:diagnos(?:is|es)|ledger)/i,
+    'the distinct-diagnosis ledger must be scoped to the active recovery scope');
+  assert.match(policy, /entry to each recovery scope/i,
+    'the ledger must reset on entry to each recovery scope');
+  assert.match(policy, /on entry to each Step[\s\S]{0,160}composition-segment boundary/i,
+    'the reset boundary must be the Step for a Step-executing adapter and the segment otherwise');
   assert.match(composed, /fresh[\s\S]{0,80}three[- ](?:attempt|slot)|fresh[\s\S]{0,80}pool/i,
     'a later recovery_policy: true segment must receive a fresh three-attempt pool');
   assert.match(composed, /(?:shall not|must not|does not|never)[\s\S]{0,120}inherit[\s\S]{0,120}(?:depleted|exhausted|remaining|spent)/i,
@@ -362,4 +366,19 @@ test('Explore continuation loss after diagnosis is terminal without replacement'
   assert.match(policy,
     /(?:retryable|can be retried|remains retryable)[\s\S]{0,240}(?:later|next)[\s\S]{0,180}(?:Plan \(unattended\)|automatic)[\s\S]{0,120}selection/i,
     'the change must remain retryable for later Plan (unattended) selection');
+});
+
+test('Cause Locus is decided by ownership rather than by the kind of artifact', () => {
+  const policy = artifact('sai/policies/bounded-recovery.md');
+
+  assert.match(policy, /`out-of-scope` is decided by\s*\n?\s*ownership/i,
+    'out-of-scope must be defined by ownership, not by artifact kind');
+  assert.doesNotMatch(policy, /`out-of-scope` means that\s*\n?\s*the cause is in a test/i,
+    'a test must no longer be enumerated as an out-of-scope artifact kind');
+  assert.match(policy, /cause located in a test file is therefore\s*\n?\s*`owner-in-run`/i,
+    'a test-located cause with a resumable test owner must be owner-in-run');
+  assert.match(policy, /never to a worker whose contract forbids\s*\n?\s*test files/i,
+    'a test-located cause must never be routed to a worker forbidden from test files');
+  assert.match(policy, /Direct Build \(unattended\)[\s\S]{0,400}neutral/i,
+    'the shared policy must declare the Direct Build consumer inside the change radius');
 });

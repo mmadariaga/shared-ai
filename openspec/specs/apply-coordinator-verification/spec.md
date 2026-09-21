@@ -2,7 +2,9 @@
 
 ## Purpose
 TBD - created by archiving change delegate-apply-steps-to-subagent. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: Coordinator re-runs the Step's Verification Checklist itself
 
 Before marking a Step's checkboxes or proposing a commit, the coordinator SHALL re-run the Step's Verification Checklist itself and confirm it passes. The coordinator SHALL NOT mark checkboxes or commit based solely on the worker report. Before dispatching the Step, the coordinator SHALL establish a pre-dispatch working-tree baseline of tracked and untracked paths visible to the coordinator and SHALL determine the Step's plan-level file scope and the dispatch-kind-specific allowed-file set. For a GREEN-direct dispatch, the allowed-file set SHALL be the production-only subset of the Step's plan-level files. For a blind RED-worker dispatch, it SHALL contain only the plan-authorized test files and explicitly permitted RED/interface stub files and SHALL exclude production files. For a GREEN-worker dispatch, it SHALL contain only the plan-authorized production files and SHALL exclude test files and declared interfaces. The coordinator SHALL inject that plan-derived allowed-file set into the corresponding dispatch, while the baseline and the coordinator's recovery assessment SHALL remain coordinator-only.
@@ -266,9 +268,9 @@ After a same-worker continuation returns, the coordinator SHALL re-run the dispa
 
 ### Requirement: Known-False Report Recovery branches by locus
 
-Apply's Known-False Report Recovery SHALL branch on the coordinator-owned `Cause Locus` before selecting a correction. For an eligible in-scope diagnosis, the coordinator SHALL use the shared distinct-diagnosis ledger and continue only the same authorized RED or GREEN worker with the ordered `Reported`, `Evidence`, `Cause`, `Correction`, and `Verification` content. For an out-of-scope diagnosis, the coordinator SHALL spend zero worker-recovery attempts and SHALL not send a correction through `continue_after_recovery`. It MAY perform at most one bounded coordinator-owned repair in the active segment only when the evidence identifies the exact current-Step verification assertion in `implementation.md` as the cause; otherwise it SHALL hand back with the named artifact and concrete point.
+Apply's Known-False Report Recovery SHALL branch on the coordinator-owned `Cause Locus` before selecting a correction, with the locus decided by ownership and never by the kind of artifact the cause sits in. For an eligible in-scope diagnosis, the coordinator SHALL use the shared distinct-diagnosis ledger and continue only the same authorized RED or GREEN worker with the ordered `Reported`, `Evidence`, `Cause`, `Correction`, and `Verification` content. For an `owner-in-run` diagnosis, including a cause located in a test file whose resumable owner is the same-Step RED worker, the coordinator SHALL resume that owner and SHALL never route the correction to GREEN. For an out-of-scope diagnosis, the coordinator SHALL spend zero worker-recovery attempts and SHALL not send a correction through `continue_after_recovery`. It MAY perform a bounded coordinator-owned repair only when the evidence identifies the exact current-Step verification assertion in `implementation.md` as the cause, spending exactly one attempt from the Step's three-attempt coordinator budget held by `recovery-ledger@1`; otherwise it SHALL hand back with the named artifact and concrete point.
 
-The owner repair SHALL write only the exact current-Step `implementation.md` plan-artifact assertion, preserve the Step structure, scope, prohibitions, and Coverage Signature, and SHALL never edit production files, test files, declared interfaces, verification scripts/checklists, or any other artifact. The repair operation SHALL not execute a verification command; the coordinator's independent Verification Checklist run remains a separate, mandatory, authoritative confirmation after the repair and does not become part of the repair's write scope. The repair SHALL not spend a worker-recovery attempt, and a second repair in the same segment SHALL use the unresolved human hand-back.
+The owner repair SHALL write only the exact current-Step `implementation.md` plan-artifact assertion, preserve the Step structure, scope, prohibitions, and Coverage Signature, and SHALL never edit production files, test files, declared interfaces, verification scripts/checklists, or any other artifact. The repair operation SHALL not execute a verification command; the coordinator's independent Verification Checklist run remains a separate, mandatory, authoritative confirmation after the repair and does not become part of the repair's write scope. The repair SHALL not spend a worker-recovery attempt, and a repair requested once the Step's coordinator budget is exhausted SHALL use the unresolved human hand-back.
 
 #### Scenario: In-scope Known-False report uses one distinct recovery attempt
 
@@ -278,14 +280,14 @@ The owner repair SHALL write only the exact current-Step `implementation.md` pla
 
 #### Scenario: Out-of-scope Known-False report avoids worker recovery
 
-- **WHEN** coordinator evidence names an artifact and concrete point outside the active worker's authorized scope
+- **WHEN** coordinator evidence names an artifact and concrete point over which no worker in the Step's in-run roster holds an authorized correction boundary
 - **THEN** the coordinator SHALL assign `Cause Locus: out-of-scope`, spend zero worker-recovery attempts, and avoid `continue_after_recovery`
 - **AND** it SHALL use only the named owner route or human hand-back
 
 #### Scenario: Plan repair does not run verification
 
 - **WHEN** the exact cause is the current Step's impossible `implementation.md` verification assertion
-- **THEN** the coordinator MAY apply the single bounded plan-artifact repair without running a verification command as part of that write
+- **THEN** the coordinator MAY apply the bounded plan-artifact repair, spending one attempt from the Step's coordinator budget, without running a verification command as part of that write
 - **AND** it SHALL then perform the independent coordinator Verification Checklist separately, preserving effective coverage before any checkbox or commit gate
 
 #### Scenario: Completed STOP is diagnosed before repair or retry
@@ -294,3 +296,67 @@ The owner repair SHALL write only the exact current-Step `implementation.md` pla
 - **THEN** the coordinator SHALL treat it as a non-clean closure and select one routing diagnosis before any repair or continuation
 - **AND** an unpassable STOP with `unrecoverable: true`, an out-of-scope or unresolved Cause Locus, or no safe correction SHALL remain a failed/blocking-contradiction human stop; a false-veto in-scope cause SHALL follow the shared eligibility rule before any human gate
 
+#### Scenario: A repair beyond the exhausted coordinator budget hands back to a human
+
+- **WHEN** a plan-artifact defect is identified in a Step whose three coordinator attempts are already spent
+- **THEN** the coordinator SHALL treat it as unresolved, spend zero attempts, and stop for human intervention rather than performing another repair
+
+#### Scenario: A test-located cause routes to its owner rather than out-of-scope
+
+- **WHEN** coordinator evidence places the cause in a test file whose same-Step RED owner is still resumable
+- **THEN** the coordinator SHALL assign `Cause Locus: owner-in-run` and resume that owner instead of classifying the cause out-of-scope
+
+### Requirement: The coordinator-led unblock ladder traverses autonomously
+
+The apply coordinator SHALL traverse the unblock ladder without asking the user which rung to take, and no individual incident SHALL open a user prompt of its own. The coordinator SHALL route rather than write: it SHALL instruct and delegate first and SHALL self-edit only when no in-run worker holds the authorized correction boundary, preserving the rule that self-edit is forbidden while a worker-safe correction exists. A GREEN `blocking-contradiction` that proves a test-infra point SHALL be assigned `owner-in-run` and SHALL resume the same-Step RED owner with exactly `continue_after_recovery`, with no hand-back and no user prompt preceding the retry. Commit and coordinator-verification gates SHALL remain unchanged: coordinator verification stays authoritative, the pre-commit visibility listing and proposed message still print unconditionally before each commit, safe-operations confirmations remain required, and assertions SHALL never be relaxed to pass.
+
+#### Scenario: A test-infra contradiction retries the RED owner without a prompt
+
+- **WHEN** a GREEN `blocking-contradiction` proves a test-infra point and the same-Step RED owner is still resumable
+- **THEN** the coordinator SHALL resume that RED owner with `continue_after_recovery` without asking the user and without a hand-back
+
+### Requirement: The coordinator budget is three attempts per Step held in the state store
+
+On entry to each Step the coordinator SHALL reset the ledger machine with `reset <id> recovery-ledger@1`, clearing the three-slot worker ledger and the coordinator budget together for that Step. The coordinator budget SHALL be three coordinator attempts per Step and SHALL be held in the state store by `recovery-ledger@1` rather than in prose: the coordinator SHALL consult the machine with a coordinator-attempt signal before each coordinator attempt and SHALL announce the returned ordinal in conversation text. Delegating a corrective dispatch SHALL spend one coordinator attempt exactly as a coordinator self-edit does. This single budget SHALL replace the earlier at-most-one-per-segment caps for the plan-artifact repair and for the last-resort infra fix.
+
+#### Scenario: Delegation spends a coordinator attempt
+
+- **WHEN** the coordinator delegates a corrective dispatch inside a Step
+- **THEN** it SHALL spend one coordinator attempt from that Step's budget exactly as a self-edit would
+
+### Requirement: The coordinator never writes a test file
+
+Under no rung of the unblock ladder SHALL the apply coordinator write a test file. When the Step's in-run roster holds no RED owner and the cause sits in a test, the coordinator SHALL dispatch a fresh RED for that corrective work instead of writing the test. When the test's RED owner exists but is exhausted or vetoed, the coordinator SHALL escalate to a human even when coordinator attempts remain. A bounded last-resort infra fix SHALL write only test setup, adapter, or seed scaffolding and SHALL never write an assertion body, an expected value, production semantics, or a test file.
+
+#### Scenario: A GREEN-only Step dispatches a fresh RED for a test cause
+
+- **WHEN** a Step whose roster holds no RED owner reports a cause located in a test file
+- **THEN** the coordinator SHALL dispatch a fresh RED for that corrective work rather than writing the test itself
+
+#### Scenario: An exhausted test owner escalates instead of a coordinator write
+
+- **WHEN** the RED owner of a test-located cause is exhausted or vetoed while coordinator attempts remain
+- **THEN** the coordinator SHALL escalate to a human rather than editing the test file
+
+### Requirement: Budget exhaustion and the enumerated stopping reasons close a Step
+
+Exhausting either budget inside a Step — the three worker slots or the three coordinator attempts — SHALL stop that Step and escalate to a human, naming the Step, the diagnosis, and the attempts spent on each budget. Apart from exhaustion, the only reasons that SHALL stop the ladder for a human are weakening or deleting an assertion, redefining the agreed contract (`implementation.md` or the change's specs), a destructive or shared-system action gated by safe-operations, a worker `unrecoverable: true` veto, and a pre-existing failure outside the change's radius. No other incident SHALL interrupt an unattended run.
+
+#### Scenario: Coordinator budget exhaustion escalates with both tallies named
+
+- **WHEN** a Step requires a further coordinator attempt after its three coordinator attempts are spent
+- **THEN** the coordinator SHALL stop that Step and escalate to a human naming the Step, the diagnosis, and the attempts spent on each budget
+
+#### Scenario: An incident outside the enumerated reasons does not interrupt the run
+
+- **WHEN** an incident inside a Step is none of exhaustion, assertion weakening, contract redefinition, a safe-operations-gated action, an `unrecoverable: true` veto, or a pre-existing failure outside the change's radius
+- **THEN** the coordinator SHALL continue the ladder autonomously rather than stopping for a human
+
+### Requirement: Autonomous corrections leave a reported trace
+
+The coordinator SHALL record one line per autonomous correction naming the Step, the rung, the normalized `diagnosis_key`, the budget and ordinal spent, and the outcome, and SHALL report the collected lines at run close so an unattended run remains auditable. The trace SHALL be conversation text only and SHALL never mark, extend, rename, or add a progress-plan step.
+
+#### Scenario: The trace is reported at run close without touching the plan
+
+- **WHEN** autonomous corrections were applied during an unattended run
+- **THEN** the coordinator SHALL report the collected trace lines at run close as conversation text without altering the progress plan

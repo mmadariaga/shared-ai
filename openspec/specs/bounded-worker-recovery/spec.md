@@ -2,7 +2,9 @@
 
 ## Purpose
 TBD - created by archiving change bounded-worker-recovery. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: Preserve Plan cancellation recovery
 
 The bounded worker-recovery policy SHALL refer to the selector-dispatched Plan (unattended) item-10 exception and SHALL preserve its no-replacement, same-worker, retryable behavior.
@@ -111,7 +113,7 @@ Standalone spec and design recovery SHALL use the shared segment-scoped ledger o
 
 ### Requirement: Bounded same-worker recovery
 
-For an opted-in adapter, the coordinator SHALL use one segment-scoped ledger of at most three distinct diagnosis slots. The three-attempt cap is a derived consequence of one attempt per slot, not a separate counter. An eligible in-scope non-clean closure SHALL be continued only on the still-live worker, using the active binding's normal continuation operation and the fixed shared protocol acknowledgement `continue_after_recovery`. The route SHALL carry exactly one of the shared routing diagnoses — `worker-authored failure`, `coordinator rejection`, or `continuation/transport loss` — together with the coordinator's `Cause Locus`. Recovery SHALL never dispatch a replacement worker; this prohibition is scoped to the recovery path, while ordinary non-recovery continuation failures SHALL retain the existing replacement-worker fallback. An out-of-scope cause SHALL spend zero attempts and SHALL not be made recoverable by rewriting its worker failure class. Recovery SHALL never reset the changed-file union, and SHALL return to the existing terminal hand-back when the recovery path stops without a completed result.
+For an opted-in adapter, the coordinator SHALL use one recovery-scope-scoped ledger of at most three distinct diagnosis slots. The recovery scope SHALL be the Step for a Step-executing adapter and the composition segment for an adapter that executes no Steps; every reference to the segment ledger SHALL mean the ledger of the active recovery scope. The three-attempt cap is a derived consequence of one attempt per slot, not a separate counter. An eligible in-scope non-clean closure SHALL be continued only on the still-live worker, using the active binding's normal continuation operation and the fixed shared protocol acknowledgement `continue_after_recovery`. The route SHALL carry exactly one of the shared routing diagnoses — `worker-authored failure`, `coordinator rejection`, or `continuation/transport loss` — together with the coordinator's `Cause Locus`. Recovery SHALL never dispatch a replacement worker; this prohibition is scoped to the recovery path, while ordinary non-recovery continuation failures SHALL retain the existing replacement-worker fallback. An out-of-scope cause SHALL spend zero attempts and SHALL not be made recoverable by rewriting its worker failure class. Recovery SHALL never reset the changed-file union, and SHALL return to the existing terminal hand-back when the recovery path stops without a completed result.
 
 #### Scenario: A recoverable failure gets a same-worker continuation
 
@@ -130,7 +132,7 @@ For an opted-in adapter, the coordinator SHALL use one segment-scoped ledger of 
 #### Scenario: The shared pool caps recovery
 
 - **WHEN** successive recovery failures remain eligible and the worker does not veto recovery
-- **THEN** the coordinator SHALL spend no more than one attempt for each of three distinct diagnosis keys in the active segment
+- **THEN** the coordinator SHALL spend no more than one attempt for each of three distinct diagnosis keys in the active recovery scope
 - **AND** SHALL hand back after the third distinct slot if no coordinator-verified clean result is returned
 
 #### Scenario: An out-of-scope cause spends zero attempts
@@ -165,6 +167,16 @@ For an opted-in adapter, the coordinator SHALL use one segment-scoped ledger of 
 - **WHEN** a recovery continuation returns a failed result whose class differs from the original class
 - **THEN** the coordinator SHALL compare the coordinator-owned diagnosis key rather than the class alone
 - **AND** it SHALL spend one remaining slot only when the concrete diagnosis is new, without creating a class-specific budget
+
+#### Scenario: Each Step of a Step-executing adapter gets a fresh pool
+
+- **WHEN** a Step-executing adapter enters a new Step after an earlier Step consumed recovery slots
+- **THEN** the coordinator SHALL reset the ledger on Step entry so the new Step receives a fresh three-slot pool and inherits no depleted or remaining slot
+
+#### Scenario: An adapter that executes no Steps keeps segment scope
+
+- **WHEN** an opted-in adapter that executes no Steps crosses a composition-segment boundary
+- **THEN** the coordinator SHALL reset the ledger at that segment boundary exactly as before
 
 ### Requirement: Recovery may re-dispatch overview generation within the pool
 For an eligible overview-generation `validation-failed`, `generation-error`, or `dispatch-failed`, the same worker MAY re-dispatch the overview generator during a recovery continuation when worker-side diagnosis establishes that retry is safe. Such a nested generation dispatch SHALL be part of the existing recovery attempt, SHALL not start a new source-modifying transaction, and SHALL be exempt from the ordinary one-regeneration-per-effective-transaction limit. For `envelope-contract-violation`, the worker SHALL verify overview soundness before its first failed return: a sound overview SHALL remain eligible only for in-place reporting repair, while an unsound overview SHALL set `unrecoverable: true` and receive zero recovery attempts. The three-attempt invocation pool SHALL be the only retry bound; a recovery re-dispatch SHALL not create an additional regeneration budget or replacement worker.
@@ -373,7 +385,7 @@ Before every recovery attempt, the coordinator SHALL validate one coordinator-on
 
 ### Requirement: Invocation-scoped accounting and lifecycle boundaries
 
-The coordinator SHALL add every `changed_files` path reported by the original result, progress event, normal continuation, recovery continuation, and terminal result to one ordered, duplicate-free union that is never reset by recovery. The recovery budget SHALL belong to the active invocation segment: notices, progress events, and normal `needs_input` turns SHALL not reset it. A pre-resolution outer-envelope failure SHALL spend zero attempts and SHALL retain its pre-resolution payload shape. A `cancelled` result SHALL be treated as a clean user-requested stop and SHALL never enter diagnosis or recovery. The `--fast-track` signal SHALL alter neither the recovery budget nor its visibility.
+The coordinator SHALL add every `changed_files` path reported by the original result, progress event, normal continuation, recovery continuation, and terminal result to one ordered, duplicate-free union that is never reset by recovery or by a recovery-scope reset. The recovery budget SHALL belong to the active recovery scope — the Step for a Step-executing adapter, the composition segment for an adapter that executes no Steps: notices, progress events, and normal `needs_input` turns SHALL not reset it. A pre-resolution outer-envelope failure SHALL spend zero attempts and SHALL retain its pre-resolution payload shape. A `cancelled` result SHALL be treated as a clean user-requested stop and SHALL never enter diagnosis or recovery. The `--fast-track` signal SHALL alter neither the recovery budget nor its visibility.
 
 #### Scenario: Changed files survive recovery
 
@@ -414,6 +426,11 @@ The coordinator SHALL add every `changed_files` path reported by the original re
 - **WHEN** an opted-in invocation includes `--fast-track`
 - **THEN** the coordinator SHALL apply the same cause-locus, zero-attempt, three-slot-ledger, and reporting rules as a normal invocation
 
+#### Scenario: A recovery-scope reset never touches the changed-files union
+
+- **WHEN** the ledger is reset on entry to a new recovery scope after earlier results reported changed paths
+- **THEN** the coordinator SHALL preserve the first-seen ordered union of those paths unchanged
+
 ### Requirement: Same-harness lifecycle parity
 
 Claude Code and opencode routed adapters that declare `recovery_policy` SHALL expose identical non-clean-closure diagnosis categories, cause-locus semantics, zero-attempt exceptions, recovery budget, continuation acknowledgement, event and cancellation boundaries, changed-file union, and terminal reporting. Neither harness SHALL dispatch a replacement worker for the recovery path. Harness-specific binding mechanics MAY differ.
@@ -426,13 +443,13 @@ Claude Code and opencode routed adapters that declare `recovery_policy` SHALL ex
 
 ### Requirement: Recovery budget is a distinct-diagnosis ledger
 
-The shared three-slot recovery budget SHALL be represented as three mutually distinct diagnosis slots for the active adapter segment. A coordinator SHALL derive a stable `diagnosis_key` before spending a slot as the exact ordered tuple `(artifact path, concrete point, authorized correction boundary)`. `artifact path` SHALL be a normalized repo-relative path or `<none>` when the cause has no artifact; `concrete point` SHALL identify the Step and the exact field, command, assertion, or lifecycle boundary implicated by the evidence; and `authorized correction boundary` SHALL identify the worker scope and permitted correction surface. Cause Locus SHALL remain beside the key in the closure-diagnosis record and SHALL not participate in key identity. Path normalization SHALL use `/`, remove a leading `./`, reject `..` traversal, and collapse only non-semantic whitespace; it SHALL preserve command arguments, selectors, operators, targets, and pass/fail polarity. Two keys SHALL be equal only when every tuple field is exactly equal after that normalization. A coordinator SHALL derive the key from its evidence, not worker prose, and SHALL not include the worker class or routing label in the tuple. Each new eligible in-scope key SHALL consume exactly one slot and receive at most one same-worker continuation. A later result with the same key SHALL be treated as a duplicate diagnosis and SHALL stop recovery before dispatch, without consuming a remaining slot or being reported as exhaustion. Out-of-scope, unresolved, malformed, vetoed, and continuation-transport-loss cases SHALL consume zero recovery slots; a `blocking-contradiction` or `unclassified-worker-fault` MAY consume one only when `unrecoverable: false`, the coordinator proves an in-scope cause and safe correction, and the key is new.
+The shared three-slot recovery budget SHALL be represented as three mutually distinct diagnosis slots for the active recovery scope — the Step for a Step-executing adapter, the composition segment for an adapter that executes no Steps. A coordinator SHALL derive a stable `diagnosis_key` before spending a slot as the exact ordered tuple `(artifact path, concrete point, authorized correction boundary)`. `artifact path` SHALL be a normalized repo-relative path or `<none>` when the cause has no artifact; `concrete point` SHALL identify the Step and the exact field, command, assertion, or lifecycle boundary implicated by the evidence; and `authorized correction boundary` SHALL identify the worker scope and permitted correction surface. Cause Locus SHALL remain beside the key in the closure-diagnosis record and SHALL not participate in key identity. Path normalization SHALL use `/`, remove a leading `./`, reject `..` traversal, and collapse only non-semantic whitespace; it SHALL preserve command arguments, selectors, operators, targets, and pass/fail polarity. Two keys SHALL be equal only when every tuple field is exactly equal after that normalization. A coordinator SHALL derive the key from its evidence, not worker prose, and SHALL not include the worker class or routing label in the tuple. Each new eligible in-scope or owner-in-run key SHALL consume exactly one slot and receive at most one continuation on the authorized worker. A later result with the same key SHALL be treated as a duplicate diagnosis and SHALL stop recovery before dispatch, without consuming a remaining slot or being reported as exhaustion. Out-of-scope, unresolved, malformed, vetoed, and continuation-transport-loss cases SHALL consume zero recovery slots; a `blocking-contradiction` or `unclassified-worker-fault` MAY consume one only when `unrecoverable: false`, the coordinator proves an in-scope or owner-in-run cause and safe correction, and the key is new.
 
 #### Scenario: Three distinct diagnoses are the maximum
 
-- **WHEN** an active apply segment encounters three eligible in-scope closures with three different coordinator diagnosis keys
+- **WHEN** an active recovery scope encounters three eligible closures with three different coordinator diagnosis keys
 - **THEN** it SHALL permit no more than one recovery continuation for each key
-- **AND** it SHALL not create a fourth slot or reset the ledger at a new Step
+- **AND** it SHALL not create a fourth slot inside that recovery scope
 
 #### Scenario: Duplicate diagnosis stops with budget remaining
 
@@ -456,7 +473,7 @@ The shared three-slot recovery budget SHALL be represented as three mutually dis
 
 - **WHEN** two otherwise similar non-clean closures identify different concrete fields, commands, assertions, or lifecycle points
 - **THEN** the coordinator SHALL derive unequal `diagnosis_key` tuples
-- **AND** the later closure MAY spend one remaining slot only if its locus is in-scope, its correction is safe, and its worker veto is false
+- **AND** the later closure MAY spend one remaining slot only if its locus is in-scope or owner-in-run, its correction is safe, and its worker veto is false
 
 #### Scenario: Locus reassessment does not change diagnosis-key equality
 
@@ -500,7 +517,7 @@ When Cause Locus is `owner-in-run` and the owner worker returns a successful `co
 
 ### Requirement: The recovery ledger is owned by a registered stage machine
 
-The three-slot per-segment recovery ledger SHALL be owned by the `recovery-ledger@1` stage machine registered in `sai-state/registry.js`. Before spending a slot the coordinator SHALL consult that machine with the raw ordered tuple `(artifact path, concrete point, authorized correction boundary)`, and the machine SHALL perform the normalization, key-equality comparison, duplicate detection and slot accounting. Normalization SHALL canonicalize the artifact path as a repository-relative path with `/` separators and a leading `./` removed, and SHALL trim and collapse non-semantic whitespace in the concrete point. The machine SHALL report a consumed slot through the existing emit wire `stage` field as a string ordinal, and SHALL report every zero-slot outcome through the existing `rejected` field carrying a value from the closed stopping-reason vocabulary. The machine SHALL route to no step file and SHALL always return `next.follow` as `none`. A segment boundary SHALL clear the ledger with `reset <id> recovery-ledger@1`, leaving every other machine in the same session untouched. The machine SHALL require no change to the emit wire or to `bin/sai-state.js`, and the coordinator SHALL retain ownership of constructing the diagnosis and assigning Cause Locus.
+The per-recovery-scope recovery ledger SHALL be owned by the `recovery-ledger@1` stage machine registered in `sai-state/registry.js`. Before spending a slot the coordinator SHALL consult that machine with the raw ordered tuple `(artifact path, concrete point, authorized correction boundary)`, and the machine SHALL perform the normalization, key-equality comparison, duplicate detection and slot accounting. Normalization SHALL canonicalize the artifact path as a repository-relative path with `/` separators and a leading `./` removed, and SHALL trim and collapse non-semantic whitespace in the concrete point. The machine SHALL report a consumed slot through the existing emit wire `stage` field as a string ordinal, and SHALL report every zero-slot outcome through the existing `rejected` field carrying a value from the closed stopping-reason vocabulary. The machine SHALL route to no step file and SHALL always return `next.follow` as `none`. The machine SHALL additionally own the coordinator's own attempt budget for the same recovery scope: three coordinator attempts per recovery scope, tracked in machine state as `coordinator_attempts` and counted separately from the three worker slots. The machine SHALL accept a coordinator-attempt signal, spend one attempt, and report the resulting ordinal through the existing `stage` field; once three attempts are spent it SHALL reject the next coordinator attempt through the existing `rejected` field with `exhaustion` and SHALL spend nothing. Entering a new recovery scope SHALL clear the ledger with `reset <id> recovery-ledger@1` — on entry to each Step for a Step-executing adapter, at each composition-segment boundary otherwise — clearing the worker slots and the coordinator attempts together and leaving every other machine in the same session untouched. The machine SHALL require no change to the emit wire or to `bin/sai-state.js`, and the coordinator SHALL retain ownership of constructing the diagnosis and assigning Cause Locus.
 
 #### Scenario: Distinct diagnosis keys consume successive slots
 
@@ -510,19 +527,52 @@ The three-slot per-segment recovery ledger SHALL be owned by the `recovery-ledge
 
 #### Scenario: A duplicate normalized key spends no slot
 
-- **WHEN** the coordinator consults the machine with a tuple that differs only in a leading `./`, in path separators, or in non-semantic whitespace from a tuple already in the segment ledger
+- **WHEN** the coordinator consults the machine with a tuple that differs only in a leading `./`, in path separators, or in non-semantic whitespace from a tuple already in the recovery-scope ledger
 - **THEN** the machine SHALL reject it as a duplicate diagnosis
 - **AND** it SHALL leave the consumed slot count unchanged
 
 #### Scenario: A fourth distinct key reports exhaustion
 
-- **WHEN** the coordinator consults the machine with a fourth tuple that is distinct from the three already recorded in the segment ledger
+- **WHEN** the coordinator consults the machine with a fourth tuple that is distinct from the three already recorded in the recovery-scope ledger
 - **THEN** the machine SHALL reject it as exhaustion
 - **AND** it SHALL create no fourth slot
 
 #### Scenario: The segment boundary clears only the ledger
 
-- **WHEN** the coordinator resets `recovery-ledger@1` at an eligible composition-segment boundary
+- **WHEN** the coordinator resets `recovery-ledger@1` on entry to an eligible recovery scope — a new Step for a Step-executing adapter, an eligible composition-segment boundary otherwise
 - **THEN** the next consult SHALL report the first slot ordinal again
 - **AND** every other machine registered in the same session SHALL retain its state
 
+#### Scenario: Coordinator attempts are counted against a three-attempt budget
+
+- **WHEN** the coordinator consults `recovery-ledger@1` with a fourth coordinator-attempt signal inside one recovery scope
+- **THEN** the machine SHALL reject it as `exhaustion` without increasing the recorded coordinator attempts
+
+#### Scenario: The coordinator budget is separate from the worker slots
+
+- **WHEN** coordinator attempts are spent inside a recovery scope that still holds unused worker slots
+- **THEN** the machine SHALL leave the worker slot accounting unchanged and report only the coordinator ordinal
+
+#### Scenario: A reset clears both budgets
+
+- **WHEN** the ledger machine is reset on entry to a new recovery scope
+- **THEN** its state SHALL return to an empty worker ledger and zero coordinator attempts together
+
+### Requirement: Cause Locus is decided by ownership, not artifact kind
+
+The shared bounded-recovery policy SHALL decide `out-of-scope` by ownership and never by the kind of artifact the cause sits in. `out-of-scope` SHALL mean that no in-run worker holds an authorized correction boundary over the concrete point — a declared interface, forbidden artifact, external or shared system, or any other boundary with no in-run owner. `owner-in-run` SHALL mean that the evidence identifies a concrete point in an authorized artifact, production or test, whose authorized correction boundary is held by a named worker still resumable in this run. A cause located in a test file SHALL therefore be `owner-in-run` whenever a test-owning worker is still resumable in this run, and the correction SHALL be routed to that owner and never to a worker whose contract forbids test files. The coordinator SHALL read ownership only from its in-run owner roster and SHALL NOT infer a missing worker or boundary. This classification SHALL reach every consumer of the shared policy, including the Direct Build (unattended) route, whose single implementer already owns both tests and production and whose behavior is therefore unchanged.
+
+#### Scenario: A test-located cause with a resumable test owner is owner-in-run
+
+- **WHEN** coordinator evidence places a concrete point in a test file whose authorized correction boundary is held by a worker still resumable in this run
+- **THEN** the coordinator SHALL assign `Cause Locus: owner-in-run` and route the correction to that owner rather than classifying the cause out-of-scope for being a test
+
+#### Scenario: No in-run owner makes the cause out-of-scope
+
+- **WHEN** coordinator evidence places a concrete point at a boundary over which no worker in the in-run roster holds an authorized correction boundary
+- **THEN** the coordinator SHALL assign `Cause Locus: out-of-scope`, spend zero worker-recovery attempts, and use the hand-back route
+
+#### Scenario: Direct Build is inside the classification radius with no behavior change
+
+- **WHEN** the Direct Build (unattended) route applies the shared Bounded Recovery policy to a test-located cause
+- **THEN** the cause SHALL remain inside its single implementer's correction boundary exactly as before, because that implementer already owns both tests and production

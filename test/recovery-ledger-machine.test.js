@@ -263,3 +263,38 @@ test('recovery-ledger@1 CLI emit returns slot ordinal in wire stage field', () =
   assert.equal(result5.payload.rejected, 'exhaustion', 'fourth key should return exhaustion');
   assert.equal(result5.payload.stage, '', 'exhaustion should have empty stage (zero slots)');
 });
+
+test('recovery-ledger@1 counts coordinator attempts against a three-attempt budget', () => {
+  let state = machine.initialState;
+
+  for (let i = 0; i < 3; i += 1) {
+    const result = machine.transition(state, { kind: 'coordinator-attempt' });
+    assert.equal(result.state.stage, String(i + 1), `coordinator attempt ${i + 1} should report its ordinal`);
+    assert.equal(result.state.coordinator_attempts, i + 1);
+    assert.ok(!result.rejected, 'an attempt inside the budget must not be rejected');
+    state = result.state;
+  }
+
+  const exhausted = machine.transition(state, { kind: 'coordinator-attempt' });
+  assert.equal(exhausted.rejected, 'exhaustion', 'a fourth coordinator attempt must exhaust the budget');
+  assert.equal(exhausted.state.stage, '');
+  assert.equal(exhausted.state.coordinator_attempts, 3);
+});
+
+test('recovery-ledger@1 keeps the coordinator budget separate from the worker slots', () => {
+  let state = machine.initialState;
+
+  state = machine.transition(state, { kind: 'coordinator-attempt' }).state;
+  state = machine.transition(state, { kind: 'coordinator-attempt' }).state;
+
+  assert.equal(state.ledger.length, 0, 'coordinator attempts must not consume worker ledger slots');
+
+  const workerResult = machine.transition(state, { key: ['path.md', 'point', 'red-worker'] });
+  assert.equal(workerResult.state.stage, '1', 'the worker ledger must still start at slot 1');
+  assert.equal(workerResult.state.coordinator_attempts, 2, 'the coordinator budget must survive a worker consult');
+});
+
+test('recovery-ledger@1 resets both budgets from its initial state', () => {
+  assert.equal(machine.initialState.coordinator_attempts, 0);
+  assert.deepEqual(machine.initialState.ledger, []);
+});

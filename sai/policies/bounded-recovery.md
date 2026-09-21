@@ -13,15 +13,20 @@ segment; it does not make a result eligible by itself. The fixed
 `continue_after_recovery` acknowledgement is runner-owned and is not an
 additional phase-adapter field.
 
-1. **Segment-scoped ledger.** The `recovery-ledger@1` machine registered in
+1. **Recovery-scope ledger.** The `recovery-ledger@1` machine registered in
    `sai-state/registry.js` owns diagnosis-key normalization, duplicate detection,
-   and three-slot ledger accounting per segment. Reset it with `reset <id> recovery-ledger@1`
-   at each composition-segment boundary so the next segment gets a fresh three-slot pool.
-   A later eligible segment never inherits an earlier segment's depleted or remaining
-   slots. The machine normalizes keys, checks for duplicates, and tracks slots; the
+   and three-slot ledger accounting per recovery scope. The recovery scope is the
+   Step for a Step-executing adapter (apply) and the composition segment for an
+   adapter that executes no Steps. Reset it with `reset <id> recovery-ledger@1`
+   on entry to each recovery scope — on entry to each Step for a Step-executing
+   adapter, at each composition-segment boundary otherwise — so the next scope gets
+   a fresh three-slot pool. A later eligible scope never inherits an earlier scope's
+   depleted or remaining slots. Every later reference below to "that segment's
+   ledger" or the segment ledger means the ledger of the active recovery scope.
+   The machine normalizes keys, checks for duplicates, and tracks slots; the
    coordinator consults it before recovery dispatch. A slot is consumed only
    when the machine accepts a new normalized diagnosis key. A one-adapter
-   invocation keeps segment scope identical to the invocation.
+   invocation that executes no Steps keeps scope identical to the invocation.
 
 2. **Post-resolution diagnosis precedes eligibility.** The runner SHALL first
    establish the resolved change identity and validate the closed result. Only
@@ -54,7 +59,7 @@ additional phase-adapter field.
    `in-scope` means that the evidence identifies a concrete point in an
    authorized production artifact and the authorized correction boundary
    permits this worker to correct it. `owner-in-run` means that the evidence
-   identifies a concrete point in an authorized production artifact and the
+   identifies a concrete point in an authorized artifact — production or test — and the
    authorized correction boundary is held by a named worker that is still
    resumable in this run. The coordinator determines the in-run owner roster
    (worker identity, authorized correction boundary, and resumability state)
@@ -66,12 +71,22 @@ additional phase-adapter field.
    reads only from this coordinator-held roster and does not infer missing
    workers or boundaries. When the evidence places the cause across more than
    one in-run owner's authorized correction boundary, Cause Locus is `unresolved`;
-   no multi-owner fan-out to multiple workers occurs. `out-of-scope` means that
-   the cause is in a test, declared interface, forbidden artifact,
-   external/shared system, or any other boundary where no in-run worker holds an
-   authorized correction boundary. `unresolved` means the evidence cannot
+   no multi-owner fan-out to multiple workers occurs. `out-of-scope` is decided by
+   ownership, never by the kind of artifact the cause sits in: it means that no
+   in-run worker holds an authorized correction boundary over that concrete point —
+   a declared interface, forbidden artifact, external/shared system, or any other
+   boundary with no in-run owner. A cause located in a test file is therefore
+   `owner-in-run` whenever a test-owning worker is still resumable in this run, and
+   the correction is routed to that owner, never to a worker whose contract forbids
+   test files. `unresolved` means the evidence cannot
    establish a concrete point and correction boundary, or the two inspection
    channels do not agree, or the evidence spans multiple in-run owners.
+
+   Ownership-based classification reaches every consumer of this shared policy,
+   including the Direct Build (unattended) route, which consumes Bounded Recovery
+   although it runs no RED/GREEN pair. Its effect there is neutral: Direct Build's
+   single implementer already owns both tests and production, so a test-located
+   cause was already inside that worker's correction boundary.
 
    Diagnosis uses both inspection channels before eligibility is evaluated:
    (a) the worker-authored result channel, including its status, failure
@@ -197,8 +212,9 @@ additional phase-adapter field.
   10. **Union and fast-track invariants.** Maintain one first-seen, ordered,
       duplicate-free `changed_files` union across initial results, progress,
        notices, input, normal continuation, segment transitions, and recovery.
-      Reset the diagnosis ledger only at an eligible composition-segment
-      boundary; never reset the changed-files union. `--fast-track` is unchanged:
+      Reset the diagnosis ledger only on entry to an eligible recovery scope
+      (each Step for a Step-executing adapter, each composition-segment boundary
+      otherwise); never reset the changed-files union. `--fast-track` is unchanged:
       it changes neither the three-slot ledger, distinct-diagnosis accounting,
       eligibility, duplicate handling, same-worker/no-replacement rule,
        changed-files union, nor recovery reporting; its existing fast-track gates

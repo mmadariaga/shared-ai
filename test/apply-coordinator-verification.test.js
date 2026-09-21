@@ -240,13 +240,13 @@ test('Step 4 duplicate diagnosis is terminal before exhaustion and the unresolve
     'specs/diagnosis-driven-recovery-apply/spec.md: unresolved must not be represented as a Cause Locus value');
 });
 
-test('Step 4 the second unresolved repair hands back to a human', () => {
+test('Step 4 a repair beyond the exhausted coordinator budget hands back to a human', () => {
   const coordinator = artifact(APPLY_CARDS.coordinator);
   const runner = artifact(APPLY_CARDS.runner);
   const recovery = recoverySection(`${coordinator}\n${runner}`);
 
-  assert.match(recovery, /second[\s-]+repair[\s\S]{0,520}(?:unresolved|human|hand[- ]back)/i,
-    'specs/diagnosis-driven-recovery-apply/spec.md: a second repair must have an unresolved human hand-back branch');
+  assert.match(recovery, /repair beyond the exhausted coordinator budget[\s\S]{0,520}(?:unresolved|human|hand[- ]back)/i,
+    'specs/diagnosis-driven-recovery-apply/spec.md: a repair beyond the coordinator budget must have an unresolved human hand-back branch');
   assert.match(recovery, /unresolved[\s\S]{0,420}(?:human hand[- ]back|hand[- ]back to human|human intervention)/i,
     'specs/diagnosis-driven-recovery-apply/spec.md: unresolved recovery must hand back to a human');
 });
@@ -360,4 +360,52 @@ test('Step 2 terminal documentation preserves the pre-Final-sweep halt and field
   assert.match(section, /does not depend on a Step number or worker report/);
   assert.match(section, /changed-files union.*outside this set/);
   assert.match(section, /never resolve `GLOSSARY\.md` from `openspec\/changes\/\{change-name\}`/);
+});
+
+test('Step 4 the unblock ladder traverses autonomously under a Step-scoped coordinator budget', () => {
+  const coordinator = artifact(APPLY_CARDS.coordinator);
+  const ladder = coordinator.slice(coordinator.search(/## Coordinator-led unblock ladder/));
+  assert.ok(ladder.length > 0, 'the coordinator must declare the unblock ladder');
+
+  assert.match(ladder, /traverses the ladder autonomously[\s\S]{0,260}never asks the user/i,
+    'the ladder must be traversed without a per-incident user prompt');
+  assert.match(ladder, /three coordinator attempts per Step/i,
+    'the coordinator budget must be three attempts per Step');
+  assert.match(ladder, /held in the state store by `recovery-ledger@1`, not in prose/i,
+    'the coordinator budget must live in the state store rather than in prose');
+  assert.match(ladder, /on entry to each Step[\s\S]{0,200}reset[\s\S]{0,200}`recovery-ledger@1`|reset the ledger machine with `reset <id> recovery-ledger@1`/i,
+    'both budgets must reset on entry to each Step');
+  assert.match(ladder, /Delegating a corrective dispatch spends one coordinator attempt/i,
+    'delegating must consume a coordinator attempt exactly as a self-edit does');
+  assert.match(ladder, /Self-edit is forbidden while a worker-safe correction exists\./,
+    'the self-edit rule must be preserved verbatim');
+});
+
+test('Step 4 the coordinator never writes a test file and routes test causes to their owner', () => {
+  const coordinator = artifact(APPLY_CARDS.coordinator);
+  const ladder = coordinator.slice(coordinator.search(/## Coordinator-led unblock ladder/));
+
+  assert.match(ladder, /coordinator never writes a test file under any rung/i,
+    'the coordinator must never write a test file');
+  assert.match(ladder, /no RED owner[\s\S]{0,200}dispatch a fresh RED/i,
+    'a GREEN-only Step with a test cause must dispatch a fresh RED');
+  assert.match(ladder, /RED owner exists but is exhausted[\s\S]{0,200}escalate/i,
+    'an exhausted test owner must escalate instead of a coordinator test edit');
+  assert.match(ladder, /never routed to GREEN, whose test-file prohibition stays absolute/i,
+    'a test cause must never be routed to GREEN');
+});
+
+test('Step 4 budget exhaustion and the enumerated stopping reasons close an unattended Step', () => {
+  const coordinator = artifact(APPLY_CARDS.coordinator);
+  const ladder = coordinator.slice(coordinator.search(/## Coordinator-led unblock ladder/));
+
+  assert.match(ladder, /exhausting either budget inside a Step[\s\S]{0,320}escalates to a human[\s\S]{0,200}naming the Step/i,
+    'exhausting either budget must escalate naming the Step, diagnosis, and attempts');
+  for (const reason of [/weakening or deleting an assertion/i, /redefining the agreed contract/i, /safe-operations/i, /`unrecoverable: true` veto/i, /pre-existing failure outside the change's radius/i]) {
+    assert.match(ladder, reason, 'the enumerated stopping reasons must stay complete');
+  }
+  assert.match(ladder, /No other incident interrupts an unattended run/i,
+    'no other condition may stop the run for a user');
+  assert.match(ladder, /record one line per autonomous correction[\s\S]{0,320}report the collected lines at run close/i,
+    'autonomous corrections must leave a trace reported at run close');
 });

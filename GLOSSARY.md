@@ -40,7 +40,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Direct Build - Unattended**: "The explore crystallization-close selector lane with route id `direct-build-unattended`, visible label `Direct Build - Unattended`, and managed implementer `sai-direct-build-worker` (matrix phase/binding `direct-build`); code-first unattended implementation from a Ready to Propose block, followed by backfill and archive under `--direct-build-prepare` / `--direct-build-execute`. Distinct from `/sai-build` / `meta-build`."
 *Avoid*: Auto, autofast, auto-fast, Build - Unattended, build-unattended, sai-build, meta-build
 
-**Cause Locus**: "The coordinator's evidence-backed classification of a non-clean closure as inside a worker's authorized boundary or outside it."
+**Cause Locus**: "The coordinator's evidence-backed classification of a non-clean closure by ownership — inside the reporting worker's authorized boundary, inside the boundary of another worker still resumable in this run, or outside every in-run boundary — never by the kind of artifact the cause sits in."
 *Avoid*: cause location, recovery scope, failure class
 
 **Change Overview**: "The per-change `change-overview.md` review projection that consolidates the five completed sai-2 source artifacts — `proposal.md`, `specs/**`, `design.md`, `tasks.md`, and `interfaces.md` — into one review-oriented document organized by capability and behavior, generated or regenerated only when the invocation opts in — initially after the sai-2 feedback loop closes and once after each later source-modifying request — while unopted source edits may leave an existing overview stale; a derived projection that is never a source of truth."
@@ -160,7 +160,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Internal Public Surface**: "A planned public promise available only to controlled callers within the repository or another explicitly controlled part of the change, even though the surface is intentionally public within that boundary."
 *Avoid*: private surface, internal API (when the surface is not an API), external surface
 
-**Known-False Report Recovery**: "A bounded `/sai-4-apply` correction path for a non-clean worker result that coordinator evidence diagnoses — branching on **Cause Locus** to continue the same authorized RED or GREEN worker via `continue_after_recovery` for a new in-scope **Diagnosis Key** (shared three-slot ledger), or to spend zero attempts for out-of-scope/unresolved causes (with at most one coordinator-owned current-Step `implementation.md` plan-artifact repair when applicable)."
+**Known-False Report Recovery**: "A bounded `/sai-4-apply` correction path for a non-clean worker result that coordinator evidence diagnoses — branching on **Cause Locus** to continue the same authorized RED or GREEN worker via `continue_after_recovery` for a new in-scope **Diagnosis Key** (shared three-slot ledger), or to spend zero attempts for out-of-scope/unresolved causes (with coordinator-owned repairs, such as the current-Step `implementation.md` plan-artifact repair, drawn from the coordinator budget of three attempts per Step)."
 *Avoid*: automatic retry, indefinite retry, advisor escalation, fresh recovery dispatch
 
 **Machine Registry**: "The code registry of hosted state machines backing the stage machine platform, where each entry defines `initialState`, `transition`, and `project` and adding a machine is a module plus one registration line."

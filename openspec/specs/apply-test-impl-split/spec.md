@@ -2,7 +2,9 @@
 
 ## Purpose
 Defines the RED/GREEN worker split and routing rules for apply steps.
+
 ## Requirements
+
 ### Requirement: RED-carrying testable steps split into a RED worker then a GREEN worker
 
 The `sai-4-apply` coordinator SHALL select the split two-worker flow for a Step if and only if **all three parts** of the routing condition hold:
@@ -183,3 +185,16 @@ This requirement SHALL NOT duplicate the worker-vocabulary glossary edits owned 
 - **WHEN** a maintainer audits GLOSSARY.md edit ownership
 - **THEN** the **RED Worker**/**GREEN Worker** entries and the stale-boundary removals are mandated only by `apply-taxonomy-reclassification`, and this requirement references them without re-mandating
 
+### Requirement: A test-located recovery cause routes to the resumable RED owner
+
+The apply runner SHALL classify a cause that sits in a test file by ownership and never by artifact kind: its authorized correction boundary belongs to the resumable same-Step RED owner, so the cause SHALL be assigned `owner-in-run`, routed to that owner with no user prompt, and never routed to GREEN. The GREEN worker's absolute prohibition on creating or modifying test files SHALL remain unchanged, and the RED worker's prohibition on editing production files SHALL remain unchanged; this routing rule SHALL NOT widen either worker's authorized scope.
+
+#### Scenario: A test-located cause is routed to RED, never to GREEN
+
+- **WHEN** the runner diagnoses a recovery cause located in a test file while the same-Step RED owner is still resumable
+- **THEN** it SHALL route the correction to that RED owner with no user prompt and SHALL NOT dispatch GREEN for the test edit
+
+#### Scenario: Worker prohibitions survive the routing rule
+
+- **WHEN** the ownership routing rule is applied to a test-located cause
+- **THEN** GREEN SHALL retain its absolute test-file prohibition and RED SHALL retain its production-file prohibition
