@@ -1493,7 +1493,9 @@ test('default postSetupMenu is silent and non-prompting in a non-TTY run', async
     assert.equal(rl.closeCount, 1, 'the setup-owned readline is closed exactly once');
     assert.ok(cap.logs.some(m => m.includes(`SAI workflow configured at ${projectDir}.`)),
       'the pre-existing completion message is preserved');
-    const interactiveLines = cap.logs.filter(m =>
+    const interactiveLines = cap.logs
+      .filter(m => !/codegraph/i.test(m))
+      .filter(m =>
       /Customize models|Claude Code|OpenCode/i.test(m)
       || /\(\s*y\s*\/\s*n\s*\)/i.test(m)
       || /\?\s*$/.test(m));

@@ -504,7 +504,7 @@ function rewriteOpencodeConfigPrefixes(text, opencodeBase) {
 
 const OPENCODE_INSTALL_CMD = 'npm i -g opencode-ai@latest';
 const CODEGRAPH_CLI_INSTALL_CMD = 'npm i -g @colbymchenry/codegraph';
-const CODEGRAPH_MCP_INSTALL_CMD = 'codegraph install';
+const CODEGRAPH_MCP_INSTALL_CMD = 'codegraph install -y -t claude,opencode';
 const CODEGRAPH_WIRING_HINT = 'MCP wiring: run `codegraph install` if not already wired';
 const OPENSPEC_INSTALL_CMD = 'npm i -g @fission-ai/openspec';
 
@@ -1033,17 +1033,15 @@ function installOpencode(destBase, { spawnSync: spawnFn, env: runEnv, notices } 
 }
 
 function printOpencodeConfigMessage(base, opencodeBaseForPattern, notices) {
-  const pattern = opencodeSaiPermissionPatternFor(opencodeBaseForPattern);
   const agentsDisplay = opencodeAgentsDisplayFor(opencodeBaseForPattern);
+  const examplePath = path.join(REPOSITORY_ROOT, 'configs', 'opencode.jsonc');
   const lines = [
-    `Opencode config already exists at ${base}. Verify that you have these settings properly configured:`,
-    '  "permission": {',
-    '    "external_directory": {',
-    `      "${pattern}": "allow"`,
-    '    }',
+    `Opencode config already exists at ${base}. Ensure experimental.subagent_depth is set to 2:`,
+    '  "experimental": {',
+    '    "subagent_depth": 2',
     '  }',
-    'See configs/opencode.jsonc for a reference example.',
-    `This narrow external-directory authorization is the only setting the installer merges into an existing config. The generic agents (explore, executor, budget) are managed agent files under ${agentsDisplay} and need no config entry.`,
+    `See ${examplePath} for a reference example.`,
+    `The installer only ensures experimental.subagent_depth = 2 in an existing config and leaves everything else untouched. The generic agents (explore, executor, budget) are managed agent files under ${agentsDisplay} and need no config entry.`,
   ];
   if (Array.isArray(notices)) {
     for (const line of lines) notices.push(line);
@@ -1172,12 +1170,6 @@ function mergeOpencodeAgents(text, permissionContext = createPermissionMatchCont
   const root = parse(text, errors, { allowTrailingComma: true });
   if (errors.length > 0 || !isPlainObject(root)) return null;
 
-  const pattern = opencodeSaiPermissionPatternFor(opencodeBaseForPattern);
-  const permissionState = classifySaiPermission(root.permission, permissionContext, opencodeBaseForPattern);
-  if (permissionState.invalid) {
-    return invalidPermissionResult(text, permissionState.invalid[0], permissionState.invalid[1], opencodeBaseForPattern);
-  }
-
   const redundantKeys = isPlainObject(root.agent)
     ? ['explore', 'executor', 'budget'].filter(key => Object.prototype.hasOwnProperty.call(root.agent, key))
     : [];
@@ -1186,55 +1178,18 @@ function mergeOpencodeAgents(text, permissionContext = createPermissionMatchCont
   let out = text;
   const messages = [];
 
-  if (permissionState.action === 'append') {
-    if (root.permission === undefined) {
-      out = applyEdits(out, modify(out, ['permission'], {}, { formattingOptions }));
-    }
-    out = applyEdits(out, modify(
-      out,
-      ['permission', 'external_directory', pattern],
-      'allow',
-      { formattingOptions },
-    ));
-  } else if (permissionState.action === 'restricted') {
-    if (permissionState.equivalentCandidate !== undefined) {
-      out = applyEdits(out, modify(
-        out,
-        ['permission', 'external_directory', permissionState.equivalentCandidate],
-        permissionState.value,
-        { formattingOptions },
-      ));
-    }
-    messages.push(
-      `OpenCode SAI permission: preserved ${permissionState.value} for ${pattern}; explicit user restriction prevents automatic SAI access.`,
-    );
-  } else if (permissionState.action === 'preserve-scalar') {
-    if (permissionState.value === 'allow') {
-      messages.push(
-        `OpenCode SAI permission: preserved allow at ${permissionState.location}; existing broad user permission allows ${pattern}.`,
-      );
-    } else {
-      messages.push(
-        `OpenCode SAI permission: preserved ${permissionState.value} for ${pattern}; explicit user restriction prevents automatic SAI access.`,
-      );
-    }
-  }
-
-  // Dual subagent_depth backfill (v1 top-level + v2 experimental nested):
-  // preserve any present value (even invalid/wrong-type), backfill only absent keys at 2.
-  const hasTopDepth = Object.hasOwn(root, 'subagent_depth');
-  let hasExpDepth;
-  if (root.experimental === undefined) {
-    hasExpDepth = false;
-  } else if (isPlainObject(root.experimental)) {
-    hasExpDepth = Object.hasOwn(root.experimental, 'subagent_depth');
-  } else {
-    hasExpDepth = true;
-  }
-  if (!hasTopDepth) {
-    out = applyEdits(out, modify(out, ['subagent_depth'], 2, { formattingOptions }));
-  }
-  if (!hasExpDepth) {
+  // The only ensured write in an existing config is
+  // experimental.subagent_depth = 2: create the block when missing and raise
+  // it when below 2. Everything else — including permission.external_directory
+  // with custom values and top-level subagent_depth — is left untouched.
+  const needsExperimentalWrite = (() => {
+    if (root.experimental === undefined) return true;
+    if (!isPlainObject(root.experimental)) return true;
+    if (!Object.hasOwn(root.experimental, 'subagent_depth')) return true;
+    const value = root.experimental.subagent_depth;
+    return !(typeof value === 'number' && Number.isFinite(value) && value >= 2);
+  })();
+  if (needsExperimentalWrite) {
     out = applyEdits(out, modify(out, ['experimental', 'subagent_depth'], 2, { formattingOptions }));
   }
 
@@ -1282,6 +1237,93 @@ function copyOpencodeConfig(destBase, { opencodeBaseForPattern, spawnSync: spawn
     emitInstallerNotice(notices, `Migration notice: redundant opencode agent keys detected in ${target}: ${merged.redundantKeys.join(', ')}. The projected agent files under ${agentsDisplay} now take precedence — agent files take precedence for the keys they declare, including model — a tuned model in the config is no longer effective. Config-only keys the agent files do not declare (for example tools or options) still apply. To keep a tuned model, edit the model line in the matching agent file (${agentsDisplay}{explore,executor,budget}.md), which the tunable-seed lifecycle preserves. Removing the now-redundant keys from the config is your decision; the installer never edits the config.`);
   }
   for (const message of merged.messages) emitInstallerNotice(notices, message);
+}
+
+function readJsoncConfigAt(filePath) {
+  let parser = null;
+  try {
+    parser = require('jsonc-parser');
+  } catch {
+    parser = jsoncParser;
+  }
+  let text;
+  try {
+    text = fs.readFileSync(filePath, 'utf8');
+  } catch {
+    return null;
+  }
+  try {
+    if (parser) {
+      const errors = [];
+      const root = parser.parse(text, errors, { allowTrailingComma: true });
+      if (errors.length > 0 || !isPlainObject(root)) return null;
+      return root;
+    }
+    const parsed = JSON.parse(text);
+    return isPlainObject(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function isCodegraphMcpEnabledInConfig(root) {
+  if (!isPlainObject(root) || !isPlainObject(root.mcp)) return false;
+  const entry = root.mcp.codegraph;
+  if (!isPlainObject(entry)) return false;
+  return entry.enabled !== false;
+}
+
+function codegraphDbPathFor(projectRoot) {
+  return path.join(projectRoot, '.codegraph', 'codegraph.db');
+}
+
+function isCodegraphMcpConfigured({ globalBase, projectRoot } = {}) {
+  const candidates = [];
+  if (typeof globalBase === 'string' && globalBase !== '') {
+    candidates.push(path.join(globalBase, 'opencode.json'));
+    candidates.push(path.join(globalBase, 'opencode.jsonc'));
+  }
+  if (typeof projectRoot === 'string' && projectRoot !== '') {
+    candidates.push(path.join(projectRoot, 'opencode.json'));
+    candidates.push(path.join(projectRoot, 'opencode.jsonc'));
+    candidates.push(path.join(projectRoot, '.opencode', 'opencode.json'));
+    candidates.push(path.join(projectRoot, '.opencode', 'opencode.jsonc'));
+  }
+  for (const candidate of candidates) {
+    if (!fs.existsSync(candidate)) continue;
+    const root = readJsoncConfigAt(candidate);
+    if (root && isCodegraphMcpEnabledInConfig(root)) return true;
+  }
+  return false;
+}
+
+// Three-layer CodeGraph state for the install output: binary → MCP → db.
+// Recommend-only: the installer never runs a CodeGraph command automatically.
+// Each absence recommends its own command; a stale index does not warn.
+function emitCodegraphStateNotices({
+  projectRoot = process.cwd(),
+  opencodeBase,
+  notices,
+  probe = probeCodegraph,
+  mcpConfigured,
+  dbExists,
+} = {}) {
+  if (!probe()) {
+    emitInstallerNotice(notices, `CodeGraph CLI not found — install it with ${CODEGRAPH_CLI_INSTALL_CMD} (system-level installation).`);
+    return;
+  }
+  const resolvedBase = opencodeBase !== undefined ? opencodeBase : resolveOpencodeBase();
+  const mcpOk = typeof mcpConfigured === 'boolean'
+    ? mcpConfigured
+    : isCodegraphMcpConfigured({ globalBase: resolvedBase, projectRoot });
+  if (!mcpOk) {
+    emitInstallerNotice(notices, `CodeGraph MCP not configured — run \`${CODEGRAPH_MCP_INSTALL_CMD}\`.`);
+  }
+  const dbPath = codegraphDbPathFor(projectRoot);
+  const indexOk = typeof dbExists === 'boolean' ? dbExists : fs.existsSync(dbPath);
+  if (!indexOk) {
+    emitInstallerNotice(notices, `CodeGraph index not found at ${dbPath} — run \`codegraph init\` in ${projectRoot}.`);
+  }
 }
 
 function detectInstalledEditors(overrides = {}) {
@@ -1346,6 +1388,7 @@ async function main() {
   }
 
   await offerCodegraphInstall({ notices });
+  emitCodegraphStateNotices({ projectRoot: process.cwd(), opencodeBase: resolvedOpencodeBase, notices });
 
   const seenNotices = new Set();
   const uniqueNotices = [];
@@ -1403,6 +1446,11 @@ module.exports = {
   toPosixOpencodePath,
   printOpencodeConfigMessage,
   detectInstalledEditors,
+  readJsoncConfigAt,
+  isCodegraphMcpEnabledInConfig,
+  codegraphDbPathFor,
+  isCodegraphMcpConfigured,
+  emitCodegraphStateNotices,
   OPENCODE_INSTALL_CMD,
   probeOpencode,
   runOpencodeInstall,

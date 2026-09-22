@@ -476,7 +476,7 @@ test('Step 2 copyOpencodeConfig copies the agent-free canonical config when none
   }
 });
 
-test('copyOpencodeConfig merges permission in place into an existing opencode.jsonc', () => {
+test('copyOpencodeConfig ensures experimental depth in place in an existing opencode.jsonc', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
   fs.writeFileSync(path.join(tmpDir, 'opencode.jsonc'), '{}');
   const messages = [];
@@ -485,15 +485,17 @@ test('copyOpencodeConfig merges permission in place into an existing opencode.js
   copyOpencodeConfig(tmpDir);
   console.log = origLog;
   const parsed = jsonc.parse(fs.readFileSync(path.join(tmpDir, 'opencode.jsonc'), 'utf8'));
-  assert.equal(parsed.permission?.external_directory?.[SAI_EXTERNAL_DIRECTORY], 'allow',
-    'the SAI allow rule should be merged in place');
+  assert.equal(parsed.experimental?.subagent_depth, 2,
+    'experimental.subagent_depth should be ensured at 2');
+  assert.equal(Object.hasOwn(parsed, 'permission'), false,
+    'no permission block should be added to an existing config');
   assert.equal(Object.hasOwn(parsed, 'agent'), false, 'no agent block should be added');
   assert.ok(!messages.join('\n').includes('Opencode config already exists'),
     'no fallback guidance should be printed for a parseable config');
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-test('copyOpencodeConfig merges permission in place into an existing opencode.json', () => {
+test('copyOpencodeConfig ensures experimental depth in place in an existing opencode.json', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
   fs.writeFileSync(path.join(tmpDir, 'opencode.json'), '{}');
   const messages = [];
@@ -502,8 +504,10 @@ test('copyOpencodeConfig merges permission in place into an existing opencode.js
   copyOpencodeConfig(tmpDir);
   console.log = origLog;
   const parsed = jsonc.parse(fs.readFileSync(path.join(tmpDir, 'opencode.json'), 'utf8'));
-  assert.equal(parsed.permission?.external_directory?.[SAI_EXTERNAL_DIRECTORY], 'allow',
-    'the SAI allow rule should be merged in place');
+  assert.equal(parsed.experimental?.subagent_depth, 2,
+    'experimental.subagent_depth should be ensured at 2');
+  assert.equal(Object.hasOwn(parsed, 'permission'), false,
+    'no permission block should be added to an existing config');
   assert.equal(Object.hasOwn(parsed, 'agent'), false, 'no agent block should be added');
   assert.equal(fs.existsSync(path.join(tmpDir, 'opencode.jsonc')), false,
     'should not create the non-target opencode.jsonc');
@@ -556,7 +560,7 @@ test('installOpencode overwrites stale command wrappers', () => {
 
 // --- Step 2: opencode config permission-merge, migration-notice, and fallback tests ---
 
-test('copyOpencodeConfig merges permission into opencode.json without adding agent keys', () => {
+test('copyOpencodeConfig ensures depth in opencode.json without adding agent keys or permissions', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
   fs.writeFileSync(path.join(tmpDir, 'opencode.json'), JSON.stringify({ theme: 'dark' }));
   copyOpencodeConfig(tmpDir);
@@ -567,14 +571,16 @@ test('copyOpencodeConfig merges permission into opencode.json without adding age
     assert.equal(Object.hasOwn(parsed.agent || {}, key), false,
       `specs/opencode-config-install/spec.md: agent.${key} must not be added`);
   }
-  assert.equal(parsed.permission?.external_directory?.[SAI_EXTERNAL_DIRECTORY], 'allow',
-    'the SAI allow rule should be merged into the existing file');
+  assert.equal(parsed.experimental?.subagent_depth, 2,
+    'experimental.subagent_depth should be ensured at 2');
+  assert.equal(Object.hasOwn(parsed, 'permission'), false,
+    'no permission block should be added to an existing config');
   assert.equal(parsed.theme, 'dark', 'unrelated keys should survive');
   assert.ok(!fs.existsSync(path.join(tmpDir, 'opencode.jsonc')), 'should not create opencode.jsonc');
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-test('copyOpencodeConfig merges permission into opencode.jsonc without adding agent keys', () => {
+test('copyOpencodeConfig ensures depth in opencode.jsonc without adding agent keys or permissions', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
   fs.writeFileSync(path.join(tmpDir, 'opencode.jsonc'), JSON.stringify({ theme: 'dark' }));
   copyOpencodeConfig(tmpDir);
@@ -585,12 +591,14 @@ test('copyOpencodeConfig merges permission into opencode.jsonc without adding ag
     assert.equal(Object.hasOwn(parsed.agent || {}, key), false,
       `specs/opencode-config-install/spec.md: agent.${key} must not be added`);
   }
-  assert.equal(parsed.permission?.external_directory?.[SAI_EXTERNAL_DIRECTORY], 'allow',
-    'the SAI allow rule should be merged in place');
+  assert.equal(parsed.experimental?.subagent_depth, 2,
+    'experimental.subagent_depth should be ensured at 2');
+  assert.equal(Object.hasOwn(parsed, 'permission'), false,
+    'no permission block should be added to an existing config');
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-test('copyOpencodeConfig merges only opencode.json when both files exist', () => {
+test('copyOpencodeConfig ensures depth only in opencode.json when both files exist', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
   fs.writeFileSync(path.join(tmpDir, 'opencode.json'), JSON.stringify({ theme: 'dark' }));
   const jsoncContent = JSON.stringify({ theme: 'light' });
@@ -600,14 +608,14 @@ test('copyOpencodeConfig merges only opencode.json when both files exist', () =>
   const jsonParsed = jsonc.parse(fs.readFileSync(path.join(tmpDir, 'opencode.json'), 'utf8'));
   assert.equal(Object.hasOwn(jsonParsed, 'agent'), false,
     'specs/opencode-config-install/spec.md: no agent block may be added to opencode.json');
-  assert.equal(jsonParsed.permission?.external_directory?.[SAI_EXTERNAL_DIRECTORY], 'allow',
-    'the SAI allow rule should be merged into opencode.json');
+  assert.equal(jsonParsed.experimental?.subagent_depth, 2,
+    'experimental.subagent_depth should be ensured in opencode.json');
   const afterJsoncBytes = fs.readFileSync(path.join(tmpDir, 'opencode.jsonc'));
   assert.deepEqual(afterJsoncBytes, beforeJsoncBytes, 'opencode.jsonc should remain byte-for-byte untouched');
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-test('copyOpencodeConfig preserves comments, trailing commas, and unrelated keys', () => {
+test('copyOpencodeConfig preserves comments, trailing commas, and unrelated keys while ensuring depth', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
   const fixture = '{\n  // preserve this comment\n  "theme": "dark",\n  "subagent_depth": 2,\n}\n';
   fs.writeFileSync(path.join(tmpDir, 'opencode.jsonc'), fixture);
@@ -617,9 +625,12 @@ test('copyOpencodeConfig preserves comments, trailing commas, and unrelated keys
   assert.ok(raw.includes('"theme"'), 'theme key should survive');
   const parsed = jsonc.parse(raw);
   assert.equal(parsed.theme, 'dark', 'theme value should be unchanged');
-  assert.deepEqual(Object.keys(parsed).sort(), ['permission', 'subagent_depth', 'experimental', 'theme'].sort(),
-    'only permission, theme, subagent_depth, and experimental should be top-level keys');
+  assert.equal(parsed.subagent_depth, 2, 'existing top-level subagent_depth should be left untouched');
+  assert.equal(parsed.experimental?.subagent_depth, 2, 'experimental.subagent_depth should be ensured at 2');
+  assert.deepEqual(Object.keys(parsed).sort(), ['subagent_depth', 'experimental', 'theme'].sort(),
+    'only theme, subagent_depth, and experimental should be top-level keys');
   assert.equal(Object.hasOwn(parsed, 'agent'), false, 'no agent block should be added');
+  assert.equal(Object.hasOwn(parsed, 'permission'), false, 'no permission block should be added');
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
@@ -718,8 +729,10 @@ test('copyOpencodeConfig prints no migration notice when the config carries no a
   const parsed = jsonc.parse(fs.readFileSync(path.join(tmpDir, 'opencode.json'), 'utf8'));
   assert.equal(Object.hasOwn(parsed, 'agent'), false,
     'specs/opencode-agent-migration-notice/spec.md: no agent block should be added');
-  assert.equal(parsed.permission?.external_directory?.[SAI_EXTERNAL_DIRECTORY], 'allow',
-    'the permission merge should still proceed');
+  assert.equal(parsed.experimental?.subagent_depth, 2,
+    'experimental.subagent_depth should still be ensured');
+  assert.equal(Object.hasOwn(parsed, 'permission'), false,
+    'no permission block should be added');
   const joined = messages.join('\n');
   assert.doesNotMatch(joined, /Added opencode agent keys/,
     'the retired add-notice must never be printed');
@@ -741,9 +754,12 @@ test('copyOpencodeConfig falls back gracefully for unparseable JSONC', () => {
   assert.equal(fs.readFileSync(configPath, 'utf8'), badContent, 'unparseable file should remain unchanged');
   const joined = messages.join('\n');
   assert.ok(joined.includes('Opencode config already exists'), 'should print intro line for fallback');
-  assert.ok(joined.includes('. Verify that you have these settings properly configured:'),
-    'specs/opencode-config-message/spec.md: intro line should match the pinned wording');
-  assert.ok(joined.includes(SAI_EXTERNAL_DIRECTORY), 'fallback should name the SAI permission rule');
+  assert.ok(joined.includes('Ensure experimental.subagent_depth is set to 2'),
+    'fallback should name the mandatory experimental.subagent_depth setting');
+  assert.ok(joined.includes(path.join('configs', 'opencode.jsonc')), 'fallback should reference the example file');
+  assert.match(joined, /See \/.*configs\/opencode\.jsonc for a reference example\./,
+    'fallback should show the full example path');
+  assert.ok(!joined.includes('external_directory'), 'fallback must not verify external_directory');
   assert.ok(!joined.includes('"agent"'), 'fallback must not print an "agent" block');
   assert.ok(!joined.includes('"model"'), 'fallback must not print a model field');
   assert.ok(!joined.includes('trusted low-cost model'), 'fallback must not mention a trusted low-cost model');
@@ -763,16 +779,19 @@ test('copyOpencodeConfig falls back gracefully for non-object root', () => {
   assert.equal(fs.readFileSync(configPath, 'utf8'), arrayContent, 'array-root config should remain unchanged');
   const joined = messages.join('\n');
   assert.ok(joined.includes('Opencode config already exists'), 'should print fallback for non-object root');
-  assert.ok(joined.includes('. Verify that you have these settings properly configured:'),
-    'specs/opencode-config-message/spec.md: intro line should match the pinned wording');
-  assert.ok(joined.includes(SAI_EXTERNAL_DIRECTORY), 'fallback should name the SAI permission rule');
+  assert.ok(joined.includes('Ensure experimental.subagent_depth is set to 2'),
+    'fallback should name the mandatory experimental.subagent_depth setting');
+  assert.ok(joined.includes(path.join('configs', 'opencode.jsonc')), 'fallback should reference the example file');
+  assert.match(joined, /See \/.*configs\/opencode\.jsonc for a reference example\./,
+    'fallback should show the full example path');
+  assert.ok(!joined.includes('external_directory'), 'fallback must not verify external_directory');
   assert.ok(!joined.includes('"agent"'), 'fallback must not print an "agent" block');
   assert.ok(!joined.includes('"model"'), 'fallback must not print a model field');
   assert.ok(!joined.includes('trusted low-cost model'), 'fallback must not mention a trusted low-cost model');
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-test('copyOpencodeConfig suppresses verification message after successful merge', () => {
+test('copyOpencodeConfig suppresses guidance message after successful merge', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
   fs.writeFileSync(path.join(tmpDir, 'opencode.json'), JSON.stringify({ theme: 'dark' }));
   const messages = [];
@@ -780,7 +799,7 @@ test('copyOpencodeConfig suppresses verification message after successful merge'
   console.log = (m) => messages.push(String(m));
   copyOpencodeConfig(tmpDir);
   console.log = origLog;
-  assert.ok(!messages.some(m => m.includes('Verify that you have these settings')), 'should not print verification message after merge');
+  assert.ok(!messages.some(m => m.includes('Opencode config already exists')), 'should not print fallback guidance after merge');
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
@@ -889,7 +908,7 @@ test('probeOpencode uses spawnSync exit-code semantics', () => {
   }
 });
 
-test('copyOpencodeConfig proceeds past non-plain-object agent maps and merges permission in place', () => {
+test('copyOpencodeConfig proceeds past non-plain-object agent maps and ensures depth without permissions', () => {
   const cases = [
     ['opencode.json', JSON.stringify({ agent: ['not', 'an', 'object'] }), ['not', 'an', 'object']],
     ['opencode.jsonc', '{ "agent": 42 }\n', 42],
@@ -905,8 +924,10 @@ test('copyOpencodeConfig proceeds past non-plain-object agent maps and merges pe
       const config = jsonc.parse(fs.readFileSync(path.join(tmpDir, name), 'utf8'));
       assert.deepEqual(config.agent, expectedAgent,
         `${name}: the non-plain-object agent subtree must survive untouched`);
-      assert.equal(config.permission?.external_directory?.[SAI_EXTERNAL_DIRECTORY], 'allow',
-        `${name}: the permission merge should proceed despite the non-plain-object agent`);
+      assert.equal(config.experimental?.subagent_depth, 2,
+        `${name}: the depth ensure should proceed despite the non-plain-object agent`);
+      assert.equal(Object.hasOwn(config, 'permission'), false,
+        `${name}: no permission block should be added`);
       assert.equal(messages.some(message => /manual|already exists|verify/i.test(message)), false,
         `${name}: no fallback message should be printed when the merge proceeds`);
     } finally {
@@ -916,7 +937,7 @@ test('copyOpencodeConfig proceeds past non-plain-object agent maps and merges pe
   }
 });
 
-// --- Step 1: external-directory permission merge tests ---
+// --- Step 1: opencode config depth-ensure tests ---
 
 function permissionStepTempDir() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'sai-permission-step-1-'));
@@ -959,15 +980,18 @@ test('Step 1 fresh install grants narrow SAI external-directory access and ships
   }
 });
 
-test('Step 1 JSON-only and JSONC-only object permissions append exactly one narrow rule', () => {
+test('Step 1 JSON-only and JSONC-only configs keep permissions untouched and ensure depth', () => {
   for (const name of ['opencode.json', 'opencode.jsonc']) {
     const dir = permissionStepTempDir();
     try {
-      writePermissionConfig(dir, name, { permission: { read: { [SAI_EXTERNAL_DIRECTORY]: 'allow' }, external_directory: { '*.md': 'ask' } } });
+      const original = { permission: { read: { [SAI_EXTERNAL_DIRECTORY]: 'allow' }, external_directory: { '*.md': 'ask' } } };
+      writePermissionConfig(dir, name, original);
       copyOpencodeConfig(dir);
       const config = readPermissionConfig(dir, name);
-      assert.equal(config.permission.external_directory[SAI_EXTERNAL_DIRECTORY], 'allow');
-      assert.equal(Object.keys(config.permission.external_directory).length, 2);
+      assert.deepEqual(config.permission, original.permission,
+        'existing permission entries should be left untouched');
+      assert.equal(config.experimental?.subagent_depth, 2,
+        'experimental.subagent_depth should be ensured at 2');
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
@@ -982,7 +1006,11 @@ test('Step 1 changes only opencode.json when both config files exist', () => {
     writePermissionConfig(dir, 'opencode.jsonc', jsoncContent);
     copyOpencodeConfig(dir);
     assert.equal(fs.readFileSync(path.join(dir, 'opencode.jsonc'), 'utf8'), jsoncContent);
-    assert.equal(readPermissionConfig(dir, 'opencode.json').permission.external_directory[SAI_EXTERNAL_DIRECTORY], 'allow');
+    const config = readPermissionConfig(dir, 'opencode.json');
+    assert.deepEqual(config.permission, { external_directory: { '*.md': 'ask' } },
+      'existing permission entries in opencode.json should be left untouched');
+    assert.equal(config.experimental?.subagent_depth, 2,
+      'experimental.subagent_depth should be ensured in opencode.json');
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
@@ -1005,13 +1033,18 @@ test('Step 1 preserves comments, unrelated values, agents, plugins, MCP entries,
     assert.deepEqual(config.agent.custom, { model: 'user-model' });
     assert.deepEqual(config.plugin, ['user-plugin']);
     assert.deepEqual(config.mcp.local, { command: 'user-command' });
-    assert.deepEqual(Object.keys(config.permission.external_directory), ['first', 'second', SAI_EXTERNAL_DIRECTORY]);
+    assert.deepEqual(config.permission, { external_directory: { first: 'ask', second: 'deny' } },
+      'existing permission entries should be left untouched');
+    assert.deepEqual(Object.keys(config.permission.external_directory), ['first', 'second'],
+      'permission rule order should be preserved with no appended rule');
+    assert.equal(config.experimental?.subagent_depth, 2,
+      'experimental.subagent_depth should be ensured at 2');
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
 
-test('Step 1 treats wildcard as broad, and normalized equivalent SAI spellings as existing', () => {
+test('Step 1 leaves existing permission spellings untouched and ensures depth', () => {
   const absolute = path.join(os.homedir(), '.config', 'opencode', 'sai', '**');
   const variants = [
     '*',
@@ -1024,35 +1057,41 @@ test('Step 1 treats wildcard as broad, and normalized equivalent SAI spellings a
     try {
       writePermissionConfig(dir, 'opencode.json', { permission: { external_directory: { [existing]: 'allow' } } });
       copyOpencodeConfig(dir);
-      const rules = readPermissionConfig(dir, 'opencode.json').permission.external_directory;
-      if (existing === '*') assert.equal(Object.keys(rules).length, 2);
-      else assert.equal(Object.keys(rules).length, 1);
+      const config = readPermissionConfig(dir, 'opencode.json');
+      assert.deepEqual(config.permission, { external_directory: { [existing]: 'allow' } },
+        `existing permission entry ${existing} should be left untouched`);
+      assert.equal(config.experimental?.subagent_depth, 2,
+        'experimental.subagent_depth should be ensured at 2');
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
   }
 });
 
-test('Step 1 respects effective rule order for broad deny and narrow allow or deny', () => {
+test('Step 1 preserves permission rule order and content while ensuring depth', () => {
   const cases = [
-    { rules: { '*': 'deny', [SAI_EXTERNAL_DIRECTORY]: 'allow' }, expected: 'allow' },
-    { rules: { [SAI_EXTERNAL_DIRECTORY]: 'allow', '*': 'deny' }, expected: 'deny' },
+    { rules: { '*': 'deny', [SAI_EXTERNAL_DIRECTORY]: 'allow' } },
+    { rules: { [SAI_EXTERNAL_DIRECTORY]: 'allow', '*': 'deny' } },
   ];
-  for (const { rules, expected } of cases) {
+  for (const { rules } of cases) {
     const dir = permissionStepTempDir();
     try {
       writePermissionConfig(dir, 'opencode.json', { permission: { external_directory: rules } });
       copyOpencodeConfig(dir);
       const config = readPermissionConfig(dir, 'opencode.json');
-      assert.equal(config.permission.external_directory[SAI_EXTERNAL_DIRECTORY], expected);
-      assert.equal(Object.keys(config.permission.external_directory).length, 2);
+      assert.deepEqual(config.permission.external_directory, rules,
+        'existing permission rules should be left untouched');
+      assert.deepEqual(Object.keys(config.permission.external_directory), Object.keys(rules),
+        'permission rule order should be preserved');
+      assert.equal(config.experimental?.subagent_depth, 2,
+        'experimental.subagent_depth should be ensured at 2');
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
   }
 });
 
-test('Step 1 preserves valid scalar permissions and reports broad access or restriction', () => {
+test('Step 1 preserves scalar permissions untouched while ensuring depth', () => {
   for (const [location, action] of [['permission', 'allow'], ['permission', 'ask'], ['permission.external_directory', 'deny'], ['permission.external_directory', 'allow']]) {
     const dir = permissionStepTempDir();
     try {
@@ -1062,30 +1101,36 @@ test('Step 1 preserves valid scalar permissions and reports broad access or rest
       const config = readPermissionConfig(dir, 'opencode.json');
       if (location === 'permission') assert.equal(config.permission, action);
       else assert.equal(config.permission.external_directory, action);
-      if (action === 'allow') assert.ok(messages.some(message => message === `OpenCode SAI permission: preserved allow at ${location}; existing broad user permission allows ${SAI_EXTERNAL_DIRECTORY}.`));
-      else assert.ok(messages.some(message => message === `OpenCode SAI permission: preserved ${action} for ${SAI_EXTERNAL_DIRECTORY}; explicit user restriction prevents automatic SAI access.`));
+      assert.equal(config.experimental?.subagent_depth, 2,
+        'experimental.subagent_depth should be ensured at 2');
+      assert.ok(!messages.some(message => /OpenCode SAI permission/i.test(message)),
+        'no permission notice should be printed for an untouched scalar permission');
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
   }
 });
 
-test('Step 1 rejects invalid permission inputs without partial writes', () => {
+test('Step 1 leaves invalid permission inputs untouched while ensuring depth', () => {
   const cases = [
     ['permission', ['array'], 'array'],
     ['permission', 'maybe', 'action'],
     ['permission.external_directory', ['array'], 'shape'],
     ['permission.external_directory', { [SAI_EXTERNAL_DIRECTORY]: 'maybe' }, 'action'],
   ];
-  for (const [location, value, diagnostic] of cases) {
+  for (const [location, value] of cases) {
     const dir = permissionStepTempDir();
     try {
       const config = location === 'permission' ? { permission: value } : { permission: { external_directory: value } };
       writePermissionConfig(dir, 'opencode.json', config);
       const messages = capturePermissionOutput(() => copyOpencodeConfig(dir));
       const after = readPermissionConfig(dir, 'opencode.json');
-      assert.deepEqual(after.permission, config.permission);
-      assert.ok(messages.some(message => message === `OpenCode SAI permission: no change for ${SAI_EXTERNAL_DIRECTORY}; ${location} has invalid ${diagnostic}; expected allow, ask, deny, or a rule object.`));
+      assert.deepEqual(after.permission, config.permission,
+        'an invalid permission value should be left untouched');
+      assert.equal(after.experimental?.subagent_depth, 2,
+        'experimental.subagent_depth should still be ensured at 2');
+      assert.ok(!messages.some(message => /OpenCode SAI permission/i.test(message)),
+        'no permission diagnostic should be printed for an untouched permission');
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
@@ -1134,13 +1179,16 @@ test('Step 2 Opencode installation preserves the shared selector contract withou
   }
 });
 
-test('Step 1 does not treat permission.read as external-directory access', () => {
+test('Step 1 leaves permission.read untouched with no external-directory merge while ensuring depth', () => {
   const dir = permissionStepTempDir();
   try {
     writePermissionConfig(dir, 'opencode.json', { permission: { read: { [SAI_EXTERNAL_DIRECTORY]: 'allow' } } });
     copyOpencodeConfig(dir);
     const config = readPermissionConfig(dir, 'opencode.json');
-    assert.equal(config.permission.external_directory[SAI_EXTERNAL_DIRECTORY], 'allow');
+    assert.deepEqual(config.permission, { read: { [SAI_EXTERNAL_DIRECTORY]: 'allow' } },
+      'permission.read should be left untouched with no external_directory merge');
+    assert.equal(config.experimental?.subagent_depth, 2,
+      'experimental.subagent_depth should be ensured at 2');
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }

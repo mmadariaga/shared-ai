@@ -196,10 +196,11 @@ test('preserves commented JSONC and non-SAI settings through namespaced opencode
     const parsed = jsonc.parse(installed);
     assert.ok(installed.includes('// preserve this comment'), 'existing comment should survive');
     assert.equal(parsed.theme, 'dark');
-     assert.deepEqual(parsed.permission, {
-       bash: 'deny',
-       external_directory: { '~/.config/opencode/sai/**': 'allow' },
-     });
+    assert.deepEqual(parsed.permission, {
+      bash: 'deny',
+    }, 'existing permission entries should be left untouched with no external_directory merge');
+    assert.equal(parsed.experimental?.subagent_depth, 2,
+      'experimental.subagent_depth should be ensured at 2');
     assert.deepEqual(parsed.agent.custom, { mode: 'subagent', model: 'custom-model' });
     assert.deepEqual(parsed.agent.explore, { mode: 'subagent', model: 'user-explore' });
     assert.deepEqual(parsed.agent.executor, { mode: 'subagent', model: 'user-executor' });
@@ -231,6 +232,9 @@ test('Step 3 overwrites incompatible Claude destinations with notice while prese
     '    "external_directory": {\n' +
     '      "~/.config/opencode/sai/**": "allow"\n' +
     '    }\n' +
+    '  },\n' +
+    '  "experimental": {\n' +
+    '    "subagent_depth": 2\n' +
     '  },\n' +
     '  "agent": {\n' +
     '    "explore": { "mode": "subagent", "model": "user-explore" },\n' +
