@@ -294,7 +294,7 @@ This chart may help you identify which models to test. The intelligence axis is 
 
 The x-axis (cost) is usually more reliable, but again, do your own tests. Note that costs can vary depending on the provider — the same model may be priced differently across API providers, subscriptions, and regions.
 
-![Intelligence vs Cost (Sep 2026)](Intelligence-vs-Cost-(16-Sep-'26).png)
+![Intelligence vs Cost (Sep 2026)](Intelligence-vs-Cost-(21-Sep-'26).png)
 
 Other rankings that can help you choose:
 
