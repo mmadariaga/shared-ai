@@ -505,7 +505,6 @@ function rewriteOpencodeConfigPrefixes(text, opencodeBase) {
 const OPENCODE_INSTALL_CMD = 'npm i -g opencode-ai@latest';
 const CODEGRAPH_CLI_INSTALL_CMD = 'npm i -g @colbymchenry/codegraph';
 const CODEGRAPH_MCP_INSTALL_CMD = 'codegraph install -y -t claude,opencode';
-const CODEGRAPH_WIRING_HINT = 'MCP wiring: run `codegraph install` if not already wired';
 const OPENSPEC_INSTALL_CMD = 'npm i -g @fission-ai/openspec';
 
 function emitInstallerNotice(notices, line) {
@@ -592,7 +591,6 @@ async function offerCodegraphInstall({
   notices,
 } = {}) {
   if (probe()) {
-    emitInstallerNotice(notices, CODEGRAPH_WIRING_HINT);
     return;
   }
 
@@ -1458,7 +1456,6 @@ module.exports = {
   offerOpencodeInstall,
   CODEGRAPH_CLI_INSTALL_CMD,
   CODEGRAPH_MCP_INSTALL_CMD,
-  CODEGRAPH_WIRING_HINT,
   probeCodegraph,
   runCodegraphInstall,
   offerCodegraphInstall,

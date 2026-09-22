@@ -10,7 +10,6 @@ const childProcess = require('child_process');
 const {
   CODEGRAPH_CLI_INSTALL_CMD,
   CODEGRAPH_MCP_INSTALL_CMD,
-  CODEGRAPH_WIRING_HINT,
   probeCodegraph,
   runCodegraphInstall,
   offerCodegraphInstall,
@@ -44,7 +43,7 @@ test('probeCodegraph uses spawnSync exit-code semantics', () => {
   }
 });
 
-test('offerCodegraphInstall (binary present) prints wiring hint', async () => {
+test('offerCodegraphInstall (binary present) returns silently', async () => {
   const messages = [];
   const origLog = console.log;
   console.log = (m) => messages.push(String(m));
@@ -59,10 +58,10 @@ test('offerCodegraphInstall (binary present) prints wiring hint', async () => {
   console.log = origLog;
   assert.equal(runInstallCalled, false, 'runInstall should not be called when binary is present');
   assert.equal(promptYesNoCalled, false, 'promptYesNo should not be called when binary is present');
-  assert.ok(messages.some(m => m.includes(CODEGRAPH_WIRING_HINT)), 'should print wiring hint');
+  assert.equal(messages.length, 0, 'should print no CodeGraph line when binary is present');
 });
 
-test('offerCodegraphInstall (binary present, no TTY) prints wiring hint', async () => {
+test('offerCodegraphInstall (binary present, no TTY) returns silently', async () => {
   const messages = [];
   const origLog = console.log;
   console.log = (m) => messages.push(String(m));
@@ -77,7 +76,7 @@ test('offerCodegraphInstall (binary present, no TTY) prints wiring hint', async 
   console.log = origLog;
   assert.equal(runInstallCalled, false, 'runInstall should not be called');
   assert.equal(promptYesNoCalled, false, 'promptYesNo should not be called');
-  assert.ok(messages.some(m => m.includes(CODEGRAPH_WIRING_HINT)), 'should print wiring hint');
+  assert.equal(messages.length, 0, 'should print no CodeGraph line when binary is present');
 });
 
 test('offerCodegraphInstall (absent + TTY + yes) runs install', async () => {

@@ -1,12 +1,16 @@
+## Purpose
+
+CodeGraph CLI detection and install offering for the installer.
+
 ## Requirements
 
 ### Requirement: Codegraph binary detection
 
-`install-flow.js` SHALL expose a reusable `offerCodegraphInstall()` helper that first probes for the `codegraph` binary by invoking it with `--version`. A successful invocation (process spawns and exits zero) SHALL be treated as **present**; a spawn failure (binary not found) or a non-zero exit SHALL be treated as **absent**. The probe SHALL resolve `codegraph` through the platform's executable PATH resolution, including Windows `PATHEXT` / `.cmd` shim resolution, by using `childProcess.spawnSync('codegraph --version', { shell: true, stdio: 'ignore' })` — a single hardcoded string literal with `shell: true`, NOT the array-args form (the same DEP0190-silencing, `.cmd`-resolving rationale as the `opencode` probe in `installer-opencode-cli-bootstrap`). The probe detects only the CLI binary, NOT whether the codegraph MCP has been wired into the user's agents (the separable step-2 state); the CLI-present case is handled by the wiring-hint requirement below rather than by returning silently.
+`install-flow.js` SHALL expose a reusable `offerCodegraphInstall()` helper that first probes for the `codegraph` binary by invoking it with `--version`. A successful invocation (process spawns and exits zero) SHALL be treated as **present**; a spawn failure (binary not found) or a non-zero exit SHALL be treated as **absent**. The probe SHALL resolve `codegraph` through the platform's executable PATH resolution, including Windows `PATHEXT` / `.cmd` shim resolution, by using `childProcess.spawnSync('codegraph --version', { shell: true, stdio: 'ignore' })` — a single hardcoded string literal with `shell: true`, NOT the array-args form (the same DEP0190-silencing, `.cmd`-resolving rationale as the `opencode` probe in `installer-opencode-cli-bootstrap`). The probe detects only the CLI binary, NOT whether the codegraph MCP has been wired into the user's agents (the separable step-2 state); the CLI-present case SHALL return silently with no CodeGraph line (the generic wiring-hint requirement is removed) rather than printing a hint.
 
 #### Scenario: Binary responds to version probe
 - **WHEN** `offerCodegraphInstall()` runs and the `codegraph --version` probe spawns and exits zero
-- **THEN** the helper treats the binary as present and proceeds to the CLI-present MCP-wiring hint behavior (it does not prompt or execute any command)
+- **THEN** the helper treats the binary as present and returns silently with no CodeGraph line, issuing no prompt and executing nothing
 
 #### Scenario: Binary not found on PATH
 - **WHEN** `offerCodegraphInstall()` runs and the `codegraph --version` probe fails because the binary cannot be found on PATH
@@ -19,18 +23,6 @@
 #### Scenario: Installed Windows binary is a .cmd shim
 - **WHEN** `offerCodegraphInstall()` runs on Windows and `codegraph` is installed as a global npm `.cmd` shim on PATH
 - **THEN** the probe resolves it through `PATHEXT`/shell resolution and treats the binary as present, rather than misclassifying it as absent
-
-### Requirement: CLI-present MCP-wiring hint
-
-Because the `codegraph --version` probe can confirm the CLI is present but cannot cheaply determine whether the codegraph MCP has been wired into the user's agents (step 2, `codegraph install`), the helper SHALL close the "inert CLI" gap without reimplementing codegraph's per-agent detection. When the binary is **present**, `offerCodegraphInstall()` SHALL print a single-line, print-only wiring hint naming the exact command — `MCP wiring: run \`codegraph install\` if not already wired` — and then return. This branch SHALL be a hint only: it SHALL NOT prompt the user (regardless of TTY) and SHALL NOT execute any command, since `codegraph install` is auto-detect and idempotent so re-running is a no-op, and prompting the already-wired majority on every install run would only nag. The interactive prompt SHALL be reserved for the CLI-absent case where action is known to be required.
-
-#### Scenario: CLI present on a TTY prints the wiring hint without prompting
-- **WHEN** the `codegraph` binary is present and a TTY is present
-- **THEN** the helper prints the one-line wiring hint naming `codegraph install`, issues no prompt, executes nothing, and returns
-
-#### Scenario: CLI present without a TTY prints the wiring hint
-- **WHEN** the `codegraph` binary is present and no TTY is present
-- **THEN** the helper prints the same one-line wiring hint naming `codegraph install`, executes nothing, and returns
 
 ### Requirement: Bundled two-step interactive install offer on a TTY
 
