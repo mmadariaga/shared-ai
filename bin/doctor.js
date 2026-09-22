@@ -75,7 +75,10 @@ function shorten(p) {
 }
 
 function defaultExecOpenspec(args) {
-  return childProcess.spawnSync('openspec', args, { encoding: 'utf8', shell: true });
+  if (process.platform === 'win32') {
+    return childProcess.spawnSync(['openspec', ...args].join(' '), { encoding: 'utf8', shell: true });
+  }
+  return childProcess.spawnSync('openspec', args, { encoding: 'utf8' });
 }
 
 function checkProjectHealth({ projectRoot, execOpenspec }) {

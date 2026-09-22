@@ -5,10 +5,23 @@
 const fs = require('fs');
 const path = require('path');
 const childProcess = require('child_process');
-const { spawnSync } = childProcess;
 const readline = require('readline');
 const { offerCodegraphInstall, probeCodegraph, offerOpenspecInstall } = require('./install-flow.js');
 const modelCustomization = require('./model-customization.js');
+
+/**
+ * On Windows an npm-installed CLI is a `.cmd` shim, which `spawnSync` cannot
+ * execute without a shell — a direct spawn would report a perfectly installed
+ * binary as missing. The arguments are fixed literals, so the shell hop
+ * introduces no quoting hazard. On POSIX we spawn directly without a shell
+ * to avoid DEP0190 (passing args with `shell: true`).
+ */
+function spawnCli(command, args, options) {
+  if (process.platform === 'win32') {
+    return childProcess.spawnSync([command, ...args].join(' '), { ...options, shell: true });
+  }
+  return childProcess.spawnSync(command, args, options);
+}
 
 function prompt(rl, question) {
   return new Promise(resolve => rl.question(question, resolve));
@@ -37,7 +50,7 @@ async function ensureOpenspecDir(projectPath, rl) {
     console.log('Aborted.');
     return 'aborted';
   }
-  const result = spawnSync('openspec', ['init'], { cwd: projectPath, stdio: 'inherit', shell: true });
+  const result = spawnCli('openspec', ['init'], { cwd: projectPath, stdio: 'inherit' });
   if (result.status !== 0) {
     if (result.stderr) process.stderr.write(result.stderr);
     console.error("error", result);
@@ -55,7 +68,7 @@ function ensureCodegraphIndex(projectPath, { probe = probeCodegraph, runInit, in
   }
   if (typeof runInit !== 'function') {
     runInit = () => {
-      childProcess.spawnSync('codegraph', ['init'], { cwd: projectPath, stdio: 'inherit', shell: true });
+      spawnCli('codegraph', ['init'], { cwd: projectPath, stdio: 'inherit' });
     };
   }
 
