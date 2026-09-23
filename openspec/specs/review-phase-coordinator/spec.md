@@ -2,7 +2,9 @@
 
 ## Purpose
 TBD - created by archiving change sai-5-review-coordinator-worker-split. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: Routed review entrypoints use a terminal-only coordinator
 
 The Claude Code and opencode `/sai-5-review` entrypoints SHALL invoke a review coordinator and its harness-specific review-worker binding. The coordinator SHALL own lifecycle routing and terminal presentation only; GitHub Copilot SHALL remain on its existing inline review path.
@@ -37,19 +39,17 @@ The coordinator SHALL construct `original_envelope` with the complete argument s
 
 ### Requirement: Coordinator performs no technical review I/O
 
-The review coordinator SHALL NOT run prerequisites, resolve a change, read or write artifacts, inspect git, load a diff, perform review passes, run tests, apply mutations, or make findings. Those operations SHALL belong exclusively to the review worker. The single clean-route exception is the no-commit guard: the review coordinator SHALL run the guard's `snapshot` and `verify` tool invocations (`sai/tools/no-commit-guard.js`) immediately before each dispatch and same-worker continuation and immediately after every returned result, before acting on it, and those two tool invocations per window are the coordinator's only git observations on the artifact-blind clean route. No other rule of this requirement changes.
+The review coordinator SHALL NOT run prerequisites, resolve a change, read or write artifacts, inspect git, load a diff, perform review passes, run tests, apply mutations, or make findings. Those operations SHALL belong exclusively to the review worker. The single clean-route exception is the no-commit guard: the review coordinator SHALL run the guard's `snapshot` and `verify` tool invocations (`sai/tools/no-commit-guard.js`) at each guard window's opening and immediately before each boundary the no-commit-guard policy lists (human turn, coordinator git mutation, run close), acting on a progress event or notice with no guard call, and those two tool invocations per window are the coordinator's only git observations on the artifact-blind clean route. No other rule of this requirement changes.
 
 #### Scenario: Technical work is requested
 
 - **WHEN** review requires repository, artifact, git, diff, test, or mutation information
-- **THEN** the coordinator delegates it to the review worker
-- **AND** the coordinator performs no equivalent technical operation itself
+- **THEN** the coordinator delegates it to the review worker and performs no equivalent technical operation itself
 
 #### Scenario: the guard's two tool invocations are the only clean-route git access
 
-- **WHEN** the review coordinator snapshots before a dispatch and verifies after the returned result
-- **THEN** those two no-commit-guard tool invocations are its only git observations on the clean route
-- **AND** no diff loading, review pass, or mutation is performed by the coordinator itself
+- **WHEN** the review coordinator snapshots at a window opening and verifies before a boundary
+- **THEN** those two no-commit-guard tool invocations are its only git observations on the clean route, and no diff loading, review pass, or mutation is performed by the coordinator itself
 
 ### Requirement: Review lifecycle results are closed and validated
 
@@ -106,9 +106,8 @@ After a completed worker result, the coordinator SHALL print the worker-authored
 
 ### Requirement: Review progress uses payload-derived stamps
 
-The review coordinator SHALL validate `emitted_on`-bearing lifecycle results and render completed-step stamps from worker payloads without taking ownership of review analysis or report I/O.
+The review coordinator SHALL validate lifecycle results and render each completed-step stamp from the `validated_at` of the verdict that marked it, without taking ownership of review analysis or report I/O.
 
 #### Scenario: Review progress returns
 - **WHEN** the review worker reports progress
-- **THEN** the coordinator renders the payload-derived stamp and resumes the worker unchanged.
-
+- **THEN** the coordinator renders the `validated_at`-derived stamp and resumes the worker unchanged.

@@ -2,7 +2,9 @@
 
 ## Purpose
 TBD - created by archiving change spec-standalone-state-machine. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: Per-state follow mapping
 
 The machine SHALL map `prereqs-and-change` to `follow: none` with a no-fetch hint, each of `research`, `proposal`, `specs`, `validation`, `review` to its step file under the spec steps directory, and `done` to `follow: none` with an all-complete hint. Next SHALL stay pointer-only with no state or snapshot fields.
@@ -23,12 +25,17 @@ Standalone runs SHALL consult the sidecar per progress event and wrap next follo
 
 ### Requirement: No-whitelist follow-load with stop-on-failure
 
-After each emit the coordinator SHALL fetch whatever next follow names with no file whitelist. A machine-named unknown file or a path outside the steps directory SHALL stop with an error and fetch nothing. A follow-load failure or emit failure SHALL stop, show the error, and wait with nothing guessed and never routed through Bounded Recovery.
+After each emit the coordinator SHALL fetch whatever next follow names with no file whitelist. A machine-named unknown file or a path outside the steps directory SHALL stop with an error and fetch nothing. A follow-load failure or emit failure SHALL stop, show the error, and wait with nothing guessed and never routed through Bounded Recovery. The one exception is an emit delivery failure (`reason: "EVENT_UNPARSEABLE"` or an `emit` usage error): it first runs the stage-machine policy's bounded corrective retry, up to 2 retries without asking, each correcting the delivery form. It stops, shows the error, and waits only when those retries are exhausted.
 
 #### Scenario: Unknown follow target stops without fetching
 
 - **WHEN** the machine names an unknown file or a path outside the steps directory
 - **THEN** the run stops with an error and no file is fetched
+
+#### Scenario: Delivery failure is retried before stopping
+
+- **WHEN** an emit answers `INVALID_EVENT` with `reason: "EVENT_UNPARSEABLE"`
+- **THEN** the coordinator retries the emit in the canonical stdin form up to twice without asking, and stops and shows the error only if every retry fails
 
 ### Requirement: Loaded-set skip with hint wording
 
@@ -63,9 +70,12 @@ Standalone runs SHALL consult the sidecar per progress event and wrap its next f
 - **THEN** the continuation wraps the design step follow in the unchanged two-line shape
 
 ### Requirement: Design follow-load failure handling
-After each emit the coordinator SHALL fetch whatever next follow names with no file whitelist. A machine-named unknown file or a path outside the steps directory SHALL stop with an error and fetch nothing. A follow-load failure or emit failure SHALL stop, show the error, and wait with nothing guessed and never routed through Bounded Recovery.
+After each emit the coordinator SHALL fetch whatever next follow names with no file whitelist. A machine-named unknown file or a path outside the steps directory SHALL stop with an error and fetch nothing. A follow-load failure or emit failure SHALL stop, show the error, and wait with nothing guessed and never routed through Bounded Recovery. The one exception is an emit delivery failure (`reason: "EVENT_UNPARSEABLE"` or an `emit` usage error): it first runs the stage-machine policy's bounded corrective retry, up to 2 retries without asking, each correcting the delivery form. It stops, shows the error, and waits only when those retries are exhausted.
 
 #### Scenario: Unknown follow target stops without fetching
 - **WHEN** the machine names an unknown file or a path outside the steps directory
 - **THEN** the run stops with an error and no file is fetched
 
+#### Scenario: Design emit delivery failure is retried before stopping
+- **WHEN** the design coordinator's emit answers `INVALID_EVENT` with `reason: "EVENT_UNPARSEABLE"` or an `emit` usage error
+- **THEN** the coordinator retries the emit in the canonical stdin form up to twice without asking, and stops and shows the error only if every retry fails

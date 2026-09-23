@@ -5,10 +5,10 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { execSync } = require('child_process');
+const { execSync, spawnSync } = require('child_process');
 const crypto = require('crypto');
 
-const { sessionFile, sessionDir, isUuidv4, STATE_VERSION, persistMachineOutcome, looksLikeQuoteStrippedJson } = require('../bin/sai-state.js');
+const { sessionFile, sessionDir, isUuidv4, STATE_VERSION, persistMachineOutcome, normalizeEventText } = require('../bin/sai-state.js');
 
 function tmpBase() {
   return process.env.TMPDIR || os.tmpdir();
@@ -24,33 +24,23 @@ function cleanup(ids) {
   }
 }
 
-// Pass individual arguments and properly escape them for shell
+const SAI_STATE_TOOL = path.join(__dirname, '..', 'bin', 'sai-state.js');
+
+// Runs the CLI without a shell. A helper call emit(id, machineId, event) is
+// rewritten to `emit <id> <machineId> -` with the event on stdin.
 function invokeCommand(...args) {
-  // On Windows, use double quotes for arguments that contain spaces
-  const escaped = args.map(arg => {
-    if (arg.includes(' ') || arg.includes('"') || arg.includes("'")) {
-      return `"${arg.replace(/"/g, '\\"')}"`;
-    }
-    return arg;
-  }).join(' ');
-
-  const cmd = `node bin/sai-state.js ${escaped}`;
-
-  try {
-    const output = execSync(cmd, {
-      cwd: process.cwd(),
-      encoding: 'utf8',
-      stdio: ['pipe', 'pipe', 'pipe'],
-      shell: true,
-    });
-    return { stdout: output, stderr: '', exitCode: 0 };
-  } catch (err) {
-    return {
-      stdout: err.stdout || '',
-      stderr: err.stderr || '',
-      exitCode: err.status || 1,
-    };
+  let input = '';
+  let argv = args;
+  if (args[0] === 'emit' && args.length === 4) {
+    input = args[3];
+    argv = [...args.slice(0, 3), '-'];
   }
+  return runCli(argv, input);
+}
+
+function runCli(argv, input) {
+  const result = spawnSync(process.execPath, [SAI_STATE_TOOL, ...argv], { encoding: 'utf8', input: input || '' });
+  return { stdout: result.stdout || '', stderr: result.stderr || '', exitCode: result.status };
 }
 
 test('CLI: spawn derives deterministic UUIDv4 from key (E3)', () => {
@@ -470,71 +460,107 @@ test('CLI: concurrent emits to different machines preserve both done sets', () =
   }
 });
 
-test('quoting hint: detector unit matrix (stripped vs malformed vs valid)', () => {
-  assert.equal(looksLikeQuoteStrippedJson('{intent:next-step}'), true, 'stripped object detects');
-  assert.equal(looksLikeQuoteStrippedJson('{"intent":plan}'), true, 'stripped intent value detects');
-  assert.equal(looksLikeQuoteStrippedJson('{intent:"plan"}'), true, 'stripped intent key detects');
-  assert.equal(looksLikeQuoteStrippedJson('not-json'), false, 'truly malformed stays bare');
-  assert.equal(looksLikeQuoteStrippedJson('{"intent":"plan"}'), false, 'valid JSON stays silent');
+function spawnTestSession(prefix) {
+  const key = prefix + '-' + Date.now() + '-' + Math.floor(Math.random() * 1000000);
+  return JSON.parse(invokeCommand('spawn', '--key', key).stdout).id;
+}
+
+test('stdin emit: normalizeEventText strips a leading BOM and surrounding line breaks', () => {
+  assert.equal(normalizeEventText('\uFEFF{"intent":"plan"}\r\n'), '{"intent":"plan"}');
+  assert.equal(normalizeEventText('  {"a":1}  \n'), '{"a":1}');
+  assert.equal(normalizeEventText(''), '');
 });
 
-test('quoting hint: stripped object yields hint plus INVALID_EVENT with exit 1', () => {
-  const key = 'test-quote-stripped-object-' + Date.now() + '-' + Math.floor(Math.random() * 1000000);
-  const id = JSON.parse(invokeCommand('spawn', '--key', key).stdout).id;
+test('stdin emit: BOM plus CRLF payload is accepted and advances the machine', () => {
+  const id = spawnTestSession('test-stdin-bom');
   try {
-    const result = invokeCommand('emit', id, 'explore-idea@1', '{intent:next-step}');
-    assert.equal(result.exitCode, 1, 'stripped object should fail with exit 1');
-    const json = JSON.parse(result.stdout);
-    assert.equal(json.error, 'INVALID_EVENT', 'stdout error stays INVALID_EVENT');
-    assert.deepEqual(Object.keys(json).sort(), ['error', 'next'], 'stdout wire stays byte-identical');
-    assert.ok(json.next && typeof json.next.follow === 'string' && typeof json.next.hint === 'string', 'next pointer preserved');
-    assert.match(result.stderr, /PowerShell/, 'stderr names the PowerShell cause');
-    assert.match(result.stderr, /sai\/policies\/stage-machine\.md/, 'stderr points at the canonical section');
-  } finally {
-    cleanup([id]);
-  }
-});
-
-test('quoting hint: stripped intent yields hint plus INVALID_EVENT with exit 1', () => {
-  const key = 'test-quote-stripped-intent-' + Date.now() + '-' + Math.floor(Math.random() * 1000000);
-  const id = JSON.parse(invokeCommand('spawn', '--key', key).stdout).id;
-  try {
-    const result = invokeCommand('emit', id, 'explore-idea@1', '{"intent":plan}');
-    assert.equal(result.exitCode, 1, 'stripped intent should fail with exit 1');
-    const json = JSON.parse(result.stdout);
-    assert.equal(json.error, 'INVALID_EVENT', 'stdout error stays INVALID_EVENT');
-    assert.deepEqual(Object.keys(json).sort(), ['error', 'next'], 'stdout wire stays byte-identical');
-    assert.match(result.stderr, /PowerShell/, 'stderr names the PowerShell cause');
-    assert.match(result.stderr, /sai\/policies\/stage-machine\.md/, 'stderr points at the canonical section');
-  } finally {
-    cleanup([id]);
-  }
-});
-
-test('quoting hint: truly malformed yields bare INVALID_EVENT with exit 1 and no hint', () => {
-  const key = 'test-quote-malformed-' + Date.now() + '-' + Math.floor(Math.random() * 1000000);
-  const id = JSON.parse(invokeCommand('spawn', '--key', key).stdout).id;
-  try {
-    const result = invokeCommand('emit', id, 'explore-idea@1', 'not-json');
-    assert.equal(result.exitCode, 1, 'malformed input should fail with exit 1');
-    const json = JSON.parse(result.stdout);
-    assert.equal(json.error, 'INVALID_EVENT', 'stdout error stays INVALID_EVENT');
-    assert.equal((result.stderr || '').trim(), '', 'truly malformed stays hint-free');
-  } finally {
-    cleanup([id]);
-  }
-});
-
-test('quoting hint: valid input yields no hint and normal machine handling', () => {
-  const key = 'test-quote-valid-' + Date.now() + '-' + Math.floor(Math.random() * 1000000);
-  const id = JSON.parse(invokeCommand('spawn', '--key', key).stdout).id;
-  try {
-    const result = invokeCommand('emit', id, 'explore-idea@1', JSON.stringify({ intent: 'next-step' }));
-    assert.equal(result.exitCode, 0, 'valid input should succeed');
+    const result = runCli(['emit', id, 'explore-idea@1', '-'], '\uFEFF{"intent":"next-step"}\r\n');
+    assert.equal(result.exitCode, 0, 'BOM+CRLF payload should succeed');
     const json = JSON.parse(result.stdout);
     assert.ok(json.stage !== undefined, 'valid emit returns stage');
-    assert.ok(json.next && json.next.follow, 'valid emit returns next pointer');
-    assert.equal((result.stderr || '').trim(), '', 'valid path stays hint-free');
+    assert.equal(json.reason, undefined, 'success carries no reason');
+    assert.equal((result.stderr || '').trim(), '', 'success writes nothing to stderr');
+  } finally {
+    cleanup([id]);
+  }
+});
+
+test('stdin emit: payload with spaces and non-ASCII placeholders is accepted as received', () => {
+  const id = spawnTestSession('test-stdin-spaces');
+  try {
+    const result = runCli(['emit', id, 'explore-idea@1', '-'], '{"recordedList":["E1","a b ?"]}');
+    assert.equal(result.exitCode, 0, 'payload with spaces and ? should succeed');
+  } finally {
+    cleanup([id]);
+  }
+});
+
+test('stdin emit: empty stdin returns INVALID_EVENT with EVENT_UNPARSEABLE and exit 1', () => {
+  const id = spawnTestSession('test-stdin-empty');
+  try {
+    const result = runCli(['emit', id, 'explore-idea@1', '-'], '');
+    assert.equal(result.exitCode, 1);
+    const json = JSON.parse(result.stdout);
+    assert.equal(json.error, 'INVALID_EVENT');
+    assert.equal(json.reason, 'EVENT_UNPARSEABLE');
+    assert.ok(json.next && typeof json.next.follow === 'string', 'next pointer preserved');
+    assert.match(result.stderr, /emit <id> <machineId> -/, 'stderr shows the canonical stdin form');
+  } finally {
+    cleanup([id]);
+  }
+});
+
+test('stdin emit: truncated, trailing-text, and escaped-quote payloads return EVENT_UNPARSEABLE', () => {
+  const id = spawnTestSession('test-stdin-unparseable');
+  try {
+    for (const bad of ['{"intent":', '{"intent":"plan"} extra', '{\\"intent\\":\\"plan\\"}', '{intent:plan}', 'not-json']) {
+      const result = runCli(['emit', id, 'explore-idea@1', '-'], bad);
+      assert.equal(result.exitCode, 1, 'unparseable payload exits 1: ' + bad);
+      const json = JSON.parse(result.stdout);
+      assert.equal(json.error, 'INVALID_EVENT');
+      assert.equal(json.reason, 'EVENT_UNPARSEABLE', 'reason present on every parse failure: ' + bad);
+    }
+  } finally {
+    cleanup([id]);
+  }
+});
+
+test('stdin emit: JSON passed as an argument is a usage error with exit 2', () => {
+  const id = spawnTestSession('test-stdin-argv');
+  try {
+    const result = runCli(['emit', id, 'explore-idea@1', '{"intent":"next-step"}'], '{"intent":"next-step"}');
+    assert.equal(result.exitCode, 2, 'argv JSON should be a usage error');
+    assert.equal(result.stdout.trim(), '', 'usage error writes no JSON payload');
+    assert.match(result.stderr, /emit <id> <machineId> -/, 'usage error shows the stdin form');
+  } finally {
+    cleanup([id]);
+  }
+});
+
+test('stdin emit: a missing - marker or extra arguments is a usage error with exit 2', () => {
+  const id = spawnTestSession('test-stdin-missing-dash');
+  try {
+    assert.equal(runCli(['emit', id, 'explore-idea@1'], '{"intent":"next-step"}').exitCode, 2);
+    assert.equal(runCli(['emit', id, 'explore-idea@1', '{"intent":', '"plan"}'], '').exitCode, 2);
+    assert.equal(runCli(['emit', id, 'explore-idea@1', '-', 'extra'], '{"intent":"next-step"}').exitCode, 2);
+  } finally {
+    cleanup([id]);
+  }
+});
+
+test('stdin emit: non-delivery failures return their error without reason', () => {
+  const id = spawnTestSession('test-stdin-logic');
+  try {
+    const invalid = runCli(['emit', id, 'invalid-machine', '-'], '{"intent":"plan"}');
+    assert.equal(invalid.exitCode, 1);
+    const invalidJson = JSON.parse(invalid.stdout);
+    assert.equal(invalidJson.error, 'INVALID_EVENT');
+    assert.equal(invalidJson.reason, undefined, 'a non-delivery INVALID_EVENT carries no reason');
+    const unknown = runCli(['emit', id, 'no-such-machine@1', '-'], '{"intent":"plan"}');
+    assert.equal(unknown.exitCode, 1);
+    const unknownJson = JSON.parse(unknown.stdout);
+    assert.equal(unknownJson.error, 'UNKNOWN_MACHINE');
+    assert.equal(unknownJson.reason, undefined, 'UNKNOWN_MACHINE carries no reason');
   } finally {
     cleanup([id]);
   }

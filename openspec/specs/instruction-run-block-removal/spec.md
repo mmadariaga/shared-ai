@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+Keep argument injection in the command wrappers, out of command-local instruction files.
 
 ## Requirements
 ### Requirement: Instruction files SHALL NOT contain `## Run` sections or `$ARGUMENTS` references
@@ -12,7 +12,3 @@ Instruction files under `sai/commands/{name}/instructions.md` SHALL NOT include 
 #### Scenario: instruction file has no Run section
 - **WHEN** any `sai/commands/{name}/instructions.md` is read
 - **THEN** it does not contain a `## Run` heading or `$ARGUMENTS` reference
-
-#### Scenario: security instruction template indentation is correct
-- **WHEN** `sai/commands/security/instructions.md` is read
-- **THEN** the `<output_template>` markdown content uses consistent indentation without extra leading spaces

@@ -4,370 +4,80 @@ Fetch @sai/policies/verified-precondition-handback.md
 Fetch @sai/orchestration/worker-core.md and follow it exactly.
 Fetch @sai/commands/merge/instructions.md and follow those instructions exactly.
 
-## Invocation Envelope
+## Invocation
 
-The worker receives exactly one opaque string: `arguments_value`; binding
-metadata remains outside the worker request. Under strict-zero two-phase
-startup the initial dispatch carries only the ready prompt plus base
-instructions with no task content; `arguments_value` arrives only in the
-post-ready same-worker continuation after `event: ready`. Do not scan parent conversation
-history. There is no change resolution in this phase: payloads never carry
-`resolved_change_name`, and no prerequisite check runs — `sai-merge` works in
-projects without openspec.
+The worker receives one opaque string, `arguments_value`. Under strict-zero
+two-phase startup the initial dispatch carries only the ready prompt and base
+instructions; `arguments_value` arrives in the same-worker continuation after
+`event: ready`. The task comes only from that envelope and the continuations
+that follow it, never from parent conversation history. There is no change
+resolution and no prerequisite check: `sai-merge` works in projects without
+openspec, and payloads never carry `resolved_change_name`.
 
-The coordinator declares `fast_track_active` alongside the envelope as session
-state. Honor it only in the documented fast-track branches: pin the method to
-`merge` without asking (skip the Step 1B method gate) and skip only the Step 5
-runtime scope gate (auto-apply `full`). The Step 2B squash gate is retired and
-never appears in any mode.
-It never selects `ours`, `theirs`, or `synthesis`, and it never suppresses a
-required contextual decision, the pre-merge environment checks, the
-verification loop, or the incremental ADR/DDR collision pass.
+The coordinator holds invocation-scoped values outside `arguments_value` and
+hands them over through dispatch or continuations:
 
-After branch selection, the coordinator carries invocation-scoped merge
-provenance outside `arguments_value`: `target_sha`, `source_sha`, `merge_base`,
-and the ordered source-introduced ADR/DDR record inventory captured before
-`git merge`. The provenance is forwarded with the post-merge outcome and is
-used to scope Step 7; do not recompute it from post-merge `HEAD` or a moved
-source ref.
+- `fast_track_active` — declared at dispatch;
+- the **merge provenance** — defined in `instructions.md` § Merge provenance,
+  forwarded with every integration outcome;
+- `working_language` — forwarded after the first conflict hand-off and kept for
+  every later explanation, revision, verification re-entry, and new conflict.
+  A clean run never receives it.
+- `branch_entry` — the typed branch text, forwarded with the Batch 1 answers
+  when the user entered one (`instructions.md` Step 3).
 
-The coordinator also owns one invocation-scoped `working_language` value. It is
-not part of `arguments_value`, a worker payload, an artifact, or configuration.
-The worker receives the selected value only through the active same-worker
-continuation after the conflict hand-off, and retains it for every later
-explanation, strategy revision, context request, correction, verification
-re-entry, and new-conflict analysis. A clean merge never receives or requests
-this value.
+## Reads
 
-## Read discipline (closed read list)
-
-Open only the fetches this contract names:
-`@sai/policies/verified-precondition-handback.md`,
-`@sai/orchestration/worker-core.md`, and
-`@sai/commands/merge/instructions.md`. Do not proactively open any other file
-under `sai/commands/merge/` — explicitly `coordinator.md`, `presentation.md`,
-and `lifecycle.md`. Do not proactively open policy spec records
-(`sai-merge-command`, `question-context-policy`);
-`sai/policies/question-context.md` stays required via `worker-core`.
-
-Affected repository content reads (conflicted specs, ADR/DDR records and
-indexes of the affected group) are permitted only when the active step
-requires them; they carry no closed path list.
-
-Summaries default to English until a `working_language` is selected; pinned
-questions and stop texts stay verbatim in every language state.
-
-Do not repeat a read-only check with a definitive answer within the same
-stretch.
+The read list is exactly the three fetches above, plus the repository content
+the active step needs (conflicted files, governing rules, ADR/DDR records and
+indexes of an affected group). The other merge cards (`coordinator.md`,
+`presentation.md`, `lifecycle.md`) and the merge spec records belong to the
+coordinator; `sai/policies/question-context.md` arrives through worker-core.
+A read-only check with a definitive answer runs once per stretch.
 
 ## Lifecycle
 
-This phase declares NO progress plan: emit no progress events and no design notice.
-Every stretch opens with `event: ready` as its first nonterminal return before
-any expensive work; the task arrives only in the post-ready same-worker
-continuation. The declared closed nonterminal `event: conflict_detected`
-extension coexists with ready without replacing it: a conflicted merge emits
-ready first, then the `conflict_detected` extension from
-`@sai/orchestration/worker-core.md`; it carries the affected-file inventory and
-either `continuation_state: language-selection` or
-`continuation_state: strategy-analysis`. The event pauses this worker stretch;
-the coordinator handles the language question or the re-entry notice and then
-resumes the same worker. Every stretch still closes with exactly one terminal
-lifecycle status — `completed`, `needs_input`, or pre-resolution
-`failed`/`cancelled` — in the closed worker-core shapes, each carrying a
-concrete summary in English until a
-`working_language` is selected and in the selected working language
-thereafter, and an ordered duplicate-free
-`changed_files`.
+The phase declares no progress plan: emit no progress events and no design
+notice. Every stretch opens with `event: ready` before any expensive work. A
+conflicted integration then returns the declared nonterminal
+`event: conflict_detected` extension from worker-core, carrying no question or
+options. Every stretch closes with exactly one terminal status — `completed`,
+`needs_input`, `failed`, or `cancelled` — in the closed worker-core shapes,
+with an ordered duplicate-free `changed_files` and a concrete summary, in
+English until a `working_language` is selected and in that language afterwards.
+Pinned questions and stop texts stay verbatim.
 
-## Technical procedure
+## Procedure
 
-Perform the read-only and content-writing procedure of
-`sai/commands/merge/instructions.md`: the pre-merge environment checks (E1
-dirty-worktree gate, E2 in-progress-merge guard, E2b in-progress-rebase
-guard), the method-first gate (Step 1B method selection pinned to `merge`
-under fast-track), the branch selection (local branches from `git branch --no-merged HEAD` whose commits are not already
-reachable from the current branch, sorted by full commit timestamp descending and exact
-branch name ascending for equal timestamps, with `YYYY-MM-DD HH:mm` labels and
-exact branch-name values), the retired squash gate (Step 2B folded into Step 1B;
-`Rebase with squash` maps below to `method=rebase` + `squash=yes`), the proposed integration (Step 3: `git merge` unchanged,
-`git rebase` plain, or squash-unify then `git rebase`), the post-integration
-conflict analysis (ours/theirs/base
-for each conflicted file, classification into specs / ADR-DDR / code), the
-resolution analysis (semantic merge for specs, guided fusion for code, E3
-escalation for true contradictions), the contextual objective comparison and
-decision stage (complete `ours` / `theirs` / optional safe `synthesis`
-alternatives, plus the `more-context` same-worker continuation), with the
-filtered runtime scope gate (Step 5) emitted before any proposal payload when
-fast-track is inactive, the verification loop (Step 6, E4 no-suite escalation,
-E5 cap exhaustion), and the incremental ADR/DDR collision pass (Step 7, E6
-triple+ collisions, E7 orphan refs, ambiguous bare-reference escalation, and
-E8 delete/modify escalation). Step 7 uses only exact `A` record paths under
-`docs/adr/` and `docs/ddr/` from the captured source-vs-base diff, excludes
-source-side renames and copies (including unchanged-source copies via the
-explicit `--find-copies-harder` check), filters them to records present in the
-final merge state, excludes `docs/adr/0000-INDEX.md` and
-`docs/ddr/0000-INDEX.md`, and compares their `(family, numeric prefix)` keys
-against that final state. Final-state lookup includes both bare and existing
-suffixed record names. A deleted or unidentifiable final record is removed from
-the frontier; a conflict-resolution rename is not a second introduction. If
-the frontier is empty, skip the collision pass entirely. Keep every
-source-introduced record sharing a key, and process the complete final-state
-group when that key exposes a pre-existing collision. Reserve unique
-family-aware identifiers before suffix assignment so a target name is never
-already occupied by another final-state record. For affected keys only, scan
-repository-wide same-family and cross-family markdown links (including
-correction-table and reserved historical links), relationship tokens, and
-both `adr-index` and `ddr-index` structured metadata; do not search or repair
-unrelated historical identifiers. Derive introduction events from the captured
-`source_sha`, `target_sha`, or `merge_base` with path-following rename history,
-preserving the original source path for repaired suffixed records. Use the
-corresponding stage-side anchor for unresolved merge-index entries (stage 2 →
-target, stage 3 → source, stage 1 → merge base), and sort by full introduction
-timestamp, commit SHA, family, numeric prefix, and final path for deterministic
-tie-breaking. Carry that provenance in every rename plan; an unresolvable event
-is an escalation, never a missing date.
+Run `instructions.md` Steps 1–10. It owns every worker-authored gate question,
+option list, batch, stop text, analysis rule, payload shape, and the
+collision-pass procedure. Every worker-authored gate leaves as a `needs_input`
+result or batch; the coordinator's presentation seam owns how every prompt
+reaches the user, including the branch-entry prompt the coordinator itself
+asks.
 
-After the coordinator confirms the global strategy with `apply-strategy`, write
-the authored-content resolution to the working tree: splice the region text
-from the complete resolution payload into each conflicted file at its marked
-conflict region (one splice per region in conflict_id order), and update
-references within files (ADR/DDR family-aware canonical reference tokens and
-index-label replacements from the `adr_ddr_reference_updates` portion of the
-payload). Write no git commands. Write only files whose conflicts were in the
-selected scope and only regions that were explicitly decided; leave git-ours
-and git-theirs files untouched for coordinator `git checkout` execution. After
-verification-loop corrections are proposed by the coordinator, apply those
-corrections to the working tree in the same manner: splice corrected text,
-update in-file references, and report the applied state back to the coordinator
-for re-staging and re-verification.
+## Write boundary
 
-When the merge outcome is conflicted, stop immediately after collecting the
-Git-reported conflict inventory and return the `conflict_detected` extension
-before reading base/ours/theirs versions or performing category or semantic
-analysis. The extension's `affected_files` is the exact ordered inventory; its
-`changed_files` remains an empty worker-write list because detection is
-read-only. Only after the coordinator forwards the selected working language
-does this procedure continue into conflict classification and the global
-strategy analysis. If the coordinator reports a new problem from resolution
-application or verification, return through the same extension with
-`continuation_state: strategy-analysis`, preserve the selected language, and
-re-enter that analysis without asking for a language again.
+Your writes are content writes to the working tree:
 
-The first conflict hand-off has this exact closed nonterminal shape:
+- after `apply-strategy`, the region splices of each `authored` file from the
+  confirmed resolution payload;
+- the verification fixes the coordinator forwards, applied the same way;
+- the named divergence corrections from the coordinator's post-resolution
+  review.
 
-```yaml
-event: conflict_detected
-summary: string
-changed_files: string[]
-affected_files: string[]
-continuation_state: language-selection
-```
+Report every written path in `changed_files`. The collision pass is read-only:
+it returns the rename plan, and the coordinator applies it.
 
-The re-entry form keeps the same fields and uses
-`continuation_state: strategy-analysis`. The worker returns no question or
-options in this event and does not chat directly with the user.
-Return the collision applicability value, the captured incremental frontier,
-the exact old/new H1 and old/new index-label data, plus the family and assigned
-suffixed identifier, for every proposed rename; obtain it as part of this
-read-only analysis so the coordinator never has to reread artifacts to
-reconstruct presentation state. Return the concrete index-file label update
-and every exact canonical reference replacement for affected identifiers,
-including cross-family prefixes and any ambiguous-reference escalation, so the
-coordinator can apply the supplied H1, index-label, and reference replacements
-without reconstructing them. Never propose a guessed destination for an
-ambiguous bare reference.
-Everything is read-only: these are checks, analyses, and proposals — never
-mutations.
+## Git
 
-All findings return as technical source payload content: carry the conflict
-analysis, the category-derived eligible scope options, one complete global
-resolution strategy for the selected scope, its facts, inferences, affected
-files, alternatives, and complete resolution content where required, the
-verification results, and the ADR/DDR rename plan inside your summaries. The
-coordinator's merge presentation seam owns how that source is rendered to the
-user; keep the source content exact and never print it as your deliverable or
-write it to a file. Gate questions and options remain returned lifecycle source
-fields; do not invoke a picker or otherwise present them from this worker
-session. The method selector's canonical question is exactly **"Which
-integration method do you want to use?"** with ordered options `Merge`
-(`merge`) / `Rebase` (`rebase`) / `Rebase with squash` (`rebase-squash`); it is skipped under fast-track (pinned to
-`merge`) and abandoning it mutates nothing. The `rebase-squash` value is a
-presentation shortcut only and maps below to the existing pair
-`method=rebase` + `squash=yes` with no new method value or state. The dirty gate's canonical
-question is exactly **"Working tree has uncommitted changes. Continue
-anyway?"** with ordered options `yes` / `no`. The branch selector's canonical
-question is neutral for all three method options: exactly **"Which branch do
-you want to operate on?"**; the coordinator renders it in the
-ambient conversation language (Spanish keeps **"¿Sobre qué rama quieres
-operar?"**, English uses the canonical, any other language falls back to the
-canonical) without opening the working-language question early, because branch
-selection happens before `working_language` is known; its option labels use `<branch> — last commit <YYYY-MM-DD HH:mm>`
-for eligible branches while its values carry exact branch names. The gate
-summary compensates direction with the current branch plus the explicit
-direction (merge source / rebase target). The squash
-selector is retired: no squash question is asked in any mode. The scope
-selector's options are already filtered to categories present in the worker's
-conflict classification and ordered with `Full scope (Recommended)` (`full`)
-first, followed by `Artifacts only (specs + ADR/DDR)` (`artifacts`) and `Code only`
-(`code`) only when their categories are present. The worker's complete
-strategy is a single proposal for the whole selected conflict set, not one
-independent per-file prompt. Its internal `ours`, `theirs`, and optional safe
-`synthesis` values remain stable in the complete alternatives and payload
-records, while the user confirms or revises the global strategy. A
-`more-context` request or a free-form context/correction answer continues this
-same worker with the pending alternatives intact, without any write or stage.
-When conflicts exist, the scope `needs_input` result is emitted before the
-global strategy proposal when fast-track is inactive; the forwarded scope
-answer (or fast-track's direct `full` selection) unlocks analysis, and only an
-explicit confirmation of the current complete strategy unlocks resolution
-payload delivery. Only explicit decisions unlock proposal delivery; in this
-route, the required explicit decision is confirmation of the global strategy,
-not an unreviewed per-file fragment choice.
+Run only read-only git commands (`status`, `rev-parse`, `branch`, `diff`,
+`show`, `log`, `ls-files`, `merge-base`). NEVER run a state-changing git
+command — `merge`, `rebase`, `add`, `commit`, `checkout`, `stash`, `reset`,
+`mv`, or any other — and never rename a file: the integration launch, squash,
+checkouts, renames, collision replacements, staging, rebase continuation, and
+commits belong to the coordinator.
 
-## Batched gates v1 (merge pilot)
-
-Emit closed pre-merge and conflict gates as batch v1 `needs_input` results
-with `questions: [{id, question, options}]` (stable ids, ordered, closed
-questions only, no conditional items). Presence of `questions` means batch;
-absence keeps the singular `question`/`options` form valid. Batch 1 carries
-`dirty` (only when dirty) + `method` + `branch` in normal mode and `dirty` +
-`branch` in fast-track; no squash gate exists in any mode. Batch
-2 carries `language` + `scope` in normal mode and `language` only in
-fast-track (scope auto-`full`); perform the three-version reads,
-categorization, and eligible-scope derivation before the hand-off (same work,
-earlier) only to filter the scope item, word the scope item in
-English/ambient, and author the global strategy once for the chosen scope in
-the chosen language. The coordinator forwards the batch's ordered answers in
-one same-worker continuation; a partial abandonment forwards nothing and a
-`dirty = no` answer discards the batch and closes without mutating. Strategy
-confirmation and authorization stay in their own trips; `revise-strategy` and
-`more-context` open-input turns stay in their own rounds.
-
-## Strategy and continuation source contract
-
-After the language hand-off and any selected scope gate, return one
-worker-authored global strategy proposal for the entire selected conflict set.
-The proposal is source content for the coordinator and contains, in the
-selected working language, `## Global resolution strategy`, **Facts**,
-**Inferences**, the affected files and conflict regions, what the plan keeps,
-adopts, combines, or cannot safely synthesize, the affected contracts, the
-trade-offs and risks, every complete alternative, and complete marker-free
-resolution content where a candidate requires it. It is never a collection of
-independent per-file fragment choices.
-
-Return that proposal as a `needs_input` result with a closed strategy decision.
-The `summary` is printed as ordinary coordinator text before the exact
-question and ordered options are presented through the native question
-mechanism. The strategy question asks whether to apply the current complete
-plan and offers these stable values in order:
-
-1. `Apply the complete strategy (Recommended)` — `apply-strategy`;
-2. `Revise the strategy` — `revise-strategy`;
-3. `Do not apply this strategy` — `decline-strategy`.
-
-The worker authors explanatory labels in the selected working language; the
-coordinator forwards them verbatim and the values are forwarded unchanged.
-`apply-strategy` is the only value that can
-unlock a completed result for coordinator validation and resolution writes.
-`decline-strategy` closes the conflict route without a resolution write or
-commit and documents the exact repository state. `revise-strategy` asks the
-same worker for an open context/correction turn: return `needs_input` with the
-worker-authored request and an empty `options` list. The coordinator presents
-that request once as ordinary conversation text, waits for the user's free
-text, and forwards it unchanged to this same worker. Recompute the complete
-global strategy from the retained alternatives and the new evidence, then
-return the proposal and closed decision again. This loop may repeat, and no
-resolution write, conflict-marker removal, staging, or commit is allowed while
-it is pending.
-
-The existing internal decision values remain stable in every complete
-alternative: `ours` preserves the current objective, `theirs` preserves the
-incoming objective, and `synthesis` appears only for a worker-justified safe
-combined outcome. `more-context` remains a valid internal continuation value
-when a contextual alternative is exposed during a strategy revision; it never
-becomes file content. A context or correction request is not answered by a
-replacement worker and does not ask for the working language again.
-
-On `apply-strategy`, write the resolution content to the working tree and
-return the completed resolution result with the exact `## Selected contextual
-decisions` section and `## Complete resolution payload` required below. The
-selected decisions must describe the one confirmed global strategy, and the
-JSON object must contain a record for every conflicted path in scope. After
-writing, the coordinator will validate the payload atomically and review the
-materialized resolution against the approved strategy.
-
-A completed resolution result MUST carry the exact `## Complete resolution
-payload` JSON object defined in `sai/commands/merge/instructions.md`. Its
-`files` array contains one record per conflicted file in the selected scope,
-with `path`, `category` (`specs`, `adr-ddr`, or `code`), `source`, `regions`,
-and `decisions`. For authored resolutions, the `regions` array carries entries
-with `conflict_id` and `text` fields for each region you've written. The `source` field must be exactly `"git-ours"`,
-`"git-theirs"`, or `"authored"`. When the source is `git-ours` or `git-theirs`
-(only when every region in the file resolves to the same side), the `regions`
-array is empty and the coordinator will use `git checkout --ours` or
-`git checkout --theirs`. When the source is `"authored"`, you have already
-written the `regions` array content to the working file: one entry per
-conflicted region, each with a `conflict_id` (matching an identifier in
-`decisions`, e.g. `"code:src/input.js#1"`) and a `text` field holding only the
-region replacement text for the authored or synthesized resolution, not a diff,
-hunk, complete file, marker annotation, or prose-only instruction. Region
-replacement text must contain no `<<<<<<<`, `=======`, or `>>>>>>>` markers.
-Regions are ordered by conflict_id for deterministic splicing, and you have
-spliced them into the working file at their marked conflict regions. The
-`selected_contextual_decisions` array contains every answered semantic conflict
-and never `more-context`. The coordinator validates the payload and reviews
-the materialized working tree: git-sourced files remain in conflict state until
-checkout, authored files have been spliced by you.
-
-Preserve the instruction's stop texts exactly: an in-progress merge returns a
-terminal payload whose summary is exactly **"Merge already in progress.
-Resolve or abort the current merge first (`git merge --continue` or
-`git merge --abort`)."** and closes the run; an in-progress rebase returns a
-terminal payload whose summary is exactly **"Rebase already in progress.
-Resolve or abort the current rebase first (`git rebase --continue` or
-`git rebase --abort`)."** and closes the run; no other local branches returns
-**"No other local branches to merge."**.
-
-## Authorization ask
-
-After the incremental ADR/DDR pass completes (or is skipped because the source
-frontier is empty) and the coordinator has executed all renames and reference
-updates, return `needs_input` with the method-aware authorization question:
-for method `merge` ask **"Run `git commit` to
-finalize the merge?"**; for method `rebase` ask **"Finalize the rebase onto
-<selected-branch>?"** with the exact selected branch name. Both carry ordered
-options `yes (Recommended)` / `no`,
-complying with the five-element anatomy of
-`@sai/policies/question-context.md`. Carry a compact integration summary with
-the method (plus squash choice on the rebase path), the
-target branch, source branch (rebase target), verification status, conflict
-result (rebase conflicts reuse the same resolution flow), collision
-result (including `not applicable` when the source introduced no final
-ADR/DDR record or neither directory exists), and staged-file count. Carry the
-corresponding collision-applicability value.
-Do not put the full staged-file list in this authorization payload. The ask is
-a returned lifecycle result, never an inline picker call from this session.
-
-When the coordinator forwards the selected answer value, process it without
-re-presenting the prompt and without executing anything: on `yes`, return
-`completed` whose summary restates the exact authorized finalization
-for coordinator execution (`git commit` for method `merge`; completing the
-rebase with `git rebase --continue` for method `rebase`); on `no`, return
-`completed` whose summary documents the exact repo state per the instruction's
-Step 8 refusal branch (E9), including the method, the full staged-file list
-only in that refusal summary, and the method-aware manual finalization and
-revert paths.
-
-## State-changing git prohibition
-
-NEVER execute state-changing git commands. NEVER run `git merge`, `git rebase`,
-`git add`, `git commit`, `git checkout`, `git stash`, `git reset`, or any git
-command that mutates state. You may write content to conflicted files within
-your scope (conflict-region text splices and ADR/DDR reference updates in
-files), and you may apply verification-loop corrections to the working tree.
-You must not rename files or run any git command. The integration launch
-(merge or rebase), the squash unification, git checkout
-operations, git renames, final staging, rebase continuation, and commit
-execution belong exclusively to the coordinator. Do not write to files outside
-your scope or attempt git operations of any kind.
+Branch-entry refresh and validation also belong to the coordinator: pass
+`branch_entry` through as typed. Never run `git fetch --prune origin`,
+`git check-ref-format`, or `git show-ref` for branch selection.

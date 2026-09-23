@@ -17,7 +17,7 @@ The `sai-5-review`, `sai-6-security`, `sai-7-performance`, and `sai-8-accessibil
 | `sai-7-performance` | `resolve-performance-scope` - Resolve performance scope and tier: prerequisites, change selection, scope grammar, tier filter, and parent complete; `map-stack-hot-paths` - Map stack and hot paths: stack detection, baseline, hot-path mapping, and 500-LOC cutover complete; `audit-performance-tiers` - Resolve performance tier analysis: applicable backend, frontend, database, queue, and cross-cutting checks complete; `resolve-diagnostics` - Resolve diagnostics gate: diagnostics authorization or applicability is resolved, with diagnostics run only when authorized; `close-performance-outcome` - Close performance outcome: the performance result and any applicable artifact verification are complete |
 | `sai-8-accessibility` | `resolve-accessibility-scope` - Resolve accessibility scope and runtime mode: prerequisites, change selection, UI-scope/no-UI decision, runtime flag, and parent complete; `map-ui-framework` - Map UI components and framework: UI filtering, framework detection, component mapping, and delegation choice complete; `resolve-static-audit` - Resolve static accessibility audit: semantics, ARIA, keyboard/focus, forms, visual, media, and dynamic checks complete; `resolve-runtime-audit` - Resolve runtime-audit gate: runtime request, server confirmation, and per-command authorization are resolved, with checks run only when applicable; `close-accessibility-outcome` - Close accessibility outcome: the accessibility result and any applicable artifact verification are complete |
 
-The adapters SHALL render these plans through the shared progress policy and SHALL NOT add audit passes, tool names, severity categories, or internal delegation units as additional progress steps. Audit plans SHALL receive closure-only `Milestone Stamp` annotations sourced from the `emitted_on` of the result that marks each step; the `sai-explore` Idea Progress List remains outside this scope.
+The adapters SHALL render these plans through the shared progress policy and SHALL NOT add audit passes, tool names, severity categories, or internal delegation units as additional progress steps. Audit plans SHALL receive closure-only `Milestone Stamp` annotations sourced from the `validated_at` of the verdict that marks each step; the `sai-explore` Idea Progress List remains outside this scope.
 
 #### Scenario: review declares its canonical plan
 
@@ -46,7 +46,7 @@ The adapters SHALL render these plans through the shared progress policy and SHA
 #### Scenario: audit plans receive payload-derived milestone stamps
 
 - **WHEN** any audit adapter renders its declared progress plan
-- **THEN** the Claude Code and opencode bindings SHALL render each completed step's `Milestone Stamp` from the marking payload's `emitted_on` and make no coordinator clock call
+- **THEN** the Claude Code and opencode bindings SHALL render each completed step's `Milestone Stamp` from the marking verdict's `validated_at` and make no coordinator clock call
 - **AND** the plan's ids, labels, order, and derived states SHALL remain governed by `sai/policies/todo-structure.md`
 
 ### Requirement: audit-workers-report-completed-milestones
@@ -104,7 +104,7 @@ The review progress plan SHALL mark `resolve-mutation-analysis` complete when Pa
 
 ### Requirement: audit-terminal-reconciliation-preserves-outcomes
 
-At audit run closing, the coordinator SHALL apply the shared task-list reconciliation policy to the last rendered plan state: a `completed` result marks all remaining steps completed, while `needs_input`, `failed`, and `cancelled` results preserve the last rendered states. Before an early terminal outcome, the worker SHALL report the completed resolution and scope milestones that led to it. The early-outcome mapping SHALL be explicit: review empty diff returns its existing `cancelled` result after `resolve-change` and `establish-diff-scope`, leaving those two steps completed, `resolve-review-analysis` in progress, and the final two pending; security and performance empty diff return their existing no-change `completed` results after `resolve-security-scope`/`discover-module-map` or `resolve-performance-scope`/`map-stack-hot-paths`, so the shared completed reconciliation renders all five outcome-oriented steps completed without findings; accessibility no-UI returns its existing skipped-audit `cancelled` result after `resolve-accessibility-scope`, leaving that step completed, `map-ui-framework` in progress, and the final three pending. Progress rendering SHALL NOT replace, delay, or rewrite existing empty-diff, no-UI, failed, cancelled, or successful terminal messages, report-writing rules, or changed-file results.
+At audit run closing, the coordinator SHALL apply the shared task-list reconciliation policy to the last rendered plan state: a `completed` result marks all remaining steps completed, while `needs_input`, `failed`, and `cancelled` results preserve the last rendered states. Before an early terminal outcome, the worker SHALL report the completed resolution and scope milestones that led to it. The early-outcome mapping SHALL be explicit: review empty diff returns its existing `cancelled` result after `resolve-change` and `establish-diff-scope`, leaving those two steps completed, `resolve-review-analysis` in progress, and the final two pending; security and performance empty diff return their existing no-change `completed` results after `resolve-security-scope`/`discover-module-map` or `resolve-performance-scope`/`map-stack-hot-paths`, so the shared completed reconciliation renders all five outcome-oriented steps completed without findings; accessibility no-UI writes its Not Applicable report and returns `completed` after `resolve-accessibility-scope`, so the shared completed reconciliation renders all five steps completed without findings. Progress rendering SHALL NOT replace, delay, or rewrite existing empty-diff, no-UI, failed, cancelled, or successful terminal messages, report-writing rules, or changed-file results.
 
 #### Scenario: successful audit closes the plan
 
@@ -122,7 +122,7 @@ At audit run closing, the coordinator SHALL apply the shared task-list reconcili
 
 - **WHEN** review, security, or performance reaches its existing empty-diff outcome, or accessibility reaches its existing no-UI outcome
 - **THEN** progress handling SHALL preserve that command's existing terminal message and artifact behavior
-- **AND** the plan SHALL reconcile to the explicit early-outcome state above rather than forcing a report or inventing findings
+- **AND** the plan SHALL reconcile to the explicit early-outcome state above rather than forcing a findings report or inventing findings
 
 ### Requirement: audit-progress-does-not-change-idea-progress-list
 

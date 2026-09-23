@@ -57,10 +57,10 @@ Failed or cancelled implementation SHALL close the invocation without RED/GREEN 
 - **THEN** build reports the failure and does not activate apply
 
 ### Requirement: Re-entry uses implement collapse
-Re-entry after interruption or partial apply SHALL run implement Step 1b collapse again. COMPLETO, FALLO MENOR, and INCOMPLETO SHALL retain their existing meanings; build SHALL never resume apply directly.
+Re-entry after interruption or partial apply SHALL run the implement `collapse-implemented-steps` step again. APPLIED, VERIFY-PENDING, and INCOMPLETE SHALL retain their existing meanings; build SHALL never resume apply directly.
 
 #### Scenario: Incomplete re-entry blocks apply
-- **WHEN** collapse classifies a step as INCOMPLETO
+- **WHEN** implement classifies a prior step as INCOMPLETE
 - **THEN** implement stops and apply does not activate
 
 ### Requirement: Apply stops and worker isolation remain unchanged

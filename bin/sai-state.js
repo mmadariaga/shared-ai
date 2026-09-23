@@ -59,16 +59,33 @@ function sessionDir() {
   return path.join(base, 'sai-state');
 }
 
-function looksLikeQuoteStrippedJson(raw) {
-  if (typeof raw !== 'string') return false;
-  const t = raw.trim();
-  if (t.length === 0) return false;
-  if (!(t.startsWith('{') && t.endsWith('}'))) return false;
-  if (!t.includes(':')) return false;
-  const withoutQuoted = t.replace(/"[^"\\]*(?:\\.[^"\\]*)*"/g, '');
-  if (/[A-Za-z_][A-Za-z0-9_@.-]*\s*:/.test(withoutQuoted)) return true;
-  if (/:\s*[A-Za-z_][A-Za-z0-9_@.-]+\s*[},]/.test(withoutQuoted)) return true;
-  return false;
+const EMIT_STDIN_FORM = "echo '<json>' | node <tool-path> emit <id> <machineId> -";
+
+// Reads the whole of stdin synchronously. A closed or empty pipe yields ''.
+function readStdinSync() {
+  const chunks = [];
+  const buf = Buffer.alloc(65536);
+  for (;;) {
+    let n = 0;
+    try {
+      n = fs.readSync(0, buf, 0, buf.length, null);
+    } catch (err) {
+      if (err && err.code === 'EAGAIN') continue;
+      if (err && err.code === 'EOF') break;
+      throw err;
+    }
+    if (n === 0) break;
+    chunks.push(Buffer.from(buf.subarray(0, n)));
+  }
+  return Buffer.concat(chunks).toString('utf8');
+}
+
+// Strips a leading BOM and surrounding whitespace/line breaks (Windows
+// PowerShell 5.1 adds both when piping a string to a native command).
+function normalizeEventText(raw) {
+  let t = typeof raw === 'string' ? raw : '';
+  if (t.charCodeAt(0) === 0xFEFF) t = t.slice(1);
+  return t.trim();
 }
 
 function sessionFile(id) { return path.join(sessionDir(), id + '.json'); }
@@ -188,6 +205,12 @@ function canonicalizeMergedState(mod, mergedState) {
   return mergedState;
 }
 
+// Re-reads the session file just before writing, keeps sibling machines by max
+// `rev`, and unions the target `done[]` in canonical order. The read-then-write
+// is not atomic (no lockfile, no CAS retry): the residual window is accepted
+// because callers serialize store operations per session id and the union keeps
+// survivors harmless for monotonic step sets. One file per session, never one
+// per machine.
 function persistMachineOutcome(id, record, machineId, nextState, eventId, wire) {
   let freshRecord = null;
   try { freshRecord = readSessionRecord(id).record; } catch (err) { freshRecord = null; }
@@ -336,9 +359,9 @@ function commandSpawn(key) {
   process.exitCode = 0;
 }
 
-function commandEmit(id, machineIdArg, eventJsonArg) {
-  if (!id || !machineIdArg || !eventJsonArg) {
-    process.stderr.write('emit requires <id> <machineId> <eventJson>\n');
+function commandEmit(id, machineIdArg, eventSource, extraArgs) {
+  if (!id || !machineIdArg || eventSource !== '-' || (extraArgs && extraArgs.length > 0) || process.stdin.isTTY) {
+    process.stderr.write('emit requires <id> <machineId> - and reads the event JSON from stdin: ' + EMIT_STDIN_FORM + '\n');
     process.exitCode = 2;
     return;
   }
@@ -367,23 +390,14 @@ function commandEmit(id, machineIdArg, eventJsonArg) {
   }
 
   const targetId = parsed.key;
+  let eventText = '';
+  try { eventText = readStdinSync(); } catch (err) { eventText = ''; }
   let event = null;
   try {
-    event = JSON.parse(eventJsonArg);
+    event = JSON.parse(normalizeEventText(eventText));
   } catch (err) {
-    const payload = withWarnings({ error: 'INVALID_EVENT', next: pointerFor(session, null) }, loadWarnings);
-    if (looksLikeQuoteStrippedJson(eventJsonArg)) {
-      try {
-        const excerpt = String(eventJsonArg).slice(0, 160);
-        const capped = String(eventJsonArg).length > 160 ? excerpt + '…' : excerpt;
-        process.stderr.write(
-          'emit event JSON failed to parse and looks like Windows PowerShell stripped the double quotes during native-argument passing '
-          + '(received ' + JSON.stringify(capped) + '). '
-          + 'Use the Windows/PowerShell pattern in sai/policies/stage-machine.md \u00A7Quoting (Windows PowerShell) — a variable with escaped doubles. '
-          + 'No transition occurred; INVALID_EVENT with exit 1.\n'
-        );
-      } catch (hintErr) {}
-    }
+    const payload = withWarnings({ error: 'INVALID_EVENT', reason: 'EVENT_UNPARSEABLE', next: pointerFor(session, null) }, loadWarnings);
+    process.stderr.write('emit could not parse the event JSON read from stdin; no transition occurred. Send it as: ' + EMIT_STDIN_FORM + '\n');
     process.stdout.write(JSON.stringify(payload) + '\n');
     process.exitCode = 1;
     return;
@@ -562,7 +576,7 @@ function main(argv) {
     return;
   }
   if (parsed.command === 'emit') {
-    commandEmit(parsed.positional[0], parsed.positional[1], parsed.positional[2]);
+    commandEmit(parsed.positional[0], parsed.positional[1], parsed.positional[2], parsed.positional.slice(3));
     return;
   }
   if (parsed.command === 'reset') {
@@ -574,11 +588,11 @@ function main(argv) {
     return;
   }
   process.stderr.write('Usage: sai-state spawn --key <stable-key>\n');
-  process.stderr.write('       sai-state emit <id> <machineId> <eventJson>\n');
+  process.stderr.write('       sai-state emit <id> <machineId> -   (event JSON on stdin)\n');
   process.stderr.write('       sai-state reset <id> <machineId>\n');
   process.stderr.write('       sai-state close <id>\n');
   process.exitCode = 2;
 }
 
-module.exports = { sessionFile, sessionDir, isUuidv4, STATE_VERSION, entryRev, stateByMachineMap, unionDoneInCanonicalOrder, persistMachineOutcome, looksLikeQuoteStrippedJson };
+module.exports = { sessionFile, sessionDir, isUuidv4, STATE_VERSION, entryRev, stateByMachineMap, unionDoneInCanonicalOrder, persistMachineOutcome, normalizeEventText };
 if (require.main === module) { main(process.argv.slice(2)); }

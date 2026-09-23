@@ -16,6 +16,8 @@ function readExploreContract() {
   const exploreSources = [
     'sai/commands/explore/instructions.md',
     'sai/commands/explore/steps/common.md',
+    'sai/commands/explore/steps/review-edge-cases.md',
+    'sai/commands/explore/steps/implementation-details.md',
     'sai/commands/explore/steps/artifact-review-language-gate.md',
     'sai/commands/explore/steps/slicing-assessment.md',
     'sai/commands/explore/steps/crystallization-protocol.md',
@@ -58,156 +60,137 @@ test('backfill execution completes writes before archive preparation and archive
   assert.match(backfill, /openspec\/changes\/\{name\}\/\.openspec\.yaml/);
   assert.match(backfill, /openspec\/changes\/\{name\}\/proposal\.md/);
   assert.match(backfill, /openspec\/changes\/\{name\}\/specs\/\{capability\}\/spec\.md/);
-  assert.match(archive, /1\. Run `openspec archive <name> --yes --json`/);
-  assert.match(archive, /2\. Classify every supplied approved path before staging/);
-  assert.match(archive, /3\. Commit only when at least one eligible approved path remains/);
-  assert.match(archive, /apply\s+the commit-message rules to the staged state only/);
+  assertInOrder(archive, [
+    '0. **Retirement declaration**',
+    '1. **CLI archive** — `openspec archive <name> --yes --json`',
+    '2. **Staging** — classify every approved path before staging any',
+    '3. **Commit**',
+  ]);
+  assert.match(archive, /author the message from the staged state under the commit rules/);
 
   assert.match(explore, /6\. \*\*Backfill execution\*\*/);
   assert.match(explore, /7\. \*\*Archive preparation\*\*[\s\S]*?read-only pre-flight/);
   assert.match(explore, /8\. \*\*Archive execution and pre-authorized commit\*\*[\s\S]*?SAME `sai-archive-worker`/);
 });
 
-test('direct-build archive staging omits ignored untracked paths but stages mixed eligible paths', () => {
-  const archive = read('sai/commands/archive/worker.md');
-  const execution = archive.slice(archive.indexOf('## Direct Build (unattended) execution continuation'));
-  const stagingStart = execution.indexOf('2. Classify every supplied approved path before staging');
-  const commitStart = execution.indexOf('3. Commit only when at least one eligible approved path remains');
-  assert.ok(stagingStart >= 0 && stagingStart < commitStart,
-    'classification must precede the commit decision');
-  const staging = execution.slice(stagingStart, commitStart);
+function executionStep(archive, start, end) {
+  const execution = archive.slice(archive.indexOf('## Direct Build (unattended) execute continuation'));
+  const from = execution.indexOf(start);
+  const to = end ? execution.indexOf(end, from) : execution.length;
+  assert.ok(from >= 0 && to > from, `${start} should precede ${end}`);
+  return execution.slice(from, to);
+}
 
-  assert.match(staging, /`git ls-files --error-unmatch -- <path>`/);
-  assert.match(staging, /its exit-1 no-match result is\s+untracked and any other error is terminal/);
-  assert.match(staging, /For an untracked path only, run\s+`git check-ignore --quiet -- <path>`/);
-  assert.match(staging, /exit 0 means that the path is\s+intentionally ignored, so omit it and append\s+`\[sai-archive\] warning: omitted ignored untracked path: <path>` to the\s+worker-authored `summary`/);
-  assert.match(staging, /exit 1 means it is eligible and any other error\s+is terminal/);
-  assert.match(staging, /tracked paths,\s+tracked deletions, and untracked non-ignored paths as\s+eligible/);
-  assert.match(staging, /stage\s+every eligible path with the existing exact allowlist\s+and deletion-aware\s+behavior/);
-  assert.match(staging, /Never use\s+`git add -A`,\s+`git add \.`,\s+`git add -f`/);
+function assertInOrder(text, fragments) {
+  let cursor = -1;
+  for (const fragment of fragments) {
+    const next = text.indexOf(fragment, cursor + 1);
+    assert.notEqual(next, -1, `expected ${fragment} after the previous fragment`);
+    cursor = next;
+  }
+}
+
+test('direct-build archive staging omits ignored untracked paths but stages mixed eligible paths', () => {
+  const staging = executionStep(read('sai/commands/archive/worker.md'), '2. **Staging**', '3. **Commit**');
+
+  assert.match(staging, /`git ls-files --error-unmatch -- <path>` succeeds, untracked on its exit 1,\s+and any other error is terminal/);
+  assert.match(staging, /For an untracked path, run\s+`git check-ignore --quiet -- <path>`/);
+  assert.match(staging, /exit 0 means ignored, so omit it and\s+append `\[sai-archive\] warning: omitted ignored untracked path: <path>` to\s+the summary/);
+  assert.match(staging, /exit 1 means eligible; anything else is terminal/);
+  assert.match(staging, /stage\s+every eligible path with the exact allowlist, deletion-aware/);
+  assert.match(staging, /never with\s+`-A`, `\.`, or `-f`/);
 });
 
 test('direct-build archive execution keeps the empty-index no-commit result when all paths are ignored', () => {
-  const archive = read('sai/commands/archive/worker.md');
-  const execution = archive.slice(archive.indexOf('## Direct Build (unattended) execution continuation'));
-  const commitStart = execution.indexOf('3. Commit only when at least one eligible approved path remains');
-  const commit = execution.slice(commitStart, execution.indexOf('\n\nThe worker records each realized path', commitStart));
+  const commit = executionStep(read('sai/commands/archive/worker.md'), '3. **Commit**', 'The summary names every retired capability');
 
-  assert.match(commit, /If all approved paths were\s+omitted as untracked ignored paths/);
-  assert.match(commit, /existing empty-index guard/);
-  assert.match(commit, /\[sai-archive\] no commit: staging left the index empty/);
-  assert.match(commit, /retain the\s+warnings/);
-  assert.match(commit, /do not author a message or create a commit/);
+  assert.match(commit, /`git diff --cached --quiet`/);
+  assert.match(commit, /When the index is empty \(every\s+approved path was ignored\), report\s+`\[sai-archive\] no commit: staging left the index empty` and create nothing/);
+  assert.match(commit, /Never amend, push, or ask for a second commit/);
 });
 
-const ARCHIVE_CONTRACT_FILES = [
-  'sai/commands/archive/instructions.md',
-  'sai/commands/archive/worker.md',
-  'sai/commands/archive/coordinator.md',
-];
+const RETIREMENT_SOURCE = 'sai/commands/archive/retirement-declaration.md';
 
-// Each rule must be stated in every archive contract file: a rule present in one
-// and missing from another is drift, and the three files must state one contract.
+// The retirement declaration is single-sourced: every rule lives in
+// retirement-declaration.md, and the other archive cards point to it.
 const RETIREMENT_DECLARATION_RULES = [
   ['an explicit retire_capabilities: false is an author veto', [
-    [/author veto/i, 'names the author veto'],
-    [/parsed value (?:is )?`false`/, 'judges the veto on the parsed value `false`'],
-    [/refus(?:e|es|al|ing)/i, 'refuses rather than skipping'],
+    [/\*\*Author veto\*\*/, 'names the author veto'],
+    [/present with the parsed value\s+`false`/, 'judges the veto on the parsed value `false`'],
     [/reshape the delta so it does not empty the\s+capability/, 'states both ways forward'],
     [/archive_spec_validation_failed/, 'states why the veto cannot be skipped'],
   ]],
-  ['a present retire_capabilities whose parsed value is not a boolean refuses the declaration', [
-    [/unhonoured value/i, 'names the unhonoured value'],
-    [/parsed value\s+(?:that\s+)?is not a boolean/, 'defines an unhonoured value'],
-    [/never\s+guesses? which boolean/i, 'never guesses which boolean it meant'],
-    [/`false` to veto it, or remove the\s+key/, 'states the three ways forward'],
+  ['a non-boolean retire_capabilities refuses the declaration', [
+    [/\*\*Unhonoured value\*\*/, 'names the unhonoured value'],
+    [/parsed value\s+that is not a boolean/, 'defines an unhonoured value'],
+    [/never guesses which boolean/, 'never guesses which boolean it meant'],
+    [/`false` to veto, or remove it/, 'states the three ways forward'],
   ]],
   ['unaccounted content refuses the declaration', [
-    [/unaccounted content/i, 'names unaccounted content'],
-    [/any `##` section other than\s+`## Purpose`/, 'defines unaccounted content'],
-    [/(?:move that content|be moved) out of the spec/, 'states the way forward'],
+    [/\*\*Unaccounted content\*\*/, 'names unaccounted content'],
+    [/has a `##`\s+section other than `## Purpose`/, 'defines unaccounted content'],
+    [/move that content out of the spec/, 'states the way forward'],
   ]],
   ['the declaration requires existing, parseable, schema-carrying metadata', [
-    [/carries (?:a )?`schema:`/, 'requires the schema key'],
-    [/never\s+creates?\s+`\.openspec\.yaml`/i, 'never creates .openspec.yaml'],
-    [/never\s+authors?\s+a `schema:` value/i, 'never authors a schema value'],
+    [/has no `schema:` key/, 'requires the schema key'],
+    [/never creates `\.openspec\.yaml`/, 'never creates .openspec.yaml'],
+    [/never authors `schema:`/, 'never authors a schema value'],
   ]],
-  ['idempotence and veto are judged on the parsed YAML value', [
-    [/parsed\s+YAML\s+value/, 'judges on the parsed YAML value'],
-    [/literal text/, 'rejects the literal text as the criterion'],
-  ]],
-  ['the write is a parse-verified replace-in-place', [
+  ['the write judges the parsed YAML value and verifies itself', [
+    [/Judge on the parsed YAML value, never on the line's text/, 'judges on the parsed value'],
     [/replace-in-place/, 'specifies replace-in-place'],
-    [/never\s+append a second\s+`retire_capabilities` entry/i, 'forbids a second entry'],
-    [/re-parse/i, 're-parses the file after writing'],
-    [/does not revert\s+the write/, 'keeps the written key rather than reverting it'],
-    [/must\s+be\s+restored before `sai-archive` is rerun/, 'names restoration as the way forward'],
-    [/git checkout HEAD -- openspec\/changes\/(?:<name>|\$ARGUMENTS)\/\.openspec\.yaml/,
-      'names the restore command for a tracked file'],
-    [/or by hand when it is not/, 'covers an untracked file'],
+    [/never a\s+second entry/, 'forbids a second entry'],
+    [/Re-parse the file/, 're-parses the file after writing'],
+    [/The write is not reverted/, 'keeps the written key'],
+    [/git checkout HEAD -- openspec\/changes\/<name>\/\.openspec\.yaml/, 'names the restore command'],
+    [/or\s+by hand otherwise/, 'covers an untracked file'],
   ]],
   ['a blocked capability refuses the whole declaration', [
-    [/all[- ]or[- ]nothing/i, 'states the all-or-nothing rule'],
+    [/\*\*All or nothing\*\*/, 'states the all-or-nothing rule'],
   ]],
   ['every refusal is a stop, not a question', [
-    [/stop, not a\s+question/, 'states that a refusal is a stop'],
-    [/writes? nothing/i, 'writes nothing on a refusal'],
+    [/A refusal is a stop,\s+never a question/, 'states that a refusal is a stop'],
+    [/write nothing, run no CLI\s+archive/, 'writes nothing on a refusal'],
   ]],
 ];
 
-test('archive contract completes a capability-emptying delta by declaring the retirement', () => {
-  const worker = read('sai/commands/archive/worker.md');
-  const instructions = read('sai/commands/archive/instructions.md');
-
-  assert.match(worker, /the capability-emptying delta\s+assessment \(detect when a delta spec capability's.*?with no `## ADDED Requirements`/s,
-    'archive worker must document the capability-emptying assessment in pre-flight');
-  assert.doesNotMatch(worker, /Delta would empty/,
-    'archive worker must no longer carry the capability-emptying stop-text');
-  assert.doesNotMatch(worker, /Capability\s+retirement is owned by `\/sai-retire-docs`/,
-    'archive worker must no longer route capability retirement to /sai-retire-docs');
-  assert.match(worker, /the archive is NOT blocked/,
-    'archive worker must state that a capability-emptying delta does not block the archive');
-  assert.match(worker, /`retire_capabilities: true`/,
-    'archive worker must name the retirement declaration key');
-
-  assert.match(instructions, /capability's `## REMOVED Requirements` section names every requirement.*?with no `## ADDED Requirements`/s,
-    'instructions must define capability-emptying delta shape');
-  assert.match(instructions, /writing the single key `retire_capabilities: true` into `openspec\/changes\/\$ARGUMENTS\/\.openspec\.yaml`/,
-    'instructions must define the narrow retirement write');
-  assert.match(instructions, /no new question, gate, or per-route branch/,
-    'instructions must keep the retirement silent on every route');
-  assert.match(instructions, /neither rewritten nor duplicated/,
-    'instructions must keep the retirement write idempotent');
-  assert.match(instructions, /archive gains no move or delete power there/,
-    'instructions must keep spec deletion with the OpenSpec CLI');
+test('the retirement declaration single source states every rule', () => {
+  const source = read(RETIREMENT_SOURCE);
+  for (const [rule, clauses] of RETIREMENT_DECLARATION_RULES) {
+    for (const [pattern, what] of clauses) {
+      assert.match(source, pattern, `${RETIREMENT_SOURCE} must state that ${rule}: it ${what}`);
+    }
+  }
+  assert.match(source, /does not block the archive/);
+  assert.match(source, /The CLI is the only\s+component that deletes anything under `openspec\/specs\/\*\*`/);
+  assert.match(source, /The retirement adds no question, gate, or per-route branch/);
 });
 
-test('every archive contract file states the same retirement declaration rules', () => {
-  for (const relativePath of ARCHIVE_CONTRACT_FILES) {
-    const contract = read(relativePath);
-    for (const [rule, clauses] of RETIREMENT_DECLARATION_RULES) {
-      for (const [pattern, what] of clauses) {
-        assert.match(contract, pattern,
-          `${relativePath} must state that ${rule}: it ${what}`);
-      }
-    }
+test('archive cards point to the retirement declaration instead of restating it', () => {
+  for (const card of ['sai/commands/archive/worker.md', 'sai/commands/archive/coordinator.md']) {
+    assert.match(read(card), /Fetch @sai\/commands\/archive\/retirement-declaration\.md/, `${card} must fetch the single source`);
+  }
+  assert.match(read('sai/commands/archive/instructions.md'), /@sai\/commands\/archive\/retirement-declaration\.md/);
+  assert.match(read('sai/commands/archive/archive-commit-gate.instructions.md'), /retirement-declaration\.md` § Disclosure/);
+  for (const card of [
+    'sai/commands/archive/worker.md',
+    'sai/commands/archive/coordinator.md',
+    'sai/commands/archive/instructions.md',
+    'sai/commands/archive/archive-commit-gate.instructions.md',
+  ]) {
+    const text = read(card);
+    assert.doesNotMatch(text, /archive_spec_validation_failed|replace-in-place|Unhonoured value/,
+      `${card} must not restate retirement rules`);
   }
 });
 
 test('the retirement declaration is a named member of the direct-build closed order', () => {
   const worker = read('sai/commands/archive/worker.md');
   const coordinator = read('sai/commands/archive/coordinator.md');
-  const enumeration = worker.slice(
-    worker.indexOf('closed execution order; it is the only authority for'),
-    worker.indexOf('Before acting, the worker validates')
-  );
 
-  assert.match(enumeration, /`retire_capabilities` retirement declaration/,
-    'the worker closed-order enumeration must name the retirement declaration');
-  assert.match(enumeration, /not an altered\s+order/,
-    'the worker must accept an order carrying the declaration instead of rejecting it');
-  assert.match(coordinator, /closed-order content enumeration/,
-    'the coordinator must name the retirement declaration in the closed-order enumeration');
+  assert.match(worker, /may contain only the resolved change name, the retirement declaration with the\s+capabilities it retires/);
+  assert.match(worker, /An order carrying\s+the retirement declaration is therefore not an altered order/);
+  assert.match(coordinator, /the\s+retirement declaration as a named member of the order/);
 });
 
 test('the direct-build backfill execution and archive preparation blocks appear exactly once', () => {
@@ -226,8 +209,6 @@ test('Claude Code and opencode retain the same implementer projection without a 
 
   assert.match(matrix, /phase: 'direct-build'[\s\S]{0,220}workerContract: 'sai\/commands\/explore\/direct-build-worker\.md'/);
   assert.match(manifest, /direct-build/);
-  assert.ok(backfill.helperPermissions.includes('Write'),
-    'backfill must expose Write in its managed helper permissions');
   assert.match(backfill.claudeAgent.tools, /\bWrite\b/,
     'Claude backfill agent tools must include Write');
   assert.doesNotMatch(matrix, /direct-build-hands/);

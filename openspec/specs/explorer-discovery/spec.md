@@ -1,25 +1,25 @@
 # explorer-discovery Specification
 
 ## Purpose
-TBD - created by archiving change improve-explorer-description. Update Purpose after archive.
+Make the explorer agent descriptions select SAI-aware read-only research in agent listings and pickers.
 ## Requirements
 ### Requirement: Outcome-focused explorer descriptions for SAI-built projects
 
-Both `agents/opencode/explore.md` and `agents/claude/budget-explorer.md` SHALL carry a frontmatter `description` that sells fast, cost-effective read-only exploration for SAI-built projects as knowing their architecture and where to start versus generic search, with bounded summaries and no writes, without enumerating codegraph or index internals.
+Both `agents/opencode/explore.md` and `agents/claude/budget-explorer.md` SHALL carry a frontmatter `description` that leads with the agent's role and sells fast, cost-effective read-only exploration for SAI-built projects as knowing their architecture and where to start versus generic search, with bounded summaries and no writes, without enumerating codegraph or index internals.
 
 #### Scenario: Listings sell outcome not mechanism
 
 - **WHEN** the explore and budget-explorer agent descriptions are read in a listing or picker
 - **THEN** each describes fast cost-effective SAI-aware exploration with architecture and starting-point guidance and bounded read-only limits
 
-### Requirement: Mirrored description-only change across harnesses
+### Requirement: Mirrored descriptions across harnesses
 
-The change SHALL update only the `description` field in both agent files with the same meaning, preserving each harness keyword name and every `model`, `mode`, `effort`, `tools`, and body Fetch line, keeping the text concise and in English.
+Both agent files SHALL carry the same description text, concise and in English, and each SHALL keep its harness agent name (`explore` on opencode, `budget-explorer` on Claude Code).
 
-#### Scenario: Both harnesses stay in sync without side edits
+#### Scenario: Both harnesses stay in sync
 
-- **WHEN** the staged diff of both agent files is inspected
-- **THEN** only the two description lines differ and all other frontmatter and body lines are unchanged
+- **WHEN** the two explorer agent descriptions are compared
+- **THEN** they are identical
 
 ### Requirement: Read-only bounded framing without caller-guidance change
 

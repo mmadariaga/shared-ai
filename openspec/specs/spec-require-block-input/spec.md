@@ -1,7 +1,7 @@
 # spec-require-block-input Specification
 
 ## Purpose
-TBD - created by archiving change spec-require-block-input. Update Purpose after archive.
+Make `sai-1-spec` creation require the crystallized `Ready to Propose` block from `sai-explore`, while refinement of an existing change needs no block.
 ## Requirements
 ### Requirement: Creation requires crystallized block concepts
 
@@ -32,7 +32,7 @@ The `sai-explore` crystallization-close selector and handoff SHALL instruct the 
 
 ### Requirement: Collaboration style defers maturation to explore
 
-The spec common collaboration style SHALL state that maturation including discovery questions, trade-off discussion, WHY rationale, edge-case probes, and terminology agreement is owned by sai-explore, arrives on creation in the crystallized block and is not re-asked there, while refinement runs carry no block and spec is a normative translation of that block on creation. Normative gap questions that block a correct proposal or specs SHALL remain asked through needs_input.
+The spec common role section SHALL state that maturation including discovery questions, trade-off discussion, WHY rationale, edge-case probes, and terminology agreement is owned by sai-explore, arrives on creation in the crystallized block and is not re-asked there, while refinement runs carry no block and spec is a normative translation of that block on creation. Normative gap questions that block a correct proposal or specs SHALL remain asked through needs_input.
 
 #### Scenario: Maturation is not re-asked on creation
 

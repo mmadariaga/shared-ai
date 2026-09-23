@@ -3,7 +3,9 @@
 ## Purpose
 
 TBD — created by archive sync of change unattended-backfill. Describe: pinned-label crystallized-block intake with three-step label → mine → ask field resolution.
+
 ## Requirements
+
 ### Requirement: Crystallized-block intake replaces intent capture
 
 When the request body contains the `## Ready to Propose` heading together with its byte-exact pinned labels (`**Change name**:`, `**What**:`, `**Why**:`, `**Capabilities in scope**:`, `**Alternatives Considered**:`, `**Trade-offs Accepted**:`, `**Key constraints**:`, `**Edge Cases**:`, `**Implementation Details**:` among them), `/sai-backfill` SHALL treat the pasted block as supplied structured intent and SHALL NOT present the optional intent-capture choice. Detection SHALL be binary via the pinned labels: text without them SHALL fall through intact to the generic flow with no partial parsing. Records derived from a detected block SHALL enter intent reconciliation identically to statement-derived records, retaining no raw statement, taking the usable-intent path everywhere below including the four-key `prior_intent` form.
@@ -44,3 +46,16 @@ The Direct Build (unattended) backfill route SHALL compose and deliver a draft a
 - **WHEN** the archive gate evaluates a change produced by the Direct Build route and reads `backfilled: true` from `.openspec.yaml`
 - **THEN** the change can be archived by the standalone path without requiring design, tasks, or implementation artifacts
 
+### Requirement: Backfill copies Request Additional Notes verbatim into the proposal draft
+
+When a detected crystallized block carries `**Request Additional Notes**` with content, `/sai-backfill` SHALL copy that content byte-for-byte, without rewriting, summarizing, translating, or merging it, into a `## Request Additional Notes` section of the `proposal.md` draft. The section SHALL be placed after `## Impact` and before any `## Additional Notes` section. The field SHALL feed no intent record, fixed answer, or requirement. When the block has no such field, or no block was detected, the draft SHALL omit the section.
+
+#### Scenario: Direct Build backfill carries the notes
+
+- **WHEN** backfill composes a `proposal.md` draft from a detected block that carries Request Additional Notes content
+- **THEN** the draft contains that content byte-for-byte in a `## Request Additional Notes` section after `## Impact`
+
+#### Scenario: No field means no section
+
+- **WHEN** backfill runs without a detected block, or with a block that carries no Request Additional Notes field
+- **THEN** the `proposal.md` draft contains no `## Request Additional Notes` section

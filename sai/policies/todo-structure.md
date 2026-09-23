@@ -8,7 +8,7 @@ Canonical policy for the progress task list rendered by routed SAI phases. Consu
 
 ## Scope
 
-Governs the semantics of the progress task list for a routed phase whose adapter declares a `progress_plan`: the list structure, the step-state vocabulary, the deterministic state derivation, the rendering actions (render at dispatch, render on state-changing progress events, and reconcile at run-closing results), the minimum-threshold rule, and the emission-ownership invariant. A phase may separately declare a routing-only `step_pointer_map`; that map preserves just-in-time worker continuity and never creates a task list or milestone stamp. The merge command's adaptive TODO is a separate coordinator-owned surface governed by [Merge adaptive TODO](#merge-adaptive-todo), not a worker `progress_plan`. It does not govern per-harness tool mechanics — those stay in the harness bindings.
+Governs the semantics of the progress task list for a routed phase whose adapter declares a `progress_plan`: the list structure, the step-state vocabulary, the deterministic state derivation, the rendering actions (render at dispatch, render on state-changing progress events, and reconcile at run-closing results), the minimum-threshold rule, and the emission-ownership invariant. A phase may separately declare a routing-only `step_machine`; that machine preserves just-in-time worker continuity and never creates a task list or milestone stamp. The merge command's adaptive TODO is a separate coordinator-owned surface governed by [Merge adaptive TODO](#merge-adaptive-todo), not a worker `progress_plan`. It does not govern per-harness tool mechanics — those stay in the harness bindings.
 
 ## List structure
 
@@ -73,10 +73,9 @@ Stamp attachment originates exclusively from the coordinator session, never from
 ## Merge adaptive TODO
 
 The `/sai-merge` adaptive TODO is a merge-local coordinator surface, not a
-worker lifecycle extension and not the phase adapter's `progress_plan`. It is
-allowed to be unknown at dispatch because the resolved merge path is not known
-until the source branch is selected and the coordinator records the merge
-outcome.
+worker lifecycle extension and not the phase adapter's `progress_plan`. Its
+shape is unknown at dispatch because the route depends on the method, the
+selected branch, and the integration outcome.
 
 - The coordinator is the sole emitter; the worker emits no TODO or progress
   event.
@@ -91,71 +90,71 @@ every full render. The canonical item set is:
 
 | id | native label | inclusion |
 | --- | --- | --- |
-| `merge` | `Merge <source> into <target>` for method `merge`; `Rebase <target> onto <source>` for method `rebase` (same id, method-aware label) | Always after method and source-branch selection (plus the squash choice on the rebase path in normal mode). |
+| `merge` | `Merge <source> into <target>` for method `merge`; `Rebase <target> onto <source>` for method `rebase` (same id, method-aware label) | Always after method and source-branch selection. |
 | `scope` | `Select resolution scope` | A conflicted route when fast-track is inactive. |
-| `contextual-analysis` | `Analyze conflict alternatives` | Every conflicted route after the conflict-triggered language hand-off and scope selection; it covers the complete global strategy, completes only after that strategy is confirmed, and stays active while semantic decisions or `more-context`/revision continuations are pending. |
+| `contextual-analysis` | `Analyze conflict alternatives` | Every conflicted route after the language hand-off and scope selection; it covers the global strategy and completes only after the strategy is confirmed and its payload returned. |
 | `resolve-artifacts` | `Resolve artifact conflicts` | A conflicted route whose selected scope is `artifacts`. |
 | `resolve-code` | `Resolve code conflicts` | A conflicted route whose selected scope is `code`. |
 | `resolve-full` | `Resolve all conflicts` | A conflicted route whose selected scope is `full`; fast-track selects this route directly. |
-| `verification` | `Verify merge result` | Every selected conflict-resolution route after resolution staging. |
+| `verification` | `Verify merge result` | Every conflict-resolution route after resolution staging. |
 | `collision` | `Repair ADR/DDR collisions` | Only when collision applicability is `repair-required` or `escalation-required`. |
-| `authorization` | `Authorize merge commit` | Once collision analysis, any required repairs, and final staging are complete. |
+| `authorization` | `Authorize merge commit` for a merge in progress; `Authorize rebase continuation` for a stopped rebase; `Authorize collision repair commit` for a finished rebase with a staged repair (same id, state-aware label) | Whenever the worker asks the authorization question. |
 
 Item order is fixed: `merge`, optional `scope`, `contextual-analysis`, exactly
 one applicable `resolve-*` item, optional `verification`, optional `collision`,
-then `authorization`. Scope option labels and contextual decision options are
-gate content, not TODO items. A renderer must not invent category-specific ids,
-reorder items, or replace a canonical label with a question, summary, or worker
-finding.
+then optional `authorization`. Scope option labels are gate content, not TODO
+items. A renderer must not invent category-specific ids, reorder items, or
+replace a canonical label with a question, summary, or worker finding.
 
 ### Canonical route transitions
 
 - **Before branch selection:** render no merge TODO. A stale merge surface may
   be cleared according to the active binding's ownership rules, but no item is
   synthesized.
-- **After method and branch selection:** render the method-aware `merge` item
-  (`Merge <source> into <target>` for merge, `Rebase <target> onto <source>`
-  for rebase) as `merge: in_progress`; no possible conflict item is present yet.
-- **Clean route:** after a clean merge, mark `merge` `completed` and remove
-  `scope`, every `resolve-*` item, and `verification`. Wait for the collision
-  result. For `not-applicable` or `no-collision`, add `authorization` as
-  `in_progress`; for `repair-required` or `escalation-required`, add
-  `collision` as `in_progress` first, mark it `completed` after all owned
-  repairs and reference updates, then add `authorization` as `in_progress`.
+- **After the branch resolves** (a listed branch, or a typed branch that
+  passed the coordinator's validation): render the method-aware `merge` item
+  as `merge: in_progress`; no possible conflict item is present yet. Render no
+  merge TODO while that validation is pending or after it fails.
+- **Clean route:** after a clean outcome (a merge stopped before its commit, or
+  a finished rebase), mark `merge` `completed` and remove `scope`, every
+  `resolve-*` item, and `verification`. Wait for the collision result. For
+  `repair-required` or `escalation-required`, add `collision` as
+  `in_progress` and mark it `completed` after all owned repairs and reference
+  updates. Then add `authorization` as `in_progress` when the worker asks the
+  authorization question; a finished rebase with nothing staged adds no
+  `authorization` item.
 - **Conflicted non-fast-track route:** after the conflict outcome, the
-  coordinator performs the language hand-off before exposing semantic analysis
-  or the scope gate. The language is invocation state, not a TODO item. Then
-  keep `merge: completed`, add `scope: in_progress`, add
+  coordinator performs the language hand-off before exposing semantic
+  analysis; the language is invocation state, not a TODO item. Keep
+  `merge: completed`, add `scope: in_progress`, add
   `contextual-analysis: pending`, and add the applicable `resolve-*` item as
-  `pending`. When the exact scope answer is forwarded, mark `scope`
-  `completed` and make `contextual-analysis` `in_progress`; the resolution item
-  remains pending until the user confirms the complete global strategy and the
-  contextual stage returns matching complete alternatives.
+  `pending`. When the scope answer is forwarded, mark `scope` `completed` and
+  make `contextual-analysis` `in_progress`.
 - **Conflicted fast-track route:** omit `scope`, mark `merge` `completed`, and
   make `contextual-analysis` `in_progress` with `resolve-full` pending.
   Fast-track changes only the scope item; it never bypasses a contextual human
   decision. Verification, collision applicability, authorization, refusal, and
   terminal transitions remain identical.
-- **Contextual analysis:** for an obvious conflict, keep
-  `contextual-analysis` `in_progress` while the worker's deterministic outcome
-  is presented as part of the complete global strategy; mark it `completed`
-  only after the user confirms that strategy and the worker returns the
-  matching payload, then make the applicable `resolve-*` item `in_progress`.
-  For a semantic ambiguity, leave `contextual-analysis` `in_progress` through
-  every strategy confirmation, `needs_input`, `more-context`, and open revision
-  continuation. After every required `ours`, `theirs`, or `synthesis` decision
-  is explicit, the global strategy is confirmed, and the worker returns the
-  matching complete marker-free alternatives, mark it `completed` and make the
-  applicable `resolve-*` item `in_progress`. A new conflict or inconsistency
-  from application or verification returns the item to `in_progress` with the
-  same worker and selected language; no language question is repeated.
-  No TODO transition authorizes a write or stage.
+- **Contextual analysis:** keep `contextual-analysis` `in_progress` through
+  every strategy proposal, confirmation, and open revision. Mark it
+  `completed` only after the user confirms the strategy and the worker returns
+  the matching complete marker-free payload, then make the applicable
+  `resolve-*` item `in_progress`. A new conflict or inconsistency from
+  application or verification returns the item to `in_progress` with the same
+  worker and selected language; no language question is repeated. No TODO
+  transition authorizes a write or stage.
 - **Resolution and verification:** after coordinator resolution writes and
   staging, mark the applicable `resolve-*` item `completed` and make
   `verification` `in_progress`. Mark `verification` `completed` when the
   suite passes, the no-suite decision completes, or the three-round cap is
   reached; failed/cap-exhausted evidence remains in merge state and does not
   imply a commit.
+- **Rebase stops:** after a stopped rebase's verification, add
+  `authorization` (`Authorize rebase continuation`) as `in_progress`. On
+  `yes`, once `git rebase --continue` has run, remove it: a new conflicted
+  commit returns `contextual-analysis` to `in_progress` with the `resolve-*`
+  and `verification` items back to `pending`; a finished rebase follows the
+  collision route.
 - **Collision route:** after the ADR/DDR pass, omit `collision` for
   `not-applicable` or `no-collision`. When repairs or manual escalations apply,
   make `collision` `in_progress` only after the pass result is known, and mark

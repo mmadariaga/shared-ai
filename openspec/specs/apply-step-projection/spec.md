@@ -77,6 +77,6 @@ The projection SHALL NOT introduce progress events, a `progress_plan` declaratio
 
 The apply run-start projection SHALL remain separate from dispatch-local progress plans and SHALL receive no milestone stamps from RED or GREEN worker events.
 
-#### Scenario: Timestamped apply results do not stamp projection
-- **WHEN** RED or GREEN returns a progress or terminal result with `emitted_on`
+#### Scenario: Apply worker results do not stamp projection
+- **WHEN** RED or GREEN returns a progress or terminal result
 - **THEN** the implementation step projection remains unstamped.

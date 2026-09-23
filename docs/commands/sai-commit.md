@@ -6,7 +6,9 @@ Prepares a commit message from changes that are already staged and creates the c
 
 ## Flags and behavior modifiers
 
-It has no documented behavior flags. It works with the changes that are staged for commit.
+- `--scope <scope>` / `--type <type>`: force the Conventional Commits scope or type instead of inferring them.
+- `--no-body`: write the subject line only.
+- `--amend`: rewrite the latest commit instead of creating a new one. When that commit is already pushed, the command warns and asks for a second confirmation.
 
 ## In detail
 
@@ -14,4 +16,4 @@ The command reviews which files are staged and studies the project's last 20 com
 
 Using that information, it drafts a message that accurately describes what will be saved. Before executing anything, it shows a summary of the staged files and changes so the user can confirm that the set is correct.
 
-The user decides whether to authorize the commit. If approved, the command creates it with the proposed message. If the user rejects it or requests changes, no commit is created until new authorization is received. The command does not invent changes or stage files that were not already ready.
+The user decides whether to authorize the commit. If approved, the command creates it with the proposed message. If the user rejects it or requests changes, no commit is created until new authorization is received. When sensitive-looking files are staged, it asks for confirmation before continuing. The command does not invent changes or stage files that were not already ready.

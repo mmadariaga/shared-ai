@@ -2,12 +2,12 @@
 
 ## Purpose
 
-TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+Name one delegation target, the `budget-explorer` subagent, wherever SAI instructions delegate I/O-bound lookup work.
 
 ## Requirements
 ### Requirement: SAI instruction files MUST reference the `budget-explorer` skill by name when delegating I/O-bound lookup work to a subagent.
 
-Replaces all prior harness-agnostic phrasings: "research subagent", "explore subagent", "cheap research subagent", "`explore` in opencode / `Explore` in Claude Code / the pre-defined explorer custom agent in GitHub Copilot". The canonical term is `budget-explorer`.
+SAI instruction files SHALL name the `budget-explorer` skill or subagent when they delegate I/O-bound lookup work. This replaces all prior harness-agnostic phrasings: "research subagent", "explore subagent", "cheap research subagent", "`explore` in opencode / `Explore` in Claude Code / the pre-defined explorer custom agent in GitHub Copilot". The canonical term is `budget-explorer`.
 
 #### Scenario: Instruction file delegates codebase lookup to a subagent
 - **WHEN** an SAI instruction file (accessibility, backfill, design, implement, performance, remember, review, security, spec.propose) instructs the agent to delegate I/O work

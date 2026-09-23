@@ -15,9 +15,7 @@ metadata:
 
 Active harness identity: `claude`.
 
-Resolve project-local `.claude/` before user-global `~/.claude/`. This identity and root order are established before interpreting any fetch directive.
-
-Internal checkpoint: for SAI instructions, the only valid roots are `.claude/` and `~/.claude/`. Loading SAI instructions from any other path means loading instructions for the wrong harness; reject that path and do not continue with its content.
+Resolve project-local `.claude/` before user-global `~/.claude/`. These are the only roots for SAI instructions: content found under any other root belongs to another harness, so reject it and stop.
 
 ### Path composition
 
@@ -26,15 +24,15 @@ Every agent that loads fetch inherits this rule, on both harnesses. It governs h
 - Inside the project: write paths relative to the working directory. Never compose an absolute path from the project-root string.
 - Outside the project: use the path exactly as supplied. Never derive it by string manipulation.
 
-Observed: composed absolute paths have dropped a path segment — a worker whose working directory was `C:\Projects\mine\shared-ai.worktree-1` produced `C:\Projects\mine\bin` and `C:\Projects\mine\sai\commands` for directories that exist inside the repository. Relative paths and literal absolute paths resolved correctly in every observed run; composed absolute paths failed in two of three.
+Observed: composed absolute paths have dropped a path segment (a worker in `C:\Projects\mine\shared-ai.worktree-1` produced `C:\Projects\mine\sai\commands` for a directory inside the repository), while relative paths and literal absolute paths resolved correctly in every observed run.
 
 ## Fetch @ resolution rules (apply to EVERY instruction)
 
-When you encounter `"Fetch @<path>"` or `"Also fetch @<path>"` in any instruction text, resolve it using these rules:
+Resolve every `Fetch @<path>` or `Also fetch @<path>` directive in any instruction text by the first matching row:
 
 | Pattern | Resolution |
 |---------|-----------|
-| `Fetch @skills/<name>/SKILL.md` | Invoke the `Skill` tool with skill name `<name>` |
+| `Fetch @skills/<name>/SKILL.md` | Invoke the `Skill` tool with skill name `<name>`, e.g. `Skill("budget")` |
 | `Fetch @skills/<name>/SKILL.md and follow those instructions exactly.` | Invoke the `Skill` tool with skill name `<name>`, then follow its instructions |
 | `Fetch @<subpath>` (any other path) | Read `.claude/<subpath>` first; if it exists, use its content; otherwise Read `~/.claude/<subpath>` directly; if that read fails, stop and report: File not found: <subpath> (checked .claude/ and ~/.claude/) |
 
@@ -42,22 +40,13 @@ When you encounter `"Fetch @<path>"` or `"Also fetch @<path>"` in any instructio
 
 Every path a fetch directive resolves names exactly one file beginning with `sai/`, `commands/`, or `skills/` under the project-local or user-global root; the harness root itself is never named. A directive whose resolved path would land outside those three prefixes — a fourth top-level segment such as `@vendor/notes.md`, or a root-naming directive such as `@sai/` — is rejected before any filesystem access. Report the directive and the three permitted prefixes and stop.
 
-### Examples
-
-Instruction text → What you do
-
-- `"Fetch @sai/policies/prereqs.md"` → Read `.claude/sai/policies/prereqs.md` first; if it exists, use its content. Otherwise, Read `~/.claude/sai/policies/prereqs.md` directly
-- `"Fetch @skills/budget/SKILL.md"` → `Skill("budget")`
-- `"Also fetch @sai/policies/remember.md"` → Read `.claude/sai/policies/remember.md` first; if it exists, use its content. Otherwise, Read `~/.claude/sai/policies/remember.md` directly
-- `"Fetch @skills/openspec-explore/SKILL.md and follow those instructions exactly."` → `Skill("openspec-explore")`, then follow its instructions
-
 ### Recursion
 
 Skills you load and files you fetch may themselves contain `Fetch @` directives. Apply the same resolution rules recursively — the fetch rules remain active for all subsequent instructions in this session.
 
 ### File disambiguation
 
-**Important:** `@sai/commands/X.md` and `@commands/X.md` are DIFFERENT files.
+`@sai/commands/X.md` and `@commands/X.md` are different files. Always read the full resolved path, and treat two references as the same file only when their full paths match:
 
 | Reference | Resolves to |
 |-----------|-------------|
@@ -65,5 +54,3 @@ Skills you load and files you fetch may themselves contain `Fetch @` directives.
 | `@sai/commands/X.md` (user-global) | `~/.claude/sai/commands/X.md` |
 | `@commands/X.md` (project-local) | `.claude/commands/X.md` |
 | `@commands/X.md` (user-global) | `~/.claude/commands/X.md` |
-
-Always read the full resolved path — do NOT assume two `@` references point to the same file because their filenames match.

@@ -12,9 +12,8 @@
   `steps/common.md` and the one step file named by the active pointer.
 
   The boot request envelope has exactly these two keys, `command_name` for card
-  selection and `arguments_value` for the complete opaque request; the retired
-  wrapper-echo field has been removed. The implementation phase adapter supplies
-  exactly:
+  selection and `arguments_value` for the complete opaque request. The
+  implementation phase adapter supplies exactly:
 
   - `original_envelope`: exactly the opaque single-string `arguments_value`
     received from the active wrapper, byte-for-byte.
@@ -76,34 +75,19 @@
   accumulated coordinator changed-file union, the prior worker journal, design
   state, or binding identifiers.
 
-  Construct the opaque `arguments_value` envelope field from the fast-track-cleaned remainder (the active wrapper's value after the Fast-track parse strip below). Use the active `sai-3-implementation-worker` binding's `dispatch_operation` to dispatch exactly one worker and declare `fast_track_active` alongside the envelope as invocation-scoped session state (never an envelope key, never written to any file). `continuation_reference` is binding-owned and never worker output; binding-owned `continuation_reference` is not worker output.
+  Construct the opaque `arguments_value` envelope field from the fast-track-cleaned remainder (the active wrapper's value after the Fast-track parse strip below). Use the active `sai-3-implementation-worker` binding's `dispatch_operation` to dispatch exactly one worker and declare `fast_track_active` alongside the envelope as invocation-scoped session state (never an envelope key, never written to any file). `continuation_reference` is binding-owned and never worker output.
 
   Keep an invocation-scoped ordered union of `payload.changed_files`; add each path once and never reset it. Validate every result: the payload status must be exactly one of `completed`, `needs_input`, `failed`, or `cancelled`, with string `summary` and string-list `changed_files`. `needs_input` requires its question and ordered options where applicable. Every post-resolution payload, including `completed`, requires `resolved_change_name`.
 
   ## Fast-track parse
 
-  Follow the canonical model in `@sai/policies/fast-track-flag.md` — this coordinator owns BOTH the parse and the banner. Before dispatch, inspect the boot-provided `arguments_value` for the positional token `--fast-track`:
-  - If the token is present anywhere in `arguments_value`:
-    1. Set the invocation-scoped boolean `fast_track_active` to true.
-    2. Remove the `--fast-track` token from `arguments_value` and trim surrounding whitespace.
-    3. Print the exact line `> FAST-TRACK MODE ACTIVE` exactly once per invocation as ordinary conversation text (do not write it to any file); the banner never repeats within the run, including across replacement reconstruction.
-    4. Use the cleaned remainder as the effective request for the dispatch envelope and all downstream steps.
-  - If the token is absent:
-    1. Leave `fast_track_active` false.
-    2. Use `arguments_value` verbatim.
-
-  Presence-plus-strip only: while parsing fast-track inspect no other token's semantics. The activation signal travels everywhere as invocation-scoped session state named exactly `fast_track_active` (never written to `.openspec.yaml`, configuration, or any file) and is declared alongside the envelope for the worker's fast-track branches. The worker never parses `--fast-track` and never emits the banner.
+  Fetch @sai/policies/fast-track-flag.md. This coordinator is the owner: run its parse and banner on the boot-provided `arguments_value` before dispatch, and declare `fast_track_active` alongside the envelope for the worker's fast-track branches. The cleaned remainder is the effective request for the dispatch envelope and every downstream step.
 
   ## No-commit guard
 
-  Fetch @sai/policies/no-commit-guard.md and follow it for every dispatch of
-  the implementation worker. Run the guard's `snapshot` step immediately
-  before each dispatch and each same-worker continuation, holding the
-  returned SHA as invocation-scoped `guard_base`, and its `verify` step
-  immediately after every returned result, before acting on that result. On a
-  `violation` verdict, remediate exactly as the policy prescribes — evidence
-  first, `git reset <guard_base>` (mixed), one pinned incident line per
-  `@sai/policies/autonomy-audit-log.md`, then continue the route. The guard's
+  Fetch @sai/policies/no-commit-guard.md and follow its § Window pairing for
+  the implementation worker's stretches: `snapshot` opens a window, holding the returned SHA as
+  invocation-scoped `guard_base`, and `verify` closes it before each boundary. On a `violation` verdict, remediate exactly as the policy prescribes, then continue the route. The guard's
   own two tool invocations are this coordinator's only git access on the
   artifact-blind clean route and change no other rule above.
 
@@ -120,5 +104,3 @@
   - non-final chained implement → invoke only the composition-owned authorized transition to the consecutive successor; do not print the standalone MANDATORY STOP message.
 
 </TASK>
-
-Follow instruction on <TASK> step by step

@@ -58,12 +58,6 @@ const MATRIX_ENTRY_REQUIRED_FIELDS = Object.freeze([
   'workerName',
   'workerContract',
   'bindingStem',
-  'dispatchPrimitive',
-  'initialDispatch',
-  'continuationLiteral',
-  'replacementFields',
-  'helperPermissions',
-  'progressDeclaration',
   'claudeAgent',
   'opencodeAgent',
 ]);

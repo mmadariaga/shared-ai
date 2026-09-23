@@ -97,12 +97,11 @@ Explicit user flags SHALL always win over detected style: `--type` and `--scope`
 
 ### Requirement: Hard rules
 The following MUST be enforced unconditionally:
-- Never stage or unstage files — operate only on what is already staged.
-- Never run `git commit` without explicit per-invocation user authorization, except for the in-memory session-scoped authorization defined by the routed apply invocation at its documented apply commit gates.
+- Never run `git commit` without authorization from the policy's authorization gate (`yes (Recommended)` / `no` / `Allow on this session`), where an active session grant counts as authorization. What gets staged belongs to the consuming command's own gate; `/sai-commit` never stages or unstages.
 - Never amend a commit already pushed without explicit warning and secondary confirmation.
 - Never use `--no-verify` to skip hooks — surface failures, do not bypass.
-- Never include unstaged content in the message — describe only `git diff --cached`.
-- No speculation — every claim must map to a staged hunk.
+- Describe only what the commit will contain — never unrelated working-tree content.
+- No speculation — every claim must map to a change the commit contains.
 - Match the repo's commit style (scope naming, ticket refs, language) per the repo commit-style detection rubric — see the "Repo commit-style detection rubric", "Adoption branch", and "Fallback branch" requirements above for the concrete decision logic.
 
 #### Scenario: Pre-commit hook fails
@@ -110,8 +109,8 @@ The following MUST be enforced unconditionally:
 - **THEN** the agent MUST surface the hook error and stop; MUST NOT retry with `--no-verify`
 
 #### Scenario: Unstaged files present
-- **WHEN** `git diff` (unstaged) contains changes not in `git diff --cached`
-- **THEN** the commit message MUST describe only the staged hunks; unstaged content is ignored
+- **WHEN** the working tree contains changes the commit will not contain
+- **THEN** the commit message MUST describe only what the commit contains; other content is ignored
 
 #### Scenario: Repo style matched via detection rubric
 - **WHEN** composing a message for a repo whose recent history is measured against the detection rubric
@@ -122,7 +121,7 @@ Before presenting a commit message, the agent SHALL internally verify all seven 
 1. Type accuracy — `feat` only for new capabilities; `fix` only when behavior changed.
 2. Subject length — ≤ 50 chars, no period, imperative.
 3. Body wrap — 72 chars per line if body present.
-4. Faithfulness — every claim backed by `git diff --cached`.
+4. Faithfulness — every claim backed by a change the commit contains (`git diff --cached` when the command commits what is already staged).
 5. No anticipated work in the message.
 6. Repo convention match — applies the adoption branch (match rate ≥ 70%: uses the detected type/scope/body vocabulary) or the fallback branch (match rate < 70%: uses the hard-coded rules), per the detection rubric.
 7. Secrets check — warn if obvious secret-looking files are staged.

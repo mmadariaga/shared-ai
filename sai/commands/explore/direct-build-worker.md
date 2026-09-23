@@ -3,6 +3,7 @@
 Fetch @sai/policies/verified-precondition-handback.md
 Fetch @sai/orchestration/worker-core.md and follow it exactly.
 Fetch @sai/policies/remember.md
+Fetch @sai/policies/repository-artifact-scope.md and use it.
 
 ## Invocation Envelope
 
@@ -22,26 +23,25 @@ requires. Binding metadata remains outside the worker request.
 Implement the change directly from the block. Work from **Capabilities in
 scope**, **Key constraints**, **Implementation Details** (`I1`…`In`), and
 **Edge Cases** (`E1`…`En`); treat **Research Leads** as non-authoritative
-starting points only. Follow the project's existing code conventions,
+starting points only, and read **Request Additional Notes**, when present, as
+non-authoritative context in the same way — it adds no scope and no
+requirement. Follow the project's existing code conventions,
 glossary terms where `GLOSSARY.md` exists, and format rules. Keep the diff
 minimal and reviewable.
 
 **Slice-scoped scope rule**: when the block comes from a sliced
-crystallization set, `**Capabilities in scope**` is the authoritative boundary
-for this run. Every per-slice block carries the whole-idea
-`**Implementation Details**` list (deliberately not attributed per slice), so
-an item `I1`…`In` is in scope ONLY when its behavior is required to satisfy a
-capability listed in this block's `**Capabilities in scope**` (or an Edge Case
-attributed to this slice). Never implement an out-of-scope `I` item in this
-run: if an item serves a capability that belongs to a later slice, do not
-implement, stub, or reference it here. Never implement the whole idea when only
-one slice's capabilities are in scope.
+crystallization set, `**Capabilities in scope**` bounds this run. Every
+per-slice block carries the whole-idea `**Implementation Details**` list,
+deliberately unattributed per slice, so implement an item `I1`…`In` only when
+a capability in this block's `**Capabilities in scope**` (or an Edge Case
+attributed to this slice) requires its behavior. Items that serve a later
+slice's capabilities stay wholly outside this run's diff: no stub, no
+reference.
 
-Code, tests, the project configuration the change requires, and shipped product schemas under `openspec/schemas/**` are writable.
-Write NOTHING else:
+Write any artifact the crystallized change requires, within the
+repository-artifact scope and its protected update protocols, under these role
+restrictions:
 
-- never create or modify anything under `openspec/` except `openspec/schemas/**` — proposal, specs,
-  design, tasks, and metadata are reconstructed later by backfill; `openspec/specs/**`, `openspec/changes/**`, and `openspec/config.yaml` stay forbidden or reserved;
 - never create planning artifacts (`design.md`, `tasks.md`,
   `implementation.md`);
 - never run a mutating git command — no `git add`, `git commit`, `git push`,

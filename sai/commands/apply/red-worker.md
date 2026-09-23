@@ -1,81 +1,33 @@
 # Apply RED Worker
 
 Fetch @sai/orchestration/worker-core.md and follow it exactly.
+Fetch @sai/commands/apply/worker-common.md and follow it exactly.
 
-## Invocation Envelope
+You author tests. The coordinator dispatches you in one of two modes, named in the task disclosure:
 
-The worker request carries only `arguments_value`, set to the resolved change
-name. The worker also receives the dispatch-local prompt assembled from the
-matching `## Step N` contract and the testing slice; those are prompt content,
-not additional request fields. Every post-resolution lifecycle payload —
-`completed`, `needs_input`, `failed`, or `cancelled` — carries the worker-core
-closed envelope (`status`, `summary`, `changed_files`) and echoes the identical
-`resolved_change_name` supplied by the coordinator; pre-resolution payloads omit
-it. The worker never resolves a change: resolution is coordinator-owned and
-this worker SHALL NOT run any change-selection or change-listing query.
+| Mode | Plan | Verification | Field 3 `RED result` | Field 4 `GREEN result` |
+|---|---|---|---|---|
+| `red` (split-flow) | `test-authoring → red-verification` | the new tests fail by assertion | `valid` / `passes` / `wrong-failure` | `n/a` |
+| `green-exception` | `test-authoring → green-verification` | the tests pass | your RED classification when the Step has a RED block, else `n/a` | `pass` |
 
-## Dispatch-Local Progress Plan
+## Allowed files
 
-The RED dispatch declares exactly one immutable plan: `test-authoring → red-verification`. Emit progress events marking only the dispatch-local plan's step ids via the closed shape `{event: progress, step_ids: string[], changed_files: string[]}`, and close the run with exactly one terminal lifecycle status.
+- Tests and interface stubs the plan authorizes for this Step. Production files are outside them.
+- **Retired tests.** When the plan names obsolete test files as retired, each by exact repo-relative path, you MAY remove exactly those files and nothing else, declaring each in field 8 by that path. Removing them needs no read of production files or change artifacts, and grants none. Every path not named as retired stays forbidden to remove. A recovery continuation keeps this permission for exactly the same files and no others.
 
-## Scope
+## Blindness (`red` mode)
 
-- *Scope*: Write ONLY the interface stubs and the tests for this Step. Do NOT write the implementation.
-- Blind Test-Writer Allowed files contain only plan-authorized test and RED/interface-stub files and exclude production files.
-- Bounded retirement exception: when the plan names obsolete test files as retired, each with its exact repository-relative path, a worker MAY remove exactly those plan-named retired files and nothing else. This exception grants no read access — removal MUST NOT require reading production files or change artifacts — and every path not named as retired remains forbidden to write, modify, or remove.
-- Scratch path: `.tmp/{change-name}/` (separate from and excluded from `Allowed files`).
-- A worker MAY create temporary files only below `.tmp/{change-name}/`, MAY remove all contents of exactly that directory and the directory itself before a clean return, and has no preservation obligation on STOP or failure. A non-clean return has no preservation obligation.
-- A worker MUST NOT remove the `.tmp/` parent.
-- Files modified MUST contain only non-scratch paths and MUST exclude every path below `.tmp/{change-name}/`.
+Work only from this Step's injected `## Step N` contract and testing slice (framework and assertion libraries, test command). You never see the Step's GREEN phase. Read existing tests or test infrastructure only when the contract lacks setup conventions; read production source only for that same fallback.
 
-## RED Phase Contract
+A recovery continuation (`continue_after_recovery`) stays limited to tests and stubs and never receives or writes implementation or production content.
 
-Use only the matching Step interface contract and the injected testing slice (framework and assertion libraries and the test command). The interface stubs you write SHALL expose the required symbol but return a null/empty/wrong value and contain no logic that would satisfy the assertion — type-only scaffolding only, never assertion-satisfying production logic. You MAY read existing test files and test infrastructure only when the injected contract lacks setup conventions; the read is the specified fallback, never the first source.
+Interface stubs expose the required symbol and return a null, empty, or wrong value: type-only scaffolding with no logic that could satisfy an assertion.
 
-## RED Verification
+## Verification
 
-Run the injected test command scoped to the tests you authored and classify the failure type: a valid RED fails by assertion on the behaviour under test; a RED that passes is reported as `passes`; a setup/import/compilation failure is reported as `wrong-failure` with the error type. The test-writer does NOT verify GREEN and reports GREEN result = `n/a`.
+- **`red`:** run the injected test command verbatim and classify: an assertion failure on the behaviour under test is `valid`; a pass is `passes`; a setup, import, or compilation failure is `wrong-failure` with its error type.
+- **`green-exception`:** run the injected test command verbatim and leave the tests green. When they cannot pass inside your allowed files, close with the unpassable STOP; never report failing tests as a pass.
 
-## Recovery Continuation
+## Unpassable RED
 
-On `continue_after_recovery`, resume the same RED worker without re-resolution or replacement dispatch. Recovery is limited to tests and RED/interface stubs only: apply only the coordinator-authorized `Correction`, re-run the injected RED verification, and preserve the original `test-authoring → red-verification` plan. The worker remains explicitly blind to implementation and production work; the continuation receives no implementation or production content.
-
-The RED recovery MUST NOT write implementation or production files, perform GREEN work, or cross the tests/stubs boundary. It remains blind to the implementation and may use only the ordered `Reported`, `Evidence`, `Cause`, `Correction`, and `Verification` diagnosis; no raw output or change-artifact content is accepted. A continuation that cannot safely stay in this scope closes as an unpassable RED STOP rather than authorizing GREEN. A recovery continuation inherits the bounded retirement removal authorization for exactly the same plan-named retired test files and no others.
-
-## Unpassable RED STOP
-
-When bounded RED attempts cannot produce a valid RED result without a forbidden production change, an interface or test contradiction, or another unsafe correction, close the post-resolution worker result with this failed envelope:
-
-```yaml
-status: failed
-summary: string
-changed_files: string[]
-resolved_change_name: string
-failure_class: blocking-contradiction
-unrecoverable: boolean
-```
-
-The failed STOP must contain concrete, non-raw evidence: summarize the observed contradiction, affected test or stub path, and why the authorized tests/stubs-only boundary cannot safely continue; never return raw output, logs, tracebacks, or file contents. Set the worker's boolean `unrecoverable` to `true` only when that evidence establishes that continuation is unsafe. Report `STOP reached?: yes` with the exact marker message, RED result not valid, GREEN result = `n/a`, and **no GREEN authorization**; this worker never dispatches or permits GREEN after an unpassable RED.
-
-## Report Contract
-
-The worker returns a compact report containing exactly these 9 fields, and nothing else (no raw output, no file contents, no tracebacks, no iteration logs):
-
-1. **Step executed** — the Step number `N`.
-2. **Per-item status** — done/failed for each of the Step's checkbox items.
-3. **RED result** — one of `valid` / `passes` / `wrong-failure` (with error type when applicable).
-4. **GREEN result** — `n/a` (the test-writer does not verify GREEN).
-5. **Deviations** — a list of `{plan, final, reason}` entries; empty if none.
-6. **Technical learnings/friction** — self-contained, actionable facts; empty if none.
-7. **STOP reached?** — yes/no, with the exact marker message when yes.
-8. **Files modified** — non-scratch paths written, created, or removed, relative to the repo root, one path per entry; a plan-named retired test file removed under the bounded retirement exception is declared here by its exact repository-relative path; empty list if none. An explicitly present empty `Files modified` list is valid; an omitted field 8 is malformed.
-9. **Attempts per phase** — a list of `{phase, attempts, first_failure, note}` entries; field 9 is expected but optional and its absence soft-degrades.
-
-## Prohibitions
-
-- MUST NOT run any git operation or create any commit.
-- MUST NOT edit or modify `implementation.md` or mark any checkbox.
-- Act on a STOP & COMMIT marker — halt and report the STOP instead.
-- Run any `openspec` command, load any skill, or read change artifacts.
-- Read any production source file outside the blindness fallback.
-- **Report completeness**: populate field 8 with the test/stub files written and any plan-named retired files removed. An empty list is valid; omitting the field produces a malformed report.
+When bounded attempts cannot reach the mode's verification without a production change, an interface or test contradiction, or another unsafe correction, close with worker-common § Unpassable STOP. In `red` mode also report RED result not valid and `GREEN result: n/a`. You never authorize GREEN work.

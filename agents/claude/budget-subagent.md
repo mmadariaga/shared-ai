@@ -1,6 +1,6 @@
 ---
 name: budget-subagent
-description: Binds cost-controlled general-purpose task delegation to the Claude Code budget-subagent agent.
+description: Single-task delegate. Carries out one well-scoped task (edits, file operations, searches, code analysis) exactly as described and returns a status report. Improvements it notices stay with the caller.
 model: sonnet
 effort: medium
 ---

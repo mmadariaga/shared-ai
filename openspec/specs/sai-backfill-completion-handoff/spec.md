@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+Defines the `## Ready to Archive` hand-off block that closes `/sai-backfill` and keeps archiving a separate, user-started command.
 
 ## Requirements
 ### Requirement: Completion MUST emit a Ready to Archive block
@@ -33,14 +33,14 @@ The block is a minimal handoff, NOT a recap of the proposal. The `## Ready to Pr
 
 ### Requirement: Block is a handoff, not an auto-execution
 
-The `## Ready to Archive` block is paste-ready text for the user to carry into a new chat. The agent MUST NOT invoke `/sai-archive` itself, MUST NOT run any archive-skill step, and MUST NOT prefetch `sai/commands/archive/instructions.md` or `sai/commands/archive/body.md` as part of backfill's completion. Isolation Mode discipline requires the next-phase command to start with no inherited context.
+The `## Ready to Archive` block is paste-ready text for the user to carry into a new chat. The agent MUST NOT invoke `/sai-archive` itself, MUST NOT run any archive step, and MUST NOT prefetch any `sai/commands/archive/` card as part of backfill's completion. Isolation Mode discipline requires the next-phase command to start with no inherited context.
 
-#### Scenario: No archive skill prefetched
+#### Scenario: No archive card prefetched
 
     - **WHEN** the agent completes `/sai-backfill`
-    - **THEN** the agent MUST NOT have fetched `sai/commands/archive/instructions.md` or any archive-related skill during the backfill run
+    - **THEN** the agent MUST NOT have fetched any `sai/commands/archive/` card during the backfill run
 
 #### Scenario: No auto-execution of /sai-archive
 
     - **WHEN** the user has not typed `/sai-archive {name}` in a fresh chat
-    - **THEN** the agent MUST NOT have invoked the archive skill, MUST NOT have called `openspec status --change "{name}" --json` for archive purposes, and MUST NOT have moved the change into `openspec/changes/archive/`
+    - **THEN** the agent MUST NOT have run `openspec archive`, MUST NOT have called `openspec status --change "{name}" --json` for archive purposes, and MUST NOT have moved the change into `openspec/changes/archive/`

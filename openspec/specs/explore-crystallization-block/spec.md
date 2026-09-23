@@ -13,7 +13,7 @@ The shared crystallization close SHALL emit the Ready to Propose block or blocks
 
 ### Requirement: Three mandatory decision-facet sections in the single-change Ready to Propose block
 
-The single-change `Ready to Propose` block emitted by `sai-explore` (`sai/commands/explore/instructions.md` item 5) SHALL include three new sections, inserted in this exact order between `**Capabilities in scope**` and `**Key constraints**`:
+The single-change `Ready to Propose` block emitted by `sai-explore` (`sai/commands/explore/steps/crystallization-protocol.md` item 5) SHALL include three new sections, inserted in this exact order between `**Capabilities in scope**` and `**Key constraints**`:
 
 1. `**Decisions & Rationale**`
 2. `**Alternatives Considered**`
@@ -52,9 +52,9 @@ The single-change `Ready to Propose` block emitted by `sai-explore` SHALL includ
 
 ### Requirement: Sliced-feature protocol preserves existing sections while adding Edge Cases
 
-The sliced-feature `Ready to Propose` blocks emitted by `sai-explore` (`sai/commands/explore/instructions.md` item 6) SHALL preserve every existing block section, field, ordering, and language-gate invariant, and SHALL add only the dedicated `**Edge Cases**` section required by the `explore-handoff-edge-cases` capability. The `**Edge Cases**` section SHALL follow `**Key constraints**`, use the one agreed list mechanically partitioned by slice, and emit `- None` when no case is attributed to that slice.
+The sliced-feature `Ready to Propose` blocks emitted by `sai-explore` (`sai/commands/explore/steps/crystallization-protocol.md` item 6) SHALL preserve every existing block section, field, ordering, and language-gate invariant, and SHALL add only the dedicated `**Edge Cases**` section required by the `explore-handoff-edge-cases` capability. The `**Edge Cases**` section SHALL follow `**Key constraints**`, use the one agreed list mechanically partitioned by slice, and emit `- None` when no case is attributed to that slice.
 
-The companion `explore-handoff-edge-cases` capability governs the same `**Edge Cases**` rendering for the single-change protocol (`sai/commands/explore/instructions.md` item 5). Together, this modified requirement and that companion requirement explicitly cover both single-change and sliced crystallization protocols.
+The companion `explore-handoff-edge-cases` capability governs the same `**Edge Cases**` rendering for the single-change protocol (`sai/commands/explore/steps/crystallization-protocol.md` item 5). Together, this modified requirement and that companion requirement explicitly cover both single-change and sliced crystallization protocols.
 
 #### Scenario: Per-slice blocks retain their existing fields and add Edge Cases
 

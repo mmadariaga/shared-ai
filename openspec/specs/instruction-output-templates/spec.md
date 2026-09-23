@@ -17,7 +17,7 @@ The instruction library SHALL contain six independently loadable Markdown output
 
 ### Requirement: Implementation plan contract is preserved
 
-The implementation plan template SHALL preserve the current headings, placeholders, ordering, RED-to-GREEN execution contract, automated verification, human verification, deferred UI checks, STOP and COMMIT markers, no-TODO rule, and first-generation versus rerun behavior from the `<plan_template>` block in `sai/commands/implement/instructions.md`.
+The implementation plan template SHALL preserve the current headings, placeholders, ordering, RED-to-GREEN execution contract, automated verification, human verification, deferred UI checks, STOP and COMMIT markers, no-TODO rule, and first-generation versus rerun behavior as carried by `sai/commands/implement/implementation-plan.template.md`.
 
 #### Scenario: Implementation plan is generated from the extracted template
 - **WHEN** the implementation phase creates `openspec/changes/{change-name}/implementation.md` for the first time
@@ -110,7 +110,7 @@ The manifest SHALL project command-local instructions and templates and the root
 
 ### Requirement: Maintained installer and documentation references stay aligned
 
-Maintained installer instructions and repository documentation for Claude Code and opencode SHALL describe the ADR template at `sai/adr-index.template.md` and its ownership by the `sai` root-class projection. Active documentation SHALL NOT direct maintainers to copy or expect `sai/compat/_templates/adr-index.md`. Historical archived change records are excluded from this requirement.
+Maintained installer instructions and repository documentation for Claude Code and opencode SHALL describe the ADR template at `sai/commands/implement/adr-index.template.md` and its ownership by the `sai` root-class projection. Active documentation SHALL NOT direct maintainers to copy or expect `sai/compat/_templates/adr-index.md`. Historical archived change records are excluded from this requirement.
 
 #### Scenario: Manual installer guidance uses the canonical source
 
@@ -120,7 +120,7 @@ Maintained installer instructions and repository documentation for Claude Code a
 #### Scenario: Repository documentation matches the manifest ownership
 
 - **WHEN** a maintainer reads maintained repository documentation describing SAI source layout or installation projections
-- **THEN** it SHALL identify `sai/adr-index.template.md` as the canonical source and SHALL not describe a separate compatibility projection for that template
+- **THEN** it SHALL identify `sai/commands/implement/adr-index.template.md` as the canonical source and SHALL not describe a separate compatibility projection for that template
 
 ### Requirement: No workflow behavior changes
 
@@ -148,28 +148,28 @@ When the four report contracts under `sai/commands/{accessibility,performance,re
 
 ### Requirement: The DDR index template instance mirrors the ADR index template
 
-The instruction library SHALL contain a DDR index template at `sai/ddr-index.template.md` — the project-agnostic cold-build skeleton for the DDR family, mirroring `sai/adr-index.template.md` instance for instance. The template SHALL carry the canonical section skeleton with the DDR per-index bindings: H1 `# DDR Index`, then the five `## ` sections in canonical order — `## Conventions`, `## By <domain unit>`, `## Cross-cutting categories`, `## DDRs that extend or correct prior ones`, `## Superseded DDRs (historical)`. The `## By <domain unit>` H2 SHALL carry the literal placeholder `<domain unit>` (never a concrete noun), and the `## By <domain unit>` and `## Cross-cutting categories` sections SHALL carry only empty placeholder skeletons with cold-build markers naming the DDR family. The template SHALL be referenced by `sai/commands/implement/instructions.md` by exact path as the DDR cold-build source, exactly as `sai/adr-index.template.md` is for the ADR family.
+The instruction library SHALL contain a DDR index template at `sai/commands/implement/ddr-index.template.md` — the project-agnostic cold-build skeleton for the DDR family, mirroring `sai/commands/implement/adr-index.template.md` instance for instance. The template SHALL carry the canonical section skeleton with the DDR per-index bindings: H1 `# DDR Index`, then the five `## ` sections in canonical order — `## Conventions`, `## By <domain unit>`, `## Cross-cutting categories`, `## DDRs that extend or correct prior ones`, `## Superseded DDRs (historical)`. The `## By <domain unit>` H2 SHALL carry the literal placeholder `<domain unit>` (never a concrete noun), and the `## By <domain unit>` and `## Cross-cutting categories` sections SHALL carry only empty placeholder skeletons with cold-build markers naming the DDR family. The template SHALL be referenced by `sai/commands/implement/steps/decision-record-index.md` by exact path as the DDR cold-build source, exactly as `sai/commands/implement/adr-index.template.md` is for the ADR family.
 
 #### Scenario: DDR template structure matches the canonical section skeleton
 
-- **WHEN** `sai/ddr-index.template.md` is consulted
+- **WHEN** `sai/commands/implement/ddr-index.template.md` is consulted
 - **THEN** it SHALL contain the canonical section skeleton: H1 `# DDR Index`, then the five `## ` sections in canonical order with the DDR type-specific headings `## DDRs that extend or correct prior ones` and `## Superseded DDRs (historical)`
 - **THEN** the `## By <domain unit>` H2 SHALL carry the literal placeholder `<domain unit>`, never the concrete word "command"
 
 #### Scenario: DDR template is project-agnostic
 
-- **WHEN** `sai/ddr-index.template.md` is consulted
+- **WHEN** `sai/commands/implement/ddr-index.template.md` is consulted
 - **THEN** the `## By <domain unit>` and `## Cross-cutting categories` sections SHALL contain only empty placeholder skeletons with cold-build markers naming the DDR family
 - **THEN** the template SHALL NOT list any specific `### /sai-N-*` subsection, any specific cross-cutting category name, or any DDR entry
 
 #### Scenario: Implement.md references the DDR template by exact path
 
-- **WHEN** a maintainer reads `sai/commands/implement/instructions.md` Step 3's DDR index-maintenance branch
-- **THEN** the branch instruction SHALL name `sai/ddr-index.template.md` by exact path as the DDR cold-build source rather than reproducing the index structure inline
+- **WHEN** a maintainer reads the DDR index-maintenance branch of `sai/commands/implement/steps/decision-record-index.md`
+- **THEN** the branch instruction SHALL name `sai/commands/implement/ddr-index.template.md` by exact path as the DDR cold-build source rather than reproducing the index structure inline
 
 ### Requirement: The two index template instances stay in parity
 
-The canonical ADR and DDR index template instances SHALL move to `sai/adr-index.template.md` and `sai/ddr-index.template.md` and SHALL remain skeleton-parity checked by the existing index-template test, which SHALL read those exact root paths and retain family normalization and pinned skeleton assertions.
+The canonical ADR and DDR index template instances SHALL live at `sai/commands/implement/adr-index.template.md` and `sai/commands/implement/ddr-index.template.md` and SHALL remain skeleton-parity checked by the existing index-template test, which SHALL read those exact paths and retain family normalization and pinned skeleton assertions.
 
 #### Scenario: root index parity holds
 

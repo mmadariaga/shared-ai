@@ -1,35 +1,21 @@
+# model-routing Specification
+
+## Purpose
+
+Keep each command wrapper's default model current and declared in one place: the wrapper's own frontmatter.
+
 ## Requirements
 
 ### Requirement: The system SHALL maintain up-to-date model assignments in all command wrappers
 
-Each command wrapper's YAML frontmatter `model` field SHALL reflect the currently recommended model for that command and harness. Model assignments are reviewed and updated as provider offerings change.
+Each command wrapper's YAML frontmatter `model` field SHALL reflect the currently recommended model for that command and harness. Model assignments are reviewed and updated as provider offerings change. The wrapper frontmatter is the sole authority for these defaults; no spec or README table SHALL independently pin them.
 
-#### Scenario: Copilot explore wrapper uses current model
+#### Scenario: A wrapper is invoked without a model override
 
-- **WHEN** the Copilot `sai-explore` wrapper is invoked
-- **THEN** the system SHALL use `GPT-5.4 (copilot)` as the model
+- **WHEN** a Claude Code or opencode command wrapper is invoked
+- **THEN** the system SHALL use the `model` declared in that wrapper's frontmatter
 
-#### Scenario: Copilot backfill wrapper uses current model
+#### Scenario: A model assignment is updated
 
-- **WHEN** the Copilot `sai-backfill` wrapper is invoked
-- **THEN** the system SHALL use `GPT-5.4 (copilot)` as the model
-
-#### Scenario: Opencode design wrapper uses current model
-
-- **WHEN** the opencode `sai-2-design` wrapper is invoked
-- **THEN** the system SHALL use `opencode-go/glm-5.2` as the model
-
-#### Scenario: Opencode spec wrapper uses current model
-
-- **WHEN** the opencode `sai-1-spec` wrapper is invoked
-- **THEN** the system SHALL use `opencode-go/minimax-m3` as the model
-
-#### Scenario: Opencode backfill wrapper uses current model
-
-- **WHEN** the opencode `sai-backfill` wrapper is invoked
-- **THEN** the system SHALL use `opencode-go/minimax-m3` as the model
-
-#### Scenario: README model reference table reflects current assignments
-
-- **WHEN** a user consults the model reference table in `README.md`
-- **THEN** the `spec (1)` and `backfill` rows SHALL show `opencode-go/minimax-m3` for the Opencode column
+- **WHEN** a wrapper's recommended model changes
+- **THEN** only that wrapper's frontmatter changes, and no README table or spec requires a matching edit

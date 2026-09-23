@@ -12,11 +12,12 @@
 
 ## Not Applicable
 
-{REQUIRED: Fill this section even when security audit is not applicable.
-If this change has no security surface (no auth/input/crypto/HTTP/deps touched),
-explain why here and leave the findings sections empty.}
+{Keep this section only when the change has no security surface (no
+auth/input/crypto/HTTP/deps touched): justify it here and omit every findings
+section. Otherwise delete this heading entirely — /sai-status and /sai-archive
+read its presence as "audit not applicable".}
 
-**Justification:** {Why this change has no security surface, OR leave blank and fill findings below}
+**Justification:** {Why this change has no security surface}
 
 ---
 
@@ -52,7 +53,7 @@ explain why here and leave the findings sections empty.}
 - **File:** `{path}:{line}`
 - **Flaw category:** {category}
 - **CWE:** CWE-XXX — {name} (omit if mapping is not direct)
-- **OWASP 2025:** {A0X — name}
+- **OWASP 2025:** {A0X — name} (omit if mapping is not direct)
 - **Taint flow:** `{source}` → `{propagation}` → `{sink}`
 - **Evidence:**
   ```{lang}
@@ -69,7 +70,7 @@ explain why here and leave the findings sections empty.}
 
 ## SCA Findings
 
-> Include this section **only** if dependency manifests were modified in the diff.
+> Include this section **only** if SCA ran.
 
 ### H1 [SEVERITY] {CVE-ID} — {package}@{version}
 
@@ -77,6 +78,7 @@ explain why here and leave the findings sections empty.}
 - **Ecosystem:** {npm/PyPI/Maven/NuGet/Go/...}
 - **Type:** Direct | Transitive (via `{parent}`)
 - **CVE:** {CVE-XXXX-XXXXX}
+- **Source:** {audit tool | recalled}
 - **CVSS:** {score} ({vector})
 - **Vulnerability:** {brief description}
 - **Fix version:** `{version}` (available: yes/no)
@@ -87,7 +89,7 @@ explain why here and leave the findings sections empty.}
 
 ## Supply Chain Hygiene
 
-> Include this section **only** if dependency manifests were modified in the diff.
+> Include this section **only** if SCA ran.
 
 - **Lock files present:** {yes/no — list missing}
 - **GitHub Actions pinned to SHA:** {yes/no — list violations}
@@ -98,7 +100,7 @@ explain why here and leave the findings sections empty.}
 
 ## License Risk
 
-> Include this section **only** if dependency manifests were modified in the diff.
+> Include this section **only** if SCA ran.
 
 | Package | License | Risk | Commercial Use |
 |---------|---------|------|----------------|
@@ -108,7 +110,7 @@ explain why here and leave the findings sections empty.}
 
 ## Policy Compliance
 
-> Include this section **only** if dependency manifests were modified in the diff OR if SAST findings map directly to a policy control.
+> Include this section **only** if SCA ran OR if SAST findings map directly to a policy control.
 
 | Policy | Status | Notes |
 |--------|--------|-------|

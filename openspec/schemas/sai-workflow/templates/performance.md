@@ -8,7 +8,7 @@
 **Date:** <!-- YYYY-MM-DD -->
 
 ## Not Applicable
-<!-- Explain whether the performance audit applies to this change. -->
+<!-- Keep only when the performance audit does not apply to this change, with its justification; delete this heading otherwise. -->
 
 ## Executive Summary
 <!-- Summarize {the performance posture} and overall audit outcome. -->

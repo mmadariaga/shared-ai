@@ -1,20 +1,18 @@
 <glossary_format>
 
 <!-- Format validator: node sai/tools/lint.js glossary-format <file> -->
+<!-- Adapted from https://github.com/mattpocock/skills/blob/main/skills/engineering/grill-with-docs/CONTEXT-FORMAT.md -->
 
 # GLOSSARY.md Format
 
-Canonical structure for `GLOSSARY.md` — the single source of truth for a project's domain language. Adapted from https://github.com/mattpocock/skills/blob/main/skills/engineering/grill-with-docs/CONTEXT-FORMAT.md.
+`GLOSSARY.md` is the project's single source of truth for domain language.
+Every agent that reads, writes, or audits it follows this format.
 
-This file is consumed by the spec, plan, and review instructions. Any agent that reads, writes, or audits `GLOSSARY.md` must conform to this format.
+## Location
 
-## Scope
-
-`GLOSSARY.md` documents domain language and concepts only. It excludes general programming concepts.
-
-## Canonical location
-
-`GLOSSARY.md` lives at exactly one place: the **project root** (`./GLOSSARY.md`). This is the single canonical location — every SAI phase (spec bootstrap/append, implement reader, review auditor) reads and writes it there. No SAI instruction or spec places the canonical glossary inside `openspec/changes/{name}/` or any other directory.
+The project root (`./GLOSSARY.md`) is the one canonical location. Every SAI
+phase reads and writes the glossary there, never inside
+`openspec/changes/{name}/` or any other directory.
 
 ## File structure
 
@@ -49,36 +47,26 @@ This file is consumed by the spec, plan, and review instructions. Any agent that
 
 ## Rules
 
-- **Be opinionated** about term selection. Always list rejected aliases in `*Avoid*`.
-- **Tight definitions.** State what a term IS, not what it does or how it is implemented.
-- **Relationships use bold names + cardinality** (one-to-many, belongs-to, triggers).
-- **Exclude general programming concepts.** Only project-specific terminology.
-- **Flag conflicts explicitly** in `## Flagged ambiguities` with a resolution.
+- **Domain terms only.** A term earns an entry when it is specific to this
+  project; general programming concepts stay out.
+- **Be opinionated.** Pick one term and list every rejected alias in `*Avoid*`.
+- **Tight definitions.** One sentence stating what the term IS, not what it
+  does or how it is implemented.
+- **Relationships** use bold term names plus cardinality: has many, belongs
+  to, triggers.
+- **Conflicts** go to `## Flagged ambiguities` with the chosen resolution.
 
-## Append rules (mid-conversation updates)
+## Adding a term
 
-When a new domain term is resolved during planning:
+Write each domain term the moment it is resolved, one term per write:
 
-1. Insert it alphabetically into `## Language` with its `*Avoid*` aliases.
-2. If it relates to existing terms, add or update an entry in `## Relationships`.
-3. If it conflicts with an existing term or alias, add an entry to `## Flagged ambiguities` with the chosen resolution.
-4. Do not batch — append immediately.
+1. When no `GLOSSARY.md` exists yet, create it at the project root with the
+   structure above, holding that single term.
+2. Insert the term alphabetically into `## Language` with its `*Avoid*`
+   aliases.
+3. When it relates to existing terms, add or update its `## Relationships`
+   entry.
+4. When it conflicts with an existing term or alias, add a
+   `## Flagged ambiguities` entry with the resolution.
 
-## Multi-context repos (deferred / optional)
-
-> **Deferred / optional — does not override the single canonical root.** The single project-root `GLOSSARY.md` (see [Canonical location](#canonical-location)) is always authoritative. The `GLOSSARY-MAP.md` mechanism below is a future idea, not an active resolution rule, and MUST NOT be treated as taking precedence over the root `GLOSSARY.md`.
-
-For projects that later need to split multiple bounded contexts, a root `GLOSSARY-MAP.md` could list:
-- Each context's location (path to its own `GLOSSARY.md`) and purpose
-- Cross-context relationships and event flows
-- Shared types or conventions
-
-Until that mechanism is designed, resolution is unconditional: use the single project-root `GLOSSARY.md`.
-
-## Bootstrap (when no `GLOSSARY.md` exists yet)
-
-On the first domain term resolved during planning:
-
-1. Create `GLOSSARY.md` at the project root using the structure above with that single term.
-2. Notify the user: "Bootstrapped GLOSSARY.md with {term}. New domain terms will be appended here as they are resolved."
 </glossary_format>

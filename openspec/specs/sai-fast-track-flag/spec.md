@@ -12,7 +12,7 @@ Explore fast-track SHALL bypass gate 9 without an explicit overview-language opt
 
 The fast-track signal SHALL NOT auto-approve or skip any of the POC lane's three stops: the go/no-go evaluated at the close of the `Explore change` stage, the `C1..Cn` candidate-list agreement, and the verdict menu. All three SHALL always be presented and SHALL require the user's explicit choice. Fast-track SHALL NOT alter the lane's pinned Direct Build `--no-specs` profile: it SHALL NOT add back a skipped step and SHALL NOT remove one of Steps 1 and 2. The late explicit entry into the lane from stages 2 through 4 SHALL be treated as a user request rather than a stop: fast-track SHALL NEITHER trigger it NOR suppress it. Fast-track bypasses only the crystallization language gate and the overview-language ask, never the POC lane machinery.
 
-#### Scenario: auto-fast remains overview-free
+#### Scenario: Direct Build remains overview-free
 
 - **WHEN** Direct Build - Unattended is selected with or without an explicit overview-language option
 - **THEN** no overview-language question or overview generation occurs
@@ -249,11 +249,11 @@ When `/sai-merge` runs with `--fast-track`, it SHALL opt out of exactly two gate
 - **THEN** the command skips only scope selection and the method-selection gate, and still requires the contextual decision and every later validation and authorization boundary
 
 ### Requirement: Fast-track behavior is harness-agnostic and documented
-The `--fast-track` behavior SHALL be identical under Claude Code, opencode, and GitHub Copilot, achieved by single-sourcing the parse and gate branches in the shared body files, shared instructions, and routed cards. Any wrapper-level `argument-hint` change SHALL be mirrored across `commands/claude/`, `commands/opencode/`, and `commands/copilot/` in the same commit (Mirror discipline). Where a wrapper shape does not carry an `argument-hint` — specifically the opencode `sai-archive` wrapper — no separate consistency marker is required. `AGENTS.md` SHALL name `--fast-track` and its six affected commands under "Critical conventions", and `README.md` SHALL document the flag in the commands table.
+The `--fast-track` behavior SHALL be identical under Claude Code and opencode, achieved by single-sourcing the parse and gate branches in the shared body files, shared instructions, and routed cards. `argument-hint` is a Claude Code command field: the Claude wrappers document `--fast-track` there, and the opencode wrappers, whose command format has no argument-hint field, carry none and need no separate consistency marker. `AGENTS.md` SHALL name `--fast-track` and its seven affected commands under "Critical conventions", and `README.md` SHALL document the flag in the commands table.
 
-#### Scenario: opencode sai-archive wrapper keeps its envelope shape
+#### Scenario: opencode wrappers carry no argument hint
 - **WHEN** wrapper-level consistency for `--fast-track` argument hints is evaluated
-- **THEN** the opencode `sai-archive` wrapper keeps its label-free two-key envelope with no real `argument-hint` and no HTML comment marker, and this does not count as a Mirror-discipline violation
+- **THEN** each opencode wrapper keeps its label-free two-key envelope with no `argument-hint` and no HTML comment marker, and this does not count as a Mirror-discipline violation
 
 ### Requirement: Canonical fast-track parse order and state channel
 On every surface that also validates other options, the fast-track presence-plus-strip parse SHALL run FIRST, and every other flag validation SHALL run afterwards on the cleaned remainder; the activation signal SHALL travel everywhere as invocation-scoped session state named exactly `fast_track_active`, never as an envelope key and never persisted to any file or configuration.

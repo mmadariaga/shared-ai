@@ -1,5 +1,9 @@
 # design-manual-verification Specification
 
+## Purpose
+
+This capability defines design.md's manual-verification section as the human-check layer between automated tests and downstream review.
+
 ## Requirements
 
 ### Requirement: design.md ends with a Manual Verification section

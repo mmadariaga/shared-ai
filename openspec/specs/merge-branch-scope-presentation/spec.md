@@ -1,7 +1,7 @@
 # merge-branch-scope-presentation Specification
 
 ## Purpose
-TBD.
+Defines the eligible, recency-ordered merge branch candidates and the full-first, category-filtered conflict scope options.
 
 ## Requirements
 

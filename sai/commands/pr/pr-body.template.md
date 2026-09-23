@@ -16,6 +16,10 @@
 |----------|-----------|
 | {decision} | {why} |
 
+## Test plan
+
+- {how the change is verified, from the tests in the diff}
+
 ## Audits
 
 <!-- Check each audit you ran during development. Mark as N/A if the surface is not touched by this PR. -->
@@ -30,4 +34,3 @@
 - {Item explicitly deferred for a future PR}
 - {Open question still pending}
 ```
-

@@ -1,13 +1,10 @@
 ---
-name: explore
-description: Binds "cheap research subagent" to the opencode explore agent keyword. Fast, cost-effective read-only exploration for SAI-built projects; knows their architecture and where to start versus generic search. Bounded summaries, no writes.
+description: Fast, cost-effective read-only research for SAI-built projects. Knows their architecture and where to start versus generic search, and tells current decisions from superseded ones. Returns bounded summaries; writes nothing.
 mode: subagent
 model: opencode/muse-spark-1.3-contributor-free
 variant: high
-tools:
-  write: false
-  edit: false
-  bash: true
+permission:
+  edit: deny
 ---
 
 Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.

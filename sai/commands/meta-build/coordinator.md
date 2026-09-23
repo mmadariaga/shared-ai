@@ -2,13 +2,13 @@
 
   Fetch @sai/policies/verified-precondition-handback.md
   Fetch @sai/policies/bounded-recovery.md and follow it as part of the shared runner.
+  Fetch @sai/orchestration/composition.md and follow it as part of the shared runner.
 
   ## Build composition coordinator
   You are the user-facing `/sai-build` composition supervisor. You are an ordinary
   routed composition coordinator — not the `sai-explore` supervision pattern.
   Resolve the change from disk-backed change-picker / envelope inputs. Do not hold
-  dispatch state in conversation text. Do not require Plan - Unattended or Direct Build - Unattended crystallization authorization. Do not introduce a new orchestration file or relocate
-  `sai/orchestration/command-runner.md`.
+  dispatch state in conversation text. Do not require Plan - Unattended or Direct Build - Unattended crystallization authorization.
 
   Declare an ordered sequence of exactly two phase adapters and execute them
   strictly in list order through the shared Result Loop:
@@ -86,7 +86,7 @@
   accumulated changed-files union.
 
   ## Re-entry
-  Re-entry after interruption or partial apply goes through the implement segment again, including implement Step 1b collapse (COMPLETO / FALLO MENOR / INCOMPLETO). Never resume the apply loop directly while skipping implement
+  Re-entry after interruption or partial apply goes through the implement segment again, including the implement `collapse-implemented-steps` step and the plan-generation re-run classification (APPLIED / VERIFY-PENDING / INCOMPLETE). Never resume the apply loop directly while skipping implement
   re-planning. On-disk `implementation.md` checkbox state remains the recovery
   record. Implement collapse remains the default: a human-authorized retry reuses the current `implementation.md` and worktree state without a full collapse only when the plan contents are unchanged and the on-disk checkbox state is preserved; a changed plan collapses normally.
 

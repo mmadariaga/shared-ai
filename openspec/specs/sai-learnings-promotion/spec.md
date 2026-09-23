@@ -8,14 +8,14 @@ Defines the once-per-run learnings promotion pass of `/sai-4-apply`: the deviati
 
 ### Requirement: Promotion runs once per run, after the Final sweep and before the MANDATORY STOP
 
-The `/sai-4-apply` coordinator SHALL perform exactly one promotion pass per run. The pass SHALL be implemented and executed by the active routed `sai/commands/apply/runner.md` after the Final sweep — the scan that verifies every checkbox in `implementation.md` is marked — and before the MANDATORY STOP that prints the completion message. This is the same slot the fast-track combined Human Verification list already occupies.
+The `/sai-4-apply` coordinator SHALL perform exactly one promotion pass per run. The pass SHALL be implemented in `sai/commands/apply/steps/terminal-lifecycle.md` and executed after the Final sweep — the scan that verifies every Automated checkbox in `implementation.md` is marked — and before the MANDATORY STOP that prints the completion message.
 
 The pass SHALL NOT be performed per Step, SHALL NOT be delegated to a Step-execution worker, and SHALL NOT be performed more than once in a run. Because the whole `## Appendix: Plan vs Final Implementation` is on disk by the time the pass runs, supersede-by-key SHALL be applied as a single pass over the complete appendix rather than incrementally.
 
 #### Scenario: A routed run completes all Steps
 
 - **WHEN** the coordinator finishes the Final sweep and every Step is checked
-- **THEN** `runner.md` executes the promotion pass once over the complete deviations appendix before terminal documentation evaluation and the completion message
+- **THEN** `terminal-lifecycle.md` drives the promotion pass once over the complete deviations appendix before terminal documentation evaluation and the completion message
 
 #### Scenario: A run halts before the Final sweep
 

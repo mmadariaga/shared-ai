@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This capability governs `sai-3-implement` Step 3's post-ADR-write maintenance of the relational `docs/adr/0000-INDEX.md`. The capability is the ADR-side instantiation of the abstract surface defined in `decision-record-index-machinery`. The capability inherits the canonical section skeleton, the `<domain unit>` noun derivation procedure, the cross-cutting threshold contract, the relationship-token rules, the link-form rules, and the four index-output invariants from the abstract surface; this spec declares the three per-index bindings (storage directory, index filename, index H1), the two type-specific section headings (correction-table heading, historical-section heading), and the per-ADR behavior (entry-line form, structured-relationship-line format, correction-table header) that the abstract surface does not subsume.
+This capability governs `sai-3-implement`'s decision-record pass's post-ADR-write maintenance of the relational `docs/adr/0000-INDEX.md`. The capability is the ADR-side instantiation of the abstract surface defined in `decision-record-index-machinery`. The capability inherits the canonical section skeleton, the `<domain unit>` noun derivation procedure, the cross-cutting threshold contract, the relationship-token rules, the link-form rules, and the four index-output invariants from the abstract surface; this spec declares the three per-index bindings (storage directory, index filename, index H1), the two type-specific section headings (correction-table heading, historical-section heading), and the per-ADR behavior (entry-line form, structured-relationship-line format, correction-table header) that the abstract surface does not subsume.
 
 This capability was previously written against hardcoded values — the storage directory `docs/adr/`, the index H1 `# ADR Index`, the mapping rules and their precedence, the fallback noun, the cross-cutting thresholds — all appeared verbatim in the spec text. This change delegates every one of those parameterizable values to the new abstract surface, where the framework values are pinned as the contractually-defined defaults for unconfigured projects.
 
@@ -10,35 +10,35 @@ This slice ships the abstract surface instantiated for the ADR family only. The 
 
 ## Requirements
 
-### Requirement: Step 3 shall maintain each family's index after creating records in that family
+### Requirement: The decision-record pass shall maintain each family's index after creating records in that family
 
-After `sai-3-implement` Step 3 validates design decisions against the three ADR/DDR criteria and writes one or more record files in the current Step 3 run — `docs/adr/NNNN-slug.md`, `docs/ddr/NNNN-slug.md`, or both — Step 3 SHALL enter one index-maintenance cycle per family that received records in the run, choosing each cycle's branch by the absence or presence of that family's index file (`docs/adr/0000-INDEX.md` for the ADR family, `docs/ddr/0000-INDEX.md` for the DDR family):
+After `sai-3-implement`'s decision-record pass validates design decisions against the three ADR/DDR criteria and writes one or more record files in the current run — `docs/adr/NNNN-slug.md`, `docs/ddr/NNNN-slug.md`, or both — the decision-record pass SHALL enter one index-maintenance cycle per family that received records in the run, choosing each cycle's branch by the absence or presence of that family's index file (`docs/adr/0000-INDEX.md` for the ADR family, `docs/ddr/0000-INDEX.md` for the DDR family):
 
 - Cold build — when the family's index file is absent.
 - Warm splice — when the family's index file exists.
 
-Each maintenance cycle SHALL cover only the records of its own family that the current run created, SHALL write only its own family's index file, and SHALL NOT touch the other family's index. The maintenance cycles run once per family per Step 3 invocation, not per file and not once overall. When Step 3 created no record files in the current run, no maintenance cycle executes and the hook is a no-op for both families.
+Each maintenance cycle SHALL cover only the records of its own family that the current run created, SHALL write only its own family's index file, and SHALL NOT touch the other family's index. The maintenance cycles run once per family per `/sai-3-implement` invocation, not per file and not once overall. When the decision-record pass created no record files in the current run, no maintenance cycle executes and the hook is a no-op for both families.
 
-#### Scenario: Step 3 end-of-run with zero records created
+#### Scenario: The decision-record pass end-of-run with zero records created
 
-- **WHEN** the current `sai-3-implement` Step 3 run created no `docs/adr/NNNN-slug.md` or `docs/ddr/NNNN-slug.md` files (no design decision met all three ADR/DDR criteria, or the user declined record creation for each)
-- **THEN** Step 3 SHALL NOT touch `docs/adr/0000-INDEX.md` or `docs/ddr/0000-INDEX.md` and SHALL NOT print any index-maintenance instruction into `implementation.md`; the hook is a no-op for this run
+- **WHEN** the current `sai-3-implement`'s decision-record pass run created no `docs/adr/NNNN-slug.md` or `docs/ddr/NNNN-slug.md` files (no design decision met all three ADR/DDR criteria, or the user declined record creation for each)
+- **THEN** the decision-record pass SHALL NOT touch `docs/adr/0000-INDEX.md` or `docs/ddr/0000-INDEX.md` and SHALL NOT print any index-maintenance instruction into `implementation.md`; the hook is a no-op for this run
 
-#### Scenario: Step 3 creates ADRs and DDRs in one run
+#### Scenario: The decision-record pass creates ADRs and DDRs in one run
 
-- **WHEN** the current Step 3 run created one or more ADRs and one or more DDRs
+- **WHEN** the current run created one or more ADRs and one or more DDRs
 - **THEN** exactly two index-maintenance cycles SHALL run, one per family, each covering only the records of its own family and each writing only its own family's index
 
-#### Scenario: Step 3 creates records of one family only
+#### Scenario: The decision-record pass creates records of one family only
 
-- **WHEN** the current Step 3 run created records of exactly one family (e.g. only ADRs)
+- **WHEN** the current run created records of exactly one family (e.g. only ADRs)
 - **THEN** exactly one index-maintenance cycle SHALL run for that family
 - **AND** the other family's index SHALL NOT be touched
 
-#### Scenario: Step 3 end-of-run after the hook decides per-invocation state
+#### Scenario: The decision-record pass end-of-run after the hook decides per-invocation state
 
-- **WHEN** Step 3 has finished writing its record(s) for the current run and reaches the end of Step 3
-- **THEN** one index-maintenance cycle per family that received records SHALL run, covering every record the current run created in that family, before Step 3 yields control to Step 4
+- **WHEN** the decision-record pass has finished writing its record(s) for the current run and finishes the decision-record pass
+- **THEN** one index-maintenance cycle per family that received records SHALL run, covering every record the current run created in that family, before the artifact-analysis step reports its progress event
 
 ### Requirement: ADR index parameterization binds the three per-index parameters and the two type-specific section headings
 
@@ -72,30 +72,30 @@ The ADR-specific H1 `# ADR Index` is preserved verbatim across cold-build, warm-
 - **THEN** the abstract surface's framework mapping list applies, the `slash-command → command` rule matches the most ADR references, and the cold build substitutes `command` into `## By <domain unit>`, yielding `## By command` for `docs/adr/0000-INDEX.md`
 - **THEN** the cold-build output is consistent with the live `docs/adr/0000-INDEX.md` H2, which already reads `## By command`
 
-### Requirement: Index template shall be a referenced, project-agnostic skeleton file consumed by Step 3
+### Requirement: Index template shall be a referenced, project-agnostic skeleton file consumed by the decision-record pass
 
-The cold-build boilerplate for the relational ADR index SHALL live as a separate template file at `sai/adr-index.template.md`, referenced by `sai/commands/implement/instructions.md` via exact path. Step 3 SHALL NOT inline the index boilerplate into `implement.md`. The template file's structure SHALL mirror the abstract surface's canonical section skeleton (H1 `# ADR Index`, then the five `## ` sections in canonical order: `## Conventions`, `## By <domain unit>`, `## Cross-cutting categories`, `## ADRs that extend or correct prior ones`, `## Superseded ADRs (historical)`). The `## By <domain unit>` H2 SHALL carry the **literal placeholder `<domain unit>`** in the template (per the abstract surface — the placeholder is what the cold build substitutes, never a concrete noun). The template SHALL be **project-agnostic**: (a) the `## By <domain unit>` and `## Cross-cutting categories` sections carry only empty placeholder skeletons; (b) the `## By <domain unit>` H2 carries the literal placeholder `<domain unit>`, not the concrete word "command"; (c) the template SHALL NOT bake in any project-specific domain-unit snapshot, command names, category names, or ADR entries.
+The cold-build boilerplate for the relational ADR index SHALL live as a separate template file at `sai/commands/implement/adr-index.template.md`, referenced by `sai/commands/implement/steps/decision-record-index.md` via exact path. The decision-record pass SHALL NOT inline the index boilerplate into `implementation.md`. The template file's structure SHALL mirror the abstract surface's canonical section skeleton (H1 `# ADR Index`, then the five `## ` sections in canonical order: `## Conventions`, `## By <domain unit>`, `## Cross-cutting categories`, `## ADRs that extend or correct prior ones`, `## Superseded ADRs (historical)`). The `## By <domain unit>` H2 SHALL carry the **literal placeholder `<domain unit>`** in the template (per the abstract surface — the placeholder is what the cold build substitutes, never a concrete noun). The template SHALL be **project-agnostic**: (a) the `## By <domain unit>` and `## Cross-cutting categories` sections carry only empty placeholder skeletons; (b) the `## By <domain unit>` H2 carries the literal placeholder `<domain unit>`, not the concrete word "command"; (c) the template SHALL NOT bake in any project-specific domain-unit snapshot, command names, category names, or ADR entries.
 
 The mapping rules, fallback noun, threshold values, and relationship-token rules that govern what the cold build substitutes into `<domain unit>` and how it annotates entries are NOT in the template — they are in the abstract surface (which this spec inherits). The template's job is the section skeleton; the abstract surface's job is the substitution and annotation.
 
 #### Scenario: Implement.md references the template, not the boilerplate
 
-- **WHEN** a maintainer reads `sai/commands/implement/instructions.md` Step 3's index-maintenance branch
-- **THEN** the branch instruction SHALL name `sai/adr-index.template.md` by exact path as the cold-build source rather than reproducing the index structure inline
+- **WHEN** a maintainer reads the index-maintenance branch of `sai/commands/implement/steps/decision-record-index.md`
+- **THEN** the branch instruction SHALL name `sai/commands/implement/adr-index.template.md` by exact path as the cold-build source rather than reproducing the index structure inline
 
 #### Scenario: Template structure matches the canonical section skeleton
 
-- **WHEN** `sai/adr-index.template.md` is consulted
+- **WHEN** `sai/commands/implement/adr-index.template.md` is consulted
 - **THEN** it SHALL contain the abstract surface's canonical section skeleton: H1 `# ADR Index`, then the five `## ` sections in canonical order: `## Conventions`, `## By <domain unit>` (literally carrying the placeholder `<domain unit>` in the H2 — never the concrete word "command"), `## Cross-cutting categories`, `## ADRs that extend or correct prior ones`, `## Superseded ADRs (historical)`. The H1 counts as a preserved-verbatim artifact, not as one of the sections; the five `## ` headings are the five canonical sections.
 
 #### Scenario: Template is project-agnostic (no baked-in domain-unit snapshot, no frozen "command" H2)
 
-- **WHEN** `sai/adr-index.template.md` is consulted
+- **WHEN** `sai/commands/implement/adr-index.template.md` is consulted
 - **THEN** the `## By <domain unit>` H2 SHALL carry the literal placeholder token `<domain unit>` (never the concrete word "command" or any other concrete noun), AND the `## By <domain unit>` and `## Cross-cutting categories` sections SHALL contain only empty placeholder skeletons (e.g. a single HTML comment insertion site per section, or an explicitly empty body with a `<!-- cold-build: derive <domain unit> / cross-cutting subsections from ADR content -->` marker), AND SHALL NOT list any specific `### /sai-N-*` subsection or any specific cross-cutting category subsection name
 
 ### Requirement: Cold build shall construct the full relational index from the template and the abstract surface
 
-When `docs/adr/0000-INDEX.md` does not exist, Step 3 SHALL cold-build the full relational index over every ADR file currently present under `docs/adr/`, using the template at `sai/adr-index.template.md` AND the abstract surface inherited from `decision-record-index-machinery`. The cold build is a **total reconstruction over every ADR in `docs/adr/`**, NOT a session-scoped increment — it processes every ADR the project contains (whether the current session created it or it pre-exists the session) on equal terms. The cold build SHALL:
+When `docs/adr/0000-INDEX.md` does not exist, the decision-record pass SHALL cold-build the full relational index over every ADR file currently present under `docs/adr/`, using the template at `sai/commands/implement/adr-index.template.md` AND the abstract surface inherited from `decision-record-index-machinery`. The cold build is a **total reconstruction over every ADR in `docs/adr/`**, NOT a session-scoped increment — it processes every ADR the project contains (whether the current session created it or it pre-exists the session) on equal terms. The cold build SHALL:
 
 - Create `docs/adr/0000-INDEX.md` with the abstract surface's canonical section skeleton (H1 `# ADR Index`, the five `## ` sections in canonical order), using the per-index bindings for the two type-specific section headings.
 - **Derive the `<domain unit>` noun from the abstract surface** — apply the framework mapping list and the framework fallback noun to the ADRs' domain-unit references and substitute the resulting noun into `## By <domain unit>` (replacing the template placeholder). The mapping list, precedence order, and fallback rule are the abstract surface's contract, not this spec's; the cold build's job is to read them and apply them. (Previously this spec restated the mapping list, precedence, and fallback verbatim; that restatement is removed and the abstract surface is the single source of truth.)
@@ -113,8 +113,8 @@ The cold build SHALL be the sole branch that recomputes the cross-cutting thresh
 
 #### Scenario: Cold build from an ADR directory with no index
 
-- **WHEN** Step 3 ends its run with at least one ADR created, and `docs/adr/0000-INDEX.md` does not exist
-- **THEN** Step 3 SHALL construct `docs/adr/0000-INDEX.md` from the template and the abstract surface, categorising every existing `docs/adr/NNNN-*.md` file by domain-unit reference and cross-cutting category, annotating relationships, populating the correction table, and placing superseded ADRs in the historical section
+- **WHEN** the decision-record pass ends its run with at least one ADR created, and `docs/adr/0000-INDEX.md` does not exist
+- **THEN** the decision-record pass SHALL construct `docs/adr/0000-INDEX.md` from the template and the abstract surface, categorising every existing `docs/adr/NNNN-*.md` file by domain-unit reference and cross-cutting category, annotating relationships, populating the correction table, and placing superseded ADRs in the historical section
 
 #### Scenario: Cold build preserves exact H1 titles
 
@@ -148,7 +148,7 @@ The cold build SHALL be the sole branch that recomputes the cross-cutting thresh
 
 ### Requirement: Warm splice shall incrementally insert the session ADRs
 
-When `docs/adr/0000-INDEX.md` exists, Step 3 SHALL splice ONLY the ADR files the current Step 3 run created into the existing index structure, leaving all hand-curated content for ADRs not created this session unchanged. The warm splice SHALL:
+When `docs/adr/0000-INDEX.md` exists, the decision-record pass SHALL splice ONLY the ADR files the current run created into the existing index structure, leaving all hand-curated content for ADRs not created this session unchanged. The warm splice SHALL:
 
 - Insert each session ADR into every correct `### <domain unit reference>` subsection under `## By <domain unit>` based on the ADR's content. **On the `## By <domain unit>` axis the warm path has NO threshold and SHALL create a new `### <domain unit reference>` subsection on demand** for any session ADR whose domain-unit reference has no subsection yet in the existing structure — each command/module/endpoint is its own bucket (the cross-cutting threshold rule applies ONLY to `## Cross-cutting categories`, not to `## By <domain unit>`). See the "Warm splice creates a new domain-unit subsection on demand" scenario.
 - Insert each session ADR into every correct cross-cutting category subsection under `## Cross-cutting categories` based on its content — but here the warm path SHALL NOT create a new `### <category>` subsection for the ADR's category unless that subsection already exists in the structure (the warm path does NOT recompute the cross-cutting threshold — see the abstract surface's threshold contract; this restriction is specific to cross-cutting categories and does NOT apply to `## By <domain unit>`). When the category subsection is missing, the warm path SHALL append the ADR entry to the collapsed single list under `## Cross-cutting categories` in place.
@@ -229,33 +229,33 @@ When `sai-3-implement` is re-run for the same change and a record created in a p
 
 #### Scenario: Re-running sai-3 with an already-indexed session ADR
 
-- **WHEN** Step 3 re-runs for a change whose ADR `0072` was already inserted into the ADR index in the prior run, and the current run would re-insert `0072`'s entry
+- **WHEN** the decision-record pass re-runs for a change whose ADR `0072` was already inserted into the ADR index in the prior run, and the current run would re-insert `0072`'s entry
 - **THEN** the hook SHALL detect the existing entry for `0072` and SHALL skip it, producing zero new entries, zero new correction-table rows, and zero new supersede-moves for that ADR
 
 #### Scenario: Re-running sai-3 after a prior cold build of one family
 
-- **WHEN** Step 3 re-runs after a prior run cold-built `docs/adr/0000-INDEX.md` (the file now exists) while `docs/ddr/0000-INDEX.md` is absent
+- **WHEN** the decision-record pass re-runs after a prior run cold-built `docs/adr/0000-INDEX.md` (the file now exists) while `docs/ddr/0000-INDEX.md` is absent
 - **THEN** the current run SHALL take the warm-splice branch for the ADR family and SHALL NEVER re-cold-build the ADR index, even if the warm splice produces no new entries
 - **AND** a DDR-creating run at that point SHALL cold-build the DDR index — idempotency is per family, and the ADR warm branch does not suppress the DDR cold branch
 
-### Requirement: Step 3 shall emit a structured relationship line in the records it creates
+### Requirement: The decision-record pass shall emit a structured relationship line in the records it creates
 
-When `sai-3-implement` Step 3 creates a decision-record file (`docs/adr/NNNN-slug.md` or `docs/ddr/NNNN-slug.md`) for a decision that declares a relationship to another record of either family — amends, supersedes, reverses, reframes, refs, or pair-with — Step 3 SHALL emit a structured, parseable relationship line in the record file itself, in addition to any prose discussion of the relationship. The structured line SHALL use the same deterministic HTML-comment form keyed on `adr-index:` for both families (for example `<!-- adr-index: supersedes 0002; amends 0003 -->`), with relationship tokens from `amends|supersedes|reverses|reframes|refs|pair-with`. A relationship target in the same family SHALL be encoded as a bare number (`0002`); a relationship target in the other family SHALL carry the explicit family prefix (`ddr:0014`, `adr:0069`) per the abstract surface's family-boundary rule. The hook's warm-splice and cold-build branches SHALL read this structured line first; the prose-content fallback (parsing the record body for `Supersedes NNNN` phrasing) is best-effort only and SHALL be used solely for hand-written records that predate this requirement. Step 3 SHALL NOT omit the structured line for a record that declares a relationship; a record with no relationship carries no structured line and the hook annotates nothing.
+When `sai-3-implement`'s decision-record pass creates a decision-record file (`docs/adr/NNNN-slug.md` or `docs/ddr/NNNN-slug.md`) for a decision that declares a relationship to another record of either family — amends, supersedes, reverses, reframes, refs, or pair-with — the decision-record pass SHALL emit a structured, parseable relationship line in the record file itself, in addition to any prose discussion of the relationship. The structured line SHALL use the same deterministic HTML-comment form keyed on `adr-index:` for both families (for example `<!-- adr-index: supersedes 0002; amends 0003 -->`), with relationship tokens from `amends|supersedes|reverses|reframes|refs|pair-with`. A relationship target in the same family SHALL be encoded as a bare number (`0002`); a relationship target in the other family SHALL carry the explicit family prefix (`ddr:0014`, `adr:0069`) per the abstract surface's family-boundary rule. The hook's warm-splice and cold-build branches SHALL read this structured line first; the prose-content fallback (parsing the record body for `Supersedes NNNN` phrasing) is best-effort only and SHALL be used solely for hand-written records that predate this requirement. The decision-record pass SHALL NOT omit the structured line for a record that declares a relationship; a record with no relationship carries no structured line and the hook annotates nothing.
 
-#### Scenario: Step 3 writes a record that supersedes a prior record
+#### Scenario: The decision-record pass writes a record that supersedes a prior record
 
-- **WHEN** Step 3 decides to create `docs/adr/0073-foo.md` for a decision that supersedes ADR 0002
+- **WHEN** the decision-record pass decides to create `docs/adr/0073-foo.md` for a decision that supersedes ADR 0002
 - **THEN** the record file SHALL contain a structured relationship line (e.g. `<!-- adr-index: supersedes 0002 -->`) in addition to the record's prose, and the index-maintenance hook SHALL read that structured line to annotate the entry and populate the correction table, without parsing the record's prose body
 
-#### Scenario: Step 3 writes a DDR that declares a cross-family relationship
+#### Scenario: The decision-record pass writes a DDR that declares a cross-family relationship
 
-- **WHEN** Step 3 creates `docs/ddr/NNNN-slug.md` for a decision that declares `refs adr:0069`
+- **WHEN** the decision-record pass creates `docs/ddr/NNNN-slug.md` for a decision that declares `refs adr:0069`
 - **THEN** the DDR file SHALL contain the structured line `<!-- adr-index: refs adr:0069 -->` with the family-prefixed target
 - **THEN** the DDR index SHALL annotate the entry `— Refs adr:0069` and SHALL NOT touch the ADR index
 
-#### Scenario: Step 3 writes a record with no relationship
+#### Scenario: The decision-record pass writes a record with no relationship
 
-- **WHEN** Step 3 creates a record that declares no relationship to any other record
+- **WHEN** the decision-record pass creates a record that declares no relationship to any other record
 - **THEN** the record file SHALL NOT carry a structured relationship line, and the index-maintenance hook SHALL insert the entry with no in-line relationship annotation and no correction-table row
 
 #### Scenario: Hand-written pre-requirement record falls back to prose parsing
@@ -310,15 +310,15 @@ The `<domain unit>` noun substituted into `## By <domain unit>` is the derived v
 
 The DDR family SHALL run the same two-branch maintenance as the ADR family, instantiated for the DDR bindings:
 
-- **Cold build** — when `docs/ddr/0000-INDEX.md` is absent, Step 3 SHALL construct the full relational DDR index over every DDR file currently present under `docs/ddr/`, using the project-agnostic template at `sai/ddr-index.template.md` AND the abstract surface inherited from `decision-record-index-machinery`, following the same procedure as the ADR cold build: derive the `<domain unit>` noun and the domain-unit references and cross-cutting categories from the DDRs' own content; categorize every DDR; annotate relationships (including cross-family annotations with the `<family>:NNNN` encoding and `../<family>/NNNN-slug.md` links); populate the correction table; move every superseded DDR into the historical section. The cold build's bulk read of every `docs/ddr/NNNN-*.md` file SHALL be delegated to a `budget-explorer` subagent per the cost-discipline rule in `sai/policies/remember.md`, with the same raw per-record context report contract as the ADR cold build.
-- **Warm splice** — when `docs/ddr/0000-INDEX.md` exists, Step 3 SHALL splice ONLY the DDR files the current Step 3 run created into the existing index structure, leaving all hand-curated content for DDRs not created this session byte-for-byte unchanged EXCEPT where a session DDR supersedes one (a supersede-move is the only permitted mutation of a non-session entry).
+- **Cold build** — when `docs/ddr/0000-INDEX.md` is absent, the decision-record pass SHALL construct the full relational DDR index over every DDR file currently present under `docs/ddr/`, using the project-agnostic template at `sai/commands/implement/ddr-index.template.md` AND the abstract surface inherited from `decision-record-index-machinery`, following the same procedure as the ADR cold build: derive the `<domain unit>` noun and the domain-unit references and cross-cutting categories from the DDRs' own content; categorize every DDR; annotate relationships (including cross-family annotations with the `<family>:NNNN` encoding and `../<family>/NNNN-slug.md` links); populate the correction table; move every superseded DDR into the historical section. The cold build's bulk read of every `docs/ddr/NNNN-*.md` file SHALL be delegated to a `budget-explorer` subagent per the cost-discipline rule in `sai/policies/remember.md`, with the same raw per-record context report contract as the ADR cold build.
+- **Warm splice** — when `docs/ddr/0000-INDEX.md` exists, the decision-record pass SHALL splice ONLY the DDR files the current run created into the existing index structure, leaving all hand-curated content for DDRs not created this session byte-for-byte unchanged EXCEPT where a session DDR supersedes one (a supersede-move is the only permitted mutation of a non-session entry).
 - **Supersede-move** — when a session DDR supersedes a prior DDR, move the superseded DDR's entry into `## Superseded DDRs (historical)` with a `*Superseded by [NNNN]*` note and add the correction-table row. A `supersedes` whose target is in the ADR family is a classification error per the abstract surface's family-boundary rule: it is NOT executed, the source DDR is NOT moved, the ADR index is NOT touched, and the error is surfaced in chat.
 - **Idempotency** — per the per-family idempotency requirement; an already-indexed DDR is a no-op for the rerun.
 
 #### Scenario: DDR cold build from a DDR directory with no index
 
-- **WHEN** Step 3 ends its run with at least one DDR created, and `docs/ddr/0000-INDEX.md` does not exist
-- **THEN** Step 3 SHALL construct `docs/ddr/0000-INDEX.md` from `sai/ddr-index.template.md` and the abstract surface, categorising every existing `docs/ddr/NNNN-*.md` file by domain-unit reference and cross-cutting category, annotating relationships, populating the correction table, and placing superseded DDRs in the historical section
+- **WHEN** the decision-record pass ends its run with at least one DDR created, and `docs/ddr/0000-INDEX.md` does not exist
+- **THEN** the decision-record pass SHALL construct `docs/ddr/0000-INDEX.md` from `sai/commands/implement/ddr-index.template.md` and the abstract surface, categorising every existing `docs/ddr/NNNN-*.md` file by domain-unit reference and cross-cutting category, annotating relationships, populating the correction table, and placing superseded DDRs in the historical section
 
 #### Scenario: DDR warm splice touches only session DDRs
 
@@ -369,7 +369,7 @@ Cross-family relationships SHALL be represented in each family's index exactly a
 
 ### Requirement: Select per-family maintenance from the resolved-family index
 
-Step 3 SHALL select the maintenance branch only after the record family and creation outcome are resolved. An existing resolved-family index SHALL use warm-splice maintenance. An absent resolved-family index, after explicit approval, SHALL use cold-build maintenance. A family with no records created SHALL receive no maintenance cycle.
+The decision-record pass SHALL select the maintenance branch only after the record family and creation outcome are resolved. An existing resolved-family index SHALL use warm-splice maintenance. An absent resolved-family index, after explicit approval, SHALL use cold-build maintenance. A family with no records created SHALL receive no maintenance cycle.
 
 #### Scenario: Warm-splice for an indexed family
 

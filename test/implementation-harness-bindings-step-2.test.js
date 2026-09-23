@@ -122,7 +122,7 @@ test('Step 2 routed coordinator failed needs_input continuation allows one repla
     const binding = matrixBinding(harness, 'implementation');
     assert.match(binding, /one bounded replacement|replacement/i,
       `${harness} binding should carry the replacement path`);
-    assert.match(binding, /reconstruction fields|originating binding context/i,
+    assert.match(binding, /reconstruction[ _]fields|originating binding context/i,
       `${harness} binding should carry the reconstruction fields`);
   }
 });

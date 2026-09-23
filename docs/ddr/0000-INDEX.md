@@ -26,7 +26,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0147 — Structured spec research closes at the shared confidence boundary before proposal generation](./0147-spec-research-closes-at-confidence-boundary.md)
 - [0150 — Gate mode is parameterized at the fetch site, never detected from invocation context](./0150-mode-parameterized-at-fetch-site-not-detected.md) — **Amends** adr:0028
 - [0151c — External Explore findings block is the only `review` progress evidence](./0151c-external-findings-block-is-only-review-evidence.md) — **Amends** 0133b, Refs adr:0158c
-- [0156 — Critical prohibitions are deliberately duplicated across the spec worker contract and its step files](./0156a-critical-prohibitions-duplicated-across-spec-steps.md) — Pair with adr:0172c
+- [0156a — Critical prohibitions are deliberately duplicated across the spec worker contract and its step files](./0156a-critical-prohibitions-duplicated-across-spec-steps.md) — Pair with adr:0172c
 
 ### `/sai-2-design`
 
@@ -41,6 +41,9 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0114 — The dispatch envelope is exactly two strings; progress-plan content never travels in it](./0114-progress-plan-never-transported-in-envelope.md)
 - [0117b — Target State relocates into design.md as the persisted authoritative snapshot](./0117b-target-state-relocates-into-design-md-as-the-persisted-authoritative-snapshot.md)
 - [0118b — Every generation is a recoverable two-phase transition with a persisted overview.state key](./0118b-every-generation-is-a-recoverable-two-phase-transition-with-a-persisted-overview-state-key.md)
+- [0123c — Overview language selection is invocation-scoped and never persisted](./0123c-invocation-scoped-overview-language-selection.md)
+- [0124b — Change Overview localization is limited to derived free-text prose](./0124b-change-overview-localizes-only-derived-prose.md)
+- [0125a — Overview generation preserves its lifecycle and result envelope](./0125a-overview-generation-lifecycle-and-result-envelope.md)
 - [0130 — Change Overview uses an exact approval-oriented nine-section surface](./0130-change-overview-exact-approval-section-surface.md)
 - [0131 — Change Overview requirement names and localization anchors remain separately owned](./0131-change-overview-requirement-name-and-localization-ownership.md)
 - [0132 — Change Overview adapts architecture and centralizes the File Manifest](./0132-change-overview-adapts-architecture-and-centralizes-the-file-manifest.md)
@@ -56,6 +59,8 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0151b — Three mutually exclusive routing diagnoses, separate from worker failure classes](./0151b-three-mutually-exclusive-routing-diagnoses.md) — Refs 0152
 - [0151c — External Explore findings block is the only `review` progress evidence](./0151c-external-findings-block-is-only-review-evidence.md) — **Amends** 0133b, Refs adr:0158c
 - [0152 — Cause Locus gates eligibility; unresolved is not out-of-scope](./0152-cause-locus-gates-eligibility.md) — Refs 0151b
+- [0153 — Unclear Architecture Snapshot classification defaults to external](./0153-unclear-architecture-surface-defaults-to-external.md)
+- [0154 — Architecture Snapshot boundary split is prospective only](./0154-architecture-snapshot-boundary-split-is-prospective-only.md)
 
 ### `/sai-3-implement`
 
@@ -108,7 +113,6 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0094 — Supervised auto-answer confidence is a qualitative judgment gated by an objective grounding floor](./0094-qualitative-confidence-with-grounding-floor.md) — Pair with 0095
 - [0095 — Auto-answer grounding sources are bounded and exclude the explore conversation](./0095-bounded-grounding-sources-exclude-conversation.md) — Pair with 0094
 - [0105 — Severity-prefixed identifiers for artifact review findings](./0105-severity-prefixed-identifiers-for-artifact-review-findings.md)
-- [0109a — The delegation envelope's status is reserved for dispatch outcomes; check verdicts travel only in the output payload](./0109a-delegation-envelope-status-reserved-for-dispatch-outcomes.md)
 - [0121a — The active review check is a sticky chat-scoped reference selected once at loop start](./0121a-active-review-check-sticky-reference-selected-at-loop-start.md)
 - [0122 — The in-progress state is render-only: setting, advancing, or resolving it never marks or clears an item](./0122-in-progress-state-is-render-only.md)
 - [0123a — Closure State is conversation-only and has exactly three lifecycle values](./0123a-closure-state-is-conversation-only-and-has-three-lifecycle-values.md)
@@ -126,7 +130,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0150 — Gate mode is parameterized at the fetch site, never detected from invocation context](./0150-mode-parameterized-at-fetch-site-not-detected.md) — **Amends** adr:0028
 | [0151a — Phase-navigation-only questions are not genuine idea uncertainty](./0151a-phase-navigation-only-questions-are-not-genuine-idea-uncertainty.md) — Refs 0124a
 | [0151c — External Explore findings block is the only `review` progress evidence](./0151c-external-findings-block-is-only-review-evidence.md) — **Amends** 0133b, Refs adr:0158c
-- [0156 — Fast-lane artifacts follow implementation](./0156b-fast-lane-artifacts-follow-implementation.md) — Refs adr:0172d
+- [0156b — Fast-lane artifacts follow implementation](./0156b-fast-lane-artifacts-follow-implementation.md) — Refs adr:0172d
 - [0157 — Fast-lane validation and mutation stay in separate actors](./0157-fast-lane-validation-and-mutation-stay-in-separate-actors.md) — Refs adr:0172d
 - [0158 — The autofast implementer receives only the crystallized block](./0158-autofast-implementer-receives-only-the-block.md)
 - [0159 — Fast-lane selection consent pre-authorizes exactly one local commit](./0159-fast-lane-selection-pre-authorizes-one-local-commit.md) — Refs 0157, Refs 0052
@@ -240,12 +244,11 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0027 — A failing GREEN is a human decision, reached via bounded iteration](./0027-failing-green-human-decision.md)
 - [0062 — Field 9's soft-degradation exemption is stated at two sites](./0062-field-9-soft-degradation-stated-at-two-sites.md) — **Amends** 0026
 - [0063 — A contract-violating telemetry note is dropped whole, never trimmed](./0063-violating-telemetry-note-dropped-not-cleaned.md)
-- [0109a — The delegation envelope's status is reserved for dispatch outcomes; check verdicts travel only in the output payload](./0109a-delegation-envelope-status-reserved-for-dispatch-outcomes.md)
 - [0113 — The task-list tool call originates exclusively from the coordinator session, never from a worker subagent](./0113-todowrite-emission-coordinator-only.md)
 - [0133a — Budget dispatch literals resolve through collision-safe harness-managed roles](./0133a-budget-dispatch-literals-resolve-through-collision-safe-harness-managed-roles.md)
 - [0142b — The budget-explorer filesystem boundary starts at the harness project root](./0142b-budget-explorer-filesystem-boundary-starts-at-project-root.md)
 - [0143b — Out-of-root budget-explorer access is concrete and purpose-bound](./0143b-budget-explorer-out-of-root-access-is-purpose-bound.md)
-- [0144 — Self-discovered external needs use structured escalation records](./0144b-budget-explorer-self-discovered-needs-use-structured-escalation.md)
+- [0144b — Self-discovered external needs use structured escalation records](./0144b-budget-explorer-self-discovered-needs-use-structured-escalation.md)
 - [0144a — Backfill conflict scanning receives intent context only when usable](./0144a-conditional-intent-context-for-backfill-conflict-scanning.md)
 - [0145b — The budget-explorer tool-call ceiling resets for each execution segment](./0145b-budget-explorer-tool-call-ceiling-resets-per-segment.md)
 
@@ -310,5 +313,6 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 
 ## Superseded DDRs (historical)
 
+- [0109a — The delegation envelope's status is reserved for dispatch outcomes; check verdicts travel only in the output payload](./0109a-delegation-envelope-status-reserved-for-dispatch-outcomes.md) — *Superseded: the explore prerequisite check runs inline, with no delegated report*
 - [0116 — The apply phase carries no progress events because it has no coordinator-worker boundary](./0116-apply-phase-carries-no-progress-events.md) — Refs 0110 — *Superseded by [0137b](./0137b-apply-routed-boundary-carries-progress-events.md)*
 - [0128 — Neutral root protocols and command cards](./0128-neutral-root-protocols-and-command-cards.md) — *Superseded by [0149](./0149-orchestration-core-contracts-live-under-orchestration.md)* — placement rule only; its harness-neutral, phase-agnostic protocol decision remains in force

@@ -65,8 +65,7 @@ test('slice step and instructions carry next-slice for Plan and Manual only', ()
   assert.match(sliceStep, /Plan and Manual/);
   assert.match(sliceStep, /Direct Build never uses `next-slice`/);
   assert.match(instructions, /next-slice/);
-  assert.match(instructions, /Mere containment of the string `next-slice` SHALL NOT fire the token/);
-  assert.match(instructions, /Direct Build never uses `next-slice`/);
+  assert.match(sliceStep, /Mere containment of the string `next-slice` SHALL NOT fire the token/);
   assert.match(planStep, /Implement completes only on `next-slice`/);
   assert.match(sliceStep, /Plan `next-slice`-on-implement rule lives in `pipeline-plan-unattended\.md`/);
 });
@@ -123,17 +122,19 @@ test('E1 next-slice on sai-1/sai-2 stays put; E2 fail keeps pending; E3 already-
   assert.equal(dbCross.state.mode, 'direct-build');
 });
 
-test('idea stages 2–3 hint follow-already-loaded; first stages hint load and follow', () => {
+test('idea stages route to their own step files and hint load and follow', () => {
   const idea = require('../sai-state/machines/explore-idea.js');
   const first = idea.project(idea.initialState);
   assert.match(first.next.hint, /^load and follow /);
   assert.equal(first.next.follow, 'sai/commands/explore/steps/common.md');
   const stage2 = idea.transition(idea.initialState, { intent: 'next-step' });
   assert.equal(stage2.state.stage, 'review-edge-cases');
-  assert.match(stage2.next.hint, /^follow the instructions of /);
+  assert.equal(stage2.next.follow, 'sai/commands/explore/steps/review-edge-cases.md');
+  assert.match(stage2.next.hint, /^load and follow /);
   const stage3 = idea.transition(stage2.state, { intent: 'next-step' });
   assert.equal(stage3.state.stage, 'implementation-details');
-  assert.match(stage3.next.hint, /^follow the instructions of /);
+  assert.equal(stage3.next.follow, 'sai/commands/explore/steps/implementation-details.md');
+  assert.match(stage3.next.hint, /^load and follow /);
   const cryst = idea.transition(stage3.state, { intent: 'next-step' });
   assert.equal(cryst.state.stage, 'crystallize');
   assert.match(cryst.next.hint, /^load and follow /);

@@ -84,7 +84,7 @@ test('spec phase contract is the canonical technical instruction source', () => 
   assert.doesNotMatch(contract, /SpecStepPointerMap/,
     'the static SpecStepPointerMap table should not remain');
 
-  assert.match(common, /Fetch @sai\/policies\/spec-phase-contract\.md/);
+  assert.match(artifact(SPEC_COORDINATOR_ARTIFACTS.worker), /Fetch @sai\/policies\/spec-phase-contract\.md/);
   assert.doesNotMatch(common, /Fetch @sai\/commands\/spec\/instructions\.md/,
     'the retired instructions.md file should not be fetched');
   assert.match(proposal, /Fetch @skills\/openspec-propose\/SKILL\.md/);
@@ -247,8 +247,8 @@ test('Claude and opencode bindings mirror envelope and continuation mechanics', 
   for (const binding of [claude, opencode]) {
     assert.match(binding, /original (InvocationEnvelope|envelope)/i);
     assert.match(binding, /continuation|Continue/i);
-    assert.match(binding, /one bounded replacement|one replacement/i);
-    assert.match(binding, /reconstruction fields|restored from the originating binding context/i);
+    assert.match(binding, /one\s+bounded\s+replacement|one\s+replacement/i);
+    assert.match(binding, /reconstruction[ _]fields|restored from the originating binding context/i);
   }
   assert.match(claude, /SendMessage|agent ID/i);
   assert.match(opencode, /task|session|continu/i);
@@ -306,14 +306,15 @@ test('AGENTS documents the routed architecture, ownership, and artifact scope', 
   assert.match(agents, /proposal.*spec|spec.*proposal/i);
 });
 
-test('README model references and installation topology match routed metadata', () => {
+test('wrapper model defaults and README installation topology match routed metadata', () => {
   const readme = artifact('README.md');
+  const guide = artifact('docs/sequential-pipeline.md');
   const claude = artifact('commands/claude/sai-1-spec.md');
   const opencode = artifact('commands/opencode/sai-1-spec.md');
   const manifest = artifact('sai/install-manifest.json');
-  assert.match(readme, /opus/);
-  assert.match(readme, /medium/);
-   assert.match(readme, /opencode-go\/muse-spark-1\.3-contributor/);
+  assert.match(readme, /docs\/sequential-pipeline\.md/);
+  assert.match(guide, /\/sai-1-spec/);
+  assert.match(guide, /independent model roles/);
   assert.match(readme, /commands[\\/]claude|Claude Code/);
   assert.match(readme, /commands[\\/]opencode|opencode/);
   assert.match(claude, /^model:\s*opus\s*$/m);
@@ -331,14 +332,10 @@ test('sai-1 feedback gate advertises and accepts direct free-text replies', () =
     gate.indexOf('## On selecting the feedback option'),
   );
 
-  assert.match(
-    presentation,
-    /Share your feedback on \{artifacts\} below\. You can also type feedback directly in the free-text box\./,
-  );
-  assert.match(
-    presentation,
-    /Feedback on \{artifacts\}; you can also type feedback directly in the free-text box\./,
-  );
+  assert.match(presentation, /Share feedback on \{artifacts\}\?/);
+  assert.match(presentation, /Feedback on \{artifacts\}\./);
+  assert.match(presentation, /free-text channel/,
+    'the free-text channel is advertised in the context before the picker');
   assert.match(presentation, /Present exactly two choices/);
   assert.match(presentation, /Give feedback \(Recommended\)/);
   assert.match(presentation, /Give more feedback/);
@@ -405,8 +402,9 @@ test('Step 5: spec progress remains nonterminal, feedback-safe, and validation p
     /research`[\s\S]{0,500}proposal`[\s\S]{0,500}specs`[\s\S]{0,500}validation`[\s\S]{0,500}review`/,
     'proposal, specs, validation, and review batches should follow research in plan order',
   );
-  assert.match(worker, /Accepted edits trigger pre-completion verification and decision-summary recomputation from current artifacts/i);
-  assert.match(worker, /does not reopen or re-report the already completed `proposal` step|without reopening or re-emitting the already completed `proposal`/i);
+  const reviewStep = artifact('sai/commands/spec/steps/review.md');
+  assert.match(reviewStep, /After accepted edits, re-run verification and recompute the decision\s+summary/);
+  assert.match(reviewStep, /the `proposal`, `specs`, and `validation` progress ids stay closed/);
   assert.match(worker, /feedback text[\s\S]{0,220}(?:MUST NOT|must not)[\s\S]{0,160}(?:emit|re-present|duplicate)/i);
   assert.match(worker, /validation[\s\S]{0,500}review|review[\s\S]{0,500}validation/i);
   assert.match(worker, /external[\s-]+(?:artifact[- ]review )?findings?/i);
@@ -501,25 +499,22 @@ test('Step 2: the spec worker emits one progress event per act carrying the cano
 test('Step 2: external findings alone may mark spec review from a valid base-form High=0 Summary', () => {
   const worker = artifact(SPEC_COORDINATOR_ARTIFACTS.worker);
   const coordinator = artifact(SPEC_COORDINATOR_ARTIFACTS.coordinator);
-  const source = `${worker}\n${coordinator}`;
+  const reviewStep = artifact('sai/commands/spec/steps/review.md');
+  const source = `${worker}\n${coordinator}\n${reviewStep}`;
 
   assert.match(source, /external[\s-]+(?:artifact[- ]review )?findings?/i,
     'the phase should consume findings produced outside the planning worker');
   assert.match(source, /base[- ]form[\s\S]{0,220}Summary:|Summary:[\s\S]{0,220}base[- ]form/i,
     'review evidence should use the canonical base-form Summary');
-  assert.match(source, /valid[\s\S]{0,220}(?:external|base[- ]form)[\s\S]{0,220}High=0|High=0[\s\S]{0,220}(?:valid|external|base[- ]form)/i,
-    'only valid external High=0 evidence should qualify');
-  assert.match(source, /High=0[\s\S]{0,300}(?:review|mark)[\s\S]{0,180}(?:unmarked|once)/i,
+  assert.match(reviewStep, /`review` progress event only when `review` is unmarked[\s\S]{0,200}explicit `High=0`/,
     'a valid High=0 Summary may mark review only while it is unmarked');
-  assert.match(source, /never infer `?High=0`? from missing, malformed, or other summary text/i,
+  assert.match(reviewStep, /missing, malformed, or different summary line\s+never counts as `High=0`/,
     'review progress must not be inferred from prose or absent/malformed evidence');
-  assert.match(source, /explicit `?High=0`? before treating the block as review evidence|Only a valid externally supplied findings block with an explicit High=0 may mark review progress/i,
-    'High findings must not qualify as review completion without an explicit zero');
   assert.doesNotMatch(source, /High>0[\s\S]{0,260}(?:emit|report|mark)[\s\S]{0,120}`?review`?/i,
     'High findings must be processed without a new review mark');
   assert.match(source, /monotonic|once[\s\S]{0,180}(?:marked|completed)[\s\S]{0,180}(?:remain|never)[\s\S]{0,120}(?:marked|unmark|clear)/i,
     'review marks are monotonic');
-  assert.match(worker, /does not dispatch or own an artifact reviewer, an automatic review loop, review counters|does not create the findings, dispatch an artifact reviewer, or own the review operation/i,
+  assert.match(worker, /the worker dispatches no reviewer of its own/,
     'the planning worker must not dispatch or own a reviewer');
   assert.doesNotMatch(worker, /worker-owned[\s-]+(?:planning[- ]artifact )?review (?:section|pass|loop)/i,
     'the worker must not own an automatic review section or loop');
@@ -553,8 +548,6 @@ test('Step 7: marker-only supervised input fails before resolution and the marke
     'the grammar should identify the bare supervised marker');
   assert.match(worker, /(?:after|once)[\s\S]{0,140}(?:strip|remove)[\s\S]{0,180}(?:empty|blank|no request)[\s\S]{0,220}(?:fail|reject|error)[\s\S]{0,180}(?:before|prior to)[\s\S]{0,100}(?:change )?resolution|(?:strip|stripping)[\s\S]{0,180}(?:leaves?|produces?)[\s\S]{0,100}(?:no request|empty|only whitespace)[\s\S]{0,180}(?:fail|reject|error)[\s\S]{0,180}(?:before|prior to)[\s\S]{0,100}(?:change )?resolution/i,
     'an empty request after marker stripping must fail before change resolution');
-  assert.match(worker, /no third envelope field carries the marker/i,
-    'the stripped marker must not become another envelope field');
   assert.match(worker, /later lines and substrings containing `?--supervised`? are request content and are not parsed as flags/i,
     'only leading bare markers are parsed as flags');
 });
@@ -562,14 +555,13 @@ test('Step 7: marker-only supervised input fails before resolution and the marke
 test('Step 7: supervised spec invocation has no worker review counters and accepts only external review evidence', () => {
   const worker = artifact(SPEC_COORDINATOR_ARTIFACTS.worker);
 
-  assert.match(worker, /does not dispatch or own an artifact reviewer, an automatic review loop, review counters/i,
-    'the worker contract should explicitly reject retired automatic-review counters');
+  const reviewStep = artifact('sai/commands/spec/steps/review.md');
+  assert.match(worker, /the worker dispatches no reviewer of its own/,
+    'the worker contract should explicitly reject a worker-owned reviewer');
   assert.match(worker, /external[\s-]+(?:artifact[- ]review )?findings?/i,
     'supervised execution should consume external findings');
-  assert.match(worker, /Summary:\s*High=<count>\s*Medium=<count>\s*Low=<count>/i,
+  assert.match(reviewStep, /Summary:\s*High=<count>\s*Medium=<count>\s*Low=<count>/i,
     'supervised execution should use the canonical findings Summary');
-  assert.match(worker, /valid[\s\S]{0,220}(?:external|base[- ]form)[\s\S]{0,220}review|review[\s\S]{0,220}(?:valid|external|base[- ]form)/i,
-    'only valid external evidence can produce review progress');
   assert.doesNotMatch(worker, /user-requested[\s-]+review pass[\s\S]{0,220}(?:emit|report|mark)/i,
     'the retired worker-owned user-requested review pass must not be a worker contract');
 });
@@ -614,10 +606,6 @@ test('Step 3: spec worker leaves mode-dependent gate ownership to the coordinato
   const worker = artifact(SPEC_COORDINATOR_ARTIFACTS.worker);
   const coordinator = artifact(SPEC_COORDINATOR_ARTIFACTS.coordinator);
 
-  assert.match(worker, /(?:interactive|omitted) mode[\s\S]{0,160}(?:coordinator-owned gate|gate at iteration `0`)/i,
-    'the worker should describe the coordinator-owned interactive gate');
-  assert.match(worker, /supervised mode[\s\S]{0,180}auto-proceeds/i,
-    'the worker should describe supervised auto-proceed behavior without owning the gate');
   assert.match(
     worker,
     /worker does not receive, present, branch on, or otherwise handle `?mode`?/i,
@@ -657,12 +645,13 @@ test('Duplication collapse: spec step files contain no normative block in two fi
   ];
 
   const blockPatterns = [
-    { name: 'Collaboration Style', pattern: /## Collaboration style/ },
-    { name: 'Cost Discipline', pattern: /## Cost and budget discipline/ },
-    { name: 'Research Guide', pattern: /## Structured research guide/ },
-    { name: 'Budget-explorer delegation', pattern: /## Budget-explorer delegation specifics/ },
-    { name: 'Required Documentation', pattern: /## Required Documentation discipline/ },
-    { name: 'Complexity Derivation Rubric', pattern: /## Complexity Derivation Rubric/ },
+    { name: 'Role', pattern: /^## Role$/m },
+    { name: 'Cost Discipline', pattern: /^## Cost discipline$/m },
+    { name: 'Verification', pattern: /^## Verification$/m },
+    { name: 'Research Guide', pattern: /^## Research guide$/m },
+    { name: 'Handoff input', pattern: /^## Handoff input$/m },
+    { name: 'Complexity Derivation Rubric', pattern: /^## Complexity Derivation Rubric$/m },
+    { name: 'Completion', pattern: /^## Completion$/m },
     { name: 'Rule #1', pattern: /## Rule #1 — Proposal-to-spec self-consistency gate/ },
     { name: 'Rule #2', pattern: /## Rule #2 — Source-grounding of spec-pinned literals/ },
   ];

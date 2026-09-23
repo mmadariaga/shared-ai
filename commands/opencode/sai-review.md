@@ -1,5 +1,5 @@
 ---
-description: Run review and conditionally dispatch recommended audits in one routed composition.
+description: Review a change, run the security / performance / accessibility audits the review recommends, and optionally fix the findings with Direct Build (one local commit).
 model: opencode-go/muse-spark-1.3-contributor
 variant: xhigh
 subtask: false

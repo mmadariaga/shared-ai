@@ -72,12 +72,6 @@ const REQUIRED_FIELDS = Object.freeze([
   'workerName',
   'workerContract',
   'bindingStem',
-  'dispatchPrimitive',
-  'initialDispatch',
-  'continuationLiteral',
-  'replacementFields',
-  'helperPermissions',
-  'progressDeclaration',
   'claudeAgent',
   'opencodeAgent',
 ]);
@@ -172,21 +166,6 @@ function validateEntry(entry, index) {
       throw new Error(`Invalid Worker Matrix contract path for ${entry.phase}: ${entry.workerContract}`);
     }
   }
-  if (!['Agent', 'task'].includes(entry.dispatchPrimitive)) {
-    throw new Error(`Invalid Worker Matrix dispatch primitive for ${entry.phase}: ${entry.dispatchPrimitive}`);
-  }
-  if (!Array.isArray(entry.replacementFields) || entry.replacementFields.length === 0) {
-    throw new Error(`Worker Matrix replacement fields must be non-empty for ${entry.phase}`);
-  }
-  if (!Array.isArray(entry.helperPermissions)) {
-    throw new Error(`Worker Matrix helper permissions must be an array for ${entry.phase}`);
-  }
-  if (entry.phase !== 'design' && (entry.overviewGeneration || entry.noticeContinuation)) {
-    throw new Error(`Design-only Worker Matrix options leaked into ${entry.phase}`);
-  }
-  if (entry.phase === 'design' && (!entry.overviewGeneration || !entry.noticeContinuation)) {
-    throw new Error('Design Worker Matrix entry must declare overview and notice options');
-  }
 }
 
 function defineWorkerMatrix(entries) {
@@ -274,9 +253,8 @@ function materializeWorkerMatrix(matrix, templates) {
       ? ''
       : [
         'When the coordinator adapter declares a `progress_plan`,',
-        `Fetch @sai/adapters/${harness}/panel-render.md and use it for coordinator-owned routed progress task-list rendering.`,
-        'Render actions and deterministic state derivation come from @sai/policies/todo-structure.md; the worker never emits panel tool calls.',
-        'When no `progress_plan` is declared, no plan-based list is rendered; a declared `step_pointer_map` still routes active-step continuation pointers.',
+        `Fetch @sai/adapters/${harness}/panel-render.md for coordinator-owned task-list rendering;`,
+        'render actions come from @sai/policies/todo-structure.md, and the worker never emits panel tool calls.',
       ].join('\n') + '\n\n';
     return [
       {

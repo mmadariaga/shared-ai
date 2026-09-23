@@ -5,7 +5,7 @@ TBD - created by archiving change extract-sai-orchestration-core. Update Purpose
 ## Requirements
 ### Requirement: Separate Plan and Build ownership
 
-The orchestration contract SHALL identify Plan (unattended) as the supervised sai-1/sai-2 route and Build (unattended) as the direct implementation route. Explore SHALL retain no direct write scope, and each route SHALL retain its existing worker-owned boundaries.
+The orchestration contract SHALL identify Plan (unattended) as the supervised sai-1/sai-2 route and Direct Build (unattended) as the direct implementation route. Explore SHALL retain no direct write scope, and each route SHALL retain its existing worker-owned boundaries.
 
 #### Scenario: orchestration selects a route
 
@@ -73,7 +73,7 @@ The canonical orchestration source SHALL define one shared coordinator contract 
 
 ### Requirement: Chained phase composition
 
-The shared coordinator contract SHALL permit one invocation to execute an ordered sequence of phase adapters without introducing a new orchestration file or relocating `sai/orchestration/command-runner.md`. The composition SHALL execute adapters strictly in list order, rebind segment fields on activation, scope each recovery ledger to its active segment with a fresh three-slot diagnosis ledger for each eligible segment, preserve the invocation-scoped changed-files union across transitions, and carry the non-clean-closure diagnosis only within the active segment. Each eligible ledger slot SHALL permit one attempt for one new diagnosis key; duplicate detection SHALL apply within the segment. A non-final successful adapter SHALL transition only to the consecutive successor using its authorized envelope; the shared contract SHALL NOT skip ahead to a later list entry, and a supervising composition MAY activate the declared consecutive successor under a declared conditional-activation rule (for example the meta-review triage parse of the regenerated `review.md`) without that rule counting as an undeclared side channel. A failed, cancelled, malformed, or non-clean closure without a successful phase-owned resolution SHALL close the active supervising invocation without advancing. Chained apply SHALL inherit the shared route through its existing apply phase adapter; the build coordinator SHALL not duplicate or replace that route.
+The shared coordinator contract SHALL permit one invocation to execute an ordered sequence of phase adapters. The composition rules SHALL live in `sai/orchestration/composition.md`, layered on `sai/orchestration/command-runner.md`, and only composition coordinators SHALL fetch that file; the runner SHALL name it without fetching it. The composition SHALL execute adapters strictly in list order, rebind segment fields on activation, scope each recovery ledger to its active segment with a fresh three-slot diagnosis ledger for each eligible segment, preserve the invocation-scoped changed-files union across transitions, and carry the non-clean-closure diagnosis only within the active segment. Each eligible ledger slot SHALL permit one attempt for one new diagnosis key; duplicate detection SHALL apply within the segment. A non-final successful adapter SHALL transition only to the consecutive successor using its authorized envelope; the shared contract SHALL NOT skip ahead to a later list entry, and a supervising composition MAY activate the declared consecutive successor under a declared conditional-activation rule (for example the meta-review triage parse of the regenerated `review.md`) without that rule counting as an undeclared side channel. A failed, cancelled, malformed, or non-clean closure without a successful phase-owned resolution SHALL close the active supervising invocation without advancing. Chained apply SHALL inherit the shared route through its existing apply phase adapter; the build coordinator SHALL not duplicate or replace that route.
 
 #### Scenario: Ordered sequence runs through the shared runner
 
@@ -251,21 +251,20 @@ The shared orchestration contract SHALL support a phase adapter declaring a clos
 
 ### Requirement: Stateless worker payload validation
 
-The shared orchestration source SHALL define a deterministic, stateless tool that validates the closed payload shapes a coordinator receives from a worker. The validator tool at `sai/tools/worker-report-validator.js` SHALL accept a closed payload on stdin with a `--kind` flag, enumerate the required fields and their types for each payload kind, validate `emitted_on` to be ISO-8601 with a numeric offset (never the `Z` designator), and return a structured verdict containing an `ok` boolean and an `errors` array. The validator SHALL never repair, infer, or reformat values; a malformed value is reported as malformed without correction. The shared coordinator contract in `sai/orchestration/command-runner.md` SHALL invoke this tool for terminal, notice, progress, and extension payloads and consume its verdict rather than re-deriving the validation checks in prose.
+The shared orchestration source SHALL define a deterministic, stateless tool that validates the closed payload shapes a coordinator receives from a worker. The validator tool at `sai/tools/worker-report-validator.js` SHALL accept a closed payload on stdin with a `--kind` flag, enumerate the required fields and their types for each payload kind, and return a structured verdict containing an `ok` boolean and an `errors` array, plus a `validated_at` sidecar in ISO-8601 with a numeric offset (never the `Z` designator) on a valid verdict. The validator SHALL never repair, infer, or reformat values; a malformed value is reported as malformed without correction. The shared coordinator contract in `sai/orchestration/command-runner.md` SHALL invoke this tool for terminal, notice, progress, and extension payloads and consume its verdict rather than re-deriving the validation checks in prose.
 
 #### Scenario: Validator accepts closed terminal payloads
 
 - **WHEN** the coordinator receives a terminal payload (status: completed, needs_input, failed, or cancelled)
 - **THEN** it SHALL invoke `sai/tools/worker-report-validator.js validate --kind terminal` with the payload on stdin
 - **AND** the tool SHALL return `{ok: true}` if the payload is valid, or `{ok: false, errors: [...]}` if validation fails
-- **AND** the validator SHALL require status, emitted_on, summary, and changed_files fields
+- **AND** the validator SHALL require status, summary, and changed_files fields
 
-#### Scenario: emitted_on enforces numeric offset without Z
+#### Scenario: validated_at uses a numeric offset without Z
 
-- **WHEN** a payload carries an `emitted_on` value
-- **THEN** the validator SHALL require the format `YYYY-MM-DDTHH:MM:SS±HH:MM` with a numeric offset
-- **AND** it SHALL reject the `Z` designator (e.g., `2026-09-12T14:30:15Z`)
-- **AND** it SHALL report a malformed value without reformatting or converting it
+- **WHEN** the validator emits `validated_at` on a valid verdict
+- **THEN** the value SHALL have the format `YYYY-MM-DDTHH:MM:SS±HH:MM` with a numeric offset
+- **AND** it SHALL never use the `Z` designator (a machine on UTC writes `+00:00`)
 
 #### Scenario: Validator rejects malformed payloads without repair
 
@@ -279,12 +278,12 @@ The shared orchestration source SHALL define a deterministic, stateless tool tha
 - **WHEN** the coordinator receives a notice, progress, or conflict_detected payload
 - **THEN** it SHALL invoke the validator with `--kind notice`, `--kind progress`, or `--kind conflict_detected` respectively
 - **AND** the validator SHALL check the closed-shape contract for that kind
-- **AND** it SHALL enforce the `emitted_on` format and return a verdict
+- **AND** it SHALL return a verdict
 
 #### Scenario: Coordinator consumes verdict instead of prose validation
 
 - **WHEN** a coordinator result-processing loop receives a payload
 - **THEN** it SHALL run the validator tool and read the verdict
-- **AND** it SHALL not re-derive the closed-shape checks, field-type validation, or `emitted_on` format rules in its own prose or logic
+- **AND** it SHALL not re-derive the closed-shape checks, field-type validation, or `validated_at` format rules in its own prose or logic
 - **AND** any validation logic SHALL be implemented as code in the tool, not duplicated in the coordinator or other consumers
 

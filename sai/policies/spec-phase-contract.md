@@ -46,52 +46,44 @@ The spec adapter's canonical `progress_plan` is exactly this ordered list:
 - `validation` — "Validate artifacts and derive the decision summary"
 - `review` — "Review artifacts"
 
-The retired five-step plan is not valid. The plan is a rendering declaration;
-it is not worker instruction content.
+The plan is a rendering declaration, not worker instruction content.
 
 ### Step-machine routing
 
-Step-pointer routing runs exclusively through the `spec-standalone@1` step machine registered in `sai-state/machines/spec-standalone.js`. The machine owns the step cursor and its `STAGE_FILES` mapping; this contract declares no static `step_pointer_map`.
+Step-pointer routing runs exclusively through the `spec-standalone@1` step
+machine registered in `sai-state/machines/spec-standalone.js`, which owns the
+step cursor and its `STAGE_FILES` mapping. Pointer delivery follows the
+runner's § Step-gated pointer delivery and continues when the visual task list
+is suppressed or degraded.
 
-Progress-plan rendering and step-pointer routing are separate operations. A
-coordinator may suppress or degrade the visual task list, including in
-Explore-supervised execution, without suppressing pointer delivery to the
-worker. When the machine is consulted, a progress continuation carries the protocol
-continuation line followed by the pointer for the first unmarked step; after
-all steps are marked it carries the exact `Active step: none` completion
-pointer. Feedback and recovery continuations carry no pointer line.
-
-Explore's supervised adapter uses the same `spec-standalone@1` step machine as a routing-only
-declaration and intentionally declares no visual `progress_plan`. It still
-tracks worker progress ids for pointer derivation and never renders a second
-spec task list over the Explore idea list.
+Explore's supervised adapter declares the same `spec-standalone@1` machine as a
+routing-only declaration with no visual `progress_plan`: it tracks worker
+progress ids for pointer derivation and never renders a second spec task list
+over the Explore idea list.
 
 ## `SpecWriteSurface`
 
 The closed `SpecWriteSurface` is:
 
+- `openspec/changes/{change-name}/.openspec.yaml`, created only by
+  `openspec new change` on a creation run and never edited afterwards;
 - `openspec/changes/{change-name}/proposal.md`;
 - `openspec/changes/{change-name}/specs/**`; and
 - the repository-root `GLOSSARY.md`, only for terms resolved by the spec
   phase.
 
-The worker never writes `design.md`, `tasks.md`, `interfaces.md`,
-`implementation.md`, tests, recovery metadata, recovery counters, planning
-artifacts, or any project source/configuration file. The coordinator and
-Explore never write any member of this surface. A recovery diagnosis does not
+The worker writes nothing outside it — no later-phase
+artifact, test, recovery metadata, or project source or configuration file. The
+coordinator and Explore write no member of it, and a recovery diagnosis does not
 widen it.
 
 ## `SpecResultUnion`
 
-The spec phase accepts the generic worker-core terminal statuses:
-
-- `completed` — `summary`, ordered
-  duplicate-free `changed_files`, and post-resolution `resolved_change_name` (no time field; the validator emits `validated_at`);
-- `needs_input` — the same fields plus the worker's exact `question` and
-  ordered `options` (and `resolved_change_name` after resolution);
-- `failed` — the generic post-resolution closed `failure_class` and
-  `unrecoverable` fields when resolution completed; and
-- `cancelled` — the generic cancellation shape.
+The spec phase accepts the four terminal statuses of
+`@sai/orchestration/worker-core.md` with their generic shapes: `completed`,
+`needs_input` (exact `question` and ordered `options`), `failed` (closed
+`failure_class` and `unrecoverable` once resolution completed), and `cancelled`.
+Every post-resolution result carries `resolved_change_name`.
 
 The sole allowed nonterminal extension is:
 
@@ -101,11 +93,7 @@ step_ids: string[]
 changed_files: string[]
 ```
 
-There is no spec `notice` result. Every payload follows
-`@sai/orchestration/worker-core.md`; worker payloads carry no time field and
-`changed_files` is unioned by the active coordinator in first-seen order.
-Progress is nonterminal, `needs_input` pauses the same worker, and only
-`completed`, `failed`, or `cancelled` closes the current lifecycle stretch.
+There is no spec `notice` result.
 
 ### `SpecValidationReport`
 

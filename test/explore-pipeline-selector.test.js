@@ -9,6 +9,8 @@ const repoRoot = path.join(__dirname, '..');
 const exploreSources = [
   'sai/commands/explore/instructions.md',
   'sai/commands/explore/steps/common.md',
+  'sai/commands/explore/steps/review-edge-cases.md',
+  'sai/commands/explore/steps/implementation-details.md',
   'sai/commands/explore/steps/artifact-review-language-gate.md',
   'sai/commands/explore/steps/slicing-assessment.md',
   'sai/commands/explore/steps/crystallization-protocol.md',
@@ -16,6 +18,9 @@ const exploreSources = [
   'sai/commands/explore/steps/crystallization-language-gates.md',
   'sai/commands/explore/steps/review-loop.md',
   'sai/commands/explore/steps/pipeline-selector.md',
+  'sai/commands/explore/steps/route-selector.md',
+  'sai/commands/explore/steps/slice.md',
+  'sai/commands/explore/steps/poc-lane.md',
   'sai/commands/explore/steps/pipeline-plan-unattended.md',
   'sai/commands/explore/steps/pipeline-direct-build.md',
   'sai/commands/explore/steps/idea-list.md',
@@ -51,9 +56,8 @@ test('supervision is entered only through the crystallization-close selector', (
 
   assert.doesNotMatch(source, /start-pipeline/);
   assert.match(source, /There is no literal pipeline token/i);
-  assert.match(source, /entered \*\*only\*\* through this selector/i);
-  assert.match(source, /no token form is recognized/i);
-  assert.match(source, /Crystallization-close selector/);
+  assert.match(source, /Route execution is entered only through this choice, and no token form is recognized/i);
+  assert.match(source, /Crystallization-close route choice/);
 });
 
 test('the selector closes every crystallization emission through the authoritative shared close', () => {
@@ -61,23 +65,23 @@ test('the selector closes every crystallization emission through the authoritati
   const sharedCloseSpec = spec('openspec/specs/explore-crystallization-block/spec.md');
   const selectorSpec = spec('openspec/specs/explore-pipeline-selector/spec.md');
 
-  assert.match(source, /items 5, 6, and 7 \u2014 closes its turn with exactly one selector/i);
-  assert.match(source, /after the final `Ready to Propose` block and after the keep-window-open recommendation/i);
-  assert.match(source, /exactly three options, in this fixed order/i);
+  assert.match(source, /\*\*Crystallization-turn close \(shared, owns B6\)\.\*\*/);
+  assert.match(source, /The first presentation runs in the same turn as the `Ready to Propose` block emission/);
+  assert.match(source, /This selector carries exactly the three options below/);
   assert.match(source, /\*\*Plan - Unattended\*\* — Runs `sai-1` and `sai-2` to create the plan and stops for pre-implementation human review\./);
   assert.match(source, /\*\*Direct Build - Unattended\*\* — Implements the change directly and updates specs afterward: ideal for fixes and simple changes\./);
-  assert.match(source, /\*\*Manual\*\* — Proceed manually by pasting the `Ready to Propose` block into a new chat with `\/sai-1-spec` \(full control over the process\)\./);
-  assert.match(source, /AskUserQuestion on Claude Code|`AskUserQuestion` on Claude Code/i);
+  assert.match(source, /\*\*Manual\*\* — Paste the `Ready to Propose` block into a new chat with `\/sai-1-spec`\./);
+  assert.match(source, /`AskUserQuestion` on Claude Code/);
   assert.match(source, /`question` tool on opencode/i);
-  assert.match(source, /remember\.md`? \(L10\u201315\)/);
-  assert.match(source, /Selecting \*\*Plan - Unattended\*\* \(`route_mode = plan-unattended`\)/);
+  assert.match(source, /"Closed-choice prompts" rule in `sai\/policies\/remember\.md`/);
+  assert.match(source, /\*\*Plan\*\* \(`route_mode = plan-unattended`\)/);
 
   assert.match(sharedCloseSpec, /one authoritative crystallization-turn close/i);
-  assert.match(sharedCloseSpec, /Items 5 \(single change\), 6 \(sliced feature\), and 7 \(inline proposal refusal\)[\s\S]{0,180}reference that definition/i);
+  assert.match(sharedCloseSpec, /Single-change and sliced-feature items SHALL reference that definition/);
+  assert.match(sharedCloseSpec, /Inline proposal refusal SHALL stay outside the shared close/);
   assert.match(selectorSpec, /Selecting `Manual` SHALL dispatch nothing and SHALL NOT change supervision state/i);
   assert.match(selectorSpec, /An unmapped free-text answer MUST be treated as (?:\*\*|`)Manual(?:\*\*|`)/i);
-  assert.match(selectorSpec, /[`*]*Manual[`*]* SHALL remain re-invocable without a cap[\s\S]{0,120}selector/i);
-  assert.match(source, /`--fast-track` auto-selects nothing: the selector is always asked/i);
+  assert.match(source, /`--fast-track` auto-selects nothing: the choice is always asked/i);
 });
 
 test('overview-language gate is deferred from crystallization until a dispatchable supervised Plan selection', () => {
@@ -107,20 +111,20 @@ test('Manual and unmapped answers preserve the shared close without suppressing 
   const source = exploreContract();
   const selectorSpec = spec('openspec/specs/explore-pipeline-selector/spec.md');
 
-  assert.match(source, /Selecting \*\*Manual\*\*[\s\S]{0,80}dispatches nothing[\s\S]{0,180}(?:changes no state value|does not change supervision state)/i);
-  assert.match(source, /Manual[\s\S]{0,260}(?:already[- ]emitted|already emitted)[\s\S]{0,180}(?:shared close|keep-window-open recommendation|recommendation)/i);
-  assert.match(source, /(?:no|not|without|does not|shall not)[\s\S]{0,80}second recommendation[\s\S]{0,80}(?:and|or)[\s\S]{0,50}selector/i);
+  assert.match(source, /Manual creates no delegated entries, dispatches no worker, changes no supervision state/i);
+  assert.match(source, /A free-text answer that maps to neither option is treated as \*\*Manual\*\*/i);
+  assert.match(source, /no-dispatch, no-state-change, no-injected-marker, and no-second-choice rules/i);
+  assert.match(source, /\*\*Manual is not terminal\*\*[\s\S]{0,400}no cap on re-presentations/i);
+  assert.match(source, /every new deferred \*\*Manual\*\* resolution re-emits handoff plus recommendation once/i);
   assert.match(selectorSpec, /An unmapped free-text answer MUST be treated as (?:\*\*|`)Manual(?:\*\*|`)/i);
-  assert.match(selectorSpec, /[`*]*Manual[`*]* SHALL remain re-invocable without a cap[\s\S]{0,120}selector/i);
-  assert.match(source, /`--fast-track` auto-selects nothing: the selector is always asked/i);
+  assert.match(source, /`--fast-track` auto-selects nothing: the choice is always asked/i);
 });
 
 test('the selector authorizes the delegated-write exception and is not the removed review picker', () => {
   const source = exploreContract();
 
-  assert.match(source, /the user's explicit selections on the crystallization-close pipeline selector/i);
-  assert.match(source, /explicit user act that authorizes item 1's delegated-write exception/i);
-  assert.match(source, /consent to selection and dispatch only/i);
+  assert.match(source, /Selecting \*\*Plan - Unattended\*\* is the explicit user act that authorizes delegated writes/i);
+  assert.match(source, /consent to choice and dispatch only/i);
   assert.match(source, /is \*\*not\*\* the removed global Yes\/No review picker/i);
   assert.match(source, /this review loop stays picker-free at crystallization/i);
 });
@@ -130,8 +134,7 @@ test('the crystallization closing recommendation names review-loop and no pipeli
 
   assert.match(source, /The recommendation names no pipeline token/);
   assert.match(source, /names the literal token `review-loop` exactly once/);
-  assert.match(source, /after the final `Ready to Propose` block and after the keep-window-open recommendation/i);
-  assert.match(source, /an inline refusal is a crystallization emission and closes exactly like items 5 and 6/i);
+  assert.match(source, /\*\*Inline-refusal path\*\*: stays outside this close and keeps its immediate handoff with no route choice/);
   assert.match(source, /selector remains a three-option \*\*Plan \(unattended\)\*\*\s*\/\s*\*\*Direct Build \(unattended\)\*\*\s*\/\s*\*\*Manual\*\* choice/i,
     'the review-loop description should name all three selector options');
   assert.doesNotMatch(source, /selector remains a two-option \*\*Auto\*\* \/ \*\*Manual\*\* choice/i);
@@ -140,8 +143,8 @@ test('the crystallization closing recommendation names review-loop and no pipeli
 test('the selector prompt and descriptions localize while option titles and command literals stay English', () => {
   const source = exploreContract();
 
-  assert.match(source, /question text and each option description[\s\S]{0,160}fixed option titles remain exactly `Plan - Unattended`, `Direct Build - Unattended`, and `Manual`/i);
-  assert.match(source, /the literal `review-loop`, `\/sai-1-spec`, and `\/sai-2-design` command strings stay verbatim English/i);
+  assert.match(source, /question text and each option description[\s\S]{0,200}fixed option titles remain exactly `Plan - Unattended`, `Direct Build - Unattended`, and `Manual`/i);
+  assert.match(source, /The literals `review-loop`, `\/sai-1-spec`, and `\/sai-2-design` stay verbatim English/i);
 });
 
 test('supervision tracks ordered unique changes and dispatches only eligible work', () => {
@@ -312,18 +315,18 @@ test('Claude Code explore adapter permits worker supervision without direct writ
 test('Step 1 explore adapters route only the permitted planning workers', () => {
   const claude = fs.readFileSync(path.join(repoRoot, 'commands/claude/sai-explore.md'), 'utf8');
   const opencode = fs.readFileSync(path.join(repoRoot, 'commands/opencode/sai-explore.md'), 'utf8');
-  const launcher = fs.readFileSync(path.join(repoRoot, 'sai/commands/explore/command-bootstrap.md'), 'utf8');
+  const planRoute = fs.readFileSync(path.join(repoRoot, 'sai/commands/explore/steps/pipeline-plan-unattended.md'), 'utf8');
 
    assert.match(claude, /Fetch @sai\/adapters\/claude\/idea-list-render\.md/);
    assert.match(claude, /Fetch @sai\/commands\/explore\/command-bootstrap\.md/);
-   assert.match(launcher, /Fetch @sai\/orchestration\/workers\/bindings\/design-worker\.md/);
+   assert.match(planRoute, /Fetch @sai\/orchestration\/workers\/bindings\/design-worker\.md/);
    assert.doesNotMatch(claude, /Fetch @skills\/sai-2-design-worker\/SKILL\.md/);
    assert.doesNotMatch(claude, /allowed-tools:[^\n]*(?:^|,\s*)Edit(?:,|\s|$)/m);
    assert.doesNotMatch(claude, /allowed-tools:[^\n]*(?:^|,\s*)Write(?:,|\s|$)/m);
    assert.doesNotMatch(claude, /allowed-tools:[^\n]*(?:^|,\s*)Bash(?:,|\s|$)/m);
 
      assert.match(opencode, /Fetch @sai\/commands\/explore\/command-bootstrap\.md/);
-     assert.match(launcher, /Fetch @sai\/orchestration\/workers\/bindings\/spec-worker\.md/);
+     assert.match(planRoute, /Fetch @sai\/orchestration\/workers\/bindings\/spec-worker\.md/);
    assert.doesNotMatch(opencode, /Fetch @skills\/sai-1-spec-proposal-worker\/SKILL\.md/);
     assert.doesNotMatch(opencode, /Fetch @skills\/sai-2-design-worker\/SKILL\.md/);
     assert.doesNotMatch(opencode, /managed coordinator|reviewer[- ](?:binding|skill|agent)/i);
@@ -336,11 +339,11 @@ test('Step 1 explore adapters route only the permitted planning workers', () => 
 
 test('opencode explore adapter enables native task dispatch with both numbered planning workers', () => {
   const source = fs.readFileSync(path.join(repoRoot, 'commands/opencode/sai-explore.md'), 'utf8');
-  const launcher = fs.readFileSync(path.join(repoRoot, 'sai/commands/explore/command-bootstrap.md'), 'utf8');
+  const planRoute = fs.readFileSync(path.join(repoRoot, 'sai/commands/explore/steps/pipeline-plan-unattended.md'), 'utf8');
 
      assert.match(source, /Fetch @sai\/commands\/explore\/command-bootstrap\.md/);
-    assert.match(launcher, /Fetch @sai\/orchestration\/workers\/bindings\/spec-worker\.md/);
-    assert.match(launcher, /Fetch @sai\/orchestration\/workers\/bindings\/design-worker\.md/);
+    assert.match(planRoute, /Fetch @sai\/orchestration\/workers\/bindings\/spec-worker\.md/);
+    assert.match(planRoute, /Fetch @sai\/orchestration\/workers\/bindings\/design-worker\.md/);
    assert.doesNotMatch(source, /Fetch @skills\/sai-1-spec-proposal-worker\/SKILL\.md/);
    assert.doesNotMatch(source, /Fetch @skills\/sai-2-design-worker\/SKILL\.md/);
    assert.doesNotMatch(source, /sai-coordinator|managed coordinator/i);
@@ -387,10 +390,9 @@ test("Step 1 continues each completed round's findings in one batched same-worke
     'utf8'
   );
 
-  assert.match(feedbackGate, /For every completed review pass in the bounded convergence loop|For every completed review round/i);
   assert.match(
     feedbackGate,
-    /For each completed review round, perform exactly one same-worker continuation that carries that round's complete ordered findings list/i
+    /For each completed review round in the bounded convergence loop, perform exactly one same-worker continuation that carries that round's complete ordered findings list/i
   );
   assert.match(feedbackGate, /exactly one verification at the close of the turn \(`openspec validate`\)/i);
   assert.match(feedbackGate, /one block reporting every individual disposition/i);
@@ -406,7 +408,7 @@ test('Step 1 preserves artifact-only worker ownership and specific discard reaso
   );
   const supervision = exploreContract();
 
-  assert.match(feedbackGate, /Accepted changes remain worker-owned and may be written only by that worker to `proposal\.md` or `specs\/\*\*` in the selected change directory/i);
+  assert.match(feedbackGate, /Accepted changes remain worker-owned and may be written only by that worker to the files in `artifacts`/i);
   assert.match(feedbackGate, /Report every \*\*discarded\*\* item individually[\s\S]{0,240}specific reason/i);
   assert.match(supervision, /The spec worker is the spec phase's only delegated writer:[\s\S]{0,260}SpecWriteSurface[\s\S]{0,180}`proposal\.md`[\s\S]{0,100}`specs\/\*\*`/i);
   assert.match(supervision, /Explore never writes directly/i);
@@ -539,9 +541,9 @@ test('supervised pipeline state extends the selector interface by phase with sep
   assert.doesNotMatch(source, /\breview_passes\b/);
   assert.doesNotMatch(source, /\bfinding_history\b/);
   assert.match(source, /spec-to-design transition adapter|transition adapter.*design/i);
-   assert.match(source, /On a \*\*Plan - Unattended\*\* or \*\*Direct Build - Unattended\*\* selection, use only `last_crystallization_set` and `completed_changes`/);
-  assert.match(source, /review loop's \(item 9\) source only, and is never the selector's dispatch source/i);
-  assert.match(source, /replaces `last_crystallization_set` with that turn's emitted names/i);
+  assert.match(source, /On a \*\*Plan - Unattended\*\* or \*\*Direct Build - Unattended\*\* choice, use only the pending set[\s\S]{0,160}`last_crystallization_set` minus `completed_changes`/);
+  assert.match(source, /review loop's \(item 9\) source only, and is never the deferred choice's dispatch source/i);
+  assert.match(source, /A later crystallization turn replaces the pending set with that turn's emitted names/i);
   assert.match(source, /assumed applied or discarded/i);
   assert.doesNotMatch(source, /\bwrapper_echo_value\s*:/,
     'supervised chained requests must not construct or forward the wrapper echo field');
@@ -574,7 +576,7 @@ test('Step 2 blind supervision rejects duplicate starts until the chained design
 test('active exploration closure defines the three conversation-only states and success-only rule', () => {
   const source = spec('sai/commands/explore/steps/common.md');
 
-  assert.match(source, /\*\*Pre-crystallization closure \(sai-explore only\):\*\*/);
+  assert.match(source, /\*\*Pre-crystallization closure:\*\*/);
   assert.match(source, /The state is exactly one of `active-uncrystallized`, `crystallized`, or `discarded`/);
   assert.match(source, /Before a candidate idea exists, no Closure State is active/);
   assert.match(source, /Once a candidate idea exists under active exploration, its state starts as `active-uncrystallized`/);
@@ -706,10 +708,11 @@ test('Step 1 forwards selected overview language only for Plan (unattended) and 
     'the do-not-create/None Plan envelope must not carry an overview flag or value'
   );
 
-  const manualStart = source.lastIndexOf('Selecting **Manual**');
-  assert.ok(manualStart >= 0, 'the Manual selector branch should be present');
-  const manual = source.slice(manualStart, deterministic);
-  assert.match(manual, /dispatches nothing/i);
+  const routeSelector = spec('sai/commands/explore/steps/route-selector.md');
+  const manualStart = routeSelector.indexOf('- **Manual** (`route_mode = manual`)');
+  assert.ok(manualStart >= 0, 'the Manual route branch should be present');
+  const manual = routeSelector.slice(manualStart, routeSelector.indexOf('**Post-Manual handoff', manualStart));
+  assert.match(manual, /dispatches no worker/i);
   assert.doesNotMatch(manual, /(?:command_name|arguments_value)\s*:/i,
     'Manual must forward no supervised dispatch envelope');
 
@@ -717,10 +720,9 @@ test('Step 1 forwards selected overview language only for Plan (unattended) and 
   assert.match(source, /failed\/cancelled retry|failed or cancelled retry|retry/i);
 });
 
-test('Step 1 keeps explore wrapper documentation equivalent across both harnesses', () => {
+test('Step 1 Claude explore wrapper documents both optional flags (opencode commands carry no argument-hint)', () => {
   for (const relativePath of [
     'commands/claude/sai-explore.md',
-    'commands/opencode/sai-explore.md',
   ]) {
     const source = spec(relativePath);
     assert.match(
@@ -745,32 +747,29 @@ test('Step 1 rejects malformed language input before dispatch', () => {
 test('Step 2: external findings stay within reviewed artifacts and worker corrections retain specific discard reasons', () => {
   const worker = spec('sai/commands/spec/worker.md');
   const coordinator = spec('sai/commands/spec/coordinator.md');
-  const source = `${worker}\n${coordinator}`;
+  const reviewStep = spec('sai/commands/spec/steps/review.md');
+  const source = `${worker}\n${coordinator}\n${reviewStep}`;
 
   assert.match(source, /external[\s-]+(?:artifact[- ]review )?findings?/i,
     'the correction path should consume external findings');
-  assert.match(source, /Findings may edit only\s+`proposal\.md`\s+and\s+`specs\/\*\*`|findings?[^\n]{0,180}(?:only|limited|restricted)[^\n]{0,180}(?:proposal\.md|specs\/\*\*)/i,
+  assert.match(reviewStep, /apply the valid ones to\s+`proposal\.md` or `specs\/\*\*` only/,
     'external findings should be corrected only within the reviewed artifacts');
-  assert.match(source, /Accepted edits trigger pre-completion verification and decision-summary recomputation from current artifacts/i,
+  assert.match(reviewStep, /After accepted edits, re-run verification and recompute the decision\s+summary/,
     'accepted external corrections should trigger worker verification and summary recomputation');
-  assert.match(source, /Findings may edit only\s+`proposal\.md`\s+and\s+`specs\/\*\*`|findings?[\s\S]{0,180}(?:only|limited|restricted)[\s\S]{0,120}(?:proposal\.md|specs\/\*\*)/i,
-    'external findings should be limited to the reviewed artifacts');
-  assert.match(source, /Report every discarded item with a specific\s+reason|reports? every discard with its specific\s+reason|every discarded item individually[\s\S]{0,120}specific\s+reason/i,
+  assert.match(reviewStep, /report every discarded one with its\s+specific reason/,
     'a discarded finding should carry a specific rejection reason');
   assert.match(coordinator, /Report (?:worker-authored|external-finding) discards/i,
     'the coordinator should surface discarded findings');
-  assert.match(worker, /does not dispatch or own an artifact reviewer|does not create the findings, dispatch an artifact reviewer, or own the review operation/i,
+  assert.match(worker, /the worker dispatches no reviewer of its own/,
     'the phase worker should not dispatch or own the reviewer');
 });
 
 test('Step 2: accepted external corrections re-verify and recompute the decision summary without re-emitting earlier progress ids', () => {
-  const worker = spec('sai/commands/spec/worker.md');
+  const reviewStep = spec('sai/commands/spec/steps/review.md');
 
-  assert.match(worker, /Accepted edits trigger pre-completion verification and decision-summary recomputation from current artifacts/i,
-    'accepted edits should trigger re-verification of the artifacts');
-  assert.match(worker, /decision-summary recomputation from current artifacts/,
-    'the decision summary should be recomputed from current artifacts');
-  assert.match(worker, /without re-emitting or reopening `proposal`, `specs`, or `validation`|without reopening or re-emitting the already completed `proposal`, `specs`, or `validation` progress ids/i,
+  assert.match(reviewStep, /After accepted edits, re-run verification and recompute the decision\s+summary/,
+    'accepted edits should re-verify the artifacts and recompute the decision summary');
+  assert.match(reviewStep, /the `proposal`, `specs`, and `validation` progress ids stay closed/,
     'earlier progress ids should not be re-emitted');
 });
 
@@ -794,11 +793,12 @@ test('Step 2: validation precedes external findings and external evidence is the
 test('Step 2: external findings, not worker inference, drive review evidence and corrections', () => {
   const worker = spec('sai/commands/spec/worker.md');
 
+  const reviewStep = spec('sai/commands/spec/steps/review.md');
   assert.match(worker, /external[\s-]+(?:artifact[- ]review )?findings?/i,
     'the worker should consume external findings');
-  assert.match(worker, /Findings may edit only\s+`proposal\.md`\s+and\s+`specs\/\*\*`/,
+  assert.match(reviewStep, /apply the valid ones to\s+`proposal\.md` or `specs\/\*\*` only/,
     'the external correction scope should remain explicit');
-  assert.match(worker, /never infer `?High=0`? from missing, malformed, or other summary text/i,
+  assert.match(reviewStep, /missing, malformed, or different summary line\s+never counts as `High=0`/,
     'a worker must not infer review evidence from absent or malformed input');
   assert.doesNotMatch(worker, /The reviewer evaluates reviewed-set consistency/,
     'the retired worker-owned reviewer axes must be absent');
@@ -810,10 +810,8 @@ test('Step 2: workers have no automatic reviewer loop under supervision and the 
 
   assert.match(worker, /\bsupervised\b/i,
     'the worker contract should state the supervised boundary');
-  assert.match(worker, /does not dispatch or own an artifact reviewer, an automatic review loop, review counters/i,
+  assert.match(worker, /the worker dispatches no reviewer of its own/,
     'the worker must not retain a worker-owned automatic reviewer or its counters');
-  assert.match(worker, /Explore\s+may suppress the visual plan while retaining step-machine routing/i,
-    'the supervised selector must retain pointer routing without visual progress');
   assert.doesNotMatch(worker, /coexists with and never replaces the supervised pipeline's (?:independent convergence loop|supervised review rounds|in[- ]session review rounds)/i,
     'supervision must not retain a second worker-owned review layer');
   assert.match(supervision, /declares no visual `progress_plan`/,
@@ -957,7 +955,7 @@ test('Step 7: spec and design workers retain no automatic review loop for any su
   ];
 
   for (const worker of phases) {
-    assert.match(worker, /(?:does not dispatch or own an artifact reviewer, an automatic review loop, review counters|does not create the findings, dispatch an artifact reviewer, or own the review operation)/i,
+    assert.match(worker, /(?:the worker dispatches no reviewer of its own|does not create the findings, dispatch an artifact reviewer, or own the review operation)/i,
       'neither phase worker may retain an automatic reviewer for any supervised value');
     assert.match(worker, /external[\s-]+(?:artifact[- ]review )?findings?/i,
       'both workers should consume external findings instead');
@@ -966,10 +964,10 @@ test('Step 7: spec and design workers retain no automatic review loop for any su
 
 test('external convergence is not inferred from non-supervised worker state', () => {
   for (const worker of [
-    spec('sai/commands/spec/worker.md'),
+    `${spec('sai/commands/spec/worker.md')}\n${spec('sai/commands/spec/steps/review.md')}`,
     spec('sai/commands/design/worker.md'),
   ]) {
-    assert.match(worker, /never infer `?High=0`? from missing, malformed, or other summary text|never infer it from a finding list, omitted or malformed counts, prose/i,
+    assert.match(worker, /never counts as `High=0`|never infer it from a finding list, omitted or malformed counts, prose/i,
       'review progress must require external evidence regardless of supervision');
     assert.doesNotMatch(worker, /A completed pass with `High=0` converges|worker-owned review pass/i,
       'the retired non-supervised worker loop must not return');
@@ -1029,7 +1027,6 @@ test('selector semantics remain shared and are not duplicated in harness wrapper
   const claudeList = spec('sai/adapters/claude/idea-list-render.md');
   const opencodeList = spec('sai/adapters/opencode/idea-list-render.md');
 
-  assert.match(shared, /Claude Code and opencode consume this shared contract/);
   for (const harnessSurface of [claudeWrapper, opencodeWrapper, claudePanel, opencodePanel, claudeList, opencodeList]) {
     assert.doesNotMatch(harnessSurface, /NativeStageSelectorCapability|keep-iterating|discuss-ideas-feedback|selector-presented|selector-option-received|selector-free-text-received/);
   }
@@ -1059,10 +1056,10 @@ test('cap exhaustion reports one tally line and continues the supervised run', (
 test('supervised review rounds drive the phase review item in-progress state', () => {
   const source = supervisionContract();
 
-  assert.match(source, /reviewed-sai-1[\s\S]{0,200}in_progress|in_progress[\s\S]{0,200}reviewed-sai-1/i);
-  assert.match(source, /reviewed-sai-2[\s\S]{0,200}in_progress|in_progress[\s\S]{0,200}reviewed-sai-2/i);
-  assert.match(source, /cap exhaustion[\s\S]{0,160}(?:resolv|pending)/i);
-  assert.match(source, /render[- ]only/i);
+  assert.match(source, /mark, clear, or render nothing for `reviewed-sai-1` or `reviewed-sai-2`; those references are inert/i);
+  assert.match(source, /Route steps carry `pending \| in_progress \| completed`/);
+  assert.match(source, /A clean spec convergence completes `sai-1` and starts `sai-2` as `in_progress`/);
+  assert.match(source, /Cap exhaustion is a non-failure report/i);
 });
 
 test('manual Review Loop Navigation and supervised rounds remain distinct', () => {
@@ -1149,51 +1146,21 @@ test('Step 1: interactive mode keeps Give feedback Recommended before proceed', 
 });
 
 test('Step 2: the supervised spec artifact gate binds mode, Finish, and the phase transition', () => {
-  const source = exploreContract();
-  const specArtifacts = source.match(/proposal\.md[\s\S]{0,1800}specs\/\*\*/i);
+  const plan = spec('sai/commands/explore/steps/pipeline-plan-unattended.md');
 
-  assert.ok(specArtifacts, 'the supervised spec artifact gate should retain proposal.md and specs/**');
-  const specGate = source.slice(
-    Math.max(0, specArtifacts.index - 700),
-    Math.min(source.length, specArtifacts.index + specArtifacts[0].length + 700)
-  );
-  assert.match(
-    specGate,
-    /mode\s*(?:=|:)\s*[`"']?supervised[`"']?/i,
-    'the supervised spec artifact gate should explicitly supply mode = supervised'
-  );
-  assert.match(specGate, /Finish/i,
-    'the supervised spec gate should use Finish as its proceed label');
-  assert.match(specGate, /next-action[\s\S]{0,160}phase-transition|phase-transition[\s\S]{0,160}next-action/i,
-    'the supervised spec gate should use the phase-transition next-action');
+  assert.match(plan,
+    /supplying `artifacts = proposal\.md, specs\/\*\*`, `proceed-label = Finish step`, and `next-action = the spec-to-design phase transition below`[\s\S]{0,200}additionally supplies `mode = supervised`/,
+    'the supervised spec gate should supply its artifacts, Finish step, the phase transition, and mode = supervised');
 });
 
 test('Step 2: supervised Continue conditionally selects overview generation or a no-generation terminal', () => {
-  const source = exploreContract();
-  const designArtifacts = source.match(/design\.md[\s\S]{0,1200}tasks\.md[\s\S]{0,1200}interfaces\.md/i);
+  const plan = spec('sai/commands/explore/steps/pipeline-plan-unattended.md');
 
-  assert.ok(designArtifacts, 'the supervised design artifact gate should retain design.md, tasks.md, and interfaces.md');
-  const designGate = source.slice(
-    Math.max(0, designArtifacts.index - 700),
-    Math.min(source.length, designArtifacts.index + designArtifacts[0].length + 700)
-  );
-  assert.match(
-    designGate,
-    /mode\s*(?:=|:)\s*[`"']?supervised[`"']?/i,
-    'the supervised design artifact gate should explicitly supply mode = supervised'
-  );
-  assert.match(designGate, /Continue/i,
-    'the supervised design gate should use Continue as its proceed label');
-  assert.match(
-    designGate,
-    /(?:overview_language|selected overview language)[\s\S]{0,360}(?:next-action[\s\S]{0,180}overview-generation|overview-generation[\s\S]{0,180}next-action)|(?:next-action[\s\S]{0,180}overview-generation|overview-generation[\s\S]{0,180}next-action)[\s\S]{0,360}(?:overview_language|selected overview language)/i,
-    'a selected overview language should select the overview-generation next-action'
-  );
-  assert.match(
-    designGate,
-    /(?:None|do[- ]not[- ]create|no overview language|without an overview)[\s\S]{0,420}(?:next-action[\s\S]{0,180}(?:supervised-terminal|no-generation)|(?:supervised-terminal|no-generation)[\s\S]{0,180}next-action)|(?:next-action[\s\S]{0,180}(?:supervised-terminal|no-generation)|(?:supervised-terminal|no-generation)[\s\S]{0,180}next-action)[\s\S]{0,420}(?:None|do[- ]not[- ]create|no overview language|without an overview)/i,
-    'None/do-not-create should select a no-generation supervised terminal'
-  );
+  assert.match(plan,
+    /supplying `artifacts = design\.md, tasks\.md, interfaces\.md`, `proceed-label = Continue`, and a conditional `next-action`: `overview-generation` when `overview_language` is a selected non-`None` value, or `no-generation supervised-terminal` when `overview_language` is `None`/,
+    'the supervised design gate should select overview generation or the no-generation terminal from overview_language');
+  assert.match(plan, /The supervised application additionally supplies `mode = su/,
+    'the supervised design gate should supply mode = supervised');
 });
 
 test('Step 2: post-proceed report ordering remains after supervised gates without active-supervision interval stage enumeration', () => {
@@ -1220,37 +1187,23 @@ test('Step 2: post-proceed report ordering remains after supervised gates withou
 // â”€â”€â”€ Step 4: handoff-before-selector (green-exception tests) â”€
 
 test('Step 4: the shared close emits every path-specific sai-1 handoff before the selector', () => {
-  const nucleus = spec('sai/commands/explore/instructions.md');
-  const selectorSpec = spec('sai/commands/explore/steps/pipeline-selector.md');
-  const close = nucleus.indexOf('**Crystallization-turn close (shared):**');
-  const handoff = nucleus.indexOf('Immediately after the `---` separator that ends the handoff block(s)', close);
-  const recommendation = nucleus.indexOf('One keep-window-open recommendation', close);
-  const selector = nucleus.indexOf('After that recommendation, emit the crystallization-close pipeline selector', recommendation);
+  const routeSelector = spec('sai/commands/explore/steps/route-selector.md');
+  const selectorSpecFile = spec('openspec/specs/explore-pipeline-selector/spec.md');
+  const postManual = routeSelector.indexOf('**Post-Manual handoff and recommendation');
+  assert.ok(postManual >= 0, 'the post-Manual handoff contract should be present');
+  const handoffBlock = routeSelector.slice(postManual);
 
-  assert.ok(close >= 0, 'the shared close ordering contract should be present');
-  assert.ok(handoff > close && handoff < recommendation,
-    'the path-specific next-step handoff should be emitted after the payload separator and before the recommendation');
-  assert.ok(selector > recommendation,
-    'the recommendation should precede the selector, which remains the close final emission');
-
-  const handoffBlock = nucleus.slice(handoff, recommendation);
   for (const [label, branch] of [
     ['Single-change path', /\*\*Open a new chat\*\*[\s\S]{0,120}\/sai-1-spec/],
     ['Sliced path', /\*\*first\*\*[\s\S]{0,160}\/sai-1-spec[\s\S]{0,220}each later slice/],
-    ['Inline-refusal path', /Creating a proposal opens a new context[\s\S]{0,260}\/sai-1-spec[\s\S]{0,160}Do not dispatch a proposal in-session/],
   ]) {
-    assert.equal((handoffBlock.match(new RegExp(`\\*\\*${label}\\*\\*`, 'g')) || []).length, 1,
-      `${label} should have exactly one pre-selector handoff branch`);
     assert.match(handoffBlock, new RegExp(`\\*\\*${label}\\*\\*[\\s\\S]{0,520}${branch.source}`, 'i'),
-      `${label} should keep its handoff wording in the shared close`);
+      `${label} should keep its handoff wording after a Manual choice`);
   }
-
-  assert.doesNotMatch(selectorSpec, /\*\*Single-change path\*\*|\*\*Sliced path\*\*|\*\*Inline-refusal path\*\*/,
-    'the selector card must not restate the path-specific handoff branches');
-  assert.doesNotMatch(selectorSpec, /After the selector response, the surrounding prose of the path-specific Manual\/unmapped next-step handoff/i,
-    'the selector card must not describe the handoff as post-selector prose');
-  assert.doesNotMatch(exploreContract(), /exactly once after the selector response/i,
-    'the handoff must not be described as emitted after the selector response');
+  assert.match(handoffBlock, /\*\*Inline-refusal path\*\*: stays outside this close[\s\S]{0,400}Creating a proposal opens a new context[\s\S]{0,260}\/sai-1-spec[\s\S]{0,200}Do not dispatch a proposal in-session/,
+    'the inline refusal keeps its immediate handoff with no route choice');
+  assert.match(selectorSpecFile, /exactly once only after Manual selection, never before the sel/,
+    'the spec places the handoff after the Manual selection');
 });
 
 test('Step 4: the Ready-to-Propose payload stays bounded and the pre-selector handoff stays outside it', () => {
@@ -1268,60 +1221,31 @@ test('Step 4: the Ready-to-Propose payload stays bounded and the pre-selector ha
   assert.match(payload, /\*\*Overview language\*\*:/);
   assert.doesNotMatch(payload, /(?:next[- ]step|handoff)[\s\S]{0,240}`?\/sai-1-spec`?/i,
     'the payload must not contain a path-specific next-step');
-  assert.doesNotMatch(payload, /After the selector response/i,
-    'the payload must not contain close-sequence prose');
 
-  const nucleus = spec('sai/commands/explore/instructions.md');
-  const selectorSpec = spec('sai/commands/explore/steps/pipeline-selector.md');
-  const close = nucleus.indexOf('**Crystallization-turn close (shared):**');
-  const handoff = nucleus.indexOf('Immediately after the `---` separator that ends the handoff block(s)', close);
-
-  assert.ok(close >= 0 && handoff > close,
-    'the shared close should emit the path-specific next-step handoff after the payload separator');
-  assert.match(selectorSpec, /this selector is that close's final emission[\s\S]{0,220}keep-window-open recommendation/i,
-    'the selector should remain the close final emission after the handoff and recommendation');
+  const routeSelector = spec('sai/commands/explore/steps/route-selector.md');
+  assert.match(routeSelector, /runs in the same turn as block emission after the final `---`/,
+    'the route choice is presented after the payload separator');
+  assert.match(routeSelector, /A deferred choice resolving to \*\*Plan - Unattended\*\* or \*\*Direct Build - Unattended\*\* never emits handoff or recommendation/,
+    'only a Manual resolution emits the handoff and recommendation');
 });
 
 test('Step 4: Manual and unmapped answers refer to the already-emitted handoff without dispatch or a second close', () => {
-  const source = exploreContract();
-  const selectorSpec = spec('sai/commands/explore/steps/pipeline-selector.md');
+  const routeSelector = spec('sai/commands/explore/steps/route-selector.md');
   const selectorSpecFile = spec('openspec/specs/explore-pipeline-selector/spec.md');
-  const nucleus = spec('sai/commands/explore/instructions.md');
-  const close = nucleus.indexOf('**Crystallization-turn close (shared):**');
-  const handoff = nucleus.indexOf('Immediately after the `---` separator that ends the handoff block(s)', close);
-  const recommendation = nucleus.indexOf('One keep-window-open recommendation', close);
 
-  assert.ok(close >= 0 && handoff > close && recommendation > handoff,
-    'the shared close should place the handoff before the recommendation');
-
-  const deterministic = selectorSpec.indexOf('**Deterministic selection**');
-  const selectorStart = selectorSpec.indexOf('Selecting **Manual**');
-  const manual = selectorSpec.slice(selectorStart, deterministic);
-
-  assert.ok(selectorStart >= 0 && deterministic > selectorStart,
-    'the shared Manual branch should precede deterministic Plan/Build selection');
-  assert.match(manual, /Selecting \*\*Manual\*\*[\s\S]{0,80}dispatches nothing/i);
-  assert.match(manual, /refers to the one keep-window-open recommendation already emitted[\s\S]{0,400}MUST NOT emit a second recommendation, handoff, or selector/i);
-  assert.match(manual, /MUST NOT re-emit or restate the already-emitted path-specific next-step handoff/i);
-  assert.match(manual, /A free-text answer that maps to neither option is treated as \*\*Manual\*\*/i);
-  assert.match(manual, /no-second-recommendation, no-second-handoff, and no-second-selector rules/i);
-  assert.match(selectorSpec, /the path-specific next-step handoff for every Manual\/unmapped answer was already emitted exactly once before the selector/i);
+  assert.match(routeSelector, /Manual creates no delegated entries, dispatches no worker, changes no supervision state/i);
+  assert.match(routeSelector, /A free-text answer that maps to neither option is treated as \*\*Manual\*\*/i);
+  assert.match(routeSelector, /emit exactly once the closing path's handoff plus the recommendation, with no second choice in that turn/i);
+  assert.match(routeSelector, /Choice re-presentations carry no prior handoff/i);
   assert.match(selectorSpecFile, /Selecting `Manual` SHALL dispatch nothing and SHALL NOT change supervision state/i);
   assert.match(selectorSpecFile, /An unmapped free-text answer MUST be treated as (?:\*\*|`)Manual(?:\*\*|`)/i);
-  assert.doesNotMatch(source, /path-specific next-step handoff is emitted exactly once after the selector response/i,
-    'the Manual branch must not re-emit the handoff after the selector response');
 });
 
 test('Step 4: Manual remains uncapped and each re-emission emits one handoff before the selector', () => {
-  const selectorSpec = spec('sai/commands/explore/steps/pipeline-selector.md');
-  const selectorSpecFile = spec('openspec/specs/explore-pipeline-selector/spec.md');
-  const reinvocation = selectorSpec.indexOf('**Manual is not terminal**');
-  const reEmission = selectorSpec.indexOf('every re-emission emits the path-specific next-step handoff exactly once before the selector again', reinvocation);
+  const routeSelector = spec('sai/commands/explore/steps/route-selector.md');
 
-  assert.match(selectorSpecFile, /[`*]*Manual[`*]* SHALL remain re-invocable without a cap[\s\S]{0,180}selector/i);
-  assert.ok(reinvocation >= 0 && reEmission > reinvocation,
-    'uncapped Manual re-invocation should state the one-handoff-per-re-emission rule');
-  assert.match(selectorSpec, /\*\*Manual is not terminal\*\*[^\n]*re-emit the selector[\s\S]{0,260}no cap on re-emissions/i);
+  assert.match(routeSelector, /\*\*Manual is not terminal\*\*[^\n]*re-present the choice[\s\S]{0,300}no cap on re-presentations/i);
+  assert.match(routeSelector, /every new deferred \*\*Manual\*\* resolution re-emits handoff plus recommendation once/i);
 });
 
 test('Step 4: successful Plan (unattended) emits the build handoff and never dispatches implementation', () => {
@@ -1369,23 +1293,12 @@ test('Step 4: failed or cancelled Plan maps retry guidance from phase state with
 });
 
 test('Step 4: handoff prose localizes while command and review-loop literals remain verbatim English', () => {
-  const nucleus = spec('sai/commands/explore/instructions.md');
-  const selectorSpec = spec('sai/commands/explore/steps/pipeline-selector.md');
-  const close = nucleus.indexOf('**Crystallization-turn close (shared):**');
-  const recommendation = nucleus.indexOf('One keep-window-open recommendation', close);
+  const routeSelector = spec('sai/commands/explore/steps/route-selector.md');
 
-  assert.ok(close >= 0 && recommendation > close,
-    'the shared close should keep the recommendation after the handoff');
-  const handoffBlock = nucleus.slice(close, recommendation);
-  assert.match(handoffBlock, /handoff's surrounding prose follows the selected crystallization language per item 8/i);
-  assert.match(handoffBlock, /`\/sai-1-spec`, `\/sai-2-design`, and `review-loop` remain verbatim English/i);
-  for (const literal of ['`/sai-1-spec`', '`/sai-2-design`', '`review-loop`']) {
-    assert.match(handoffBlock, new RegExp(literal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
-      `${literal} should remain verbatim in the pre-selector handoff prose`);
-  }
-
-  assert.match(selectorSpec, /question text and each option description[\s\S]{0,160}fixed option titles remain exactly `Plan - Unattended`, `Direct Build - Unattended`, and `Manual`/i);
-  assert.match(selectorSpec, /the literal `review-loop`, `\/sai-1-spec`, and `\/sai-2-design` command strings stay verbatim English/i);
+  assert.match(routeSelector, /The handoff's surrounding prose follows the selected crystallization language per the crystallization language gate/i);
+  assert.match(routeSelector, /`\/sai-1-spec`, `\/sai-2-design`, and `review-loop` remain verbatim English/i);
+  assert.match(routeSelector, /question text and each option description[\s\S]{0,200}fixed option titles remain exactly `Plan - Unattended`, `Direct Build - Unattended`, and `Manual`/i);
+  assert.match(routeSelector, /The literals `review-loop`, `\/sai-1-spec`, and `\/sai-2-design` stay verbatim English/i);
 });
 
 const artifact = relativePath => spec(relativePath);
@@ -1520,7 +1433,7 @@ test('Step 2 item-10 diagnosis references Bounded Recovery without restating the
   );
   assert.match(
     diagnosis,
-    /(?:does not|never|must not)[\s\S]{0,220}(?:restate|repeat|duplicate|reproduce)[\s\S]{0,220}(?:full|generic)[\s\S]{0,180}(?:ledger|routing)/i,
+    /(?:(?:does not|never|must not)[\s\S]{0,220}(?:restate|repeat|duplicate|reproduce)[\s\S]{0,220}(?:full|generic)[\s\S]{0,180}(?:ledger|routing))|its generic ledger and routing stay there/i,
     'item-10 should not restate the full generic ledger or routing contract'
   );
 });
@@ -1548,87 +1461,44 @@ test('Step 2 item-10 exhausted diagnosis keeps the change retryable with phase g
 test('Step 3: failed or cancelled item-10 work settles the active phase review item before Diagnosis Round', () => {
   const source = exploreContract();
 
-  assert.match(
-    source,
-    /(?:item[- ]?10[\s\S]{0,1000}(?:failed|cancelled)|(?:failed|cancelled)[\s\S]{0,1000}item[- ]?10)[\s\S]{0,1000}(?:active phase|phase review|reviewed-sai-[12])[\s\S]{0,700}(?:resolv\w*|set\w*|becom\w*)?[\s\S]{0,120}`pending`[\s\S]{0,700}(?:Diagnosis Round|diagnosis[- ]entry|Review\s+Engine\s+diagnosis)/i,
-    'item-10 failure must resolve the active phase review item to pending before diagnosis'
-  );
+  assert.match(source, /A failed, cancelled, STOP-bearing, coordinator-disproved, or unrecovered result leaves the active route step `pending` and retryable/i,
+    'a non-clean phase result leaves its route step pending');
+  assert.match(source, /stop diagnosis, leave the phase route step `pending` and the change uncompleted and `plan-unattended`-retryable/i,
+    'a stopped diagnosis leaves the phase route step pending');
 });
 
 test('Step 3: Diagnosis Round does not mark review items in progress or add a diagnosis list item', () => {
   const source = exploreContract();
-  const start = source.search(/Diagnosis Round/);
-  assert.ok(start >= 0, 'Explore instructions should define Diagnosis Round');
-  const diagnosis = source.slice(start, start + 7000);
 
-  assert.match(
-    diagnosis,
-    /(?:neither|not|never|must not|does not)[\s\S]{0,260}(?:reviewed-sai-1|reviewed-sai-2)[\s\S]{0,260}(?:reviewed-sai-1|reviewed-sai-2)[\s\S]{0,260}(?:in_progress|in progress)|(?:reviewed-sai-1|reviewed-sai-2)[\s\S]{0,260}(?:in_progress|in progress)[\s\S]{0,260}(?:reviewed-sai-1|reviewed-sai-2)[\s\S]{0,260}(?:not|never|must not|does not)/i,
-    'diagnosis must not set either phase review item in_progress'
-  );
-  assert.match(
-    diagnosis,
-    /(?:no|not|never|does not|must not)[\s\S]{0,180}diagnosis[- ]specific[\s\-]?list item|diagnosis[- ]specific[\s\-]?list item[\s\S]{0,180}(?:is not|does not|never|must not)[\s\S]{0,120}(?:add|appear|exist)/i,
-    'diagnosis must not add a diagnosis-specific list item'
-  );
+  assert.match(source, /The chosen route creates its own entries with no baseline items/i,
+    'the panel holds only route entries, so diagnosis adds no list item');
+  assert.match(source, /Round-based reviews form findings only and mark, clear, or render nothing for `reviewed-sai-1` or `reviewed-sai-2`/i);
 });
 
 test('Step 3: diagnosis findings do not change review evidence or count as a Supervised Review Round', () => {
   const source = exploreContract();
-  const start = source.search(/Diagnosis Round/);
-  assert.ok(start >= 0, 'Explore instructions should define Diagnosis Round');
-  const diagnosis = source.slice(start, start + 7000);
 
-  assert.match(
-    diagnosis,
-    /(?:diagnosis|diagnosis round)[\s\S]{0,500}(?:finding|findings)[\s\S]{0,300}(?:do not|does not|never|must not)[\s\S]{0,220}(?:mark|set|change|alter)[\s\S]{0,180}review evidence/i,
-    'diagnosis findings must not mark or change review evidence'
-  );
-  assert.match(
-    diagnosis,
-    /(?:diagnosis|diagnosis round)[\s\S]{0,500}(?:finding|findings)[\s\S]{0,300}(?:do not|does not|never|must not)[\s\S]{0,220}clear[\s\S]{0,180}review evidence/i,
-    'diagnosis findings must not clear review evidence'
-  );
-  assert.match(
-    diagnosis,
-    /(?:diagnosis|diagnosis round)[\s\S]{0,700}(?:not|never|does not|must not)[\s\S]{0,180}(?:count|increment)[\s\S]{0,180}Supervised Review Round/i,
-    'diagnosis must not count as a Supervised Review Round'
-  );
+  assert.match(source, /`diagnosis_rounds = \{ spec: 0, design: 0 \}`: one conversation-only object with one counter per phase/);
+  assert.match(source, /These counters are independent of `review_roun/,
+    'diagnosis rounds never count as supervised review rounds');
 });
 
 test('Step 3: successful same-worker re-dispatch resumes ordinary review and only ordinary review enters in_progress', () => {
   const source = exploreContract();
 
-  assert.match(
-    source,
-    /successful[\s\S]{0,500}same[- ]worker[\s\S]{0,500}re[- ]dispatch[\s\S]{0,500}(?:resume|return)[\s\S]{0,300}ordinary review|same[- ]worker[\s\S]{0,500}re[- ]dispatch[\s\S]{0,500}(?:ordinary review)[\s\S]{0,300}(?:resume|return)/i,
-    'successful same-worker re-dispatch must resume ordinary review'
-  );
-  assert.match(
-    source,
-    /only[\s\S]{0,220}ordinary review[\s\S]{0,220}(?:entry|start|transition)[\s\S]{0,220}(?:set|mark|resolve)[\s\S]{0,120}(?:`?in_progress`?|in progress)|(?:ordinary review)[\s\S]{0,300}(?:is the only|only)[\s\S]{0,220}(?:set|mark|resolve)[\s\S]{0,120}(?:`?in_progress`?|in progress)/i,
-    'only ordinary review entry may set in_progress'
-  );
+  assert.match(source, /forward exactly one `continue_after_recovery` to that same worker/i);
+  assert.match(source, /A successful redispatch returns to the ordinary lifecycle for the interrupted phase, including its existing review-round handling/i);
 });
 
 test('Step 3: stopped diagnosis leaves the phase item pending and keeps diagnosis state conversation-only', () => {
   const source = exploreContract();
-  const start = source.search(/Diagnosis Round/);
-  assert.ok(start >= 0, 'Explore instructions should define Diagnosis Round');
-  const diagnosis = source.slice(start, start + 7000);
 
-  assert.match(
-    diagnosis,
-    /(?:stopped|stop(?:ping|ped)?|interrupted)[\s\S]{0,600}(?:phase item|phase review|reviewed-sai-[12])[\s\S]{0,300}`pending`/i,
-    'stopped diagnosis must leave the phase item pending'
-  );
-  assert.match(diagnosis, /diagnosis[\s\S]{0,500}conversation-only/i,
+  assert.match(source, /stop diagnosis, leave the phase route step `pending`/i,
+    'stopped diagnosis must leave the phase route step pending');
+  assert.match(source, /`diagnosis_rounds = \{ spec: 0, design: 0 \}`: one conversation-only object/,
     'diagnosis state must be conversation-only');
-  assert.match(
-    diagnosis,
-    /diagnosis[\s\S]{0,700}(?:not|never|must not|does not)[\s\S]{0,180}(?:persist|write)[\s\S]{0,180}(?:file|\.openspec\.yaml)|(?:file|\.openspec\.yaml)[\s\S]{0,180}(?:not|never|must not|does not)[\s\S]{0,180}(?:persist|write)[\s\S]{0,700}diagnosis/i,
-    'diagnosis state must not persist to files or .openspec.yaml'
-  );
+  assert.match(source, /Route state is emitted only by the explore coordinator, is never authored by a worker, is never persisted/i,
+    'route state must not persist');
 });
 
 test('Step 3: Diagnosis Round render rules live in Explore instructions, not either idea-list renderer', () => {
@@ -1703,73 +1573,50 @@ test('Step 2: clean completed workers never start item-10 diagnosis', () => {
 
 test('Step 2: pending-before-diagnosis applies to disproved or STOP-bearing completed workers', () => {
   const source = exploreContract();
-  const completedDisproved = String.raw`(?:completed[\s\S]{0,900}(?:coordinator[- ]disproved|coordinator[\s\S]{0,180}disprov\w*|disprov\w*[\s\S]{0,180}coordinator)|(?:coordinator[- ]disproved|coordinator[\s\S]{0,180}disprov\w*|disprov\w*[\s\S]{0,180}coordinator)[\s\S]{0,900}completed)`;
-  const completedStop = String.raw`(?:completed[\s\S]{0,900}(?:STOP[- ]bearing|carrying[\s\S]{0,120}STOP)|(?:STOP[- ]bearing|carrying[\s\S]{0,120}STOP)[\s\S]{0,900}completed)`;
 
-  for (const [label, trigger] of [
-    ['coordinator-disproved completed', completedDisproved],
-    ['STOP-bearing completed', completedStop],
-  ]) {
-    assert.match(
-      source,
-      new RegExp(
-        String.raw`${trigger}[\s\S]{0,1200}(?:active phase review|phase review|reviewed-sai-[12])[\s\S]{0,700}(?:resolv\w*|set\w*|becom\w*|leave\w*)?[\s\S]{0,160}` +
-          String.raw`pending[\s\S]{0,900}(?:before|prior to|then|followed by)[\s\S]{0,220}(?:Diagnosis\s+Round|diagnosis_rounds|Review\s+Engine)`,
-        'i'
-      ),
-      `${label} work must settle the active phase review item to pending before diagnosis`
-    );
-  }
+  assert.match(source, /a coordinator-disproved `completed` result, or a `completed` result carrying STOP[\s\S]{0,300}enters this route before ordinary retry\/re-selection prose/i,
+    'disproved and STOP-bearing completed results enter diagnosis');
+  assert.match(source, /A failed, cancelled, STOP-bearing, coordinator-disproved, or unrecovered result leaves the active route step `pending`/i,
+    'those results leave the active route step pending');
 });
 
 test('crystallization renders a temporary mode-specific route without changing the evidence catalog', () => {
   const ideaList = spec('sai/commands/explore/steps/idea-list.md');
-  const selector = spec('sai/commands/explore/steps/pipeline-selector.md');
 
-  assert.match(ideaList, /baseline catalog[\s\S]*evidence ledger/i);
-  assert.match(ideaList, /temporarily replace only that selected slice's three baseline evidence entries/i);
-  assert.match(ideaList, /never .*generic `Implementation` item/i);
-  assert.match(ideaList, /Route state is conversation-only and scoped to the selected slice/i);
-  assert.match(ideaList, /never mark or clear.*reviewed-sai-1.*reviewed-sai-2/i);
-  assert.match(selector, /active_route/);
-  assert.match(selector, /not an invocation envelope field, worker payload field, artifact field, or persisted state/i);
+  assert.match(ideaList, /The chosen route creates its own entries with no baseline items/);
+  assert.match(ideaList, /Route state is conversation-only and scoped to the chosen slice/i);
+  assert.match(ideaList, /is never persisted, and creates no milestone stamps/i);
 });
 
 test('selector does not fetch Plan or Direct Build files at presentation', () => {
-  const selector = spec('sai/commands/explore/steps/pipeline-selector.md');
-  assert.doesNotMatch(selector, /Fetch @sai\/commands\/explore\/steps\/pipeline-plan-unattended\.md/);
-  assert.doesNotMatch(selector, /Fetch @sai\/commands\/explore\/steps\/pipeline-direct-build\.md/);
-  assert.match(selector, /\{intent: plan\}.*explore-slice@1.*stage-machine\.md/);
-  assert.match(selector, /\{intent: direct-build\}.*explore-slice@1.*same policy/);
-  assert.doesNotMatch(selector, /sai-state emit/);
-  assert.match(selector, /Do not fetch `pipeline-plan-unattended\.md` or `pipeline-direct-build\.md` at selector presentation/);
+  const routeSelector = spec('sai/commands/explore/steps/route-selector.md');
+  assert.doesNotMatch(routeSelector, /Fetch @sai\/commands\/explore\/steps\/pipeline-plan-unattended\.md/);
+  assert.doesNotMatch(routeSelector, /Fetch @sai\/commands\/explore\/steps\/pipeline-direct-build\.md/);
+  assert.match(routeSelector, /\{intent: plan\}` to `explore-slice@1` per `@sai\/policies\/stage-machine\.md`/);
+  assert.match(routeSelector, /\{intent: direct-build\}` to the same machine per the same policy/);
+  assert.doesNotMatch(routeSelector, /sai-state emit/);
+  assert.match(routeSelector, /Do not fetch `pipeline-plan-unattended\.md` or `pipeline-direct-build\.md` at choice presentation/);
 });
 
 test('mode-specific route labels and Plan/Build progression are explicit', () => {
-  const source = exploreContract();
   const ideaList = spec('sai/commands/explore/steps/idea-list.md');
-  const plan = ideaList.slice(ideaList.indexOf('**`plan-unattended` route'));
-  const build = ideaList.slice(ideaList.indexOf('**`direct-build-unattended` route'));
 
-  assert.match(plan, /exactly three steps, `sai-1` followed by `sai-2` followed by `Implement`/);
-  assert.match(plan, /`sai-1` starts `in_progress`[\s\S]*clean spec convergence[\s\S]*`sai-2` as `in_progress`/i);
-  assert.match(source, /clean terminal design result completes `sai-2`[\s\S]*does not claim that `sai-3`/i);
-  assert.match(build, /exactly the high-level stages `Build\/Implement`, `Backfill`, and `Archive`/);
-  assert.match(build, /`Build\/Implement`[\s\S]*not `\/sai-build`/);
-  assert.match(source, /underlying eight-step Direct Build \(unattended\) contract remains authoritative[\s\S]*only these three high-level stages/i);
-  assert.match(source, /Build\/Implement.*completed[\s\S]*Backfill.*in_progress[\s\S]*Archive.*in_progress/i);
+  assert.match(ideaList, /\*\*Plan:\*\* exactly `sai-1`, `sai-2`, `Implement`/);
+  assert.match(ideaList, /`sai-1` starts `in_progress`; only clean spec convergence completes it and starts `sai-2` as `in_progress`/);
+  assert.match(ideaList, /The route never exposes or claims `sai-3`, `\/sai-3-implement`, or code implementation/);
+  assert.match(ideaList, /\*\*Direct Build:\*\* exactly `Build\/Implement`, `Backfill`, and `Archive`, in that order/);
+  assert.match(ideaList, /`Build\/Implement` is the user-facing display label[\s\S]{0,200}it is not `\/sai-build`/);
+  assert.match(ideaList, /internal substeps remain authoritative in the Direct Build contract but never expand the panel route/i);
 });
 
 test('Manual route is a completed handoff only and non-clean routes remain pending and retryable', () => {
-  const source = exploreContract();
   const ideaList = spec('sai/commands/explore/steps/idea-list.md');
-  const manual = ideaList.slice(ideaList.indexOf('**`manual` route'));
 
-  assert.match(manual, /only `Manual handoff`/);
-  assert.match(manual, /`completed` when the path-specific handoff is emitted/);
-  assert.match(manual, /creates no delegated route steps, dispatches no worker/i);
-  assert.match(source, /failed, cancelled, STOP-bearing, coordinator-disproved, or unrecovered[\s\S]*active route step `pending`/i);
-  assert.match(source, /route retryable[\s\S]*no later step starts/i);
-  assert.match(source, /only a clean terminal result completes the route/i);
-  assert.match(source, /multi-slice route changes only the selected slice/i);
+  assert.match(ideaList, /\*\*Manual:\*\* exactly `Manual handoff`/);
+  assert.match(ideaList, /It becomes `completed` when the path-specific handoff is emitted/);
+  assert.match(ideaList, /Manual creates no delegated route steps, dispatches no worker/i);
+  assert.match(ideaList, /failed, cancelled, STOP-bearing, coordinator-disproved, or unrecovered route result leaves the active route step `pending` and the route retryable/i);
+  assert.match(ideaList, /no later step starts, and the route is not completed/i);
+  assert.match(ideaList, /Only a clean terminal result completes the active route/i);
+  assert.match(ideaList, /Reset route state when a new slice is chosen; preserve completed slices and all pending slices/i);
 });

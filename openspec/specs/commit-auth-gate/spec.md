@@ -20,9 +20,9 @@ While the flag is active, every subsequent commit-authorization gate in the same
 
 The flag SHALL live exclusively in the agent's in-conversation working memory. It SHALL NEVER be written to `.openspec.yaml`, config, or any file on disk, and it SHALL reset (return to inactive) at the start of a new chat or a new `/sai-*` invocation, consistent with the feedback-gate iteration counter.
 
-The grant SHALL be limited to `git add` + `git commit` at the commit-authorization gates. In an apply run, the grant covers exactly two gates: the per-Step STOP & COMMIT gate and the terminal documentation commit gate. It covers no other gate in that run. It SHALL NOT authorize `push`, `--force`, branch create/switch, rebase, merge, tag, or `gh pr`; those operations SHALL still require their own per-operation approval regardless of the flag. The grant SHALL NOT bypass the GREEN-conflict STOP or the apply Human Verification gate; those SHALL still halt the workflow regardless of the flag. The terminal documentation commit gate SHALL NOT offer an `Allow on this session` option of its own: it is the run's last commit gate, so there is nothing further to grant.
+The grant SHALL be limited to `git add` + `git commit` at the commit-authorization gates. In an apply run, the grant covers exactly two gates: the per-Step STOP & COMMIT gate and the terminal documentation commit gate. It covers no other gate in that run. It SHALL NOT authorize `push`, `--force`, branch create/switch, rebase, merge, tag, or `gh pr`; those operations SHALL still require their own per-operation approval regardless of the flag. The grant SHALL NOT bypass the GREEN-conflict STOP; it SHALL still halt the workflow regardless of the flag.
 
-This session grant is a deliberate, scoped exception to the general "ask every time / no implicit authorization" principle that governs the commit gate (stated as a CRITICAL block in `apply.md`). The change SHALL amend that principle with an explicit opt-in carve-out rather than leaving the two rules in contradiction: the "ask every time" default holds until the user selects `Allow on this session`, and the resulting implicit authorization is confined to `git add` + `git commit` for the remainder of the in-conversation session and relaxes the principle for no other operation.
+This session grant is a deliberate, scoped exception to the general "ask every time / no implicit authorization" principle that governs the commit gate (stated in `sai/policies/commit-rules.md` § Hard Rules). The change SHALL amend that principle with an explicit opt-in carve-out rather than leaving the two rules in contradiction: the "ask every time" default holds until the user selects `Allow on this session`, and the resulting implicit authorization is confined to `git add` + `git commit` for the remainder of the in-conversation session and relaxes the principle for no other operation.
 
 #### Scenario: User grants permission for a commit step
 
@@ -31,8 +31,8 @@ This session grant is a deliberate, scoped exception to the general "ask every t
 
 #### Scenario: User declines commit authorization
 
-- **WHEN** the agent asks for commit authorization and the user does not answer `yes` or `Allow on this session` (answers no, stays silent, redirects, or replies off-topic)
-- **THEN** the agent MUST NOT run `git commit`; MUST print a summary of staged changes and instruct the user to run `git commit` themselves
+- **WHEN** the agent asks for commit authorization and the user answers `no`
+- **THEN** the agent MUST NOT run `git commit` and follows the consuming command's decline path (apply prints a summary of the changes and tells the user to run `git commit` themselves)
 
 #### Scenario: Ask-every-time principle amended, not silently overridden
 
@@ -66,7 +66,7 @@ This session grant is a deliberate, scoped exception to the general "ask every t
 
 #### Scenario: Grant does not bypass other stops
 
-- **WHEN** the flag is active and the workflow reaches a GREEN-conflict STOP or an apply Human Verification gate with at least one unchecked checkbox
+- **WHEN** the flag is active and the workflow reaches a GREEN-conflict STOP
 - **THEN** the workflow still halts and waits for the user, exactly as if the flag were inactive
 
 #### Scenario: Flag is never persisted and resets per invocation

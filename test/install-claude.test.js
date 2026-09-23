@@ -62,8 +62,8 @@ const UTILITY_COMMANDS = {
 };
 
 const UTILITY_CARD_CONTENTS = {
-  apply: ['command-bootstrap.md', 'coordinator.md', 'green-worker.md', 'invocation.md', 'red-worker.md', 'runner.md'],
-  archive: ['archive-commit-gate.instructions.md', 'command-bootstrap.md', 'coordinator.md', 'instructions.md', 'worker.md'],
+  apply: ['command-bootstrap.md', 'coordinator.md', 'green-worker.md', 'invocation.md', 'red-worker.md', 'runner.md', 'steps', 'worker-common.md'],
+  archive: ['archive-commit-gate.instructions.md', 'command-bootstrap.md', 'coordinator.md', 'instructions.md', 'retirement-declaration.md', 'worker.md'],
   backfill: ['command-bootstrap.md', 'coordinator.md', 'instructions.md', 'worker.md'],
   commit: ['command-bootstrap.md', 'coordinator.md', 'instructions.md', 'worker.md'],
   explore: ['body.md', 'command-bootstrap.md', 'direct-build-worker.md', 'instructions.md', 'steps'],
@@ -124,10 +124,6 @@ function assertInstalledSelectorContract(source) {
   assert.match(source, /return the new active-uncrystallized lifecycle to `Explore change`/);
   assert.match(source, /literal `\*\*Overview language\*\*: None`/);
   assert.match(source, /dispatches no overview generation/);
-  assert.match(source, /Contract tests may observe the harness-neutral trace vocabulary[\s\S]{0,320}crystallization-requested/);
-  for (const event of ['text-question-emitted', 'selector-presented', 'selector-option-received', 'selector-free-text-received', 'edge-case-writing-prompt-emitted', 'explicit-advancement-received', 'stage-advanced', 'material-reset', 'crystallization-requested']) {
-    assert.match(source, new RegExp(`\\b${event}\\b`));
-  }
 }
 
 function captureNotices(fn) {
@@ -682,6 +678,7 @@ test('restore-coordinator-instruction-loading Step 3: isolated Claude installati
     for (const match of source.matchAll(/Fetch @((?:sai|skills)\/[^\s`]+)/g)) {
       const target = path.normalize(match[1]);
       if (match[1].startsWith('skills/')) continue;
+      if (match[1].includes('{')) continue; // `{name}` template, not a fetch target
       assert.equal(available.has(target), true,
         `${relativePath} should resolve ${match[1]} beneath the isolated installation root`);
       resolveFetches(target, available, visited);

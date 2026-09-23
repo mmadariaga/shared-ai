@@ -23,8 +23,8 @@
 #### Step 1 STOP & COMMIT
 <!-- Follow sai/commands/apply/invocation.md at the per-Step STOP & COMMIT gate and the terminal documentation commit gate; apply its commit-authorization checklist before either commit. -->
 
-#### Step 2: {Action — creates component not yet integrated into any page}
-<!-- Non-testable/deferred variant: use the standard step format without RED/GREEN when behavior is not yet rendered; defer human checks to the first integration step. -->
+#### Step 2: {Action — non-testable scaffolding for a component not yet integrated into any page}
+<!-- Non-testable/deferred variant: use the standard step format without RED/GREEN when the step has no testable logic; defer Functional checks to the first integration step while behavior is not yet rendered. -->
 
 ##### Step 2 Verification Checklist
 <!-- List automated checks for the non-testable or deferred step. -->

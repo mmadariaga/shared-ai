@@ -1,3 +1,7 @@
+## Purpose
+
+This capability defines how invoking sai-2-design records specs approval before generation while preserving a separate interactive amendment gate.
+
 ## Requirements
 
 ### Requirement: sai-2-design approval gate placement

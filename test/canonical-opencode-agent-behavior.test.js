@@ -77,6 +77,8 @@ test('budget policy preserves its bounded one-task completion contract', () => {
   }
   assert.match(content, /key\s+result/i,
     'budget policy completion output should include a key result');
+  assert.match(content, /task defines its own result shape, return exactly that shape/i,
+    'budget policy should defer to a result shape the task defines');
   assert.match(content, /permission[- ]block(?:ed)?[\s\S]{0,100}abort|abort[\s\S]{0,100}permission[- ]block(?:ed)?/i,
     'budget policy should abort on a permission block');
   assert.match(content, /(?:approximately\s+)?(?:30|~30)[- ]?(?:tool\s+)?calls?|30[- ]call/i,
@@ -104,6 +106,10 @@ test('executor policy preserves exact narrow low-output execution and failure ta
     'executor policy failure details should include test tallies');
   assert.match(content, /build(?:s)?(?:\s+(?:count|tally|summary|run|pass|fail)|\s*[:=])?/i,
     'executor policy failure details should include build tallies');
+  assert.match(content, /output the task asked for and the relevant error or compiler messages/i,
+    'executor policy should allow raw output only for requested results and error messages');
+  assert.match(content, /full file contents and unfiltered log streams stay out of the report/i,
+    'executor policy should keep file dumps and unfiltered log streams out of the report');
 });
 
 test('explore policy preserves bounded read-only research and its spawn output contract', () => {
@@ -135,9 +141,9 @@ test('explore policy preserves bounded read-only research and its spawn output c
 
 test('managed OpenCode generic agents are exact Fetch wrappers with preserved identities', () => {
   const descriptions = {
-    budget: 'Binds cost-controlled task delegation to the OpenCode budget agent keyword. General-purpose single-task subagent for file operations, searches, writes, and code analysis.',
-    executor: 'Binds "executor subagent" to the OpenCode executor agent keyword. Execute-only command runner with minimal output and structured failure reports.',
-    explore: 'Binds "cheap research subagent" to the opencode explore agent keyword. Fast, cost-effective read-only exploration for SAI-built projects; knows their architecture and where to start versus generic search. Bounded summaries, no writes.',
+    budget: 'Single-task delegate. Carries out one well-scoped task (edits, file operations, searches, code analysis) exactly as described and returns a status report. Improvements it notices stay with the caller.',
+    executor: 'Execute-only command runner. Runs the named commands, or the narrowest one for a stated goal (tests, builds, linters), and returns a low-output report of exit codes and failures. Fixes stay with the caller.',
+    explore: 'Fast, cost-effective read-only research for SAI-built projects. Knows their architecture and where to start versus generic search, and tells current decisions from superseded ones. Returns bounded summaries; writes nothing.',
   };
 
   for (const name of Object.keys(descriptions)) {
@@ -149,8 +155,9 @@ test('managed OpenCode generic agents are exact Fetch wrappers with preserved id
       `${name} should contain exactly one YAML frontmatter block`);
 
     const fields = frontmatter[1].split('\n');
+    assert.equal(fields.filter(line => /^name\s*:/.test(line)).length, 0,
+      `${name} frontmatter should carry no name field: opencode takes the agent name from the filename`);
     for (const field of [
-      `name: ${name}`,
       `description: ${descriptions[name]}`,
       'mode: subagent',
       'model: opencode/muse-spark-1.3-contributor-free',
@@ -161,10 +168,12 @@ test('managed OpenCode generic agents are exact Fetch wrappers with preserved id
     }
 
     if (name === 'explore') {
-      for (const field of ['tools:', '  write: false', '  edit: false', '  bash: true']) {
+      for (const field of ['permission:', '  edit: deny']) {
         assert.equal(fields.filter(line => line === field).length, 1,
           `${name} frontmatter should contain exactly ${field}`);
       }
+      assert.equal(fields.filter(line => /^tools\s*:/.test(line)).length, 0,
+        `${name} frontmatter should use permission instead of the deprecated tools field`);
     }
 
     const body = source.slice(frontmatter[0].length).trim();
@@ -180,21 +189,27 @@ const CLAUDE_GENERIC_AGENTS = [
   {
     fileName: 'budget-explorer',
     name: 'budget-explorer',
-    description: 'Binds cheap read-only research delegation to the Claude Code budget-explorer agent. Fast, cost-effective exploration for SAI-built projects; knows their architecture and where to start versus generic search. Bounded summaries, no writes.',
+    description: 'Fast, cost-effective read-only research for SAI-built projects. Knows their architecture and where to start versus generic search, and tells current decisions from superseded ones. Returns bounded summaries; writes nothing.',
+    model: 'sonnet',
+    effort: 'low',
     fetchTarget: '@sai/policies/explore-agent.md',
     tools: 'tools: Read, Glob, Grep, Bash, WebFetch, WebSearch, Skill, mcp__codegraph__codegraph_explore',
   },
   {
     fileName: 'budget-executor',
     name: 'budget-executor',
-    description: 'Binds low-cost execute-only command delegation to the Claude Code budget-executor agent.',
+    description: 'Execute-only command runner. Runs the named commands, or the narrowest one for a stated goal (tests, builds, linters), and returns a low-output report of exit codes and failures. Fixes stay with the caller.',
+    model: 'haiku',
+    effort: null,
     fetchTarget: '@sai/policies/executor-agent.md',
     tools: null,
   },
   {
     fileName: 'budget-subagent',
     name: 'budget-subagent',
-    description: 'Binds cost-controlled general-purpose task delegation to the Claude Code budget-subagent agent.',
+    description: 'Single-task delegate. Carries out one well-scoped task (edits, file operations, searches, code analysis) exactly as described and returns a status report. Improvements it notices stay with the caller.',
+    model: 'sonnet',
+    effort: 'medium',
     fetchTarget: '@sai/policies/budget-agent.md',
     tools: null,
   },
@@ -215,11 +230,16 @@ test('managed Claude generic agents are exact Fetch wrappers with preserved iden
     for (const field of [
       `name: ${agent.name}`,
       `description: ${agent.description}`,
-      'model: haiku',
-      'effort: low',
+      `model: ${agent.model}`,
+      ...(agent.effort ? [`effort: ${agent.effort}`] : []),
     ]) {
       assert.equal(fields.filter(line => line === field).length, 1,
         `${agent.fileName} frontmatter should contain exactly ${field}`);
+    }
+
+    if (agent.effort === null) {
+      assert.equal(fields.some(line => line.startsWith('effort:')), false,
+        `${agent.fileName} should inherit the default effort`);
     }
 
     if (agent.tools) {
@@ -341,10 +361,6 @@ const OPENCODE_BUDGET_SKILL_CONTRACTS = [
       /synchronously/i,
       /`model` frontmatter of the executor agent file/i,
       /tool[- ]call\s+cap[\s\S]{0,20}\bnone\b/i,
-      /structured failure report/i,
-      /results of explicitly requested commands and relevant error or compiler messages/i,
-      /unrequested full-file dumps/i,
-      /unfiltered log streams/i,
       /## Cost model/i,
     ],
   },

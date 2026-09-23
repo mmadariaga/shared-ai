@@ -1,6 +1,6 @@
 # Accessibility Step — Resolve Static Accessibility Audit
 
-Active step: resolve-static-audit. Audit the UI files in scope against WCAG 2.2 Level AA across the static audit phases below, then report the `resolve-static-audit` progress event per the worker contract.
+Active step: resolve-static-audit. Audit the UI files in scope against WCAG 2.2 Level AA across the static audit phases below. The step is done when every UI file in scope has been checked against every phase that applies to its component types; then report the `resolve-static-audit` progress event per the worker contract.
 
 ### Phase 2: Semantics & Structure
 
@@ -31,7 +31,7 @@ WCAG mapping: 4.1.2, 4.1.3.
 
 - **All functionality keyboard-reachable** — no `<div onClick>` without keyboard handler; no `tabindex="-1"` on what should be focusable; no `tabindex` > 0 (overrides natural order).
 - **Tab order** matches visual order; no orphan focusable nodes outside viewport without intent.
-- **Focus visible** — never `outline: none` without a replacement. Tailwind: prefer `focus-visible:` over `focus:` to avoid showing focus rings on mouse click. Custom focus styles meet `2.4.11 Focus Not Obscured` and `2.4.13 Focus Appearance` (WCAG 2.2 AA additions).
+- **Focus visible** — never `outline: none` without a replacement. Tailwind: prefer `focus-visible:` over `focus:` to avoid showing focus rings on mouse click. Focused elements are not hidden by sticky headers, banners, or overlays (`2.4.11 Focus Not Obscured (Minimum)`, AA, new in WCAG 2.2). `2.4.13 Focus Appearance` is AAA: apply it only where the project commits to AAA.
 - **Focus management on interaction:**
     - **Modals/dialogs** — initial focus inside on open, focus trapped, returns to trigger on close. React: `useRef` on trigger, restore in cleanup. Recommend `<dialog>` element or library (`Radix Dialog`, `react-aria` `useDialog`) over hand-rolled.
     - **Menus / dropdowns** — Escape closes, arrow keys navigate, focus returns to trigger.

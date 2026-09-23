@@ -5,9 +5,9 @@ Active step: map-ui-framework. Discover the UI files, frameworks, component type
 ### Phase 1: Discovery & Component Mapping
 
 1. **Read the change artifacts** first and record all explicitly accepted accessibility trade-offs from `proposal.md` and `design.md` as *Acknowledged*. Anchors all later phases.
-2. **Determine scope** (see Required Inputs). For diff mode:
+2. **Apply the scope** resolved at startup per `common.md` § Scope. For diff mode:
     - `git diff --name-status {parent-branch}...HEAD`
-    - Filter to UI files. If empty, STOP with note.
+    - Filter to UI files (an empty set was already closed at startup with the Not Applicable report).
     - If >5 UI files in scope, delegate per-component scan to **`budget-explorer`** subagents with output contract (file:line + WCAG SC + finding category + ≤80 words).
 3. **Detect framework(s) in scope:**
     - React (`.tsx`, `.jsx`) — hook patterns, `React.memo`, `useRef` for focus, portals

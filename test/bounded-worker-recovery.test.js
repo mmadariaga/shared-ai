@@ -174,7 +174,9 @@ test('verified recovery commits current overview state and preserves incomplete-
 });
 
 test('composition scopes the recovery pool per recovery scope and keeps the changed-files union across transitions', () => {
-  const runner = artifact('sai/orchestration/command-runner.md');
+  // Composition rules live in composition.md, layered on the runner (ADR 0187).
+  const runner = `${artifact('sai/orchestration/command-runner.md')}
+${artifact('sai/orchestration/composition.md')}`;
   const policy = artifact('sai/policies/bounded-recovery.md');
   const composed = `${runner}\n${policy}`;
   assert.match(composed, /recovery scope|segment-scoped|active adapter segment/i,
@@ -379,6 +381,4 @@ test('Cause Locus is decided by ownership rather than by the kind of artifact', 
     'a test-located cause with a resumable test owner must be owner-in-run');
   assert.match(policy, /never to a worker whose contract forbids\s*\n?\s*test files/i,
     'a test-located cause must never be routed to a worker forbidden from test files');
-  assert.match(policy, /Direct Build \(unattended\)[\s\S]{0,400}neutral/i,
-    'the shared policy must declare the Direct Build consumer inside the change radius');
 });

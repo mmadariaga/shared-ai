@@ -21,8 +21,8 @@ const POC_LANE_STEP = 'sai/commands/explore/steps/poc-lane.md';
 const STAGE_FILES = Object.freeze({
   'explore-change': 'sai/commands/explore/steps/common.md',
   'poc-lane': POC_LANE_STEP,
-  'review-edge-cases': 'sai/commands/explore/steps/common.md',
-  'implementation-details': 'sai/commands/explore/steps/common.md',
+  'review-edge-cases': 'sai/commands/explore/steps/review-edge-cases.md',
+  'implementation-details': 'sai/commands/explore/steps/implementation-details.md',
   crystallize: CRYSTALLIZATION_STEP,
 });
 
@@ -76,8 +76,8 @@ function cloneState(state) {
 const STAGE_HINTS = Object.freeze({
   'explore-change': 'load',
   'poc-lane': 'load',
-  'review-edge-cases': 'follow',
-  'implementation-details': 'follow',
+  'review-edge-cases': 'load',
+  'implementation-details': 'load',
   crystallize: 'load',
 });
 

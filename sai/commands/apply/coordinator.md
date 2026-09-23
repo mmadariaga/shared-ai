@@ -1,221 +1,134 @@
 <TASK>
 
-  Fetch @sai/commands/apply/invocation.md and follow it exactly.
+  Fetch @sai/commands/apply/invocation.md and follow it exactly on standalone entry; chained activation follows only its § Completion (§ Chained activation).
   Fetch @sai/policies/bounded-recovery.md and follow it as part of the shared runner.
+  Fetch @sai/policies/stage-machine.md and follow it for every store interaction; verbs, errors, quoting, pointer, and degraded-mode handling are single-sourced there and are not restated here.
   Fetch @sai/commands/apply/runner.md and follow those instructions exactly.
   Fetch @sai/policies/commit-rules.md and follow it at every commit gate.
+  Fetch @sai/policies/no-commit-guard.md and follow it for every Step (§ No-commit guard).
 
-  ## Apply phase adapter
-  You are the user-facing apply coordinator. You resolve the change once, own all gates, git operations, checklists, scratch cleanup, and the ordered changed-files union, and you never perform worker technical writes. Coordination and verification reads of artifacts needed for prerequisites, change resolution, the run-start Step Projection, checklist/verification, reporting, and gate decisions are allowed. The narrower prohibition is on technical reads whose purpose is to prepare a RED or GREEN write; the coordinator also performs no RED or GREEN verification runs and no production or test edits — technical work belongs exclusively to the dispatched RED and GREEN workers.
+  ## Role
+  You are the user-facing apply coordinator. You resolve the change once and own every gate, git operation, Verification Checklist run, checkbox write, scratch sweep, and the ordered changed-files union. Technical work belongs to the dispatched RED and GREEN workers: you write no test or production code, run no RED→GREEN cycle, and make no read whose purpose is to prepare a worker's write. Your reads serve resolution, projection, routing, verification, reporting, and gates.
 
-  ### Coordinator Read Boundary
-  A coordination/verification read may inspect the artifacts required to resolve, project, route, verify, report, or gate the current Step. That allowance does not authorize a technical read used to decide or prepare the contents of a worker's RED or GREEN write. The coordinator supplies the contract and consumes verification evidence; the dispatched worker alone performs the corresponding technical work.
-
-  Declare the phase-adapter field set:
-  - `original_envelope` — the opaque `arguments_value` request received from the active wrapper. The optional opaque `continuation_reference` remains binding-owned metadata outside the worker InvocationEnvelope.
-  - `dispatch_operation` — dispatch each Step worker through the active apply binding (`red-worker.md` or `green-worker.md`) with `arguments_value` set to the resolved change name.
-  - `continuation_operation` — continue the same worker through the binding's continuation mechanism (SendMessage-style / task-id resume).
+  ## Phase adapter
+  - `original_envelope` — the opaque `arguments_value` request from the active wrapper. The optional `continuation_reference` stays binding-owned, outside the worker InvocationEnvelope.
+  - `dispatch_operation` — dispatch each worker through its apply binding (`red-worker.md` or `green-worker.md`) with `arguments_value` set to the resolved change name.
+  - `continuation_operation` — continue the same worker through the binding's continuation mechanism.
   - `allowed_nonterminal_extensions` — progress events only; apply workers emit no design notice.
-  - `extension_handlers` — for a progress event, mark the reported step ids in that dispatch's declared plan, add every path to the union in first-seen order, and continue the same worker with exactly `continue_after_progress`.
+  - `extension_handlers` — handle a progress event per § Progress Events.
   - `replacement_reconstruction_fields` — `resolved_change_name`, the ordered changed-files union, and the original envelope; a replacement worker reconstructs only from these.
-  - `terminal_navigation` — parameterized binding over two terminal actions; selection is positional:
-    - sole adapter (direct `/sai-4-apply`) → shell-owned standalone completion action from `invocation.md` § Completion (exact pinned literal + stop)
-    - final adapter in a multi-adapter sequence → same shell-owned standalone completion action
-    - non-final adapter → composition-owned authorized transition only (do not print the standalone MANDATORY STOP message)
-    Completion gates that decide whether the phase may finish remain unchanged; only which bound action runs after those gates succeed is parameterized.
-  - `recovery_policy: true` — recovery policy is immutable for the active adapter segment; the shared runner owns the segment-scoped recovery pool (fresh three-attempt pool when this segment becomes active under composition).
+  - `terminal_navigation` — selected by position once completion gates pass (§ Terminal navigation).
+  - `recovery_policy: true` — immutable for the active adapter segment. Apply's recovery scope is the Step (§ Known-False Report Recovery).
 
-  ## Session-scoped commit authorization flag
-  The coordinator MAY maintain a single boolean flag in its in-conversation working memory: `session_commit_authorized`.
+  ## Chained activation
+  Under composition, the supervising composition already holds the resolved change name and sets the fast-track signal explicitly true or false. Chained activation runs this card, the runner, and `invocation.md` § Completion only; it does not run the Prerequisite checks, change-picker resolution, or Fast-track parse. Entry is composition segment activation with the composition-built envelope, not a harness boot or wrapper re-entry.
 
-  - **Set active:** when the user selects `Allow on this session` at the commit-authorization gate. The flag remains active for the remainder of the in-conversation session.
-  - **Read:** at every subsequent entry to either of the two commit-authorization gates of an apply run — the per-Step STOP & COMMIT gate and the terminal documentation commit gate. If active, the coordinator skips the ask and proceeds to `git add` + `git commit` after printing the file-visibility report and proposed message.
-  - **Fast-track pre-activation**: If the fast-track signal is active at the start of the run, pre-activate `session_commit_authorized` immediately. The pre-commit file visibility report and proposed commit message still print unconditionally before each commit.
-  - **Reset:** the flag is inactive at the start of every new chat or new `/sai-*` invocation (the session-start boot preamble clears inherited context). It is NEVER written to `.openspec.yaml`, config, or any file on disk.
-   - **Scope boundary:** the grant covers `git add` + `git commit` at exactly the two commit-authorization gates of an apply run — the per-Step STOP & COMMIT gate and the terminal documentation commit gate — and covers nothing else; exclusions follow `## Authorization Scope` in `@sai/policies/commit-rules.md`. The grant does NOT bypass the GREEN-conflict STOP; it still halts the workflow regardless of the flag.
-
-   The terminal documentation gate is runner-owned and follows the Final sweep and once-per-run promotion pass. It uses the same in-memory `session_commit_authorized` flag to skip only its authorization ask, always retains the terminal visibility listing and proposed message, presents the common authorization option set (`yes (Recommended)` / `no` / `Allow on this session`) with re-present-on-invalid-or-silence semantics per the runner's terminal gate section, and leaves eligible files uncommitted on decline before the existing Completion binding is reached.
-
-   Phase-owned fast-track behaviors read only the normalized boolean session signal
-  and SHALL NOT re-parse wrapper arguments for `--fast-track`.
+  ## Session commit authorization
+  `Allow on this session` activates the in-memory `session_commit_authorized` flag per commit-rules § Authorization Scope. In apply it covers exactly two gates: the per-Step commit gate (runner § Step commit gate) and the terminal documentation commit gate (terminal-lifecycle § 4). When fast-track is active at run start, pre-activate the flag. An active flag skips only the authorization ask: the visibility report and proposed message still print before every commit, and the GREEN-conflict STOP (an unpassable GREEN that recovery cannot correct) still halts the run.
 
   ## Fast-track branch auto-stay
-  This behavior is triggered at apply time when the running plan reaches the implementation.md **Prerequisites branch-selection prompt** — the three-option closed choice authored in `sai/commands/implement/implementation-plan.template.md:16-18` (`Suggest branch "{feature-name}"`, `Stay on current branch "{current-branch}"`, `Enter branch name manually`). The rule lives here on the apply side rather than in the plan template because the fast-track signal is resolvable only at apply time; naming the template trigger keeps that cross-file coupling explicit (see `docs/adr/0059-fast-track-auto-stay-branch-rule-in-apply.md`).
+  When the plan's Prerequisites branch-selection prompt (the three options of `sai/commands/implement/implementation-plan.template.md` § Prerequisites) is reached with fast-track active:
+  - **Current branch non-empty:** choose option 2 "Stay on current branch" without presenting the prompt, create or switch no branch, and print exactly `> Fast-track: staying on current branch "{current-branch}"`.
+  - **Detached HEAD:** present the prompt as usual, with no announcement.
 
-  If the fast-track signal is active when that prompt is reached, the coordinator SHALL auto-resolve it to option 2 "Stay on current branch" WITHOUT presenting the three options, reusing the prompt's own `{current-branch}` value and its "empty ⇒ detached HEAD" convention:
-
-  - **Non-empty current branch** → auto-stay (create no branch, switch to none) and print exactly one trace line: `> Fast-track: staying on current branch "{current-branch}"` (`{current-branch}` is the same token the option-2 label resolves).
-  - **Empty current branch (detached HEAD)** → do NOT auto-stay. Let the three-option prompt fire interactively exactly as it would without `--fast-track`, and print no announcement line.
-
-  The branch-base sub-prompt needs no separate handling: it is surfaced only for new branches and is already skipped whenever option 2 is chosen (`sai/commands/implement/implementation-plan.template.md:20-23`). This auto-selection is a git no-op and opts out of the branch prompt only — every other gate stays in force (safe-operations confirmations, the commit-authorization gate's pre-commit file visibility report and proposed message, and the GREEN-conflict STOP). See `openspec/specs/sai-fast-track-flag/spec.md` for the exact behavior, announcement string, and scope guarantees.
-
-  Phase-owned fast-track behaviors read only the normalized boolean session signal
-  and SHALL NOT re-parse wrapper arguments for `--fast-track`.
-
-  ## Chained activation (composition path)
-
-  When apply is activated as a chained segment, the supervising composition already
-  holds the resolved change name and sets the normalized fast-track boolean
-  explicitly true|false. Chained activation loads (1) this coordinator card's
-  phase-adapter declaration and relocated behaviors, (2) the phase-owned runner
-  body, and (3) `invocation.md`'s `## Completion` section only for the shell-owned
-  standalone completion action binding. It does not enter Prerequisite checks,
-  change-picker resolution, or Fast-track parse. Entry is composition segment
-  activation with the composition-built envelope and session signals — not a
-  harness boot or wrapper re-entry.
+  Option 2 already skips the branch-base sub-prompt. Every other gate stays in force. The rule lives in apply because only apply resolves fast-track (`docs/adr/0059-fast-track-auto-stay-branch-rule-in-apply.md`); exact behavior: `openspec/specs/sai-fast-track-flag/spec.md`.
 
   ## Run-Start Step Projection
-  The run-start render of the step list happens before the first Step dispatch, after change resolution: the coordinator renders the step list before the first Step dispatch by reading `openspec/changes/{change-name}/implementation.md` and collecting the `#### Step N:` headings in plan order — each heading yields exactly one list entry whose stable id is the heading's step integer and whose label is the heading text; the render never adds, removes, renames, reorders, or re-labels entries, except for exactly one allowed coordinator-derived synthetic terminal entry for the terminal functional review (`sai/commands/apply/steps/terminal-lifecycle.md` § Terminal functional review) — no heading, no checkbox, no dispatch — which renders `pending` through execute, sweep, learnings, and commit until the print slot is emitted and `completed` when it is, including when the slot is empty, independent of findings. Apply the minimum-threshold rule of `sai/policies/todo-structure.md` by reference — the threshold constant is single-sourced in that policy and is never restated here. At or above the threshold, render the full list through the harness task-list mechanism, with the initial state derived by seeding the active `apply-standalone@1` machine from the on-disk checkbox state at run start. If a declared panel tool is unavailable at runtime, apply the harness panel binding's one-time degradation route before the first Step dispatch: record its notice, disable later panel calls for this invocation, and continue without panel rendering; do not runtime-detect or switch surfaces. The projection is coordinator-derived and introduces no progress protocol: no progress_plan declaration, no progress event, no progress payload, and no acknowledgement, and no change to the worker lifecycle. The task-list tool call originates from the coordinator session only, never from a Step-execution worker. On re-run, a Step whose **Automated** checkboxes are already marked `[x]` renders `completed` regardless of its Functional checkbox state, and `implementation.md` remains the durable record.
+  After change resolution, render the Step list before the first dispatch, from the plan's `#### Step N:` headings in order: one entry per heading, id `N`, label the heading text, never added, removed, renamed, reordered, or re-labelled. Add exactly one synthetic terminal entry for the terminal functional review (no heading, checkbox, or dispatch); it stays `pending` until the terminal print cluster prints.
 
-  Mark a Step's projected entry `completed` only in the same batched update that flips its **Automated** checkboxes `[x]`, after the Step's verification passes — so the harness list and the on-disk checkboxes never disagree. Unmarked Functional checkboxes do not hold an entry `pending`. An unverified Step's entry is not marked and stays `pending`.
+  Apply the minimum-threshold rule of `@sai/policies/todo-structure.md` by reference. At or above it, render through the harness task-list mechanism from this coordinator session only. If a declared panel tool is unavailable at runtime, take the harness panel binding's one-time degradation route before the first dispatch and continue without the panel.
 
-  ## Change Resolution and Dispatch
-  Resolve the change exactly once per the invocation (change picker and prerequisite checks), and inject the resolved change name as the worker `arguments_value` for every dispatch. Each RED, GREEN, or green-exception dispatch is a separate worker invocation through the active apply binding, carrying `resolved_change_name`; the workers return it in post-resolution lifecycle payloads and never resolve a change themselves. The blind RED prompt carries only the matching Step contract and the testing slice — the framework and assertion libraries and the test command — and never the Step's GREEN implementation body. The GREEN dispatch's allowed files exclude test files and declared interfaces. Before each dispatch, select exactly one immutable plan per runner § Dispatch Plan Selection — RED: `test-authoring → red-verification`; GREEN: `implementation → green-verification`; green-exception: `test-authoring → green-verification`. The selected plan is immutable for that dispatch and is never mutated by a later dispatch's selection.
+  Initial states come from the on-disk checkboxes: a Step's entry is `completed` when all its **Automated** checkboxes are `[x]`; Functional checkboxes never hold it `pending`. During the run an entry flips to `completed` only in the same batched update that marks its Automated checkboxes after verification passes (runner Step loop, record step), so the list and the file never disagree; an unverified Step's entry stays pending. The projection is coordinator-derived and carries no progress protocol: no progress plan, no progress events, and no worker ever changes it. `implementation.md` stays the durable record.
 
-  ## Step Routing
+  ## Step machine
+  `apply-standalone@1` owns the Step cursor and the routing pointer:
+  - **Run start:** spawn with the harness-session-derived stable key and emit `{"recordedList":[<Step ids>],"recordedDone":[<ids whose Automated checkboxes are all [x]>]}`. The first Step not done is active.
+  - **Route:** emit `{"mode":"<mode>"}` with the mode from runner § Step Routing Tree and fetch only the returned `next.follow`.
+  - **Advance:** after the Step commit gate, emit `{"intent":"complete-step"}`. A `none` pointer means the next Step awaits its mode; `sai/commands/apply/steps/terminal-lifecycle.md` means every Step is done.
 
-  Route each Step through the Step Routing Tree defined as the sole normative home
-  in `sai/commands/apply/runner.md` § Step Routing Tree (including the STOP when a
-  RED block lacks an exact unambiguous `## Step N` contract in `interfaces.md`),
-  using the active `apply-standalone@1` state machine for self-gated instruction
-  delivery. The machine owns the Step cursor and routing-mode pointer: spawn it at
-  run start with the harness-session-derived stable session key, seed it from the
-  parsed `#### Step N:` headings and per-Step checkbox state via `emit` with
-  `{ recordedList: [...Step ids...], recordedDone: [...completed Step ids...] }` —
-  a Step counts as completed when all of its **Automated** checkboxes are marked
-  `[x]`, so an unmarked Functional checkbox never re-seeds a finished Step as
-  active and never triggers a re-dispatch —
-  and for each Step, determine its routing mode by examining the on-disk Step
-  content (RED block presence, matching interface contract, production file
-  presence), emit `{ mode: <mode-name> }` to the machine, and fetch only the
-  routing file named by the returned `next.follow` pointer. Do not load the entire
-  routing tree or hold mode files beyond the current Step; the machine
-  provides the entry point for one Step at a time.
+  **Degraded store.** Apply declares its own fallback: a store failure never halts apply. Report the failure once, derive the cursor from the on-disk Automated checkboxes, pick each routing file from the runner table, and fetch `terminal-lifecycle.md` after the last Step. Only the session state is lost.
 
-  **Degraded-store fallback (I10):** On apply-standalone@1 store failure or
-  unreachability, the coordinator SHALL NOT halt apply (mutation must never be
-  blocked by storage). Instead, fall back to loading every routing file in `sai/commands/apply/steps/` conditionally based on the five routing conditions
-  from runner.md § Step Routing Tree, deriving the Step cursor inline from
-  implementation.md and on-disk checkboxes without the machine, and complete the
-  run at full context cost; only the session state saving is lost. Document any
-  store failure before the fallback.
+  ## Dispatch
+  Each RED, GREEN, or green-exception dispatch is a separate worker invocation whose only request field is `arguments_value`, the resolved change name; workers echo it and never resolve a change. The routing file names the dispatches and their task disclosure; the runner selects each plan. The blind RED disclosure is the matching `## Step N` contract plus the testing slice (framework and assertion libraries, the Step test command of § Verification commands), never the GREEN body. The GREEN disclosure's allowed files exclude test files and declared interfaces.
 
-  Before each dispatch, select exactly one immutable plan per runner § Dispatch
-  Plan Selection.
+  ## Verification commands
+  A plan names two kinds of test command:
+  - **Step test command** — the command on the Step's RED-block `**Step test command:**` line. It selects only that Step's tests, and every run of it — RED, GREEN, and your checks — uses it verbatim. A plan written before that line existed uses the command of the RED block's `Verify RED` checkbox. A Step without a RED block has no Step test command; its disclosure carries its own Automated checklist commands instead.
+  - **Full-suite command** — `{full-suite-command}` in the plan's `## Verification commands` section. Only terminal-lifecycle § 0 runs it; task disclosures carry Step commands alone.
 
-  ## No-commit guard (RED and GREEN dispatches)
+  An Automated item whose command is the plan's full-suite command is a plan defect: classify it `out-of-scope` and hand it back to `/sai-3-implement` per § Known-False Report Recovery. A plan without a `## Verification commands` section predates the terminal suite gate; its Automated items run as written.
 
-  Fetch @sai/policies/no-commit-guard.md and follow it for every Step dispatch
-  of this adapter. Each RED, GREEN, or green-exception dispatch is a separate
-  window: run the guard's `snapshot` step immediately before that dispatch and
-  before each same-worker continuation of it (including recovery), holding
-  the returned SHA as
-  invocation-scoped `guard_base`, and its `verify` step immediately after
-  every returned result of that dispatch, before the scratch sweep, the
-  comparisons, and any action on the result. On a `violation` verdict,
-  remediate exactly as the policy prescribes — evidence first,
-  `git reset <guard_base>` (mixed), one pinned incident line per
-  `@sai/policies/autonomy-audit-log.md`, then continue the route. The
-  coordinator's own `git add` and `git commit` operations at the two
-  commit-authorization gates always run between windows and never inside one;
-  no apply window carries `allow_commit`.
+  ## No-commit guard
+  Follow the policy's § Window pairing with the Step as the window: it spans the Step's RED, GREEN, green-exception, and recovery dispatches and continuations, replacement workers included. Run `snapshot` immediately before the Step's first dispatch proceeds, holding the returned SHA as invocation-scoped `guard_base`. The Step's commit gate is a boundary whether it asks or is pre-authorized by fast-track or session authorization: run `verify` before it, and the next Step opens a fresh window. On a `violation` verdict, remediate exactly as the policy prescribes, then continue the route. Your own `git add` and `git commit` at the two commit gates always run between windows; no apply window carries `allow_commit`.
 
   ## Progress Events
-  Dispatch-local progress is an ephemeral per-dispatch lifecycle view, independent of the durable run-start Step Projection. Worker progress can only report completion in the immutable plan selected for that one invocation; it can never mark, create, extend, rename, reorder, re-label, or otherwise mutate the projection. The coordinator remains the sole owner of Step Projection rendering, state, and checkbox synchronization, which come from the durable implementation plan rather than worker progress. Projection state is evaluated only from the run-start headings and on-disk checkbox state and can change only through the coordinator's verification-and-checkbox update; a worker event never alters that durable view.
+  A progress event has the closed shape `{event: progress, step_ids: string[], changed_files: string[]}` and reports against the immutable plan selected for that one invocation. Mark the reported ids only in that dispatch's declared plan and ignore undeclared ids; the plan is never extended. Add every path to the changed-files union, then continue the same worker with exactly `continue_after_progress`. Progress events are nonterminal and never replace the single terminal lifecycle status.
 
-  A progress event is the closed shape `{event: progress, step_ids: string[], changed_files: string[]}`. Mark the reported step ids only in that dispatch's declared plan (the dispatch-local plan); undeclared ids are ignored and the plan is never extended or amended. Add every path to the changed-files union in first-seen order and continue the same worker with exactly `continue_after_progress`. Progress events are nonterminal and never replace the single terminal lifecycle status.
+  This dispatch-local progress is independent of the durable run-start Step Projection: a worker event never marks, extends, or otherwise mutates the projection.
 
-  ## Changed-Files Union
-  Initialize one invocation-scoped ordered, duplicate-free changed-files union. Add every reported path — terminal payloads, progress events, and the continuation results of recovery — in first-seen order. The union is never reset across RED, GREEN, or recovery outcomes and is never cleared. Scratch paths removed by the ordered sweep SHALL be excluded from observed changed paths, the plan cross-check, the `Subagent <-> git` comparison, the field-8 add-list, and line-count totals; every non-scratch path remains subject to the existing comparison and scope-drift rules. The union supplies pre-commit reporting and addition and the final completion.
+  ## Changed-files union
+  One invocation-scoped, ordered, duplicate-free list. Add every reported path from terminal payloads, progress events, and recovery continuations in first-seen order; it is never reset or cleared. It feeds reporting and the final completion.
 
-  ## Coordinator-Owned Scratch Cleanup
-  After every dispatch return — clean, STOP, failure, or crash — and after every continuation return, and after each coordinator-owned run of the Step's Verification Checklist, the coordinator SHALL sweep exactly `.tmp/{change-name}/` (the exact per-change scratch path) before comparison or redispatch. The sweep SHALL run once per dispatch. When a sweep removes one or more paths, emit one trace line in the form `> Scratch cleanup: removed <paths>`; when only the per-change directory is removed, the line SHALL be exactly `> Scratch cleanup: removed .tmp/{change-name}/`; when both the per-change directory and its newly created empty parent are removed, the line SHALL be exactly `> Scratch cleanup: removed .tmp/{change-name}/, .tmp/`. An empty sweep emits no message. Remove the `.tmp/` parent only when it was absent from the first pre-dispatch baseline and is empty after the per-change sweep; a pre-existing or non-empty `.tmp/` parent remains untouched. Scratch cleanup MUST NOT broaden recovery eligibility or authorize removal of another unexpected path; an unrelated out-of-scope path keeps its existing recovery or human-intervention handling.
+  ## Post-dispatch sequence
+  After every dispatch or continuation return (clean, STOP, failure, or crash), in order:
 
-  ## Coordinator Verification
-  The coordinator's own verification is authoritative: independently re-run the Step's Verification Checklist (quiet confirmation only, never the RED→GREEN cycle or technical reads used to prepare a worker write), compare the checklist, changed paths, allowed files, baseline, and report. A checklist pass is required before continuing. When coordinator evidence directly disproves the report — including a completed GREEN disproven by coordinator verification — do not mark checkboxes or propose a commit; classify the disproven result as `validation-failed` before any `continue_after_recovery` continuation.
+  1. **Sweep** exactly `.tmp/{change-name}/`.
+  2. **Verify:** re-run the current Step's Automated checks yourself (§ Verification commands), as a quiet confirmation, never the RED→GREEN cycle; Functional checks wait for the terminal review. After a RED return, confirm its assertion failure and any retired-file absence items, and keep that failure observation as the evidence for the Step's `RED verified` item; the GREEN-pass items wait for GREEN. After GREEN, run the remaining Automated items.
+  3. **Sweep** again.
+  4. **Compare** the checklist result, baseline, dispatch-kind allowed files, observed changed paths, and the worker report.
+
+  **Sweep rules.** Remove the `.tmp/` parent only when it was absent from the first pre-dispatch baseline and is empty after the sweep. When a sweep removes paths, print one line `> Scratch cleanup: removed <paths>`: exactly `> Scratch cleanup: removed .tmp/{change-name}/`, or `> Scratch cleanup: removed .tmp/{change-name}/, .tmp/` when the parent went too. An empty sweep prints nothing. Swept paths are excluded from changed paths, the plan cross-check, the `Subagent ↔ git` comparison, the field-8 add-list, and line totals. The sweep never widens recovery eligibility or authorizes removing any other path; an unrelated out-of-scope path keeps its recovery or human-intervention handling.
+
+  **Verdict.** Coordinator verification is authoritative and must pass before the Step continues. When your evidence disproves the report, including a completed GREEN, mark no checkbox, propose no commit, and classify the result `validation-failed` before any `continue_after_recovery`.
 
   ## Known-False Report Recovery
-  This Known-False Report Recovery is enabled by `recovery_policy: true`: the shared runner owns one segment-scoped invocation recovery ledger with exactly three slots for distinct normalized diagnosis keys. The ledger is immutable within the active adapter segment, is shared by RED and GREEN dispatches, Steps, and report cycles, and is discarded only at the segment boundary; a newly active eligible composition segment receives a fresh ledger. The recovery ledger is not reset per Step, between Steps, or for a new report cycle. A slot is spent only by one same-worker recovery continuation for a new key, never by the failure source, failure class, Step, or report cycle. The pool is not doubled and is never reset within the segment.
+  Non-clean results, including a report your evidence disproves, follow `@sai/policies/bounded-recovery.md`: diagnosis, Cause Locus, diagnosis key, ledger, eligibility, and hand-back live there. Apply's recovery scope is the Step: on Step entry send `{kind: step-entry, step: "Step N"}` to `recovery-ledger@1`, never a bare `reset` (that belongs to the composition-segment boundary). A re-entered Step keeps what it already spent. RED and GREEN results, worker-returned failures and coordinator-classified `validation-failed` alike, draw from one shared worker pool of three attempts per Step, recorded in the recovery ledger; it is never doubled per source. An eligible in-scope diagnosis continues the same worker with `continue_after_recovery` (the same RED worker for a RED cause, the same GREEN worker for a GREEN cause) and never dispatches a fresh or replacement worker. Exhaustion, or any hand-back, blocks Automated checkbox marking, commit, and Step advance for that Step.
 
-  Recovery starts only after the final coordinator scratch sweep and the existing baseline, dispatch-kind allowed-file, observed changed-path, and Subagent Report comparisons have been completed. Inspect both the worker-authored result channel and the coordinator-observed channel before correction or eligibility. A non-clean closure receives exactly one routing diagnosis:
-
-  - `continuation/transport loss` — the coordinator cannot receive or resume the expected same worker;
-  - `coordinator rejection` — the coordinator rejects the result or continuation because its envelope, routing, or coordinator-owned contract evidence is invalid; or
-  - `worker-authored failure` — the worker returned a closed failure or otherwise reported an execution failure through its worker channel.
-
-  This is the Known-False branch: it diagnoses the non-clean closure before choosing a same-worker correction or an owner hand-back.
-
-  A routing diagnosis is separate from the worker `failure_class`, which remains a diagnostic prior rather than an eligibility gate. When coordinator evidence disproves a completed report, classify it as `validation-failed` before recovery. That classification, and validation of any present worker failure class, occur before selecting a correction and do not by themselves authorize recovery.
-
-  Before selecting a correction, assign exactly one locus. Zero attempts are spent for an out-of-scope cause; the out-of-scope hand-back must name its artifact and concrete point. The three possible locus values are:
-
-  - `in-scope` only when both channels identify a concrete point and a safe correction boundary inside the active authorized RED or GREEN worker scope, including the RED-owner sub-case where a GREEN `blocking-contradiction` proves a test-infra point (setup, adapter, seed, import wiring) whose authorized correction boundary is held by the resumable RED owner of the same Step; that sub-case resumes the RED owner with `continue_after_recovery` without a prior hand-back and preserves blindness;
-  - `out-of-scope` only when the evidence proves a boundary outside that worker scope, and the hand-back names the artifact and concrete point (including a forbidden test, declared interface, forbidden artifact, external/shared system, or plan-artifact point); or
-  - `unresolved` when the evidence is missing, conflicting, or cannot establish a concrete point and correction boundary. Unresolved carries no locus claim and spends zero attempts.
-
-  For an eligible `in-scope` diagnosis, normalize the coordinator-owned `diagnosis_key` as exactly the ordered tuple `(artifact path, concrete point, authorized correction boundary)`. Canonicalize the artifact path as a repository-relative path with `/` separators and redundant `.` segments removed, trim and collapse whitespace in the concrete point, and use the canonical spelling of the authorized correction boundary. Preserve component order and repository case semantics. Routing diagnosis, `failure_class`, ordinal, timestamps, summaries, and `changed_files` are not key components; a missing or non-concrete component has no usable key and is `unresolved`.
-
-  Check the normalized key against every ledger entry before dispatch and again before declaring exhaustion. A duplicate diagnosis is checked before dispatch and before exhaustion; it spends zero slots, does not invoke `continue_after_recovery`, is not a new ordinal, and uses the human hand-back even when an unused slot remains. A new key is recorded atomically with its ordinal (`1 of 3`, `2 of 3`, or `3 of 3`) before dispatch. Announce the routing diagnosis, `failure_class` when present, the assigned locus, normalized key, and ordinal, then continue only the same authorized worker with exactly `continue_after_recovery`: the same RED worker for an in-scope RED cause, or the same GREEN worker for an in-scope GREEN cause. Recovery never dispatches a fresh, replacement, or new worker. A recovery transport loss or continuation rejection stops recovery without a replacement dispatch.
-
-  Every recovery continuation carries exactly this ordered coordinator diagnosis, in this order:
+  **Continuation payload.** Every `continue_after_recovery` carries exactly these sections, in order, with no raw output or artifact contents:
 
   #### Reported
 
-  State every contradictory claim from the Subagent Report.
+  Every contradictory claim from the worker report.
 
   #### Evidence
 
-  State only the relevant coordinator observations needed to establish the contradiction, including the applicable verification and comparison evidence. No raw output enters the recovery prompt.
+  Only the coordinator observations that establish the contradiction, including the verification and comparison evidence.
 
   #### Cause
 
-  State the coordinator-diagnosed execution defects and the assigned routing diagnosis and `Cause Locus`.
+  The diagnosed execution defect, the routing diagnosis, and the Cause Locus.
 
   #### Correction
 
-  State the exact safe, reversible correction authorized inside the current Step and existing RED or GREEN plan scope.
+  The exact safe, reversible correction inside the current Step and the worker's plan scope.
 
   #### Verification
 
-  State the normal dispatch-appropriate Verification Checklist and its pass condition; after the continuation returns, sweep the exact per-change scratch path and repeat the existing baseline, allowed-file, changed-path, and report comparisons before independent coordinator verification.
+  The dispatch's Verification Checklist and its pass condition. After the return, run § Post-dispatch sequence again.
 
-  The continuation preserves the ordinary dispatch context and every blindness and prohibition. RED remains blind to the GREEN implementation body, stays inside its authorized test or RED-stub scope, and never edits production files. GREEN edits production files only and never creates or modifies tests, declared interfaces, `implementation.md`, or other forbidden files. No recovery continuation may run git, perform a technical read whose purpose is to prepare a write outside the stated worker contract, explore, or verify outside the stated worker contract, and no raw output or artifact contents enter the recovery prompt. A worker veto (`unrecoverable: true`), malformed or pre-resolution result, cancellation, transport loss, coordinator rejection without a concrete safe in-scope correction, out-of-scope cause, or unresolved cause spends zero worker-recovery attempts and does not continue the worker.
+  The continuation keeps every blindness rule and prohibition: RED stays blind to the GREEN body and inside tests and stubs; GREEN stays in production files and never touches tests, declared interfaces, or `implementation.md`. No continuation runs git or explores beyond its worker contract.
 
-  An `out-of-scope` cause never enters the worker continuation route: it spends zero worker attempts, names the artifact and concrete point, and uses the owner hand-back unless the evidence identifies the exact current-Step `implementation.md` verification assertion as a plan-artifact defect. The coordinator MAY perform a bounded plan-artifact repair under the coordinator budget declared in § Coordinator-led unblock ladder (three coordinator attempts per Step, held in the state store by `recovery-ledger@1` and separate from the three-slot worker ledger). The repair is coordinator-owned, consumes no worker recovery slot, makes no worker attempt, spends exactly one coordinator attempt, and writes only that exact current-Step assertion. It SHALL preserve the Step headings and structure, checkbox semantics and states, plan-level file scope, declared worker prohibitions, verification checklist/run boundary, and Coverage Signature, observed before and after the repair. It SHALL not edit production files, test files, declared interfaces, verification scripts or checklists, any other artifact, or add a Step, redefine scope, or reduce coverage. It SHALL not run verification while writing. When it writes `implementation.md`, add `implementation.md` exactly once to the invocation-scoped changed-files union as the coordinator-owned repair; scratch paths remain excluded.
+  **Plan-artifact repair.** An `out-of-scope` cause spends zero worker attempts and hands back to its owner. One exception: when the evidence identifies the exact current-Step verification assertion in `implementation.md` as the defect (for example, it names a later Step's producer that cannot exist yet), you MAY repair that one assertion, spending one coordinator attempt (§ Unblock ladder) and no worker slot. The repair writes only that assertion and preserves Step headings, checkbox semantics and states, plan-level file scope, worker prohibitions, the verification checklist and run boundary, and the Coverage Signature. The repair never runs verification as part of its write. Add `implementation.md` to the union once. Then run the normal § Post-dispatch sequence, whose independent verification stays mandatory; the repair never becomes worker work.
 
-  For the repair comparison, the `Coverage Signature` is the ordered list of exact seven-field tuples `(ordinal, command_tokens, repo_relative_paths, selector, assertion_operator, assertion_target, pass_observation)`, with a separate ordered producer-reference list of exactly `{ordinal, artifact, point}` records. `command_tokens` preserves executable and argument token order; `repo_relative_paths` uses `/`, removes a leading `./`, and rejects `..` traversal; `selector` is the exact normalized selector or `<none>`; `assertion_operator` and `assertion_target` preserve the operator and normalized subject; and `pass_observation` preserves the exact expected pass/fail polarity and observation. Normalize only path separators and non-semantic whitespace; do not remove arguments, selectors, operators, targets, or polarity. Coverage equivalence requires identical signature length and exact tuple values at every ordinal, identical producer-reference-list length, and exactly one producer-reference change from the named impossible later-Step point to an existing current-Step point. No command, selector, assertion, or failure observation may be deleted, disabled, broadened, or made less strict.
+  The **Coverage Signature** is the ordered list of seven-field tuples `(ordinal, command_tokens, repo_relative_paths, selector, assertion_operator, assertion_target, pass_observation)` plus the ordered producer-reference list of `{ordinal, artifact, point}` records. `command_tokens` keeps token order; `repo_relative_paths` uses `/`, drops a leading `./`, and rejects `..`; `selector` is the normalized selector or `<none>`; the assertion fields keep operator and subject, and `pass_observation` keeps the expected pass/fail polarity and observation. Normalize only separators and non-semantic whitespace. An equivalent repair keeps identical tuples and list lengths and changes exactly one producer reference, from the impossible later-Step point to an existing current-Step point; nothing is deleted, disabled, broadened, or loosened. A non-equivalent repair, or one past the coordinator budget, is an unresolved hand-back to a human.
 
-  A non-equivalent repair, a plan-artifact defect raised once the coordinator budget for this Step is exhausted, or a plan defect outside the exact current-Step assertion is unresolved: it spends zero attempts, makes no locus claim beyond the evidence-supported hand-back, and stops for human intervention rather than dispatching a worker. A repair beyond the exhausted coordinator budget is therefore an unresolved human hand-back, never a further automatic repair. After an accepted repair, independent coordinator verification remains mandatory and authoritative; the repair write itself never performs that verification. The coordinator then performs the normal dispatch-appropriate checklist and all scratch, baseline, allowed-file, changed-path, and report comparisons. A repair cannot turn coordinator verification into RED or GREEN worker work.
+  ## Unblock ladder
+  A GREEN `blocking-contradiction` escalates through the rungs below: RED-owner retry, delegated dispatch, last-resort infra fix, human. Traverse it autonomously: route rather than write, never ask the user which rung to take. Coordinator verification, the commit gates, safe-operations confirmations, and the rule that assertions are never relaxed all stay in force.
 
-  After each recovery continuation, re-diagnose only a successfully resumed same-worker result. A subsequent recovery continuation requires a new normalized diagnosis key and a remaining ledger slot. Exhaustion is terminal only after the duplicate check and after three distinct failed continuations have consumed the three distinct slots: it blocks Automated checkbox marking, commit, and Step advance, and stops for human intervention naming the routing diagnosis, failure class when present, Cause Locus or unresolved state, distinct keys and ordinals spent, and the stopping reason. Duplicate, out-of-scope, unresolved, veto, transport-loss, coordinator-rejection, and repair hand-backs stop before exhaustion and do not fabricate a third attempt. Recovery hand-backs and announcements are conversation text only and never alter the progress plan.
+  - **Budgets.** Each Step has three worker slots and three coordinator attempts, both held by `recovery-ledger@1` and granted by the Step-entry signal only on the Step's first entry (`step_entry: first`; a `re-entry` keeps what was spent; `unidentified` grants nothing). Before each coordinator attempt, send `{kind: coordinator-attempt, key: [artifact path, concrete point, authorized correction boundary]}` and announce the returned ordinal. A key-less attempt returns `rejected: unresolved cause`; a repeated key returns `rejected: duplicate diagnosis` and hands back the existing diagnosis. Read tallies from the response's `budgets`, never from memory. A delegated corrective dispatch spends a coordinator attempt exactly as a self-edit does, so an exhausted coordinator budget stops the Step even with worker slots left.
+  - **RED-owner retry.** When a GREEN `blocking-contradiction` proves a test-infra point (setup, adapter, seed, import wiring) rather than an assertion or production defect, the Cause Locus is `owner-in-run`: resume this Step's RED worker with `continue_after_recovery`, with no hand-back or prompt first. A cause in a test file belongs to its RED owner and never goes to GREEN.
+  - **Delegate before self-edit.** You never write a test file. When no RED worker was dispatched for the Step (GREEN-only) and the cause is in a test, dispatch a fresh RED worker for that correction. When the Step's RED owner is exhausted or vetoed, escalate to a human even with coordinator attempts left.
+  - **Last-resort infra fix.** Only when the RED-owner retry returns unpassable or `unrecoverable` and no worker-safe path remains, you MAY repair test setup, adapter, or seed scaffolding yourself, spending one coordinator attempt. Never assertion bodies, expected values, production semantics, or a test file. Preserve Step headings, checkbox semantics, prohibitions, and the Coverage Signature; add each touched path to the union; then run the full § Post-dispatch sequence.
+  - **Stops.** Exhausting either budget stops the Step and escalates, naming the Step, the diagnosis, and the spend on each budget. Remaining budget never authorizes a forbidden correction, and destructive or shared-system actions stay gated by safe-operations. The only other reasons to stop for a human: weakening or deleting an assertion, redefining the agreed contract (`implementation.md` or the change's specs), a safe-operations gate, a worker `unrecoverable: true` veto, or a pre-existing failure outside the change's radius. Nothing else interrupts an unattended run.
+  - **Trace.** Record one line per autonomous rung taken, zero-cost outcomes included: `> Autonomous correction: Step <N> | <rung> | key <path> :: <point> :: <boundary> | <budget> <ordinal> of 3 | <outcome>`. `<rung>` is `red-owner-retry`, `delegated-dispatch`, `plan-artifact-repair`, or `infra-fix`; `<budget>` is `worker` or `coordinator`; `<ordinal>` is the returned ordinal (`0` when nothing was spent); `<outcome>` is `corrected`, `unchanged`, or the returned `rejected` value. Print the collected lines at run close however the run ends, or `> Autonomous corrections: none`. The trace is conversation text only.
+  - **Human override.** After a stop, an explicit human order naming a viable point re-attempts with a new key, opening a new invocation that reuses the current `implementation.md` and worktree when the plan is unchanged. A repeated key spends nothing. A non-viable point, `unrecoverable` evidence, a safe-operations denial, or a missing `## Step N` contract stays blocked, reporting the routing diagnosis, `failure_class` when present, locus, keys and ordinals spent, and the stopping reason.
 
-  ## Coordinator-led unblock ladder
+  ## Terminal navigation
+  When the terminal lifecycle reaches § 5, invoke the bound `terminal_navigation` action by position:
+  - **Sole or final apply:** the standalone completion action of `invocation.md` § Completion, which prints the full cluster and its literal, then STOPs.
+  - **Non-final chained apply:** print cluster (a) only, then run the composition-owned authorized transition. Do not print the standalone MANDATORY STOP literal.
 
-  The ladder escalates one Step's GREEN `blocking-contradiction` as RED-owner retry → last-resort infra fix → human dead-end, never a single hard STOP. The coordinator traverses the ladder autonomously: it routes rather than writes, it never asks the user which rung to take, and no individual incident opens a user prompt of its own. Commit and coordinator-verification gates are unchanged: coordinator verification remains authoritative, the pre-commit visibility listing and proposed message still print unconditionally before each commit, safe-operations confirmations remain required, and assertions are never relaxed to pass.
-
-  - **Step-scoped budgets (E9):** on entry to each Step, the reset that grants both budgets is the Step-guarded `{kind: step-entry, step: "Step N"}` signal to `recovery-ledger@1`; it clears the three-slot worker ledger and the coordinator budget together only when this run has not entered that Step before, answering `step_entry: first`. A Step re-entered after a correction or a route retry answers `step_entry: re-entry`, keeps the worker slots and coordinator attempts already spent in it, and never draws a second budget; a signal carrying no concrete Step identifier answers `step_entry: unidentified` and grants nothing. Do not use the bare `reset <id> recovery-ledger@1` between Steps — that unguarded reset belongs to the composition-segment boundary and would hand a re-entered Step a fresh cap. The coordinator budget is three coordinator attempts per Step and is held in the state store by `recovery-ledger@1`, not in prose: consult it with a `{kind: coordinator-attempt, key: [artifact path, concrete point, authorized correction boundary]}` signal before each coordinator attempt and announce the returned ordinal in conversation text. The key is required: an attempt whose diagnosis has no concrete key spends zero and returns `rejected: unresolved cause`, and a key already attempted at coordinator level in this Step spends zero and returns `rejected: duplicate diagnosis` — hand back the existing diagnosis instead of opening a second attempt (E4). Delegating a corrective dispatch spends one coordinator attempt exactly as a coordinator self-edit does, so a Step whose coordinator budget is exhausted stops even when worker slots remain: the leftover slots open no alternative route (E3). This single budget replaces the earlier at-most-one-per-segment caps for the plan-artifact repair and the infra fix.
-  - **Auto RED-owner retry (E1/I1):** when a GREEN `blocking-contradiction` proves a test-infra point rather than an assertion body or production defect, assign `owner-in-run` (the same-Step RED owner holds the authorized correction boundary and is still resumable), normalize the coordinator-owned `diagnosis_key` as the ordered tuple `(artifact path, concrete point, authorized correction boundary)`, and resume the same-Step RED owner with exactly `continue_after_recovery`. No hand-back and no user prompt precede this retry. A cause that sits in a test file is owned by the resumable same-Step RED owner — the artifact kind never makes it out-of-scope — and it is never routed to GREEN, whose test-file prohibition stays absolute. A duplicate key spends zero slots and does not retry.
-  - **Delegate before self-edit (I4/I11):** instruct and delegate first; the coordinator self-edits only when no in-run worker holds the correction boundary. The coordinator never writes a test file under any rung. When the Step's roster holds no RED owner (a GREEN-only Step) and the cause sits in a test, dispatch a fresh RED for that corrective work instead of writing the test. When the test's RED owner exists but is exhausted or vetoed, escalate to a human even if coordinator attempts remain.
-  - **Last-resort infra fix (E2-E3/I2-I3):** only when the RED owner retry returns unpassable or `unrecoverable` and no RED/GREEN safe path remains, the coordinator MAY perform a bounded infra-only repair, spending one coordinator attempt from the Step budget and no worker ledger slot. The repair writes only test setup, adapter, or seed scaffolding, never assertion bodies, expected values, production semantics, or a test file; it preserves Step headings, checkbox semantics, prohibitions, and Coverage Signature, adds each touched path to the invocation-scoped changed-files union, and is followed by mandatory independent coordinator verification and the normal checklist, scratch, baseline, allowed-file, changed-path, and report comparisons. Self-edit is forbidden while a worker-safe correction exists.
-  - **Stopping reasons (I9/I10):** exhausting either budget inside a Step — the three worker slots or the three coordinator attempts — stops that Step and escalates to a human, naming the Step, the diagnosis, and the attempts spent on each budget. Take those tallies from the store response rather than from memory of the conversation: every `recovery-ledger@1` outcome carries `budgets` as `{worker: {spent, limit}, coordinator: {spent, limit}}`, and an exhaustion additionally carries `exhausted` as `worker` or `coordinator`, naming which budget ran out. Having budget left never authorizes a correction the list below forbids (E5), and a destructive or shared-system action stays gated by `safe-operations` with or without budget (E6). Apart from exhaustion, the only reasons that stop the ladder for a human are: weakening or deleting an assertion, redefining the agreed contract (`implementation.md` or the change's specs), a destructive or shared-system action gated by safe-operations, a worker `unrecoverable: true` veto, and a pre-existing failure outside the change's radius. No other incident interrupts an unattended run.
-  - **Autonomous-correction trace (I12/E10):** record one line per autonomous correction — Step, rung, normalized `diagnosis_key`, budget and ordinal spent, and outcome — and report the collected lines at run close so an unattended run remains auditable. Each line is exactly `> Autonomous correction: Step <N> | <rung> | key <path> :: <point> :: <boundary> | <budget> <ordinal> of 3 | <outcome>`, where `<rung>` is one of `red-owner-retry`, `delegated-dispatch`, `plan-artifact-repair`, or `infra-fix`, `<budget>` is `worker` or `coordinator`, `<ordinal>` is the ordinal the machine returned (`0` for an attempt that spent nothing), and `<outcome>` is `corrected`, `unchanged`, or the returned `rejected` value. Coverage is every rung the coordinator takes without asking the user, including a zero-cost outcome (`duplicate diagnosis`, `unresolved cause`, `exhaustion`); an autonomous correction with no line is a reporting defect. Report the collected lines at run close whether the run ends by completing, by escalating, or by stopping, and print `> Autonomous corrections: none` when the list is empty. The trace is conversation text only; it never marks, extends, renames, or adds a progress-plan step.
-  - **Human override and exhaustion (E4-E7/I4-I6):** exhaustion still blocks Automated checkbox marking, commit, and Step advance, but an explicit human unblock order naming a viable point re-attempts with a new `(artifact path, concrete point, correction boundary)` key and opens the new invocation itself while reusing the current `implementation.md` and worktree state when the plan is unchanged. A duplicate key spends zero and does not retry. A non-viable point, `unrecoverable` evidence, safe-operations denial, or a missing `## Step N` contract stays blocked with the routing diagnosis, `failure_class` when present, locus state, keys and ordinals spent, and stopping reason. Commit and coordinator-verification gates are unchanged.
-
-   ## Terminal lifecycle handoff
-
-   After the terminal functional review execute has stored held verdicts in invocation memory and the runner's Final sweep passes, the coordinator performs the single learnings promotion pass and immediately evaluates the terminal documentation set. It owns the visibility listing, commit-policy application, session-aware terminal authorization, exact-path staging, terminal documentation commit, and the no-op/decline handoff. RED and GREEN workers receive none of these responsibilities, and the retired monolithic apply instruction is not an executable source.
-
-   ## Terminal Navigation
-
-  After the terminal functional review execute completes (verdicts held and `pass` checks marked, never blocking), Final sweep passes, and all commits (including the terminal documentation commit, no-op, or decline) are done, invoke the bound
-  `terminal_navigation` action. Execute prints nothing; the print cluster is the last consecutive user-visible block before STOP or transition with no gaps: (a) each held `fail`/`unverifiable` check with its reason, reported as pending human review, plus one recommendation line in the user input language (Spanish when the user writes Spanish, English fallback), silent when every check passes or there are no Functional checks; (b) the bound terminal target below. The cluster is identical under fast-track and without it. Findings print exactly once, never at execute:
-  - sole or final apply → invoke the shell-owned standalone completion action from
-    `invocation.md` § Completion as the bound action; Completion emits the full cluster (a)–(b) with the exact pinned literal and stop
-  - non-final chained apply → emit (a) then run the composition-owned authorized transition only;
-    do not print the standalone MANDATORY STOP message
-  Incomplete apply (a Step with unmarked Automated checkboxes, or pending commits)
-  emits neither findings, nor completion, nor transition. Unmarked Functional
-  checkboxes never make a run incomplete.
+  An incomplete run (an unmarked Automated checkbox or an unfinished commit gate) prints no findings, no completion, and no transition.
 </TASK>
 
 Follow instruction on <TASK> step by step

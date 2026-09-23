@@ -1,3 +1,3 @@
 # Routing: STOP — Missing Contract
 
-**RED block present + no exact, unambiguous matching `## Step N` contract in `interfaces.md`** → STOP before any dispatch or write. A clean absence and an ambiguous match — more than one `## Step N` for the same integer — stop identically; no dispatch is issued and no fallback line is emitted.
+RED block present, but `interfaces.md` has no exact, unambiguous `## Step N` contract for this Step: no such heading, or an ambiguous several. STOP before any dispatch or write. Both cases stop identically: tell the user which Step lacks an exact contract and that `interfaces.md` needs exactly one `## Step N` section for it. Emit no fallback line and dispatch nothing.

@@ -11,12 +11,13 @@
 
 ## Not Applicable
 
-{REQUIRED: Fill this section even when performance audit is not applicable.
-If this change has no performance surface (no new queries, endpoints, consumers,
-hot components, deps, loops over unbounded input, or caching changes),
-explain why here and leave the findings sections empty.}
+{Keep this section only when the change has no performance surface (no new
+queries, endpoints, consumers, hot components, deps, loops over unbounded
+input, or caching changes): justify it here and omit every findings section.
+Otherwise delete this heading entirely — /sai-status and /sai-archive read its
+presence as "audit not applicable".}
 
-**Justification:** {Why this change has no performance surface, OR leave blank and fill findings below}
+**Justification:** {Why this change has no performance surface}
 
 ---
 
@@ -34,6 +35,8 @@ explain why here and leave the findings sections empty.}
 **Verdict:** {Block release | Release after Critical/High fixed | Acceptable}
 
 **Risk posture:** {one-sentence assessment of user-visible impact}
+
+**Clean categories:** {tier — categories evaluated with no instances detected}
 
 ---
 
@@ -73,7 +76,7 @@ explain why here and leave the findings sections empty.}
 
 ## Observability Gaps
 
-- {Hot path lacking timing/metric/trace span — must be added regardless of finding count}
+- {`M<n>` — hot path lacking timing/metric/trace span; each gap is also a Medium finding above}
 
 ---
 
@@ -95,6 +98,7 @@ explain why here and leave the findings sections empty.}
 Before merging, re-measure:
 - [ ] {metric} via {tool/command} — target: {threshold}
 - [ ] {metric} via {tool/command} — target: {threshold}
+
 Summary: Critical={n} High={n} Medium={n} Low={n} Informational={n}
 ```
 

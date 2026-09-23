@@ -1,6 +1,5 @@
 ---
-description: Generate design.md, tasks.md, and interfaces.md through the canonical coordinator contract and a routed design worker.
-argument-hint: "[change-name] [--overview-lang <language>] [--fast-track]"
+description: Design a change into design.md, tasks.md, and interfaces.md — running it approves the specs; --overview-lang also writes change-overview.md. Stops before /sai-3-implement.
 model: opencode-go/muse-spark-1.3-contributor
 variant: xhigh
 subtask: false

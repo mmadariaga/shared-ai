@@ -22,7 +22,7 @@ Evaluate the answer by dominant semantic intent with the same mechanics the `E1.
 
 **Stop 3 — verdict menu.** Report the verdict with the concrete observation that produced it, then take exactly one of two branches. `--fast-track` neither auto-approves nor skips this stop, exactly as it neither auto-approves nor skips the go/no-go and the candidate agreement (E7).
 
-- **`<Cn> wins` (E4).** Present the harness-native picker per `sai/policies/remember.md` (L10–15) — `AskUserQuestion` on Claude Code, the `question` tool on opencode — with exactly two options in this order:
+- **`<Cn> wins` (E4).** Present the harness-native picker per the "Closed-choice prompts" rule in `sai/policies/remember.md` — `AskUserQuestion` on Claude Code, the `question` tool on opencode — with exactly two options in this order:
   - `Continue with <Cn>` — advance to `Review edge cases`. What enters stage 2 is the **proven change** when the winning candidate was a strategy (viability motive), or the **proposed fix** for the confirmed root cause when it was a theory (diagnosis motive). Emit `{"intent":"next-step"}` to `explore-idea@1` per `@sai/policies/stage-machine.md` and follow the returned `next.follow`.
   - `Stay here` — do not advance; keep discussing the verdict in the lane. The idea is not discarded and no crystallization runs.
 - **`none` (E5).** Present no advancement option. Stop the lane, report what was learned — including any cause or strategy the POC revealed that was not among the agreed candidates — and wait for instructions. No auto-advance, no progression reset, and no crystallization happen on this branch.

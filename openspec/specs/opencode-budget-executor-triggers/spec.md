@@ -8,25 +8,24 @@ Define the TRIGGER when phrases that auto-load the opencode budget-executor skil
 
 ### Requirement: Trigger phrases in description frontmatter
 
-`skills/opencode/budget-executor/SKILL.md` frontmatter `description` field SHALL be extended with a `TRIGGER when:` block listing all phrases that cause the skill to auto-load. The existing one-sentence summary MUST be preserved verbatim before the trigger block.
+`skills/opencode/budget-executor/SKILL.md` frontmatter `description` field SHALL carry a one-sentence summary followed by a `TRIGGER when:` block listing every phrase that auto-loads the skill.
 
-Trigger phrases to include (same set as the claude variant for cross-harness consistency):
-- "use executor"
-- "spawn executor"
-- "run command subagent"
-- "delegate execution"
-- "execute in subagent"
-- "run cheap executor"
+Trigger phrases (the same set as the Claude Code variant, following the budget-family pattern of the skill name plus the shared mode phrases):
+- "budget executor"
+- "cheap executor"
+- "budget mode"
+- "cheap mode"
+- "low-cost mode"
+- "low cost mode"
+- "economy mode"
 
 The `description` field format SHALL be:
 
     description: >
-      Binds "executor subagent" to the OpenCode executor agent keyword. Model resolved via the executor agent file's model frontmatter (installed under ~/.config/opencode/agents/executor.md) — not hardcoded here. Enforces execute-only, minimal-output, structured-failure-report discipline.
-      TRIGGER when: "use executor", "spawn executor", "run command subagent", "delegate execution", "execute in subagent", "run cheap executor".
+      Binds "executor subagent" to the OpenCode executor agent keyword. Model resolved via the executor agent file's model frontmatter (installed under ~/.config/opencode/agents/executor.md) — not hardcoded in here. Enforces execute-only, minimal-output, structured-failure-report discipline.
+      TRIGGER when: "budget executor", "cheap executor", "budget mode", "cheap mode", "low-cost mode", "low cost mode", "economy mode"
 
-No other field in the SKILL.md SHALL be modified.
-
-#### Scenario: User says "use executor" in OpenCode session
+#### Scenario: User asks for budget mode in an OpenCode session
 
 - **WHEN** the user types a phrase matching any trigger in the description
 - **THEN** the harness auto-loads `skills/opencode/budget-executor/SKILL.md` and applies its binding rules

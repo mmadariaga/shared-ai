@@ -22,7 +22,7 @@ Selecting Plan - Unattended SHALL dispatch only the existing supervised sai-1 an
 - **WHEN** Plan - Unattended completes its supervised sai-1 and sai-2 lifecycle
 - **THEN** it emits the existing `/sai-build` handoff without dispatching an implementation phase.
 
-### Requirement: Preserve Build (unattended) behavior
+### Requirement: Preserve Direct Build (unattended) behavior
 
 Selecting Direct Build - Unattended SHALL preserve the direct implementation, functional-fix, backfill, archive, and exactly-one-local-commit order. Its route identity SHALL be `direct-build-unattended`, and its panel projection SHALL contain only Build/Implement, Backfill, and Archive.
 
@@ -78,7 +78,7 @@ sai-explore SHALL preserve exclusive dispatch: only an explicit Plan - Unattende
 - **WHEN** the user selects Direct Build Unattended with no pending crystallized slice and the machine returns rejected NO_PENDING_SLICE
 - **THEN** explore acknowledges missing inventory, dispatches nothing, and prompts block-first before any route dispatch
 
-### Requirement: Preserve deterministic auto-fast continuation
+### Requirement: Preserve deterministic Direct Build continuation
 
 After a clean Direct Build slice completion, `sai-explore` SHALL retain the existing selector re-entry behavior for pending slices, preserve crystallization order, exclude completed changes, and defer terminal navigation until no pending slice remains. Moving the Direct Build text into `pipeline-direct-build.md` SHALL NOT change these state or authorization rules.
 
@@ -128,7 +128,7 @@ Fast-track SHALL NOT auto-select Plan - Unattended or Direct Build - Unattended 
 - **WHEN** fast-track is active at crystallization close
 - **THEN** the selector is still presented with no auto-selection, no emission-turn handoff, and unchanged command literals
 
-### Requirement: Auto-fast continuation requests authorization for each pending slice
+### Requirement: Direct Build continuation requests authorization for each pending slice
 
 After a clean Direct Build slice completion, the system SHALL re-present the complete `Plan - Unattended` / `Direct Build - Unattended` / `Manual` selector when at least one pending slice remains. Continuation choices SHALL exclude completed slices and preserve crystallization order. Selecting Manual SHALL dispatch nothing and preserve pending and completed state for a later explicit request.
 
@@ -246,7 +246,7 @@ A crystallization turn that re-emits an already-supervised change name SHALL, wh
 - **WHEN** a change name in `specs_converged_changes` but not `completed_changes` is re-emitted by a later crystallization turn and the user selects Plan - Unattended
 - **THEN** explore dispatches the spec phase over the new block rather than the design-phase retry branch.
 
-### Requirement: Authorize Build - Unattended dispatch
+### Requirement: Authorize Direct Build - Unattended dispatch
 
 Selecting **Direct Build - Unattended** SHALL be the explicit user act that authorizes the delegated-write exception for the Direct Build workers AND pre-authorizes exactly one local commit executed by the archive worker inside its closed order; it SHALL remain consent to selection and dispatch only, never consent to answer a later worker question. Neither this option nor any other selection loads or dispatches anything unless selected; Manual and every other command surface are unaffected by the third option.
 

@@ -1,10 +1,10 @@
-# ADR 0173: Dual-canonical instruction sources with no synchronization mechanism
+# ADR 0173a: Dual-canonical instruction sources with no synchronization mechanism
 
 <!-- adr-index: refs 0172c -->
 
 ## Status
 
-Accepted
+Superseded — `sai/commands/implement/instructions.md` is retired; `sai/commands/implement/steps/` is the sole implement instruction source.
 
 ## Context
 
@@ -20,6 +20,8 @@ Keep both sources. `sai/commands/implement/steps/` is the worker-canonical rule 
 - **Building a sync mechanism between `steps/` and `instructions.md`** — rejected for experiment scope; divergence is accepted while the experiment runs.
 
 ## Consequences
+
+- Superseded outcome: the dual-source risk was resolved by retiring `instructions.md` (install manifest retirement `retired-sai-3-implement-instructions`) and repointing every citation to the step library.
 
 - Dual-canonical source risk between `steps/` and `instructions.md` persists while the experiment runs.
 - Rollback is removing the `step_pointer_map` declaration from the implement coordinator card; the step files simply stop being delivered and `instructions.md` remains as a cited reference, untouched.

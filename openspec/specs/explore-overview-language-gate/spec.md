@@ -4,9 +4,6 @@
 
 TBD
 ## Requirements
-### Requirement: Scope the overview-language gate to supervised Plan activation
-The overview-language gate applies only within `sai-explore`, firing once per crystallized idea or slice set only after deterministic selection confirms a dispatchable change for the displayed `Plan (unattended)` route and before `active_change` is set or the first spec-worker dispatch occurs. It SHALL NOT fire at crystallization emission, mid-run at the spec-to-design transition, on free-form exploration turns, on Manual selection, on the Build (unattended) branch, or when the selection outcome is non-dispatchable (empty set, no uncompleted entry, `Cancel`, or an already-active supervised run); those outcomes end before the gate. No other `sai-*` command is affected.
-
 ### Requirement: Apply overview-language routing to Plan
 
 The overview-language value SHALL remain conversation-only and SHALL be forwarded through the supervised Plan route only. Build SHALL retain its documented no-op treatment for overview-language selection.
@@ -15,8 +12,8 @@ The overview-language value SHALL remain conversation-only and SHALL be forwarde
 
 - **WHEN** a crystallization route is selected with an overview-language value
 - **THEN** only the Plan route forwards that value to supervised design processing.
-### Requirement: Scope limited to sai-explore supervised Plan activation
-The overview-language gate applies only within `sai-explore`, firing once per crystallized idea or slice set immediately after deterministic selection confirms a dispatchable change in a supervised Plan (unattended) run and before the first spec-worker dispatch. It SHALL NOT fire at crystallization emission, mid-run at the spec-to-design transition, on free-form exploration turns, on Manual selection, on the Build (unattended) branch, or when the selection outcome is non-dispatchable (empty set, no uncompleted entry, `Cancel`, or an already-active run rejected by active supervision); those outcomes end before the gate. No other `sai-*` command is affected.
+### Requirement: Scope the overview-language gate to supervised Plan activation
+The overview-language gate applies only within `sai-explore`, firing once per crystallized idea or slice set only after deterministic selection confirms a dispatchable change for the displayed `Plan (unattended)` route and before `active_change` is set or the first spec-worker dispatch occurs. It SHALL NOT fire at crystallization emission, mid-run at the spec-to-design transition, on free-form exploration turns, on Manual selection, on the Direct Build (unattended) branch, or when the selection outcome is non-dispatchable (empty set, no uncompleted entry, `Cancel`, or an already-active supervised run); those outcomes end before the gate. No other `sai-*` command is affected.
 
 #### Scenario: Plan activation evaluates the gate
 - **WHEN** deterministic selection confirms a dispatchable change in a supervised Plan (unattended) run without explicit `--overview-lang`, active fast-track, or a stored value
@@ -24,7 +21,7 @@ The overview-language gate applies only within `sai-explore`, firing once per cr
 - **AND** no question ran when the block was emitted at crystallization
 
 #### Scenario: exploration and non-Plan selections never fire the gate
-- **WHEN** a turn continues free-form exploration or the user selects Manual or Build (unattended)
+- **WHEN** a turn continues free-form exploration or the user selects Manual or Direct Build (unattended)
 - **THEN** no overview-language question is asked and no overview opt-in decision is created
 
 #### Scenario: non-dispatchable outcomes end before the gate
@@ -102,15 +99,15 @@ An explicit `--overview-lang <language>` value SHALL suppress gate 9 and become 
 
 ### Requirement: An explicit --overview-lang option suppresses the gate
 
-When the invocation carried an explicit `--overview-lang <language>` option, the overview-language gate SHALL NOT be asked in any mode — including at a supervised Plan (unattended) activation; the option's value SHALL be the overview-language value for the whole exploration session and SHALL feed the same conversation-only state that the selector-dispatched supervised chain forwards. Under the Build (unattended) branch the explicit option is a documented no-op, because the build route generates no change-overview. The explicit option SHALL NOT suppress, alter, or pre-select the crystallization language gate (gate 8), which keeps its own fast-track and English-skip rules.
+When the invocation carried an explicit `--overview-lang <language>` option, the overview-language gate SHALL NOT be asked in any mode — including at a supervised Plan (unattended) activation; the option's value SHALL be the overview-language value for the whole exploration session and SHALL feed the same conversation-only state that the selector-dispatched supervised chain forwards. Under the Direct Build (unattended) branch the explicit option is a documented no-op, because the build route generates no change-overview. The explicit option SHALL NOT suppress, alter, or pre-select the crystallization language gate (gate 8), which keeps its own fast-track and English-skip rules.
 
 #### Scenario: an explicit option skips the gate everywhere
 - **WHEN** the invocation carried `--overview-lang spanish` and a supervised Plan (unattended) activation confirms a dispatchable change
 - **THEN** no overview-language question is asked
 - **AND** the stored value feeds the conversation-only state the supervised chain forwards
 
-#### Scenario: explicit option under auto-fast is a documented no-op
-- **WHEN** the invocation carried `--overview-lang spanish` and the user selects Build (unattended)
+#### Scenario: explicit option under Direct Build is a documented no-op
+- **WHEN** the invocation carried `--overview-lang spanish` and the user selects Direct Build (unattended)
 - **THEN** gate 9 never asks and no change-overview generation occurs
 
 #### Scenario: the option never affects gate 8
@@ -164,7 +161,7 @@ When the user declines or answers non-committally to gate 9, `sai-explore` SHALL
 
 ### Requirement: The value rides in the block and forwards only in selector-dispatched Plan
 
-The resolved overview-language value is held in conversation-only state without file persistence. Rendering that decision in emitted blocks is owned by and specified in the `explore-crystallization-block` capability. `sai-1-spec` SHALL NOT parse or forward the reminder. Selector-dispatched `Plan (unattended)` SHALL forward a non-`None` value through the existing chained design envelope (`arguments_value: "{name} --fast-track --supervised --overview-lang {overview_language}"`); when the value is `None`, Plan (unattended) SHALL omit `--overview-lang`. `Manual` and Build (unattended) SHALL forward nothing. The stored value is NOT cleared at a run's terminal outcome while the same crystallized idea remains active in the chat: a design-phase retry reuses it and its envelope form without asking again, and it SHALL never be injected into a design invocation outside this explore chat's supervised chain.
+The resolved overview-language value is held in conversation-only state without file persistence. Rendering that decision in emitted blocks is owned by and specified in the `explore-crystallization-block` capability. `sai-1-spec` SHALL NOT parse or forward the reminder. Selector-dispatched `Plan (unattended)` SHALL forward a non-`None` value through the existing chained design envelope (`arguments_value: "{name} --fast-track --supervised --overview-lang {overview_language}"`); when the value is `None`, Plan (unattended) SHALL omit `--overview-lang`. `Manual` and Direct Build (unattended) SHALL forward nothing. The stored value is NOT cleared at a run's terminal outcome while the same crystallized idea remains active in the chat: a design-phase retry reuses it and its envelope form without asking again, and it SHALL never be injected into a design invocation outside this explore chat's supervised chain.
 
 #### Scenario: Selected language reaches Plan design
 - **WHEN** gate 9 selected `spanish` or an explicit flag supplied it and Plan (unattended) chains design

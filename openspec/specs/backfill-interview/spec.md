@@ -1,3 +1,7 @@
+## Purpose
+
+This specification defines how backfill gathers only the intent needed to draft proposal and spec artifacts before writing them.
+
 ## Requirements
 
 ### Requirement: Two fixed questions always asked

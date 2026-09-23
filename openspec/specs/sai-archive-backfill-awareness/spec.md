@@ -21,7 +21,7 @@ When `backfilled: true` is read from `.openspec.yaml`, the Classification Check 
 #### Scenario: All three CORE artifacts exempted
 
     - **WHEN** `.openspec.yaml` declares `backfilled: true` AND the status JSON shows `design`, `tasks`, and `implementation` are all not `done`
-    - **THEN** the Classification Check MUST NOT block on any of the three, MUST NOT include them in a "Missing CORE artifact(s)" error message, and MUST proceed to the AUDIT step (step 4) and the upstream skill step (step 5) as if all three were `done`
+    - **THEN** the Classification Check MUST NOT block on any of the three, MUST NOT include them in a "Missing CORE artifact(s)" error message, and MUST proceed to the AUDIT evaluation and the rest of the archive flow as if all three were `done`
 
 #### Scenario: proposal and specs remain required
 

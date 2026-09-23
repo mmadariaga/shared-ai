@@ -1,5 +1,5 @@
 ---
-description: Build a change through implementation planning and apply in one routed composition.
+description: Plan and apply a change in one run — /sai-3-implement then /sai-4-apply, with fast-track always on (commits pre-authorized, no stop between phases).
 argument-hint: "[change-name]"
 model: opus
 effort: medium

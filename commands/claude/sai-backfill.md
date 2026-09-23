@@ -1,6 +1,6 @@
 ---
-description: Post-hoc backfill — reconstructs proposal.md and capability specs for changes that skipped the SAI workflow.
-argument-hint: "<change-name>"
+description: Reconstruct proposal.md and capability specs from an already-implemented diff, for a change that skipped the SAI workflow.
+argument-hint: "[change-name] [--staged | --unstaged | --diff <sha>] [--fast-track]"
 model: opus
 effort: medium
 ---

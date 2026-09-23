@@ -81,7 +81,7 @@ For an invocation without the flag, `Continue` SHALL close design without materi
 
 #### Scenario: malformed first materialization reports a potentially affected overview path
 - **WHEN** first materialization returns a malformed or empty envelope after the generator may have written `change-overview.md`
-- **THEN** the parent reports `change-overview.md` as potentially affected and persists `overview.failure_kind: generation-error` with non-empty `overview.failure_details`
+- **THEN** the parent reports `change-overview.md` as potentially affected and persists `overview.failure_kind: envelope-contract-violation` with non-empty `overview.failure_details`
 - **AND** the parent does not claim that the run changed nothing or present the file as current
 
 #### Scenario: later invocation retries from failed
@@ -247,7 +247,7 @@ The post-materialization regeneration path SHALL remain owned by the existing wr
 
 When regeneration fails after a source-modifying transaction, the previous overview SHALL NOT be treated as current. For every generator-run failure kind — `blocking-contradiction`, `validation-failed`, and `generation-error` — the generator SHALL atomically replace `change-overview.md` with an explicit stale failure record carrying the exact `failure_kind` and non-empty `failure_details`, including the relevant source, artifact, or generation location. The design worker SHALL persist the same failure classification in `overview.failure_kind` and non-empty diagnostic in `overview.failure_details` in `.openspec.yaml` alongside `overview.state`; the `.openspec.yaml` changed-files obligation is governed by `Parent-owned failure diagnostics have one durable carrier`. A blocking contradiction's details SHALL name both conflicting sources and their locations and state the one-line disagreement; all other failure kinds SHALL identify the failed operation and location instead of falling back to a generic or empty message.
 
-The design worker SHALL set `overview.state: stale`, and the failed run SHALL not modify source artifacts. A dispatch failure or process loss, where the generator never returns a result, SHALL leave the prior file unmodified, persist the parent-authored failure classification and non-empty `failure_details` in `overview.failure_kind` and `overview.failure_details`, and not write a stale record or modify `change-overview.md`. A malformed or empty envelope is an output-contract violation: the parent SHALL author non-empty details naming the violation, location, and offending value or missing field, preserve whatever file state exists, persist `overview.failure_kind: generation-error` and those details in `.openspec.yaml`, and set `overview.state: stale`. No failure record or preserved file SHALL be presented as current. A later successful regeneration SHALL replace diagnostic stale state with a valid overview, clear `overview.failure_kind` and `overview.failure_details`, and commit `overview.state: current`.
+The design worker SHALL set `overview.state: stale`, and the failed run SHALL not modify source artifacts. A dispatch failure or process loss, where the generator never returns a result, SHALL leave the prior file unmodified, persist the parent-authored failure classification and non-empty `failure_details` in `overview.failure_kind` and `overview.failure_details`, and not write a stale record or modify `change-overview.md`. A malformed or empty envelope is an output-contract violation: the parent SHALL author non-empty details naming the violation, location, and offending value or missing field, preserve whatever file state exists, persist `overview.failure_kind: envelope-contract-violation` and those details in `.openspec.yaml`, and set `overview.state: stale`. No failure record or preserved file SHALL be presented as current. A later successful regeneration SHALL replace diagnostic stale state with a valid overview, clear `overview.failure_kind` and `overview.failure_details`, and commit `overview.state: current`.
 
 #### Scenario: every generator failure kind is persisted in a stale record
 
@@ -280,7 +280,7 @@ For every overview-generation failure mapped by the design worker, the worker SH
 #### Scenario: malformed envelope survives the chat
 
 - **WHEN** the parent detects a malformed or empty generator envelope
-- **THEN** it writes `overview.failure_kind: generation-error` and the non-empty contract-violation diagnostic to `overview.failure_details` in `.openspec.yaml`
+- **THEN** it writes `overview.failure_kind: envelope-contract-violation` and the non-empty contract-violation diagnostic to `overview.failure_details` in `.openspec.yaml`
 - **AND** the review loop can name that exact persisted value without relying on the generator file or the parent conversation
 
 #### Scenario: successful retry clears the prior diagnostic
@@ -346,4 +346,3 @@ The opt-out path SHALL not add a disabled overview state, alter the existing `ar
 - **WHEN** an opted-in run dispatches the Change Overview generator
 - **THEN** the generator still receives its existing inputs and returns its existing five-field result envelope
 - **AND** it remains the only writer of `change-overview.md`
-

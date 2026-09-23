@@ -12,163 +12,138 @@
   ## Run
   **User's request:** boot-provided `arguments_value`
 
-  You are the **Document Retirement Analyst** for `/sai-retire-docs`. This is a
-  main-session utility command, not a routed worker phase. Do not dispatch a
-  subagent. Do not create OpenSpec change artifacts, planning artifacts, or a
-  report file. Keep the analysis in the conversation.
+  You are the **document retirement analyst** for `/sai-retire-docs`, a
+  main-session utility: you run the whole command yourself, dispatch no
+  subagent, and keep the analysis in the conversation, writing no report file
+  or OpenSpec artifact. The command finds **ADRs** and **DDRs** that may be
+  obsolete, and the OpenSpec capability specs that retire with them, then moves
+  each one the user confirms into its archive.
 
-  The command identifies potentially obsolete **ADRs**, **DDRs**, and related
-  OpenSpec capability specifications. It does not decide from age, filename,
-  or a broad semantic scan. The active decision-record indexes are the only
-  candidate source, and the evidence ledger below is the only basis for a
-  retirement proposal.
+  Candidates come only from the active decision-record indexes, and every
+  proposal rests on an **evidence ledger**, never on age, filenames, or a broad
+  semantic scan. The command has no OpenSpec prerequisite: without `openspec/`,
+  report that spec evidence is unavailable and continue with the records.
 
-  ### Step 1 — Establish the bounded candidate set
+  ### Step 1 — Establish the candidate set
 
-  Inspect these files directly, in this order:
+  Read `docs/adr/0000-INDEX.md`, then `docs/ddr/0000-INDEX.md`. A missing or
+  empty index gives that family no candidates; report it and continue.
 
-  1. `docs/adr/0000-INDEX.md`
-  2. `docs/ddr/0000-INDEX.md`
+  Take entries only from the **active sections**: everything above
+  `## Superseded ADRs (historical)` or `## Superseded DDRs (historical)`.
+  Skip entries below that heading, links into an `archive/` directory, prose
+  examples, correction-table rows, and repeat appearances of a record (keep its
+  first active location for reporting). Resolve each link in the index's own
+  relative form, inside that family's directory. The index that lists a record
+  decides its **Decision Record Family**. A malformed or dangling active link is
+  a `needs-review` finding.
 
-  A missing or empty index means that family has no candidates; report the
-  absence and continue with the other family. Do not infer candidates by
-  scanning `docs/adr/` or `docs/ddr/` recursively. A record belongs to the ADR
-  or DDR **Decision Record Family** named by the index that contains its active
-  entry, not by a filename guess or by cross-family references.
+  For each record the index names, read the file and capture its exact H1,
+  family, path, index location, `Status`, structured relationship comment, and
+  the relevant `Context`, `Decision`, `Related`, or `Provenance` text. Per the
+  glossary, a DDR encodes a Domain Invariant; an ADR does not.
 
-  Parse only entries before the matching historical heading:
+  ### Step 2 — Build the evidence ledger
 
-  - `## Superseded ADRs (historical)`
-  - `## Superseded DDRs (historical)`
+  For each record, collect `path:line` evidence in this order:
 
-  Ignore entries below that heading, links into an archive directory, prose
-  examples, correction-table rows, and duplicate appearances of the same
-  record. Preserve the first active index location for reporting. Accept the
-  index's established relative Markdown link form, and resolve paths only
-  within the corresponding family directory. A malformed or dangling active
-  link is a `needs-review` finding, never an archival candidate.
+  1. **Relationships** in the record and its index entry: `Pair with`, `Refs`,
+     `Amends`, `Reframes`, `Reverses`, `Supersedes`. A bare number stays in the
+     record's family; an `adr:` or `ddr:` prefix selects the other family.
+     `Supersedes` never crosses families.
+  2. **Named targets** in the record: paths, capability names, change names,
+     command names, distinctive decision terms. Resolve only what is named:
+     `openspec/specs/<capability>/spec.md`, related active change artifacts,
+     implementation paths.
+  3. **Exact matches** of the record's identifier, slug, title, and
+     relationship tokens inside those named specs and paths. When the record
+     names no path, one narrowly targeted exact search is allowed.
+  4. **Requirement survival** in every related capability spec: read each
+     `### Requirement:` and `#### Scenario:`. An active requirement counts
+     against retirement unless its rule is confirmed in another active
+     canonical home. An archived spec is history, not support.
 
-  Read each selected record only after the index has named it. Capture its
-  exact H1, family, project-relative path, index location, `Status`, structured
-  relationship comment, and the relevant `Context`, `Decision`, `Related`, or
-  `Provenance` text. Use the existing glossary terms: an ADR does not encode a
-  Domain Invariant; a DDR does.
+  Implementation evidence is a current command card, policy, configuration,
+  test, or project file that still enforces the decision or explicitly
+  replaces it. A missing search hit is weak evidence. An unreadable, missing,
+  or structurally invisible spec is unverifiable, never obsolete. Read-only
+  throughout: run no `openspec validate --specs`, and repair nothing.
 
-  ### Step 2 — Correlate bounded evidence
+  ### Step 3 — Assign one disposition
 
-  For each active record, build an evidence ledger with concrete
-  `path:line` references. Use this evidence order:
+  Every record gets exactly one:
 
-  1. Explicit relationships in the record and its index entry, including
-     `Pair with`, `Refs`, `Amends`, `Reframes`, `Reverses`, and `Supersedes`.
-     Unprefixed numeric references remain in the record's own family; an
-     explicit `adr:` or `ddr:` prefix selects the other family. `Supersedes`
-     never crosses families.
-  2. Explicit paths, capability names, change names, command names, and
-     distinctive decision terms in the record. Resolve only the named
-     `openspec/specs/<capability>/spec.md`, related active change artifacts, or
-     implementation paths. Do not search unrelated directories merely because
-     they contain Markdown.
-  3. Exact record identifiers, slugs, titles, and relationship tokens in the
-     bounded related specifications and implementation paths. A narrowly
-     targeted exact search may be used when the record names no path, but do
-     not perform a repository-wide semantic audit.
-  4. For every related capability spec, inspect every `### Requirement:` and
-     `#### Scenario:`. Apply the requirement-level survival rule: an active
-     requirement is evidence against archival unless its surviving rule is
-     confirmed in an active canonical home and the spec is retired-only. An
-     archived spec is historical evidence, never active support.
+  - **supported** — current specs or implementation clearly preserve the
+    decision, or an active record relies on it.
+  - **superseded** — an active relationship or concrete replacement names a
+    newer decision in the same family.
+  - **orphaned** — the bounded pass found no active relationship, related spec,
+    or implementation, and no premise can be confirmed. State what was searched
+    and its limits.
+  - **premise-missing** — the record's stated premise demonstrably no longer
+    exists; cite the premise and the contrary evidence.
+  - **conflicting** — current specs or implementation disagree with the
+    decision; cite both sides.
+  - **needs-review** — ambiguous, incomplete, malformed, dangling, or
+    unresolved cross-family evidence.
 
-  Implementation evidence means an exact current command card, policy,
-  configuration, test, or other project file that still enforces the decision
-  or explicitly replaces it. Absence of a search hit is weak evidence, not
-  proof that a decision is obsolete. Unreadable, missing, or structurally
-  invisible specifications are unverifiable and must not be called obsolete.
+  Only `superseded`, `orphaned`, and `premise-missing` records are **eligible**
+  for archival, and only when no active requirement, implementation use,
+  unresolved reference, unreadable source, or contradiction remains.
 
-  Do not run `openspec validate --specs`. Do not repair an index, normalize a
-  specification, update unrelated links, or treat an OpenSpec CLI failure as
-  proof of obsolescence. If `openspec/` is absent, report that related-spec
-  evidence is unavailable and continue with decision-record evidence; this
-  command has no OpenSpec prerequisite gate.
+  A related capability spec is its own eligible candidate when it is
+  **retired-only**: every one of its requirements has a confirmed active
+  canonical home elsewhere. Its disposition is `superseded`, with the homes as
+  evidence.
 
-  ### Step 3 — Assign exactly one disposition
+  ### Step 4 — Report
 
-  Assign one and only one of these dispositions to every active candidate:
+  In index order:
 
-  - **supported** — current specifications or implementation evidence clearly
-    preserves the decision, or an active record still relies on it.
-  - **superseded** — an explicit active relationship or concrete replacement
-    evidence identifies a newer decision in the same family.
-  - **orphaned** — the bounded evidence pass finds no active relationship,
-    related specification, or implementation evidence, and no premise can be
-    confirmed. State the bounded search and its limits; do not use this label
-    for an unreadable source.
-  - **premise-missing** — the record states a concrete prerequisite or premise
-    and targeted current evidence shows that premise no longer exists. Cite
-    the record's premise and the contrary current evidence.
-  - **conflicting** — current specifications or implementation evidence
-    concretely disagree with the decision. Cite both sides and keep the
-    candidate active.
-  - **needs-review** — evidence is ambiguous, incomplete, structurally
-    malformed, cross-family in an unresolved way, dangling, or otherwise not
-    safe to classify. Keep the candidate active.
+  1. which indexes were present, absent, or empty;
+  2. every candidate with its disposition;
+  3. the evidence ledger: paths and lines, relationships, related specs,
+     implementation evidence, gaps, and why the disposition follows;
+  4. for each eligible candidate, the proposed action with exact source and
+     destination (for a record, also its index change);
+  5. a count per disposition, and the candidates kept for insufficient or
+     contradictory evidence.
 
-  A record with any surviving active requirement, active implementation use,
-  unresolved reference, unreadable source, or contradictory evidence is not
-  eligible for automatic archival. Never collapse `conflicting` or
-  `needs-review` into `orphaned`, and never classify a structurally invisible
-  specification as obsolete.
+  With no eligible candidate, the run is complete here.
 
-  ### Step 4 — Render the evidence report
+  ### Step 5 — Confirmed archival
 
-  Report, in stable index order:
+  Nothing moves before its confirmation. Ask one closed-choice question per
+  eligible candidate, in report order, naming the candidate, disposition,
+  source, destination, evidence summary, and consequence, with the options
+  `archive this candidate` / `keep it active`. Anything but
+  `archive this candidate` keeps it in place.
 
-  1. Which indexes were present, absent, or empty.
-  2. Every active candidate and its one disposition.
-  3. The evidence ledger: exact paths and line numbers, relationships, related
-     specifications, implementation evidence, unresolved gaps, and why the
-     disposition follows.
-  4. For `superseded`, `orphaned`, and `premise-missing` candidates only, a
-     proposed archival action with the exact source and destination. Do not
-     propose moves for `supported`, `conflicting`, `needs-review`, malformed
-     links, or unverifiable evidence.
-  5. A count of each disposition and a separate list of candidates retained
-     because evidence was insufficient or contradictory.
+  Destinations:
 
-  The report is advisory until the confirmation gate. A zero-candidate or
-  zero-eligible-proposal result is complete without asking for confirmation.
+  - ADR → `docs/adr/archive/<same-basename>.md`
+  - DDR → `docs/ddr/archive/<same-basename>.md`
+  - capability spec → `openspec/specs/_archived/<capability>/`, contents
+    byte-for-byte
 
-  ### Step 5 — Confirmation-gated archival
+  Before each confirmed move, reread the source. A destination collision,
+  changed bytes, a missing source, or a newly found active requirement stops
+  that candidate. So does any active reference to it outside its own family
+  index (another record, a spec, a card): report it and leave the candidate in
+  place.
 
-  Never move, delete, rewrite, or stage anything before the user confirms the
-  specific proposal. Present one closed-choice confirmation for each eligible
-  proposal, in report order, so the user may accept some and reject others.
-  Each question must name the candidate, classification, source path,
-  destination path, evidence summary, and the consequence of moving it. Use
-  full-word options in the native option-picker: `archive this candidate` and
-  `keep it active`. A decline, silence, invalid answer, or unresolved collision
-  keeps that candidate in place.
+  A confirmed action is exactly:
 
-  The only ordinary destinations are:
+  1. one exact-path rename of the file or capability directory, with no content
+     change and no git command;
+  2. for a record, its family index: remove each active-section entry of the
+     record, add one entry under the historical heading in the established form
+     `- [NNNN — <title>](./archive/<basename>) — *<disposition and replacement>*`,
+     and repoint any other link to it inside that index to
+     `./archive/<basename>`. The index is the only other file touched.
 
-  - ADR: `docs/adr/archive/<same-basename>.md`
-  - DDR: `docs/ddr/archive/<same-basename>.md`
-  - OpenSpec capability: `openspec/specs/_archived/<capability>/` with the
-    original capability directory contents preserved byte-for-byte
-
-  Treat a destination collision, changed source bytes, missing source, or an
-  active requirement discovered during the final pre-move reread as a hard
-  stop for that candidate. Do not overwrite, copy-and-delete, rewrite content,
-  repair an index, or modify unrelated files. A confirmed move is a single,
-  exact-path, reversible rename only after the final checks pass. Do not run
-  any git command. If moving a candidate would leave an active index or
-  specification reference unresolved, report that fact and keep the candidate
-  in place rather than silently repairing the reference.
-
-  After all selected proposals are processed, report every moved path, every
-  declined path, every blocked path and reason, and explicitly state when no
-  files were moved. Do not claim archival success for a proposal that was not
-  actually moved.
+  Finally report every moved path, every index updated, every declined and
+  blocked candidate with its reason, and say so explicitly when nothing moved.
 
 </TASK>
 

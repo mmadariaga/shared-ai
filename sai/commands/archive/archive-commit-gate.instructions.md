@@ -1,162 +1,85 @@
 # Archive Commit Gate
 
-Post-archive commit gate for `/sai-archive`. This instruction is fetched
-immediately after the upstream archive-skill fetch, so it applies once the
-skill completes — the archive move, any delta-spec sync, and the archive
-summary. It implements the seven ADDED requirements of
-`openspec/changes/sai-archive-commit-gate/specs/sai-archive-commit-gate/spec.md`;
-the spec's scenario text is referenced by path, not restated here.
+The coordinator-owned post-archive commit gate of `/sai-archive`, applied on
+the ordinary route after `openspec archive <name> --yes --json` succeeded.
+Its governing spec is `openspec/specs/sai-archive-commit-gate/spec.md`.
+
+## Archive paths
+
+The gate stages exactly the **archive paths** with pathspec-scoped,
+deletion-aware commands, never an unscoped `git add -A` or `git add .`, and
+never any other path:
+
+```bash
+git add -A -- openspec/specs openspec/changes/archive
+# only when the change directory was tracked before the move:
+git add -A -- openspec/changes/<name>
+```
+
+The second command records the removal of the change directory the CLI moved;
+without it the commit would leave the original change tracked beside its
+archived copy. Decide it with `git ls-files -- openspec/changes/<name>`
+before staging: non-empty output means tracked.
 
 ## Skip rule
 
-After the archive skill completes, run `git status`:
+Run `git status`. With no changes, skip the gate entirely: no question, no
+staging, no commit.
 
-- **No changes** → skip the gate entirely: no prompt, no `git add`, no `git commit`.
-- **Changes present** → proceed to the gate below.
+## Selector
 
-## Gate presentation
-
-Present a closed-choice action-selector through the harness-native option-picker
-per the "Closed-choice prompts" rule in `sai/policies/remember.md`, with exactly
-three options, in this order:
+Present a closed-choice action selector through the harness-native
+option-picker per "Closed-choice prompts" in `sai/policies/remember.md`, with
+exactly these options in this order:
 
 1. **Create a new commit (Recommended)**
 2. **Amend the latest commit**
 3. **Do nothing**
 
-The new-commit option is the only option carrying the `Recommended` marker.
-The `commit-auth-gate` option set (`yes` / `no` / `Allow on this session`) is
-never used, the session-scoped commit-authorization flag is neither set nor
-read, and no session grant is offered.
+The selection is this invocation's commit authorization: no further
+authorization question follows, and no session-scoped grant is offered, set, or
+read. Staging starts only after an option is selected.
 
-Ask first, stage after: no `git add` runs until an option is selected.
+## Empty-index guard
 
-## Shared empty-index guard
-
-After `git add` of the two literal paths (`openspec/specs`,
-`openspec/changes/archive`) and BEFORE executing `git commit --amend` or
-creating the new commit, check whether the index contains staged changes:
-
-- Run `git diff --cached --quiet`.
-- **Exit 0** (no staged changes) → the two-path staging left the index empty:
-  do NOT amend and do NOT create a commit; print exactly one line:
-
-  `[sai-archive] no commit: staging left the index empty`
-
-  Then leave the index exactly as it was after staging. For the new-commit
-  path, `sai/commands/commit/instructions.md` steps 1–5 are not applied.
-- **Exit 1** (staged changes present) → proceed with the selected commit
-  action.
-
-The guard is shared between the two commit options and between the interactive
-and fast-track paths: it prevents the amend option from rewriting HEAD with an
-identical tree (a pointless SHA) and prevents the new-commit option from
-committing nothing. It does not alter the amend path's ordering: the
-pushed-HEAD guard still runs BEFORE any staging, so the sequence remains
-pushed-HEAD check, then `git add`, then the empty-index check.
-
-## Amend the latest commit
-
-1. Run the pushed-HEAD guard BEFORE any staging, per the `--amend` detection
-   idiom in `sai/commands/commit/instructions.md`:
-   - Run `git log @{push}..HEAD --oneline`.
-   - `@{push}` does not resolve (no configured upstream) → treat HEAD as
-     unpushed and proceed without a secondary confirmation.
-   - Output is empty and HEAD matches the push target → HEAD is already pushed:
-     print an explicit warning and ask a secondary confirmation before amending
-     (commit-rules hard rule: never amend a pushed commit without explicit
-     warning plus secondary confirmation).
-   - Output is non-empty → HEAD is unpushed; proceed.
-2. On decline of the secondary confirmation: do NOT amend, do NOT create any
-   commit, and leave the index exactly as it was — the guard ran before any
-   `git add`, so the index is untouched.
-3. Stage exactly the two literal paths:
-
-   `git add openspec/specs openspec/changes/archive`
-
-   Never `git add -A` and never stage any other path.
-4. Run the shared empty-index guard (above). When it fires — the two-path
-   staging left the index empty — do NOT amend, print the guard's single
-   diagnostic line, and run no further git mutation.
-5. Run `git commit --amend --no-edit`.
+After staging and before any commit or amend, run `git diff --cached --quiet`.
+Exit 0 means staging left the index empty: create no commit, amend nothing,
+print exactly `[sai-archive] no commit: staging left the index empty`, and run
+no further git mutation. Exit 1 continues with the selected action.
 
 ## Create a new commit
 
-1. Stage exactly the two literal paths:
+1. Stage the archive paths.
+2. Run the empty-index guard.
+3. Compose the message by applying `sai/commands/commit/instructions.md`
+   Steps 1–5 with `sai/policies/commit-rules.md` as the single source of
+   message rules. The guard has already ruled out Step 1's "No staged changes"
+   stop.
+4. Add the retired-capability body lines of
+   `sai/commands/archive/retirement-declaration.md` § Disclosure when this run
+   retired capabilities.
+5. Commit with the composed message.
 
-   `git add openspec/specs openspec/changes/archive`
+## Amend the latest commit
 
-   Never `git add -A` and never stage any other path.
-2. Run the shared empty-index guard (above). When it fires — the two-path
-   staging left the index empty — do NOT commit, print the guard's single
-   diagnostic line, and run no further git mutation. The guard runs before
-   `sai/commands/commit/instructions.md` steps 1–5 are applied, so step 1's
-   "No staged changes" stop is never reached on this path.
-3. Compose the commit message by applying `sai/commands/commit/instructions.md` steps
-   1–5 — inspect staged state, classify the change, determine scope, compose
-   the message, and verify faithfulness — with `sai/policies/commit-rules.md`
-   as the single source of commit-message rules. Reference those two files; do
-   not restate their rule content.
-4. Commit with the composed message. The picker selection is the per-invocation
-   commit authorization: after selection, stage, compose the message from the
-   staged diff, and commit without presenting any further authorization prompt.
-
-## Retired capability ids in the message body
-
-Whenever this archive invocation retired one or more capabilities — the
-capability-emptying delta retirement of `sai/commands/archive/instructions.md`,
-declared through `retire_capabilities: true` — and a commit is actually created
-on this gate, the authored message names every retired capability id on its own
-line in the message **body**. Every id is named, not only the first.
-
-The two conditions are independent. A retirement with no commit produces no body
-line: the skip rule, the shared empty-index guard, a declined secondary
-confirmation, and the do-nothing option each end the gate without a commit. A
-commit with no retirement produces none either — the ordinary case is that
-nothing was retired and the message is unchanged.
-
-The line lives in the body only. It never enters the subject, so the subject
-stays exactly what `sai/commands/commit/instructions.md` steps 1–5 derive from
-the staged state and the Conventional Commits format of
-`sai/policies/commit-rules.md` is unchanged. The rule applies wherever this gate
-authors a message — the new-commit path and the fast-track path alike — and not
-to `git commit --amend --no-edit`, which authors no message. It adds no gate, no
-prompt, no extra commit, and changes neither the skip rule, the staged paths,
-the empty-index guard, nor the pushed-HEAD guard.
+1. Before any staging, check whether `HEAD` is pushed: run
+   `git log @{push}..HEAD --oneline`. When `@{push}` does not resolve (no
+   upstream), or the output is non-empty, `HEAD` is unpushed. When the output
+   is empty, `HEAD` is pushed: print an explicit warning and ask a secondary
+   confirmation. A decline ends the gate with nothing staged and nothing
+   committed.
+2. Stage the archive paths.
+3. Run the empty-index guard.
+4. Run `git commit --amend --no-edit`.
 
 ## Do nothing
 
-Run no `git add` and no `git commit`. The index stays exactly as it was when
-the gate was reached.
+Stage nothing and commit nothing.
 
-## Fast-track branch
+## Fast-track
 
-When the fast-track signal is active for this invocation (`sai-archive
---fast-track`; opt-out set per `openspec/specs/sai-fast-track-flag/spec.md`):
-
-- Present no gate prompt; auto-select the new-commit option.
-- Stage exactly the two literal paths:
-
-  `git add openspec/specs openspec/changes/archive`
-
-  Never `git add -A` and never stage any other path.
-- Run the shared empty-index guard (above). When it fires — the two-path
-  staging left the index empty — do NOT create a commit, print the guard's
-  single diagnostic line, and run no further git mutation.
-- When the guard passes, apply `sai/commands/commit/instructions.md` steps 1–5 —
-  inspect staged state, classify the change, determine scope, compose the
-  message, and verify faithfulness — with `sai/policies/commit-rules.md` as
-  the single source of commit-message rules, then commit with the composed
-  message. The guard runs before steps 1–5 are applied, so the step-1
-  "No staged changes" and "Only unstaged changes" stop conditions are never
-  reached on this path.
-- The step-1 secret-file heuristic (for example the `*credentials*` pattern)
-  does NOT apply on the fast-track path and presents no confirmation STOP,
-  because the gate fixes the staging scope to exactly the two paths under
-  `openspec/`, so a matching staged path is a capability or archived-change
-  spec, never a secret.
-- There is no pushed-HEAD check, no do-nothing fallback, and no pushed-HEAD
-  explanatory line on this path — a new commit is never destructive.
-- The skip rule still applies: when `git status` shows no changes, the gate and
-  its auto-selection are skipped.
-- No other gate is affected.
+Under `fast_track_active`, the selector is not shown: the gate runs **Create a
+new commit** directly, after the same skip rule. On this path, Step 1's
+secret-file heuristic of `sai/commands/commit/instructions.md` (for example the
+`*credentials*` pattern) presents no confirmation stop, because the staged set
+is confined to the archive paths under `openspec/`.

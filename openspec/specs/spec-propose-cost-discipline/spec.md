@@ -2,21 +2,21 @@
 
 ## Purpose
 
-TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+Keep the spec phase's cost discipline on its own step files while deferring subagent spawn mechanics to the budget skill.
 
 ## Requirements
-### Requirement: The cost discipline section in `spec.propose.md` SHALL defer spawn mechanics to the `budget-explorer` skill and retain only main-agent-specific rules.
+### Requirement: The spec phase SHALL defer spawn mechanics to the budget skill and keep only main-agent rules.
 
-Previously contained 8 verbose rules duplicating subagent spawn rules owned by `budget-explorer`. Simplified to 6 concise main-agent rules that reference the skill.
+`sai/commands/spec/steps/common.md` SHALL fetch `@skills/budget/SKILL.md` and carry the full main-agent delegation rules once, in force for every step. Spawn mechanics, the tool-call ceiling, and the output contract format SHALL be sourced from the budget skill, not restated on the spec step files.
 
 #### Scenario: Main agent performs I/O during proposal work
-- **WHEN** the main agent would call a web fetch, read more than 3 files in a row for exploration, or run broad Grep/Glob searches
-- **THEN** it SHALL delegate that work to a `budget-explorer` subagent instead
+- **WHEN** the main agent would call a web fetch or run broad Grep/Glob searches during the spec phase
+- **THEN** it SHALL delegate that work to a `budget-explorer` subagent instead, except a single known-file read or a targeted search for a known symbol
 
 #### Scenario: Audit-class task during proposal work
-- **WHEN** the task is classified as audit-class (≥3 concrete categories can be defined)
+- **WHEN** the task is audit-class (≥3 concrete categories can be defined)
 - **THEN** the main agent SHALL spawn one `budget-explorer` subagent per category in parallel and require complete results
 
 #### Scenario: Subagent spawn mechanics
-- **WHEN** the agent needs to know how to spawn a subagent, which model to use, task classification rules, tool-call caps, or output contract format
-- **THEN** those rules SHALL be sourced from the `budget-explorer` skill, not from `spec.propose.md`
+- **WHEN** the agent needs to know how to spawn a subagent, the tool-call ceiling, or the output contract format
+- **THEN** those rules SHALL be sourced from the budget skill, not from the spec step files

@@ -57,6 +57,9 @@ takes one — never substitute one for the other.
 - `check-delta-headers.js`: `node <tool-path> <change-name> [--json]
   [--root <dir>] [--delta-dir <dir>] [--specs-dir <dir>]`; it takes no
   `--cwd`.
+- `validate-findings.js`: `node <tool-path> [<file>] [--cwd <project-root>]`
+  with the findings block on stdin when no file is given; exit 0 valid, 1
+  violations, 2 unreadable or empty block or tool error.
 - `worker-report-validator.js`: `node <tool-path> validate --kind <kind>`
   with the payload on stdin (plus `--json --cwd` where the tool accepts
   them).
@@ -64,8 +67,7 @@ takes one — never substitute one for the other.
   <tool-path> <verb> ...` with the verb's own arguments; they take neither
   `--json` nor `--cwd`.
 
-If no candidate exists, say so — name the candidates you tried — and stop; do
-not fall back to running the operation in prose. A missing validator never
+If no candidate exists, say so — name the candidates you tried — and stop, unless the consuming instruction explicitly declares that its gate is optional when the tool is missing. That exception skips only the named gate; it never substitutes a prose check. A missing validator never
 skips validation: resolve `worker-report-validator.js` on every Result Loop
 turn and stop the same way when unresolvable. A store failure stops
 `step_machine` coordinators per `@sai/policies/stage-machine.md`, never as a

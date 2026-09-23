@@ -2,52 +2,29 @@
 
 # Question Context Policy
 
-Canonical policy for user-facing decision prompts in the shared-ai pipeline. Broader public-chat readability and context rules are single-sourced in `@sai/policies/public-chat.md`; this policy specializes those rules for decision prompts. Consumed by reference; never restated at a consuming surface.
-
 ## Scope
 
-Governs the content of every user-facing decision prompt authored by the pipeline: worker `needs_input` questions, the design-only notice `message`, and the fixed instruction gates. The public-chat communication rules for these prompts are defined by `@sai/policies/public-chat.md` and are not duplicated here. It does not govern option-picker presentation mechanics, which stay owned by `sai/policies/remember.md`.
+The content of every user-facing decision prompt: worker `needs_input` questions, the design-only notice `message`, and the fixed instruction gates. The readability rules of `@sai/policies/public-chat.md` apply to them too; picker mechanics belong to `sai/policies/remember.md`.
 
 ## The five-element anatomy
 
-Every user-facing decision prompt SHALL carry all five elements:
+Every decision prompt, context and question together, SHALL carry all five elements:
 
-1. **What is being decided** — the prompt SHALL name the decision the user is being asked to make.
-2. **Why it matters** — the prompt SHALL state why the decision matters and why the user's input is needed.
-3. **Plain-language options** — the prompt SHALL state each option in plain words, including what choosing it means.
-4. **Essential state context** — the prompt SHALL carry the minimal decision-relevant context (for example the change name, the artifacts or values at stake, and the current state) needed to decide from the prompt alone.
-5. **Plain wording** — the prompt SHALL use plain user-facing language; it SHALL NOT rely on bare jargon, unexplained artifact names, or internal references that a context-switched reader cannot resolve.
+1. **What is being decided**: the decision the user is being asked to make.
+2. **Why it matters**: why the decision matters and why the user's input is needed.
+3. **Plain-language options**: each option in plain words, including what choosing it means.
+4. **Essential state context**: the minimal decision-relevant context (the change name, the artifacts or values at stake, the current state) needed to decide from the prompt alone.
+5. **Plain wording**: plain user-facing language, with every artifact name and internal reference explained for a context-switched reader.
 
-## Informational-notice subset
+An informational message (the design-only notice) carries elements 1, 2, 4, and 5: what is being reported, why it matters, the essential state context, and plain wording. It offers no options.
 
-An informational message (the design-only notice) SHALL carry: what is being reported, why it matters, the essential state context, and plain wording. The options element SHALL NOT be required, because a notice is informational, not a decision prompt.
+## Concise format
 
-## Pinned exemptions
+Every closed-choice prompt splits its content in two, with no exemptions:
 
-The following prompts are registered exemptions to the full anatomy. Each
-keeps its own defining contract as the single source of its exact wording,
-options, and invalid-input semantics; this list is the centralized registry,
-and no consuming surface may add, remove, or reinterpret an exemption here.
+1. **Preceding plain text**: everything except the options, self-sufficient, so the user can understand the question and every option without opening the picker.
+2. **The picker**: a summary question of about 200 characters at most, and options of about 100 characters each, measured on the rendered text without markup. Anything longer moves to the preceding text.
 
-1. **Change-picker prompts** — `Use change '{name}'?` and `Which change?`,
-   pinned by `sai/policies/change-picker.md`.
-2. **Status-picker prompts** — the change-selection prompts pinned by
-   `sai/policies/status-picker.md`.
-3. **Artifact-feedback-gate texts** — the gate's fixed picker labels and the
-   canonical feedback prompt (`Share your feedback on {artifacts} below.`),
-   pinned byte-for-byte by `sai/policies/artifact-feedback-gate.md`.
-4. **Crystallization-close selector** — sai-explore's `Plan - Unattended` /
-   `Direct Build - Unattended` / `Manual` selector, pinned by
-   `sai/commands/explore/steps/route-selector.md` (item 10).
-5. **Plain-text sí/no review invitation** — sai-explore's post-crystallization
-   global invitation (item 9), a deliberate narrow exception to the
-   native-picker presentation rule in `remember.md`.
-6. **Commit authorization ask** — sai-commit's short "Run `git commit` on the staged changes above?" decision prompt, pinned by `sai/commands/commit/worker.md`. The staged file inventory with Totals plus the proposed subject/body render as ordinary text above the picker, unaltered and in fixed order; the short question plus those visible blocks together carry the essential state context. The secret-file confirmation and the already-pushed amend warning keep full context and are excluded from this shortening.
-
-The full anatomy SHALL apply to every other user-facing decision prompt.
-
-## Single source
-
-This file is the single source of the anatomy. Every consuming surface SHALL reference it as `@sai/policies/question-context.md` and SHALL NOT restate or redefine the anatomy inline.
+Identifiers, paths, change names, and fixed literals stay verbatim: wrap them rather than truncate, abbreviate, or translate them, and keep option order and machine values unchanged. Without a native picker, render the same split in plain text: the context, then the summary question, then numbered options.
 
 </question_context_policy>

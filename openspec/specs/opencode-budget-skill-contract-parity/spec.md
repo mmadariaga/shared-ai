@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD: define the canonical behavior-policy consumption contract shared by the three OpenCode budget skills and their matching generic agents.
+Keep each OpenCode budget skill and its matching generic agent on one canonical behavior policy, so a policy change reaches both surfaces without a skill-local copy.
 ## Requirements
 ### Requirement: budget skills reference matching canonical behavior policies
 
@@ -16,9 +16,9 @@ The corresponding agent files SHALL continue to fetch those same targets. The sk
 
 The implementation boundary SHALL be explicit:
 
-- `budget-subagent/SKILL.md` SHALL remove its current `## Universal Behavior` section and retain `## OpenCode Binding`, `## Dispatch mode`, and `## Cost model` as skill-local sections.
-- `budget-executor/SKILL.md` SHALL remove its current `## Universal Behavior` section and retain `## OpenCode Binding`, `## Dispatch mode`, `## Model resolution`, and `## Cost model` as skill-local sections.
-- `budget-explorer/SKILL.md` SHALL add the canonical behavior Fetch, remove its current duplicated `## Output contract` rule block, and retain `## Subagent binding`, `## Dispatch mode`, `## Model resolution`, `## Tool-call caps`, and `## Cost model` as skill-local sections. Its output-contract behavior SHALL remain available unchanged through `explore-agent.md`.
+- `budget-subagent/SKILL.md` SHALL remove its current `## Universal Behavior` section and retain `## OpenCode Binding`, `## Spawn prompt`, `## Dispatch mode`, and `## Cost model` as skill-local sections.
+- `budget-executor/SKILL.md` SHALL remove its current `## Universal Behavior` section and retain `## OpenCode Binding`, `## Spawn prompt`, `## Dispatch mode`, `## Model resolution`, and `## Cost model` as skill-local sections.
+- `budget-explorer/SKILL.md` SHALL add the canonical behavior Fetch, remove its current duplicated `## Output contract` rule block, and retain `## Subagent binding`, `## Dispatch mode`, `## Model resolution`, `## Tool-call ceiling`, and `## Cost model` as skill-local sections, plus a `## Spawn prompt` section that carries the caller-side goal and output-contract rule. The explorer-side output-contract behavior SHALL remain available unchanged through `explore-agent.md`.
 
 Each skill SHALL have one canonical behavior section containing its matching Fetch directive. No copied universal-behavior or output-contract rule block may remain alongside that directive.
 
@@ -36,7 +36,7 @@ Each skill SHALL have one canonical behavior section containing its matching Fet
 
 ### Requirement: skill-specific OpenCode contracts remain unchanged
 
-The canonical Fetch references SHALL remain additive wiring with skill-specific OpenCode guidance preserved for all three budget skills. The budget-explorer skill SHALL retain the 40-call per-spawn limit while budget-subagent and budget-executor SHALL retain their existing binding and safety contracts unchanged.
+The canonical Fetch references SHALL remain additive wiring with skill-specific OpenCode guidance preserved for all three budget skills. The budget-explorer skill SHALL retain the 40-call limit per execution segment while budget-subagent and budget-executor SHALL retain their existing binding and safety contracts unchanged.
 
 #### Scenario: budget-subagent keeps its binding and safety contract
 - **WHEN** budget-subagent SKILL.md is loaded after its canonical policy
@@ -44,15 +44,16 @@ The canonical Fetch references SHALL remain additive wiring with skill-specific 
 
 #### Scenario: budget-executor keeps execution semantics
 - **WHEN** budget-executor SKILL.md is loaded after its canonical policy
-- **THEN** it still documents synchronous executor dispatch with no harness cap and limited raw output allowance
+- **THEN** it still documents synchronous executor dispatch with no harness cap
+- **AND** the raw-output boundary reaches the executor through the canonical policy, not a skill-local copy
 
 #### Scenario: budget-explorer keeps research semantics
 - **WHEN** budget-explorer SKILL.md is loaded after its canonical policy
-- **THEN** it still documents synchronous explore dispatch with the 40-call per-spawn limit
+- **THEN** it still documents synchronous explore dispatch with the 40-call limit per execution segment
 
 ### Requirement: regression coverage enforces skill-agent parity
 
-The canonical OpenCode agent behavior regression suite SHALL verify the skill-to-agent contract for all three budget pairs. Coverage SHALL assert that each skill and its matching agent reference exactly one identical canonical policy target, that budget-subagent and budget-executor contain no `## Universal Behavior` section, that budget-explorer contains no copied `## Output contract` rule block, and that no skill uses a native policy import. Coverage SHALL also assert the skill-specific binding, model-resolution, dispatch, output, cap, permission, raw-output, and cost markers remain present as applicable to each skill. For executor, coverage SHALL assert both the allowed requested-command/error output wording and the canonical prohibitions on unrequested full-file dumps and unfiltered logs.
+The canonical OpenCode agent behavior regression suite SHALL verify the skill-to-agent contract for all three budget pairs. Coverage SHALL assert that each skill and its matching agent reference exactly one identical canonical policy target, that budget-subagent and budget-executor contain no `## Universal Behavior` section, that budget-explorer contains no copied `## Output contract` rule block, and that no skill uses a native policy import. Coverage SHALL also assert the skill-specific binding, model-resolution, dispatch, output, cap, permission, and cost markers remain present as applicable to each skill. For executor, coverage SHALL assert on the canonical policy both the allowed requested-output/error wording and the exclusion of full file contents and unfiltered log streams.
 
 #### Scenario: a skill points at the wrong policy
 

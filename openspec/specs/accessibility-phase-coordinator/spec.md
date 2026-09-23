@@ -2,7 +2,9 @@
 
 ## Purpose
 TBD
+
 ## Requirements
+
 ### Requirement: Routed accessibility entrypoints use a terminal-only coordinator
 
 The Claude Code and opencode `/sai-8-accessibility` entrypoints SHALL invoke an accessibility coordinator and their matching harness-specific accessibility-worker binding. The coordinator SHALL own lifecycle routing and terminal presentation only. GitHub Copilot SHALL remain on its existing inline accessibility path without requiring a routed worker or binding.
@@ -28,19 +30,17 @@ The coordinator SHALL preserve the complete accessibility invocation argument st
 
 ### Requirement: Accessibility coordinator performs no technical I/O
 
-The accessibility coordinator SHALL NOT run prerequisites, resolve a change, read or write change artifacts, inspect git or UI source, determine a parent branch, scope a diff, delegate research, run accessibility tools, authorize browser commands, or make accessibility findings. All such operations SHALL belong exclusively to the accessibility worker. The single clean-route exception is the no-commit guard: the accessibility coordinator SHALL run the guard's `snapshot` and `verify` tool invocations (`sai/tools/no-commit-guard.js`) immediately before each dispatch and same-worker continuation and immediately after every returned result, before acting on it, and those two tool invocations per window are the coordinator's only git observations on the artifact-blind clean route. No other rule of this requirement changes.
+The accessibility coordinator SHALL NOT run prerequisites, resolve a change, read or write change artifacts, inspect git or UI source, determine a parent branch, scope a diff, delegate research, run accessibility tools, authorize browser commands, or make accessibility findings. All such operations SHALL belong exclusively to the accessibility worker. The single clean-route exception is the no-commit guard: the accessibility coordinator SHALL run the guard's `snapshot` and `verify` tool invocations (`sai/tools/no-commit-guard.js`) at each guard window's opening and immediately before each boundary the no-commit-guard policy lists (human turn, coordinator git mutation, run close), acting on a progress event or notice with no guard call, and those two tool invocations per window are the coordinator's only git observations on the artifact-blind clean route. No other rule of this requirement changes.
 
 #### Scenario: Technical accessibility work is requested
 
 - **WHEN** an accessibility invocation requires repository, artifact, git, diff, source, browser, or WCAG information
-- **THEN** the coordinator delegates the work to the accessibility worker
-- **AND** it performs no equivalent technical operation itself
+- **THEN** the coordinator delegates the work to the accessibility worker and performs no equivalent technical operation itself
 
 #### Scenario: the guard's two tool invocations are the only clean-route git access
 
-- **WHEN** the accessibility coordinator snapshots before a dispatch and verifies after the returned result
-- **THEN** those two no-commit-guard tool invocations are its only git observations on the clean route
-- **AND** no source inspection, browser authorization, or runtime check is performed by the coordinator itself
+- **WHEN** the accessibility coordinator snapshots at a window opening and verifies before a boundary
+- **THEN** those two no-commit-guard tool invocations are its only git observations on the clean route, and no source inspection, browser authorization, or runtime check is performed by the coordinator itself
 
 ### Requirement: Accessibility lifecycle results preserve the terminal boundary
 
@@ -67,7 +67,7 @@ The coordinator SHALL validate every worker result against the closed worker lif
 
 ### Requirement: Accessibility progress uses payload-derived stamps
 
-The accessibility coordinator SHALL validate `emitted_on`-bearing lifecycle results and render completed-step stamps from worker payloads without executing UI, runtime, scanner, artifact, or wall-clock operations. While its declared `step_machine: accessibility-standalone@1` is in force, every progress-event continuation SHALL be exactly two lines — today's protocol continuation line followed by the deterministic `Active step:` pointer line derived from that machine's `STAGE_FILES` mapping — continuations that are not progress-event continuations SHALL carry no pointer line, and the declared `replacement_reconstruction_fields` SHALL include the departing worker's `active_step_id`.
+The accessibility coordinator SHALL validate lifecycle results and render each completed-step stamp from the `validated_at` of the verdict that marked it without executing UI, runtime, scanner, artifact, or wall-clock operations. While its declared `step_machine: accessibility-standalone@1` is in force, every progress-event continuation SHALL be exactly two lines — the protocol continuation line followed by the deterministic `Active step:` pointer line derived from that machine's `STAGE_FILES` mapping — continuations that are not progress-event continuations SHALL carry no pointer line, and the declared `replacement_reconstruction_fields` SHALL include the departing worker's `active_step_id`.
 
 #### Scenario: Accessibility progress returns
 
@@ -79,4 +79,3 @@ The accessibility coordinator SHALL validate `emitted_on`-bearing lifecycle resu
 - **WHEN** a departing accessibility worker is replaced mid-run during one recovery
 - **THEN** the reconstruction fields include that worker's `active_step_id`
 - **AND** the replacement's first continuation carries the correct pointer line for that active step
-

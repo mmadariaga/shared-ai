@@ -1,7 +1,7 @@
 # pr-title-validation Specification
 
 ## Purpose
-TBD - created by archiving change pr-deterministic-extraction. Update Purpose after archive.
+Defines the pull request title rules enforced before PR creation.
 ## Requirements
 ### Requirement: pr-title-validation enforces pull request title format rules
 

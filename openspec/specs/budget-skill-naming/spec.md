@@ -1,32 +1,10 @@
 # budget-skill-naming Specification
 
-## ADDED Requirements
+## Purpose
 
-### Requirement: Budget skill `name:` fields SHALL use platform-agnostic slugs
+This capability keeps budget skill identifiers platform-agnostic across Claude Code and opencode installations.
 
-The `name:` frontmatter field in budget skill SKILL.md files SHALL use the plain slug (`budget-executor`, `budget-explorer`) without a platform prefix, regardless of whether the file lives under `skills/claude/` or `skills/opencode/`.
-
-#### Scenario: Claude budget-executor name field
-
-- **WHEN** `skills/claude/budget-executor/SKILL.md` is read
-- **THEN** the frontmatter contains `name: budget-executor` (not `claude-budget-executor`)
-
-#### Scenario: Claude budget-explorer name field
-
-- **WHEN** `skills/claude/budget-explorer/SKILL.md` is read
-- **THEN** the frontmatter contains `name: budget-explorer` (not `claude-budget-explorer`)
-
-#### Scenario: OpenCode budget-executor name field
-
-- **WHEN** `skills/opencode/budget-executor/SKILL.md` is read
-- **THEN** the frontmatter contains `name: budget-executor` (not `opencode-budget-executor`)
-
-#### Scenario: OpenCode budget-explorer name field
-
-- **WHEN** `skills/opencode/budget-explorer/SKILL.md` is read
-- **THEN** the frontmatter contains `name: budget-explorer` (not `opencode-budget-explorer`)
-
-## MODIFIED Requirements
+## Requirements
 
 ### Requirement: Budget skill `name:` frontmatter fields SHALL use platform-agnostic slugs
 

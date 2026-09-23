@@ -37,14 +37,9 @@
 
   ## No-commit guard
 
-  Fetch @sai/policies/no-commit-guard.md and follow it for every dispatch of
-  the accessibility worker. Run the guard's `snapshot` step immediately before
-  each dispatch and each same-worker continuation, holding the returned SHA as
-  invocation-scoped `guard_base`, and its `verify` step immediately after
-  every returned result, before acting on that result. On a `violation`
-  verdict, remediate exactly as the policy prescribes — evidence first,
-  `git reset <guard_base>` (mixed), one pinned incident line per
-  `@sai/policies/autonomy-audit-log.md`, then continue the route. The guard's
+  Fetch @sai/policies/no-commit-guard.md and follow its § Window pairing for
+  the accessibility worker's stretches: `snapshot` opens a window, holding the returned SHA as
+  invocation-scoped `guard_base`, and `verify` closes it before each boundary. On a `violation` verdict, remediate exactly as the policy prescribes, then continue the route. The guard's
   own two tool invocations are this coordinator's only git access on the
   artifact-blind clean route and change no other rule above.
 

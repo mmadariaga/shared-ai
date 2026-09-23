@@ -1,77 +1,38 @@
 # Prerequisite check
 
-## OpenSpec
+`sai/tools/prereqs.js` makes the four OpenSpec checks. Run it, read its verdict, and print the matching literal verbatim. The tool's verdict is final: do not run the checks yourself, second-guess a verdict, or repair one.
 
-The four checks are made by `sai/tools/prereqs.js`, not re-derived here. Run
-the tool, read its verdict, and print the matching literal below verbatim. Do
-not run the checks yourself, do not second-guess a verdict, and do not repair
-one.
+## Locate the tool
 
-### The prereqs tool
+Take the first candidate that exists, copied verbatim; never build the path by joining a root string to a suffix. The first existing copy defines the version. (The order mirrors `@sai/policies/tool-resolution.md`.)
 
-Resolution order is owned by `@sai/policies/tool-resolution.md`
-(substituting `prereqs.js` for `<name>`); the candidates below are mirrored
-verbatim from there — do not edit here. Use the copy that lives beside this
-policy file: a copy under a different root is a different version. Do **not**
-build its path by joining a root string to a suffix — composed absolute paths
-are known to drop a segment (see the "Path composition" rule in the fetch
-skill). Take the **first candidate below that exists**, copied **verbatim**,
-exactly as written:
-
-On **Claude Code**, in this order:
+On **Claude Code**:
 
 1. `.claude/sai/tools/prereqs.js` — the project-local root, relative to the working directory.
 2. `~/.claude/sai/tools/prereqs.js` — the user-global root.
 
-On **opencode**, in this order:
+On **opencode**:
 
 1. `.opencode/sai/tools/prereqs.js` — the project-local root, relative to the working directory.
 2. `~/.config/opencode/sai/tools/prereqs.js` — the default user-global config root.
-3. Only when neither exists: run `opencode debug paths`, take the config directory **exactly as that command prints it** (an XDG override moves it), and use the fixed suffix `sai/tools/prereqs.js` inside it. This is the one place a path is joined at all, and only to a path the harness itself printed. The first existing copy wins and defines the version. If no candidate exists, name the tried candidates and stop; do not fall back to running the checks in prose.
+3. Only when neither exists: run `opencode debug paths` and use `sai/tools/prereqs.js` inside the config directory exactly as that command prints it.
 
-Whichever candidate wins, the invocation is byte-identical within one harness,
-so a single whitelist entry per root covers that harness's form:
+## Run it
 
-On **Claude Code**:
+Pass the project root the command was invoked from and the harness you are running on:
 
-```
-node <tool-path> check --json --cwd <project-root> --require-openspec-skills claude
-```
+- Claude Code: `node <tool-path> check --json --cwd <project-root> --require-openspec-skills claude`
+- opencode: `node <tool-path> check --json --cwd <project-root> --require-openspec-skills opencode`
 
-On **opencode**:
+## Verdict
 
-```
-node <tool-path> check --json --cwd <project-root> --require-openspec-skills opencode
-```
+- **exit 0**, `verdict: pass`: every check holds; continue.
+- **exit 1**, `verdict: halt`: STOP, print the literal mapped to `failed_check` below with no prefix, suffix, summary, or rephrasing, and create or modify no file.
+- **exit 2**, a usage or IO error on stderr; or no candidate exists; or the payload does not parse: the check is **incomplete**. Report exactly that (the stderr text, the candidates tried, or the unparseable payload), print no remediation literal, and stop.
 
-Always pass `--json`, and always pass `--cwd` with the project root the command
-was invoked from. The `--require-openspec-skills` value names the harness you
-are running on — `claude` on Claude Code, `opencode` on opencode. Omitting the
-flag or passing any other value is a usage error (exit 2), never a halt:
-report it as-is, print no remediation literal, and do not continue as if the
-checks passed.
+`failed_check` literals:
 
-If no candidate exists, say so — name the candidates you tried — and stop; do
-not fall back to running the checks in prose.
-
-### Verdict handling (halt if any check fails)
-
-- **exit 0** — payload `verdict: pass`. Every precondition holds; continue.
-- **exit 1** — payload `verdict: halt`. One check failed; the payload names it
-  in `failed_check` and `reason`. STOP, print the matching literal below
-  unchanged, and create or modify no file.
-- **exit 2** — usage error or IO failure, reported on stderr. The checks could
-  not be completed: report that as-is, print no remediation literal, and do not
-  continue as if the checks passed.
-
-Map `failed_check` to its literal and print it with no prefix, suffix,
-summary, or rephrasing:
-
-1. `cli` (`reason: openspec-cli-missing`) — the `openspec` binary is not available in PATH. Print: "openspec CLI not found. Install it first: https://github.com/Fission-AI/OpenSpec". To verify by hand, run: `openspec --version`
-2. `dir` (`reason: openspec-dir-missing`) — the `openspec/` directory does not exist at the project root. Print: "OpenSpec not initialized in this project. Run: openspec init"
-3. `schema` (`reason: schema-not-declared`) — `openspec/config.yaml` has no line matching `^schema:\s*sai-workflow\s*$`. Print: "openspec/config.yaml does not declare `schema: sai-workflow`. The sai commands require this schema. Add `schema: sai-workflow` to the top of openspec/config.yaml."
-4. `skills` (`reason: openspec-skill-missing`) — one or more OpenSpec skills are not installed at the active harness's project-local skills root. Print: "OpenSpec skills missing at <skills-root>: <missing_skills>. Run: openspec init to install them for this harness." — where `<missing_skills>` is the comma-joined list from the payload's `missing_skills` field and `<skills-root>` is the probed root the payload names. The halt aggregates every missing skill, so one remediation pass suffices.
-
-Forward the tool's output verbatim where you report it: do not rephrase a
-`message`, do not fill in missing fields, and do not repair malformed JSON. If
-the payload cannot be parsed, say so and stop.
+1. `cli` (`reason: openspec-cli-missing`): "openspec CLI not found. Install it first: https://github.com/Fission-AI/OpenSpec — To verify by hand, run: `openspec --version`"
+2. `dir` (`reason: openspec-dir-missing`): "OpenSpec not initialized in this project. Run: openspec init"
+3. `schema` (`reason: schema-not-declared`): "openspec/config.yaml does not declare `schema: sai-workflow`. The sai commands require this schema. Add `schema: sai-workflow` to the top of openspec/config.yaml."
+4. `skills` (`reason: openspec-skill-missing`): "OpenSpec skills missing at <skills-root>: <missing_skills>. Run: openspec init to install them for this harness." Fill `<missing_skills>` with the payload's `missing_skills` joined by commas, and `<skills-root>` with the `root` of the `skills` entry in the payload's `checks` array.

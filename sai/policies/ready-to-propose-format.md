@@ -2,9 +2,7 @@
 
 # Ready to Propose Block Format
 
-Canonical structure for the crystallized `Ready to Propose` block — the single source of truth for the format emitted by explore's crystallization protocol. Consumed by reference; never restated at a consuming surface.
-
-This file is the authoritative format specification for the block emitted by `sai/commands/explore/steps/crystallization-protocol.md` and consumed by `/sai-1-spec` and other surfaces that receive a crystallized block.
+Canonical structure for the `Ready to Propose` block, emitted by explore's crystallization protocol (`sai/commands/explore/steps/crystallization-protocol.md`) and by `/sai-3-implement`'s escalation handoff, and consumed by `/sai-1-spec`. Consumed by reference; never restated at a consuming surface.
 
 ## Block structure
 
@@ -36,6 +34,8 @@ The block is structured as follows:
 - <agreed `E1`…`En` behavior statement, or None>
 **Implementation Details**:
 - <agreed `I1`…`In` statement in order, or None>
+**Request Additional Notes**:
+<optional free Markdown: paragraphs or bullets>
 **Overview language**: <explicit `--overview-lang` option value or literal None>
 
 ---
@@ -50,35 +50,32 @@ The five sections between `**Capabilities in scope**` and `**Key constraints**` 
 - `**Trade-offs Accepted**`
 - `**Model / Re-framings**`
 
-Place `**Terms**` immediately after `**Key constraints**`; render the agreed terms in their established order, or exactly one `- None` bullet when no term was agreed. Place `**Edge Cases**` immediately after `**Terms**`; render the agreed `E1`…`En` behavior statements in their established order, or exactly one `- None` bullet when the agreed list is empty. Place `**Implementation Details**` immediately after `**Edge Cases**`, carrying the agreed `I1`…`In` statements in their established order with identifiers and wording preserved, or exactly one `- None` bullet when the agreed list is empty; place `**Overview language**: <explicit \`--overview-lang\` option value or literal None>` immediately after it, before the `---` separator. The line reflects only what is knowable at print time; a gate-9-selected value never appears in an already-emitted block.
+Sections follow the block order above; `**Overview language**` is the last line before the `---` separator.
 
-`wording preserved` means identifiers and order, not source language, and does not block translation under the crystallization language gate.
+`**Request Additional Notes**` is optional and sits outside the five mandatory sections: when present it follows `**Implementation Details**` and immediately precedes `**Overview language**`; when it has no content it is omitted entirely — no label, no `- None`.
 
 ## Field rules
 
 - **Change name**: kebab-case suggestion
 - **What**: 1–2 sentences describing the change
-- **Why**: 1–2 sentences stating the motivation; may carry optional inline `file:line` provenance citations as evidence for intent
-- **Capabilities in scope**: the user-facing boundaries for this run; OpenSpec bookkeeping artifacts (`openspec/changes/{name}/**`, `openspec/specs/**`) are excluded from this section
-- **Research Leads**: non-authoritative starting points; repository-relative paths or `path:start-end` with short relevance notes; emits exactly `- None` when no useful lead exists; SHALL NOT designate files to modify or replace provenance
-- **Decisions & Rationale**: optional inline `file:line` citations when decisions were grounded in specific files
+- **Why**: 1–2 sentences stating the motivation; may carry optional inline `file:line` or `path:startLine-endLine` provenance citations as evidence for intent, including references to `openspec/changes/{name}/**` or `openspec/specs/**`
+- **Capabilities in scope**: the user-facing boundaries for this run; OpenSpec bookkeeping artifacts (`openspec/changes/{name}/**`, `openspec/specs/**`) are excluded — they are consequences owned by backfill and archive
+- **Research Leads**: non-authoritative starting points for later investigation — concise repository-relative `path` or `path:start-end` entries with short relevance notes, which may point into OpenSpec artifacts; emits exactly `- None` when no useful lead exists; a lead SHALL NOT designate a file to modify, define implementation scope, or replace provenance
+- **Decisions & Rationale**: may carry the same optional provenance citations as **Why**, including OpenSpec references
 - **Alternatives Considered**: rejected alternatives or None
 - **Trade-offs Accepted**: accepted trade-offs or None
 - **Model / Re-framings**: model re-framings or None
 - **Key constraints**: constraints or non-goals
 - **Terms**: agreed terms fixed before edge cases, each as `term: definition`; emits exactly `- None` when no term was agreed; conversation-only agreement, never a file write
 - **Edge Cases**: agreed `E1`…`En` behavior statements in their established order, or exactly one `- None` bullet when the agreed list is empty
-- **Implementation Details**: agreed `I1`…`In` statements in their established order with identifiers and wording preserved, or exactly one `- None` bullet when the agreed list is empty
-- **Overview language**: the explicit `--overview-lang` option value or literal None; reflects only what is knowable at print time
+- **Implementation Details**: agreed `I1`…`In` statements in their established order with identifiers and wording preserved, or exactly one `- None` bullet when the agreed list is empty. `wording preserved` means identifiers and order, not source language, and does not block translation under the crystallization language gate.
+- **Request Additional Notes**: optional, free-form, non-normative Markdown (paragraphs or bullets) carrying user-agreed context from the conversation that fits no other field. Emission rules:
+  - emit it only when the conversation left agreements that fit no official field; never duplicate content already carried by another field, and never emit it empty or as `- None`;
+  - an agreement that imposes an obligation is binding and goes to `**Edge Cases**`, `**Implementation Details**`, or `**Key constraints**`, never to this field;
+  - in a sliced crystallization set, each per-slice block carries only its own slice's notes, or omits the field;
+  - `/sai-3-implement`'s escalation block may include the field but is not required to.
 
-## OpenSpec exclusion
+  Consumers treat it as informative context only: no requirement, scenario, or mandatory scope derives from it. `/sai-1-spec` and backfill copy it verbatim (no rewriting, summarizing, translating, or merging) into the dedicated `## Request Additional Notes` section of `proposal.md`, kept separate from `## Additional Notes`.
+- **Overview language**: the explicit `--overview-lang` option value or literal None; reflects only what is knowable at print time, so a gate-9-selected value never appears in an already-emitted block
 
-OpenSpec bookkeeping artifacts (`openspec/changes/{name}/**`, `openspec/specs/**`) are excluded from `**Capabilities in scope**` — they are consequences owned by backfill and archive.
-
-The fields **Why**, **Decisions & Rationale**, and **Research Leads** are exempt from this exclusion and may carry inline references to `openspec/changes/{name}/**` or `openspec/specs/**` when they serve as evidence for intent or non-authoritative leads.
-
-## Provenance citations
-
-Optional evidence-provenance citations: when the hypothesis or a decision was grounded in specific files, the **Why** and **Decisions & Rationale** fields MAY carry inline `file:line` or `path:startLine-endLine` citations as evidence for intent. These citations are optional — when there is nothing to cite, the fields render exactly as today with no citation-specific placeholder. Provenance is a citation for intent only and SHALL NOT designate files to modify; no target-file field is introduced.
-
-Research Leads are non-authoritative starting points for later investigation, separate from intent provenance and implementation targeting. When useful code or documentation was identified during exploration, emit concise repository-relative `path` or `path:start-end` entries with short relevance notes. When no useful lead exists, emit exactly `- None`. A lead SHALL NOT designate a file to modify, define implementation scope, or replace provenance.
+Provenance citations are optional: with nothing to cite, **Why** and **Decisions & Rationale** carry no citation placeholder. Provenance is evidence for intent only and SHALL NOT designate files to modify; the block has no target-file field.

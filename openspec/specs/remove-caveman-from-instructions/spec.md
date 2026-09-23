@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+Keep the retired caveman output mode out of the shared SAI instruction surfaces.
 
 ## Requirements
 ### Requirement: remember.md contains no caveman intensity bullet

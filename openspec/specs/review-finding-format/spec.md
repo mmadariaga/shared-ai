@@ -87,7 +87,7 @@ Each artifact review finding SHALL carry an identifier derived from its severity
 
 ### Requirement: Every artifact review closes with a summary tally
 
-Every artifact review SHALL close with a `Summary:` line tallying its severity counts in the form `Summary: High=<count> Medium=<count> Low=<count>`. The manual review loop SHALL close each review with that plain form. Pipeline-driven reviews SHALL render the same tally within their existing per-pass deterministic reporting — the base tally prefixed by the pass number and followed by the pipeline-specific counters.
+Every artifact review SHALL close with a `Summary:` line tallying its severity counts in the base form `Summary: High=<count> Medium=<count> Low=<count>`, with no other counters. The manual review loop and the supervised in-session Explore Review Engine rounds SHALL both close with that base form.
 
 #### Scenario: manual review closes with a summary line
 
@@ -95,13 +95,32 @@ Every artifact review SHALL close with a `Summary:` line tallying its severity c
 - **THEN** the review closes with `Summary: High=<count> Medium=<count> Low=<count>`
 - **AND** the counts match the review's findings
 
-#### Scenario: pipeline pass reporting includes the tally
+#### Scenario: supervised round closes with the same base form
 
-- **WHEN** a pipeline-driven review pass is reported
-- **THEN** the deterministic pass reporting includes the contract's tally prefixed by the pass number and followed by the pipeline counters, e.g. `Summary: Pass <n> High=<count> Medium=<count> Low=<count> Contract-violations=<count>`
+- **WHEN** a supervised in-session Explore Review Engine round completes over available artifacts
+- **THEN** its findings block closes with `Summary: High=<count> Medium=<count> Low=<count>` and no pass number or extra counters
 
 #### Scenario: no review content, no summary
 
 - **WHEN** a requested artifact set does not exist and the review reports the absence without reviewing content
 - **THEN** it produces no findings
 - **AND** it produces no `Summary:` line
+
+### Requirement: Findings render in the validator's line layout
+
+Every finding SHALL render as five list lines labelled exactly `- Identifier: `, `- Severity: `, `- Artifact location: `, `- Issue: `, and `- Recommended correction: `, in that order, with the `Summary:` line last. The artifact-review format validator (`sai/tools/lint.js artifact-review`, reached through `sai/tools/validate-findings.js`) SHALL reject a block with no `Summary:` line and a block whose `Summary:` counts differ from the severities of the findings it parses under those labels.
+
+#### Scenario: a canonically rendered block validates
+
+- **WHEN** a findings block renders every finding with the five labelled lines and closes with a matching `Summary:` line
+- **THEN** the validator reports no violation
+
+#### Scenario: a block in another layout is rejected
+
+- **WHEN** a findings block renders its findings under other labels, such as headings or bold field names, and closes with a non-zero `Summary:` tally
+- **THEN** the validator parses no findings and reports `SUMMARY_TALLY_MISMATCH`
+
+#### Scenario: a block without a summary is rejected
+
+- **WHEN** a findings block has no `Summary:` line
+- **THEN** the validator reports `MISSING_SUMMARY`

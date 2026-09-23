@@ -26,11 +26,11 @@ Each artifact SHALL be independently fetchable via `Fetch @sai/policies/<artifac
 
 The `sai/policies/prereqs-check.md` artifact SHALL remain the executable-check artifact for the three OpenSpec prerequisite checks — the `openspec` binary availability check, the `openspec/` directory existence check, and the `openspec/config.yaml` `schema: sai-workflow` check. It SHALL delegate their evaluation to `sai/tools/prereqs.js` rather than describe the mechanics, and SHALL carry a numbered (1, 2, 3) mapping from the tool's `failed_check` values `cli`, `dir`, and `schema` to the exact STOP-and-print messages, which SHALL remain byte-identical:
 
-    openspec CLI not found. Install it first: https://github.com/Fission-AI/OpenSpec
+    openspec CLI not found. Install it first: https://github.com/Fission-AI/OpenSpec — To verify by hand, run: `openspec --version`
     OpenSpec not initialized in this project. Run: openspec init
     openspec/config.yaml does not declare `schema: sai-workflow`. The sai commands require this schema. Add `schema: sai-workflow` to the top of openspec/config.yaml.
 
-The artifact SHALL retain the verification command `openspec --version` as the by-hand check for the openspec binary. No stop message SHALL change. The surrounding check prose MAY describe delegation to the tool in place of the pre-change wording.
+The `cli` message carries the verification command `openspec --version` as the by-hand check for the openspec binary. No other stop message SHALL change. The surrounding check prose MAY describe delegation to the tool in place of the pre-change wording.
 
 #### Scenario: check artifact carries all three checks
 
@@ -49,17 +49,17 @@ The artifact SHALL retain the verification command `openspec --version` as the b
 
 ### Requirement: Path reference artifact content
 
-The `sai/policies/prereqs-paths.md` artifact SHALL contain the declarative OpenSpec path resolution reference from the current policy — the direct-paths rule ("Use direct paths to locate them — no recursive globbing"), the full path table from `openspec/config.yaml` through `openspec/changes/archive/YYYY-MM-DD-{change-name}/`, and the rule "Do not create or modify any files if any prerequisite check fails."
+The `sai/policies/prereqs-paths.md` artifact SHALL contain the declarative OpenSpec path reference: the direct-paths rule (read artifacts at their direct paths instead of searching the tree) and the full path table from `openspec/config.yaml` through `openspec/changes/archive/YYYY-MM-DD-{change-name}/`. It SHALL read on its own, with no reference to the content of another file. The no-write-on-failure rule SHALL live only in `sai/policies/prereqs-check.md`.
 
-No listed path or rule wording SHALL change.
+No listed path SHALL change.
 
 #### Scenario: path table fully present
 
 - **WHEN** `sai/policies/prereqs-paths.md` is read
 - **THEN** it lists every path from the current table (`openspec/config.yaml`, `openspec/specs/{name}/spec.md`, `openspec/schemas/sai-workflow/schema.yaml`, the change artifacts under `openspec/changes/{change-name}/`, and the archive directory pattern)
 
-#### Scenario: no-write-on-failure rule present
+#### Scenario: no-write-on-failure rule has one home
 
-- **WHEN** `sai/policies/prereqs-paths.md` is read
-- **THEN** it contains the sentence "Do not create or modify any files if any prerequisite check fails."
+- **WHEN** `sai/policies/prereqs-paths.md` and `sai/policies/prereqs-check.md` are read
+- **THEN** only `prereqs-check.md` states that a failed check creates or modifies no file
 

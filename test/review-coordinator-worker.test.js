@@ -125,7 +125,7 @@ test('review worker contract enumerates the five ids and pins the batch semantic
   assert.match(worker, /resolve-change/);
   assert.match(worker, /Pass 12[\s\S]{0,240}(?:gate|not applicable|skip)/i);
   assert.match(worker, /empty diff[\s\S]{0,240}(?:cancelled|establish-diff-scope)/i);
-  assert.match(worker, /no Milestone Stamp/i);
+  assert.doesNotMatch(worker, /no Milestone Stamp/i, 'audit plans carry stamps per todo-structure; the worker states nothing about them');
   assert.match(worker, /never[\s\S]{0,160}(?:before resolution|in place of a terminal|needs_input)/i);
 });
 
@@ -156,8 +156,8 @@ test('review coordinator and policy render the plan coordinator-only with thresh
   assert.doesNotMatch(coordinator, /Get-Date/,
     'the coordinator should carry no PowerShell wall-clock command');
 
-  assert.match(worker, /no Milestone Stamp/i,
-    'the worker contract should state audit plans carry no Milestone Stamp');
+  assert.doesNotMatch(worker, /no Milestone Stamp/i,
+    'the worker never renders stamps, so its contract states nothing about them');
   assert.match(coordinator, /todo-structure\.md/,
     'the coordinator should reference the neutral todo-structure policy');
 });
@@ -200,7 +200,7 @@ test('step-gated: progress continuations carry exactly two lines with the determ
     'stage-machine.md should have a Step machines section');
   assert.match(stageMachine, /the two-line continuation/i,
     'stage-machine.md should document the two-line continuation');
-  assert.match(stageMachine, /Active step: none.*complete remaining work/,
+  assert.match(stageMachine, /`Active step: none` line/,
     'stage-machine.md should specify the terminal pointer line');
 });
 
@@ -245,9 +245,20 @@ test('step-gated: the review worker loads steps/common.md at dispatch and execut
     'a legitimately skipped gated stage still advances the pointer past it');
 });
 
-test('step-gated: the carved step library exists beside the untouched monolith', () => {
-  assert.ok(fs.existsSync(path.join(repoRoot, 'sai/commands/review/instructions.md')),
-    'the original instructions.md stays in place untouched');
+test('step-gated: the step library is the only review instruction surface', () => {
+  for (const retired of ['instructions.md', 'invocation.md']) {
+    assert.equal(fs.existsSync(path.join(repoRoot, 'sai/commands/review', retired)), false,
+      `the monolithic review ${retired} is retired`);
+  }
+  const manifest = JSON.parse(artifact('sai/install-manifest.json'));
+  for (const [id, destination] of [
+    ['retired-sai-5-review-instructions', 'commands/review/instructions.md'],
+    ['retired-sai-5-review-invocation', 'commands/review/invocation.md'],
+  ]) {
+    const retirement = manifest.retirements.find(record => record.id === id);
+    assert.ok(retirement, `the manifest should retire installed copies of ${destination}`);
+    assert.equal(retirement.destination.path, destination);
+  }
   assert.ok(fs.existsSync(path.join(repoRoot, 'sai/commands/review/steps/common.md')),
     'steps/common.md should exist');
   for (const [id, relativePath] of Object.entries(REVIEW_STEP_MAP)) {
@@ -257,8 +268,8 @@ test('step-gated: the carved step library exists beside the untouched monolith',
     assert.match(source, new RegExp(`Active step: ${id}\\.`),
       `${relativePath} should name its active step id`);
   }
-  assert.match(artifact('sai/commands/review/steps/common.md'), /`resolve-change` has no step file of its own/,
-    'common.md should record that resolve-change is fileless');
+  assert.match(artifact('sai/commands/review/worker.md'), /`resolve-change` runs from it before the first progress event/,
+    'the worker contract should record that resolve-change runs without a step file');
 });
 
 test('mutation testing is configured as a deterministic project test workflow', () => {
@@ -323,8 +334,6 @@ test('mutation review never simulates deterministic results through inference', 
     'openspec/schemas/sai-workflow/templates/review.md',
     'sai/commands/review/command-bootstrap.md',
     'sai/commands/review/coordinator.md',
-    'sai/commands/review/instructions.md',
-    'sai/commands/review/invocation.md',
     'sai/commands/review/review-report.template.md',
     'sai/commands/review/steps/common.md',
     'sai/commands/review/steps/resolve-mutation-analysis.md',

@@ -30,9 +30,10 @@ function callSaiState(command, sessionId, machineId, eventJson) {
   const args = [command];
   if (sessionId) args.push(sessionId);
   if (machineId) args.push(machineId);
-  if (eventJson) args.push(eventJson);
+  // emit reads its event JSON from stdin, marked by a trailing `-`.
+  if (eventJson) args.push('-');
 
-  const result = spawnSync(process.execPath, [SAI_STATE_TOOL, ...args], { encoding: 'utf8' });
+  const result = spawnSync(process.execPath, [SAI_STATE_TOOL, ...args], { encoding: 'utf8', input: eventJson || '' });
   let payload = null;
   try {
     if (result.stdout.trim()) {

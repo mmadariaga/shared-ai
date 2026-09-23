@@ -1,8 +1,9 @@
 ---
 name: fetch
 description: >
-  Resolves Fetch @<path> references in instructions — replicates Claude Code's built-in Fetch @ mechanism for opencode.
-  This skill MUST be auto-loaded.
+  Resolves Fetch @<path> references in instructions for opencode only — NOT compatible with Claude Code. Maps @<subpath> to
+  .opencode/<subpath> (project) then ~/.config/opencode/<subpath> (global), and @skills/<name>/SKILL.md
+  to the skill tool. This skill MUST be loaded before any @sai/ fetch directive.
 license: MIT
 compatibility: opencode
 metadata:
@@ -14,9 +15,7 @@ metadata:
 
 Active harness identity: `opencode`.
 
-Resolve project-local `.opencode/` before user-global `~/.config/opencode/`. This identity and root order are established before interpreting any fetch directive.
-
-Internal checkpoint: for SAI instructions, the only valid roots are `.opencode/` and `~/.config/opencode/`. Loading SAI instructions from any other path means loading instructions for the wrong harness; reject that path and do not continue with its content.
+Resolve project-local `.opencode/` before user-global `~/.config/opencode/`. These are the only roots for SAI instructions: content found under any other root belongs to another harness, so reject it and stop.
 
 ### Path composition
 
@@ -25,38 +24,29 @@ Every agent that loads fetch inherits this rule, on both harnesses. It governs h
 - Inside the project: write paths relative to the working directory. Never compose an absolute path from the project-root string.
 - Outside the project: use the path exactly as supplied. Never derive it by string manipulation.
 
-Observed: composed absolute paths have dropped a path segment — a worker whose working directory was `C:\Projects\mine\shared-ai.worktree-1` produced `C:\Projects\mine\bin` and `C:\Projects\mine\sai\commands` for directories that exist inside the repository. Relative paths and literal absolute paths resolved correctly in every observed run; composed absolute paths failed in two of three.
+Observed: composed absolute paths have dropped a path segment (a worker in `C:\Projects\mine\shared-ai.worktree-1` produced `C:\Projects\mine\sai\commands` for a directory inside the repository), while relative paths and literal absolute paths resolved correctly in every observed run.
 
 ## Fetch @ resolution rules (apply to EVERY instruction)
 
-When you encounter `"Fetch @<path>"` or `"Also fetch @<path>"` in any instruction text, resolve it using these rules:
+Resolve every `Fetch @<path>` or `Also fetch @<path>` directive in any instruction text by the first matching row:
 
 | Pattern | Resolution |
 |---------|-----------|
-| `Fetch @<subpath>` | Read `.opencode/<subpath>` first; if it exists, use its content; otherwise Read `~/.config/opencode/<subpath>` directly; if that read fails, stop and report: File not found: <subpath> (checked .opencode/ and ~/.config/opencode/) |
-| `Fetch @skills/<name>/SKILL.md` | Use the `skill` tool to load skill `<name>` |
+| `Fetch @skills/<name>/SKILL.md` | Use the `skill` tool to load skill `<name>`, e.g. `skill("budget")` |
 | `Fetch @skills/<name>/SKILL.md and follow those instructions exactly.` | Use the `skill` tool to load skill `<name>`, then follow its instructions |
+| `Fetch @<subpath>` (any other path) | Read `.opencode/<subpath>` first; if it exists, use its content; otherwise Read `~/.config/opencode/<subpath>` directly; if that read fails, stop and report: File not found: <subpath> (checked .opencode/ and ~/.config/opencode/) |
 
 ### Path scope
 
 Every path a fetch directive resolves names exactly one file beginning with `sai/`, `commands/`, or `skills/` under the project-local or user-global root; the harness root itself is never named. A directive whose resolved path would land outside those three prefixes — a fourth top-level segment such as `@vendor/notes.md`, or a root-naming directive such as `@sai/` — is rejected before any filesystem access. Report the directive and the three permitted prefixes and stop.
 
-### Examples
-
-Instruction text → What you do
-
-- "Fetch @sai/policies/prereqs.md" → Read `.opencode/sai/policies/prereqs.md` first; if it exists, use its content. Otherwise, Read `~/.config/opencode/sai/policies/prereqs.md` directly
-- "Fetch @skills/budget/SKILL.md" → `skill("budget")`
-- "Also fetch @sai/policies/remember.md" → Read `.opencode/sai/policies/remember.md` first; if it exists, use its content. Otherwise, Read `~/.config/opencode/sai/policies/remember.md` directly
-- "Fetch @skills/openspec-explore/SKILL.md and follow those instructions exactly." → `skill("openspec-explore")`, then follow
-
 ### Recursion
 
-Skills you load may themselves contain `Fetch @` directives. Apply the same resolution rules recursively — the fetch rules remain active for all subsequent instructions in this session.
+Skills you load and files you fetch may themselves contain `Fetch @` directives. Apply the same resolution rules recursively — the fetch rules remain active for all subsequent instructions in this session.
 
 ### File disambiguation
 
-**Important:** `@sai/commands/X.md` and `@commands/X.md` are DIFFERENT files.
+`@sai/commands/X.md` and `@commands/X.md` are different files. Always read the full resolved path, and treat two references as the same file only when their full paths match:
 
 | Reference | Resolves to |
 |-----------|-------------|
@@ -64,5 +54,3 @@ Skills you load may themselves contain `Fetch @` directives. Apply the same reso
 | `@sai/commands/X.md` (user-global) | `~/.config/opencode/sai/commands/X.md` |
 | `@commands/X.md` (project-local) | `.opencode/commands/X.md` |
 | `@commands/X.md` (user-global) | `~/.config/opencode/commands/X.md` |
-
-Always read the full resolved path — do NOT assume two `@` references point to the same file because their filenames match.

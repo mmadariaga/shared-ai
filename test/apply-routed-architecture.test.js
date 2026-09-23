@@ -22,7 +22,16 @@ const APPLY_CARDS = {
   greenWorker: 'sai/commands/apply/green-worker.md',
   runner: 'sai/commands/apply/runner.md',
   invocation: 'sai/commands/apply/invocation.md',
+  workerCommon: 'sai/commands/apply/worker-common.md',
 };
+
+const ROUTING_FILES = [
+  'sai/commands/apply/steps/routing-green-direct.md',
+  'sai/commands/apply/steps/routing-green-exception-test-only.md',
+  'sai/commands/apply/steps/routing-stop-missing-contract.md',
+  'sai/commands/apply/steps/routing-split-flow.md',
+  'sai/commands/apply/steps/routing-green-exception-no-production.md',
+];
 
 const REPORT_FIELDS = [
   'Step executed',
@@ -44,6 +53,16 @@ function artifact(relativePath) {
   return fs.readFileSync(fullPath, 'utf8');
 }
 
+// Each worker card loads worker-common.md; its contract is the pair.
+function workerContract(relativePath) {
+  return `${artifact(relativePath)}\n${artifact(APPLY_CARDS.workerCommon)}`;
+}
+
+// The runner discloses branch-specific routing into steps/routing-*.md.
+function runnerSurface() {
+  return [artifact(APPLY_CARDS.runner), ...ROUTING_FILES.map(artifact)].join('\n');
+}
+
 function combinedCards() {
   return [
     artifact(APPLY_CARDS.coordinator),
@@ -51,6 +70,8 @@ function combinedCards() {
     artifact(APPLY_CARDS.greenWorker),
     artifact(APPLY_CARDS.runner),
     artifact(APPLY_CARDS.invocation),
+    artifact(APPLY_CARDS.workerCommon),
+    ...ROUTING_FILES.map(artifact),
   ].join('\n');
 }
 
@@ -119,7 +140,7 @@ test('Step 2 the coordinator is fetched through the routed coordinator path, not
 
 test('Step 2 every apply dispatch declares one canonical progress plan with the closed progress-event shape', () => {
   const coordinator = artifact(APPLY_CARDS.coordinator);
-  const runner = artifact(APPLY_CARDS.runner);
+  const runner = runnerSurface();
   const combined = `${coordinator}\n${runner}`;
   assert.match(combined, /event:\s*"?progress"?/,
     'specs/apply-step-projection/spec.md: the progress event must carry exactly event: progress');
@@ -139,7 +160,7 @@ test('Step 2 every apply dispatch declares one canonical progress plan with the 
 
 test('Step 2 each RED, GREEN, or green-exception dispatch is a separate worker invocation with one immutable plan', () => {
   const coordinator = artifact(APPLY_CARDS.coordinator);
-  const runner = artifact(APPLY_CARDS.runner);
+  const runner = runnerSurface();
   const combined = `${coordinator}\n${runner}`;
   assert.match(combined, /separate[\s\S]{0,80}(?:worker )?invocation|each[\s\S]{0,120}(?:RED|GREEN|dispatch)[\s\S]{0,120}separate/i,
     'specs/apply-step-projection/spec.md: each dispatch must be a separate worker invocation');
@@ -152,8 +173,8 @@ test('Step 2 each RED, GREEN, or green-exception dispatch is a separate worker i
 });
 
 test('Step 2 worker progress marks only its dispatch-local plan', () => {
-  const red = artifact(APPLY_CARDS.redWorker);
-  const green = artifact(APPLY_CARDS.greenWorker);
+  const red = workerContract(APPLY_CARDS.redWorker);
+  const green = workerContract(APPLY_CARDS.greenWorker);
   for (const worker of [red, green]) {
     assert.match(worker, /dispatch[- ]local plan|plan selected for this dispatch|its own plan|the plan declared for this dispatch/i,
       'specs/apply-step-projection/spec.md: worker progress must mark only the dispatch-local plan');
@@ -182,7 +203,7 @@ test('Step 2 the run-start Step Projection is coordinator-derived and carries no
 
 test('Step 2 the invocation-wide changed-files union is ordered, duplicate-free, never reset, and excludes scratch', () => {
   const coordinator = artifact(APPLY_CARDS.coordinator);
-  const runner = artifact(APPLY_CARDS.runner);
+  const runner = runnerSurface();
   const combined = `${coordinator}\n${runner}`;
   assert.match(combined, /changed[- ]?files[\s\S]{0,160}union|union[\s\S]{0,160}changed[- ]?files/i,
     'specs/apply-coordinator-ownership/spec.md: the coordinator must own an invocation-wide changed-files union');
@@ -202,8 +223,8 @@ test('Step 2 the invocation-wide changed-files union is ordered, duplicate-free,
 
 test('Step 2 the coordinator injects the resolved change name and the workers echo it without change selection', () => {
   const coordinator = artifact(APPLY_CARDS.coordinator);
-  const red = artifact(APPLY_CARDS.redWorker);
-  const green = artifact(APPLY_CARDS.greenWorker);
+  const red = workerContract(APPLY_CARDS.redWorker);
+  const green = workerContract(APPLY_CARDS.greenWorker);
   assert.match(coordinator, /arguments_value/,
     'specs/apply-red-green-worker-model/spec.md: each worker dispatch envelope must carry arguments_value');
   assert.match(coordinator, /resolved_change_name/,
@@ -224,9 +245,9 @@ test('Step 2 the coordinator injects the resolved change name and the workers ec
 
 test('Step 3 Apply RED/GREEN transport carries only arguments_value plus contract-defined metadata', () => {
   const coordinator = artifact(APPLY_CARDS.coordinator);
-  const runner = artifact(APPLY_CARDS.runner);
-  const red = artifact(APPLY_CARDS.redWorker);
-  const green = artifact(APPLY_CARDS.greenWorker);
+  const runner = runnerSurface();
+  const red = workerContract(APPLY_CARDS.redWorker);
+  const green = workerContract(APPLY_CARDS.greenWorker);
   const bindings = applyBindings();
   const transport = [coordinator, runner, red, green, ...bindings];
 
@@ -262,8 +283,8 @@ test('Step 3 Apply RED/GREEN transport carries only arguments_value plus contrac
 // ─── specs/apply-subagent-report-contract/spec.md — report fields ───────────
 
 test('Step 2 RED and GREEN terminal payloads use the worker-core closed envelope plus the nine-field apply report extension', () => {
-  const red = artifact(APPLY_CARDS.redWorker);
-  const green = artifact(APPLY_CARDS.greenWorker);
+  const red = workerContract(APPLY_CARDS.redWorker);
+  const green = workerContract(APPLY_CARDS.greenWorker);
   for (const worker of [red, green]) {
     for (const status of ['completed', 'needs_input', 'failed', 'cancelled']) {
       assert.match(worker, new RegExp(`\\b${status}\\b`),
@@ -279,7 +300,7 @@ test('Step 2 RED and GREEN terminal payloads use the worker-core closed envelope
 });
 
 test('Step 2 the report dispatch-kind table pins field values, malformed field 8, soft-degraded field 9, and scratch-free field 8', () => {
-  const runner = artifact(APPLY_CARDS.runner);
+  const runner = runnerSurface();
   const coordinator = artifact(APPLY_CARDS.coordinator);
   const combined = `${runner}\n${coordinator}`;
   assert.match(combined, /green[- ]direct/,
@@ -297,7 +318,7 @@ test('Step 2 the report dispatch-kind table pins field values, malformed field 8
 // ─── specs/apply-execution-telemetry-appendix/spec.md — telemetry row ───────
 
 test('Step 2 the execution telemetry row uses the pinned column shape and closed vocabularies', () => {
-  const runner = artifact(APPLY_CARDS.runner);
+  const runner = runnerSurface();
   const coordinator = artifact(APPLY_CARDS.coordinator);
   const combined = `${runner}\n${coordinator}`;
   assert.match(combined, /\| Step \| dispatch \| phase \| attempts \| first_failure \| note \|/,
@@ -314,7 +335,7 @@ test('Step 2 the execution telemetry row uses the pinned column shape and closed
 
 test('Step 2 the appendices keep Plan vs Final Implementation before Execution Telemetry; telemetry appends once before commit', () => {
   const coordinator = artifact(APPLY_CARDS.coordinator);
-  const runner = artifact(APPLY_CARDS.runner);
+  const runner = runnerSurface();
   const combined = `${coordinator}\n${runner}`;
   const plan = combined.search(/## Appendix: Plan vs Final Implementation/);
   const telemetry = combined.search(/## Appendix: Execution Telemetry/);
@@ -333,7 +354,7 @@ test('Step 2 the appendices keep Plan vs Final Implementation before Execution T
 // ─── specs/apply-step-routing-tree/spec.md — routing tree ───────────────────
 
 test('Step 2 a Step without RED and with production files dispatches GREEN directly', () => {
-  const runner = artifact(APPLY_CARDS.runner);
+  const runner = runnerSurface();
   assert.match(runner, /green[- ]direct/,
     'specs/apply-step-routing-tree/spec.md: the no-RED-with-production route must be GREEN direct');
   assert.match(runner, /no RED|without a RED|no RED block|RED block absent/i,
@@ -345,7 +366,7 @@ test('Step 2 a Step without RED and with production files dispatches GREEN direc
 });
 
 test('Step 2 a Step without RED and without production files dispatches one RED green-exception', () => {
-  const runner = artifact(APPLY_CARDS.runner);
+  const runner = runnerSurface();
   assert.match(runner, /green[- ]exception/,
     'specs/apply-step-routing-tree/spec.md: the no-RED-no-production route must be the green-exception');
   assert.match(runner, /no RED|without a RED|no RED block|RED block absent/i,
@@ -357,7 +378,7 @@ test('Step 2 a Step without RED and without production files dispatches one RED 
 });
 
 test('Step 2 RED without an exact unambiguous interfaces.md Step contract stops before any dispatch or write', () => {
-  const runner = artifact(APPLY_CARDS.runner);
+  const runner = runnerSurface();
   const coordinator = artifact(APPLY_CARDS.coordinator);
   const combined = `${runner}\n${coordinator}`;
   assert.match(combined, /exact[\s\S]{0,40}unambiguous|unambiguous[\s\S]{0,40}exact/i,
@@ -371,10 +392,10 @@ test('Step 2 RED without an exact unambiguous interfaces.md Step contract stops 
 });
 
 test('Step 2 RED with a contract and production files dispatches blind RED then GREEN', () => {
-  const runner = artifact(APPLY_CARDS.runner);
+  const runner = runnerSurface();
   assert.match(runner, /blind[\s\S]{0,60}RED|RED[\s\S]{0,60}blind/i,
     'specs/apply-step-routing-tree/spec.md: the first dispatch must be the blind RED writer');
-  assert.match(runner, /then[\s\S]{0,100}GREEN|GREEN[\s\S]{0,100}after/i,
+  assert.match(runner, /Only a valid RED result permits the subsequent GREEN dispatch/,
     'specs/apply-step-routing-tree/spec.md: the blind RED must be followed by a GREEN dispatch');
   assert.match(runner, /production file/i,
     'specs/apply-step-routing-tree/spec.md: the branch must key on the presence of production files');
@@ -383,7 +404,7 @@ test('Step 2 RED with a contract and production files dispatches blind RED then 
 });
 
 test('Step 2 RED with a contract and no production files dispatches one RED green-exception terminating GREEN=pass', () => {
-  const runner = artifact(APPLY_CARDS.runner);
+  const runner = runnerSurface();
   assert.match(runner, /green[- ]exception/,
     'specs/apply-step-routing-tree/spec.md: the RED-no-production route must be the green-exception');
   assert.match(runner, /no production file/i,
@@ -395,7 +416,7 @@ test('Step 2 RED with a contract and no production files dispatches one RED gree
 });
 
 test('Step 2 contract-absent and ambiguous-contract stops emit no traced fallback or single-dispatch routing line', () => {
-  const runner = artifact(APPLY_CARDS.runner);
+  const runner = runnerSurface();
   const coordinator = artifact(APPLY_CARDS.coordinator);
   const invocation = artifact(APPLY_CARDS.invocation);
   const combined = `${runner}\n${coordinator}\n${invocation}`;
@@ -413,7 +434,7 @@ test('Step 2 contract-absent and ambiguous-contract stops emit no traced fallbac
 
 test('Step 2 the blind RED prompt carries only the matching Step contract and testing slice', () => {
   const coordinator = artifact(APPLY_CARDS.coordinator);
-  const red = artifact(APPLY_CARDS.redWorker);
+  const red = workerContract(APPLY_CARDS.redWorker);
   assert.match(coordinator, /## Step N|Step Contract|interfaces\.md/i,
     'specs/apply-step-delegation/spec.md: the blind prompt must include the matching Step contract');
   assert.match(coordinator, /testing slice|test command|Implementation Context/i,
@@ -428,7 +449,7 @@ test('Step 2 the blind RED prompt carries only the matching Step contract and te
 
 test('Step 2 the GREEN prompt excludes test files and green-worker.md forbids creating or modifying them', () => {
   const coordinator = artifact(APPLY_CARDS.coordinator);
-  const green = artifact(APPLY_CARDS.greenWorker);
+  const green = workerContract(APPLY_CARDS.greenWorker);
   assert.match(coordinator, /exclude[\s\S]{0,100}test file|test file[\s\S]{0,100}exclude/i,
     'specs/apply-test-impl-split/spec.md: the GREEN dispatch allowed files must exclude test files');
   assert.match(green, /test file/i,
@@ -440,7 +461,7 @@ test('Step 2 the GREEN prompt excludes test files and green-worker.md forbids cr
 });
 
 test('Step 2 RED stubs use only contract-valid null/empty behavior and read existing tests only as a fallback', () => {
-  const red = artifact(APPLY_CARDS.redWorker);
+  const red = workerContract(APPLY_CARDS.redWorker);
   assert.match(red, /stub/i,
     'specs/apply-test-impl-split/spec.md: the RED contract must govern interface stubs');
   assert.match(red, /null|empty|wrong/i,
@@ -459,7 +480,7 @@ test('Step 2 RED stubs use only contract-valid null/empty behavior and read exis
 
 test('Step 2 coordinator-disproven GREEN evidence continues the same worker with one shared bounded recovery pool', () => {
   const coordinator = artifact(APPLY_CARDS.coordinator);
-  const runner = artifact(APPLY_CARDS.runner);
+  const runner = runnerSurface();
   const combined = `${coordinator}\n${runner}`;
   assert.match(combined, /continue_after_recovery/,
     'specs/apply-same-worker-retry/spec.md: recovery must continue the same worker with continue_after_recovery');
@@ -477,7 +498,7 @@ test('Step 2 coordinator-disproven GREEN evidence continues the same worker with
 
 test('Step 2 a completed GREEN disproven by coordinator verification is classified validation-failed before recovery continuation', () => {
   const coordinator = artifact(APPLY_CARDS.coordinator);
-  const runner = artifact(APPLY_CARDS.runner);
+  const runner = runnerSurface();
   const combined = `${coordinator}\n${runner}`;
   assert.match(combined, /validation[- ]failed/,
     'specs/apply-coordinator-verification/spec.md: the disproven GREEN must be classified validation-failed');
@@ -489,7 +510,7 @@ test('Step 2 a completed GREEN disproven by coordinator verification is classifi
 
 test('Step 2 the recovery continuation carries the ordered Reported/Evidence/Cause/Correction/Verification diagnosis to the same GREEN worker', () => {
   const coordinator = artifact(APPLY_CARDS.coordinator);
-  const green = artifact(APPLY_CARDS.greenWorker);
+  const green = workerContract(APPLY_CARDS.greenWorker);
   const combined = `${coordinator}\n${green}`;
   const start = combined.search(/\bReported\b/);
   assert.ok(start >= 0, 'the recovery diagnosis must begin with the Reported heading');
@@ -506,15 +527,15 @@ test('Step 2 the recovery continuation carries the ordered Reported/Evidence/Cau
 
 test('Step 2 worker-returned eligible failures and coordinator validation-failed share one undoubled three-attempt pool', () => {
   const coordinator = artifact(APPLY_CARDS.coordinator);
-  const runner = artifact(APPLY_CARDS.runner);
+  const runner = runnerSurface();
   const combined = `${coordinator}\n${runner}`;
-  assert.match(combined, /one[\s\S]{0,80}shared[\s\S]{0,80}(?:three[- ]attempt|recovery pool)|shared[\s\S]{0,80}three[- ]attempt/i,
+  assert.match(combined, /one[\s\S]{0,80}shared[\s\S]{0,80}(?:three[- ]attempt|recovery pool|pool of three attempts)|shared[\s\S]{0,80}three[- ]attempt/i,
     'specs/apply-same-worker-retry/spec.md: both recovery sources must share one three-attempt pool');
   assert.match(combined, /validation[- ]failed/,
     'specs/apply-same-worker-retry/spec.md: coordinator-classified validation-failed must draw from the same pool');
   assert.match(combined, /three attempts|3 attempts|exactly three/i,
     'specs/apply-same-worker-retry/spec.md: the pool must hold exactly three attempts');
-  assert.match(combined, /undoubl|not[\s\S]{0,60}(?:doubled|duplicated)|single[\s\S]{0,60}(?:pool|budget|count)/i,
+  assert.match(combined, /undoubl|(?:not|never)[\s\S]{0,60}(?:doubled|duplicated)|single[\s\S]{0,60}(?:pool|budget|count)/i,
     'specs/apply-same-worker-retry/spec.md: the pool must not be doubled per recovery source');
 });
 
@@ -522,7 +543,7 @@ test('Step 2 worker-returned eligible failures and coordinator validation-failed
 
 test('Step 2 every dispatch, continuation, and checklist run is followed by scratch cleanup with pinned trace lines', () => {
   const coordinator = artifact(APPLY_CARDS.coordinator);
-  const runner = artifact(APPLY_CARDS.runner);
+  const runner = runnerSurface();
   const combined = `${coordinator}\n${runner}`;
   // Exact non-empty trace forms live solely on the coordinator.
   assert.match(coordinator, /> Scratch cleanup: removed \.tmp\/\{change-name\}\//,
@@ -542,8 +563,8 @@ test('Step 2 every dispatch, continuation, and checklist run is followed by scra
 });
 
 test('Step 2 worker contracts do not claim coordinator checklist authority', () => {
-  const red = artifact(APPLY_CARDS.redWorker);
-  const green = artifact(APPLY_CARDS.greenWorker);
+  const red = workerContract(APPLY_CARDS.redWorker);
+  const green = workerContract(APPLY_CARDS.greenWorker);
   for (const worker of [red, green]) {
     assert.doesNotMatch(worker, /(?:runs?|owns?|conducts?|performs?)[\s\S]{0,80}(?:Verification Checklist|checklist)/i,
       'specs/apply-coordinator-verification/spec.md: workers must not claim to run the coordinator checklist');
@@ -631,7 +652,7 @@ test('Step 2 Apply orders global prerequisites, fast-track parsing, change resol
 
 test('Step 2 full completion emits exactly the pinned completion literal; fast track emits its banner once without bypassing safe operations', () => {
   const coordinator = artifact(APPLY_CARDS.coordinator);
-  const runner = artifact(APPLY_CARDS.runner);
+  const runner = runnerSurface();
   const invocation = artifact(APPLY_CARDS.invocation);
   const combined = `${coordinator}\n${runner}\n${invocation}`;
   assert.match(invocation, /Implementation applied\. Run `\/sai-5-review \{name\}` in a new chat when ready\./,
@@ -645,7 +666,7 @@ test('Step 2 full completion emits exactly the pinned completion literal; fast t
 });
 
 test('routing STOP has one normative home on the runner Step Routing Tree', () => {
-  const runner = artifact(APPLY_CARDS.runner);
+  const runner = runnerSurface();
   const coordinator = artifact(APPLY_CARDS.coordinator);
   assert.match(runner, /Step Routing Tree/,
     'runner must own the Step Routing Tree heading');
@@ -879,7 +900,7 @@ test('Step 2 with the apply contract files present, install and doctor derive th
 // ─── specs/diagnosis-driven-recovery-apply/spec.md — Step 5 RED/GREEN recovery ─
 
 test('Step 5 a non-clean RED intermediate continues on the same RED worker before GREEN', () => {
-  const runner = artifact(APPLY_CARDS.runner);
+  const runner = runnerSurface();
   assert.match(runner,
     /RED[\s\S]{0,260}(?:non[- ]clean|intermediate)[\s\S]{0,260}continue_after_recovery/i,
     'specs/diagnosis-driven-recovery-apply/spec.md: a non-clean RED intermediate must enter recovery');
@@ -890,14 +911,15 @@ test('Step 5 a non-clean RED intermediate continues on the same RED worker befor
     /(?:non[- ]clean|intermediate)[\s\S]{0,300}(?:diagnos|recover|continue_after_recovery)/i,
     'specs/diagnosis-driven-recovery-apply/spec.md: the runner must diagnose the non-clean RED result');
 
-  const validRed = runner.search(/valid RED|RED[\s\S]{0,80}(?:result|outcome)[\s\S]{0,80}valid/i);
-  const greenDispatch = runner.search(/(?:dispatch|dispatches|dispatching)[\s\S]{0,60}GREEN/i);
+  const splitFlow = artifact('sai/commands/apply/steps/routing-split-flow.md');
+  const validRed = splitFlow.indexOf('## RED gate');
+  const greenDispatch = splitFlow.indexOf('## GREEN dispatch');
   assert.ok(validRed >= 0 && greenDispatch >= 0 && validRed < greenDispatch,
     'specs/diagnosis-driven-recovery-apply/spec.md: GREEN must not dispatch before RED is valid');
 });
 
 test('Step 5 RED recovery stays inside tests and stubs and remains blind to the implementation body', () => {
-  const red = artifact(APPLY_CARDS.redWorker);
+  const red = workerContract(APPLY_CARDS.redWorker);
   assert.match(red, /continue_after_recovery/,
     'specs/diagnosis-driven-recovery-apply/spec.md: RED must support same-worker recovery continuation');
   assert.match(red,
@@ -913,8 +935,8 @@ test('Step 5 RED recovery stays inside tests and stubs and remains blind to the 
 });
 
 test('Step 5 an unpassable RED closes with the failed blocking-contradiction STOP envelope', () => {
-  const red = artifact(APPLY_CARDS.redWorker);
-  const runner = artifact(APPLY_CARDS.runner);
+  const red = workerContract(APPLY_CARDS.redWorker);
+  const runner = runnerSurface();
   const coordinator = artifact(APPLY_CARDS.coordinator);
   const routing = `${runner}\n${coordinator}`;
 
@@ -938,8 +960,8 @@ test('Step 5 an unpassable RED closes with the failed blocking-contradiction STO
 });
 
 test('Step 5 a GREEN failed outcome has a STOP envelope while a false veto remains recovery-eligible', () => {
-  const green = artifact(APPLY_CARDS.greenWorker);
-  const runner = artifact(APPLY_CARDS.runner);
+  const green = workerContract(APPLY_CARDS.greenWorker);
+  const runner = runnerSurface();
 
   assert.match(green, /status:\s*failed/i,
     'specs/diagnosis-driven-recovery-apply/spec.md: GREEN must define the failed lifecycle envelope');
@@ -956,7 +978,7 @@ test('Step 5 a GREEN failed outcome has a STOP envelope while a false veto remai
 });
 
 test('Step 5 GREEN recovery has an absolute prohibition on test files and interfaces.md', () => {
-  const green = artifact(APPLY_CARDS.greenWorker);
+  const green = workerContract(APPLY_CARDS.greenWorker);
   assert.match(green, /continue_after_recovery/,
     'specs/diagnosis-driven-recovery-apply/spec.md: GREEN recovery must use the same continuation protocol');
   assert.match(green,
@@ -970,8 +992,8 @@ test('Step 5 GREEN recovery has an absolute prohibition on test files and interf
 });
 
 test('Step 5 a GREEN result of fail is reported with STOP reached? yes', () => {
-  const green = artifact(APPLY_CARDS.greenWorker);
-  const runner = artifact(APPLY_CARDS.runner);
+  const green = workerContract(APPLY_CARDS.greenWorker);
+  const runner = runnerSurface();
   const coordinator = artifact(APPLY_CARDS.coordinator);
   const combined = `${green}\n${runner}\n${coordinator}`;
 
@@ -986,7 +1008,7 @@ test('Step 5 a GREEN result of fail is reported with STOP reached? yes', () => {
 });
 
 test('Step 5 split-flow GREEN is gated exclusively on a valid RED result', () => {
-  const runner = artifact(APPLY_CARDS.runner);
+  const runner = runnerSurface();
   assert.match(runner, /split[- ]flow/i,
     'specs/diagnosis-driven-recovery-apply/spec.md: the RED/GREEN route must be identified as split-flow');
   assert.match(runner,
@@ -998,59 +1020,61 @@ test('Step 5 split-flow GREEN is gated exclusively on a valid RED result', () =>
 });
 
 test('Step 5 neither worker edits implementation.md or runs git', () => {
-  const red = artifact(APPLY_CARDS.redWorker);
-  const green = artifact(APPLY_CARDS.greenWorker);
+  const red = workerContract(APPLY_CARDS.redWorker);
+  const green = workerContract(APPLY_CARDS.greenWorker);
   for (const [name, worker] of [['RED', red], ['GREEN', green]]) {
-    assert.match(worker,
-      /(?:MUST NOT|never|forbidden|prohibited)[\s\S]{0,80}(?:edit|modify|mark)[\s\S]{0,80}implementation\.md|implementation\.md[\s\S]{0,80}(?:MUST NOT|never|forbidden|prohibited)/i,
+    assert.match(worker, /Leave `implementation\.md` and every checkbox untouched\./,
       `specs/diagnosis-driven-recovery-apply/spec.md: ${name} must never edit implementation.md`);
-    assert.match(worker,
-      /(?:MUST NOT|never|forbidden|prohibited)[\s\S]{0,80}(?:run|execute|invoke)?[\s\S]{0,40}git|git[\s\S]{0,100}(?:MUST NOT|never|forbidden|prohibited)/i,
+    assert.match(worker, /Run no git operation and create no commit\./,
       `specs/diagnosis-driven-recovery-apply/spec.md: ${name} must never run git`);
   }
 });
 
 test('Step 2 the active runner owns the ordered terminal documentation lifecycle', () => {
   const runner = artifact(APPLY_CARDS.runner);
-  const start = runner.indexOf('## Final sweep and terminal lifecycle');
-  assert.ok(start >= 0, 'the active runner must own the terminal lifecycle');
-  const section = runner.slice(start);
+  const coordinator = artifact(APPLY_CARDS.coordinator);
+  assert.match(runner, /sai\/commands\/apply\/steps\/terminal-lifecycle\.md/,
+    'the Step loop must hand off to the terminal lifecycle');
+  assert.doesNotMatch(runner, /Fetch @sai\/commands\/apply\/steps\/terminal-lifecycle\.md/,
+    'the terminal lifecycle loads when the machine returns it, not eagerly with the runner');
+  assert.match(coordinator, /fetch `terminal-lifecycle\.md` after the last Step/,
+    'the degraded-store fallback must still reach the terminal lifecycle');
+  const section = artifact('sai/commands/apply/steps/terminal-lifecycle.md');
   const markers = [
-    '### Final sweep',
-    '### Learnings Promotion Pass',
-    '### Terminal documentation evaluation',
-    '### Terminal visibility listing',
-    '### Terminal authorization and commit',
-    '### MANDATORY STOP',
+    '## 1. Terminal functional review',
+    '## 2. Final sweep',
+    '## 3. Learnings promotion',
+    '## 4. Terminal documentation commit',
+    '## 5. Print and stop',
   ];
   const positions = markers.map(marker => section.indexOf(marker));
   assert.ok(positions.every(position => position >= 0), 'every terminal lifecycle segment must be present');
   assert.deepEqual([...positions].sort((left, right) => left - right), positions,
-    'Final sweep, promotion, evaluation, visibility, authorization, and STOP must stay ordered');
-  assert.match(section, /exactly one learnings promotion pass/);
-  assert.match(section, /retired monolithic apply instruction is not an executable source|retired monolithic/i);
+    'review, Final sweep, promotion, documentation commit, and print must stay ordered');
+  assert.match(section, /Promote once per run/);
+  const docs = section.slice(section.indexOf(markers[3]), section.indexOf(markers[4]));
+  const steps = ['**Visibility listing.**', '**Message.**', '**Authorization.**', '**Commit.**'].map(step => docs.indexOf(step));
+  assert.ok(steps.every(position => position >= 0), 'listing, message, authorization, and commit must all be present');
+  assert.deepEqual([...steps].sort((left, right) => left - right), steps,
+    'the listing must precede the message, which precedes authorization and commit');
 });
 
 test('Step 2 the terminal path contract is explicit and separate from Step staging', () => {
-  const runner = artifact(APPLY_CARDS.runner);
-  const start = runner.indexOf('## Final sweep and terminal lifecycle');
-  assert.ok(start >= 0, 'the active runner must own terminal path selection');
-  const section = runner.slice(start);
+  const section = artifact('sai/commands/apply/steps/terminal-lifecycle.md');
   assert.match(section, /changed paths under `docs\/\*\*`/);
-  assert.match(section, /root `SAI_LEARNINGS\.md` only when this run's promotion pass wrote it/);
-  assert.match(section, /changed root `GLOSSARY\.md`/);
-  assert.match(section, /`openspec\/changes\/\*\*`, `implementation\.md`, unrelated working-tree paths/);
-  assert.match(section, /per-Step field-8 add-list/);
-  assert.match(section, /does not stage, unstage, or otherwise mutate the Git index/);
-  assert.match(section, /SHALL NOT use `git add -A`/);
+  assert.match(section, /root `SAI_LEARNINGS\.md`, only when § 3 wrote it in this run/);
+  assert.match(section, /root `GLOSSARY\.md` when changed/);
+  assert.match(section, /`openspec\/changes\/\*\*`, `implementation\.md`, the changed-files union, per-Step add-lists, and unrelated paths are outside the set/);
+  assert.match(section, /never touches the index/);
+  assert.match(section, /Never `git add -A` or a broad fallback/);
 });
 
 test('Step 2 both harnesses keep the routed coordinator and workers keep Git authority prohibited', () => {
   const claude = artifact('sai/adapters/claude/boot.md');
   const opencode = artifact('sai/adapters/opencode/boot.md');
   const coordinator = artifact(APPLY_CARDS.coordinator);
-  const red = artifact(APPLY_CARDS.redWorker);
-  const green = artifact(APPLY_CARDS.greenWorker);
+  const red = workerContract(APPLY_CARDS.redWorker);
+  const green = workerContract(APPLY_CARDS.greenWorker);
   for (const boot of [claude, opencode]) {
     assert.match(boot, /@sai\/commands\/apply\/coordinator\.md/);
     assert.doesNotMatch(boot, /@sai\/commands\/apply\/body\.md/);
@@ -1058,8 +1082,74 @@ test('Step 2 both harnesses keep the routed coordinator and workers keep Git aut
   }
   assert.match(coordinator, /runner\.md/);
   for (const worker of [red, green]) {
-    assert.match(worker, /MUST NOT run any git operation/);
-    assert.match(worker, /MUST NOT edit or modify `implementation\.md`/);
+    assert.match(worker, /Run no git operation/);
+    assert.match(worker, /Leave `implementation\.md` and every checkbox untouched/);
     assert.doesNotMatch(worker, /git add|git commit/);
   }
+});
+
+// ─── review regressions: routing disclosure, cursor advance, commit gate ────
+
+test('the runner routing table names step files as plain paths so only the machine-returned file loads', () => {
+  const runner = artifact(APPLY_CARDS.runner);
+  for (const file of ROUTING_FILES) {
+    assert.ok(runner.includes(`\`${file}\``), `the routing table must name ${file}`);
+    assert.ok(!runner.includes(`Fetch @${file}`), `${file} must not be an eager Fetch directive`);
+  }
+  assert.doesNotMatch(runner, /Fetch @sai\/commands\/apply\/steps\//,
+    'no step file may load eagerly with the runner');
+});
+
+test('the coordinator drives apply-standalone@1 through the stage-machine policy and advances the cursor', () => {
+  const coordinator = artifact(APPLY_CARDS.coordinator);
+  assert.match(coordinator, /Fetch @sai\/policies\/stage-machine\.md/,
+    'the coordinator must load the store verbs it uses');
+  assert.match(coordinator, /"recordedList"/, 'run start must seed the machine');
+  assert.match(coordinator, /\{"mode":"<mode>"\}/, 'each Step must emit its routing mode');
+  assert.match(coordinator, /\{"intent":"complete-step"\}/, 'each finished Step must advance the cursor');
+});
+
+test('the per-Step commit gate previews, asks, and stages exactly the field-8 add-list', () => {
+  const runner = artifact(APPLY_CARDS.runner);
+  const start = runner.indexOf('## Step commit gate');
+  assert.ok(start >= 0, 'the runner must define the per-Step commit gate');
+  const gate = runner.slice(start);
+  const blocks = ['`Will be committed`', '`Totals: <N> files, +<ins> -<del>`', '`Will NOT be committed`', '`Plan cross-check`', '`Subagent ↔ git`'];
+  const positions = blocks.map(block => gate.indexOf(block));
+  assert.ok(positions.every(position => position >= 0), 'every visibility-report block must be defined');
+  assert.deepEqual([...positions].sort((a, b) => a - b), positions, 'the report blocks must keep their order');
+  assert.match(gate, /never read or change the index/);
+  assert.match(gate, /Ready to commit Step N\. May I create commit with message: '<subject>'\?/);
+  assert.match(gate, /`git add -- <add-list>` exactly/);
+  assert.match(gate, /Never add a path from `git status` that is not in the add-list\./);
+});
+
+test('the RED worker defines the green-exception mode the routing tree dispatches', () => {
+  const red = artifact(APPLY_CARDS.redWorker);
+  assert.match(red, /\| `green-exception` \| `test-authoring → green-verification` \|/);
+  assert.match(red, /`green-exception`:\*\* run the injected test command verbatim and leave the tests green/);
+  assert.match(red, /never report failing tests as a pass/);
+});
+
+test('apply worker prohibitions read as prohibitions and the report fields live in one apply card', () => {
+  const common = artifact(APPLY_CARDS.workerCommon);
+  const core = artifact('sai/orchestration/worker-core.md');
+  for (const worker of [artifact(APPLY_CARDS.redWorker), artifact(APPLY_CARDS.greenWorker), common]) {
+    assert.doesNotMatch(worker, /^- Act on a STOP & COMMIT marker/m, 'a prohibition bullet must not read as an instruction');
+  }
+  assert.match(common, /On a `STOP & COMMIT` marker, halt and report `STOP reached\?: yes`\./);
+  for (const field of REPORT_FIELDS) {
+    assert.ok(!core.includes(`\`${field}\``), `worker-core must not pin the apply field ${field}`);
+  }
+  assert.match(core, /sai\/commands\/apply\/worker-common\.md` § Report contract/);
+});
+
+test('commit-rules owns one authorization gate and never forbids staging for its consumers', () => {
+  const rules = artifact('sai/policies/commit-rules.md');
+  assert.doesNotMatch(rules, /Never stage or unstage files/,
+    'apply, merge, and archive stage through their own gates');
+  assert.match(rules, /## Authorization gate/);
+  assert.match(rules, /An off-option reply or silence is not a decline/);
+  assert.doesNotMatch(rules, /does not respond or declines, do not commit/,
+    'silence must re-present the ask, not decline');
 });
