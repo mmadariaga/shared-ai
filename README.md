@@ -234,14 +234,19 @@ If something looks off after install or setup, run a read-only health check — 
 
 The installer ships four opencode example presets to `~/.config/opencode/sai/presets/` (harness segment stripped). They install copy-if-absent: a missing file is copied once, an existing file is left intact with no merge, overwrite, or content validation.
 
+The installer ships one Claude example preset to `~/.claude/sai/presets/` (harness segment stripped) with the same copy-if-absent behavior.
+
 | Preset | Use when |
 |--------|----------|
 | `GO.json` | All coordinators and workers on `opencode-go/muse-spark-1.3-contributor`; keep everything on one provider. |
 | `GO+OC-FREE.json` | Same as `GO.json`, but the `budget` / `executor` / `explore` helpers run on the free `opencode/muse-spark-1.3-contributor` map to cut bulk I/O cost. |
 | `OAI-LUNA+OC-FREE.json` | Coordinators and workers on `openai/gpt-6-luna` / `gpt-5.6-luna` with free helpers; use when OpenAI is the primary provider. |
 | `OAI-SOL+OAI-LUNA+OC-FREE.json` | Same as above, but `/sai-explore` runs on `openai/gpt-6-sol`; use when you want Sol to lead exploration. |
+| `OPUS.json` | All coordinators and workers on `opus`; the `budget` helpers run on `haiku` / `sonnet` to cut bulk I/O cost. Claude-only example. |
 
 Load one with `npx github:mmadariaga/shared-ai setup` → **Customize models** → **Load preset** → **OpenCode** → preset name (without `.json`; names containing `+` are literal).
+
+Load the Claude example with `npx github:mmadariaga/shared-ai setup` → **Customize models** → **Load preset** → **Claude Code** → `OPUS` (without `.json`).
 
 ### Per project installation / override
 

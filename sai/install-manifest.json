@@ -1393,6 +1393,24 @@
       ],
       "ownership": "managed",
       "drift": "content"
+    },
+    {
+      "id": "claude-preset-examples",
+      "source": "sai/presets/claude",
+      "destination": {
+        "class": "sai",
+        "path": "presets"
+      },
+      "harnesses": [
+        "claude"
+      ],
+      "strategy": "copy-if-absent",
+      "recursive": true,
+      "include": [
+        "**/*.json"
+      ],
+      "ownership": "managed",
+      "drift": "content"
     }
   ],
   "retirements": [
