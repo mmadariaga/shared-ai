@@ -8,26 +8,34 @@ TBD — created by archive sync of change unattended-backfill. Describe: pinned-
 
 ### Requirement: Crystallized-block intake replaces intent capture
 
-When the request body contains the `## Ready to Propose` heading together with its byte-exact pinned labels (`**Change name**:`, `**What**:`, `**Why**:`, `**Capabilities in scope**:`, `**Alternatives Considered**:`, `**Trade-offs Accepted**:`, `**Key constraints**:`, `**Edge Cases**:`, `**Implementation Details**:` among them), `/sai-backfill` SHALL treat the pasted block as supplied structured intent and SHALL NOT present the optional intent-capture choice. Detection SHALL be binary via the pinned labels: text without them SHALL fall through intact to the generic flow with no partial parsing. Records derived from a detected block SHALL enter intent reconciliation identically to statement-derived records, retaining no raw statement, taking the usable-intent path everywhere below including the four-key `prior_intent` form.
+When the request body contains the nine mandatory consulted plain literals (`Change name`, `What`, `Why`, `Capabilities in scope`, `Alternatives Considered`, `Trade-offs Accepted`, `Key constraints`, `Edge Cases`, `Implementation Details`) as substrings, `/sai-backfill` SHALL treat the pasted block as supplied structured intent and SHALL NOT present the optional intent-capture choice. Detection SHALL be bold-insensitive: the command SHALL strip `**` before searching, then match each plain literal case-sensitive with the exact written spacing, anywhere with no line-start anchor. The `## Ready to Propose` heading SHALL NOT be required; when present it SHALL be ignored and form no part of the gate. A literal present but empty or with `- None` SHALL still count as present. A literal inside ordinary prose SHALL count the same as a label. Extras SHALL be ignored and `Request Additional Notes` SHALL never be required nor counted. Text without the quorum SHALL fall through intact to the generic flow with no partial parsing.
+
+#### Scenario: Plain literals route to structured intake
+- **WHEN** an invocation's request body contains the nine plain literals as substrings with or without bold markers and with or without the heading
+- **THEN** the intent-capture choice is never presented and the flow proceeds directly into intent reconciliation with block-derived records
 
 #### Scenario: Pinned labels route to structured intake
 - **WHEN** an invocation's request body contains the `## Ready to Propose` heading with its pinned labels
 - **THEN** the intent-capture choice is never presented and the flow proceeds directly into intent reconciliation with block-derived records
 
 #### Scenario: Unlabeled paste falls through intact
-- **WHEN** pasted text lacks the pinned labels
+- **WHEN** pasted text lacks the quorum of nine plain literals
 - **THEN** the command runs today's generic flow unchanged and never partially parses the text as a block
 
 ### Requirement: Consumed block fields resolve label then mined prose then ask
 
-Every consumed block field SHALL resolve through the same three steps, identically with and without `fast_track_active`: use the labeled value when the pinned label is present and carries content (a `- None` bullet counts as no content); otherwise mine the answer from the surrounding pasted prose even off-format; otherwise restore that question's ordinary ask channel in the interview phase. Mined answers feed proposal prose only and never become normative requirements without qualifying evidence.
+Every consumed block field SHALL resolve by existence alone, identically with and without `fast_track_active`: when its plain literal exists the command SHALL skip that slot's question by existence, carrying the labeled value when it carries content and still skipping with no content fallback and no ask when it is empty or `- None`; otherwise it SHALL mine the answer from the surrounding pasted prose even off-format; otherwise it SHALL restore that question's ordinary ask channel in the interview phase. Mined answers SHALL feed proposal prose only and never become normative requirements without qualifying evidence.
+
+#### Scenario: Existing Why literal skips Question 1
+- **WHEN** the block contains the `Why` plain literal regardless of bold markers
+- **THEN** "What problem does this solve?" is never presented and its resolved value serves as the fixed answer
 
 #### Scenario: Labeled Why answers Question 1 without asking
 - **WHEN** the block carries a non-empty `**Why**` value
 - **THEN** "What problem does this solve?" is answered from that value and is never presented to the user
 
 #### Scenario: Missing limitations fall through to the ask
-- **WHEN** neither the limitation-mapped labels nor the surrounding prose yield an answer for "What are the known limitations or technical debt left behind?"
+- **WHEN** neither the limitation-mapped literals nor the surrounding prose yield an answer for "What are the known limitations or technical debt left behind?"
 - **THEN** the command asks that question exactly as written, identically in manual and fast-track modes
 
 ### Requirement: Direct Build route produces metadata-declaring artifact set
