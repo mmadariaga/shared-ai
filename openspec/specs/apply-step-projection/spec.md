@@ -80,3 +80,27 @@ The apply run-start projection SHALL remain separate from dispatch-local progres
 #### Scenario: Apply worker results do not stamp projection
 - **WHEN** RED or GREEN returns a progress or terminal result
 - **THEN** the implementation step projection remains unstamped.
+
+### Requirement: phase-start-position-announcements
+
+The shared apply runner SHALL print exactly `RED N/M` immediately before each RED-worker dispatch (`red` or `green-exception`) and exactly `GREEN N/M` immediately before each GREEN-worker dispatch (`green` or `green-direct`) during standalone `/sai-4-apply` and the chained `/sai-build` apply segment. `N` SHALL be the active Step number. `M` SHALL be the count of all `#### Step N:` headings in `openspec/changes/{change-name}/implementation.md`, including completed Steps. Completed Steps SHALL contribute to `M` but SHALL produce no new announcement. A same-worker continuation or recovery SHALL produce no new announcement, and a phase omitted by the routing file SHALL produce no announcement.
+
+#### Scenario: split flow announces both phases
+
+- **WHEN** active Step 1 of a four-Step implementation plan starts a RED worker dispatch followed by a GREEN worker dispatch
+- **THEN** the runner prints exactly `RED 1/4` immediately before RED and exactly `GREEN 1/4` immediately before GREEN, in that order
+
+#### Scenario: green-only flow announces only GREEN
+
+- **WHEN** active Step 2 of a four-Step implementation plan starts a `green-direct` dispatch without a RED dispatch
+- **THEN** the runner prints exactly `GREEN 2/4` immediately before the dispatch and prints no RED announcement
+
+#### Scenario: completed Steps remain in the denominator
+
+- **WHEN** an implementation plan has four Step headings, Steps 1 and 2 are completed, and Step 3 starts a RED worker dispatch
+- **THEN** the runner uses `M` equal to 4, prints exactly `RED 3/4`, and produces no new announcement for the completed Steps
+
+#### Scenario: continuation and omitted phase do not repeat
+
+- **WHEN** a RED worker resumes through same-worker recovery or continuation and the routing file omits the GREEN phase
+- **THEN** the runner prints no additional RED announcement and no GREEN announcement

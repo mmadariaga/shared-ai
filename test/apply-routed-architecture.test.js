@@ -172,6 +172,21 @@ test('Step 2 each RED, GREEN, or green-exception dispatch is a separate worker i
     'specs/apply-step-projection/spec.md: selecting another plan for a later dispatch must not mutate the earlier plan');
 });
 
+test('Step 2 the apply runner pins phase-start position announcements, denominator, and no-repeat cases', () => {
+  const runner = artifact(APPLY_CARDS.runner);
+  assert.match(runner,
+    /immediately before a RED-worker dispatch \(`red` or `green-exception`\) print exactly `RED N\/M`, or immediately before a GREEN-worker dispatch \(`green` or `green-direct`\) print exactly `GREEN N\/M`/,
+    'specs/apply-step-projection/spec.md: each worker phase must use the exact RED N/M or GREEN N/M announcement');
+  assert.match(runner,
+    /`N` is the active Step number; `M` is the count of all `#### Step N:` headings in `implementation\.md`, including completed Steps\./,
+    'specs/apply-step-projection/spec.md: the denominator must count every Step heading, including completed Steps');
+  assert.match(runner, /Completed Steps count toward `M` but get no new line\./,
+    'specs/apply-step-projection/spec.md: completed Steps contribute only to the denominator');
+  assert.match(runner,
+    /A same-worker continuation or recovery is the same phase and gets no new line; a phase the routing file omits gets no line\./,
+    'specs/apply-step-projection/spec.md: continuations, recoveries, and omitted phases must not get new announcements');
+});
+
 test('Step 2 worker progress marks only its dispatch-local plan', () => {
   const red = workerContract(APPLY_CARDS.redWorker);
   const green = workerContract(APPLY_CARDS.greenWorker);
