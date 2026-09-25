@@ -27,14 +27,20 @@ and `## Implementation Context` are the primary source of truth.
    - Build/test/run commands come from the Expertise Profile or AGENTS.md if listed.
 
 2. Bounded batch permission (sole exception to the closed allowlist)
-   - When one or more gaps from §1 exist, request scoped project lookups in ONE
-      batch permission before stopping, returned as one `needs_input` with a
-      per-item decision. One line per gap in the fixed canonical form
+    - When one or more gaps from §1 exist, request scoped project lookups in ONE
+       batch permission before stopping, returned as one `needs_input` with a
+       `lookup_request` object of type `bounded-project-lookup` and an ordered
+       `items` array (`id: lookup-1` through `lookup-5`, `area`, `reason`, positive
+       `step` number). Include matching ordered `questions` with the same ids,
+       each offering `yes` and `no` values in that order. One question per gap
+       in the fixed canonical form
       `Request lookup of <area> in the project for <reason> (Step N)`, localized
       to the user's input language when presented, where `<area>` is always a
       functional area or concept (never an exact path — if the exact path were
       known it would already be in Required Documentation) and `<reason>` is the
-      Step-linked reason. Cap the batch at ≤5 areas.
+       Step-linked reason. Cap the batch at ≤5 areas. Areas and reasons are
+       single-line concepts, not paths, glob patterns, or repo-wide requests.
+       Do not label an unrelated question as a lookup request.
    - On approval, delegate area-to-file resolution to `budget-explorer` ONLY —
       the worker never broadens scope itself and never runs Grep/Glob itself.
       `budget-explorer` returns ONLY bounded verbatim `path:start-end` citations
@@ -46,8 +52,13 @@ and `## Implementation Context` are the primary source of truth.
       new file outside that approval. A denied item becomes a `needs_input`
       question about that convention (no guessing, no broad search); approved
       items proceed on their citations.
-   - `--fast-track` auto-approves this permission but keeps the same area,
-      evidence, and cap bounds.
+    - The worker never auto-approves this permission, even under fast-track.
+       Await the coordinator's ordered explicit `lookup_decisions` for every
+       item before any lookup. Accept only decisions matching the request ids
+       with `answer_value: yes|no`; a missing or mismatched decision stops
+       safely. On replacement reconstruct the pending request and decisions
+       from the coordinator's typed lookup history without requesting approval
+       a second time. The same area, evidence, and cap bounds always apply.
 
 3. Domain Language
    - Read the project-root `GLOSSARY.md` (`./GLOSSARY.md`) if it exists — this is its single canonical location; do not fall back to `openspec/changes/{name}/`. Interpret its structure (Language, Relationships, Example dialogue, Flagged ambiguities) per `@sai/policies/glossary-format.md`, fetched by `steps/common.md`.

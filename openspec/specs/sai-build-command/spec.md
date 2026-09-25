@@ -35,19 +35,33 @@ A completed non-final implement segment SHALL communicate its summary and change
 - **THEN** apply activates immediately and no standalone `/sai-4-apply` invitation is printed
 
 ### Requirement: Apply fast-track is injected and composition-owned
-Apply SHALL receive fast-track true unconditionally when activated. The build coordinator SHALL print `> FAST-TRACK MODE ACTIVE` exactly once at apply activation and zero times when apply never starts. Injected fast-track SHALL retain commit pre-authorization, non-detached branch auto-stay, and all safe-operations and other non-removable stops; detached HEAD SHALL retain its three-option branch prompt. Injected fast-track SHALL NOT defer a combined Human Verification report and SHALL NOT change functional-check handling.
+Both implement and apply SHALL receive fast-track true as invocation-scoped state on activation, outside their request envelopes. The build coordinator SHALL print `> FAST-TRACK MODE ACTIVE` exactly once at implement activation, not at apply activation. Injected fast-track SHALL retain bounded lookup authorization, commit pre-authorization, non-detached branch auto-stay, and all safe-operations and other non-removable stops; detached HEAD SHALL retain its three-option branch prompt. Functional-check handling SHALL remain unchanged.
+
+#### Scenario: Implement activation prints one banner
+- **WHEN** build activates implement, with or without an explicit `--fast-track` token
+- **THEN** the coordinator prints the exact banner once and apply does not print a second banner
+
+#### Scenario: Failed phase one retains the single banner
+- **WHEN** implement returns `failed` or `cancelled` after activation
+- **THEN** apply does not activate and no second banner is printed
+
+#### Scenario: Injected fast-track retains bounded grants
+- **WHEN** build activates implement and later apply
+- **THEN** valid bounded lookup requests are approved by the implement coordinator and local commit authorization is active before apply's first Step
+- **AND** branch auto-stay applies only on a non-detached branch while functional checks follow the ordinary terminal review path
 
 #### Scenario: Apply activation prints one banner
-- **WHEN** build transitions to apply
-- **THEN** the coordinator prints the exact banner once and apply does not print a second shell banner
+- **WHEN** build transitions to apply after implement activation
+- **THEN** the single banner printed at implement activation stands and apply prints no second banner
 
 #### Scenario: Failed phase one has no banner
-- **WHEN** implement returns `failed` or `cancelled`
-- **THEN** apply is not activated and the banner is not printed
+- **WHEN** implement returns `failed` or `cancelled` after activation
+- **THEN** apply is not activated and apply prints no banner; the single implement-activation banner stands with no second banner
 
 #### Scenario: Injected fast-track keeps only its two opt-outs
 - **WHEN** build activates apply with fast-track injected
-- **THEN** commit pre-authorization and branch auto-stay apply while functional checks follow the ordinary terminal functional review path with no deferred combined list
+- **THEN** commit pre-authorization and branch auto-stay apply (the two apply-segment opt-outs) while functional checks follow the ordinary terminal functional review path with no deferred combined list
+- **AND** bounded lookup approval for the implement segment is covered by the companion scenario above
 
 ### Requirement: Phase-one failure blocks apply
 Failed or cancelled implementation SHALL close the invocation without RED/GREEN dispatch, apply completion, or a successful transition.
@@ -90,3 +104,27 @@ Build SHALL declare no Step-count ceiling and SHALL preserve one ordered duplica
 #### Scenario: Union survives transition
 - **WHEN** both phases report changed paths
 - **THEN** implement paths remain and apply paths append in first-seen order
+
+### Requirement: Implementation coordinator decides bounded lookup authorization
+When the implementation worker needs a missing convention, it SHALL return a typed validated bounded-project-lookup request with 1–5 functional areas, Step-linked reasons, and matching per-item yes/no questions. The coordinator SHALL approve each valid item under injected build fast-track or standalone `/sai-3-implement --fast-track`; ordinary standalone implementation SHALL present each item for a decision. Authorization SHALL keep the existing project-root, read-only, citation (at most three per area), and line (at most 20 per citation) limits. An invalid request, unrelated question, or safety confirmation SHALL never be auto-approved based on wording. Denied items SHALL retain the convention-question fallback. The worker SHALL receive the explicit fast-track boolean after ready and on replacement for its other defined behaviors, not a raw `--fast-track` token. Ordered decisions and original limits SHALL survive worker continuation and replacement without new approval or broader search.
+
+#### Scenario: Typed lookup approval and ordinary decision
+- **WHEN** a validated request reaches the implement coordinator under build or standalone fast-track
+- **THEN** it approves each item within the established bounds without a permission prompt
+- **AND** ordinary standalone implementation instead presents each item through the active harness's picker
+
+#### Scenario: Invalid or unrelated question
+- **WHEN** a worker returns an invalid lookup request or an unrelated question that mentions lookup
+- **THEN** the coordinator does not grant lookup authorization from its wording
+
+#### Scenario: Replacement retains decided scope
+- **WHEN** a worker is replaced after lookup approval
+- **THEN** its replacement receives the exact decisions, original limits, and explicit fast-track state without requesting lookup approval again
+
+### Requirement: Apply commit grant is active before the first Step
+At apply segment entry the apply coordinator SHALL set `session_commit_authorized` from injected fast-track state before Step projection or dispatch; standalone fast-track apply SHALL do the same after parsing. The grant SHALL cover the Step local-commit gates and the eligible terminal documentation commit gate only. It SHALL skip authorization asks, not pre-commit visibility, proposed messages, exact-path staging, reporting, unresolved-conflict stops, or independent safe-operations confirmations. It SHALL NOT authorize pushes, branch changes, or unrelated files. Missing or invalid fast-track state SHALL stop safely rather than silently falling back to an interactive first-Step approval.
+
+#### Scenario: First Step and terminal documentation commits
+- **WHEN** build or standalone fast-track apply reaches the first Step commit gate
+- **THEN** the visibility report and proposed message print and only the Step add-list is staged without a local-commit permission prompt
+- **AND** the same grant applies at the eligible terminal documentation commit gate

@@ -8,7 +8,7 @@
   ## Fast-track parse
   Inspect the boot-provided `arguments_value` for the token `--fast-track`:
   - Present anywhere: set the fast-track session signal active, remove the token and trim the remainder, and print `> FAST-TRACK MODE ACTIVE` once as conversation text. The remainder is the effective request.
-  - Absent: leave the signal inactive and use `arguments_value` verbatim.
+  - Absent: set the fast-track session signal explicitly false and use `arguments_value` verbatim.
 
   This section is the sole authority that detects and removes `--fast-track` on the standalone path. Every later fast-track behavior reads the session signal and never re-parses arguments.
 

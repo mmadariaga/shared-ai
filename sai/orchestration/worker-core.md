@@ -54,6 +54,14 @@ options: {label: string, value: string}[]
 After change resolution, `needs_input` additionally carries
 `resolved_change_name`. Pre-resolution input omits it.
 
+The implementation plan-generation step may use the validator-recognized
+`lookup_request` field on a post-resolution `needs_input` with the batch-v1
+`questions` form. This is the sole coordinator-owned bounded lookup grant:
+`lookup_request: {type: bounded-project-lookup, items: [{id, area, reason, step}]}`
+with 1–5 ordered items, distinct ids matched to yes/no questions. The validator
+checks this typed shape; no other `needs_input` can claim lookup authorization
+from its prose. Ordinary phase questions remain unchanged.
+
 Unsuccessful outcomes are exactly:
 
 ```yaml

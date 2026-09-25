@@ -138,6 +138,56 @@ function validateOptionObject(opt) {
   return null;
 }
 
+/** Implementation-only, typed bounded lookup authorization on needs_input. */
+function validateLookupRequest(payload, errors) {
+  const request = payload.lookup_request;
+  if (payload.status !== 'needs_input' || !request || typeof request !== 'object' || Array.isArray(request)) {
+    errors.push('lookup_request requires a needs_input status and an object');
+    return;
+  }
+  if (request.type !== 'bounded-project-lookup') errors.push('lookup_request.type must be bounded-project-lookup');
+  if (Object.keys(request).some((key) => !['type', 'items'].includes(key))) {
+    errors.push('lookup_request has an unsupported field');
+  }
+  if (!Array.isArray(request.items) || request.items.length < 1 || request.items.length > 5) {
+    errors.push('lookup_request.items must contain 1 to 5 items');
+    return;
+  }
+  const ids = new Set();
+  request.items.forEach((item, index) => {
+    const where = `lookup_request.items[${index}]`;
+    if (!item || typeof item !== 'object' || Array.isArray(item)) {
+      errors.push(`${where} must be an object`);
+      return;
+    }
+    if (Object.keys(item).some((key) => !['id', 'area', 'reason', 'step'].includes(key))) {
+      errors.push(`${where} has an unsupported field`);
+    }
+    if (typeof item.id !== 'string' || !/^lookup-[1-5]$/.test(item.id) || ids.has(item.id)) {
+      errors.push(`${where}.id must be a distinct lookup-1 through lookup-5`);
+    }
+    ids.add(item.id);
+    for (const key of ['area', 'reason']) {
+      if (typeof item[key] !== 'string' || !item[key].trim() || item[key].length > 240 ||
+          /[\r\n]|\.\.|[\\/]|[*?]/.test(item[key])) {
+        errors.push(`${where}.${key} must be a bounded, non-path, single-line concept`);
+      }
+    }
+    if (!Number.isSafeInteger(item.step) || item.step < 1) errors.push(`${where}.step must be a positive Step number`);
+  });
+  if (!Array.isArray(payload.questions) || payload.questions.length !== request.items.length ||
+      request.items.some((item, index) => !item || !payload.questions[index] ||
+        payload.questions[index].id !== item.id ||
+        !Array.isArray(payload.questions[index].options) ||
+        payload.questions[index].options.length !== 2 ||
+        payload.questions[index].options[0].value !== 'yes' ||
+        payload.questions[index].options[1].value !== 'no')) {
+    errors.push('lookup_request items must match ordered yes/no questions by id');
+  }
+  if (!('resolved_change_name' in payload) || typeof payload.resolved_change_name !== 'string' ||
+      !payload.resolved_change_name.trim()) errors.push('lookup_request requires resolved_change_name');
+}
+
 /**
  * Validate a terminal status payload.
  * Required fields: status, summary, changed_files. No time field is required;
@@ -224,6 +274,8 @@ function validateTerminal(payload) {
       }
     }
   }
+
+  if ('lookup_request' in payload) validateLookupRequest(payload, errors);
 
   // Post-resolution failed payloads require failure_class and unrecoverable
   if (status === 'failed' && 'resolved_change_name' in payload) {
