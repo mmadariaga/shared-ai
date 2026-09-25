@@ -237,12 +237,22 @@ Clean `completed` without disproof and without STOP does not start diagnosis.
 
 ### Requirement: Direct Build - Unattended eight-step unattended flow
 
-On a Direct Build - Unattended selection, explore SHALL run one unattended code-first flow in fixed order without dispatching `/sai-3-implement` or re-entering a routed phase command. After implementation review, it SHALL prepare backfill drafts, validate them read-only, run the ADR/DDR routing test, execute the validated backfill draft write, prepare archive preflight, and resolve the unchecked-items gate under fast-track semantics. Archive execution SHALL run exactly `openspec archive <name> --yes --json` as the sole synchronization-and-move primitive, then stage only approved owned paths and perform the one pre-authorized local commit. The flow SHALL never use manual synchronization or archive movement, retry a failed CLI operation, push, or amend.
+On a Direct Build - Unattended selection, explore SHALL run one unattended code-first flow in fixed order without dispatching `/sai-3-implement` or re-entering a routed phase command. After implementation review, it SHALL prepare backfill drafts, validate them read-only, run the ADR/DDR routing test, execute the validated backfill draft write, prepare archive preflight, and resolve the unchecked-items gate under fast-track semantics. Archive execution SHALL run exactly `openspec archive <name> --yes --json` as the sole synchronization-and-move primitive, then stage only approved owned paths and perform the one pre-authorized local commit. The flow SHALL never use manual synchronization or archive movement, retry a failed CLI operation, push, or amend. At the existing terminal close, explore SHALL use exactly four labeled sections in this order: `Outcome`, `Changes`, `Verification`, and `Incidents`. `Outcome` SHALL name the archive destination and local commit reference on success, including the short SHA and subject, and SHALL state `Nothing was pushed.` `Changes` SHALL summarize material repository changes. `Verification` SHALL report failures or limitations, distinguish pre-existing test failures from failures introduced or worsened by the run, and SHALL NOT claim that the suite passed while failures remain. `Incidents` SHALL report run-caused execution problems and contract violations with their violated rule and known effect, and SHALL identify expected generated files excluded from the commit with their reasons. The report SHALL omit routine execution telemetry and verbatim worker summaries while preserving the existing worker order, execution boundaries, archive and commit ownership, and failure handling.
 
 #### Scenario: Unattended run reaches an archived, committed change
 
 - **WHEN** the eight Direct Build steps complete without a recovery interruption
-- **THEN** the flow reports the worker-authored summaries, names the archive destination and commit subject, and reaches the terminal archived-and-committed state
+- **THEN** the flow presents `Outcome`, `Changes`, `Verification`, and `Incidents` in that order, names the archive destination and local commit short SHA and subject, states `Nothing was pushed.`, and reaches the terminal archived-and-committed state
+
+#### Scenario: Direct Build reports a completed archive and commit
+
+- **WHEN** the final archive execution returns a clean terminal `completed` result and no uncompleted slice remains
+- **THEN** explore presents `Outcome`, `Changes`, `Verification`, and `Incidents` in that order, with the archive destination, local commit short SHA and subject, and `Nothing was pushed.` in `Outcome`
+
+#### Scenario: Direct Build reports incomplete terminal work
+
+- **WHEN** archiving or the local commit does not complete
+- **THEN** explore states what completed and what remains, does not describe the run as completed, and preserves the existing non-clean failure handling and commit ownership
 
 ### Requirement: Direct Build slice completion transition
 

@@ -1,23 +1,29 @@
 # Autonomy Audit Log (pinned layout)
 
 Single source of the pinned scannable layout for the autonomy audit that
-closes a supervised phase. Consumed by reference by `sai-explore`'s
-supervised contracts — the spec phase, the design phase, and the
-Direct Build (unattended) run — which name their own phase label when they
-invoke this layout. Consuming surfaces SHALL NOT restate the layout inline.
+closes a supervised phase. The supervised spec and design phases consume this
+layout by reference and supply their own phase labels. The Direct Build -
+Unattended final report is the scoped exception: it does not emit an autonomy
+audit. This exception changes no other route's display requirement. Consuming
+surfaces SHALL NOT restate the layout inline.
 
 ## Invariants
 
-- The audit log is assembled from the run's auto-answer records and the
+- An emitted audit is assembled from the run's auto-answer records and the
   escalated count. It is presented in conversation only and is NEVER written
   to any file, artifact, change directory, or configuration.
-- List every auto-answered question with the exact worker question, the exact
-  answer forwarded, and the grounding citation that determined it.
-- Report `Escalated` as an aggregate calibration denominator only: WITHOUT
-  reproducing the content of any escalated question, which the user already
-  saw and answered.
-- When nothing was auto-answered, present the empty report — the escalated
-  count is still shown and no entries are fabricated.
+- In each emitted audit, list every auto-answered question with the exact
+  worker question, the exact answer forwarded, and the grounding citation that
+  determined it.
+- In each emitted audit, report `Escalated` as an aggregate calibration
+  denominator only: WITHOUT reproducing the content of any escalated question,
+  which the user already saw and answered.
+- An audit-emitting route with no auto-answers still presents the empty report
+  — the escalated count is shown and no entries are fabricated.
+- **Direct Build final-report exception:** The Direct Build - Unattended final
+  report does not present an autonomy audit, including the empty-report case.
+  This exception applies only to that final report; its other behavior and the
+  audit requirement for every other route stay unchanged.
 
 ## Pinned scannable layout (field order fixed)
 
@@ -31,7 +37,8 @@ Auto-answered: <N>   Escalated: <M>
 ```
 
 `<phase label>` is supplied verbatim by the emitting contract (for example
-`supervised spec phase`, `supervised design phase`, or the Direct Build - Unattended run's label); the layout itself never changes.
+`supervised spec phase` or `supervised design phase`); the layout itself never
+changes.
 
 ## Empty-report case (no auto-answers)
 

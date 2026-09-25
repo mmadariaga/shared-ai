@@ -2,7 +2,9 @@
 
 ## Purpose
 TBD - created by archiving change add-pipeline-autonomous-question-answering. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: Auto-answered questions are reported at every phase ending
 
 The supervised spec phase ends by any of its documented terminal outcomes — convergence, cap exhaustion, or a `failed` or `cancelled` spec-proposal worker. At every such ending, `sai-explore` SHALL present an audit log of the autonomous answering it performed during that phase. The log SHALL list, for every question explore auto-answered, the worker's question, the answer explore gave, and the reasoning behind that answer. The reasoning SHALL include the grounding citation required by the pipeline question-autonomy capability — which permitted grounding source, and what within it, determined the answer — rather than free prose alone, so the log is the verification surface for the grounding gate and a later reader can distinguish a properly grounded answer from a confident-sounding one. The audit log SHALL be presented in the conversation, so the user can review each decision made on their behalf. Presenting the log at a `failed` or `cancelled` ending is required precisely because auto-answers made before a failure would otherwise be buried by that failure. It reframes the user from answering every question to auditing the answers that were given.
@@ -47,3 +49,12 @@ The autonomy audit log SHALL be rendered in the pinned scannable layout single-s
 #### Scenario:
 - **WHEN** a supervised phase ends and explore renders the autonomy audit
 - **THEN** it invokes the shared layout with its phase label and presents the pinned empty report without fabricated entries when nothing was auto-answered
+
+### Requirement: Direct Build final report omits the autonomy audit
+
+The Direct Build - Unattended final report SHALL NOT present an autonomy audit, including the empty-report case. This exception SHALL apply only to that final report; supervised spec and design phases and every other audit-emitting route SHALL retain the existing autonomy-audit display behavior.
+
+#### Scenario: Direct Build closes without an autonomy audit
+
+- **WHEN** Direct Build - Unattended reaches its final terminal report
+- **THEN** the report omits the autonomy audit while the shared audit layout and display behavior remain unchanged for every other audit-emitting route

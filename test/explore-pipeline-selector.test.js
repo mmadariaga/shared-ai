@@ -1277,6 +1277,43 @@ test('Step 4: Direct Build (unattended) completion re-presents a per-slice selec
   assert.match(transition, /require a later explicit request before any pending slice runs/i);
 });
 
+test('Direct Build final report is outcome-first and leaves the Plan report unchanged', () => {
+  const directBuild = spec('sai/commands/explore/steps/pipeline-direct-build.md');
+  const plan = spec('sai/commands/explore/steps/pipeline-plan-unattended.md');
+  const auditLayout = spec('sai/policies/autonomy-audit-log.md');
+  const reportStart = directBuild.indexOf('**Direct Build terminal report**');
+  const reportEnd = directBuild.indexOf('**Successful slice completion transition', reportStart);
+
+  assert.ok(reportStart >= 0 && reportEnd > reportStart, 'the Direct Build terminal-report contract should exist');
+  const report = directBuild.slice(reportStart, reportEnd);
+  const sections = ['**Outcome**', '**Changes**', '**Verification**', '**Incidents**'];
+  let previous = -1;
+  for (const section of sections) {
+    const index = report.indexOf(section);
+    assert.ok(index > previous, `${section} should appear in the required order`);
+    previous = index;
+  }
+
+  assert.match(report, /archive destination.*local commit reference.*short SHA and subject.*Nothing was pushed/s);
+  assert.match(report, /If archiving or the commit did not complete, state what completed and what remains/);
+  assert.match(report, /failures known before this run from failures introduced or worsened by it/);
+  assert.match(report, /run-caused execution problem or contract violation and its known effect/);
+  assert.match(report, /pre-existing test failure is a verification limitation, not an incident/);
+  assert.match(report, /Name the violated rule for a contract violation/);
+  assert.match(report, /expected generated file is excluded from the commit, name it and the reason/);
+  assert.match(report, /omit routine rounds without findings, cap tallies, checks without alerts, automatic answers that caused no problems/i);
+  assert.match(report, /follow the Direct Build - Unattended final-report exception in `sai\/policies\/autonomy-audit-log\.md`/);
+
+  assert.match(plan, /Autonomy audit — supervised spec phase/);
+  assert.match(plan, /Autonomy audit — supervised design phase/);
+  assert.match(plan, /sai\/policies\/autonomy-audit-log\.md/);
+  assert.match(auditLayout, /Direct Build -\s*Unattended final report is the scoped exception:[\s\S]{0,120}does not emit an autonomy\s+audit/);
+  assert.match(auditLayout, /This exception applies only to that final report[\s\S]{0,100}every other route stay unchanged/);
+  assert.match(auditLayout, /Pinned scannable layout \(field order fixed\)/);
+  assert.match(auditLayout, /Auto-answered: <N>\s+Escalated: <M>/);
+  assert.match(auditLayout, /\(no questions were auto-answered this phase\)/);
+});
+
 test('Step 4: failed or cancelled Plan maps retry guidance from phase state without changing retry state', () => {
   const source = exploreContract();
   const selectorSpec = spec('openspec/specs/explore-pipeline-selector/spec.md');
