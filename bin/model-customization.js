@@ -11,11 +11,13 @@ const {
   promptChecklist: installFlowPromptChecklist,
   prepareLineInput,
   BACK,
+  INPUT_CLOSED,
   CHECKLIST_SEPARATOR,
 } = require('./install-flow.js');
 
 const MENU_OPTIONS = Object.freeze(['Customize models', 'Reset to default models', 'Save preset', 'Load preset', 'Exit']);
 const HARNESS_OPTIONS = Object.freeze(['OpenCode', 'Claude Code']);
+const CANCELLED = Symbol('CANCELLED');
 const SCOPE_OPTIONS = Object.freeze(['All', 'Agents', 'Orchestrators', 'Workers', 'Utilities']);
 const MODEL_CHECKLIST_LEGEND = 'Up/Down move · Space toggle · Enter confirm · ←/Esc back · q/Ctrl-C cancel';
 const MODEL_TABLE_INDENT = '      ';
@@ -633,6 +635,7 @@ async function selectClaudeSettings(subsetLabel, promptChoice, settingsCatalog) 
     entries.map(entry => entry.display)
   );
   if (selectedDisplay === BACK) return BACK;
+  if (selectedDisplay === null) return CANCELLED;
   const selected = entries.find(entry => entry.display === selectedDisplay);
   if (selected === undefined) return null;
   return selected.effort === undefined
@@ -682,12 +685,6 @@ function defaultRunCommand(executable, args, {
   }
   if (result.error) throw result.error;
   return { stdout: result.stdout, stderr: result.stderr, status: result.status };
-}
-
-function reportCommandFailure(action, outcome) {
-  const detail = typeof outcome.stderr === 'string' ? outcome.stderr.trim() : '';
-  const suffix = detail === '' ? `exit status ${outcome.status}` : detail;
-  console.error(`Unable to ${action}: ${suffix}`);
 }
 
 function parseModelCatalog(stdout) {
@@ -763,21 +760,20 @@ async function opencodeSelectSettings(subsetLabel, promptChoice, runCommand) {
   try {
     catalogOutcome = runCommand('opencode', ['models']);
   } catch (error) {
-    console.error(`Unable to query OpenCode models: ${error.message}`);
-    return null;
+    return { status: 'failed', diagnostic: `Unable to query OpenCode models: ${error.message}` };
   }
   if (catalogOutcome.status !== 0) {
-    reportCommandFailure('query OpenCode models', catalogOutcome);
-    return null;
+    const detail = typeof catalogOutcome.stderr === 'string' ? catalogOutcome.stderr.trim() : '';
+    return { status: 'failed', diagnostic: `Unable to query OpenCode models: ${detail || `exit status ${catalogOutcome.status}`}` };
   }
 
   let catalog;
   try {
     catalog = parseModelCatalog(catalogOutcome.stdout);
-  } catch {
-    return null;
+  } catch (error) {
+    return { status: 'failed', diagnostic: `Invalid OpenCode model catalog: ${error.message}` };
   }
-  if (catalog.length === 0) return null;
+  if (catalog.length === 0) return { status: 'failed', diagnostic: 'OpenCode model catalog is empty.' };
 
   const providers = [];
   for (const entry of catalog) {
@@ -799,6 +795,7 @@ async function opencodeSelectSettings(subsetLabel, promptChoice, runCommand) {
     if (screen === 'provider') {
       const chosen = await promptChoice(`Provider for ${subsetLabel}:`, providers);
       if (chosen === BACK) return BACK;
+      if (chosen === null) return CANCELLED;
       if (!providers.includes(chosen)) return null;
       provider = chosen;
       screen = 'model';
@@ -812,6 +809,7 @@ async function opencodeSelectSettings(subsetLabel, promptChoice, runCommand) {
         screen = 'provider';
         continue;
       }
+      if (chosen === null) return CANCELLED;
       if (!models.includes(chosen)) return null;
       model = chosen;
       screen = 'variant';
@@ -821,26 +819,21 @@ async function opencodeSelectSettings(subsetLabel, promptChoice, runCommand) {
     const identity = `${provider}/${model}`;
 
     if (cachedAvailable === null) {
-      let apiOutcome = null;
-      let apiFailed = false;
+      let apiOutcome;
       try {
         apiOutcome = runCommand('opencode', ['api', 'model.list']);
       } catch (error) {
-        console.error(`Unable to query OpenCode model variants: ${error.message}`);
-        apiFailed = true;
+        return { status: 'failed', diagnostic: `Unable to query OpenCode model variants: ${error.message}` };
       }
-      if (apiFailed) {
-        cachedAvailable = false;
-      } else if (apiOutcome.status !== 0) {
-        reportCommandFailure('query OpenCode model variants', apiOutcome);
-        cachedAvailable = false;
-      } else {
-        try {
-          cachedModelList = parseApiModelList(apiOutcome.stdout);
-          cachedAvailable = true;
-        } catch {
-          cachedAvailable = false;
-        }
+      if (apiOutcome.status !== 0) {
+        const detail = typeof apiOutcome.stderr === 'string' ? apiOutcome.stderr.trim() : '';
+        return { status: 'failed', diagnostic: `Unable to query OpenCode model variants: ${detail || `exit status ${apiOutcome.status}`}` };
+      }
+      try {
+        cachedModelList = parseApiModelList(apiOutcome.stdout);
+        cachedAvailable = true;
+      } catch (error) {
+        return { status: 'failed', diagnostic: `Invalid OpenCode model variant list: ${error.message}` };
       }
     }
 
@@ -866,6 +859,7 @@ async function opencodeSelectSettings(subsetLabel, promptChoice, runCommand) {
       screen = 'model';
       continue;
     }
+    if (selectedDisplay === null) return CANCELLED;
     const selected = variantOptions.find(option => option.display === selectedDisplay);
     if (selected === undefined || selected.value === NO_VARIANT) {
       return selected === undefined ? null : { model: identity };
@@ -1106,7 +1100,7 @@ function skippedOutcome(reason, diagnostics = []) {
   return { status: 'skipped', reason, skippedAgents: [], diagnostics };
 }
 
-async function runPostSetupMenu({
+async function runPostSetupMenuInternal({
   projectPath = process.cwd(),
   packageRoot = DEFAULT_PACKAGE_ROOT,
   claudeGlobalAgentRoot = DEFAULT_CLAUDE_GLOBAL_AGENT_ROOT,
@@ -1116,8 +1110,8 @@ async function runPostSetupMenu({
   claudePresetDir,
   opencodePresetDir,
   isTTY = process.stdin.isTTY,
-  promptChoice = promptSelect,
-  promptChecklist = installFlowPromptChecklist,
+  promptChoice: selectChoice = promptSelect,
+  promptChecklist: selectChecklist = installFlowPromptChecklist,
   promptInput = defaultPromptInput,
 } = {}) {
   const effectiveOpencodeAgentRoot = opencodeGlobalAgentRoot !== undefined ? opencodeGlobalAgentRoot : defaultOpencodeGlobalAgentRoot();
@@ -1129,6 +1123,18 @@ async function runPostSetupMenu({
     ? opencodePresetDir
     : path.join(path.dirname(effectiveOpencodeAgentRoot), 'sai', 'presets');
   if (!isTTY) return skippedOutcome('non-tty');
+  const promptChoice = async (...args) => {
+    const choice = selectChoice === promptSelect
+      ? await promptSelect(args[0], args[1], args[2], args[3], true)
+      : await selectChoice(...args);
+    if (choice === INPUT_CLOSED) throw new Error('Terminal input closed while waiting for a menu selection.');
+    return choice;
+  };
+  const promptChecklist = async (...args) => {
+    const outcome = await selectChecklist(...args);
+    if (outcome && outcome.status === 'input-closed') throw new Error('Terminal input closed while waiting for a menu selection.');
+    return outcome;
+  };
 
   for (;;) {
     let screen = 'menu';
@@ -1699,8 +1705,12 @@ async function runPostSetupMenu({
         screen = 'targets';
         continue;
       }
+      if (settings && settings.status === 'failed') {
+        return failedCustomization(settings.diagnostic);
+      }
+      if (settings === CANCELLED) return skippedOutcome('cancelled');
       if (!settings || typeof settings.model !== 'string' || settings.model === '') {
-        return skippedOutcome('settings-unavailable');
+        return failedCustomization('No valid model setting was returned for the selected targets.');
       }
       break;
     }
@@ -1781,6 +1791,19 @@ async function runPostSetupMenu({
     if (failedAgents.length > 0) {
       return { status: 'persistence-failed', failedAgents, diagnostics };
     }
+  }
+}
+
+function failedCustomization(diagnostic) {
+  console.error(`Post-setup customization: ${diagnostic}`);
+  return { status: 'failed', diagnostics: [diagnostic] };
+}
+
+async function runPostSetupMenu(options) {
+  try {
+    return await runPostSetupMenuInternal(options);
+  } catch (error) {
+    return failedCustomization(error && error.message ? error.message : String(error));
   }
 }
 

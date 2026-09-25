@@ -9,7 +9,7 @@ const childProcess = require('child_process');
 
 const modelCustomization = require('../bin/model-customization.js');
 const { main } = require('../bin/setup.js');
-const { BACK } = require('../bin/install-flow.js');
+const { BACK, INPUT_CLOSED } = require('../bin/install-flow.js');
 
 const {
   runPostSetupMenu,
@@ -888,8 +888,9 @@ test('production prompt bindings retain the expected shared-selector surface and
 
   assert.equal(promptChoiceInvocations.length, 11,
     'the model-customization flow should have exactly eleven promptChoice invocations (menu, harness, scope, save confirm, save overwrite, load selector, load confirm, claude combined, opencode provider/model/variant)');
-  assert.equal(defaultPromptSelectBindings.length, 3,
-    'the three selector-owning surfaces should retain default promptSelect bindings');
+  assert.equal(defaultPromptSelectBindings.length, 2,
+    'the two adapter selectors retain default promptSelect bindings; the menu wraps its selector to detect input closure');
+  assert.match(customizationSource, /promptChoice: selectChoice = promptSelect/);
   assert.equal(noFooterOverrides.length, 1,
     'model customization should provide exactly one explicit no-footer post-setup menu override');
 });
@@ -1344,7 +1345,7 @@ test('promptChoice null at the provider screen aborts via the real opencode adap
         promptChecklist: recordChecklist(checklistCalls),
       });
       assert.equal(result.status, 'skipped');
-      assert.equal(result.reason, 'settings-unavailable');
+      assert.equal(result.reason, 'cancelled');
       assert.equal(checklistCalls.length, 1, 'the checklist should be reached exactly once');
       assert.equal(promptCalls, 4,
         'exactly menu, harness, the scope screen, and the provider screen are prompted: no prompt follows the provider-screen null');
@@ -1464,6 +1465,7 @@ test('postSetupMenu spy runs after the completion message and receives exactly {
       createReadline: () => rl,
       postSetupMenu: async (opts) => {
         menuCall = { args: opts, messagesAtInvocation: cap.logs.slice() };
+        return { status: 'completed' };
       },
     });
     assert.equal(outcome, 'success');
@@ -1521,6 +1523,7 @@ test('injected postSetupWorkflow contract is unchanged and the default postSetup
     menuCalls += 1;
     menuArgs = opts;
     menuMessages = cap.logs.slice();
+    return { status: 'completed' };
   });
   try {
     const outcome = await main({
@@ -2091,7 +2094,7 @@ test('the provider screen offers distinct providers in first-appearance order', 
     'selecting the second provider resolves its model with the full identity');
 });
 
-test('non-zero exit from the catalog command cancels with no screens and no settings', async () => {
+test('non-zero exit from the catalog command reports failure with no settings screens', async () => {
   let promptCalls = 0;
   const runner = (executable, args) => ({ stdout: '', status: 1 });
   const promptSpy = async () => {
@@ -2100,11 +2103,11 @@ test('non-zero exit from the catalog command cancels with no screens and no sett
   };
   const adapter = createOpencodeAdapter({ repoRoot: REPO_ROOT, promptChoice: promptSpy, runCommand: runner });
   const settings = await adapter.selectSettings('explore');
-  assert.equal(settings, null, 'a non-zero catalog exit cancels the selection with null');
+  assert.deepEqual(settings, { status: 'failed', diagnostic: 'Unable to query OpenCode models: exit status 1' });
   assert.equal(promptCalls, 0, 'an early catalog failure presents no settings screens');
 });
 
-test('a catalog launch failure reports an actionable diagnostic instead of ending silently', async () => {
+test('a catalog launch failure returns an actionable diagnostic instead of ending silently', async () => {
   const messages = [];
   const originalError = console.error;
   console.error = message => messages.push(String(message));
@@ -2122,16 +2125,16 @@ test('a catalog launch failure reports an actionable diagnostic instead of endin
 
     const settings = await adapter.selectSettings('explore');
 
-    assert.equal(settings, null, 'a launch failure should cancel without settings');
-    assert.equal(messages.length, 1, 'the launch failure should produce one diagnostic');
-    assert.match(messages[0], /Unable to query OpenCode models.*ENOENT/,
+    assert.equal(settings.status, 'failed');
+    assert.equal(messages.length, 0, 'the menu owns diagnostic rendering, not the adapter');
+    assert.match(settings.diagnostic, /Unable to query OpenCode models.*ENOENT/,
       'the diagnostic should identify the failed operation and preserve the launch error');
   } finally {
     console.error = originalError;
   }
 });
 
-test('a malformed catalog line and an empty catalog each cancel with no partial catalog', async () => {
+test('a malformed catalog line and an empty catalog each report failure without partial settings', async () => {
   for (const stdout of ['nope\n', '']) {
     let promptCalls = 0;
     const runner = (executable, args) => ({ stdout, status: 0 });
@@ -2141,16 +2144,16 @@ test('a malformed catalog line and an empty catalog each cancel with no partial 
     };
     const adapter = createOpencodeAdapter({ repoRoot: REPO_ROOT, promptChoice: promptSpy, runCommand: runner });
     const settings = await adapter.selectSettings('explore');
-    assert.equal(settings, null,
-      `catalog stdout ${JSON.stringify(stdout)} must cancel the selection with null`);
+    assert.equal(settings.status, 'failed');
+    assert.match(settings.diagnostic, /Invalid OpenCode model catalog|OpenCode model catalog is empty/);
     assert.equal(promptCalls, 0, 'a failed catalog never reaches a settings screen');
   }
 });
 
-test('model-list failure, unparseable output, and a missing model degrade to model-only after the screens', async () => {
+test('model-list failures report errors while valid lists without variants use model-only settings', async () => {
   const cases = [
-    { name: 'non-zero model-list exit', apiStdout: '', apiStatus: 1 },
-    { name: 'unparseable model-list output', apiStdout: 'not json\n', apiStatus: 0 },
+    { name: 'non-zero model-list exit', apiStdout: '', apiStatus: 1, error: /Unable to query OpenCode model variants.*exit status 1/ },
+    { name: 'unparseable model-list output', apiStdout: 'not json\n', apiStatus: 0, error: /Invalid OpenCode model variant list.*Unparseable/ },
     { name: 'no entry matching the selected model',
       apiStdout: makeApiFixture([
         { providerID: 'opencode-go', id: 'glm-5.2', variants: variantIdsToRecords(['high']) },
@@ -2174,18 +2177,35 @@ test('model-list failure, unparseable output, and a missing model degrade to mod
         return 'deepseek-v4-flash';
       }
       screenIndex += 1;
-      assert.fail('no variant screen may appear after the model-list query degrades');
+      assert.fail('no variant screen may appear after a failed or variant-free model-list query');
     };
     const runner = (executable, args) => args[0] === 'api'
       ? { stdout: item.apiStdout, status: item.apiStatus }
       : { stdout: 'opencode-go/deepseek-v4-flash\nopencode-go/glm-5.2\n', status: 0 };
     const adapter = createOpencodeAdapter({ repoRoot: REPO_ROOT, promptChoice: promptSpy, runCommand: runner });
     const settings = await adapter.selectSettings('explore');
-    assert.deepEqual(settings, { model: 'opencode-go/deepseek-v4-flash' },
-      `${item.name} must degrade to model-only after the provider and model screens`);
+    if (item.error) {
+      assert.equal(settings.status, 'failed');
+      assert.match(settings.diagnostic, item.error);
+    } else {
+      assert.deepEqual(settings, { model: 'opencode-go/deepseek-v4-flash' },
+        `${item.name} remains model-only after the provider and model screens`);
+    }
     assert.equal(screenIndex, 2,
       `${item.name} presents exactly the provider and model screens, no further screen`);
   }
+});
+
+test('variant discovery launch failure reports its cause instead of configuring a model-only fallback', async () => {
+  const runner = (_executable, args) => {
+    if (args[0] === 'api') throw new Error('variant command unavailable');
+    return { stdout: 'opencode-go/deepseek-v4-flash\n', status: 0 };
+  };
+  const choices = ['opencode-go', 'deepseek-v4-flash'];
+  const adapter = createOpencodeAdapter({ promptChoice: async () => choices.shift(), runCommand: runner });
+  const outcome = await adapter.selectSettings('explore');
+  assert.equal(outcome.status, 'failed');
+  assert.match(outcome.diagnostic, /variant command unavailable/);
 });
 
 test('q at the provider screen cancels after exactly one catalog launch', async () => {
@@ -2375,7 +2395,7 @@ test('a discovered variant whose identifier equals the pinned label renders a di
     'selecting the disambiguated display resolves the exact variant identifier');
 });
 
-test('a null selectSettings result returns settings-unavailable without configuring agents', async () => {
+test('a null selectSettings result reports failure without configuring agents', async () => {
   const opencodeOps = { select: [], create: [] };
   const claudeOps = { select: [], create: [] };
   const fakeAdapter = {
@@ -2406,8 +2426,8 @@ test('a null selectSettings result returns settings-unavailable without configur
       promptChoice,
       promptChecklist: async (...args) => ({ status: 'confirmed', items: args[1] }),
     });
-    assert.equal(result.status, 'skipped');
-    assert.equal(result.reason, 'settings-unavailable');
+    assert.equal(result.status, 'failed');
+    assert.match(result.diagnostics[0], /No valid model setting/);
     assert.deepEqual(opencodeOps.select, ['called'], 'selectSettings runs exactly once');
     assert.deepEqual(opencodeOps.create, [],
       'a null selectSettings result must never configure any agent');
@@ -4141,6 +4161,91 @@ test('runPostSetupMenu renders target diagnostics, while setup keeps unexpected 
     });
     assert.equal(outcome, 'post-setup-failure');
   } finally {
+    restoreSpawn();
+    fs.rmSync(projectDir, { recursive: true, force: true });
+  }
+});
+
+test('catalog failures reach the post-setup menu as visible failures, not cancellation', async () => {
+  const scratch = makeScratchRepo();
+  try {
+    for (const catalog of [
+      () => ({ stdout: '', stderr: 'service refused request', status: 1 }),
+      () => ({ stdout: '', status: 0 }),
+      () => ({ stdout: 'invalid entry\n', status: 0 }),
+      () => { throw new Error('spawn failed'); },
+    ]) {
+      const original = modelCustomization.createOpencodeAdapter;
+      const restore = patchFactory('createOpencodeAdapter', deps => original({ ...deps, runCommand: catalog }));
+      const capture = captureConsole();
+      try {
+        const choices = ['Customize models', 'OpenCode', 'Workers'];
+        const outcome = await runPostSetupMenu({
+          projectPath: scratch,
+          isTTY: true,
+          promptChoice: async () => choices.shift() ?? assert.fail('catalog failure must not open another screen'),
+          promptChecklist: async (_items, defaults) => ({ status: 'confirmed', items: [defaults[0]] }),
+        });
+        assert.equal(outcome.status, 'failed');
+        assert.match(outcome.diagnostics[0], /service refused request|catalog is empty|Malformed model catalog|spawn failed/);
+        assert.ok(capture.logs.some(message => message.includes(outcome.diagnostics[0])));
+      } finally {
+        capture.restore();
+        restore();
+      }
+    }
+  } finally {
+    fs.rmSync(scratch, { recursive: true, force: true });
+  }
+});
+
+test('closed menu input and a later customization error return a reported failure', async () => {
+  const capture = captureConsole();
+  try {
+    const closed = await runPostSetupMenu({ isTTY: true, promptChoice: async () => INPUT_CLOSED });
+    assert.equal(closed.status, 'failed');
+    assert.match(closed.diagnostics[0], /Terminal input closed/);
+    assert.ok(capture.logs.some(message => message.includes('Terminal input closed')));
+
+    const restore = patchFactory('createClaudeAdapter', () => {
+      const adapter = makeFakeAdapter(['sai-4-red-worker'], { select: [], create: [] });
+      adapter.createLocalOverride = () => { throw new Error('cannot write override'); };
+      return adapter;
+    });
+    try {
+      const choices = ['Customize models', 'Claude Code', 'Workers'];
+      const failed = await runPostSetupMenu({
+        isTTY: true,
+        promptChoice: async () => choices.shift() ?? assert.fail('unexpected prompt'),
+        promptChecklist: async (_items, defaults) => ({ status: 'confirmed', items: defaults }),
+      });
+      assert.equal(failed.status, 'failed');
+      assert.match(failed.diagnostics[0], /cannot write override/);
+    } finally {
+      restore();
+    }
+  } finally {
+    capture.restore();
+  }
+});
+
+test('setup rejects a reported customization failure and a missing customization outcome', async () => {
+  const restoreSpawn = stubSpawnSync();
+  const projectDir = makeProjectDir();
+  const capture = captureConsole();
+  try {
+    for (const outcome of [{ status: 'failed', diagnostics: ['catalog empty'] }, undefined]) {
+      const result = await main({
+        argv: ['node', 'bin/setup.js', projectDir],
+        createReadline: () => fakeReadline(),
+        postSetupWorkflow: async () => {},
+        postSetupMenu: async () => outcome,
+      });
+      assert.equal(result, 'post-setup-failure');
+    }
+    assert.ok(capture.logs.some(message => message.includes('no outcome')));
+  } finally {
+    capture.restore();
     restoreSpawn();
     fs.rmSync(projectDir, { recursive: true, force: true });
   }

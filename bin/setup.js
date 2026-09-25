@@ -188,16 +188,17 @@ async function main(options = {}) {
     return 'post-setup-failure';
   }
 
-  if (customizationOutcome === undefined) return 'success';
-  if (customizationOutcome.status === 'completed'
-      || customizationOutcome.status === 'skipped') {
+  if (customizationOutcome && (customizationOutcome.status === 'completed'
+       || customizationOutcome.status === 'skipped')) {
     return 'success';
   }
-  if (customizationOutcome.status === 'persistence-failed') {
+  if (customizationOutcome && customizationOutcome.status === 'persistence-failed') {
     return 'persistence-failed';
   }
 
-  console.error(`Unexpected post-setup customization outcome: ${customizationOutcome.status}`);
+  if (customizationOutcome && customizationOutcome.status === 'failed') return 'post-setup-failure';
+
+  console.error(`Unexpected post-setup customization outcome: ${customizationOutcome?.status ?? 'no outcome'}`);
   return 'post-setup-failure';
 }
 

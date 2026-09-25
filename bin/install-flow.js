@@ -646,6 +646,7 @@ async function offerOpenspecInstall({
 // A distinct token from `null` (cancel) so callers can tell "go to the previous
 // screen" apart from "abandon the flow".
 const BACK = Symbol('BACK');
+const INPUT_CLOSED = Symbol('INPUT_CLOSED');
 
 // Blank separator rows divide the All-scope checklist into group tables.
 // The value is blank so items and displayOptions stay index-aligned; the
@@ -757,6 +758,7 @@ async function runNavigator({
     while (cursor < options.length && isChecklistSeparator(options[cursor])) cursor += 1;
     if (cursor >= options.length && options.length > 0) cursor = 0;
     let previousRows = 0;
+    let settled = false;
 
     function frameLines() {
       const lines = [];
@@ -796,24 +798,40 @@ async function runNavigator({
     }
 
     function cleanup() {
-      output.write('\x1B[?25h');
+      try {
+        output.write('\x1B[?25h');
+      } catch {
+        // The output may have closed along with the input.
+      }
       // Detaching the listener stays synchronous so a closed screen never
       // consumes a key meant for its successor; only the raw-mode teardown is
       // deferred.
       input.removeListener('keypress', onKey);
+      input.removeListener('end', onInputClosed);
+      input.removeListener('close', onInputClosed);
+      input.removeListener('error', onInputClosed);
       releaseRawInput(input);
+    }
+
+    function finish(outcome) {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolve(outcome);
+    }
+
+    function onInputClosed() {
+      finish({ status: 'input-closed' });
     }
 
     function onKey(str, key) {
       if (!key) return;
       if (key.sequence === '\x03' || str === 'q') {
-        cleanup();
-        resolve({ status: 'cancelled' });
+        finish({ status: 'cancelled' });
         return;
       }
       if (key.name === 'left' || key.name === 'backspace' || key.name === 'escape') {
-        cleanup();
-        resolve({ status: 'back' });
+        finish({ status: 'back' });
         return;
       }
       if (key.name === 'up') {
@@ -832,14 +850,12 @@ async function runNavigator({
             selected[cursor] = !selected[cursor];
           render();
         } else {
-          cleanup();
-          resolve({ status: 'confirmed', items: [options[cursor]] });
+          finish({ status: 'confirmed', items: [options[cursor]] });
           }
         } else if (key.name === 'return') {
           if (isChecklistSeparator(options[cursor]) && mode === 'single') return;
           if (mode === 'multi' && preventEmptyConfirm && !selected.some((marked, i) => marked && !isChecklistSeparator(options[i]))) return;
-          cleanup();
-          resolve({
+          finish({
             status: 'confirmed',
             items: mode === 'multi' ? options.filter((_, i) => selected[i] && !isChecklistSeparator(options[i])) : [options[cursor]],
           });
@@ -848,6 +864,9 @@ async function runNavigator({
 
     acquireRawInput(input);
     input.on('keypress', onKey);
+    input.on('end', onInputClosed);
+    input.on('close', onInputClosed);
+    input.on('error', onInputClosed);
 
     output.write('\x1B[?25l');
     render();
@@ -863,11 +882,12 @@ function promptChecklist(items, defaultSelected, input, footer, navigatorOptions
   });
 }
 
-async function promptSelect(question, options, input, footer = DEFAULT_SINGLE_SELECT_LEGEND) {
+async function promptSelect(question, options, input, footer = DEFAULT_SINGLE_SELECT_LEGEND, distinguishClosedInput = false) {
   const outcome = await runNavigator({
     mode: 'single', question, options, defaultSelected: [], input, footer,
   });
   if (outcome.status === 'back') return BACK;
+  if (outcome.status === 'input-closed') return distinguishClosedInput ? INPUT_CLOSED : null;
   return outcome.status === 'confirmed' ? outcome.items[0] : null;
 }
 
@@ -1428,6 +1448,7 @@ module.exports = {
   runNavigator,
   prepareLineInput,
   BACK,
+  INPUT_CLOSED,
   CHECKLIST_SEPARATOR,
   isChecklistSeparator,
   CLAUDE_BASE,

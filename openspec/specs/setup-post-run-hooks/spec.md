@@ -69,3 +69,17 @@ Adding the seam SHALL preserve the existing setup step order, prompts, output, r
 #### Scenario: Optional workflow is the only new extension point
 - **WHEN** the change is implemented without a supplied post-setup workflow
 - **THEN** no other abstraction, dependency, agent-file change, or user-facing behavior SHALL be introduced
+
+### Requirement: Failed or missing customization outcome fails setup
+
+The setup orchestration SHALL map a post-setup customization result with status `failed` to `post-setup-failure`, relying on the menu-owned diagnostic already printed through the failed-customization path; setup SHALL print no additional diagnostic on this failed path in the current implementation. It SHALL map a missing or unexpected customization outcome to `post-setup-failure` with a setup-owned diagnostic of the form `Unexpected post-setup customization outcome: <status or no outcome>`. Results with status `completed` or `skipped` SHALL map to `success` and status `persistence-failed` SHALL map to `persistence-failed`.
+
+#### Scenario: Reported customization failure fails setup without a duplicate diagnostic
+
+- **WHEN** the post-setup menu returns status `failed` with its diagnostic already printed
+- **THEN** setup SHALL return `post-setup-failure` and SHALL NOT print that diagnostic again
+
+#### Scenario: Missing customization outcome fails setup with a setup-owned diagnostic
+
+- **WHEN** the post-setup menu returns no outcome
+- **THEN** setup SHALL return `post-setup-failure` and SHALL log a diagnostic stating that no outcome was received
