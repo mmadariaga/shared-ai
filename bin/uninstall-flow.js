@@ -89,6 +89,7 @@ function manifestEntries(harness, destinationRoot, editorBase) {
       dest: projection.destinationPath,
       editorBase,
       ruleId: projection.id,
+      strategy: projection.strategy,
     };
     if (projection.strategy === 'tunable-seed') {
       entry.assetType = 'claude-managed-agent';

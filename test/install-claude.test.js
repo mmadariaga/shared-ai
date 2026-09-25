@@ -997,6 +997,10 @@ test('Step 3 the Claude neutral inventory is equivalent to opencode and differs 
        'sai/adapters/opencode/boot.md',
        'sai/adapters/opencode/idea-list-render.md',
        'sai/adapters/opencode/panel-render.md',
+       'sai/presets/opencode/GO+OC-FREE.json',
+       'sai/presets/opencode/GO.json',
+       'sai/presets/opencode/OAI-LUNA+OC-FREE.json',
+       'sai/presets/opencode/OAI-SOL+OAI-LUNA+OC-FREE.json',
      ], 'opencode-specific SAI sources should be its boot adapter plus its panel and idea-list runtime glue');
   } finally {
     for (const harness of ['claude', 'opencode']) {

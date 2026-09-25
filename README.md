@@ -230,6 +230,19 @@ If something looks off after install or setup, run a read-only health check — 
 
 `npx github:mmadariaga/shared-ai setup` ends with an interactive **Customize models** menu. It walks provider → model → variant per target and writes project-local overrides, so you can retune a phase without editing any wrapper by hand. You can also save and load presets. The write is surgical: only `model` and `effort`/`variant` change; the rest of the file is left untouched. On opencode any available model can be selected; on Claude Code it works with Anthropic models.
 
+### Example presets
+
+The installer ships four opencode example presets to `~/.config/opencode/sai/presets/` (harness segment stripped). They install copy-if-absent: a missing file is copied once, an existing file is left intact with no merge, overwrite, or content validation.
+
+| Preset | Use when |
+|--------|----------|
+| `GO.json` | All coordinators and workers on `opencode-go/muse-spark-1.3-contributor`; keep everything on one provider. |
+| `GO+OC-FREE.json` | Same as `GO.json`, but the `budget` / `executor` / `explore` helpers run on the free `opencode/muse-spark-1.3-contributor` map to cut bulk I/O cost. |
+| `OAI-LUNA+OC-FREE.json` | Coordinators and workers on `openai/gpt-6-luna` / `gpt-5.6-luna` with free helpers; use when OpenAI is the primary provider. |
+| `OAI-SOL+OAI-LUNA+OC-FREE.json` | Same as above, but `/sai-explore` runs on `openai/gpt-6-sol`; use when you want Sol to lead exploration. |
+
+Load one with `npx github:mmadariaga/shared-ai setup` → **Customize models** → **Load preset** → **OpenCode** → preset name (without `.json`; names containing `+` are literal).
+
 ### Per project installation / override
 
 Per-project commands and agents are still possible: a file placed in a supported harness's project-local folder at the repo root overrides the user-global file of the same name. Globals act as a base; project-local files override them by filename.

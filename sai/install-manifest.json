@@ -1375,6 +1375,24 @@
       "recursive": false,
       "ownership": "managed",
       "drift": "content"
+    },
+    {
+      "id": "opencode-preset-examples",
+      "source": "sai/presets/opencode",
+      "destination": {
+        "class": "sai",
+        "path": "presets"
+      },
+      "harnesses": [
+        "opencode"
+      ],
+      "strategy": "copy-if-absent",
+      "recursive": true,
+      "include": [
+        "**/*.json"
+      ],
+      "ownership": "managed",
+      "drift": "content"
     }
   ],
   "retirements": [

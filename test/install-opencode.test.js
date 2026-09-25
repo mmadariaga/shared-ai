@@ -1851,6 +1851,10 @@ test('Step 3 the opencode neutral inventory is equivalent to Claude and differs 
        'sai/adapters/opencode/boot.md',
        'sai/adapters/opencode/idea-list-render.md',
        'sai/adapters/opencode/panel-render.md',
+       'sai/presets/opencode/GO+OC-FREE.json',
+       'sai/presets/opencode/GO.json',
+       'sai/presets/opencode/OAI-LUNA+OC-FREE.json',
+       'sai/presets/opencode/OAI-SOL+OAI-LUNA+OC-FREE.json',
      ], 'opencode-specific SAI sources should be its boot adapter plus its panel and idea-list runtime glue');
      assert.deepEqual(claudeOnly, [
        'sai/adapters/claude/boot.md',

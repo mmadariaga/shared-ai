@@ -10,6 +10,7 @@ const {
 
 const STRATEGIES = Object.freeze([
   'copy',
+  'copy-if-absent',
   'tunable-seed',
   'merge-jsonc',
   'forwarding-manifest',

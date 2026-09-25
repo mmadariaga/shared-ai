@@ -920,6 +920,16 @@ function installProjection(projection, targetPath, notices) {
   if (projection.strategy === 'owned-copy') {
     throw new Error(`Projection ${projection.id} declares the retired owned-copy strategy; use tunable-seed`);
   }
+  if (projection.strategy === 'copy-if-absent') {
+    if (fs.existsSync(projection.destinationPath)) return;
+    if (projection.sourceText !== undefined) {
+      ensureDir(path.dirname(projection.destinationPath));
+      fs.writeFileSync(projection.destinationPath, projection.sourceText);
+      return;
+    }
+    copy(projection.sourcePath, projection.destinationPath);
+    return;
+  }
   if (projection.sourceText !== undefined) {
     ensureDir(path.dirname(projection.destinationPath));
     fs.writeFileSync(projection.destinationPath, projection.sourceText);

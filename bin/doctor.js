@@ -184,10 +184,14 @@ function inventoryHarness(harness, roots) {
   const expected = expectedEntries.filter(e => e.src !== e.dest && e.assetType !== 'retired-managed-file');
   const expectedDests = new Set(expectedEntries.map(e => e.dest));
 
-  const missing = expected.filter(e => !fs.existsSync(e.dest)).map(e => ({ path: shorten(e.dest), ruleId: e.ruleId }));
-  records.push(missing.length === 0
+  const fatalMissing = expected.filter(e => !fs.existsSync(e.dest) && e.strategy !== 'copy-if-absent').map(e => ({ path: shorten(e.dest), ruleId: e.ruleId }));
+  const softMissing = expected.filter(e => !fs.existsSync(e.dest) && e.strategy === 'copy-if-absent').map(e => ({ path: shorten(e.dest), ruleId: e.ruleId }));
+  records.push(fatalMissing.length === 0
     ? { section, name: 'files', severity: 'ok', message: `${expected.length} expected files present` }
-    : { section, name: 'files', severity: 'error', message: `${missing.length} expected file(s) missing: ${missing.map(item => item.path).join(', ')}`, path: missing.map(item => item.path).join(', '), rules: missing.map(item => item.ruleId), recommendation: 'Re-run the installer: npx github:mmadariaga/shared-ai install' });
+    : { section, name: 'files', severity: 'error', message: `${fatalMissing.length} expected file(s) missing: ${fatalMissing.map(item => item.path).join(', ')}`, path: fatalMissing.map(item => item.path).join(', '), rules: fatalMissing.map(item => item.ruleId), recommendation: 'Re-run the installer: npx github:mmadariaga/shared-ai install' });
+  if (softMissing.length > 0) {
+    records.push({ section, name: 'presets', severity: 'warn', message: `${softMissing.length} example preset(s) missing: ${softMissing.map(item => item.path).join(', ')} (customized presets are never overwritten)`, path: softMissing.map(item => item.path).join(', '), rules: softMissing.map(item => item.ruleId), recommendation: 'Re-run the installer to restore missing example presets; existing presets are left intact' });
+  }
 
   const rootsSet = new Set();
   rootsSet.add(path.join(harness.base, 'commands'));
