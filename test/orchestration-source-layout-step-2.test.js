@@ -125,8 +125,7 @@ test('grouped design and implementation phase assets preserve their former sourc
       name: 'implement',
       directory: path.join(repoRoot, 'sai', 'commands', 'implement'),
       coordinator: path.join(repoRoot, 'sai', 'commands', 'implement', 'coordinator.md'),
-      instruction: 'sai/commands/implement/instructions.md',
-      cardContents: ['adr-index.template.md', 'command-bootstrap.md', 'coordinator.md', 'ddr-index.template.md', 'implementation-plan.template.md', 'instructions.md', 'steps', 'worker.md'],
+      cardContents: ['adr-index.template.md', 'command-bootstrap.md', 'coordinator.md', 'ddr-index.template.md', 'implementation-plan.template.md', 'steps', 'worker.md'],
     },
     {
       name: 'meta-build',

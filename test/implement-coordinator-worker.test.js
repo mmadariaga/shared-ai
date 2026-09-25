@@ -115,7 +115,6 @@ test('implementation worker declares the lifecycle and input/output contract', (
   assert.match(worker, /OpenSpec not initialized in this project\. Run: openspec init/);
   assert.match(worker, /openspec\/config\.yaml does not declare `schema: sai-workflow`\. The sai commands require this schema\. Add `schema: sai-workflow` to the top of openspec\/config\.yaml\./);
 
-  assert.match(worker, /wrapper[- ]echo/i);
   assert.match(worker, /precedence/i);
   assert.match(worker, /Use change '\{name\}'\?/);
   assert.match(worker, /Which change\?/);
@@ -143,7 +142,7 @@ test('Claude and opencode worker bindings own dispatch and continuation mechanic
     const binding = matrixBinding(harness, 'implementation');
     assert.match(binding, /dispatch/i, `${harness} binding should define the dispatch action`);
     assert.match(binding, /continuation/i, `${harness} binding should define the continuation action`);
-    assert.match(binding, /reconstruction fields|originating binding context/i,
+    assert.match(binding, /reconstruction[ _]fields|originating binding context/i,
       `${harness} binding should carry the reconstruction fields`);
     assert.match(binding, /replacement/i, `${harness} binding should define the replacement path`);
   }
@@ -331,7 +330,7 @@ test('Step 2 routes Claude and opencode through the coordinator', () => {
   const launcher = artifact('sai/commands/implement/command-bootstrap.md');
 
   assert.match(claude, /^model:\s*opus\s*$/m);
-   assert.match(claude, /^effort:\s*low\s*$/m);
+    assert.match(claude, /^effort:\s*medium\s*$/m);
      assert.match(claude, /Fetch @sai\/commands\/implement\/command-bootstrap\.md/);
    assert.doesNotMatch(claude, /Fetch @skills\/sai-3-implementation-worker\/SKILL\.md/);
      assert.match(opencode, /^model: opencode-go\/muse-spark-1\.3-contributor$/m);
@@ -387,7 +386,7 @@ test('routed harness bindings and inline parity', () => {
   assert.doesNotMatch(claudeBinding, /opencode[\\/\\]implementation-worker\.md/,
     'the Claude binding should not reference the opencode harness binding');
   assert.match(claudeWrapper, /^model:\s*opus\s*$/m);
-  assert.match(claudeWrapper, /^effort:\s*low\s*$/m);
+   assert.match(claudeWrapper, /^effort:\s*medium\s*$/m);
 
   assert.match(opencodeBinding, new RegExp(`task\\(subagent_type: "${workerName}"`),
     'the opencode binding should dispatch via task with the worker subagent_type');
@@ -546,7 +545,7 @@ test('needs_input continuation stays on the same worker and uses each harness bi
   const opencodeBinding = matrixBinding('opencode', 'implementation');
 
   assert.match(coordinator, /continuation_reference/);
-  assert.match(coordinator, /binding-owned `continuation_reference`/);
+  assert.match(coordinator, /`continuation_reference` is binding-owned/);
   assert.match(coordinator, /## Result loop/);
   assert.match(coordinator, /needs_input[\s\S]*native option picker/i);
   assert.match(coordinator, /selected (?:option )?value[\s\S]*(?:same worker|continuation)/i);
@@ -559,9 +558,9 @@ test('needs_input continuation stays on the same worker and uses each harness bi
 
   assert.match(claudeBinding, /SendMessage/);
   assert.doesNotMatch(claudeBinding, /Agent[\s\S]{0,120}resume/);
-  assert.match(claudeBinding, /reconstruction fields|originating binding context/i);
+  assert.match(claudeBinding, /reconstruction[ _]fields|originating binding context/i);
   assert.match(opencodeBinding, /task_id/);
-  assert.match(opencodeBinding, /reconstruction fields|originating binding context/i);
+  assert.match(opencodeBinding, /reconstruction[ _]fields|originating binding context/i);
 });
 
 test('implementation transport carries only arguments_value plus contract metadata, and answer-only continuation does not rebuild an invocation envelope', () => {
@@ -580,9 +579,14 @@ test('implementation transport carries only arguments_value plus contract metada
     assert.match(coordinator, /replacement[_ ]reconstruction|fresh worker.*reconstruction/i,
       'replacement implementation dispatch must use reconstruction metadata');
     /*
-   assert.match(coordinator, /progress event[\n ]+.*coordinator|coordinator.*progress event/i,
+   assert.match(coordinator, /progress event[
+\n ]+.*coordinator|coordinator.*progress event/i,
      'implementation progress ownership must remain with the coordinator');
-   assert.match(coordinator, /answer[- ]only[\n ]+continuation[\n ]+.*(?:does not|never)[\n ]+reconstruct[\n ]+.*(?:invocation envelope|InvocationEnvelope)/i,
+   assert.match(coordinator, /answer[- ]only[
+\n ]+continuation[
+\n ]+.*(?:does not|never)[
+\n ]+reconstruct[
+\n ]+.*(?:invocation envelope|InvocationEnvelope)/i,
      'an answer-only continuation must not reconstruct an invocation envelope');
 
     */
@@ -608,9 +612,11 @@ test('implementation transport carries only arguments_value plus contract metada
        'no implementation transport surface may carry wrapper_echo_value');
     }
     /*
-   assert.match(claudeBinding, /Agent[\n (]/,
+   assert.match(claudeBinding, /Agent[
+\n (]/,
      'the Claude binding must retain Claude-specific dispatch identity');
-   assert.match(opencodeBinding, /task[\n (]/i,
+   assert.match(opencodeBinding, /task[
+\n (]/i,
      'the opencode binding must retain opencode-specific dispatch identity');
 });
 
@@ -661,13 +667,15 @@ test('design navigation stops after completion with no continuation', () => {
   assert.match(design, /Design done in openspec\/changes\/\{name\}\//);
 });
 
-test('Step 3 README documents routed roles, model independence, and artifact stability', () => {
+test('Step 3 sequential guide documents routed roles, model independence, and artifact stability', () => {
   const readme = artifact('README.md');
+  const guide = artifact('docs/sequential-pipeline.md');
 
-  assert.match(readme, /Claude Code[\s\S]{0,240}(?:coordinator|rout)/i);
-  assert.match(readme, /opencode[\s\S]{0,240}(?:coordinator|rout)/i);
-  assert.match(readme, /independent[\s\S]{0,100}model/i);
-  assert.match(readme, /openspec\/changes\/\{change-name\}\/implementation\.md/);
+  assert.match(readme, /docs\/sequential-pipeline\.md/);
+  assert.match(guide, /Claude Code[\s\S]{0,240}(?:coordinator|rout)/i);
+  assert.match(guide, /opencode[\s\S]{0,240}(?:coordinator|rout)/i);
+  assert.match(guide, /independent[\s\S]{0,100}model/i);
+  assert.match(guide, /openspec\/changes\/\{change-name\}\/implementation\.md/);
 
   const documentation = [
     'README.md',
@@ -782,8 +790,8 @@ test('Step 6: the retired simplification id is rejected and first-run folding us
   assert.doesNotMatch(worker, /`plan-simplification`/);
   assert.match(
     worker,
-    /skipped `collapse-implemented-steps` id\s+folds into the next completed batch in plan order with no separate `skipped`\s+field/i,
-    'the first-run skip should fold the renamed id into the artifact-analysis batch'
+    /startup batch reports `prereqs-resolution` and\s+`collapse-implemented-steps` together, with no separate `skipped` field/i,
+    'the first-run skip should fold the collapse id into the startup batch'
   );
 });
 
@@ -792,7 +800,7 @@ test('Step 6: writing and validation report separately and validation failure bl
 
   assert.match(
     worker,
-    /completed Step 5 write reports `plan-generation`[\s\S]{0,300}durable-artifact verification reports `validation`/i,
+    /completed plan-generation write reports `plan-generation`[\s\S]{0,300}durable-artifact verification reports `validation`/i,
     'the write and durable verification should report under separate progress ids'
   );
   assert.match(
@@ -887,7 +895,9 @@ test('Step 2: the implementation coordinator renders task-list stamps coordinato
 });
 
 test('composition delta does not alter one-adapter implement path and forbids successor inference from worker text', () => {
-  const runner = artifact('sai/orchestration/command-runner.md');
+  // Composition rules live in composition.md, layered on the runner (ADR 0187).
+  const runner = `${artifact('sai/orchestration/command-runner.md')}
+${artifact('sai/orchestration/composition.md')}`;
   assert.match(runner, /single phase adapter[\s\S]{0,200}(?:unchanged|one-phase)|one-adapter[\s\S]{0,200}(?:unchanged|identical)/i,
     'one-adapter path must stay observationally unchanged');
   // The demanded sentence never shipped; successor-inference remains owned by coordinator cards' terminal_navigation metadata.
@@ -971,7 +981,7 @@ test('step-gated: implement coordinator references stage-machine.md for step mac
     'stage-machine.md should have a Step machines section');
   assert.match(stageMachine, /the two-line continuation/i,
     'stage-machine.md should document the two-line continuation');
-  assert.match(stageMachine, /Active step: none.*complete remaining work and return/,
+  assert.match(stageMachine, /`Active step: none` line/,
     'stage-machine.md should document the terminal none pointer');
 });
 
@@ -994,15 +1004,13 @@ test('step-gated: step instruction files exist for every non-none map entry', ()
   }
 });
 
-test('step-gated: instructions.md remains the apply compatibility source', () => {
-  const instructions = artifact('sai/commands/implement/instructions.md');
-
-  assert.match(instructions, /## Communication Mode/,
-    'instructions.md should retain its Communication Mode section');
-  assert.match(instructions, /## Hard Rules/,
-    'instructions.md should retain its Hard Rules section');
-  assert.match(instructions, /## Code Quality Priority Stack/,
-    'instructions.md should retain its Code Quality Priority Stack');
+test('step-gated: the monolithic implement instructions.md is retired', () => {
+  assert.equal(fs.existsSync(path.join(repoRoot, 'sai/commands/implement/instructions.md')), false,
+    'the step files are the only implement instruction surface');
+  const manifest = JSON.parse(artifact('sai/install-manifest.json'));
+  const retirement = manifest.retirements.find(record => record.id === 'retired-sai-3-implement-instructions');
+  assert.ok(retirement, 'the manifest should retire installed copies of instructions.md');
+  assert.equal(retirement.destination.path, 'commands/implement/instructions.md');
 });
 
 test('implement maintains interfaces.md: collapse-implemented-steps prunes both files', () => {
@@ -1046,30 +1054,10 @@ test('implement maintains interfaces.md: validation ensures RED block contract i
     'validation should describe adding missing contracts as the repair option');
 });
 
-test('implement maintains interfaces.md: instructions clarify audit-derived interface contracts', () => {
-  const instructions = artifact('sai/commands/implement/instructions.md');
-
-  assert.match(instructions, /Audit-derived step interface contracts/,
-    'instructions should have an Audit-derived step interface contracts rule');
-  assert.match(instructions, /Appended audit-derived steps.*if and only if.*introduces.*modified interface.*testable assertion/i,
-    'instructions should specify when audit steps get contracts');
-  assert.match(instructions, /anchor exclusively to requirements.*specs\/\*\*.*cannot establish new acceptance criteria/i,
-    'instructions should clarify assertion anchoring and limits');
-  assert.match(instructions, /testability rule.*audit steps with testable code carry.*RED block/i,
-    'instructions should reference the testability rule for audit steps');
-});
-
 // ─── Step 2: audit-finding-escalation feature ──────────────────────────────
 
 test('Judgment Rubric for Audit Findings admits three outcomes: Apply, Discard, and Escalate', () => {
-  const instructions = artifact('sai/commands/implement/instructions.md');
   const artifactAnalysis = artifact('sai/commands/implement/steps/artifact-analysis.md');
-
-  // Check in instructions.md
-  assert.match(instructions, /classify the finding as \*\*Apply\*\*.*\*\*Discard\*\*.*\*\*Escalate\*\*|classify.*Apply.*Discard.*Escalate/i,
-    'instructions Judgment Rubric should list all three outcomes');
-  assert.match(instructions, /Apply\/Discard\/Escalate classification/,
-    'instructions should refer to all three outcomes in classification');
 
   // Check in artifact-analysis.md
   assert.match(artifactAnalysis, /classify the finding as \*\*Apply\*\*.*\*\*Discard\*\*.*\*\*Escalate\*\*|classify.*Apply.*Discard.*Escalate/i,
@@ -1079,16 +1067,13 @@ test('Judgment Rubric for Audit Findings admits three outcomes: Apply, Discard, 
 });
 
 test('Escalate findings are defined as contradicting existing decisions/requirements or exceeding scope', () => {
-  const instructions = artifact('sai/commands/implement/instructions.md');
   const artifactAnalysis = artifact('sai/commands/implement/steps/artifact-analysis.md');
 
   const escalateDefinition = /Escalate.*findings are those that contradict an existing decision or requirement.*criterion 3.*or propose work.*exceeds.*scope.*criterion 5/i;
-  assert.match(instructions, escalateDefinition,
-    'instructions should define Escalate with criteria 3 and 5');
   assert.match(artifactAnalysis, escalateDefinition,
     'artifact-analysis should define Escalate with criteria 3 and 5');
 
-  for (const artifact_file of [instructions, artifactAnalysis]) {
+  for (const artifact_file of [artifactAnalysis]) {
     assert.match(artifact_file, /new acceptance criteria.*not yet established/,
       'both should clarify that escalations need new acceptance criteria');
     assert.match(artifact_file, /stops.*before.*plan-generation.*appends/i,
@@ -1105,19 +1090,19 @@ test('Escalation detection lives exclusively in artifact-analysis step', () => {
   assert.match(artifactAnalysis, /check whether any finding was classified as \*\*Escalate\*\*.*If escalations exist/i,
     'artifact-analysis should describe detecting Escalate findings');
 
-  assert.match(planGeneration, /Escalate findings.*detected and handled exclusively in `artifact-analysis`/i,
-    'plan-generation should state Escalate handling is exclusive to artifact-analysis');
-  assert.match(planGeneration, /if escalations existed.*run would have stopped.*never reached this step/i,
-    'plan-generation should clarify escalations never reach it');
+  assert.doesNotMatch(planGeneration, /\bEscalat/,
+    'plan-generation should carry no escalation branch: an escalation ends the run in artifact-analysis');
+  assert.match(planGeneration, /Apply\/Discard classification (?:that|from) `artifact-analysis`/,
+    'plan-generation should reuse the artifact-analysis classification');
 });
 
-test('plan-generation appends no audit step when escalation is detected', () => {
-  const planGeneration = artifact('sai/commands/implement/steps/plan-generation.md');
+test('an escalation ends the run in artifact-analysis before plan-generation', () => {
+  const artifactAnalysis = artifact('sai/commands/implement/steps/artifact-analysis.md');
 
-  assert.match(planGeneration, /check whether escalations were detected.*artifact-analysis.*do NOT append any audit steps/i,
-    'plan-generation should check for escalations and skip appending');
-  assert.match(planGeneration, /escalation stop and.*Ready to Propose.*already occurred.*run is concluded/,
-    'plan-generation should note escalations already stopped the run');
+  assert.match(artifactAnalysis, /Do NOT continue to `plan-generation`/,
+    'artifact-analysis should stop before plan-generation');
+  assert.match(artifactAnalysis, /Return `failed`, with `summary` carrying every emitted Ready to Propose block/,
+    'the escalation should close the run as failed with the blocks in the summary');
 });
 
 test('Escalation handoff emits Ready to Propose block with correct fields', () => {
@@ -1148,6 +1133,6 @@ test('Escalation groups findings by scope of work, emits one block per new chang
     'should clarify same-change grouping logic');
   assert.match(artifactAnalysis, /one block per escalation group/,
     'should emit one block per escalation group, not per artifact');
-  assert.match(artifactAnalysis, /all emitted blocks as chat output/,
+  assert.match(artifactAnalysis, /`summary` carrying every emitted Ready to Propose block/,
     'should confirm emitting all blocks in single terminal status');
 });

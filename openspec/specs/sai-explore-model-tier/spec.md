@@ -2,14 +2,13 @@
 
 ## Purpose
 
-TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+Keep the `sai-explore` coordinator's model tier declared once, in its harness wrappers.
 
 ## Requirements
-### Requirement: The `sai-explore` command MUST use `claude-sonnet-4-6` at `medium` effort.
+### Requirement: The `sai-explore` wrappers declare their model tier
 
-Previously configured as `claude-opus-4-7` / `high`. Downgraded to match the task class of an exploration/thinking-partner command.
+The `commands/claude/sai-explore.md` wrapper SHALL declare `model` and `effort`, and the `commands/opencode/sai-explore.md` wrapper SHALL declare `model` and `variant`, in their frontmatter. That frontmatter is the sole authority for the explore tier; no spec pins its values.
 
 #### Scenario: sai-explore command frontmatter
-- **WHEN** the `commands/claude/sai-explore.md` frontmatter is read
-- **THEN** `model` SHALL be `claude-sonnet-4-6`
-- **THEN** `effort` SHALL be `medium`
+- **WHEN** either `sai-explore` wrapper's frontmatter is read
+- **THEN** it SHALL contain a `model` line and the harness's reasoning line (`effort` for Claude Code, `variant` for opencode)

@@ -8,7 +8,7 @@ Define the spec-proposal worker's progress-event emission: carrying only the can
 
 ### Requirement: Spec worker emits progress events
 
-The spec-proposal worker SHALL emit progress events, after prerequisite checks and change resolution complete, whenever one or more plan steps complete. Every event SHALL carry worker-authored `emitted_on`, only the canonical step ids enumerated by `spec-progress-plan` (`prereqs-and-change`, `research`, `proposal`, `specs`, `validation`, `review`), in plan order, plus the files changed since the preceding result. The worker SHALL NOT author, extend, or reorder the plan, and SHALL NOT emit a progress event before resolution or in place of a terminal payload.
+The spec-proposal worker SHALL emit progress events, after prerequisite checks and change resolution complete, whenever one or more plan steps complete. Every event SHALL carry no time field, only the canonical step ids enumerated by `spec-progress-plan` (`prereqs-and-change`, `research`, `proposal`, `specs`, `validation`, `review`), in plan order, plus the files changed since the preceding result. The worker SHALL NOT author, extend, or reorder the plan, and SHALL NOT emit a progress event before resolution or in place of a terminal payload.
 
 The worker SHALL report one batch per completed act: the startup act (prerequisite checks plus change resolution) carries `prereqs-and-change`; the unconditional structured research act carries `research`; writing `proposal.md` carries `proposal`; writing the change's `specs/**/*.md` carries `specs`; artifact verification, the self-consistency and source-grounding checks, and decision-summary derivation carry `validation`; a completed review pass reporting `High=0` carries `review` per `review-step-evidence-marking`. The research batch SHALL be emitted after the startup handshake and before proposal generation, even when the `Ready to Propose` handoff supplies Research Leads. A research batch MAY carry an empty `changed_files` list because research writes no file.
 
@@ -106,3 +106,22 @@ Adding classification and recovery continuation SHALL not change the canonical s
 - **WHEN** a spec worker resumes after a diagnosis
 - **THEN** it SHALL use only the existing progress ids and terminal statuses
 - **AND** it SHALL not emit a recovery progress id or persist a recovery counter
+
+### Requirement: Spec worker copies Request Additional Notes verbatim
+
+When the `Ready to Propose` block carries `**Request Additional Notes**`, the spec-proposal worker SHALL copy the field's content byte-for-byte into the `## Request Additional Notes` section of `proposal.md`, without rewriting, summarizing, translating, or merging it. The worker SHALL derive no requirement, scenario, or scope from the field, even when a note reads like an obligation. It SHALL keep its own research findings in `## Additional Notes` and SHALL never mix the two sections. When the block has no such field, the worker SHALL omit the section. A refinement run without a block SHALL keep any existing `## Request Additional Notes` section intact.
+
+#### Scenario: Present field is copied verbatim
+
+- **WHEN** the spec worker writes `proposal.md` from a block that carries Request Additional Notes content
+- **THEN** the `## Request Additional Notes` section contains that content byte-for-byte and no requirement or scenario derives from it
+
+#### Scenario: Absent field leaves no section
+
+- **WHEN** the spec worker writes `proposal.md` from a block without the field
+- **THEN** `proposal.md` contains no `## Request Additional Notes` section
+
+#### Scenario: Refinement without a block preserves the section
+
+- **WHEN** the spec worker refines an existing change from feedback with no block and `proposal.md` already has a `## Request Additional Notes` section
+- **THEN** that section is kept intact

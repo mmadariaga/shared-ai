@@ -43,11 +43,14 @@ test('E8 fail/cancel and E9 already-running and E2 next-slice do not mark done',
   assert.equal(again.rejected, 'ALREADY_RUNNING');
   assert.equal(again.state.stage, 'build-implement');
   const failed = slice.transition(started.state, { intent: 'fail' });
-  assert.equal(failed.state.stage, 'build-implement');
-  assert.ok(failed.state.active != null);
+  assert.equal(failed.state.stage, 'idle');
+  assert.equal(failed.state.active, null);
+  assert.deepEqual(failed.state.parked, { a: { mode: 'direct-build', stage: 'build-implement' } });
   assert.deepEqual(failed.state.done, []);
   const cancelled = slice.transition(started.state, { intent: 'cancel' });
-  assert.equal(cancelled.state.stage, 'build-implement');
+  assert.equal(cancelled.state.stage, 'idle');
+  assert.deepEqual(cancelled.state.parked, { a: { mode: 'direct-build', stage: 'build-implement' } });
+  assert.deepEqual(cancelled.state.done, []);
   const onArchive = slice.transition(
     slice.transition(slice.transition(started.state, { intent: 'complete' }).state, { intent: 'complete' }).state,
     { intent: 'next-slice' },
@@ -65,8 +68,7 @@ test('slice step and instructions carry next-slice for Plan and Manual only', ()
   assert.match(sliceStep, /Plan and Manual/);
   assert.match(sliceStep, /Direct Build never uses `next-slice`/);
   assert.match(instructions, /next-slice/);
-  assert.match(instructions, /Mere containment of the string `next-slice` SHALL NOT fire the token/);
-  assert.match(instructions, /Direct Build never uses `next-slice`/);
+  assert.match(sliceStep, /Mere containment of the string `next-slice` SHALL NOT fire the token/);
   assert.match(planStep, /Implement completes only on `next-slice`/);
   assert.match(sliceStep, /Plan `next-slice`-on-implement rule lives in `pipeline-plan-unattended\.md`/);
 });
@@ -109,7 +111,8 @@ test('E1 next-slice on sai-1/sai-2 stays put; E2 fail keeps pending; E3 already-
   assert.equal(midSlice.rejected, 'READINESS_IS_NOT_INTENT');
   assert.equal(midSlice.state.stage, 'sai-2');
   const failed = slice.transition(sai2.state, { intent: 'fail' });
-  assert.equal(failed.state.stage, 'sai-2');
+  assert.equal(failed.state.stage, 'idle');
+  assert.deepEqual(failed.state.parked, { a: { mode: 'plan', stage: 'sai-2' } });
   assert.deepEqual(failed.state.done, []);
   const again = slice.transition(started.state, { intent: 'plan' });
   assert.equal(again.rejected, 'ALREADY_RUNNING');
@@ -123,17 +126,19 @@ test('E1 next-slice on sai-1/sai-2 stays put; E2 fail keeps pending; E3 already-
   assert.equal(dbCross.state.mode, 'direct-build');
 });
 
-test('idea stages 2–3 hint follow-already-loaded; first stages hint load and follow', () => {
+test('idea stages route to their own step files and hint load and follow', () => {
   const idea = require('../sai-state/machines/explore-idea.js');
   const first = idea.project(idea.initialState);
   assert.match(first.next.hint, /^load and follow /);
   assert.equal(first.next.follow, 'sai/commands/explore/steps/common.md');
   const stage2 = idea.transition(idea.initialState, { intent: 'next-step' });
   assert.equal(stage2.state.stage, 'review-edge-cases');
-  assert.match(stage2.next.hint, /^follow the instructions of /);
+  assert.equal(stage2.next.follow, 'sai/commands/explore/steps/review-edge-cases.md');
+  assert.match(stage2.next.hint, /^load and follow /);
   const stage3 = idea.transition(stage2.state, { intent: 'next-step' });
   assert.equal(stage3.state.stage, 'implementation-details');
-  assert.match(stage3.next.hint, /^follow the instructions of /);
+  assert.equal(stage3.next.follow, 'sai/commands/explore/steps/implementation-details.md');
+  assert.match(stage3.next.hint, /^load and follow /);
   const cryst = idea.transition(stage3.state, { intent: 'next-step' });
   assert.equal(cryst.state.stage, 'crystallize');
   assert.match(cryst.next.hint, /^load and follow /);
@@ -187,6 +192,91 @@ test('ALREADY_RUNNING keeps precedence over NO_PENDING_SLICE; exhausted set reje
   assert.equal(againBuild.rejected, 'NO_PENDING_SLICE');
   assert.equal(againBuild.state.stage, 'idle');
   assert.equal(againBuild.state.active, null);
+});
+
+test('a failed Plan slice resumes at its saved stage on a later plan selection', () => {
+  const recorded = slice.transition(slice.initialState, { recordedList: ['a'] });
+  const started = slice.transition(recorded.state, { intent: 'plan' });
+  const sai2 = slice.transition(started.state, { intent: 'complete' });
+  const failed = slice.transition(sai2.state, { intent: 'fail' });
+  assert.ok(!('rejected' in failed));
+  assert.equal(failed.next.follow, 'sai/commands/explore/steps/route-selector.md');
+  const retry = slice.transition(failed.state, { intent: 'plan' });
+  assert.ok(!('rejected' in retry));
+  assert.equal(retry.state.active, 'a');
+  assert.equal(retry.state.mode, 'plan');
+  assert.equal(retry.state.stage, 'sai-2');
+  assert.deepEqual(retry.state.parked, {});
+  const impl = slice.transition(retry.state, { intent: 'complete' });
+  assert.equal(impl.state.stage, 'implement');
+});
+
+test('a failed Direct Build slice resumes at its saved stage', () => {
+  const recorded = slice.transition(slice.initialState, { recordedList: ['a'] });
+  const started = slice.transition(recorded.state, { intent: 'direct-build' });
+  const backfill = slice.transition(started.state, { intent: 'complete' });
+  const cancelled = slice.transition(backfill.state, { intent: 'cancel' });
+  const retry = slice.transition(cancelled.state, { intent: 'direct-build' });
+  assert.ok(!('rejected' in retry));
+  assert.equal(retry.state.stage, 'backfill');
+  assert.equal(retry.state.active, 'a');
+});
+
+test('a parked slice resumes only in its own mode', () => {
+  const recorded = slice.transition(slice.initialState, { recordedList: ['a'] });
+  const started = slice.transition(recorded.state, { intent: 'plan' });
+  const failed = slice.transition(slice.transition(started.state, { intent: 'complete' }).state, { intent: 'fail' });
+  const cross = slice.transition(failed.state, { intent: 'direct-build' });
+  assert.equal(cross.rejected, 'ALREADY_RUNNING');
+  assert.equal(cross.state.active, null);
+  assert.equal(cross.state.stage, 'idle');
+  assert.deepEqual(cross.state.parked, { a: { mode: 'plan', stage: 'sai-2' } });
+});
+
+test('a parked slice does not block another pending slice', () => {
+  const recorded = slice.transition(slice.initialState, { recordedList: ['a', 'b'] });
+  const started = slice.transition(recorded.state, { intent: 'plan' });
+  const failed = slice.transition(started.state, { intent: 'fail' });
+  const other = slice.transition(failed.state, { intent: 'direct-build', pick: 'b' });
+  assert.ok(!('rejected' in other));
+  assert.equal(other.state.active, 'b');
+  assert.equal(other.state.stage, 'build-implement');
+  assert.deepEqual(other.state.parked, { a: { mode: 'plan', stage: 'sai-1' } });
+});
+
+test('pick starts the chosen pending slice; a pick outside the pending set rejects', () => {
+  const recorded = slice.transition(slice.initialState, { recordedList: ['a', 'b'] });
+  const picked = slice.transition(recorded.state, { intent: 'plan', pick: 'b' });
+  assert.equal(picked.state.active, 'b');
+  assert.equal(picked.state.stage, 'sai-1');
+  const impl = slice.transition(slice.transition(picked.state, { intent: 'complete' }).state, { intent: 'complete' });
+  const closed = slice.transition(impl.state, { intent: 'next-slice' });
+  assert.deepEqual(closed.state.done, ['b']);
+  const repick = slice.transition(closed.state, { intent: 'plan', pick: 'b' });
+  assert.equal(repick.rejected, 'NO_PENDING_SLICE');
+  assert.equal(repick.state.active, null);
+  const unknown = slice.transition(recorded.state, { intent: 'direct-build', pick: 'zzz' });
+  assert.equal(unknown.rejected, 'NO_PENDING_SLICE');
+  const notString = slice.transition(recorded.state, { intent: 'plan', pick: 1 });
+  assert.equal(notString.rejected, 'NO_PENDING_SLICE');
+});
+
+test('a recordedList discards parked cursors so re-crystallized slices restart', () => {
+  const recorded = slice.transition(slice.initialState, { recordedList: ['a'] });
+  const started = slice.transition(recorded.state, { intent: 'plan' });
+  const failed = slice.transition(slice.transition(started.state, { intent: 'complete' }).state, { intent: 'fail' });
+  const recrystallized = slice.transition(failed.state, { recordedList: ['a'] });
+  assert.deepEqual(recrystallized.state.parked, {});
+  const restart = slice.transition(recrystallized.state, { intent: 'plan' });
+  assert.equal(restart.state.stage, 'sai-1');
+});
+
+test('fail or cancel with no active slice changes nothing', () => {
+  const recorded = slice.transition(slice.initialState, { recordedList: ['a'] });
+  const failed = slice.transition(recorded.state, { intent: 'fail' });
+  assert.ok(!('rejected' in failed));
+  assert.equal(failed.state.stage, 'idle');
+  assert.deepEqual(failed.state.parked, {});
 });
 
 test('route-selector acknowledges NO_PENDING_SLICE as missing inventory without dispatch', () => {

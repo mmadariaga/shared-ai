@@ -22,8 +22,12 @@ The subagent model is controlled by the `model` frontmatter of the resolved `bud
 
 Dispatch in the background only from a main agent, routed SAI coordinator, or routed SAI worker whose lifetime outlives the child. Capture and await the continuation on the dispatcher's own turn.
 
+## Spawn prompt
+
+Give the executor the exact command(s) to run, in order, and the output you need back. A goal without a command also works: the executor then picks the narrowest command that meets it. Either way it runs and reports; diagnosis and fixes stay with you.
+
 ## Execution contract
 
-The agent fetches `@sai/policies/executor-agent.md`, which owns exact-command execution, narrow low-output behavior, parallel independent commands, no self-correction, and structured failure reporting. There is no tool-call cap.
+The agent fetches `@sai/policies/executor-agent.md`, which owns exact-command execution, narrow low-output command choice, parallel independent commands, no self-correction, structured failure reporting, and the raw-output boundary. There is no tool-call cap.
 
 Fetch @sai/policies/executor-agent.md

@@ -1,335 +1,266 @@
 # Bounded Recovery Policy
 
-This policy extends the shared command runner's Result Loop in
-`sai/orchestration/command-runner.md`. It is loaded unconditionally by every
-coordinator whose phase adapter opts into recovery (`recovery_policy: true`) or
-executes such a segment under composition.
+This policy extends the Result Loop of `sai/orchestration/command-runner.md`
+with diagnosis-driven, bounded same-worker recovery. It applies to every adapter
+segment that declares `recovery_policy: true`; that declaration enables recovery
+evaluation, it does not make any result eligible. The fixed
+`continue_after_recovery` acknowledgement is runner-owned, not a phase-adapter
+field.
 
-## Bounded Recovery
+## Recovery scope and ledger
 
-The shared runner owns diagnosis-driven, bounded same-worker recovery. A static
-`recovery_policy: true` enables recovery evaluation for the active adapter
-segment; it does not make a result eligible by itself. The fixed
-`continue_after_recovery` acknowledgement is runner-owned and is not an
-additional phase-adapter field.
+The **recovery scope** is the Step for a Step-executing adapter (apply) and the
+composition segment for an adapter that executes no Steps; a one-adapter
+invocation without Steps is one scope.
 
-1. **Recovery-scope ledger.** The `recovery-ledger@1` machine registered in
-   `sai-state/registry.js` owns diagnosis-key normalization, duplicate detection,
-   and three-slot ledger accounting per recovery scope. The recovery scope is the
-   Step for a Step-executing adapter (apply) and the composition segment for an
-   adapter that executes no Steps. Reset it with `reset <id> recovery-ledger@1`
-   on entry to each recovery scope — on entry to each Step for a Step-executing
-   adapter, at each composition-segment boundary otherwise — so the next scope gets
-   a fresh three-slot pool. A later eligible scope never inherits an earlier scope's
-   depleted or remaining slots. For a Step-executing adapter that entry is guarded by
-   Step identity: send the machine a `step-entry` signal naming the Step instead of the
-   bare unguarded reset, and the machine grants the fresh pool — worker slots and
-   coordinator attempts together — only on the first entry to that Step in the run. A
-   Step re-entered after a correction or a route retry keeps what it has already spent
-   and draws no second budget; an unguarded reset in a loop would make the cap
-   meaningless. The bare `reset` stays the segment-boundary form for an adapter that
-   executes no Steps. Every later reference below to "that segment's
-   ledger" or the segment ledger means the ledger of the active recovery scope.
-   The machine normalizes keys, checks for duplicates, and tracks slots; the
-   coordinator consults it before recovery dispatch. A slot is consumed only
-   when the machine accepts a new normalized diagnosis key. A one-adapter
-   invocation that executes no Steps keeps scope identical to the invocation.
+The `recovery-ledger@1` machine registered in `sai-state/registry.js` keeps the
+**ledger** for the active scope: it normalizes diagnosis keys, detects
+duplicates, and accounts three worker slots plus the coordinator's own
+three-attempt budget. Send it the raw key before every recovery dispatch.
+Slots count distinct diagnoses: a slot is consumed only when the machine accepts
+a new normalized key. Every reply reports `budgets` as `{worker: {spent, limit}, coordinator: {spent, limit}}` and
+names the budget that ran out as `exhausted`, so tallies are always read from
+the machine, never recalled from conversation.
 
-2. **Post-resolution diagnosis precedes eligibility.** The runner SHALL first
-   establish the resolved change identity and validate the closed result. Only
-   after that resolution may it diagnose the result, inspect both channels,
-   determine Cause Locus, normalize a diagnosis key, and evaluate recovery
-   eligibility. A pre-resolution result cannot spend a slot or dispatch
-   recovery.
+Reset the ledger on entry to each recovery scope — on entry to each Step for a
+Step-executing adapter, at each composition-segment boundary otherwise — so each
+scope starts with a fresh three-slot pool and never inherits an earlier scope's
+depleted or remaining slots:
 
-3. **Exactly three routing diagnoses.** The post-resolution diagnosis SHALL
-   select exactly one of these routing diagnoses and no other:
+- **Step entry:** send a `step-entry` signal naming the Step instead of a bare
+  reset. The machine grants the fresh pool (worker slots and
+  coordinator attempts together) only on the first entry to that Step in the
+  run; a Step re-entered after a correction or a route retry keeps what it has
+  spent.
+- **Segment boundary:** run `reset <id> recovery-ledger@1`.
 
+## Clean and non-clean results
+
+The clean route is artifact-blind: a clean `completed` (not disproved by
+coordinator evidence and carrying no STOP), `needs_input`, `cancelled`,
+`progress`, `notice`, and every pre-resolution result never inspect artifacts,
+the adapter-declared surface, or the static registry.
+
+After resolution, exactly three results are **non-clean** and open diagnosis: a
+structurally valid `failed` result, a `completed` result disproved by coordinator
+evidence, and a `completed` result carrying STOP. A malformed `failed` result
+takes the coordinator-rejection path instead.
+
+A planning adapter that opts into recovery declares (a) its worker-owned,
+authorized production surface and the authorized read set for non-clean
+inspection, and (b) the same-worker correction operation with its authorized
+correction boundary. That declaration is the source of truth for the adapter's
+non-clean read surface; the phase card cites this policy instead of restating
+it.
+
+## Diagnosis
+
+Diagnose only after the runner has established the resolved change identity and
+validated the closed result; a pre-resolution result never spends a slot or
+dispatches recovery. Diagnosis is ephemeral invocation state: never persist
+the diagnosis, selected channel, repair markers, attempt counters, or history in
+artifacts, worker payloads, worker journals, change metadata, or any other
+project or durable store. The one exception is the `recovery-ledger@1` session
+in the `sai-state` store, a per-invocation temporary file outside the project
+that holds normalized diagnosis keys and budget tallies until its reset.
+
+1. **Routing diagnosis.** Select exactly one:
    - `continuation/transport loss` — the coordinator cannot receive or resume
      the same worker through the expected transport or continuation path.
-   - `coordinator rejection` — the coordinator rejects the received result or
-     continuation because its envelope, routing, or coordinator-owned
-     contract evidence is invalid.
+   - `coordinator rejection` — the coordinator rejects the result or
+     continuation because its envelope, routing, or coordinator-owned contract
+     evidence is invalid.
    - `worker-authored failure` — the worker returned a closed failure outcome
-     or otherwise reported an execution failure through its worker-authored
-     channel.
+     or reported an execution failure through its own channel.
 
-   A routing diagnosis is distinct from the worker's `failure_class`. The
-   closed worker failure-class vocabulary remains
-   `blocking-contradiction`, `validation-failed`, `generation-error`,
-   `dispatch-failed`, `envelope-contract-violation`, and
-   `unclassified-worker-fault`; a worker-authored `outer-envelope-violation`
-   is still a coordinator-owned rejection, never a worker-authorable class.
+   The routing diagnosis is distinct from the worker's `failure_class`, whose
+   closed vocabulary is `blocking-contradiction`, `validation-failed`,
+   `generation-error`, `dispatch-failed`, `envelope-contract-violation`, and
+   `unclassified-worker-fault`. A worker-authored `outer-envelope-violation` is
+   a coordinator rejection, never a worker-authorable class. Validate any
+   present `failure_class` against that vocabulary and use it as a prior that
+   focuses and orders inspection, not as the eligibility gate: no class value
+   alone grants recovery or forces zero attempts.
 
-4. **Cause Locus and dual inspection channels.** Every diagnosis SHALL assign
-   exactly one Cause Locus: `in-scope`, `owner-in-run`, `out-of-scope`, or `unresolved`.
-   `in-scope` means that the evidence identifies a concrete point in an
-   authorized production artifact and the authorized correction boundary
-   permits this worker to correct it. `owner-in-run` means that the evidence
-   identifies a concrete point in an authorized artifact — production or test — and the
-   authorized correction boundary is held by a named worker that is still
-   resumable in this run. The coordinator determines the in-run owner roster
-   (worker identity, authorized correction boundary, and resumability state)
-   from the active run's session state: each worker remains in the roster from
-   its initial dispatch until the run or segment boundary ends, and its resumability is tracked
-   from its dispatch state (pending dispatch, active, or completed). A worker's
-   `completed` status marks its dispatch closed but does not remove it from the
-   resumability roster until the run or segment boundary ends. Locus assignment
-   reads only from this coordinator-held roster and does not infer missing
-   workers or boundaries. When the evidence places the cause across more than
-   one in-run owner's authorized correction boundary, Cause Locus is `unresolved`;
-   no multi-owner fan-out to multiple workers occurs. `out-of-scope` is decided by
-   ownership, never by the kind of artifact the cause sits in: it means that no
-   in-run worker holds an authorized correction boundary over that concrete point —
-   a declared interface, forbidden artifact, external/shared system, or any other
-   boundary with no in-run owner. A cause located in a test file is therefore
-   `owner-in-run` whenever a test-owning worker is still resumable in this run, and
-   the correction is routed to that owner, never to a worker whose contract forbids
-   test files. `unresolved` means the evidence cannot
-   establish a concrete point and correction boundary, or the two inspection
-   channels do not agree, or the evidence spans multiple in-run owners.
+2. **Channel selection per cause surface.** Channel selection precedes
+   diagnosis-key derivation, and the two recovery channels are exclusive for
+   each cause surface. When the surface lies inside the adapter's authorized
+   read set, the planning channel inspects it without matching any static
+   registry row. The static channel uses the phase-static registry below, only for
+   a surface outside that read set in a blind adapter. When an
+   authorized surface does not resolve to a concrete point and correction
+   boundary, Cause Locus stays `unresolved` and there is no fallback to a
+   static row.
 
-   Ownership-based classification reaches every consumer of this shared policy,
-   including the Direct Build (unattended) route, which consumes Bounded Recovery
-   although it runs no RED/GREEN pair. Its effect there is neutral: Direct Build's
-   single implementer already owns both tests and production, so a test-located
-   cause was already inside that worker's correction boundary.
+3. **Dual inspection channels.** Use both before evaluating eligibility:
+   (a) the worker-authored result channel — status, failure metadata, summary,
+   and reported evidence; and (b) the coordinator-observed channel — transport
+   and continuation state, envelope validation, routing state, and the
+   authorized production-scope inspection. Neither channel is omitted or
+   substituted for the other; missing or conflicting evidence yields
+   `unresolved`.
 
-   Diagnosis uses both inspection channels before eligibility is evaluated:
-   (a) the worker-authored result channel, including its status, failure
-   metadata, summary, and reported evidence; and (b) the coordinator-observed
-   channel, including transport/continuation state, envelope validation,
-   routing state, and the authorized production-scope inspection. Neither
-   channel may be omitted or silently substituted for the other. Missing or
-   conflicting evidence produces `unresolved` and therefore no recovery
-   attempt.
+4. **Cause Locus.** Assign exactly one, from ownership. The coordinator reads
+   ownership from its in-run roster: every worker dispatched in this run or
+   segment, with its authorized correction boundary and its resumability
+   (pending dispatch, active, or completed; `completed` closes a dispatch but
+   keeps the worker on the roster until the run or segment boundary ends). It
+   never infers a missing worker or boundary.
+   - `in-scope` — the evidence names a concrete point in an authorized
+     production artifact inside the correction boundary of the worker that
+     returned the result.
+   - `owner-in-run` — the evidence names a concrete point in an authorized
+     artifact, production or test, inside the correction boundary of a named
+     worker that is still resumable in this run.
+   - `out-of-scope` — no in-run worker holds a correction boundary over that
+     point: a declared interface, forbidden artifact, external or shared
+     system, or any other boundary with no in-run owner.
+   - `unresolved` — the evidence cannot establish a concrete point and
+     boundary, the two channels disagree, or the cause spans more than one
+     in-run owner's boundary (there is no multi-owner fan-out).
 
-5. **Diagnosis key and normalization.** The diagnosis key is the ordered tuple
-   `(artifact path, concrete point, authorized correction boundary)`. It has
-   exactly those three components; routing diagnosis, `failure_class`,
-   attempt ordinal, timestamps, summaries, and `changed_files` are not key
-   components. The `recovery-ledger@1` machine owns key normalization:
-   canonicalizes the artifact path as repository-relative with `/` separators
-   and redundant `.` segments removed, trims and collapses whitespace in the
-   concrete point, and uses the canonical spelling for the authorized
-   correction boundary, preserving component order and repository case
-   semantics. The coordinator sends the raw tuple to the machine, which
-   normalizes it internally for comparison. A missing or non-concrete
-   component results in no usable key and leaves Cause Locus `unresolved`;
-   it must not accidentally match a different diagnosis.
+   `out-of-scope` is decided by ownership, never by the kind of artifact the
+   cause sits in. A cause located in a test file is therefore `owner-in-run`
+   whenever a test-owning worker is still resumable in this run, and the
+   correction goes to that owner, never to a worker whose contract forbids
+   test files.
 
-6. **Eligibility is diagnosis-driven.** `failure_class` is a diagnostic prior
-   used to focus and order inspection; it is not an eligibility gate. No
-   failure-class value alone grants recovery or forces a zero-attempt branch.
-   After resolution, both inspection channels, Cause Locus, normalized key,
-   worker veto, and ledger state are known, recovery is eligible only when all
-   of the following hold: the active segment has `recovery_policy: true`, the
-   Cause Locus is `in-scope` or `owner-in-run`, the key is new in that segment's
-   ledger, a slot remains, the worker has not set `unrecoverable: true`, and the
-   hand-back diagnosis has sufficient evidence for an authorized correction and
-   its verification. The coordinator SHALL validate any present `failure_class`
-   against the closed vocabulary, but SHALL use that value as a prior rather
-   than as the eligibility decision.
+5. **Diagnosis key.** The key is exactly the ordered tuple
+   `(artifact path, concrete point, authorized correction boundary)`; the
+   routing diagnosis, `failure_class`, attempt ordinal, timestamps, summaries,
+   and `changed_files` are not components. The ledger machine normalizes it
+   (repository-relative `/` path without redundant `.` segments, collapsed
+   whitespace in the concrete point, canonical boundary spelling, component
+   order and repository case preserved). A missing or non-concrete component
+   gives no usable key and leaves Cause Locus `unresolved`.
 
-7. **Zero-attempt branches and duplicate check.** Spend zero slots and do not
-   dispatch recovery when recovery is not enabled, resolution has not
-   completed, the closed outcome or its required metadata is rejected, Cause
-   Locus is `out-of-scope` (meaning no in-run worker holds an authorized
-   correction boundary) or `unresolved`, the worker vetoes continuation,
-    the ledger is exhausted, or the result is cancelled, except as specified for
-    the named Explore Plan (unattended) item-10 route below. Ordinary/generic adapters
-    preserve a cancelled result as a clean stop; outside the selector-dispatched
-    Explore Plan (unattended) item 10 exception, cancellation closes as cancelled without a
-    recovery charge. The `recovery-ledger@1` machine checks for duplicate normalized
-    diagnosis keys before dispatch: if a key is a duplicate, it spends zero slots,
-    does not invoke `continue_after_recovery`, and returns a stopping reason of
-    `duplicate diagnosis`. The coordinator hands back the existing diagnosis rather
-    than creating a second attempt. The same duplicate rule binds the coordinator's own
-    budget: a coordinator attempt carries the same normalized diagnosis key, a key the
-    coordinator already attempted in this scope spends zero attempts and returns
-    `duplicate diagnosis`, and an attempt with no concrete key spends zero and returns
-    `unresolved cause`. A coordinator-owned rejection with
-    no concrete in-scope correction likewise spends zero slots. These branches
-    do not alter the unchanged `changed_files` union.
+## Eligibility
 
-8. **Dispatch and continuation.** Before an eligible attempt, announce the
-   routing diagnosis, failure class, and Cause Locus in conversation text.
-   Consult the `recovery-ledger@1` machine with the normalized diagnosis key.
-   The machine returns the slot ordinal (`1 of 3`, `2 of 3`, or `3 of 3`) and
-   records the new key in the ledger. Announce the normalized diagnosis key and
-   the slot ordinal in conversation text. Resume the live worker with exactly
-   `continue_after_recovery`. When Cause Locus is `in-scope`, resume the same
-   worker that returned the non-clean result. When Cause Locus is `owner-in-run`,
-   resume the live worker holding the authorized correction boundary identified
-   in the diagnosis. Recovery SHALL never dispatch a replacement worker. If that
-   recovery continuation loses transport, is rejected, or otherwise cannot resume
-   the target worker, stop recovery and hand back the diagnosis; do not turn the
-   loss into a replacement dispatch. Ordinary continuation loss outside recovery
-   retains the existing at-most-one replacement fallback. A subsequent diagnosis
-   may be considered only from a successfully resumed target-worker result (the
-   same worker when in-scope, or the owner worker when owner-in-run) and only
-   if it has a new key and a remaining slot.
+A recovery attempt is eligible only when all of these hold:
 
-   **Downstream relaunch after owner correction.** When Cause Locus is
-   `owner-in-run` and the owner worker returns a successful `completed` status
-   from recovery, the owner's correction invalidates the downstream result that
-   reported the non-clean outcome. The coordinator SHALL resume the downstream
-   worker with exactly `continue_after_recovery_relaunch`, a warm continuation
-   carrying the corrected upstream artifacts scoped to recovering from the one
-   concrete diagnosed point. Before the relaunch continuation is sent, the
-   coordinator SHALL check whether any user-facing gate (such as an
-   artifact-feedback gate or approval gate) already accepted artifacts that the
-   owner correction has now rewritten; if so, the coordinator SHALL re-present
-   that gate with the modified artifacts before resuming the downstream worker,
-   preserving the constraint that no approved content is silently mutated. The
-   relaunch is a separate work cycle: the downstream worker executes with the
-   corrected inputs from the continued state, and a separate diagnosis applies to
-   the relaunch result only if a new non-clean outcome is returned. A downstream
-   relaunch does not extend or reset the shared three-slot recovery ledger of the
-   downstream phase.
+- the active segment declares `recovery_policy: true`;
+- the result is non-clean, post-resolution, and passed closed-result
+  validation;
+- Cause Locus is `in-scope` or `owner-in-run`;
+- the machine accepts the key as new in the scope's ledger — duplicates are
+  rejected before dispatch;
+- a slot remains;
+- the worker did not set `unrecoverable: true`; and
+- the diagnosis carries enough evidence for an authorized correction and its
+  verification.
 
-9. **Input, cancellation, and hand-back.** If recovery returns `needs_input`,
-   exit recovery without charging that result, forward its exact question and
-   options through the normal input loop, and retain the segment ledger and
-   changed-files union. `cancelled` never enters or re-enters recovery and
-   closes as cancelled without a recovery charge. Every recovery continuation
-   carries the coordinator diagnosis fields exactly as `Reported`, `Evidence`,
-   `Cause`, `Correction`, and `Verification`. A recovery hand-back also names
-   the routing diagnosis, `failure_class` when present, Cause Locus,
-   `diagnosis_key` (or that it is unresolved), `attempts_spent` (the number of
-   attempts spent), and the stopping reason. `attempts_spent` is read from the
-   machine's response, which reports `budgets` as `{worker: {spent, limit},
-   coordinator: {spent, limit}}` on every outcome and names the budget that ran out
-   as `exhausted` on an exhaustion, so a long unattended run never has to recall the
-   tallies from conversation. Stopping reasons are limited to no policy, unresolved or
-   out-of-scope cause, duplicate diagnosis, worker veto, exhaustion,
-   continuation/transport loss, coordinator rejection, input, or cancellation.
-   Recovery announcements and hand-backs are conversation text only; they
-    never mark, extend, rename, or add progress-plan steps.
+Every other case spends zero slots, sends no `continue_after_recovery`, and
+hands back the diagnosis with its stopping reason. A duplicate key returns
+`duplicate diagnosis` and hands back the existing diagnosis. The coordinator's
+own budget follows the same rule: a coordinator attempt carries the normalized
+diagnosis key, a key already attempted in this scope spends zero and returns
+`duplicate diagnosis`, and an attempt without a concrete key spends zero and
+returns `unresolved cause`.
 
-     **Explore Plan (unattended) item-10 cancellation exception.** Only a selector-dispatched
-     Explore Plan (unattended) item 10 may enter an Explore Diagnosis Round; it does not spend
-     the shared diagnosis ledger. This applies only after a post-resolution
-     supervised phase-worker `status: cancelled`, and only when the phase-keyed,
-     conversation-only `diagnosis_rounds.<phase>` is unused.
-    On an actionable diagnosis where same-worker continuation cannot be
-    delivered, use `continuation/transport loss`, consume the diagnosis round,
-    do not use ordinary replacement fallback, close this route as terminal, and
-    leave the change retryable for later Plan (unattended) selection. The round is read-only
-    and permits at most one diagnosis and at most one same-worker re-dispatch;
-     it never uses a replacement worker and never spends the shared three-slot
-     ledger. Use only
-    `diagnosis_rounds.spec` / `diagnosis_rounds.design`; no other phase key is
-    valid. Standalone
-    spec/design, Build, manual item-9 review, adapters without the named route,
-    and outer user cancellation receive no cancellation recovery.
+## Recovery attempt
 
-  10. **Union and fast-track invariants.** Maintain one first-seen, ordered,
-      duplicate-free `changed_files` union across initial results, progress,
-       notices, input, normal continuation, segment transitions, and recovery.
-      Reset the diagnosis ledger only on entry to an eligible recovery scope
-      (each Step for a Step-executing adapter, each composition-segment boundary
-      otherwise); never reset the changed-files union. `--fast-track` is unchanged:
-      it changes neither the three-slot ledger, distinct-diagnosis accounting,
-      eligibility, duplicate handling, same-worker/no-replacement rule,
-       changed-files union, nor recovery reporting; its existing fast-track gates
-       remain in force. Fast-track does not widen the Explore Plan (unattended) item-10 bound:
-       it still permits at most one diagnosis round and at most one same-worker
-       re-dispatch, never a replacement worker and never a charge to the shared
-       three-slot ledger.
+1. Announce the routing diagnosis, failure class, and Cause Locus in
+   conversation text.
+2. Consult the machine with the raw key. It records the key and returns the
+   slot ordinal (`1 of 3`, `2 of 3`, or `3 of 3`); announce the normalized key
+   and the ordinal.
+3. Resume the target worker with exactly `continue_after_recovery`, carrying
+   the diagnosis fields `Reported`, `Evidence`, `Cause`, `Correction`, and
+   `Verification`. The target is the worker that returned the result when Cause
+   Locus is `in-scope`, and the worker holding the correction boundary when it
+   is `owner-in-run`.
+4. Consider a further diagnosis only from a successfully resumed target-worker
+   result, and only with a new key and a remaining slot.
 
-    **Planning-adapter recovery surface and channel selection.** A planning
-    adapter that opts into bounded recovery SHALL declare both (a) its
-    worker-owned, authorized production surface and authorized read set for
-    non-clean inspection and (b) the same-worker correction operation and its authorized correction
-    boundary. The declaration SHALL be the source of truth for that adapter's
-    authorized non-clean read surface. Phase cards SHALL consume this shared
-    declaration and SHALL NOT duplicate the runner's ledger, budget, key,
-    eligibility, zero-attempt, continuation, or no-replacement rules.
+Recovery never dispatches a replacement worker. When the recovery continuation
+cannot resume the target, stop recovery and hand back the diagnosis. Ordinary
+continuation loss outside recovery keeps the runner's at-most-one replacement
+fallback.
 
-    After resolution, the only results that may trigger planning inspection are
-    a structurally valid `failed` result, a `completed` result disproved by
-    coordinator evidence, or a `completed` result carrying STOP. These are
-    after-resolution non-clean triggers and no other result may authorize
-    inspection of the adapter-declared worker-owned surface. A structurally
-    valid failed result is one that passes closed-result validation; a malformed
-    failed result follows the existing coordinator-rejection path instead.
+A `needs_input` returned during recovery exits recovery without a charge; its
+question and options go through the normal input loop, and the ledger is kept.
+A `cancelled` result never enters or re-enters recovery: it closes as cancelled
+without a recovery charge, except in the Explore exception below.
 
-    The clean route remains artifact-blind. Clean `completed`, `needs_input`,
-    `cancelled`, `progress`, and `notice` results, together with every
-    pre-resolution result, SHALL NOT inspect artifacts, the adapter-declared
-    surface, or the static recovery registry. A `completed` result is clean for
-    this purpose only when it is not coordinator-disproved and does not carry
-    STOP.
+**Downstream relaunch after owner correction.** When an `owner-in-run` owner
+returns `completed` from recovery, its correction invalidates the downstream
+result that reported the non-clean outcome. Before relaunching, re-present any
+user-facing gate (artifact feedback, approval) that already accepted artifacts
+the correction rewrote, so no approved content changes silently. Then resume the
+downstream worker with exactly `continue_after_recovery_relaunch`: a warm
+continuation carrying the corrected upstream artifacts, scoped to the one
+diagnosed point. The relaunch is a separate work cycle, diagnosed only if it
+returns a new non-clean result, and it neither extends nor resets the downstream
+scope's ledger.
 
-    For each cause surface, channel selection precedes diagnosis-key derivation
-    and the two recovery channels SHALL be exclusive. The selected
-    planning channel SHALL use both existing inspection channels — the
-    worker-authored result channel and the coordinator-observed channel — to
-    inspect an in-scope surface within the adapter's authorized worker-owned
-    declaration, without also matching any static registry row. The static
-    channel SHALL use the existing `design-overview-repair` registry/match
-    algorithm only for an outside surface. If an adapter-declared surface is
-    authorized but the evidence does not resolve a concrete point and
-    correction boundary, Cause Locus SHALL remain `unresolved`, recovery SHALL
-    spend zero attempts, and the runner SHALL NOT fall through to a static
-    row or use a static fallback.
+## Hand-back and reporting
 
-    Diagnosis is ephemeral conversation state. The runner SHALL NOT persist the
-    diagnosis, selected channel, repair markers, attempt counters, or diagnosis
-    history in artifacts, worker payloads, worker journals, change metadata, or
-    any other durable store. Only the existing invocation/segment runtime state
-    needed for the ledger and recovery loop may be retained, and it is discarded
-    under the existing segment-boundary rules.
+A hand-back names the routing diagnosis, `failure_class` when present, Cause
+Locus, `diagnosis_key` (or that it is unresolved), attempts spent
+(`attempts_spent`, read from the machine's `budgets`), and one stopping reason:
+no policy, unresolved or out-of-scope cause, duplicate diagnosis, worker veto,
+exhaustion, continuation/transport loss, coordinator rejection, input, or
+cancellation.
 
-    These planning-surface rules preserve all existing routing, ledger,
-    zero-attempt, continuation, registry, and no-replacement invariants. They
-    do not alter the static registry/match algorithm below or authorize a second
-    registry row.
+Recovery announcements and hand-backs are conversation text only: recovery
+never marks, extends, renames, or adds progress-plan steps.
 
-11. **Step 2 GREEN contract for blind opted-in adapters.** A blind opted-in
-     adapter SHALL use the following deterministic, phase-static registry and
-    match matrix algorithm. This is the matching algorithm for the registered
-    surface.
-    The algorithm has no dynamic registration and never reads test-file content.
+`--fast-track` changes nothing here: neither the three-slot pool, key
+accounting, eligibility, duplicate handling, the no-replacement rule, nor
+recovery reporting, and its own gates stay in force.
 
-    1. Require the post-resolution result to carry `unrecoverable` as the
-       boolean value `false` exactly. A missing, null, string, numeric, or
-       `true` value is not a match.
-    2. Read the structured worker-authored `failure_class` and select a
-       registered surface only when it is an exact member of that surface's
-       `accepted_failure_classes`. The selection MUST resolve to exactly one
-       registered surface; zero candidates or more than one candidate is no
-       match. A non-accepted, unsupported, or ineligible failure class remains
-       unresolved with zero attempts.
-    3. A missing or absent `changed_files`, or an empty `changed_files` list,
-       remains unresolved with zero attempts. Otherwise require `changed_files`
-       to be present as a non-empty string list. Replace `{change-name}` in the
-       selected surface's primary and optional path templates with the already
-       resolved change name. Every reported path MUST exactly match one of those
-       substituted primary or optional templates. Primary-path evidence is
-       mandatory: `changed_files` MUST contain at least one substituted primary
-       path. If primary-path evidence is omitted or missing, the match remains
-       unresolved with zero attempts. No extra or unrelated path is accepted.
-    4. A successful match returns `diagnosis_key`: `design-overview-repair` is
-       the selected surface label, not a fourth key component. When all checks
-       succeed, set Cause Locus to `in-scope` and construct
-       `diagnosis_key` from exactly the ordered tuple of the substituted primary
-       path, the surface's `concrete_lifecycle_point`, and its
-       `authorized_correction_boundary`. The key is not taken from
-       `changed_files` ordering or any prose.
-    5. When no surface matches, or any match check fails, the result is
-       `unresolved`, Cause Locus is `unresolved`, and recovery has zero
-       attempts: consume no ledger slot and do not dispatch
-       `continue_after_recovery`.
+## Explore Plan (unattended) item-10 exception
 
-    Summary prose must not supply Cause Locus or `diagnosis_key`. The algorithm
-    SHALL never infer a failure class, surface, path, lifecycle point,
-    correction boundary, Cause Locus, or `diagnosis_key` from summary prose.
-    The sole runtime registry for this algorithm is:
+Ordinary adapters keep a `cancelled` result as a clean stop, except in one
+place: a selector-dispatched Explore Plan (unattended) item 10.
+There, after a post-resolution supervised phase-worker `status: cancelled`, the
+cancelled phase may enter one Explore Diagnosis Round when the phase-keyed,
+conversation-only `diagnosis_rounds.<phase>` is unused. Only
+`diagnosis_rounds.spec` and `diagnosis_rounds.design` are valid keys.
 
-    | surface_id | artifact_path_template | optional_path_templates | concrete_lifecycle_point | authorized_correction_boundary | accepted_failure_classes |
-    |---|---|---|---|---|---|
-    | design-overview-repair | openspec/changes/{change-name}/change-overview.md | openspec/changes/{change-name}/.openspec.yaml | overview-generation-repair | design-worker-overview-repair | validation-failed, generation-error, dispatch-failed, envelope-contract-violation, blocking-contradiction |
+The Explore Plan (unattended) item 10 round does not spend the shared
+diagnosis ledger. It is read-only and permits at most one diagnosis and at most one
+same-worker re-dispatch; it never uses a replacement worker, and `--fast-track`
+does not widen it. When an actionable diagnosis cannot be delivered because
+same-worker continuation fails, record `continuation/transport loss`, consume
+the round, close the route as terminal with no replacement fallback, and leave
+the change retryable for a later Plan (unattended) selection.
 
-    No other blind surface is registered.
+Standalone spec and design, Build, manual item-9 review, adapters without this
+named route, and outer user cancellation get no cancellation recovery.
+
+## Static registry for blind adapters
+
+A blind adapter matches a cause surface outside its read set through this
+deterministic, phase-static registry and match matrix. The match algorithm has
+no dynamic registration and never reads test-file content:
+
+1. Require `unrecoverable` to be exactly the boolean `false`; a missing, null,
+   string, numeric, or `true` value is no match.
+2. Select the registered surface whose `accepted_failure_classes` contains the
+   structured worker-authored `failure_class` exactly. Zero or several
+   candidates is no match; a non-accepted, unsupported, or ineligible failure
+   class stays unresolved with zero attempts.
+3. A missing or empty `changed_files` stays unresolved with zero attempts.
+   Otherwise substitute the resolved change name for `{change-name}` in the
+   surface's primary and optional path templates; every reported path must
+   match one of them exactly, and no extra or unrelated path is accepted.
+   Primary-path evidence is mandatory: `changed_files` must contain at least
+   one substituted primary path, and when primary-path evidence is missing the
+   match stays unresolved with zero attempts.
+4. A successful match returns `diagnosis_key`: `design-overview-repair` names
+   the matched surface. Cause Locus becomes `in-scope`, and the key is the ordered tuple of
+   the substituted primary path, the surface's `concrete_lifecycle_point`, and
+   its `authorized_correction_boundary`. The surface label is not a fourth key
+   component, and the key never comes from `changed_files` order or prose.
+5. Any failed check leaves the result and Cause Locus `unresolved` with zero
+   attempts: no ledger slot and no `continue_after_recovery`.
+
+Summary prose must not supply Cause Locus or `diagnosis_key`; the algorithm
+never infers a failure class, surface, path, lifecycle point, correction
+boundary, Cause Locus, or `diagnosis_key` from prose. No other blind surface is
+registered. The sole runtime registry for this algorithm is:
+
+| surface_id | artifact_path_template | optional_path_templates | concrete_lifecycle_point | authorized_correction_boundary | accepted_failure_classes |
+|---|---|---|---|---|---|
+| design-overview-repair | openspec/changes/{change-name}/change-overview.md | openspec/changes/{change-name}/.openspec.yaml | overview-generation-repair | design-worker-overview-repair | validation-failed, generation-error, dispatch-failed, envelope-contract-violation, blocking-contradiction |

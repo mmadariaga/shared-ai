@@ -1,4 +1,1 @@
-The supervised crystallization-close pipeline (explore item 10, `sai/commands/explore/steps/pipeline-selector.md`) dispatches both routed workers from the explore session, so both worker bindings are preloaded here, in the shared command bootstrap. The Direct Build (unattended) route dispatches three more workers (direct-build, backfill, archive) from the same session; their bindings are fetched lazily at their dispatch points in `sai/commands/explore/steps/pipeline-direct-build.md` (steps 1, 3, and 7) so read-only explore sessions that never dispatch pay no context cost.
-Fetch @sai/orchestration/workers/bindings/spec-worker.md and use it.
-Fetch @sai/orchestration/workers/bindings/design-worker.md and use it.
-Execution continues with the card selected by the harness boot adapter.
+This command has no command-specific loads, and this file is complete as written. Execution continues with the card selected by the harness boot adapter.

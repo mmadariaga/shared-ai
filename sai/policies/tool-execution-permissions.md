@@ -15,15 +15,16 @@ take the first candidate that exists, copied verbatim, exactly as written.
 
 ### Explore (`commands/claude/sai-explore.md`)
 
-Exactly three tools, each in both roots:
+Exactly two tools, each in both roots:
 
 - `node .claude/sai/tools/prereqs.js` + `node ~/.claude/sai/tools/prereqs.js`
   (`check --json --cwd <project-root> --require-openspec-skills claude`)
-- `node .claude/sai/tools/research-tools-check.js` + `node
-  ~/.claude/sai/tools/research-tools-check.js` (`--json --cwd <project-root>`
-  plus explicit `--mcp-present true|false`)
 - `node .claude/sai/bin/sai-state.js` + `node ~/.claude/sai/bin/sai-state.js`
-  (`<verb> ...`; verbs take neither `--json` nor `--cwd`)
+  (`<verb> ...`; verbs take neither `--json` nor `--cwd`; `emit` takes the
+  event JSON on stdin: `echo '<json>' | node <tool-path> emit <id> <machineId> -`;
+  the step-machine progress emit takes the worker progress payload on stdin:
+  `echo '<payload-json>' | node <tool-path> emit <id> <machineId> --progress [--with-overview true|false] -`,
+  covered by the same entry)
 
 No other `node` invocation is permitted on this wrapper.
 
@@ -35,16 +36,27 @@ Exactly three `node` tools, each in both roots, plus one scoped remediation gran
 
 - `node .claude/sai/tools/worker-report-validator.js` + `node
   ~/.claude/sai/tools/worker-report-validator.js` (`validate --kind <kind>`
-  with the payload on stdin)
+  with the payload on stdin; `step_machine` progress payloads are validated
+  inside the `sai-state` progress emit instead)
 - `node .claude/sai/tools/no-commit-guard.js` + `node
   ~/.claude/sai/tools/no-commit-guard.js` (`snapshot --json --cwd
   <project-root>` / `verify --base <guard_base> [--allow-commit] --json --cwd
   <project-root>`)
 - `node .claude/sai/bin/sai-state.js` + `node ~/.claude/sai/bin/sai-state.js`
-  (`<verb> ...`; verbs take neither `--json` nor `--cwd`)
+  (`<verb> ...`; verbs take neither `--json` nor `--cwd`; `emit` takes the
+  event JSON on stdin: `echo '<json>' | node <tool-path> emit <id> <machineId> -`;
+  the step-machine progress emit takes the worker progress payload on stdin:
+  `echo '<payload-json>' | node <tool-path> emit <id> <machineId> --progress [--with-overview true|false] -`,
+  covered by the same entry)
 - `Bash(git reset:*)` — the exact mixed `git reset <guard_base>` remediation
   only, never `--hard`, `--soft`, `--keep`, checkout, or branch operations,
   under the existing safe-operations carve-out.
+
+`sai-5-review` and `sai-review` additionally carry `Bash(git diff:*)`,
+`Bash(git add:*)`, and `Bash(git commit:*)` for their Direct Build close
+(`sai/commands/meta-review/direct-build-close.md`): the fix-loop diff read, the
+path-scoped stage, and the one pre-authorized local commit. The selector is the
+consent; the grants only spare a second permission prompt.
 
 No other `node` invocation is permitted on these wrappers. None of the
 wrappers in this section gains an unscoped `Bash` grant.
@@ -62,9 +74,11 @@ No other `node` invocation is permitted on this wrapper.
 
 ### Status (`commands/claude/sai-status.md`)
 
-Exactly two `node` tools, each in both roots, alongside the existing scoped
+Exactly three `node` tools, each in both roots, alongside the existing scoped
 `Bash(openspec:*)`:
 
+- `node .claude/sai/tools/prereqs.js` + `node ~/.claude/sai/tools/prereqs.js`
+  (`check --json --cwd <project-root> --require-openspec-skills claude`)
 - `node .claude/sai/tools/change-picker.js` + `node
   ~/.claude/sai/tools/change-picker.js` (`resolve "<arguments_value>"
   --bulk-option --json --cwd <project-root>`)

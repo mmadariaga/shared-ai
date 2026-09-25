@@ -1,3 +1,7 @@
+## Purpose
+
+This capability standardizes the `/sai-*` command namespace and numbered phase sequence across Claude Code and opencode.
+
 ## Requirements
 
 ### Requirement: Commands use /sai-* prefix

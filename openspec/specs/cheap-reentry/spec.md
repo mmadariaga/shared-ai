@@ -11,7 +11,7 @@ The pipeline SHALL reuse the current implementation.md and worktree state withou
 - **THEN** re-entry reuses the current implementation.md and worktree state without a full collapse
 
 ### Requirement: Changed plan collapses normally
-The pipeline SHALL run the normal implement collapse including Step 1b plan-state classification when the plan contents changed or the on-disk checkbox state was not preserved.
+The pipeline SHALL run the normal implement collapse (`collapse-implemented-steps`) and the plan-generation step's plan-state classification when the plan contents changed or the on-disk checkbox state was not preserved.
 
 #### Scenario: Changed plan collapses
 - **WHEN** the plan contents changed since the prior attempt

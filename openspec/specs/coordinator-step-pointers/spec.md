@@ -14,7 +14,7 @@ The spec coordinator card SHALL declare `step_machine: spec-standalone@1` and no
 
 ### Requirement: Progress continuations carry exactly one pointer line
 
-While the declared step machine is in force, every progress-event continuation payload the coordinator sends SHALL be exactly two lines: today's protocol continuation line first, then one pointer line `Active step: <id> — follow <path>` whose id and path come from that machine's `STAGE_FILES` mapping under the shared command runner's deterministic derivation. With every declared step marked, the second line SHALL read exactly `Active step: none — complete remaining work and return your terminal result.`
+While the declared step machine is in force, every progress-event continuation payload the coordinator sends SHALL be exactly two lines: the protocol continuation line first, then one pointer line `Active step: <id> — follow <path>` whose id and path come from that machine's `STAGE_FILES` mapping under the shared command runner's deterministic derivation. With every declared step marked, the second line SHALL read exactly `Active step: none — complete remaining work and return your terminal result.`
 
 #### Scenario: validation completion hands over review
 
@@ -47,11 +47,11 @@ Artifact-feedback continuations, `continue_after_recovery` continuations, and pi
 
 ### Requirement: The step-pointer convention covers every routed phase
 
-The spec and design coordinators SHALL declare no `step_pointer_map`, and their step ids SHALL be routed by their declared `step_machine` (`spec-standalone@1`, `design-standalone@1`). The implement, review, security, performance, and accessibility coordinators SHALL deliver the same two-line continuation through their declared `step_machine` per `@sai/policies/stage-machine.md` § Step machines. Adapters with neither a static map nor a step machine SHALL keep today's exact continuation behavior.
+The spec and design coordinators SHALL declare no `step_pointer_map`, and their step ids SHALL be routed by their declared `step_machine` (`spec-standalone@1`, `design-standalone@1`). The implement, review, security, performance, and accessibility coordinators SHALL deliver the same two-line continuation through their declared `step_machine` per `@sai/policies/stage-machine.md` § Step machines. Adapters without a step machine SHALL send a progress continuation of exactly `continue_after_progress`.
 
 #### Scenario: undeclared phases remain byte-for-byte unchanged
 
-- **WHEN** a routed phase's adapter declares neither a `step_pointer_map` nor a `step_machine`
+- **WHEN** a routed phase's adapter declares no `step_machine`
 - **THEN** its continuations carry no pointer lines and its observable continuation behavior is unchanged
 
 #### Scenario: the audit coordinators declare their step machines

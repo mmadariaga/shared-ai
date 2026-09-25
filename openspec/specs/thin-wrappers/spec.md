@@ -1,10 +1,14 @@
 # Spec: thin-wrappers
 
+## Purpose
+
+This capability keeps Claude Code and opencode command wrappers thin by constraining them to their shared launcher and invocation-envelope contract.
+
 ## Requirements
 
 ### Requirement: wrapper-shape
 
-`commands/claude/sai-*.md` and `commands/opencode/sai-*.md` wrappers MUST be thin. The normative wrapper body shape — the three directives, the two-key invocation envelope placement, frontmatter preservation, forbidden sections, and the `sai-explore` load-set exception — is owned by `command-wrapper-body`; this requirement SHALL NOT restate those rules. Within that envelope, a trimmed, non-empty `arguments_value` is authoritative. No wrapper-echo forwarding data is permitted.
+`commands/claude/sai-*.md` and `commands/opencode/sai-*.md` wrappers MUST be thin. The normative wrapper body shape — the three directives, the two-key invocation envelope placement, forbidden sections, and the `sai-explore` load-set exception — is owned by `command-wrapper-body`; this requirement SHALL NOT restate those rules. Within that envelope, a trimmed, non-empty `arguments_value` is authoritative. No wrapper-echo forwarding data is permitted.
 
 #### Scenario: fetch-skill is allowed in wrappers
 
@@ -14,11 +18,11 @@
 #### Scenario: body shape verified at the owned contract
 
 - **WHEN** the wrapper body shape is verified
-- **THEN** the normative checks (directive set, two-key envelope placement, frontmatter preservation, forbidden sections) resolve to `command-wrapper-body`'s requirements, and no shape rule is duplicated anywhere in this capability
+- **THEN** the normative checks (directive set, two-key envelope placement, forbidden sections) resolve to `command-wrapper-body`'s requirements, and no shape rule is duplicated anywhere in this capability
 
 ### Requirement: Wrapper file inventory
 
-The per-harness wrapper file list SHALL contain exactly seventeen `sai-*.md` command files, including `sai-merge.md` in both `commands/claude/` and `commands/opencode/`, each forwarding its InvocationEnvelope through the harness boot adapter to the merge command bootstrap.
+The per-harness wrapper file list SHALL contain exactly nineteen `sai-*.md` command files, including `sai-merge.md` in both `commands/claude/` and `commands/opencode/`, each forwarding its InvocationEnvelope through the harness boot adapter to the merge command bootstrap.
 
 #### Scenario: sai-merge wrapper present on both harnesses
 
@@ -27,18 +31,18 @@ The per-harness wrapper file list SHALL contain exactly seventeen `sai-*.md` com
 
 ### Requirement: wrapper-template
 
-The wrapper template SHALL be the same for all 16 wrappers in each harness, with exactly these permitted per-file variances: the `{name}` token in the launcher-call line, the envelope's `command_name` value, and `sai-explore`'s additional harness-specific loads. `arguments_value` is the sole argument substitution and no wrapper-echo field is a permitted variance. Every wrapper SHALL remain label-free and SHALL not use a legacy command path.
+The wrapper template SHALL be the same for all 19 wrappers in each harness, with exactly these permitted per-file variances: the `{name}` token in the launcher-call line, the envelope's `command_name` value, and `sai-explore`'s additional harness-specific loads. `arguments_value` is the sole argument substitution and no wrapper-echo field is a permitted variance. Every wrapper SHALL remain label-free and SHALL not use a legacy command path.
 
 #### Scenario: sai-build follows the shared template
 
 - **WHEN** `commands/claude/sai-build.md` is read in its canonical form
-- **THEN** it uses the same three-directive skeleton with command bootstrap `@sai/commands/build/command-bootstrap.md` and `command_name: build`
+- **THEN** it uses the same three-directive skeleton with command bootstrap `@sai/commands/meta-build/command-bootstrap.md` and `command_name: meta-build`
 - **AND** it does not embed phase logic inline
 
 #### Scenario: example wrapper after rewrite
 
 - **WHEN** `commands/claude/sai-archive.md` is read in its canonical form
-- **THEN** it contains the project's standard frontmatter (description, argument-hint, model) unchanged, followed by a body that reads:
+- **THEN** its frontmatter is followed by a body that reads:
 
     Fetch @skills/fetch/SKILL.md
     Fetch @sai/adapters/claude/boot.md and follow it.

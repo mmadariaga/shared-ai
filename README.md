@@ -183,7 +183,7 @@ Decisions that must be identical every run were moved out of prompt prose into s
 
 ### No-commit guard
 
-Worker instructions say "never run a mutating git command", but prose is not enforcement. The guard turns the one invariant true in every project — HEAD must not move across a worker dispatch — into a filesystem check: a snapshot before each dispatch, a verify after each result. If HEAD moved without authorization the coordinator captures the evidence, resets back to the recorded base, prints one incident line, and continues. Exactly one flow carries permission for HEAD to move: the archive worker's pre-authorized Direct Build commit.
+Worker instructions say "never run a mutating git command", but prose is not enforcement. The guard turns the one invariant true in every project — HEAD must not move while workers run — into a filesystem check: a snapshot when a window opens and a verify before each boundary (a question to you, a git operation the coordinator runs itself, or the end of the run). Consecutive worker dispatches and continuations with no boundary between them share one window, so progress updates cost no guard calls. If HEAD moved without authorization the coordinator captures the evidence, resets back to the recorded base, prints one incident line, and continues. Exactly one flow carries permission for HEAD to move: the archive worker's pre-authorized Direct Build commit.
 
 ### ADR Proposals
 Proposes creating an ADR/DDR if all 3 criteria below are met:
@@ -200,6 +200,8 @@ Domain terms are captured in a living `GLOSSARY.md` at the project root. Spec re
 ## Installation
 
 Commands are designed as **user globals**, not per project. A single copy in the CLI's global directory makes them available in any repo. Maintained phase assets use the grouped `sai/commands/{spec,design,implement,apply}/` command-card trees; the `/sai-build` composition uses `sai/commands/meta-build/command-bootstrap.md` and `coordinator.md`.
+
+The installer projects both harnesses from `sai/install-manifest.json`, including shared `sai/policies/` and shared Orchestration Core files plus each harness's routed worker bindings. `doctor` checks the managed inventory, and `uninstall` uses the same projection rules.
 
 ### npx installer
 
@@ -250,7 +252,7 @@ Shipped opencode defaults, tunable per project via the setup model menu (`model`
   [x] AGENT         executor                     ↑                opencode/muse-spark-1.3-contributor-free (high)
   [x] AGENT         explore                      ↑                opencode/muse-spark-1.3-contributor-free (high)
 
-  [x] ORCHESTRATOR  sai-explore                  ↑↑               opencode/muse-spark-1.3-contributor-free (high)
+  [x] ORCHESTRATOR  sai-explore                  ↑↑               opencode-go/muse-spark-1.3-contributor-free (xhigh)
   [x] WORKER        sai-direct-build-worker      ↑↑               opencode-go/muse-spark-1.3-contributor (high)
   [x] ORCHESTRATOR  sai-1-spec                   ↑↑               opencode-go/muse-spark-1.3-contributor (xhigh)
   [x] WORKER        sai-1-spec-proposal-worker   ↑↑               opencode-go/muse-spark-1.3-contributor (high)
@@ -300,7 +302,7 @@ Other rankings that can help you choose:
 
 - Edge case and code quality focused benchmark: https://aicodingdaily.com/leaderboard
 - Bug Hunt Bench (score vs cost): https://bughunt.productcompass.pm/?preset=featured&view=scatter
-- Cybersecurity benchmark (CVE rediscovery): https://x.com/pilvar222/status/2097623905007476820
+- Cybersecurity benchmark (CVE rediscovery): https://x.com/pilvar222/status/2102722250264789423
 - Front-end web development: https://arena.ai/leaderboard/code/webdev
 
 ## Third Party Tools

@@ -1,7 +1,7 @@
 # pr-command-prose Specification
 
 ## Purpose
-TBD - created by archiving change pr-deterministic-extraction. Update Purpose after archive.
+Defines how `/sai-pr` routes through `pr.js collect` and `pr.js apply`, saves `pr.md`, and gates PR creation behind explicit authorization.
 ## Requirements
 ### Requirement: pr-command-prose routes to collect and apply, consuming their JSON
 

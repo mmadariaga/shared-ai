@@ -2,13 +2,13 @@
 
 ## Purpose
 
-TBD - created by archiving change implement-step-gated-instructions. Update Purpose after archive.
+Deliver the `/sai-3-implement` worker's instructions one progress-plan step at a time from a step library, with a small always-active baseline.
 
 ## Requirements
 
 ### Requirement: Step instruction files exist per progress-plan id
 
-The implementation phase SHALL provide a step instruction library under `sai/commands/implement/steps/` containing one instruction file per declared progress-plan step id: `collapse-implemented-steps.md`, `artifact-analysis.md`, `documentation-review.md`, `plan-generation.md`, and `validation.md`, plus `common.md` as the always-active file. The `prereqs-resolution` step SHALL have no step file of its own and SHALL map to `none` in the coordinator's pointer map.
+The implementation phase SHALL provide a step instruction library under `sai/commands/implement/steps/` containing one instruction file per declared progress-plan step id: `collapse-implemented-steps.md`, `artifact-analysis.md`, `documentation-review.md`, `plan-generation.md`, and `validation.md`, plus `common.md` as the always-active file and `decision-record-index.md` as a sub-file that `artifact-analysis.md` fetches only when the run creates a decision record. The `prereqs-resolution` step SHALL have no step file of its own and SHALL map to `none` in the coordinator's pointer map.
 
 #### Scenario: Step files are named by plan id
 
@@ -17,7 +17,7 @@ The implementation phase SHALL provide a step instruction library under `sai/com
 
 ### Requirement: common.md is fetched at dispatch and stays in force
 
-The implementation worker SHALL fetch `sai/commands/implement/steps/common.md` at dispatch and SHALL keep it in force for the entire run. The file SHALL carry the boundaries that outlive any single step: the step delivery meta-rule, communication mode, expertise profile contract, hard rules, code quality priority stack, and contextual intelligence.
+The implementation worker SHALL fetch `sai/commands/implement/steps/common.md` at dispatch and SHALL keep it in force for the entire run. The file SHALL carry the boundaries that outlive any single step: the step delivery meta-rule, role, expertise profile contract, hard rules, and code quality priority stack.
 
 #### Scenario: common.md is loaded at dispatch
 
@@ -26,9 +26,9 @@ The implementation worker SHALL fetch `sai/commands/implement/steps/common.md` a
 
 ### Requirement: ADR/DDR validation content lives inside artifact-analysis.md
 
-The ADR/DDR validation workflow content (Workflow Step 3) SHALL live inside `sai/commands/implement/steps/artifact-analysis.md`, which owns no milestone boundary of its own.
+The ADR/DDR validation workflow content SHALL live inside `sai/commands/implement/steps/artifact-analysis.md`, which owns no milestone boundary of its own. Record relationship lines and per-family index maintenance SHALL live in `sai/commands/implement/steps/decision-record-index.md`, fetched by artifact-analysis before it writes the first record of a run.
 
-#### Scenario: Step 3 content is located in artifact-analysis.md
+#### Scenario: ADR/DDR validation content is located in artifact-analysis.md
 
 - **WHEN** a consumer looks for the implement phase's ADR/DDR validation instructions
 - **THEN** they are found inside `sai/commands/implement/steps/artifact-analysis.md`.

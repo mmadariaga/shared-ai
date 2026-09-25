@@ -1,6 +1,6 @@
 ---
 name: budget-executor
-description: Binds low-cost execute-only command delegation to the Claude Code budget-executor agent.
+description: Execute-only command runner. Runs the named commands, or the narrowest one for a stated goal (tests, builds, linters), and returns a low-output report of exit codes and failures. Fixes stay with the caller.
 model: haiku
 ---
 

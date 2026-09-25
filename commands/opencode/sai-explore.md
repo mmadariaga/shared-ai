@@ -1,6 +1,5 @@
 ---
-description: Explore mode wrapper — thinking partner for ideas, problems, and requirements. Wraps opsx:explore skill. Optionally pass a change name to explore an existing change.
-argument-hint: "[optional: change-name or topic] [--overview-lang <language>] [--fast-track]"
+description: Think through an idea, problem, or requirement with a read-only partner until it settles into a Ready to Propose block, then plan it, build it unattended, or hand it off manually. Pass a change name to explore an existing change.
 model: opencode-go/muse-spark-1.3-contributor-free
 variant: xhigh
 ---

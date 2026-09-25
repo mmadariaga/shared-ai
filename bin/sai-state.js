@@ -7,6 +7,21 @@ const crypto = require('crypto');
 const registry = require('../sai-state/registry.js');
 const envelope = require('../sai-state/envelope.js');
 
+// The worker-report validator is resolved relative to this file. The installed
+// layout is `sai/{bin,tools}` and the source layout is `{bin,sai/tools}`; in each
+// layout exactly one candidate exists. Loaded lazily, only by `emit --progress`.
+const VALIDATOR_CANDIDATES = [
+  path.join(__dirname, '..', 'tools', 'worker-report-validator.js'),
+  path.join(__dirname, '..', 'sai', 'tools', 'worker-report-validator.js'),
+];
+
+function loadValidator() {
+  for (const candidate of VALIDATOR_CANDIDATES) {
+    if (fs.existsSync(candidate)) return require(candidate);
+  }
+  return null;
+}
+
 const STATE_VERSION = '2.0.0';
 const sessions = new Map();
 
@@ -59,16 +74,37 @@ function sessionDir() {
   return path.join(base, 'sai-state');
 }
 
-function looksLikeQuoteStrippedJson(raw) {
-  if (typeof raw !== 'string') return false;
-  const t = raw.trim();
-  if (t.length === 0) return false;
-  if (!(t.startsWith('{') && t.endsWith('}'))) return false;
-  if (!t.includes(':')) return false;
-  const withoutQuoted = t.replace(/"[^"\\]*(?:\\.[^"\\]*)*"/g, '');
-  if (/[A-Za-z_][A-Za-z0-9_@.-]*\s*:/.test(withoutQuoted)) return true;
-  if (/:\s*[A-Za-z_][A-Za-z0-9_@.-]+\s*[},]/.test(withoutQuoted)) return true;
-  return false;
+const EMIT_STDIN_FORM = "echo '<json>' | node <tool-path> emit <id> <machineId> -";
+const EMIT_PROGRESS_FORM = "echo '<progress-payload-json>' | node <tool-path> emit <id> <machineId> --progress [--with-overview true|false] -";
+
+// The design machine is the only one that accepts the variant option.
+const WITH_OVERVIEW_MACHINE = 'design-standalone@1';
+
+// Reads the whole of stdin synchronously. A closed or empty pipe yields ''.
+function readStdinSync() {
+  const chunks = [];
+  const buf = Buffer.alloc(65536);
+  for (;;) {
+    let n = 0;
+    try {
+      n = fs.readSync(0, buf, 0, buf.length, null);
+    } catch (err) {
+      if (err && err.code === 'EAGAIN') continue;
+      if (err && err.code === 'EOF') break;
+      throw err;
+    }
+    if (n === 0) break;
+    chunks.push(Buffer.from(buf.subarray(0, n)));
+  }
+  return Buffer.concat(chunks).toString('utf8');
+}
+
+// Strips a leading BOM and surrounding whitespace/line breaks (Windows
+// PowerShell 5.1 adds both when piping a string to a native command).
+function normalizeEventText(raw) {
+  let t = typeof raw === 'string' ? raw : '';
+  if (t.charCodeAt(0) === 0xFEFF) t = t.slice(1);
+  return t.trim();
 }
 
 function sessionFile(id) { return path.join(sessionDir(), id + '.json'); }
@@ -188,6 +224,12 @@ function canonicalizeMergedState(mod, mergedState) {
   return mergedState;
 }
 
+// Re-reads the session file just before writing, keeps sibling machines by max
+// `rev`, and unions the target `done[]` in canonical order. The read-then-write
+// is not atomic (no lockfile, no CAS retry): the residual window is accepted
+// because callers serialize store operations per session id and the union keeps
+// survivors harmless for monotonic step sets. One file per session, never one
+// per machine.
 function persistMachineOutcome(id, record, machineId, nextState, eventId, wire) {
   let freshRecord = null;
   try { freshRecord = readSessionRecord(id).record; } catch (err) { freshRecord = null; }
@@ -268,6 +310,9 @@ function persistMachineOutcome(id, record, machineId, nextState, eventId, wire) 
   return { mergedState, mergedWire, newRev };
 }
 
+// Flags that never take a value, so a following `-` stays positional.
+const BOOLEAN_FLAGS = new Set(['progress']);
+
 function parseArgs(argv) {
   const out = { command: null, positional: [], named: {} };
   for (let i = 0; i < argv.length; i++) {
@@ -278,7 +323,7 @@ function parseArgs(argv) {
         out.named[arg.slice(2, eqIdx)] = arg.slice(eqIdx + 1);
       } else {
         out.named[arg.slice(2)] = true;
-        if (i + 1 < argv.length && !argv[i + 1].startsWith('--')) {
+        if (!BOOLEAN_FLAGS.has(arg.slice(2)) && i + 1 < argv.length && !argv[i + 1].startsWith('--')) {
           out.named[arg.slice(2)] = argv[++i];
         }
       }
@@ -336,13 +381,10 @@ function commandSpawn(key) {
   process.exitCode = 0;
 }
 
-function commandEmit(id, machineIdArg, eventJsonArg) {
-  if (!id || !machineIdArg || !eventJsonArg) {
-    process.stderr.write('emit requires <id> <machineId> <eventJson>\n');
-    process.exitCode = 2;
-    return;
-  }
-
+// Shared emit core. `obtainEvent(session, loadWarnings)` returns either
+// `{ event }` or `{ payload }` (an INVALID_EVENT outcome whose stderr notice, if
+// any, it already wrote). Returns `{ payload, code }` and writes no stdout.
+function runEmit(id, machineIdArg, obtainEvent) {
   const loaded = readSessionRecord(id);
   const record = loaded.record;
   const loadWarnings = loaded.warnings;
@@ -353,49 +395,25 @@ function commandEmit(id, machineIdArg, eventJsonArg) {
   const parsed = envelope.parseTarget(machineIdArg);
   if (!parsed) {
     const payload = withWarnings({ error: 'INVALID_EVENT', next: pointerFor(session, null) }, loadWarnings);
-    process.stdout.write(JSON.stringify(payload) + '\n');
-    process.exitCode = 1;
-    return;
+    return { payload, code: 1 };
   }
 
   const lookup = machineLookupError(machineIdArg);
   if (lookup) {
     const payload = withWarnings({ error: lookup, next: pointerFor(session, null) }, loadWarnings);
-    process.stdout.write(JSON.stringify(payload) + '\n');
-    process.exitCode = 1;
-    return;
+    return { payload, code: 1 };
   }
 
   const targetId = parsed.key;
-  let event = null;
-  try {
-    event = JSON.parse(eventJsonArg);
-  } catch (err) {
-    const payload = withWarnings({ error: 'INVALID_EVENT', next: pointerFor(session, null) }, loadWarnings);
-    if (looksLikeQuoteStrippedJson(eventJsonArg)) {
-      try {
-        const excerpt = String(eventJsonArg).slice(0, 160);
-        const capped = String(eventJsonArg).length > 160 ? excerpt + '…' : excerpt;
-        process.stderr.write(
-          'emit event JSON failed to parse and looks like Windows PowerShell stripped the double quotes during native-argument passing '
-          + '(received ' + JSON.stringify(capped) + '). '
-          + 'Use the Windows/PowerShell pattern in sai/policies/stage-machine.md \u00A7Quoting (Windows PowerShell) — a variable with escaped doubles. '
-          + 'No transition occurred; INVALID_EVENT with exit 1.\n'
-        );
-      } catch (hintErr) {}
-    }
-    process.stdout.write(JSON.stringify(payload) + '\n');
-    process.exitCode = 1;
-    return;
-  }
+  const obtained = obtainEvent(session, loadWarnings);
+  if (obtained.payload) return { payload: obtained.payload, code: 1 };
+  const event = obtained.event;
 
   let mod = null;
   try { mod = registry.get(targetId); } catch (err) { mod = null; }
   if (!mod) {
     const payload = withWarnings({ error: 'UNKNOWN_MACHINE', next: pointerFor(session, null) }, loadWarnings);
-    process.stdout.write(JSON.stringify(payload) + '\n');
-    process.exitCode = 1;
-    return;
+    return { payload, code: 1 };
   }
 
   const cur = session.stateByMachine.has(targetId) ? session.stateByMachine.get(targetId) : mod.initialState;
@@ -415,9 +433,7 @@ function commandEmit(id, machineIdArg, eventJsonArg) {
       }
     } catch (e) {}
     const payload = withWarnings({ error: 'INVALID_EVENT', next: failNext }, loadWarnings);
-    process.stdout.write(JSON.stringify(payload) + '\n');
-    process.exitCode = 1;
-    return;
+    return { payload, code: 1 };
   }
 
   const nextState = result.state;
@@ -442,8 +458,85 @@ function commandEmit(id, machineIdArg, eventJsonArg) {
   session.lastPointer = emitWire.next;
 
   const payload = withWarnings(emitWire, loadWarnings);
-  process.stdout.write(JSON.stringify(payload) + '\n');
-  process.exitCode = 0;
+  return { payload, code: 0 };
+}
+
+function commandEmit(id, machineIdArg, eventSource, extraArgs) {
+  if (!id || !machineIdArg || eventSource !== '-' || (extraArgs && extraArgs.length > 0) || process.stdin.isTTY) {
+    process.stderr.write('emit requires <id> <machineId> - and reads the event JSON from stdin: ' + EMIT_STDIN_FORM + '\n');
+    process.exitCode = 2;
+    return;
+  }
+
+  const outcome = runEmit(id, machineIdArg, (session, loadWarnings) => {
+    let eventText = '';
+    try { eventText = readStdinSync(); } catch (err) { eventText = ''; }
+    try {
+      return { event: JSON.parse(normalizeEventText(eventText)) };
+    } catch (err) {
+      const payload = withWarnings({ error: 'INVALID_EVENT', reason: 'EVENT_UNPARSEABLE', next: pointerFor(session, null) }, loadWarnings);
+      process.stderr.write('emit could not parse the event JSON read from stdin; no transition occurred. Send it as: ' + EMIT_STDIN_FORM + '\n');
+      return { payload };
+    }
+  });
+  process.stdout.write(JSON.stringify(outcome.payload) + '\n');
+  process.exitCode = outcome.code;
+}
+
+// Progress emit: validates the worker progress payload read from stdin through
+// the validator module BEFORE any session, machine, or registry read, then
+// derives the machine event `{ step_ids }` from the valid payload and advances
+// the machine. Output is always an object carrying `validation` (the verdict);
+// a valid verdict adds the ordinary emit fields unchanged. Exit 1 covers both an
+// invalid verdict and a machine error; callers discriminate by `validation.ok`.
+function commandEmitProgress(id, machineIdArg, eventSource, extraArgs, withOverviewArg) {
+  if (!id || !machineIdArg || eventSource !== '-' || (extraArgs && extraArgs.length > 0) || process.stdin.isTTY) {
+    process.stderr.write('emit --progress requires <id> <machineId> --progress - and reads the worker progress payload JSON from stdin: ' + EMIT_PROGRESS_FORM + '\n');
+    process.exitCode = 2;
+    return;
+  }
+
+  let withOverview;
+  if (withOverviewArg !== undefined) {
+    const target = envelope.parseTarget(machineIdArg);
+    if (!target || target.key !== WITH_OVERVIEW_MACHINE) {
+      process.stderr.write('--with-overview is accepted only on ' + WITH_OVERVIEW_MACHINE + ', got ' + machineIdArg + '\n');
+      process.exitCode = 2;
+      return;
+    }
+    if (withOverviewArg !== 'true' && withOverviewArg !== 'false') {
+      process.stderr.write('--with-overview requires true or false: ' + EMIT_PROGRESS_FORM + '\n');
+      process.exitCode = 2;
+      return;
+    }
+    withOverview = withOverviewArg === 'true';
+  }
+
+  const validator = loadValidator();
+  if (!validator || typeof validator.validateText !== 'function') {
+    process.stderr.write('emit --progress could not load the worker-report validator; tried: ' + VALIDATOR_CANDIDATES.join(', ') + '\n');
+    process.exitCode = 2;
+    return;
+  }
+
+  // The raw stdin text goes to the validator unmodified, so the verdict is
+  // byte-identical to `worker-report-validator.js validate --kind progress`.
+  let text = '';
+  try { text = readStdinSync(); } catch (err) { text = ''; }
+  const validation = validator.validateText(text, 'progress');
+  if (!validation.ok) {
+    process.stdout.write(JSON.stringify({ validation }) + '\n');
+    process.exitCode = 1;
+    return;
+  }
+
+  const progress = JSON.parse(text);
+  const event = { step_ids: progress.step_ids };
+  if (withOverview !== undefined) event.withOverview = withOverview;
+
+  const outcome = runEmit(id, machineIdArg, () => ({ event }));
+  process.stdout.write(JSON.stringify(Object.assign({ validation }, outcome.payload)) + '\n');
+  process.exitCode = outcome.code;
 }
 
 function commandReset(id, machineIdArg) {
@@ -561,8 +654,12 @@ function main(argv) {
     commandSpawn(parsed.named.key);
     return;
   }
+  if (parsed.command === 'emit' && parsed.named.progress === true) {
+    commandEmitProgress(parsed.positional[0], parsed.positional[1], parsed.positional[2], parsed.positional.slice(3), parsed.named['with-overview']);
+    return;
+  }
   if (parsed.command === 'emit') {
-    commandEmit(parsed.positional[0], parsed.positional[1], parsed.positional[2]);
+    commandEmit(parsed.positional[0], parsed.positional[1], parsed.positional[2], parsed.positional.slice(3));
     return;
   }
   if (parsed.command === 'reset') {
@@ -574,11 +671,12 @@ function main(argv) {
     return;
   }
   process.stderr.write('Usage: sai-state spawn --key <stable-key>\n');
-  process.stderr.write('       sai-state emit <id> <machineId> <eventJson>\n');
+  process.stderr.write('       sai-state emit <id> <machineId> -   (event JSON on stdin)\n');
+  process.stderr.write('       sai-state emit <id> <machineId> --progress [--with-overview true|false] -   (worker progress payload JSON on stdin)\n');
   process.stderr.write('       sai-state reset <id> <machineId>\n');
   process.stderr.write('       sai-state close <id>\n');
   process.exitCode = 2;
 }
 
-module.exports = { sessionFile, sessionDir, isUuidv4, STATE_VERSION, entryRev, stateByMachineMap, unionDoneInCanonicalOrder, persistMachineOutcome, looksLikeQuoteStrippedJson };
+module.exports = { sessionFile, sessionDir, isUuidv4, STATE_VERSION, entryRev, stateByMachineMap, unionDoneInCanonicalOrder, persistMachineOutcome, normalizeEventText };
 if (require.main === module) { main(process.argv.slice(2)); }

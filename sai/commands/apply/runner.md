@@ -2,113 +2,72 @@
 
 Fetch @sai/orchestration/workers/bindings/red-worker.md and use it.
 Fetch @sai/orchestration/workers/bindings/green-worker.md and use it.
+Fetch @sai/commands/apply/worker-common.md for its § Report contract, the nine report fields every apply worker returns.
 
-Coordinator-owned checklist execution for `/sai-4-apply`. This card is fetched by the apply coordinator; it owns no change resolution, no worker dispatch, and no worker technical writes.
+The Step loop of `/sai-4-apply`, run by the apply coordinator. Change resolution and the ownership rules live in `coordinator.md`.
 
-## Worker Request Shape
+## Step loop
 
-Each RED, GREEN, or green-exception dispatch carries only the opaque
-`arguments_value` request, set by the coordinator to the resolved change name.
-The matching Step contract, testing slice, and dispatch-local plan are
-contract-defined prompt content, not additional request fields; binding-owned
-metadata remains outside the worker request.
+Run these steps for each Step the `apply-standalone@1` cursor makes active (coordinator § Step machine), in order:
 
-## Split-flow RED Gate
+1. **Enter.** Send `{kind: step-entry, step: "Step N"}` to `recovery-ledger@1` (coordinator § Known-False Report Recovery).
+2. **Route.** Classify the Step with § Step Routing Tree, emit its mode, and fetch the routing file the machine returns. That file names the dispatches for this Step.
+3. **Dispatch and verify.** For each dispatch the routing file names: select its plan (§ Dispatch plan selection), dispatch, and after every return run coordinator § Post-dispatch sequence. A non-clean result goes to coordinator § Known-False Report Recovery. Done when the coordinator's own run of the Step's Automated checks passes (coordinator § Post-dispatch sequence), or the Step has stopped for a human.
+4. **Record.** In one batched update of `openspec/changes/{change-name}/implementation.md`: mark the Step's **Automated** checkboxes `[x]`, flip its projected entry to `completed`, and append its § Appendices entries.
+5. **Commit.** Run § Step commit gate.
+6. **Advance.** Emit `{"intent":"complete-step"}`. The next Step starts at step 1; when the machine returns `sai/commands/apply/steps/terminal-lifecycle.md`, fetch it and run it.
 
-In split-flow, both RED and GREEN worker requests carry only
-`arguments_value` plus the contract-defined prompt content.
+A Step that stops for a human ends the loop without steps 4–6: no checkbox, no commit, no advance.
 
-When a Step has a RED block, an exact unambiguous interface contract, and at least one production file, the RED→GREEN route is **split-flow**. Only a valid RED result permits the subsequent GREEN dispatch. The direct GREEN route remains available only when no RED block is present; it does not weaken this split-flow gate.
-
-## RED Intermediate and Recovery Hooks
-
-In split-flow, every RED return is an intermediate result until the coordinator has independently established `RED result: valid`. A RED non-clean intermediate enters the shared diagnosis and, when eligible, uses `continue_after_recovery` on the same RED worker before GREEN. The coordinator completes the normal checklist, scratch sweep, baseline, allowed-file, changed-path, and report comparisons first, then diagnoses the worker and coordinator channels with the ordered `Reported`, `Evidence`, `Cause`, `Correction`, and `Verification` payload; raw output is never recovery input.
-
-- If the diagnosis proves a concrete, safe **in-scope** RED correction, with a remaining recovery slot and no duplicate key, continue the **same RED worker** with exactly `continue_after_recovery`. The continuation occurs before GREEN and preserves the blind test-authoring plan; it never creates a fresh or replacement RED worker.
-- An out-of-scope, unresolved, vetoed (`unrecoverable: true`), duplicate, transport-loss, coordinator-rejection, or exhausted diagnosis does **not** dispatch GREEN. It hands the Step back or stops for human intervention with the concrete artifact and point when available.
-- A coordinator-proven **false veto** remains recovery-eligible when the evidence establishes a safe in-scope correction; a veto is not converted into a GREEN authorization by itself.
-- A RED return with `STOP reached? yes`, including an unpassable RED failure, is diagnosed before any recovery continuation or GREEN dispatch. An unpassable RED closes with `status: failed`, `failure_class: blocking-contradiction`, boolean `unrecoverable`, concrete non-raw evidence, and STOP; it grants no GREEN authorization.
-- A cause that sits in a test file is classified by ownership, never by artifact kind: its authorized correction boundary belongs to the resumable same-Step RED owner (`owner-in-run`), so it is routed to that owner with no user prompt, and never to GREEN.
-- A GREEN `blocking-contradiction` that proves a test-infra point (setup, adapter, seed, import wiring) rather than an assertion body routes as an in-scope RED-owner correction: resume the same-Step RED owner with `continue_after_recovery` before any hand-back. The retry preserves blindness, spends one ledger slot for a new key and zero for a duplicate, and never relaxes assertions.
-
-Only a valid RED result — from the initial blind dispatch or from an eligible same-worker recovery continuation — unlocks the split-flow GREEN dispatch. `passes`, `wrong-failure`, non-clean, failed, vetoed, unresolved, out-of-scope, duplicate, and STOP results never unlock GREEN.
+Apply dispatches one worker per dispatch its routing file names (two in split-flow), plus up to three same-worker recovery continuations per Step. This multi-dispatch shape overrides the command runner's single-dispatch rule for apply only; `sai/orchestration/command-runner.md` itself is unchanged.
 
 ## Step Routing Tree
 
-The coordinator routes each Step to exactly one of five exclusive shapes before any dispatch:
+Classify each Step into exactly one mode before any dispatch. "Contract" means an exact, unambiguous `## Step N` contract: exactly one such heading in `interfaces.md` for this Step's integer. Zero headings, or an ambiguous several, count as no contract.
 
-| # | Condition | Step File |
-|---|-----------|-----------|
-| 1 | RED block absent + at least one production file | Fetch @sai/commands/apply/steps/routing-green-direct.md |
-| 2 | RED block absent + no production file | Fetch @sai/commands/apply/steps/routing-green-exception-test-only.md |
-| 3 | RED block present + no exact, unambiguous matching `## Step N` contract in `interfaces.md` | Fetch @sai/commands/apply/steps/routing-stop-missing-contract.md |
-| 4 | RED block present + exact unambiguous `## Step N` contract + at least one production file | Fetch @sai/commands/apply/steps/routing-split-flow.md |
-| 5 | RED block present + exact unambiguous `## Step N` contract + no production file | Fetch @sai/commands/apply/steps/routing-green-exception-no-production.md |
+| # | RED block | Contract | Production file in scope | Mode | Routing file |
+|---|---|---|---|---|---|
+| 1 | absent | — | at least one | `green-direct` | `sai/commands/apply/steps/routing-green-direct.md` |
+| 2 | absent | — | none | `green-exception-test-only` | `sai/commands/apply/steps/routing-green-exception-test-only.md` |
+| 3 | present | none | — | `stop-missing-contract` | `sai/commands/apply/steps/routing-stop-missing-contract.md` |
+| 4 | present | exact | at least one | `split-flow` | `sai/commands/apply/steps/routing-split-flow.md` |
+| 5 | present | exact | none | `green-exception-no-production` | `sai/commands/apply/steps/routing-green-exception-no-production.md` |
 
-## Dispatch Plan Selection
+Fetch only the routing file the machine returns for the active Step.
 
-Each separate RED, GREEN, or green-exception dispatch is a separate worker invocation with exactly one immutable plan selected before dispatch: RED = `test-authoring → red-verification`, GREEN = `implementation → green-verification`, green-exception = `test-authoring → green-verification`. Selecting another plan for a later dispatch does not mutate the earlier plan.
+## Dispatch plan selection
 
-## Progress Events
+Each dispatch gets exactly one immutable plan, selected before dispatch:
 
-A progress event is the closed shape `{event: progress, step_ids: string[], changed_files: string[]}`: mark the reported step ids only in that dispatch's declared plan (the dispatch-local plan), ignore undeclared ids — the plan is never extended or amended — add every path to the changed-files union in first-seen order, and continue the same worker with exactly `continue_after_progress`. Progress events are nonterminal and never replace the single terminal lifecycle status.
+| Dispatch | Worker | Plan |
+|---|---|---|
+| `red` | RED | `test-authoring → red-verification` |
+| `green` | GREEN | `implementation → green-verification` |
+| `green-direct` | GREEN | `implementation → green-verification` |
+| `green-exception` | RED | `test-authoring → green-verification` |
 
-## Coordinator Checklist Execution
+Selecting a plan for a later dispatch never changes an earlier one.
 
-The coordinator runs the Step's Verification Checklist after every dispatch
-returns, then sweeps the exact per-change scratch path per coordinator
-§ Coordinator-Owned Scratch Cleanup (sole normative home for sweep rules and
-exact non-empty trace forms), then compares — the ordering is checklist →
-scratch cleanup → comparison, and the same ordering holds before any redispatch.
-After each coordinator-owned run of the Step's Verification Checklist, the
-coordinator SHALL sweep exactly `.tmp/{change-name}/` again before the final path
-comparison or any subsequent dispatch. Clean, STOP, failure, or crash returns all
-trigger the sweep. Scratch paths removed by the ordered sweep SHALL be excluded
-from observed changed paths, the plan cross-check, the `Subagent <-> git`
-comparison, the field-8 add-list, and line-count totals; every non-scratch path
-remains subject to the existing comparison and scope-drift rules. Scratch cleanup
-MUST NOT broaden recovery eligibility or authorize removal of another unexpected
-path; an unrelated out-of-scope path keeps its existing recovery or
-human-intervention handling.
+## Report validation
 
-### Step checkbox marking (Automated)
+Validate each worker report against worker-common.md § Report contract. The coordinator never invents, reorders, or drops a field. Per dispatch kind:
 
-After the coordinator's own verification of the Step passes, the coordinator marks that Step's **Automated** checkboxes `[x]` in `openspec/changes/{change-name}/implementation.md` in exactly one batched update, in the same slot as the appendix writes below. Only Automated checkboxes are marked here; the Step's **Functional** checkboxes (legacy header: `**Human (...)**`) are never marked in this slot — they belong to the terminal functional review. A Step whose own verification did not pass has none of its checkboxes marked.
+| Dispatch | Field 3 `RED result` | Field 4 `GREEN result` |
+|---|---|---|
+| `red` | real value | `n/a` |
+| `green` / `green-direct` | `n/a` | real value |
+| `green-exception` (mode 5) | real value | `pass` |
+| `green-exception` (mode 2) | `n/a` | `pass` |
 
-The marking is per Step and batched, never per item: this supersedes the per-item checkbox discipline of `@sai/policies/remember.md` for `/sai-4-apply` only, because the coordinator does not execute items itself and receives a Step-level worker report (`docs/adr/0018-checkbox-override-scoped-to-apply-not-remember.md`). RED and GREEN workers never mark a checkbox and never edit `implementation.md`.
-
-The terminal functional review (`sai/commands/apply/steps/terminal-lifecycle.md` § Terminal functional review) runs as an extension of this checklist execution: the coordinator re-exercises the aggregated Functional checks empirically, with no dispatch and no verification-run side effects, and its only write is marking the Functional checkboxes it verified.
-
-## Dispatch-Kind Report Table
-
-The apply phase declares an ordered report extension carried inside the terminal lifecycle envelope, with exactly nine report fields:
-
-1. `Step executed`
-2. `Per-item status`
-3. `RED result`
-4. `GREEN result`
-5. `Deviations`
-6. `Technical learnings/friction`
-7. `STOP reached?`
-8. `Files modified`
-9. `Attempts per phase`
-
-The coordinator validates every reported value against this declared field list and never invents, reorders, or drops a field.
-
-Field values follow the dispatch kind, keyed on the dispatch:
-
-- **green-direct** — field 3 (`RED result`) = `n/a`; field 4 (`GREEN result`) carries the real value.
-- **red (blind test-authoring dispatch)** — field 3 carries the real value; field 4 (`GREEN result`) = `n/a`.
-- **green (implementation dispatch)** — field 4 carries the real value; field 3 (`RED result`) = `n/a`.
-- **green-exception** — field 3 carries the real value; field 4 (`GREEN result`) = `pass`.
-
-Field 8 is required in every report kind: An explicitly present empty `Files modified` list is valid; an omitted field 8 is malformed. In the omission case the coordinator prints exactly "Subagent report missing field 8 (Files modified). Cannot produce a reliable pre-commit report. Review the staged state manually before committing." and pauses before proposing the commit message. Field 9 is the sole soft-degradation exception: an absent or empty field 9 never makes a report malformed and never blocks checkbox marking, the pre-commit report, or the commit gate. Scratch paths must never appear in field 8.
+A report without field 8 is malformed. Print exactly "Subagent report missing field 8 (Files modified). Cannot produce a reliable pre-commit report. Review the staged state manually before committing." and pause before proposing the commit message. In split-flow this check applies to each of the two reports; name the dispatch that omitted it. Field 8 never lists scratch paths. A missing or empty field 9 soft-degrades: it never makes the report malformed or blocks anything, and the Step simply records no telemetry rows.
 
 ## Appendices
 
-### Appendix: Plan vs Final Implementation
+Written in step 4 of the Step loop, only after the coordinator's verification passes. Both sections live at the end of `implementation.md` in this order, whichever was created first: `## Appendix: Plan vs Final Implementation`, then `## Appendix: Execution Telemetry`. Each section is created once, on its first entry; append below it thereafter and never create a second section.
 
-After the coordinator's verification passes — in the same slot as the Automated checkbox marking above — append the report's deviations to the `## Appendix: Plan vs Final Implementation` section at the end of `openspec/changes/{change-name}/implementation.md`. Create the section on the first deviation and append below the existing entries thereafter; a Step with zero deviations adds no empty entry. Block format:
+### Plan vs Final Implementation
+
+One block per field-5 deviation; a Step with none adds nothing:
 
 ```markdown
 ### Step N — <Short title of the deviation>
@@ -118,19 +77,34 @@ After the coordinator's verification passes — in the same slot as the Automate
 **Reason:** <Why the change was necessary>
 ```
 
-### Appendix: Execution Telemetry
+### Execution Telemetry
 
-In the same slot as the deviations appendix — after the coordinator's verification passes and before the commit — append one row per field-9 entry to the `## Appendix: Execution Telemetry` section. Create the section once on the first row and append below the existing rows thereafter; never create a second section. The section holds exactly one table, with these columns in this fixed order:
+One table, one row per field-9 entry:
 
 ```markdown
 | Step | dispatch | phase | attempts | first_failure | note |
 |---|---|---|---|---|---|
 ```
 
-Column sources: `Step` is the integer `N` of the Step just executed, and `dispatch` is one of `green-direct` / `red` / `green` / `green-exception` — both supplied by the coordinator from the dispatch it issued, never read from the subagent report. `phase` is exactly `red` or `green`. `attempts` is a positive integer counting verification runs regardless of outcome, never starting at `0`. `first_failure` draws from the closed vocabulary `assertion` / `setup` / `import` / `other` / `n/a`. `note` is required only when `attempts` > `1` and states what changed between attempts. Write exactly one row per field-9 entry, no more and no fewer.
+`Step` and `dispatch` come from the dispatch you issued, never from the report. `phase` is `red` or `green`. `attempts` counts verification runs and starts at `1`. `first_failure` is one of `assertion` / `setup` / `import` / `other` / `n/a`. `note` states what changed between attempts and is required only when `attempts` > `1`.
 
-## Appendix Order (invariant)
+Checkbox marking here is per Step and batched, overriding the per-item discipline of `@sai/policies/remember.md` for apply only: the coordinator executes no item itself and receives a Step-level report (`docs/adr/0018-checkbox-override-scoped-to-apply-not-remember.md`). Functional checkboxes (legacy header `**Human (...)**`) are never marked here; they belong to the terminal functional review.
 
-Both appendices live at the end of `implementation.md` in this fixed order — `## Appendix: Plan vs Final Implementation` first, then `## Appendix: Execution Telemetry`. The order does not depend on which section a given run happened to create first; when the deviations section is created while the telemetry section already exists, insert it above the `## Appendix: Execution Telemetry` heading rather than appending it at the end of the file.
+## Step commit gate
 
-Fetch @sai/commands/apply/steps/terminal-lifecycle.md
+Every Step's `STOP & COMMIT` marker runs this gate, which overrides any "stage and commit" wording in the plan. The **add-list** is the Step's field-8 paths, the union of both reports in split-flow, scratch paths excluded.
+
+1. **Visibility report.** Print it before proposing a message; it is never skipped. It previews the commit: build it from `git status` (tracked, untracked, deleted) and the add-list, and never read or change the index. In order:
+   1. Header: change name, `Step N`, and one status letter: `OK`, `WARN`, `MISMATCH`, or `DEVIATION`.
+   2. One status line explaining the letter.
+   3. `Will be committed`: each add-list path with `+N -M` against `HEAD` (`git diff --stat HEAD -- <path>`); an untracked path counts all its lines as insertions; a claimed path with no change shows `+0 -0`. A rename is one line: `R  <new-path>  (renamed from <old-path>, +N -M)`.
+   4. `Totals: <N> files, +<ins> -<del>` over the add-list.
+   5. `Will NOT be committed`: working-tree paths outside the add-list. Omit the block when empty.
+   6. `Plan cross-check`: `Missing` lists paths in the matching tasks.md Step's `**Files Affected**` with no change in `git status`; `Extra` lists changed paths not declared there. Match Steps by the integer `N`, not by `**Task ref:**`. Print `No deviations` when both are empty.
+   7. `Subagent ↔ git`: paths in the add-list but not changed (`only-in-subagent:`) or changed but not in the add-list (`only-in-git:`); `In sync` when equal.
+
+   No diff content, file contents, or tracebacks.
+2. **Message.** Propose a message per `@sai/policies/commit-rules.md`, describing only the add-list.
+3. **Authorization.** Ask `Ready to commit Step N. May I create commit with message: '<subject>'?` through commit-rules § Authorization gate. When `session_commit_authorized` is active, skip only this ask.
+4. **Commit.** On authorization, `git add -- <add-list>` exactly (a declared removal stages the deletion), then `git commit`; report the SHA and subject. Never add a path from `git status` that is not in the add-list. On `no`, print "Commit not authorized. The changes are: <summary>. Run `git commit` yourself when ready."
+5. **Continue.** Either way, go to step 6 of the Step loop.

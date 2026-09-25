@@ -238,7 +238,7 @@ Under `--overview-lang`, the overview SHALL keep all nine top-level section head
 
 ### Requirement: Overview is not a prerequisite or input for sai-3 or sai-4
 
-`change-overview.md` SHALL NOT be a prerequisite or input for `sai-3-implement` or `sai-4-apply`. `sai/commands/implement/instructions.md` and `sai/commands/apply/instructions.md` SHALL continue to read the authoritative source artifacts — `interfaces.md` step contracts, `tasks.md`, `design.md`, `specs/**`, `proposal.md` — and SHALL NOT read or depend on the overview.
+`change-overview.md` SHALL NOT be a prerequisite or input for `sai-3-implement` or `sai-4-apply`. The `sai-3-implement` step library (`sai/commands/implement/steps/`) and `sai/commands/apply/instructions.md` SHALL continue to read the authoritative source artifacts — `interfaces.md` step contracts, `tasks.md`, `design.md`, `specs/**`, `proposal.md` — and SHALL NOT read or depend on the overview.
 
 #### Scenario: implement ignores the overview
 - **WHEN** `sai-3-implement` runs for a change that has an overview

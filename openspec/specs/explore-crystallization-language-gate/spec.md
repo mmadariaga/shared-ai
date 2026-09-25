@@ -6,7 +6,7 @@ Define the language-selection gate used when `sai-explore` crystallizes a handof
 
 ### Requirement: Localize selector question and descriptions while retaining English titles
 
-The crystallization language gate SHALL render the selector question and all option descriptions in the user's language. The option titles MUST remain exactly `Plan - Unattended`, `Build - Unattended`, and `Manual`. The literals `review-loop`, `/sai-1-spec`, and `/sai-2-design` SHALL remain verbatim English. The retired `/sai-1-spec <change-name>` literal SHALL NOT appear in the preserved-English list, because the name-only creation path is retired by `spec-require-block-input`.
+The crystallization language gate SHALL render the selector question and all option descriptions in the user's language. The option titles MUST remain exactly `Plan - Unattended`, `Direct Build - Unattended`, and `Manual`. The literals `review-loop`, `/sai-1-spec`, and `/sai-2-design` SHALL remain verbatim English. The retired `/sai-1-spec <change-name>` literal SHALL NOT appear in the preserved-English list, because the name-only creation path is retired by `spec-require-block-input`.
 
 #### Scenario: Localized selector presentation preserves stable literals
 
@@ -165,3 +165,12 @@ English fast-track crystallization SHALL apply the same E/I translation with no 
 
 - **WHEN** a crystallize request runs under fast-track in English with E/I agreed in another language
 - **THEN** the emitted block renders those E/I statements in English with identifiers and order preserved and still presents the close selector for an explicit choice
+
+### Requirement: Request Additional Notes label stays English scaffolding
+
+Under the crystallization language gate, the `**Request Additional Notes**` bold field label SHALL remain in English as scaffolding, like the other bold field labels, regardless of the chosen language.
+
+#### Scenario: Label is not localized
+
+- **WHEN** a non-English crystallization language is chosen and the emitted block carries Request Additional Notes content
+- **THEN** the `**Request Additional Notes**` label is rendered in English

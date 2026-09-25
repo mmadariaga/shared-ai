@@ -1,5 +1,5 @@
 ---
-description: Merge, rebase, or rebase with squash a local branch — conflict resolution with criteria, ADR/DDR collision repair, gated behind explicit authorization
+description: Merge, rebase, or squash-rebase a local branch — resolves conflicts under one confirmed strategy, repairs ADR/DDR number collisions, and commits only after you authorize it.
 model: opencode-go/muse-spark-1.3-contributor
 variant: xhigh
 ---

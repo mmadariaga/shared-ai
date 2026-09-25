@@ -1,6 +1,6 @@
 # Performance Step — Resolve Performance Tier Analysis
 
-Active step: audit-performance-tiers. Evaluate the selected scope and tier filter across the tier audits below, then report the `audit-performance-tiers` progress event per the worker contract.
+Active step: audit-performance-tiers. Evaluate the selected scope and tier filter across the tier audits below. The step is done when every tier in scope (after `--tier`) has been checked against every category of its phase, plus Phase 6; then report the `audit-performance-tiers` progress event per the worker contract.
 
 ### Phase 2: Backend Audit
 
@@ -36,7 +36,7 @@ For services in scope, evaluate:
 - Sorting/filtering in app layer when DB can do it
 
 **Observability Gaps**
-- No timing/metric on the new hot path → impossible to measure later. Flag as Medium even when code is correct.
+- No timing/metric on the new hot path → impossible to measure later. Flag as a Medium finding even when the code is correct, and list it under Observability Gaps.
 
 ### Phase 3: Frontend Audit
 
@@ -48,7 +48,7 @@ For routes/components in scope, evaluate:
 - **CLS** — missing `width`/`height` on images, late-injected content (banners, ads), font swap without `font-display: optional`/`swap` strategy
 
 **Bundle & Delivery**
-- Bundle size delta in the diff (run/inspect bundle analyzer if config present)
+- Bundle size delta in the diff (from existing bundle stats; running the analyzer belongs to `resolve-diagnostics`)
 - New dependencies pulled in: tree-shakable? side-effects flag? alternatives lighter?
 - Dynamic import opportunities for non-critical paths
 - Duplicate dependencies (different versions of the same lib)
@@ -68,7 +68,6 @@ For routes/components in scope, evaluate:
 - Component shipped to client when island-static would suffice
 
 **Tailwind / CSS**
-- Custom CSS competing with utility-first patterns (consistency cost only — Low)
 - Unused custom classes left after refactor
 
 **Network**
@@ -82,7 +81,7 @@ For routes/components in scope, evaluate:
 For SQL touched in the diff (PostgreSQL or MySQL — both classic in this stack):
 
 **Query Plans**
-- For each new/modified query: recommend `EXPLAIN (ANALYZE, BUFFERS)` (Postgres) or `EXPLAIN ANALYZE` (MySQL 8+). If user authorizes execution, run it on a representative dataset.
+- For each new/modified query: recommend `EXPLAIN (ANALYZE, BUFFERS)` (Postgres) or `EXPLAIN ANALYZE` (MySQL 8+). Running it belongs to `resolve-diagnostics`.
 - Flag: `Seq Scan` / `ALL` on tables expected to grow, missing index usage, sort spilling to disk, hash join with unexpected build side, nested loop on large outer.
 
 **N+1**

@@ -43,31 +43,15 @@
         "workerName": "sai-1-spec-proposal-worker",
         "workerContract": "sai/commands/spec/worker.md",
         "bindingStem": "spec",
-        "dispatchPrimitive": "task",
-        "initialDispatch": "dispatch sai-1-spec-proposal-worker",
-        "continuationLiteral": "continue sai-1-spec-proposal-worker",
-        "replacementFields": [
-          "model",
-          "effort"
-        ],
-        "helperPermissions": [
-          "Read",
-          "Write",
-          "Agent",
-          "Skill"
-        ],
-        "progressDeclaration": "Use @sai/policies/spec-phase-contract.md for SpecProgressPlan, SpecResultUnion, and SpecValidationReport with step routing via spec-standalone@1; report only its declared progress ids and metadata.",
-        "overviewGeneration": "",
-        "noticeContinuation": "",
         "claudeAgent": {
           "agentName": "sai-1-spec-proposal-worker",
-          "description": "Owns the complete technical spec proposal phase and returns structured lifecycle metadata.",
+          "description": "Spec-proposal worker for /sai-1-spec and /sai-explore, dispatched only by their coordinators. Writes a change's proposal.md and specs/.",
           "model": "opus",
           "effort": "medium",
           "tools": "Read, Glob, Grep, Bash, Edit, Write, Agent, Skill, SendMessage"
         },
         "opencodeAgent": {
-          "description": "Owns the complete technical spec proposal phase and returns structured lifecycle metadata.",
+          "description": "Spec-proposal worker for /sai-1-spec and /sai-explore, dispatched only by their coordinators. Writes a change's proposal.md and specs/.",
           "model": "opencode-go/muse-spark-1.3-contributor",
           "variantLine": "variant: high",
           "permissionBlock": "    budget: allow\n    explore: allow"
@@ -78,31 +62,15 @@
         "workerName": "sai-2-design-worker",
         "workerContract": "sai/commands/design/worker.md",
         "bindingStem": "design",
-        "dispatchPrimitive": "Agent",
-        "initialDispatch": "dispatch sai-2-design-worker",
-        "continuationLiteral": "continue sai-2-design-worker",
-        "replacementFields": [
-          "model",
-          "effort"
-        ],
-        "helperPermissions": [
-          "Read",
-          "Write",
-          "Agent",
-          "Skill"
-        ],
-        "progressDeclaration": "design milestones",
-        "overviewGeneration": "## overview_generation\n\nThe worker-owned budget-routed Change Overview dispatch receives the current invocation's overview_language only when --overview-lang is present and valid; absent or invalid transport selects the no-generation route and never synthesizes English.",
-        "noticeContinuation": "Forward continue_after_notice exactly for design notices.",
         "claudeAgent": {
           "agentName": "sai-2-design-worker",
-          "description": "Owns the complete technical design phase and returns structured lifecycle metadata.",
+          "description": "Design worker for /sai-2-design and /sai-explore, dispatched only by their coordinators. Writes design.md, tasks.md, and interfaces.md.",
           "model": "opus",
           "effort": "medium",
           "tools": "Read, Glob, Grep, Bash, Edit, Write, Agent, Skill, SendMessage"
         },
         "opencodeAgent": {
-          "description": "Owns the complete technical design phase and returns structured lifecycle metadata.",
+          "description": "Design worker for /sai-2-design and /sai-explore, dispatched only by their coordinators. Writes design.md, tasks.md, and interfaces.md.",
           "model": "opencode-go/muse-spark-1.3-contributor",
           "variantLine": "variant: high",
           "permissionBlock": "    budget: allow\n    explore: allow"
@@ -113,31 +81,15 @@
         "workerName": "sai-3-implementation-worker",
         "workerContract": "sai/commands/implement/worker.md",
         "bindingStem": "implementation",
-        "dispatchPrimitive": "task",
-        "initialDispatch": "dispatch sai-3-implementation-worker",
-        "continuationLiteral": "continue sai-3-implementation-worker",
-        "replacementFields": [
-          "model",
-          "effort"
-        ],
-        "helperPermissions": [
-          "Read",
-          "Write",
-          "Agent",
-          "Skill"
-        ],
-        "progressDeclaration": "implementation milestones",
-        "overviewGeneration": "",
-        "noticeContinuation": "",
         "claudeAgent": {
           "agentName": "sai-3-implementation-worker",
-          "description": "Owns the complete technical implementation-planning phase and returns structured lifecycle metadata.",
+          "description": "Implementation-planning worker for /sai-3-implement and /sai-build, dispatched only by their coordinators. Writes implementation.md.",
           "model": "opus",
           "effort": "medium",
           "tools": "Read, Glob, Grep, Bash, Edit, Write, Agent, Skill, SendMessage"
         },
         "opencodeAgent": {
-          "description": "Owns the complete technical implementation-planning phase and returns structured lifecycle metadata.",
+          "description": "Implementation-planning worker for /sai-3-implement and /sai-build, dispatched only by their coordinators. Writes implementation.md.",
           "model": "opencode-go/muse-spark-1.3-contributor",
           "variantLine": "variant: high",
           "permissionBlock": "    budget: allow\n    explore: allow"
@@ -148,31 +100,15 @@
         "workerName": "sai-5-review-worker",
         "workerContract": "sai/commands/review/worker.md",
         "bindingStem": "review",
-        "dispatchPrimitive": "task",
-        "initialDispatch": "dispatch sai-5-review-worker",
-        "continuationLiteral": "continue sai-5-review-worker",
-        "replacementFields": [
-          "model",
-          "effort"
-        ],
-        "helperPermissions": [
-          "Read",
-          "Write",
-          "Agent",
-          "Skill"
-        ],
-        "progressDeclaration": "review milestones",
-        "overviewGeneration": "",
-        "noticeContinuation": "",
         "claudeAgent": {
           "agentName": "sai-5-review-worker",
-          "description": "Owns the complete technical review phase and returns structured lifecycle metadata.",
+          "description": "Review worker for /sai-5-review and /sai-review, dispatched only by their coordinators. Writes review.md.",
           "model": "opus",
           "effort": "medium",
           "tools": "Read, Glob, Grep, Bash, Edit, Write, Agent, Skill, SendMessage"
         },
         "opencodeAgent": {
-          "description": "Owns the complete technical review phase and returns structured lifecycle metadata.",
+          "description": "Review worker for /sai-5-review and /sai-review, dispatched only by their coordinators. Writes review.md.",
           "model": "opencode-go/gpt-5.6-luna",
           "variantLine": "variant: max",
           "permissionBlock": "    budget: allow\n    explore: allow"
@@ -183,31 +119,15 @@
         "workerName": "sai-6-security-worker",
         "workerContract": "sai/commands/security/worker.md",
         "bindingStem": "security",
-        "dispatchPrimitive": "task",
-        "initialDispatch": "dispatch sai-6-security-worker",
-        "continuationLiteral": "continue sai-6-security-worker",
-        "replacementFields": [
-          "model",
-          "effort"
-        ],
-        "helperPermissions": [
-          "Read",
-          "Write",
-          "Agent",
-          "Skill"
-        ],
-        "progressDeclaration": "security milestones",
-        "overviewGeneration": "",
-        "noticeContinuation": "",
         "claudeAgent": {
           "agentName": "sai-6-security-worker",
-          "description": "Owns the complete technical security phase and returns structured lifecycle metadata.",
+          "description": "Security-audit worker for /sai-6-security and /sai-review, dispatched only by their coordinators. Writes security.md.",
           "model": "opus",
           "effort": "xhigh",
           "tools": "Read, Glob, Grep, Bash, Edit, Write, Agent, Skill, SendMessage"
         },
         "opencodeAgent": {
-          "description": "Owns the complete technical security phase and returns structured lifecycle metadata.",
+          "description": "Security-audit worker for /sai-6-security and /sai-review, dispatched only by their coordinators. Writes security.md.",
           "model": "opencode-go/deepseek-v4.1-flash",
           "variantLine": "variant: max",
           "permissionBlock": "    budget: allow\n    explore: allow"
@@ -218,31 +138,15 @@
         "workerName": "sai-7-performance-worker",
         "workerContract": "sai/commands/performance/worker.md",
         "bindingStem": "performance",
-        "dispatchPrimitive": "task",
-        "initialDispatch": "dispatch sai-7-performance-worker",
-        "continuationLiteral": "continue sai-7-performance-worker",
-        "replacementFields": [
-          "model",
-          "effort"
-        ],
-        "helperPermissions": [
-          "Read",
-          "Write",
-          "Agent",
-          "Skill"
-        ],
-        "progressDeclaration": "performance milestones",
-        "overviewGeneration": "",
-        "noticeContinuation": "",
         "claudeAgent": {
           "agentName": "sai-7-performance-worker",
-          "description": "Owns the complete technical performance phase and returns structured lifecycle metadata.",
+          "description": "Performance-audit worker for /sai-7-performance and /sai-review, dispatched only by their coordinators. Writes performance.md.",
           "model": "opus",
           "effort": "medium",
           "tools": "Read, Glob, Grep, Bash, Edit, Write, Agent, Skill, SendMessage"
         },
         "opencodeAgent": {
-          "description": "Owns the complete technical performance phase and returns structured lifecycle metadata.",
+          "description": "Performance-audit worker for /sai-7-performance and /sai-review, dispatched only by their coordinators. Writes performance.md.",
           "model": "opencode-go/glm-5.3-flash",
           "variantLine": "variant: max",
           "permissionBlock": "    budget: allow\n    explore: allow"
@@ -253,31 +157,15 @@
         "workerName": "sai-8-accessibility-worker",
         "workerContract": "sai/commands/accessibility/worker.md",
         "bindingStem": "accessibility",
-        "dispatchPrimitive": "task",
-        "initialDispatch": "dispatch sai-8-accessibility-worker",
-        "continuationLiteral": "continue sai-8-accessibility-worker",
-        "replacementFields": [
-          "model",
-          "effort"
-        ],
-        "helperPermissions": [
-          "Read",
-          "Write",
-          "Agent",
-          "Skill"
-        ],
-        "progressDeclaration": "accessibility milestones",
-        "overviewGeneration": "",
-        "noticeContinuation": "",
         "claudeAgent": {
           "agentName": "sai-8-accessibility-worker",
-          "description": "Owns the complete technical accessibility phase and returns structured lifecycle metadata.",
+          "description": "Accessibility-audit worker for /sai-8-accessibility and /sai-review, dispatched only by their coordinators. Writes accessibility.md.",
           "model": "opus",
           "effort": "medium",
           "tools": "Read, Glob, Grep, Bash, Edit, Write, Agent, Skill, SendMessage"
         },
         "opencodeAgent": {
-          "description": "Owns the complete technical accessibility phase and returns structured lifecycle metadata.",
+          "description": "Accessibility-audit worker for /sai-8-accessibility and /sai-review, dispatched only by their coordinators. Writes accessibility.md.",
           "model": "opencode-go/glm-5.3-flash",
           "variantLine": "variant: max",
           "permissionBlock": "    budget: allow\n    explore: allow"
@@ -288,30 +176,15 @@
         "workerName": "sai-commit-worker",
         "workerContract": "sai/commands/commit/worker.md",
         "bindingStem": "commit",
-        "dispatchPrimitive": "task",
-        "initialDispatch": "dispatch sai-commit-worker",
-        "continuationLiteral": "continue sai-commit-worker",
-        "replacementFields": [
-          "model",
-          "effort"
-        ],
-        "helperPermissions": [
-          "Read",
-          "Bash",
-          "Skill"
-        ],
-        "progressDeclaration": "none — the commit adapter declares no progress_plan",
-        "overviewGeneration": "",
-        "noticeContinuation": "",
         "claudeAgent": {
           "agentName": "sai-commit-worker",
-          "description": "Owns the complete technical commit-message authoring phase and returns structured lifecycle metadata.",
+          "description": "Commit-message worker for /sai-commit, dispatched only by its coordinator. Drafts the message from the staged changes; the coordinator runs git.",
           "model": "sonnet",
           "effort": "medium",
           "tools": "Read, Glob, Grep, Bash, Skill, SendMessage"
         },
         "opencodeAgent": {
-          "description": "Owns the complete technical commit-message authoring phase and returns structured lifecycle metadata.",
+          "description": "Commit-message worker for /sai-commit, dispatched only by its coordinator. Drafts the message from the staged changes; the coordinator runs git.",
           "model": "opencode/muse-spark-1.3-contributor-free",
           "variantLine": "variant: high",
           "permissionBlock": "    budget: allow\n    explore: allow"
@@ -322,30 +195,15 @@
         "workerName": "sai-archive-worker",
         "workerContract": "sai/commands/archive/worker.md",
         "bindingStem": "archive",
-        "dispatchPrimitive": "task",
-        "initialDispatch": "dispatch sai-archive-worker",
-        "continuationLiteral": "continue sai-archive-worker",
-        "replacementFields": [
-          "model",
-          "effort"
-        ],
-        "helperPermissions": [
-          "Read",
-          "Bash",
-          "Skill"
-        ],
-        "progressDeclaration": "none — the archive adapter declares no progress_plan",
-        "overviewGeneration": "",
-        "noticeContinuation": "",
         "claudeAgent": {
           "agentName": "sai-archive-worker",
-          "description": "Owns the archive pre-flight and gate authoring phase plus explicitly authorized Direct-build sync, move, staging, and commit execution, and returns structured lifecycle metadata.",
+          "description": "Archive worker for /sai-archive and /sai-explore, dispatched only by their coordinators. Runs the read-only archive pre-flight and, under Direct Build, the authorized sync, move, staging, and commit.",
           "model": "sonnet",
           "effort": "medium",
           "tools": "Read, Glob, Grep, Bash, Skill, SendMessage"
         },
         "opencodeAgent": {
-          "description": "Owns the archive pre-flight and gate authoring phase plus explicitly authorized Direct-build sync, move, staging, and commit execution, and returns structured lifecycle metadata.",
+          "description": "Archive worker for /sai-archive and /sai-explore, dispatched only by their coordinators. Runs the read-only archive pre-flight and, under Direct Build, the authorized sync, move, staging, and commit.",
           "model": "opencode-go/muse-spark-1.3-contributor",
           "variantLine": "variant: high",
           "permissionBlock": "    budget: allow\n    explore: allow"
@@ -356,31 +214,15 @@
         "workerName": "sai-backfill-worker",
         "workerContract": "sai/commands/backfill/worker.md",
         "bindingStem": "backfill",
-        "dispatchPrimitive": "task",
-        "initialDispatch": "dispatch sai-backfill-worker",
-        "continuationLiteral": "continue sai-backfill-worker",
-        "replacementFields": [
-          "model",
-          "effort"
-        ],
-        "helperPermissions": [
-          "Read",
-          "Bash",
-          "Write",
-          "Skill"
-        ],
-        "progressDeclaration": "none — the backfill adapter declares no progress_plan",
-        "overviewGeneration": "",
-        "noticeContinuation": "",
         "claudeAgent": {
           "agentName": "sai-backfill-worker",
-          "description": "Owns the backfill inspection, interviewing, draft-composition, and explicitly authorized Direct-build draft execution phase and returns structured lifecycle metadata.",
+          "description": "Backfill worker for /sai-backfill, /sai-archive, and /sai-explore, dispatched only by their coordinators. Interviews and drafts proposal and spec content from a diff and, under Direct Build, writes the authorized drafts.",
           "model": "opus",
           "effort": "medium",
-          "tools": "Read, Glob, Grep, Bash, Write, Skill, SendMessage"
+          "tools": "Read, Glob, Grep, Bash, Write, Agent, Skill, SendMessage"
         },
         "opencodeAgent": {
-          "description": "Owns the backfill inspection, interviewing, draft-composition, and explicitly authorized Direct-build draft execution phase and returns structured lifecycle metadata.",
+          "description": "Backfill worker for /sai-backfill, /sai-archive, and /sai-explore, dispatched only by their coordinators. Interviews and drafts proposal and spec content from a diff and, under Direct Build, writes the authorized drafts.",
           "model": "opencode-go/muse-spark-1.3-contributor",
           "variantLine": "variant: high",
           "permissionBlock": "    budget: allow\n    explore: allow"
@@ -391,32 +233,15 @@
         "workerName": "sai-merge-worker",
         "workerContract": "sai/commands/merge/worker.md",
         "bindingStem": "merge",
-        "dispatchPrimitive": "task",
-        "initialDispatch": "dispatch sai-merge-worker",
-        "continuationLiteral": "continue sai-merge-worker",
-        "replacementFields": [
-          "model",
-          "effort"
-        ],
-        "helperPermissions": [
-          "Read",
-          "Write",
-          "Edit",
-          "Bash",
-          "Skill"
-        ],
-        "progressDeclaration": "none — the merge adapter declares no progress_plan",
-        "overviewGeneration": "",
-        "noticeContinuation": "",
         "claudeAgent": {
           "agentName": "sai-merge-worker",
-          "description": "Owns the merge analysis, conflict-resolution proposal, verification, ADR/DDR collision scanning, and resolution content writing phase and returns structured lifecycle metadata.",
+          "description": "Merge worker for /sai-merge, dispatched only by its coordinator. Analyzes conflicts, proposes one resolution strategy, scans ADR/DDR collisions, and writes resolution content.",
           "model": "opus",
           "effort": "medium",
           "tools": "Read, Glob, Grep, Bash, Edit, Write, Skill, SendMessage"
         },
         "opencodeAgent": {
-          "description": "Owns the merge analysis, conflict-resolution proposal, verification, ADR/DDR collision scanning, and resolution content writing phase and returns structured lifecycle metadata.",
+          "description": "Merge worker for /sai-merge, dispatched only by its coordinator. Analyzes conflicts, proposes one resolution strategy, scans ADR/DDR collisions, and writes resolution content.",
           "model": "opencode-go/muse-spark-1.3-contributor",
           "variantLine": "variant: high",
           "permissionBlock": "    budget: allow\n    explore: allow"
@@ -428,29 +253,15 @@
         "workerContract": "sai/commands/apply/red-worker.md",
         "bindingStem": "red",
         "tier": "budget",
-        "dispatchPrimitive": "task",
-        "initialDispatch": "dispatch sai-4-red-worker",
-        "continuationLiteral": "continue sai-4-red-worker",
-        "replacementFields": [
-          "model",
-          "effort"
-        ],
-        "helperPermissions": [
-          "Read",
-          "Write"
-        ],
-        "progressDeclaration": "apply milestones",
-        "overviewGeneration": "",
-        "noticeContinuation": "",
         "claudeAgent": {
           "agentName": "sai-4-red-worker",
-          "description": "Owns the RED apply phase and returns structured lifecycle metadata.",
+          "description": "RED worker for /sai-4-apply and /sai-build, dispatched only by their coordinators. Writes one plan Step's failing tests.",
           "model": "sonnet",
           "effort": "medium",
           "tools": "Read, Glob, Grep, Bash, Edit, Write, Agent, Skill, SendMessage"
         },
         "opencodeAgent": {
-          "description": "Owns the RED apply phase and returns structured lifecycle metadata.",
+          "description": "RED worker for /sai-4-apply and /sai-build, dispatched only by their coordinators. Writes one plan Step's failing tests.",
           "model": "opencode-go/muse-spark-1.3-contributor",
           "variantLine": "variant: high",
           "permissionBlock": "    budget: allow\n    explore: allow"
@@ -462,29 +273,15 @@
         "workerContract": "sai/commands/apply/green-worker.md",
         "bindingStem": "green",
         "tier": "budget",
-        "dispatchPrimitive": "task",
-        "initialDispatch": "dispatch sai-4-green-worker",
-        "continuationLiteral": "continue sai-4-green-worker",
-        "replacementFields": [
-          "model",
-          "effort"
-        ],
-        "helperPermissions": [
-          "Read",
-          "Write"
-        ],
-        "progressDeclaration": "apply milestones",
-        "overviewGeneration": "",
-        "noticeContinuation": "",
         "claudeAgent": {
           "agentName": "sai-4-green-worker",
-          "description": "Owns the GREEN apply phase and returns structured lifecycle metadata.",
+          "description": "GREEN worker for /sai-4-apply and /sai-build, dispatched only by their coordinators. Implements one plan Step's code, leaving its tests as written.",
           "model": "opus",
           "effort": "medium",
           "tools": "Read, Glob, Grep, Bash, Edit, Write, Agent, Skill, SendMessage"
         },
         "opencodeAgent": {
-          "description": "Owns the GREEN apply phase and returns structured lifecycle metadata.",
+          "description": "GREEN worker for /sai-4-apply and /sai-build, dispatched only by their coordinators. Implements one plan Step's code, leaving its tests as written.",
           "model": "opencode-go/muse-spark-1.3-contributor",
           "variantLine": "variant: high",
           "permissionBlock": "    budget: allow\n    explore: allow"
@@ -496,34 +293,15 @@
         "workerContract": "sai/commands/explore/direct-build-worker.md",
         "bindingStem": "direct-build",
         "tier": "budget",
-        "dispatchPrimitive": "task",
-        "initialDispatch": "dispatch sai-direct-build-worker",
-        "continuationLiteral": "continue sai-direct-build-worker",
-        "replacementFields": [
-          "model",
-          "effort"
-        ],
-        "helperPermissions": [
-          "Read",
-          "Glob",
-          "Grep",
-          "Bash",
-          "Edit",
-          "Write",
-          "Skill"
-        ],
-        "progressDeclaration": "none — direct-build supervision declares no progress_plan",
-        "overviewGeneration": "",
-        "noticeContinuation": "",
         "claudeAgent": {
           "agentName": "sai-direct-build-worker",
-          "description": "Owns the block-driven direct implementation phase of explore's Direct Build (unattended) option and returns structured lifecycle metadata.",
+          "description": "Direct Build implementer for /sai-explore, dispatched only by its coordinator. Implements a change straight from its Ready to Propose block.",
           "model": "opus",
           "effort": "medium",
           "tools": "Read, Glob, Grep, Bash, Edit, Write, Skill, SendMessage"
         },
         "opencodeAgent": {
-          "description": "Owns the block-driven direct implementation phase of explore's Direct Build (unattended) option and returns structured lifecycle metadata.",
+          "description": "Direct Build implementer for /sai-explore, dispatched only by its coordinator. Implements a change straight from its Ready to Propose block.",
           "model": "opencode-go/muse-spark-1.3-contributor",
           "variantLine": "variant: high",
           "permissionBlock": "    budget: allow\n    explore: allow"
@@ -535,34 +313,15 @@
         "workerContract": "sai/commands/meta-review/review-fix-worker.md",
         "bindingStem": "review-fix",
         "tier": "budget",
-        "dispatchPrimitive": "task",
-        "initialDispatch": "dispatch sai-review-fix-worker",
-        "continuationLiteral": "continue sai-review-fix-worker",
-        "replacementFields": [
-          "model",
-          "effort"
-        ],
-        "helperPermissions": [
-          "Read",
-          "Glob",
-          "Grep",
-          "Bash",
-          "Edit",
-          "Write",
-          "Skill"
-        ],
-        "progressDeclaration": "none — review Direct Build close declares no progress_plan",
-        "overviewGeneration": "",
-        "noticeContinuation": "",
         "claudeAgent": {
           "agentName": "sai-review-fix-worker",
-          "description": "Owns the findings-driven review fix phase of sai-review Direct Build close and returns structured lifecycle metadata.",
+          "description": "Review-fix worker for /sai-5-review and /sai-review, dispatched only by their coordinators. Fixes the review findings in a Direct Build close.",
           "model": "opus",
           "effort": "medium",
           "tools": "Read, Glob, Grep, Bash, Edit, Write, Skill, SendMessage"
         },
         "opencodeAgent": {
-          "description": "Owns the findings-driven review fix phase of sai-review Direct Build close and returns structured lifecycle metadata.",
+          "description": "Review-fix worker for /sai-5-review and /sai-review, dispatched only by their coordinators. Fixes the review findings in a Direct Build close.",
           "model": "opencode-go/muse-spark-1.3-contributor",
           "variantLine": "variant: high",
           "permissionBlock": "    budget: allow\n    explore: allow"
@@ -732,6 +491,22 @@
       "destination": {
         "class": "sai",
         "path": "orchestration/command-runner.md"
+      },
+      "harnesses": [
+        "claude",
+        "opencode"
+      ],
+      "strategy": "copy",
+      "recursive": false,
+      "ownership": "managed",
+      "drift": "content"
+    },
+    {
+      "id": "sai-composition",
+      "source": "sai/orchestration/composition.md",
+      "destination": {
+        "class": "sai",
+        "path": "orchestration/composition.md"
       },
       "harnesses": [
         "claude",
@@ -1758,6 +1533,197 @@
       ]
     },
     {
+      "id": "retired-sai-3-implement-instructions",
+      "destination": {
+        "class": "sai",
+        "path": "commands/implement/instructions.md"
+      },
+      "harnesses": [
+        "claude",
+        "opencode"
+      ],
+      "managedHashes": [
+        "0f30218b43b9a90713fb0391adb54a682428a8712007bd06e1b36a2365f58b87",
+        "1cd1a595fb48f3532407c2144183ef0bac3d0f4d6002c8acd2b9a8d07815fd7a",
+        "21912d7d1ae12bc7e51ae8f519709686a807b28bdb9397b92bb537ba8ec9004c",
+        "2c68e3a2e66641c8913ac5b8a675f6fa3c107a70ad885384edd2467ce376d791",
+        "2df977ff754a1240b8e4c3b4edd18674205c8b3acc20f364ff7d628d44aef304",
+        "40414c247844271e120949bca5b9e65d83adab1857e03781f12246c94eabdc02",
+        "5495995a8f3de07e1fb89996106a5b34cc5f899169fad969b84f6f10d7558c62",
+        "606a07476d9b1c39a697bc80880b7b15baa910f6e9d968037577bbaa374cb2f6",
+        "69ec39ae11e2b1e701481edb00477e1cfc8b5552f3b2977708659bb99433db84",
+        "71c6e736efdab0f94c2f597e88955763889be4ed7d8b78e2311f3375d5ad72a9",
+        "7c62c585512b3b3d55b55308cd013ddd2ca81eb4b78a63494560594d32591cd0",
+        "848a721bf7f9d8e56e713a0c63e4223843ad94e421c67e5466f44f9e64fa7537",
+        "868eb51d71b582b008a52771466d7bd650c6da66c8b075693d82aac51ae9261b",
+        "a0e12e0d7b7a106b6000425d158e121ead4ee6cc9bac6cea9e41dd200b355b09",
+        "a77136d6271a6262dab65b5c165a001ff569f4aae47f53cc44954cb896a30fc6",
+        "bb357b0fafca350d161c7d3cc2e0bd1fe4b0ee409327986e2f9f82aee7f5db57",
+        "ca3fd057791df3ba6622f33179e57aecb01979a251ac8b3b67d4e5a964822d08",
+        "cdf11b2b03ef6b6117b8c944094fc7528dfda7acba430a854f8dcd991aeb1e29",
+        "cfa11795a58eb9457ca478225e6c2bc24056539cc2dbc6e590bd1e328c993114",
+        "d40ea11b8959cebbd2e22dc93e6dd29898def4ae43143617995d3b3e9465bedc",
+        "d45bd1992508fc0d45bceaa14ca61a3e0806d4586374d99313a904739ebf4eb0",
+        "dde5205361218740dd0ea4590625ab15f49012dfe17bc6acffef6de45d38cfc4",
+        "de854714c649b979809d8dcb4380073ce8a8e1692f232789c3775551c37543fe",
+        "df10eb801c3caf20a844b33a3292abc7f57d7067fe9c30d7e12a27d939282c31",
+        "e3052a3971adad9f18b0431736b877fbbd2655c5e751704553efe132c049ddfb",
+        "e519cf4892e45ad721477d2d4da4b4e2ffec985750fe0ab2d3a0a3f4b2bc8283",
+        "e7a8236d6b4f1a438b14804b91f988553b40f0333946524aa5110695fbc8a2e4",
+        "ef31069b5e161c7cde050adfa55862bb63d1bf75383aa85ab8fca3863341afbf"
+      ]
+    },
+    {
+      "id": "retired-sai-5-review-invocation",
+      "destination": {
+        "class": "sai",
+        "path": "commands/review/invocation.md"
+      },
+      "harnesses": [
+        "claude",
+        "opencode"
+      ],
+      "managedHashes": [
+        "7ccd9b8d37964f7f75a4abe2743584a9d0035abe4e859b4d079e92169f4e873b",
+        "a482dea06a85eaf537115f37b2bc805dbb7cd864874cd3f4c73cd4453d50ed59",
+        "de6ba2d0335f4870aff518cd5a22a1ca04436dc7d9c2f35b4a283e306edab778",
+        "f545c4c8c920800f6689367414b3a73c8be6b4c2989cc75b7eabd0970c633240"
+      ]
+    },
+    {
+      "id": "retired-sai-5-review-instructions",
+      "destination": {
+        "class": "sai",
+        "path": "commands/review/instructions.md"
+      },
+      "harnesses": [
+        "claude",
+        "opencode"
+      ],
+      "managedHashes": [
+        "073beb6b9e3336b8afce3cf30ebbbad2750f37e7e0d466d523dc0cc50b9ef90c",
+        "08dc90235fd14500502a2e70e6a31ff7e48eeaeaec2a2eb9aba5d3bab076b158",
+        "13730e618f7446abfbb327b133f4ce1cc30eb252a806ea72291664398cb47eec",
+        "13d20811e2c13811a805251932d90dd192227bf9c6fc82ec0088ef79ad02aa2a",
+        "1801b015a2c22b62922030fc84b97a3e2325dbc6620bcaa39d1699c542ee55c7",
+        "1e241ce5dadfda2bbe381cc938be40c5d4d97a88152125fb20d54562a684fdcb",
+        "3169afc816802fe018095753de6b188eb3877e74df045cea74019df94f3a50ce",
+        "493896c8fdd8838f8fbea7d878305ba9f7fe5479ff46657b4344794b7be1e72c",
+        "52e5d647e7344a63b706264a1ce55fe9a279ad77bdbb3d9083ba3ec11c5a2c15",
+        "538b6887f9d8f11c4a2e9f81dc92ca2ec75a317aeeaf71bb0a99fd97840ab54a",
+        "5adbfcb8b6010da4c37ea3d3de95688264765ac3a5366fdee2e5d229483e5c8b",
+        "5ca783bc8617ecc9052d9b34a3f0e0ed90dbc5d20662df49a955e30102f633e5",
+        "62121164eaf5903c4f316e226a5e5530b31e3de4de8a74b63acf3994b73f4b34",
+        "627dda4194b36a6a6a18d864a8044cc399f115bdd0420125bade3328d3a5cb0b",
+        "66596df6d99719ad2577e0ed2345391e48cf87edf5bbd7a289aaffa9a0283766",
+        "6d2c6680dfa1bdbdaeeefb54a2441a9c74c0f3e356acc156d953d157c56c2d4b",
+        "7e87ba58b0b731ca004f1df331e3adae4023285ff12d01b6ba60bff65c084e76",
+        "98cea0c38da774ce46183bbae36e6e3a7e41e429144a322572f9e18f64b0a49f",
+        "9b17425ced5d3f37ce97eedadc3f69100839d7ca43c79e614ce11e08b3113c55",
+        "a61a9d6ba065f4bd0fbdd6382fda22b6d4af91782e3aa5988bb806392b0210db",
+        "b52bc94248a32d28ac99ea993254400e737a4a2c44325ac8029236947122bba9",
+        "cd625f56d523723d24db0589ba23d3cc07e0b7df7e3ca97dcc3a72f62d6b96c6",
+        "d09ba75fd83a0c27a59e30926410fd05137ba5a5a05975ca53154d067937fde8",
+        "e01d735dcd1f02e916c7d794499de358ec8a6194e817f988610fd94bfe60ebdd",
+        "e2d71ce75556c7fa10e7575819c0c0cfd45b26d73e24ff3a358f54ded2d39481",
+        "e990e310c682b6b1a9e9e45c169d35ef75cb7c0666fb3ef94a650e68b3431508",
+        "edff7d398c10b35927760153d33173d1bb63e62aa92888f8b4f4ad8bd0f77884"
+      ]
+    },
+    {
+      "id": "retired-sai-6-security-invocation",
+      "destination": {
+        "class": "sai",
+        "path": "commands/security/invocation.md"
+      },
+      "harnesses": [
+        "claude",
+        "opencode"
+      ],
+      "managedHashes": [
+        "04445963e6bff422a366b0710ebbf197cf67f29b520f3c2eb4d82347b9b3c8d2",
+        "23ef1307c68b055bbbfc315d08c430a69b9423ad4a660a8c84b994c1b822e500",
+        "a2a6e24cc4790c29479cd6c1b7fc874ff00ea9f74a37d277804ed42fd8616830",
+        "b2d4c9814cd08d8940052e751330e94b18bdeda222837d5fb2716846f25cd60c"
+      ]
+    },
+    {
+      "id": "retired-sai-6-security-instructions",
+      "destination": {
+        "class": "sai",
+        "path": "commands/security/instructions.md"
+      },
+      "harnesses": [
+        "claude",
+        "opencode"
+      ],
+      "managedHashes": [
+        "c48cc7d5ad0b7d20f65a34ed08976b8e3d99d528e48a7230059241447671378c"
+      ]
+    },
+    {
+      "id": "retired-sai-7-performance-invocation",
+      "destination": {
+        "class": "sai",
+        "path": "commands/performance/invocation.md"
+      },
+      "harnesses": [
+        "claude",
+        "opencode"
+      ],
+      "managedHashes": [
+        "4d83c10e15651d8f9dea9cca1d7bc066bd4b11ec3085cb94f602d9065f9c03f5",
+        "70a948f4a97c9357f6fb456ede98ab3c7e20fb15b652f24797b85a23cd5bc1ca",
+        "dc8b9ba93fcc02ffe99b2e35aa63a5ae1934b3d2cc4adaec33b29d4775f93b35",
+        "e38763e4b86955c831c57abbc5fd90212e56dc300d240e2adcaa643f7057763b"
+      ]
+    },
+    {
+      "id": "retired-sai-7-performance-instructions",
+      "destination": {
+        "class": "sai",
+        "path": "commands/performance/instructions.md"
+      },
+      "harnesses": [
+        "claude",
+        "opencode"
+      ],
+      "managedHashes": [
+        "f1186943090addabe95b4753754d0231ed491fe30ab5b5db4de4becfb70409ec"
+      ]
+    },
+    {
+      "id": "retired-sai-8-accessibility-invocation",
+      "destination": {
+        "class": "sai",
+        "path": "commands/accessibility/invocation.md"
+      },
+      "harnesses": [
+        "claude",
+        "opencode"
+      ],
+      "managedHashes": [
+        "31303271789e8e6f4dedfcfe6d06d6539eb437d19c0897fc3a2dc7d6be47253f",
+        "3dcaacc16969103e384b5a0b1162165d9c894e5a8407a5cd04d45e9609f51da0",
+        "6897b9a3276617cff758673a4092d483c3d784fed5760fabb013d4ffe692504d",
+        "9c4f9be93aa5da3f108ee381a8e18038c0752c0c302ff72462f6dcfe28685e83"
+      ]
+    },
+    {
+      "id": "retired-sai-8-accessibility-instructions",
+      "destination": {
+        "class": "sai",
+        "path": "commands/accessibility/instructions.md"
+      },
+      "harnesses": [
+        "claude",
+        "opencode"
+      ],
+      "managedHashes": [
+        "de5d0b8c6979a7f8a1d1b1aafc435a4837a30ec007b0dd22949724d36795047b"
+      ]
+    },
+    {
       "id": "retired-sai-2-design-inline",
       "destination": {
         "class": "sai",
@@ -1806,7 +1772,8 @@
       "managedHashes": [
         "689c2cab58cd9cc41c3a37ecc32e16a4e4503c1ac379304de1fc8e3b6c4311c2",
         "2a8052146bbcf677adfd4881bc280b71a9a92ffaf5a23142cf3b92c7a85eaf01",
-        "23f11664acdffd5d626503fe412a5f6011fdf4a63d35b0ae0d6536c7f09a1e14"
+        "23f11664acdffd5d626503fe412a5f6011fdf4a63d35b0ae0d6536c7f09a1e14",
+        "a302a73dfc04c21cfbbac3a3f1afa303ee334526e2f0a42967246ce8d0032a4a"
       ]
     },
     {
@@ -3223,7 +3190,8 @@
         "opencode"
       ],
       "managedHashes": [
-        "23f11664acdffd5d626503fe412a5f6011fdf4a63d35b0ae0d6536c7f09a1e14"
+        "23f11664acdffd5d626503fe412a5f6011fdf4a63d35b0ae0d6536c7f09a1e14",
+        "a302a73dfc04c21cfbbac3a3f1afa303ee334526e2f0a42967246ce8d0032a4a"
       ]
     },
     {
@@ -3237,7 +3205,8 @@
         "opencode"
       ],
       "managedHashes": [
-        "591f36d59db2dafe328ab99288dbea26d9700fe2bc488d17d3faa9acbf5ecccc"
+        "591f36d59db2dafe328ab99288dbea26d9700fe2bc488d17d3faa9acbf5ecccc",
+        "0c1549368c1e11e71f6b1b91ce1945bc5918f777fdd5c2a16ac68574592b7cdf"
       ]
     },
     {

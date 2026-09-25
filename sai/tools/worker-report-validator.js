@@ -352,12 +352,17 @@ function readStdin() {
   });
 }
 
-async function commandValidate(kind) {
-  const stdinData = await readStdin();
+/**
+ * Pure verdict builder: turns stdin text plus a payload kind into the closed
+ * validation verdict (JSON parse, validatePayload, generateValidatedAt). It is
+ * the single source of the verdict shape and of the validated_at clock; the
+ * `validate` CLI and `sai-state emit --progress` both consume it.
+ */
+function validateText(text, kind) {
   let payload;
 
   try {
-    payload = JSON.parse(stdinData);
+    payload = JSON.parse(text);
   } catch (err) {
     return {
       ok: false,
@@ -383,6 +388,11 @@ async function commandValidate(kind) {
     errors: [],
     validated_at: generateValidatedAt(),
   };
+}
+
+async function commandValidate(kind) {
+  const stdinData = await readStdin();
+  return validateText(stdinData, kind);
 }
 
 function usage() {
@@ -486,6 +496,7 @@ if (require.main === module) {
 module.exports = {
   main,
   commandValidate,
+  validateText,
   validatePayload,
   validateTerminal,
   validateNotice,

@@ -3,7 +3,9 @@
 ## Purpose
 
 Define routed supervision of the isolated sai-1 spec-proposal worker from `sai-explore`.
+
 ## Requirements
+
 ### Requirement: Name supervised route identity
 
 The supervised pipeline SHALL use `Plan - Unattended` and route identity `plan-unattended` for the existing sai-1/sai-2 supervision, review, chaining, and retry lifecycle. The direct build route SHALL use `Direct Build - Unattended` and route identity `direct-build-unattended` for its separate worker flow. `/sai-build` and `meta-build` SHALL remain distinct composition identities.
@@ -142,7 +144,7 @@ Before the first dispatch of a Plan - Unattended run, explore SHALL fetch `sai/p
 
 ### Requirement: Gate suppression does not weaken force-majeure interruptions
 
-Supervised gate auto-proceed SHALL NOT create any advance path over a phase worker `failed` or `cancelled` result, and SHALL NOT alter the question-autonomy policy. A `needs_input` that fails the confidence threshold or grounding floor SHALL still escalate to the user and interrupt the run. An invalid non-empty `mode` value that causes the shared gate to STOP is an authoring-fault path at the fetch site, distinct from normal supervised runtime interruptions. Explore SHALL remain read-only under Plan - Unattended supervision: it SHALL NOT create, modify, or delete files, artifacts, or configuration; the only writes remain those the already-authorized phase workers perform within their owned change-directory scope. This scope is extended solely by the explicitly consented Direct Build - Unattended selection. The dispatched implementer SHALL write only code, tests, required project configuration, and `openspec/schemas/**` under its closed exclusions and never under `openspec/` except `openspec/schemas/**`. The dispatched backfill and archive workers SHALL execute only the consented validated artifact writes, spec sync, archive move, owned-path staging, and pre-authorized local commit in their closed order. Explore itself SHALL remain read-only including read-only schema validation of draft content.
+Supervised gate auto-proceed SHALL NOT create any advance path over a phase worker `failed` or `cancelled` result, and SHALL NOT alter the question-autonomy policy. A `needs_input` that fails the confidence threshold or grounding floor SHALL still escalate to the user and interrupt the run. An invalid non-empty `mode` value that causes the shared gate to STOP is an authoring-fault path at the fetch site, distinct from normal supervised runtime interruptions. Explore SHALL remain read-only under Plan - Unattended supervision: it SHALL NOT create, modify, or delete files, artifacts, or configuration; the only writes remain those the already-authorized phase workers perform within their owned change-directory scope. This scope is extended solely by the explicitly consented Direct Build - Unattended selection. The dispatched implementer SHALL write any repository artifact the block requires, within the repository-artifact scope and its protected update protocols, and SHALL NOT directly modify published `openspec/specs/**`. The dispatched backfill and archive workers SHALL execute only the consented validated artifact writes, spec sync, archive move, owned-path staging, and pre-authorized local commit in their closed order. Explore itself SHALL remain read-only including read-only schema validation of draft content.
 
 #### Scenario: failed worker skips gate and auto-proceed
 
@@ -233,7 +235,7 @@ Clean `completed` without disproof and without STOP does not start diagnosis.
 - **WHEN** the item-10 diagnosis route runs
 - **THEN** only `diagnosis_rounds.spec` or `diagnosis_rounds.design` increments, independently of `review_rounds`, and both counters reset on a new Plan attempt without persistence.
 
-### Requirement: Build - Unattended eight-step unattended flow
+### Requirement: Direct Build - Unattended eight-step unattended flow
 
 On a Direct Build - Unattended selection, explore SHALL run one unattended code-first flow in fixed order without dispatching `/sai-3-implement` or re-entering a routed phase command. After implementation review, it SHALL prepare backfill drafts, validate them read-only, run the ADR/DDR routing test, execute the validated backfill draft write, prepare archive preflight, and resolve the unchecked-items gate under fast-track semantics. Archive execution SHALL run exactly `openspec archive <name> --yes --json` as the sole synchronization-and-move primitive, then stage only approved owned paths and perform the one pre-authorized local commit. The flow SHALL never use manual synchronization or archive movement, retry a failed CLI operation, push, or amend.
 
@@ -242,7 +244,7 @@ On a Direct Build - Unattended selection, explore SHALL run one unattended code-
 - **WHEN** the eight Direct Build steps complete without a recovery interruption
 - **THEN** the flow reports the worker-authored summaries, names the archive destination and commit subject, and reaches the terminal archived-and-committed state
 
-### Requirement: Auto-fast slice completion transition
+### Requirement: Direct Build slice completion transition
 
 On a Direct Build - Unattended selection, explore SHALL execute the existing eight-step worker flow in fixed order for the selected slice. After, and only after, the final `--direct-build-execute` archive worker returns a clean terminal `completed` result, explore SHALL record that result in the first-seen changed-file union, add the selected change to `completed_changes`, preserve the completed slice's progress states, and enter the completion transition exactly once. The transition SHALL preserve existing worker order, worker payloads, commit ownership, and failure semantics.
 
@@ -251,7 +253,7 @@ On a Direct Build - Unattended selection, explore SHALL execute the existing eig
 - **WHEN** the final archive execution worker returns a clean terminal `completed` result and another crystallized slice is not in `completed_changes`
 - **THEN** explore records the completed slice before recomputing remaining slices and re-enters the existing selector without dispatching a worker from the transition.
 
-### Requirement: Auto-fast re-entry uses deterministic selection
+### Requirement: Direct Build re-entry uses deterministic selection
 
 When the completion transition finds uncompleted entries in `last_crystallization_set`, explore SHALL recompute them only by subtracting `completed_changes`, preserve crystallization order, and apply the existing deterministic selection rules. The re-entered selector SHALL never select a completed name, run `openspec list --json`, or re-sort names; it SHALL retain the existing single-entry, multiple-entry, empty-set, and active-run behavior.
 
@@ -260,7 +262,7 @@ When the completion transition finds uncompleted entries in `last_crystallizatio
 - **WHEN** a completed slice and one or more uncompleted slices remain in the crystallization set
 - **THEN** the selector offers or dispatches only the uncompleted slices in their original crystallization order.
 
-### Requirement: Auto-fast slice attempts reset only per-attempt state
+### Requirement: Direct Build slice attempts reset only per-attempt state
 
 Each re-entered slice selection SHALL start a fresh Direct Build attempt and reset `base_sha`, `fix_rounds`, and the Direct Build diagnosis counters according to their existing per-attempt rules. The reset SHALL retain `completed_changes` and completed idea-progress states, and a failed, cancelled, incomplete-recovery, coordinator-disproved, or STOP-bearing result SHALL not mark the slice completed or trigger completion re-entry.
 
@@ -269,7 +271,7 @@ Each re-entered slice selection SHALL start a fresh Direct Build attempt and res
 - **WHEN** the completion transition re-enters selection for an uncompleted slice
 - **THEN** the next slice starts with reset per-attempt counters while previously completed slice state remains intact.
 
-### Requirement: Auto-fast terminal navigation waits for slice exhaustion
+### Requirement: Direct Build terminal navigation waits for slice exhaustion
 
 Explore SHALL defer the existing Direct Build terminal report and navigation while any slice in `last_crystallization_set` remains uncompleted. When no uncompleted slice remains, including the single-slice case, explore SHALL emit the existing terminal report and navigation exactly once and clear `active_change`; the completion transition SHALL emit no premature terminal navigation.
 
@@ -278,7 +280,7 @@ Explore SHALL defer the existing Direct Build terminal report and navigation whi
 - **WHEN** the completion transition finds no uncompleted crystallized slice
 - **THEN** explore emits the existing terminal report and navigation once and clears `active_change` without showing another selector.
 
-### Requirement: Build - Unattended deterministic selection inheritance
+### Requirement: Direct Build - Unattended deterministic selection inheritance
 
 On a Direct Build - Unattended selection, explore SHALL apply the Deterministic selection rules verbatim against `last_crystallization_set` and `completed_changes` including every degenerate state: an empty set acknowledges nothing crystallized and dispatches nothing; no uncompleted entry acknowledges completion and dispatches nothing; exactly one uncompleted entry dispatches without a picker; multiple entries use the ordered native picker with Cancel; and an active run rejects another selection for the full interval. It SHALL NOT run `openspec list --json` or re-sort names, and earlier clauses describing the selector as carrying two options are superseded for count only by this third option.
 
@@ -287,7 +289,7 @@ On a Direct Build - Unattended selection, explore SHALL apply the Deterministic 
 - **WHEN** Direct Build - Unattended is selected with multiple pending crystallized slices
 - **THEN** the existing ordered picker and Cancel behavior are used without repository enumeration or re-sorting.
 
-### Requirement: Auto-fast continuation preserves pending and completed slice state
+### Requirement: Direct Build continuation preserves pending and completed slice state
 
 After a successful slice completion, explore SHALL preserve completed progress states, filter remaining slices from `last_crystallization_set` minus `completed_changes` in crystallization order, and defer terminal navigation while pending slices remain.
 
@@ -301,7 +303,7 @@ After a successful slice completion, explore SHALL preserve completed progress s
 - **WHEN** the selection state is empty, fully completed, single-entry, multi-entry, or already active at selection time
 - **THEN** the matching degenerate rule fires unchanged with no repository enumeration or re-sorting.
 
-### Requirement: Build - Unattended run state and failure handling
+### Requirement: Direct Build - Unattended run state and failure handling
 
 Direct Build slice inventory (`set` / `active` / `done`) and TODO (`mode` plus `stage` cursor) SHALL be owned by `explore-slice@1` in sidecar-owned state. Remaining Direct Build run state SHALL remain conversation-only and SHALL preserve the fixed worker order, execution boundaries, owned-path staging, and pre-authorized local commit. A backfill execution failure with a partial mutation SHALL report the exact draft paths written before stopping and SHALL never refire any order onto the partially mutated state. An archive preparation or execution failure evaluated as a backfill-artifact error SHALL route the verbatim error to the same backfill worker that created those specs for correction and SHALL relaunch archive with the corrected artifacts. A repeated defect reported without progress after correction SHALL close as failed-retryable with the verbatim failure in view and no further automatic continuation. A late continuation after success SHALL be rejected without mutation. Repeated-defect and partial-mutation closures SHALL carry no finality and SHALL run new retries or changes only at explicit user request. An archive preparation or execution failure that is not a backfill-artifact error SHALL report the exact CLI, staging, or commit state and SHALL never commit a partial plan. CLI failure or invalid JSON that is not a backfill-artifact error SHALL stop before staging and commit. Manual `/sai-archive` and `/sai-commit` guidance remains applicable after a non-clean archive outcome. Incomplete Archive SHALL NOT mark the slice done.
 
@@ -320,43 +322,28 @@ Direct Build slice inventory (`set` / `active` / `done`) and TODO (`mode` plus `
 - **WHEN** the backfill worker reports an execution failure with a partial mutation
 - **THEN** the flow SHALL preserve the exact draft paths written and never refire any order onto the partially mutated state
 
-### Requirement: Build - Unattended pre-dispatch compatibility refusal
+### Requirement: Direct Build - Unattended pre-dispatch compatibility refusal
 
-Before Step 1 of the Direct Build Unattended flow, explore SHALL judge the emitted Ready to Propose block against the step-1 implementer's work scope only. Steps 3 through 8 own writes to OpenSpec bookkeeping artifacts under `openspec/changes/{name}/**` and `openspec/specs/**`. Explore SHALL check for planning-artifact creation, mutating git commands, subagent dispatch, or writes under `openspec/` that the block designates as step-1 implementation work including `openspec/specs/**`, `openspec/changes/**`, or `openspec/config.yaml`. `openspec/schemas/**` is permitted product scope and SHALL never be a violation. When the block evidence clearly triggers a genuine violation, explore SHALL emit a documented refusal naming the violated clause and the block evidence, dispatch nothing, mutate no selection state, and leave the change retryable. When Capabilities in scope or Implementation Details designate non-bookkeeping content under `openspec/` other than `openspec/schemas/**`, explore SHALL enter a bounded pre-dispatch recovery cycle of at most two correction attempts. A block that only mentions bookkeeping artifacts in Why, Decisions and Rationale, or Research Leads SHALL pass straight through to Step 1 with no refusal and no recovery.
+Before Step 1 of the Direct Build Unattended flow, explore SHALL judge the emitted Ready to Propose block against the step-1 implementer's work scope only. A published specification under `openspec/specs/**` SHALL change only through the change's delta, backfill, and the archive sync that steps 3 through 8 own. Explore SHALL check for planning-artifact creation, mutating git commands, subagent dispatch, or direct edits to published `openspec/specs/**` that the block designates as step-1 implementation work; every other repository artifact, including any other content under `openspec/`, SHALL be step-1 scope and never a violation. When the block evidence clearly triggers a genuine violation, explore SHALL emit a documented refusal naming the violated clause and the block evidence, dispatch nothing, mutate no selection state, and leave the change retryable with Manual available. A block that only mentions published specs in Why, Decisions and Rationale, or Research Leads SHALL pass straight through to Step 1 with no refusal.
 
 #### Scenario: Genuine step-1 violations are refused
 
-- **WHEN** the block evidence clearly designates implementation work that violates the step-1 scope (planning-artifact creation, mutating git, subagent dispatch, or non-bookkeeping openspec writes including `openspec/specs/**`, `openspec/changes/**`, or `openspec/config.yaml`)
+- **WHEN** the block evidence clearly designates implementation work that violates the step-1 scope (planning-artifact creation, mutating git, subagent dispatch, or direct edits to published `openspec/specs/**`)
 - **THEN** explore emits a documented refusal naming the violated clause and the block evidence, dispatches nothing, mutates no selection state, and leaves the change retryable.
 
 #### Scenario: Bookkeeping-only blocks pass through without refusal
 
 - **WHEN** the block only mentions or references OpenSpec bookkeeping artifacts in non-Capabilities fields
-- **THEN** explore dispatches to Step 1 without refusal or recovery.
+- **THEN** explore dispatches to Step 1 without refusal.
 
-#### Scenario: Schemas implementation passes through
+#### Scenario: Other OpenSpec content passes through
 
-- **WHEN** the block designates `openspec/schemas/**` implementation work
-- **THEN** explore dispatches to Step 1 with no refusal and no recovery
+- **WHEN** the block designates implementation work under `openspec/` outside `openspec/specs/**`, such as `openspec/schemas/**` or `openspec/config.yaml`
+- **THEN** explore dispatches to Step 1 with no refusal
 
-#### Scenario: Pre-dispatch recovery for non-bookkeeping openspec targets
+### Requirement: Explore worker bindings load at their dispatch points
 
-- **WHEN** the block's `**Capabilities in scope**` or `**Implementation Details**` designate implementation work targeting non-bookkeeping content under `openspec/` other than `openspec/schemas/**`
-- **THEN** explore enters a bounded pre-dispatch recovery cycle (at most two correction attempts): present the incompatibility naming the violated clause and the block evidence, allow the block to be corrected in session memory, revalidate against the narrowed refusal, and proceed to Step 1 with the corrected block when revalidation passes.
-
-#### Scenario: Recovery cycle exhaustion refers to Manual
-
-- **WHEN** correction attempts are exhausted or declined
-- **THEN** explore emits the documented refusal with the last-attempted block state as evidence, dispatches nothing, mutates no selection state, and leaves the change retryable with Manual available.
-
-#### Scenario: Session-scoped correction does not rewrite history
-
-- **WHEN** a pre-dispatch recovery correction is accepted
-- **THEN** the correction is session-scoped: it writes no file, does not rewrite the block already printed in the chat history, keeps explore read-only, and changes only the `arguments_value` travelling to the implementer; it creates no `task_id`, consumes no `fix_rounds`, and does not touch Bounded Recovery.
-
-### Requirement: Build-route worker bindings load at their dispatch points
-
-The Direct Build - Unattended route of `/sai-explore` SHALL load the binding for each of its three workers (`sai-direct-build-worker`, `sai-backfill-worker`, `sai-archive-worker`) lazily at that worker's dispatch point in `sai/commands/explore/steps/pipeline-direct-build.md`, not in `sai/commands/explore/command-bootstrap.md`. The bootstrap SHALL preload only the Plan-route bindings (`spec-worker`, `design-worker`) and SHALL document that Direct Build-route bindings are fetched at dispatch so read-only explore sessions that never dispatch pay no context cost. Each dispatch SHALL occur only after its binding has been fetched and used, so the envelope carries the binding's `Worker contract: Fetch …` + `InvocationEnvelope:` framing and the worker returns closed lifecycle payloads.
+The Direct Build - Unattended route of `/sai-explore` SHALL load the binding for each of its three workers (`sai-direct-build-worker`, `sai-backfill-worker`, `sai-archive-worker`) lazily at that worker's dispatch point in `sai/commands/explore/steps/pipeline-direct-build.md`, not in `sai/commands/explore/command-bootstrap.md`. The Plan - Unattended route SHALL likewise load the `spec-worker` and `design-worker` bindings at its phase-aware dispatch point in `sai/commands/explore/steps/pipeline-plan-unattended.md`, so explore sessions that never dispatch load no worker binding. Each dispatch SHALL occur only after its binding has been fetched and used, so the envelope carries the binding's `Worker contract: Fetch …` + `InvocationEnvelope:` framing and the worker returns closed lifecycle payloads.
 
 #### Scenario: The implementer binding is fetched before the step-1 dispatch
 
@@ -373,10 +360,15 @@ The Direct Build - Unattended route of `/sai-explore` SHALL load the binding for
 - **WHEN** the Direct Build route reaches its archive dispatch
 - **THEN** `pipeline-direct-build.md` fetches `@sai/orchestration/workers/bindings/archive-worker.md` and uses it before dispatching `sai-archive-worker`.
 
-#### Scenario: The bootstrap does not preload Direct Build-route bindings
+#### Scenario: The Plan bindings are fetched before the first Plan dispatch
+
+- **WHEN** the Plan - Unattended route reaches its phase-aware dispatch
+- **THEN** `pipeline-plan-unattended.md` fetches `@sai/orchestration/workers/bindings/spec-worker.md` and `@sai/orchestration/workers/bindings/design-worker.md` and uses them before dispatching either worker.
+
+#### Scenario: The bootstrap preloads no worker binding
 
 - **WHEN** `sai/commands/explore/command-bootstrap.md` is read
-- **THEN** it preloads only the spec and design bindings and its explanatory text states that the three Direct Build-route bindings are fetched lazily at their dispatch points.
+- **THEN** it fetches no worker binding.
 
 ### Requirement: Build spec review checks MODIFIED-delta completeness
 
@@ -389,21 +381,31 @@ The Direct Build - Unattended route's step-4 spec review SHALL run a MODIFIED-de
 
 ### Requirement: The Direct Build run has three guard windows
 
-Every dispatch of a Direct Build (unattended) run SHALL be guarded by the deterministic no-commit guard, in three windows: (1) the implementer window, opened by the Step 1 snapshot whose head is recorded as BOTH `base_sha` and the window's `guard_base`, verified after the implementer stretch closes — the fix loop converged or the cap exhausted — and before the Step 3 staging; (2) the backfill window, opened by a fresh snapshot immediately before the Step 3 prepare dispatch — taken after the path-scoped staging, so the coordinator's `git add` runs outside every window — and verified after the Step 6 execute terminal before acting on it, with the findings and execute continuations each opening their own sub-window from a fresh snapshot and verified after their result; (3) the archive window, opened by a fresh snapshot immediately before the Step 7 prepare dispatch, with a fresh sub-window snapshot immediately before the Step 8 execute continuation whose verify runs with `--allow-commit`, because that continuation's validated closed order contains the one pre-authorized local commit. On a `violation` verdict the coordinator remediates exactly as the no-commit-guard policy prescribes — evidence first, `git reset <guard_base>` (mixed), one pinned incident line — then continues the route.
+Every dispatch of a Direct Build (unattended) run SHALL be guarded by the deterministic no-commit guard, in three windows: (1) the implementer window, opened by the Step 1 snapshot whose head is recorded as BOTH `base_sha` and the window's `guard_base`, verified after the implementer stretch closes — the fix loop converged or the cap exhausted — and before the Step 3 staging; (2) the backfill window, opened by a fresh snapshot immediately before the Step 3 prepare dispatch — taken after the path-scoped staging, so the coordinator's `git add` runs outside every window — spanning the findings and execute continuations with no guard call between them, and verified after the Step 6 execute terminal before acting on it; (3) the archive window, opened by a fresh snapshot immediately before the Step 7 prepare dispatch and closed by a normal verify immediately before the Step 8 execute continuation, which carries `allow_commit` and therefore always opens its own isolated window from a fresh snapshot, verified with `--allow-commit` over that window only, because that continuation's validated closed order contains the one pre-authorized local commit. Progress events and notices inside a window SHALL take no guard call; a human turn inside any window (an escalated question) SHALL be a boundary per the no-commit-guard policy: verify before presenting it and snapshot again after the answer, before forwarding it. On a `violation` verdict the coordinator remediates exactly as the no-commit-guard policy prescribes, then continues the route.
 
 #### Scenario: the backfill prepare window opens after staging
 
 - **WHEN** the run stages the implementer's owned paths and then dispatches the backfill prepare stretch
 - **THEN** the backfill window's snapshot is taken after the staging, so the coordinator's `git add` runs outside every guard window
 
+#### Scenario: the backfill window spans its continuations
+
+- **WHEN** the backfill findings and execute continuations follow the prepare stretch with no human turn in between
+- **THEN** no guard call runs between them, and the backfill window is verified once after the Step 6 execute terminal
+
 #### Scenario: the archive execute sub-window carries the lax flag
 
-- **WHEN** the Step 8 archive execute continuation is dispatched under its fresh sub-window snapshot
-- **THEN** that sub-window's verify runs with `--allow-commit` and the other two windows run without it
+- **WHEN** the Step 8 archive execute continuation runs in its isolated window opened from a fresh snapshot
+- **THEN** only that window's verify runs with `--allow-commit`, and the implementer, backfill, and archive prepare windows are verified without it
+
+#### Scenario: the archive execute continuation opens an isolated window
+
+- **WHEN** the Step 8 archive execute continuation is about to be dispatched
+- **THEN** the archive window is closed by a normal verify first, and the continuation runs in its own window from a fresh snapshot whose verify alone carries `--allow-commit`
 
 ### Requirement: Direct Build slice-machine emits
 
-On a Direct Build (unattended) selection, explore SHALL emit intent direct-build to explore-slice@1. If the response carries rejected ALREADY_RUNNING, including when Plan is already active, explore SHALL acknowledge already running and dispatch nothing. If the response carries rejected NO_PENDING_SLICE explore SHALL acknowledge missing inventory, dispatch nothing, and prompt block-first. After each high-level route item converges (Build/Implement, then Backfill, then Archive), explore SHALL emit intent complete. Completing Archive is the machine's done signal: it marks the slice done and clears active. Direct Build SHALL NEVER emit next-slice. Fail or cancel SHALL leave the active step pending and SHALL NOT mark the slice done.
+On a Direct Build (unattended) selection, explore SHALL emit intent direct-build with `pick` set to the chosen change name to explore-slice@1. If the response carries rejected ALREADY_RUNNING, including when Plan is already active, explore SHALL acknowledge already running and dispatch nothing. If the response carries rejected NO_PENDING_SLICE explore SHALL acknowledge missing inventory, dispatch nothing, and prompt block-first. After each high-level route item converges (Build/Implement, then Backfill, then Archive), explore SHALL emit intent complete. Completing Archive is the machine's done signal: it marks the slice done and clears active. Direct Build SHALL NEVER emit next-slice. Every retryable non-clean ending SHALL emit intent fail, which parks the slice at its current route item without marking it done; a later Direct Build selection of that slice SHALL resume at the parked item.
 
 #### Scenario: Direct Build selection emits direct-build
 
@@ -436,7 +438,7 @@ The supervision SHALL evaluate an archive preparation or execution failure as a 
 
 ### Requirement: Plan slice-machine emits
 
-On a Plan (unattended) selection, explore SHALL emit intent plan to explore-slice@1. If the response carries rejected ALREADY_RUNNING, including when Direct Build is already active, explore SHALL acknowledge already running and dispatch nothing. If the response carries rejected NO_PENDING_SLICE explore SHALL acknowledge missing inventory, dispatch nothing, and prompt block-first. After spec convergence, explore SHALL emit intent complete (sai-1 to sai-2). After a clean terminal design result, explore SHALL emit intent complete (sai-2 to implement). pipeline-plan-unattended.md SHALL be next.follow for all three Plan stages. Fail, cancel, STOP, or exhausted recovery on sai-1 or sai-2 SHALL leave that step pending, keep prior completed steps, and leave the slice retryable, with no skip to implement. Implement has no worker. Implement completes only on next-slice; that emit marks the slice done, clears active, and returns stage to idle. If pending slices remain, explore SHALL re-present the selector, as after Archive. next-slice while Plan is on sai-1 or sai-2 SHALL NOT complete Implement and SHALL NOT mark the slice done.
+On a Plan (unattended) selection, explore SHALL emit intent plan with `pick` set to the chosen change name to explore-slice@1. If the response carries rejected ALREADY_RUNNING, including when Direct Build is already active, explore SHALL acknowledge already running and dispatch nothing. If the response carries rejected NO_PENDING_SLICE explore SHALL acknowledge missing inventory, dispatch nothing, and prompt block-first. After spec convergence, explore SHALL emit intent complete (sai-1 to sai-2). After a clean terminal design result, explore SHALL emit intent complete (sai-2 to implement). pipeline-plan-unattended.md SHALL be next.follow for all three Plan stages. Fail, cancel, STOP, or exhausted recovery on sai-1 or sai-2 SHALL leave that step pending, keep prior completed steps, and leave the slice retryable, with no skip to implement; explore SHALL emit intent fail at that ending, and the later Plan selection that retries the slice SHALL resume the machine on the same step. Implement has no worker. Implement completes only on next-slice; that emit marks the slice done, clears active, and returns stage to idle. If pending slices remain, explore SHALL re-present the selector, as after Archive. next-slice while Plan is on sai-1 or sai-2 SHALL NOT complete Implement and SHALL NOT mark the slice done.
 
 #### Scenario: Plan selection emits plan
 
@@ -452,4 +454,3 @@ On a Plan (unattended) selection, explore SHALL emit intent plan to explore-slic
 
 - **WHEN** the user selects Plan Unattended while explore-slice@1 has no pending slice
 - **THEN** explore emits plan intent and on rejected NO_PENDING_SLICE acknowledges missing inventory and dispatches nothing
-

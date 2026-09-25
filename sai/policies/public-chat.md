@@ -2,46 +2,43 @@
 
 # Public Chat Policy
 
-Canonical policy for explanatory text visible in the user's conversation. Consumed by reference; never restated at a consuming surface.
-
 ## Scope
 
-This policy governs visible explanatory chat text authored by any SAI surface, including coordinator text, utility-command text, and worker-authored `question`, `message`, and `summary` fields that a coordinator presents to the user. A worker does not chat with the user directly; its returned payload is the channel through which its user-facing text is presented.
+Explanatory text a user reads in the conversation: coordinator and utility-command text, and the `question`, `message`, and `summary` fields a worker returns for a coordinator to present. The author of the text applies this policy, including when authoring worker fields; the presenting coordinator forwards those fields unchanged. Reasoning, worker session text, payloads, code, paths, panel labels, and persistent artifacts are outside it.
 
-The policy applies to the text a context-switched reader can see in the conversation. It does not govern internal reasoning, technical payloads, machine-readable content, panel labels, code, or persistent artifacts.
+## Write for a context-switched reader
 
-## Communication rules
+The reader has just switched back to this chat and remembers none of it. Every explanatory message:
 
-Every covered explanatory message SHALL:
+1. **Carries its context**: names the command, change, artifact, state, or requested action whenever the reader's next step depends on it.
+2. **Says it plainly**: in controlled plain language, with specialized terms defined first (both below).
+3. **States its purpose**: what happened, what is being reported, and what the user needs to do, each told apart.
 
-1. **Use plain wording** — prefer simple, direct language and short sentences. Do not make the reader decode internal jargon when a common term will do.
-2. **Context carry-over** — include the nearby context needed to understand the message without relying on earlier conversation. Name the current command, change, artifact, state, or requested action when it is relevant to the reader's decision or next step.
-3. **Explain non-obvious references** — briefly explain an internal term, reference, or gate the first time it matters, using a short parenthetical where that is clearest. Do not assume that a reader knows internal gate numbers, lifecycle statuses, artifact names, or routing terms.
-4. **Make the purpose clear** — distinguish what happened, what is being reported, and what the user needs to do, without adding context that changes the contract.
+Stay proportionate: enough context for a reader joining midstream, without repeating large technical payloads or unrelated history.
 
-The explanation SHALL be concise and proportionate: add enough context for a reader joining midstream, but do not repeat large technical payloads or unrelated history.
+## Terminology
 
-## Cross-surface coverage
+When a message introduces any specialized, internal, or potentially ambiguous term, put a visible **Terminology** section before the main explanation. Give each such term one short definition in plain language before its first meaningful use in that explanation. This includes terms such as gate numbers, lifecycle statuses, artifact names, and routing names. Use each defined term consistently, never a synonym for it. A message with no specialized, internal, or potentially ambiguous terms may omit the Terminology section.
 
-- **Coordinators** apply these rules to explanatory notices, summaries, gate introductions, and other text they author for the user.
-- **Utility commands** apply these rules to their user-facing explanatory text even when the visible response is produced by a utility command body or another component.
-- **Workers** apply these rules to the user-facing `question`, `message`, and `summary` fields they author in returned payloads. Worker reasoning and session text are not public chat. Coordinators present these fields verbatim and SHALL NOT rephrase, enrich, or restructure them.
+This section explains prose; it does not rename, rewrite, or replace required technical text. If a required literal must appear before the section, preserve it exactly and define the relevant term before relying on it in the main explanation.
 
-Compliance is required at the surface that authors the visible explanatory text. A command is covered when another component generates its visible text; the generating author follows this policy, and the presenting surface preserves the result.
+## Controlled plain language
+
+Write explanatory prose in the style of ASD-STE100 (Simplified Technical English), taken as a profile rather than formal compliance: familiar, precise words; short, direct sentences with one main idea each; active voice with a clear actor and action; concrete next steps; abbreviations only when necessary; and each word keeping one meaning within a message.
+
+Write the explanation in the user's language. Adapt these clarity rules to that language rather than imposing English vocabulary or literal ASD-STE100 rules; keep required technical literals unchanged.
 
 ## Protocol preservation
 
-This policy changes explanatory wording only. It SHALL NOT alter:
+This policy adapts explanatory prose only. Keep byte-for-byte:
 
-- fixed messages, fixed literals, STOP messages, required notices, or text the user explicitly asks to keep verbatim;
-- technical formats, machine-readable content, lifecycle statuses, payload structures or fields, identifiers, or tokens;
-- picker options, option values, ordering, panel labels, or other harness-owned presentation labels;
-- code, technical payloads, or persistent artifacts.
+- fixed messages and literals, STOP messages, required notices, and text the user asked to keep verbatim;
+- technical formats, machine-readable content, lifecycle statuses, payload fields, identifiers, and tokens;
+- picker options, option values and their order, panel labels, and other harness-owned labels;
+- code, paths, technical payloads, and persistent artifacts.
 
-When a message mixes explanatory prose with a required fragment, adapt only the explanatory prose and keep the required fragment unchanged. Exact protocol wording and this policy's communication guidance are resolved in favor of the exact protocol wording where they conflict.
+When a message mixes prose with a required fragment, adapt only the prose around it. Where exact protocol wording and this policy conflict, the protocol wording wins.
 
-## Single source and loading
-
-This file is the single source for public-chat readability and context rules. The shared `sai/orchestration/command-runner.md` and `sai/orchestration/worker-core.md` contracts load it so coordinator, utility-command, and worker-authored chat text receive the same rules across Claude Code and opencode. Consuming command cards and worker-specific contracts SHALL reference the shared loading rather than copy these rules.
+This policy governs wording only. Each command's own contract sets its write scope, including Explore's read-only rule.
 
 </public_chat_policy>

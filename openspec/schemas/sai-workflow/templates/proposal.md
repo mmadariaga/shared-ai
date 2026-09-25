@@ -29,6 +29,9 @@
 
 **External URLs**: <!-- List every external URL consulted during spec-phase codebase research -->
 
+## Request Additional Notes
+
+<!-- Verbatim, non-normative copy of the Ready to Propose block's `**Request Additional Notes**` field (user-agreed context). Copy byte-for-byte; derive no requirements or scenarios from it. Omit this whole section when the block carries no such field. -->
 
 ## Additional Notes
 

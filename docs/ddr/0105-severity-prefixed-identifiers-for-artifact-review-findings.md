@@ -22,7 +22,7 @@ Every artifact review finding carries an identifier derived from its `Severity` 
 
 ## Consequences
 
-- Deterministic pass reporting renders severity-prefixed labels (`Finding H1` / `M1` / `L1`); the regression suite pins the `Finding\s+H\d+` / `M\d+` / `L\d+` forms, so changing the scheme is a test-breaking contract change.
+- Findings render the severity-prefixed label on the contract's `- Identifier: H1` / `M1` / `L1` line, the layout the findings validator parses; the regression suite pins that form, so changing the scheme is a test-breaking contract change.
 - Identifier semantics stay tied to the `Severity` field, never replacing it as the validated source of truth.
 - Contract-violating findings keep their reviewer-supplied identifier verbatim, so rejection evidence remains readable.
 - The scheme is artifact-review-scoped; the audit commands retain their own identifier schemes ([DDR 0013](../adr/0013-mmut-n-finding-namespace-for-mutation-analysis.md)).

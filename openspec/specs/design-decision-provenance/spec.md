@@ -1,5 +1,9 @@
 # design-decision-provenance Specification
 
+## Purpose
+
+This capability records the source of design decisions so downstream phases can tell which decisions may be reopened without new information.
+
 ## Requirements
 
 ### Requirement: Every Decision carries a provenance marker

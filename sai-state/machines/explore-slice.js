@@ -34,13 +34,34 @@ const STAGE_HINTS = Object.freeze({
   archive: 'follow',
 });
 
+const MODE_STEPS = Object.freeze({
+  [DIRECT_BUILD_MODE]: DIRECT_BUILD_STEPS,
+  [PLAN_MODE]: PLAN_STEPS,
+});
+
 const initialState = Object.freeze({
   stage: IDLE_STAGE,
   set: [],
   active: null,
   done: [],
   mode: null,
+  parked: {},
 });
+
+// A parked slice is pending with a saved cursor: `fail` or `cancel` parked it,
+// and only a selection in its own mode resumes it at the saved stage.
+function cloneParked(src) {
+  const parked = {};
+  if (!src || typeof src !== 'object' || Array.isArray(src)) return parked;
+  for (const name of Object.keys(src)) {
+    const entry = src[name];
+    if (!entry || typeof entry !== 'object') continue;
+    const steps = MODE_STEPS[entry.mode];
+    if (!steps || steps.indexOf(entry.stage) === -1) continue;
+    parked[name] = { mode: entry.mode, stage: entry.stage };
+  }
+  return parked;
+}
 
 function cloneState(state) {
   const src = state && typeof state === 'object' ? state : {};
@@ -49,7 +70,8 @@ function cloneState(state) {
   const active = src.active == null ? null : src.active;
   const done = Array.isArray(src.done) ? src.done.slice() : [];
   const mode = typeof src.mode === 'string' ? src.mode : null;
-  return { stage, set, active, done, mode };
+  const parked = cloneParked(src.parked);
+  return { stage, set, active, done, mode, parked };
 }
 
 function snapshotOf(current) {
@@ -59,6 +81,7 @@ function snapshotOf(current) {
     active: current.active,
     done: current.done.slice(),
     mode: current.mode,
+    parked: cloneParked(current.parked),
   };
 }
 
@@ -74,13 +97,7 @@ function nextFor(stage) {
 }
 
 function outcome(current, rejected) {
-  const state = {
-    stage: current.stage,
-    set: current.set.slice(),
-    active: current.active,
-    done: current.done.slice(),
-    mode: current.mode,
-  };
+  const state = snapshotOf(current);
   const result = {
     state,
     snapshot: { state: snapshotOf(state), machineId },
@@ -108,17 +125,36 @@ function finishSlice(current) {
   return outcome(current);
 }
 
-function startRoute(current, mode, steps) {
+// `pick` names the slice the user chose; without it the first pending slice
+// starts. A parked slice resumes at its saved stage, and only in its own mode.
+function startRoute(current, mode, steps, pick) {
   if (current.active != null) {
     return outcome(current, 'ALREADY_RUNNING');
   }
   const pending = pendingOf(current);
-  if (pending.length === 0) {
+  const target = pick === undefined ? pending[0] : pick;
+  if (target === undefined || pending.indexOf(target) === -1) {
     return outcome(current, 'NO_PENDING_SLICE');
   }
-  current.active = pending[0];
+  const parked = current.parked[target];
+  if (parked && parked.mode !== mode) {
+    return outcome(current, 'ALREADY_RUNNING');
+  }
+  current.active = target;
   current.mode = mode;
-  current.stage = steps[0];
+  current.stage = parked ? parked.stage : steps[0];
+  delete current.parked[target];
+  return outcome(current);
+}
+
+function parkSlice(current) {
+  if (current.active == null) {
+    return outcome(current);
+  }
+  current.parked[current.active] = { mode: current.mode, stage: current.stage };
+  current.active = null;
+  current.mode = null;
+  current.stage = IDLE_STAGE;
   return outcome(current);
 }
 
@@ -135,10 +171,12 @@ function transition(state, signal) {
   const sig = signal && typeof signal === 'object' ? signal : {};
 
   // Inventory recording: a recordedList replaces `set` without moving the
-  // Direct Build or Plan cursor. Slice names persist in stage machine state and never
-  // appear on the wire.
+  // Direct Build or Plan cursor of a running slice, and discards every parked
+  // cursor, so a re-crystallized slice re-enters at its route's first step.
+  // Slice names persist in stage machine state and never appear on the wire.
   if (Array.isArray(sig.recordedList)) {
     current.set = sig.recordedList.slice();
+    current.parked = {};
     return outcome(current);
   }
 
@@ -149,9 +187,9 @@ function transition(state, signal) {
   const intent = sig.intent;
 
   if (intent === 'fail' || intent === 'cancel') {
-    // Fail/cancel leaves the active step pending. Neither incomplete
-    // Archive nor next-slice marks the slice done.
-    return outcome(current);
+    // Fail/cancel parks the active slice at its current step, releases
+    // `active`, and returns to idle without marking the slice done.
+    return parkSlice(current);
   }
 
   if (intent === 'next-slice') {
@@ -164,11 +202,11 @@ function transition(state, signal) {
   }
 
   if (intent === DIRECT_BUILD_MODE) {
-    return startRoute(current, DIRECT_BUILD_MODE, DIRECT_BUILD_STEPS);
+    return startRoute(current, DIRECT_BUILD_MODE, DIRECT_BUILD_STEPS, sig.pick);
   }
 
   if (intent === PLAN_MODE) {
-    return startRoute(current, PLAN_MODE, PLAN_STEPS);
+    return startRoute(current, PLAN_MODE, PLAN_STEPS, sig.pick);
   }
 
   if (intent === 'complete') {

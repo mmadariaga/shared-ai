@@ -1,72 +1,64 @@
 # Stage Machine — Common Operational Policy
 
-Single source for stage-machine operations. Every command that mentions the
-stage machine fetches this file and SHALL NOT restate its verbs, errors,
-quoting, pointer, or degraded-mode contract inline. Per-machine event tables
-(intents, stages, step maps, seeding shapes, routing modes) stay with their
-owning command and are never copied here.
+Single source for `sai-state` operations: verbs, responses, event delivery,
+corrective retry, `next.follow` loading, degraded mode, and linear
+step-machine consumption.
+Per-machine definitions (intents, stages, step files, seeding shapes, routing
+modes) stay with the owning command, which keeps its own event table and a
+fetch line to this file.
 
-## What it is
+## The store
 
-The stage machine is a local per-chat CLI state store (`bin/sai-state.js`),
-not an HTTP service. There is no port, no token, and no liveness model. One
-session id may host several machines at once (a `stateByMachine` map); each
-machine owns its own stage table, pointer routing, transition rules, and
-persisted progression state.
+`bin/sai-state.js` is a local per-chat CLI store. One session id hosts several
+machines (a `stateByMachine` map), each with its own stages, routing, and
+progression. The session persists as a durable store in one file under the
+system temp directory and reloads on every invocation; state never enters the
+project and never travels in a request or a response.
 
-State never travels the wire and is never written into the project. Each
-session persists as a durable store in its own file under the system temp directory
-(`sai-state/<id>.json`, directory mode `0700`, file mode `0600`, atomic
-writes) and reloads automatically on each invocation. No state object and no
-snapshot travel in either direction.
-
-## Concurrency
-
-One session file has one writer at a time. Parallel workers may run
-concurrently, but their store operations (`emit`, `reset`) against the same
-session `id` serialize — for the meta-review audit batch in fixed order
-security → performance → accessibility. The store re-reads the file just
-before writing, preserves sibling machines by max `rev`, and merges the
-target `done[]` by union in canonical order, so a narrow overlap keeps
-survivors harmless for monotonic step sets. The read-then-write is not
-atomic: a residual TOCTOU window remains with no lockfile or CAS retry,
-accepted because serialization leaves it with no real pressure. Keep a
-single `<id>.json` with `stateByMachine` and per-machine `rev`; no
-per-machine files.
+A session file takes one writer at a time: run `emit` and `reset` calls against
+the same session id one after another, even while workers run in parallel. The
+meta-review audit batch emits in fixed order security → performance →
+accessibility.
 
 ## Verbs
 
-Resolve the CLI path per `@sai/policies/tool-resolution.md` for
-`bin/sai-state.js`: first existing candidate per harness, copied verbatim,
-never composed from a root string, with the opencode XDG fallback only when
-neither verbatim candidate exists. The first existing copy wins and defines
-the version. If no candidate exists, name the tried candidates and stop the
-coordinator per the step-machine contract — never fall back to prose, and a
-store failure stops `step_machine` coordinators, which surface the error and
-wait for user instructions. Whichever candidate wins, every invocation below
-is byte-identical (`node <tool-path> <verb> ...` with the verb's own
-arguments; the verbs take neither `--json` nor `--cwd`), so a single whitelist
-entry per root covers each form. Below, `sai-state <verb>` is shorthand for that resolved
-`node <tool-path> <verb>` invocation.
+Resolve the CLI path per `@sai/policies/tool-resolution.md` § `bin/sai-state.js`
+copy. Below, `sai-state <verb>` is shorthand for `node <tool-path> <verb>`; the
+verbs take neither `--json` nor `--cwd`. A missing argument is a usage error
+(exit 2).
 
 - **Spawn**: `sai-state spawn --key <stable-key>` initializes or locates the
-  session for that key and returns `{id}`. The id is a deterministic UUIDv4
-  derived from the key and may be reused across invocations with the same
-  key. Derive the key from the harness session identifier (reuse-or-fresh).
-  A missing `--key` is a usage error (exit 2).
-- **Emit**: `sai-state emit <id> <machineId> <eventJson>` sends one JSON event
-  object to one machine and returns the minimal wire outcome
-  `{stage, next: {follow, hint}, rejected?, warnings?}`. No state is ever sent
-  in a request. A missing argument is a usage error (exit 2); a machine
-  rejection returns exit 0 with `rejected` set; a machine error returns
-  exit 1 with `{error, next}`.
-- **Reset**: `sai-state reset <id> <machineId>` clears only that machine's
-  state in the session with an atomic write, leaving other machines in the
-  same session untouched. Returns `{reset: <machineId>}`. A missing argument
-  is a usage error (exit 2).
+  session for that key and returns `{id}`. Derive the key from the harness
+  session identifier; the same key always yields the same id.
+- **Emit**: `sai-state emit <id> <machineId> -` reads one event as JSON from
+  stdin, sends it to one machine, and returns
+  `{stage, next: {follow, hint}, rejected?, warnings?}`. The `-` marker is the
+  last argument; event JSON passed as an argument is a usage error (exit 2).
+- **Progress emit**: `sai-state emit <id> <machineId> --progress [--with-overview true|false] -`
+  reads one worker progress payload
+  (`{event: "progress", step_ids, changed_files}`) as JSON from stdin instead
+  of a hand-composed event. It validates the raw stdin text, unnormalized,
+  through the worker-report validator module before any session, machine, or
+  registry read,
+  then derives the machine event `{"step_ids": [...]}` from the valid payload
+  and advances the machine. It always returns an object carrying
+  `validation: {ok, action, kind, errors, validated_at?}` — the same verdict
+  `worker-report-validator.js validate --kind progress` prints — and, only on a
+  valid verdict, the ordinary emit fields above. An invalid verdict never
+  reaches the machine; non-JSON stdin is an invalid verdict, not
+  `EVENT_UNPARSEABLE`. Exit 1 covers both an invalid verdict and a machine
+  error: discriminate by `validation.ok`. `--with-overview` is accepted only on
+  `design-standalone@1` and adds `withOverview` to the derived event; on any
+  other machine it is a usage error (exit 2). A validator module found in
+  neither location relative to the CLI exits 2 naming the tried paths and
+  emits nothing.
+- **Reset**: `sai-state reset <id> <machineId>` clears that one machine's state
+  and returns `{reset: <machineId>}`; other machines in the session keep theirs.
 - **Close**: `sai-state close <id>` deletes the session file and returns
-  `{closed: id}`. Reopening the same id afterwards starts from the initial
-  state. Close the session when the run closes; there is no auto-retry.
+  `{closed: id}`; the same id then starts from the initial state. Close the
+  session when the run closes.
+
+`machineId` is exactly `<name>@<version>` (for example `explore-idea@1`).
 
 Canonical example (the only full spelling; consuming commands name intents
 without re-spelling the verbs):
@@ -74,67 +66,58 @@ without re-spelling the verbs):
 ```text
 sai-state spawn --key <stable-key>
 sai-state reset <id> review-standalone@1
-sai-state emit <id> explore-idea@1 '{"intent":"next-step"}'
+echo '{"intent":"next-step"}' | node <tool-path> emit <id> explore-idea@1 -
 sai-state close <id>
 ```
 
-## machineId
+## Responses
 
-Every emit names its machine as exactly `<name>@<version>` (for example
-`explore-idea@1`). An omitted or mistyped `machineId` is a closed error and
-nothing falls back to the first machine.
+A machine error exits 1 with `{error, next}` and one closed literal:
 
-## Errors
+- `INVALID_EVENT`: a missing `@version` or a transition the machine rejects as
+  non-conforming (a logic failure, no `reason`). When the event JSON read from
+  stdin cannot be parsed (empty, truncated, trailing text, broken quotes), the
+  response also carries `reason: "EVENT_UNPARSEABLE"` (a delivery failure) and
+  no transition occurs.
+- `UNKNOWN_MACHINE`: an unknown base name.
+- `VERSION_MISMATCH`: a known base name with the wrong version.
 
-Closed literals only: `INVALID_EVENT`, `UNKNOWN_MACHINE`, `VERSION_MISMATCH`.
-`INVALID_EVENT` covers a missing `@version`, malformed JSON (very often a
-quoting slip, see below), and a transition the machine rejects as
-non-conforming. `UNKNOWN_MACHINE` covers an unknown base name;
-`VERSION_MISMATCH` covers a known base with the wrong version. A `warnings`
-array on a response (first value `SESSION_FILE_CORRUPT`) reports store
+A `rejected` field (exit 0) means the machine did not advance, for example an
+intent-less advance or `ALREADY_RUNNING`: fetch nothing and give the
+acknowledgement the owning command defines.
+
+A `warnings` array (first value `SESSION_FILE_CORRUPT`) reports store
 degradation inside that same response: treat the returned `stage` as
 authoritative and surface the regression against the presentation hint.
 
-A `rejected` field on an otherwise successful emit (for example an
-intent-less advance or an already-running route) means the machine did not
-advance: do not fetch a step file on your own; the owning command defines
-the acknowledgement. An `error` response likewise fetches nothing.
+## Event delivery
 
-## Quoting (Windows PowerShell)
+The event travels on stdin, never as an argument. The canonical example's
+emit line is the full invocation, identical in bash, Windows PowerShell 5.1,
+and PowerShell 7 on both Claude Code and opencode: the JSON in single quotes
+with plain double quotes, echoed and piped to `emit <id> <machineId> -`.
+Nothing is escaped.
 
-`eventJson` is a single shell argument containing JSON with double quotes.
+The store strips a leading BOM and surrounding whitespace or line breaks
+before parsing. Windows PowerShell 5.1 turns non-ASCII characters into `?` on
+the pipe and the store accepts them as received, so events carry identifiers,
+never free text: a `recordedList` holds only list ids (`"E1"`, `"E2"`, …,
+`"I1"`, …, or the Step ids), because the machine reads only whether the list
+is recorded or empty. `explore-slice@1` is the one exception: its
+`recordedList` and `pick` carry `**Change name**` values, which are kebab-case
+ASCII identifiers, because that machine tracks slices by name.
 
-Bash / interactive PowerShell only — single-quote the whole payload and keep
-the JSON double quotes verbatim (Linux unaffected; this form stays valid on
-Linux and in interactive PowerShell where no native-argument boundary strips
-quotes):
+## Corrective retry
 
-```text
-sai-state emit <id> explore-slice@1 '{"intent":"plan"}'
-```
-
-Windows/PowerShell (official) — agent shells hit a second layer: single quotes
-protect against PowerShell parsing only, not against native-argument passing
-to `node.exe`, which strips the inner double quotes (PowerShell 5.1 observed:
-`'{"intent":"plan"}'` arrives as `{intent:plan}` and the store answers
-`INVALID_EVENT`). Build the payload in a variable with escaped doubles and
-pass the variable as exactly one argument (verified on PowerShell 5.1;
-verification on PowerShell 7+ pending):
-
-```powershell
-$evt = '{\"intent\":\"plan\"}'
-node <tool-path> emit <id> explore-slice@1 $evt
-```
-
-Never wrap the payload in outer double quotes without escaping the inner ones;
-bare inner doubles inside an outer-double-quoted argument split or mangle the
-payload and the store answers `INVALID_EVENT`. When the harness must pass
-double-quoted arguments (or when building the command programmatically),
-escape every inner double quote (`\"`) or construct the argument via
-`JSON.stringify` and pass it as exactly one argument. On malformed event JSON
-that shows the quote-stripped signature the store keeps `INVALID_EVENT`
-(exit 1, no transition) and adds a stderr hint pointing back to this section;
-the stdout wire stays byte-identical and the success path is untouched.
+A delivery failure — `reason: "EVENT_UNPARSEABLE"` or an `emit` usage error
+(exit 2) — gets up to 2 retries of that same emit without asking the user,
+before any store failure is declared. Each retry corrects the delivery form to
+the canonical example; repeating the same command is not a retry. When both
+retries fail, stop and show the error per § next.follow. The counter belongs
+to that one emit, not to the session, and the rule binds every emitter,
+coordinators that declare a `step_machine` included. Every other emit error (a
+logic failure, `UNKNOWN_MACHINE`, `VERSION_MISMATCH`, an unreachable or
+degraded store) gets no retry.
 
 ## next.follow
 
@@ -146,10 +129,12 @@ does not track the loaded-set. Never parse `next.hint` to decide whether to
 fetch. Consume the returned `stage` as the current stage; the response always
 wins over any disposable presentation hint held for panel rendering.
 
-A follow-load failure stops the run: show the error and wait for the user.
-Guess no other file and never route the failure through worker Bounded
-Recovery. An emit failure or `rejected` response stops the same way and
-fetches nothing on its own.
+A follow-load failure or an emit error stops the run, after § Corrective
+retry for a delivery failure:
+show the error and wait for the user. Guess no other file and
+never route the failure through worker Bounded Recovery. An emit error here is
+`INVALID_EVENT` or `UNKNOWN_MACHINE`; an unreachable store, `VERSION_MISMATCH`,
+and a closed session follow § Degraded mode instead.
 
 ## Degraded mode
 
@@ -158,66 +143,42 @@ auto-advancing and ask the user for an explicit next step; the progression
 continues in degraded mode without re-deriving the transition table in prose.
 Version-mismatch and closed-session outcomes fall to this degraded path
 rather than continuing against a mismatched machine. A command that declares
-its own specialized store-failure fallback (for example a full-context inline
-derivation) follows that fallback where stated; this section is the default
-everywhere else.
-
-Degraded mode does not apply to linear step-machine routing (see **Step
-machines** below). A coordinator declaring a step machine stops instead of
-continuing degraded when the store fails, surfaces the error, and waits for
-user instructions.
+its own store-failure fallback (for example apply's degraded-store fallback)
+follows it instead. Coordinators that declare a `step_machine` never run
+degraded: see § Step machines.
 
 ## Step machines
 
-Shared consumption rules for linear step machines in coordinators that declare
-`step_machine: <name>@<version>` as an optional adapter field. Every linear
-step machine owns a coordinator's step cursor and returns the next step file
-in a happy-path sequence (advance-only, no backtracking, no conditional
-branching). A machine never writes artifacts; it is routing-only. Per-command
-definitions (step ids, step files, stage table, initial state, transition
-rules) stay with the owning command and are registered as data modules in
-`sai-state/machines/`.
+A coordinator whose adapter declares `step_machine: <name>@<version>` routes
+its worker through a linear step machine: advance-only, routing-only, one
+happy-path sequence of step files. The machine definition (step ids, step
+files, stage table, initial state) is a data module in `sai-state/machines/`.
 
-At the start of a segment whose adapter declares `step_machine`, invoke
-`spawn` once to initialize the session, then immediately `reset <id>
-<machineId>` to clear that machine's state (other machines in the session
-stay untouched). Every progress event invokes `emit <id> <machineId>
-'{"step_ids":[...]}'` with the worker's reported completed step ids in an
-ordered list (empty list for the empty case); the machine advances if the
-reported ids are declared and new, or leaves state unchanged if the list is
-empty, contains only undeclared ids, or repeats completed ids. On each emit,
-the coordinator wraps the returned `next.follow` in the two-line continuation
-from `sai/orchestration/command-runner.md` § Step-gated pointer delivery: the
-first line is today's protocol continuation; the second line is the active
-pointer `Active step: <id> — follow <path>` derived from the machine's
-response. A successful emit with `next.follow: none` is terminal; the pointer
-line reads exactly `Active step: none — complete remaining work and return
-your terminal result.`
+1. **Segment start**: `spawn`, then immediately `reset <id> <machineId>`.
+2. **Each progress event**: pipe the worker's progress payload, as received,
+   into the progress emit (`sai-state emit <id> <machineId> --progress -`); it
+   validates the payload and advances the machine in one call, deriving
+   `{"step_ids":[...]}` from the worker's reported completed ids in order (an
+   empty list when it reported none). Do not hand-compose event JSON. Pass any
+   initialization option declared by the owning phase contract on the first
+   emit after reset. An invalid `validation` block is a malformed payload,
+   handled per `sai/orchestration/command-runner.md` § Validation; the machine
+   is untouched. The machine advances on declared new ids and
+   ignores the rest. Send the returned `next.follow` in the two-line continuation of
+   `sai/orchestration/command-runner.md` § Step-gated pointer delivery;
+   `next.follow: none` is terminal and maps to its `Active step: none` line.
+3. **Questions, feedback, and recovery** (`needs_input`,
+   `continue_after_recovery`)
+   do not invoke emit and do not consult the machine:
+   the active step file persists across them, and the machine stays parked
+   until the next progress event. A replacement worker re-resolves its
+   active step from the surviving session's machine state without re-emitting.
+4. **Run close** (`completed`, `failed`, `cancelled`): `reset <id> <machineId>`
+   again, so a later run in the same chat starts at step zero.
 
-Questions, feedback, and recovery continuations (`needs_input`,
-`continue_after_recovery`) do not invoke emit and do not consult the machine:
-the active step file persists across them, and the machine remains parked
-until the next progress event. A replacement worker re-resolves its active
-step from the surviving session's machine state without re-emitting.
-
-When the run closes at any terminal result (`completed`, `failed`, `cancelled`),
-invoke `reset <id> <machineId>` again to clear that machine's state only (no
-side effect on other machines or the session itself). Later runs in the same
-chat with the same machine id start at step zero.
-
-A store failure (unreachable, corrupt-file warning, version mismatch, or
-missing machine error) stops the coordinator, surfaces the error with the
-failure context, and waits for user instructions. There is no degraded-mode
-continuation and no fallback to a static pointer map. The failure is not
-routed through Bounded Recovery.
-
-## Scope boundary
-
-Operations and shared step-machine routing. Stage tables, intent tokens,
-recorded-list shapes, seeding shapes, routing modes, step files, and variant
-rules always stay in the owning command. For linear step machines declared via
-`step_machine`, parking rules and replacement re-resolution are defined in §
-Step machines above. For other machines, parking rules and replacement
-re-resolution stay in the owning command. Consuming surfaces keep exactly
-their own event table, a fetch line to this file, and (when declaring a step
-machine) the machine definition and the `step_machine` adapter field.
+A store failure (unreachable, `SESSION_FILE_CORRUPT`, version mismatch, or
+unknown machine) stops the coordinator: surface the error with its context and
+wait for user instructions. A progress emit that hits a store failure still
+returns its valid `validation` block unaltered. There is no degraded
+continuation, no static pointer map, and no Bounded Recovery. A delivery
+failure first gets § Corrective retry.

@@ -1,6 +1,5 @@
 ---
-name: budget
-description: Binds cost-controlled task delegation to the OpenCode budget agent keyword. General-purpose single-task subagent for file operations, searches, writes, and code analysis.
+description: Single-task delegate. Carries out one well-scoped task (edits, file operations, searches, code analysis) exactly as described and returns a status report. Improvements it notices stay with the caller.
 mode: subagent
 model: opencode/muse-spark-1.3-contributor-free
 variant: high

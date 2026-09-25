@@ -1,5 +1,5 @@
 ---
-description: Structured Code Review Prompt — diffs current branch against parent, contrasts with the OpenSpec change artifacts, and produces openspec/changes/{change-name}/review.md
+description: Review a change's diff against its OpenSpec artifacts into review.md, recommend security/performance/accessibility audits, and optionally fix the findings with Direct Build (one local commit).
 model: opencode-go/muse-spark-1.3-contributor
 variant: xhigh
 ---

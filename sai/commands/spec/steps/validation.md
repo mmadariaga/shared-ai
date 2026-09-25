@@ -1,62 +1,65 @@
 # Spec Step — Validation
 
-Active step: validation. Verify the artifacts, derive the decision summary, then report the `validation` progress event per the worker contract.
+Active step: validation. Verify the artifacts, derive the complexity token, and
+compose the decision summary, then return the `validation` progress event.
 
-Rules originating here: Complexity Derivation Rubric. Rules referenced from elsewhere: Rule #1 and Rule #2 are defined in common.md.
+1. Run verification (`steps/common.md` § Verification) and correct every
+   failure.
+2. Run the cited-path gate.
+3. Derive the complexity token.
+4. Compose the decision summary and the validation report (§ Completion).
 
-## Pre-completion verification
+## Cited-path gate
 
-Before completion run the Artifact Verification Checklist from `steps/common.md`, then apply Rule #1 and Rule #2 from `steps/common.md`. A failed check is corrected before this step completes.
+Fetch @sai/policies/tool-resolution.md, resolve `check-cited-paths.js` by it,
+and run `node <tool> sai-1 <change-name> --cwd <project-root>`. A non-zero exit
+blocks: fix every cited evidence path in `proposal.md` and `specs/**` (the
+tool's basename candidates are suggestions; it never rewrites artifacts) and
+re-run until it passes.
 
-## Cited-path existence gate (blocking)
-
-Before completion run the deterministic cited-path existence checker `check-cited-paths.js` in `sai-1` mode against the current change. Resolve the tool by taking the **first candidate below that exists**, copied **verbatim**:
-
-**Claude Code**:
-1. `.claude/sai/tools/check-cited-paths.js` — project-local
-2. `~/.claude/sai/tools/check-cited-paths.js` — user-global
-
-**opencode**:
-1. `.opencode/sai/tools/check-cited-paths.js` — project-local
-2. `~/.config/opencode/sai/tools/check-cited-paths.js` — user-global
-
-If no candidate exists, report that and proceed without the check; do not attempt to compose a path. If the tool exists, run `node <tool> sai-1 <change-name> --cwd <project-root>`. A non-zero exit is blocking: fix every cited evidence path in `proposal.md` and `specs/**` (using the tool's basename candidates as suggestions only — the tool never rewrites artifacts) and re-run until it passes. This gate is read-only and performs no auto-fix.
-
-## Structured validation report
-
-The validation step does not print warnings. For every warning from Rule #1
-or Rule #2, return one ordered entry in the `validation_report.warnings`
-extension defined by `@sai/policies/spec-phase-contract.md`, using its
-`spec_assertion`, `other_side`, and `disagreement` fields. Return an empty
-warning list when no warning applies. The coordinator renders each entry after
-the decision summary and before the feedback gate using that policy's one
-canonical warning block; it preserves the report fields verbatim and never
-inspects or edits artifacts.
+When no candidate exists, continue without the gate and add the line
+`Cited-path gate skipped: check-cited-paths.js not found` to the decision
+summary. This gate is the one exception to the policy's stop rule.
 
 ## Complexity Derivation Rubric
 
-This rubric governs the `**Complexity**` line of `proposal.md` only, and is applied during this step — after the specs are written, before completion is reported.
+Derive the `**Complexity**` token on `proposal.md`'s first line from five
+signals in the finished `proposal.md` and `specs/**/*.md`:
 
-Derive the token from these five signals, all read from the finished `proposal.md` and the change's `specs/**/*.md`:
+- **S1 capabilities** — entries under `## Capabilities`, New plus Modified.
+- **S2 requirements** — `### Requirement:` headings across the change's
+  `specs/**/*.md`.
+- **S3 breaking** — any `**BREAKING**` marker in `## What Changes`.
+- **S4 new dependency** — the proposal states that a dependency is introduced.
+- **S5 affected paths** — distinct literal file paths listed as affected under
+  `## Impact`, excluding paths listed as explicitly untouched. Count literal
+  paths, not narrative breadth.
 
-- **S1 capabilities** — the number of entries under `## Capabilities` (New plus Modified).
-- **S2 requirements** — the number of `### Requirement:` headings across this change's `specs/**/*.md`.
-- **S3 breaking** — whether any `**BREAKING**` marker appears in `## What Changes`.
-- **S4 new dependency** — whether the proposal states that a dependency is introduced.
-- **S5 affected paths** — the number of distinct literal file paths listed as affected under `## Impact`. Paths the proposal lists as explicitly not touched are NOT counted. Count literal paths; do not interpret narrative breadth.
+Take the first tier that matches, evaluating `high`, then `medium`, then `low`:
 
-Select the tier by escalation precedence — evaluate `high`, then `medium`, then `low`, and take the first match:
+- **high** — S1 ≥ 4, or S2 > 10, or S3, or S4, or S5 > 8.
+- **medium** — S1 in 2–3, or S2 in 4–10, or S5 in 3–8.
+- **low** — everything else.
 
-- **high** — S1 ≥ 4, **or** S2 > 10, **or** S3 is true, **or** S4 is true, **or** S5 > 8.
-- **medium** — S1 in 2–3, **or** S2 in 4–10, **or** S5 in 3–8.
-- **low** — none of the above matched: S1 ≤ 1, S2 ≤ 3, no breaking change, no new dependency, S5 ≤ 2.
+`high` is the ceiling: a change larger than `high` still gets `high`.
 
-`high` is the ceiling. A change larger than `high` still emits `high`; never invent a fourth tier. Record the overflow as an Open Question in `design.md` during `/sai-2-design`.
+## Completion
 
-**Calibration.** The cuts are grounded in a survey of 140 archived changes: median S2 = 5, max S2 = 37. The cut `S2 > 10` sits at twice the median and tags roughly 18% of a 40-change sample `high`, keeping all three tiers populated. Reproduce this distribution before re-tuning any cut.
+Hold two things for the phase's `completed` result, which the coordinator
+prints: the decision summary as its `summary`, and every Rule #1 and Rule #2
+warning as an ordered `validation_report.warnings` entry (`spec_assertion`,
+`other_side`, `disagreement`; an empty list when there are none) per
+`@sai/policies/spec-phase-contract.md`.
 
-Because S2 depends on the specs, derive or revise the token now — after `specs/**/*.md` are written and before completion is reported. A token derived from an early draft is corrected before this step completes.
+Recompute the decision summary from the current `proposal.md` and `specs/**`
+alone, never from conversation:
 
-## Decision-summary derivation
-
-When the re-read of `proposal.md` and `specs/**` composes the decision summary per the skill's Completion contract, apply Rule #1 and Rule #2 FIRST, then print the decision summary recomputed from the current artifacts — every summary line traces only to those artifacts, never to prior-conversation or external context. Report the `validation` progress event only after verification, both rules, and the complexity token are complete.
+- **Scope** — one line per capability under `## Capabilities`, New and
+  Modified.
+- **Requirements** — one line per requirement, grouped by capability.
+- Omit an empty block or group entirely.
+- At most 15 non-blank lines, counting any `Reconciled proposal:` or
+  `Cited-path gate skipped:` line. When the items do not fit, trim the
+  Requirements block first and end with
+  `+N more — see openspec/changes/{name}/specs/**`, where N is the number of
+  omitted items.

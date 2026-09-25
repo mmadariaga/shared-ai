@@ -2,62 +2,49 @@
 
 ## Purpose
 
-TBD — purpose to be documented.
+Fence the `/sai-1-spec` coordinator's tool access on Claude Code, and record that opencode relies on the coordinator prose instead.
 
 ## Requirements
 
 ### Requirement: sai-1 entrypoint declares the coordinator fence
 
-The Claude Code wrapper `commands/claude/sai-1-spec.md` SHALL declare `allowed-tools: Read, Glob, Skill, Agent, SendMessage, AskUserQuestion` in its frontmatter, exactly matching the shared coordinator fence governed by the `per-command-tool-scoping` capability. `Edit`, `Write`, and bare unrestricted `Bash` SHALL remain absent from the list.
+The Claude Code wrapper `commands/claude/sai-1-spec.md` SHALL declare in its frontmatter the same `allowed-tools` list as the other routed planning coordinators (`commands/claude/sai-2-design.md` and `commands/claude/sai-3-implement.md`): the read and dispatch tools (`Read`, `Glob`, `Skill`, `Agent`, `SendMessage`, `AskUserQuestion`), the todo-panel tools (`TaskCreate`, `TaskUpdate`, `TaskGet`, `TaskList`), scoped `node` grants for the worker-report validator, the no-commit guard, and the stage-machine store at both install roots, and `Bash(git reset:*)` for the no-commit guard's remediation reset. `Edit`, `Write`, and bare unrestricted `Bash` SHALL be absent from the list.
 
-#### Scenario: sai-1 frontmatter carries the fence
+#### Scenario: sai-1 frontmatter carries the shared fence
 
-- **WHEN** the frontmatter of `commands/claude/sai-1-spec.md` is inspected after the change
-- **THEN** it declares `allowed-tools: Read, Glob, Skill, Agent, SendMessage, AskUserQuestion`
-- **AND** the list is exactly the shared coordinator fence — no additional tools, no missing tools
+- **WHEN** the frontmatter of `commands/claude/sai-1-spec.md` is inspected
+- **THEN** its `allowed-tools` list is identical to the lists of `commands/claude/sai-2-design.md` and `commands/claude/sai-3-implement.md`
 
 #### Scenario: write-capable tools remain absent
 
 - **WHEN** the `allowed-tools` list of `commands/claude/sai-1-spec.md` is inspected
 - **THEN** it does not contain `Edit`, `Write`, or a bare `Bash` entry
-- **AND** no scoped shell permission is introduced
+- **AND** every shell entry is scoped to a named tool script or to `git reset`
 
 ### Requirement: Fence membership governed by per-command-tool-scoping
 
-The full membership of the fenced coordinator set — the routed spec, design, implementation, review, security, performance, and accessibility coordinators — and their exact `allowed-tools` list SHALL be governed by the `per-command-tool-scoping` capability, which this change modifies to admit the spec coordinator. The sai-1 fence SHALL match the shared list exactly; the fences of the existing six coordinators (`commands/claude/sai-2-design.md`, `commands/claude/sai-3-implement.md`, `commands/claude/sai-5-review.md`, `commands/claude/sai-6-security.md`, `commands/claude/sai-7-performance.md`, `commands/claude/sai-8-accessibility.md`) SHALL NOT be altered by this change.
+The full membership of the fenced coordinator set — the routed spec, design, implementation, review, security, performance, and accessibility coordinators — SHALL be governed by the `per-command-tool-scoping` capability. The `sai-1-tool-fence` capability SHALL NOT define a separate membership that could diverge.
 
-#### Scenario: existing coordinator fences unchanged
+#### Scenario: sai-1 belongs to the enumerated set
 
-- **WHEN** the frontmatter of any of the six previously fenced coordinators is inspected after the change
-- **THEN** it still declares `allowed-tools: Read, Glob, Skill, Agent, SendMessage, AskUserQuestion`
-- **AND** its pre-change content is unchanged
-
-#### Scenario: sai-1 joins the enumerated set
-
-- **WHEN** the `per-command-tool-scoping` capability's coordinator enumeration is read after the change
+- **WHEN** the `per-command-tool-scoping` capability's coordinator enumeration is read
 - **THEN** it includes the spec coordinator alongside the design, implementation, review, security, performance, and accessibility coordinators
-- **AND** the `sai-1-tool-fence` capability does not define a separate membership that could diverge
 
-### Requirement: Recorded opencode exemption
+### Requirement: opencode entrypoint carries no tool fence
 
-`commands/opencode/sai-1-spec.md` SHALL remain unchanged: opencode has no per-command tool-restriction frontmatter field, so the coordinator prohibition in `sai/commands/spec/coordinator.md` remains the binding contract for the opencode entrypoint, and this exemption SHALL be recorded in the change's artifacts. No opencode equivalent fence SHALL be invented.
+`commands/opencode/sai-1-spec.md` SHALL declare no tool-restriction field: opencode has no per-command tool-restriction frontmatter field, so the coordinator prohibition in `sai/commands/spec/coordinator.md` is the binding contract for the opencode entrypoint. No opencode equivalent fence SHALL be invented.
 
-#### Scenario: opencode wrapper untouched
+#### Scenario: opencode wrapper declares no fence
 
-- **WHEN** the frontmatter of `commands/opencode/sai-1-spec.md` is inspected after the change
-- **THEN** it is unchanged from its pre-change content and declares no `allowed-tools` field
-
-#### Scenario: exemption recorded in the change
-
-- **WHEN** the change's proposal and this capability spec are read
-- **THEN** each records that opencode carries no tool-fence equivalent and that the coordinator prose is the opencode contract
+- **WHEN** the frontmatter of `commands/opencode/sai-1-spec.md` is inspected
+- **THEN** it declares no `allowed-tools` field
 
 ### Requirement: Coordinator prose prohibition remains the shared contract
 
-The prose prohibition in `sai/commands/spec/coordinator.md` — that the coordinator does not run prerequisites, resolve arguments, query OpenSpec, read git/code/configuration/documentation/artifacts, or write files — SHALL remain in place and unchanged. The Claude frontmatter fence enforces it on Claude Code; the same prose remains the opencode contract per the recorded exemption.
+The ownership split in `sai/commands/spec/coordinator.md` SHALL remain in place: prerequisites, argument and change resolution, OpenSpec queries, research, and artifact writes belong to the worker, and on the clean route the coordinator does not read or write git, code, configuration, documentation, or change artifacts. The Claude frontmatter fence enforces it on Claude Code; the same prose is the opencode contract.
 
-#### Scenario: coordinator prose unchanged
+#### Scenario: coordinator prose carries the ownership split
 
-- **WHEN** `sai/commands/spec/coordinator.md` is inspected after the change
-- **THEN** its prohibition language is unchanged
-- **AND** no other `sai-*` command's coordinator prose is altered by this change
+- **WHEN** `sai/commands/spec/coordinator.md` is inspected
+- **THEN** it assigns prerequisites, argument and change resolution, OpenSpec queries, research, and artifact writes to the worker
+- **AND** it states that on the clean route the coordinator does not read or write git, code, configuration, documentation, or change artifacts

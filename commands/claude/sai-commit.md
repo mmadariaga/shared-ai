@@ -1,5 +1,5 @@
 ---
-description: Conventional Commits message author from staged changes — generates subject (≤50 chars) and optional body, gates `git commit` behind explicit authorization
+description: Commit the staged changes with a Conventional Commits message — drafts the subject (≤50 chars) and optional body, and commits only after you authorize it.
 argument-hint: "[optional: --scope X --type Y --no-body --amend]"
 model: sonnet
 effort: medium

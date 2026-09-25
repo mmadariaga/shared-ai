@@ -133,6 +133,20 @@ test('Step 1 design card uses neutral root protocols and retires flat canonical 
   }
   });
 
+test('design write scope includes the opted-in overview without granting its write to the parent worker', () => {
+  const common = artifact('sai/commands/design/steps/common.md');
+  const contract = artifact('sai/commands/design/phase-contract.md');
+  const worker = artifact('sai/commands/design/worker.md');
+
+  assert.match(common, /authorized write surface is `DesignWriteSurface`/);
+  assert.match(contract, /openspec\/changes\/\{change-name\}\/change-overview\.md/);
+  assert.match(common, /overview generator writes only `change-overview\.md`/);
+  assert.match(common, /parent worker owns overview state in `\.openspec\.yaml`/);
+  assert.doesNotMatch(contract, /permitted glossary changes/);
+  assert.match(worker, /Without `--overview-lang`[\s\S]*?mark it stale immediately before the first effective source write/);
+  assert.match(worker, /no opted-in generation at `Continue`[\s\S]*?state reached by earlier source writes/);
+});
+
 function writeFixture(root, relativePath, content) {
   const filePath = path.join(root, relativePath);
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -238,10 +252,9 @@ test('design wrappers activate routed Claude/opencode entry and preserve phase b
 
 test('shared feedback gate defines routed design ownership without changing canonical gate rules', () => {
   const gate = artifact('sai/policies/artifact-feedback-gate.md');
-  assert.match(gate, /Routed design ownership adapter/);
+  assert.match(gate, /## Ownership on routed sai-1 and sai-2/);
   assert.match(gate, /coordinator owns picker presentation.*iteration counter.*pending raw feedback/i);
-  assert.match(gate, /worker owns per-item judgment.*design-artifact edits.*verification.*discard reasons.*summary/i);
-  assert.match(gate, /single-sourced in their existing sections/i);
+  assert.match(gate, /worker owns per-item judgment.*artifact edits.*verification.*discard reasons.*summary/i);
   assert.doesNotMatch(gate, /sai\/orchestration\/inline-invocation\.md|Copilot|inline consumer/i);
 });
 
@@ -738,28 +751,32 @@ test('design coordinator spec says worker delegates only to explore', () => {
 
 test('documentation records the active design compatibility boundary and managed paths', () => {
   const readme = artifact('README.md');
+  const guide = artifact('docs/sequential-pipeline.md');
   const agents = artifact('AGENTS.md');
 
-  for (const text of [readme, agents]) {
+  for (const text of [guide, agents]) {
     assert.match(text, /sai-2-design/);
-    assert.match(text, /openspec\/changes\/\{change-name\}\/design\.md|design\.md/);
+    assert.match(text, /design\.md/);
     assert.match(text, /tasks\.md/);
     assert.match(text, /interfaces\.md/);
+  }
+  assert.match(readme, /docs\/sequential-pipeline\.md/);
+  assert.match(guide, /AGENTS\.md/);
+  for (const text of [readme, agents]) {
     assert.match(text, /sai\/install-manifest\.json/);
     assert.match(text, /doctor/);
     assert.match(text, /uninstall/);
     assert.match(text, /sai\/policies/);
   }
 
-  assert.match(readme, /sai-2-design-worker/);
+  assert.match(guide, /sai-2-design-worker/);
   assert.match(agents, /sai-2-design-worker/);
 
-  assert.match(readme, /Claude Code.*medium-effort.*coordinator.*medium-effort.*design worker/i);
-  assert.match(readme, /opencode.*muse-spark-1\.3-contributor.*variant: xhigh/i);
-  assert.match(readme, /continue_after_notice/);
-  assert.match(readme, /new chat[\s\S]{0,80}\/sai-3-implement|\/sai-3-implement[\s\S]{0,80}new chat/i);
-  assert.match(readme, /Proposal Complexity.*descriptive/i);
-  assert.match(readme, /wrapper[\s\S]{0,60}(?:model|variant)|command[\s\S]{0,60}(?:model|variant)/i);
+  assert.match(guide, /continue_after_notice/);
+  assert.match(guide, /new chat[\s\S]{0,80}\/sai-3-implement|\/sai-3-implement[\s\S]{0,80}new chat/i);
+  assert.match(guide, /Proposal Complexity.*descriptive/i);
+  assert.match(guide, /independent model roles/);
+  assert.doesNotMatch(readme, /continue_after_notice|Proposal Complexity is descriptive/);
 
   assert.match(agents, /sai\/commands\/design\/steps\//);
   assert.match(agents, /sai-2-design-worker/);
@@ -773,6 +790,7 @@ test('documentation records the active design compatibility boundary and managed
 
 test('Step 5 documentation records manifest projections and routed-source boundaries', () => {
   const readme = artifact('README.md');
+  const guide = artifact('docs/sequential-pipeline.md');
   const agents = artifact('AGENTS.md');
 
   for (const text of [readme, agents]) {
@@ -783,6 +801,7 @@ test('Step 5 documentation records manifest projections and routed-source bounda
   }
   assert.match(agents, /sai\/orchestration\//);
   assert.match(readme, /shared Orchestration Core/i);
+  assert.match(guide, /AGENTS\.md/);
   assert.match(agents, /routed worker bindings/i);
 });
 
@@ -870,8 +889,10 @@ test('architecture snapshot display compares the extracted Target State block an
     'the comparison should normalize line endings and trailing whitespace');
   assert.match(instruction, /(?:only when|only if)[\s\S]{0,160}differ|differ[\s\S]{0,160}(?:present|display)|present(?:ed)?[\s\S]{0,120}only[\s\S]{0,120}differ/i,
     'the block comparison should be presented only when the blocks differ');
-  assert.match(artifact('sai/commands/design/steps/interfaces.md'), /None — no step contracts/,
-    'the instruction should define the exact None — no step contracts sentinel');
+  assert.match(artifact('sai/commands/design/steps/interfaces.md'), /Fetch @sai\/policies\/step-contract-format\.md/,
+    'the interfaces step should load the canonical contract format');
+  assert.match(artifact('sai/policies/step-contract-format.md'), /None — no step contracts/,
+    'the policy should define the exact None — no step contracts sentinel');
 });
 
 test('routed Claude wrappers expose the exact coordinator and panel tool scope', () => {
@@ -893,9 +914,13 @@ test('routed Claude wrappers expose the exact coordinator and panel tool scope',
     'Bash(node ~/.claude/sai/bin/sai-state.js:*)',
     'Bash(git reset:*)',
   ];
-  const expectedTools = [...routedTools, ...nodeGrants];
+  const directBuildCloseGrants = ['Bash(git diff:*)', 'Bash(git add:*)', 'Bash(git commit:*)'];
+  const directBuildCloseWrappers = new Set(['commands/claude/sai-5-review.md']);
 
   for (const relativePath of routedWrappers) {
+    const expectedTools = directBuildCloseWrappers.has(relativePath)
+      ? [...routedTools, ...nodeGrants, ...directBuildCloseGrants]
+      : [...routedTools, ...nodeGrants];
     const source = artifact(relativePath);
     const match = source.match(/^allowed-tools:\s*(.+)$/m);
     assert.ok(match, `${relativePath} should declare allowed-tools`);
@@ -910,8 +935,8 @@ test('routed Claude wrappers expose the exact coordinator and panel tool scope',
       `${relativePath} must not expose an unscoped Bash grant`);
     for (const tool of toolNames) {
       if (tool.startsWith('Bash(')) {
-        assert.ok(tool.startsWith('Bash(node ') || tool === 'Bash(git reset:*)',
-          `${relativePath} Bash grants must be scoped (node-scoped or the mixed git reset)`);
+        assert.ok(tool.startsWith('Bash(node ') || tool === 'Bash(git reset:*)' || directBuildCloseGrants.includes(tool),
+          `${relativePath} Bash grants must be scoped (node-scoped, the mixed git reset, or the Direct Build close grants)`);
       }
     }
   }
@@ -936,7 +961,7 @@ test('restore-coordinator-instruction-loading Step 1: explore and status preserv
   assert.doesNotMatch(exploreTools[1], /(?:^|,\s*)(?:Edit|Write)(?:,|$)/);
 
   const status = artifact('commands/claude/sai-status.md');
-  assert.match(status, /^allowed-tools: Read, Glob, Grep, Bash\(openspec:\*\), Bash\(node \.claude\/sai\/tools\/change-picker\.js:\*\), Bash\(node ~\/\.claude\/sai\/tools\/change-picker\.js:\*\), Bash\(node \.claude\/sai\/tools\/status\.js:\*\), Bash\(node ~\/\.claude\/sai\/tools\/status\.js:\*\), AskUserQuestion, Skill$/m);
+  assert.match(status, /^allowed-tools: Read, Glob, Grep, Bash\(openspec:\*\), Bash\(node \.claude\/sai\/tools\/prereqs\.js:\*\), Bash\(node ~\/\.claude\/sai\/tools\/prereqs\.js:\*\), Bash\(node \.claude\/sai\/tools\/change-picker\.js:\*\), Bash\(node ~\/\.claude\/sai\/tools\/change-picker\.js:\*\), Bash\(node \.claude\/sai\/tools\/status\.js:\*\), Bash\(node ~\/\.claude\/sai\/tools\/status\.js:\*\), AskUserQuestion, Skill$/m);
   assert.match(status, /Fetch @sai\/adapters\/claude\/boot\.md and follow it\./);
   assert.doesNotMatch(status, /allowed-tools:[^\n]*(?:Edit|Write|Bash\s*,)/m);
   assert.doesNotMatch(status, /(?:^|,\s*)Bash\(git(?::|\s|,)/,
@@ -953,14 +978,10 @@ test('sai-2 feedback gate advertises and accepts direct free-text replies', () =
     gate.indexOf('## On selecting the feedback option'),
   );
 
-  assert.match(
-    presentation,
-    /Share your feedback on \{artifacts\} below\. You can also type feedback directly in the free-text box\./,
-  );
-  assert.match(
-    presentation,
-    /Feedback on \{artifacts\}; you can also type feedback directly in the free-text box\./,
-  );
+  assert.match(presentation, /Share feedback on \{artifacts\}\?/);
+  assert.match(presentation, /Feedback on \{artifacts\}\./);
+  assert.match(presentation, /free-text channel/,
+    'the free-text channel is advertised in the context before the picker');
   assert.match(presentation, /Present exactly two choices/);
   assert.match(presentation, /Give feedback \(Recommended\)/);
   assert.match(presentation, /Give more feedback/);
@@ -1013,7 +1034,9 @@ test('Step 2: progress_plan is an optional static ordered adapter field, fully k
 });
 
 test('chained phase composition: consecutive-only activation, malformed close, isolation continuity, final-only terminal', () => {
-  const runner = artifact('sai/orchestration/command-runner.md');
+  // Composition rules live in composition.md, layered on the runner (ADR 0187).
+  const runner = `${artifact('sai/orchestration/command-runner.md')}
+${artifact('sai/orchestration/composition.md')}`;
   assert.match(runner, /ordered[\s\S]{0,80}(?:sequence|list)[\s\S]{0,80}phase adapter/i,
     'composition must declare ordered multi-adapter execution');
   assert.match(runner, /(?:only|exactly)[\s\S]{0,80}(?:successor|adapter)[\s\S]{0,80}i\s*\+\s*1|position `?i\s*\+\s*1`?/i,
@@ -1470,14 +1493,13 @@ test('documentation records the audit progress-plan orientation section', () => 
 
   assert.match(agents, /### Audit coordinators and workers/,
     'AGENTS.md should record the audit coordinator/worker orientation section');
-  assert.match(agents, /Milestone Stamp[\s\S]{0,160}no|no[\s\S]{0,160}Milestone Stamp/i,
-    'the audit orientation section should state audit plans carry no Milestone Stamp');
+  assert.match(agents, /each completed step carries its `Milestone Stamp`/,
+    'the audit orientation section should state audit plans carry Milestone Stamps like every routed phase plan');
 });
 
-test('Step 2 design wrappers document the same overview language option', () => {
+test('Step 2 Claude design wrapper documents the overview language option (opencode commands carry no argument-hint)', () => {
   for (const relativePath of [
     'commands/claude/sai-2-design.md',
-    'commands/opencode/sai-2-design.md',
   ]) {
     const source = artifact(relativePath);
     assert.match(
@@ -1514,12 +1536,8 @@ test('Step 2 design worker validates a selected invocation language before resol
 test('Step 2 carries overview_language through the worker and generation continuation', () => {
   const worker = artifact('sai/commands/design/worker.md');
   const coordinator = artifact('sai/commands/design/coordinator.md');
-  const bindings = [
-    matrixBinding('claude', 'design'),
-    matrixBinding('opencode', 'design'),
-  ].join('\n');
 
-  for (const source of [worker, coordinator, bindings]) {
+  for (const source of [worker, coordinator]) {
     assert.match(source, /overview_language/);
     assert.match(source, /generation|generator/i);
   }
@@ -1705,8 +1723,8 @@ test('Step 3: pre-gate completion reconciles only the unopted terminal path and 
   );
   assert.match(
     coordinator,
-    /(?:(?:present|provided|opted[- ]in)[\s\S]{0,260}`?--overview-lang`?|`?--overview-lang`?[\s\S]{0,260}(?:present|provided|opted[- ]in))[\s\S]{0,360}overview[\s\S]{0,180}(?:unmarked|unmark|not marked)/i,
-    'the opted-in overview step should remain unmarked before its generation continuation'
+    /`completed` \(pre-gate\) \| Leave list as-is; not a reconciliation trigger \| Leave list as-is; not a reconciliation trigger/,
+    'pre-gate completion must leave the opted-in overview step pending until its generation continuation'
   );
   assert.match(
     coordinator,
@@ -2155,17 +2173,11 @@ test('RED skeleton oracle pins the single-source design artifact contracts', () 
   assert.doesNotMatch(designTasksInstruction, /### Local files[\s\S]*?use line ranges/,
     'tasks.md instruction Local files section must not contain "use line ranges" instruction');
 
-  const instructionsFile = artifact('sai/commands/implement/instructions.md');
-  assert.match(instructionsFile, /—[\s\S]*?path or URL is the text before/,
-    'instructions.md must mention the — separator and path/URL extraction');
-  assert.match(instructionsFile, /with line ranges when specified/,
-    'instructions.md must still mention "(with line ranges when specified)"');
-
   const docReviewFile = artifact('sai/commands/implement/steps/documentation-review.md');
   assert.match(docReviewFile, /—[\s\S]*?path or URL is the text before/,
     'documentation-review.md must mention the — separator and path/URL extraction');
-  assert.match(docReviewFile, /with line ranges when specified/,
-    'documentation-review.md must still mention "(with line ranges when specified)"');
+  assert.doesNotMatch(docReviewFile, /line ranges/,
+    'documentation-review.md must not read line ranges: Required Documentation lists whole files');
 
   assert.match(interfaces, /^\*\*Interfaces\*\*/m,
     'interfaces.md must contain the **Interfaces** marker');
@@ -2326,5 +2338,17 @@ test('Step 5: schema keeps the pre-change design graph and does not advertise En
       `${id} should preserve its pre-change generated artifact`);
     assert.deepEqual(schemaListForContract(schemaFieldForContract(entry, 'requires')), expected.requires,
       `${id} should preserve its pre-change requirements`);
+  }
+});
+
+test('composition rules load only in composition coordinators (ADR 0187)', () => {
+  const runner = artifact('sai/orchestration/command-runner.md');
+  assert.match(runner, /`sai\/orchestration\/composition\.md`/,
+    'the runner should name the composition file');
+  assert.doesNotMatch(runner, /Fetch @sai\/orchestration\/composition\.md/,
+    'the runner must not load composition rules for every command');
+  for (const card of ['sai/commands/meta-build/coordinator.md', 'sai/commands/meta-review/coordinator.md']) {
+    assert.match(artifact(card), /Fetch @sai\/orchestration\/composition\.md/,
+      `${card} should load the composition rules`);
   }
 });

@@ -15,6 +15,8 @@ function readExploreContract() {
   const exploreSources = [
     'sai/commands/explore/instructions.md',
     'sai/commands/explore/steps/common.md',
+    'sai/commands/explore/steps/review-edge-cases.md',
+    'sai/commands/explore/steps/implementation-details.md',
     'sai/commands/explore/steps/artifact-review-language-gate.md',
     'sai/commands/explore/steps/slicing-assessment.md',
     'sai/commands/explore/steps/crystallization-protocol.md',

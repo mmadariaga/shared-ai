@@ -27,7 +27,7 @@ Claude Code and opencode SHALL each ship a thin `sai-build.md` wrapper loading t
 - **THEN** both required fetches are present and no build worker is required
 
 ### Requirement: Registry and documentation list build
-The universal registry, README, and AGENTS command inventories SHALL list `/sai-build` as a user command that runs implementation planning and apply back-to-back, never as an internal `opsx:*` skill.
+The installed command files (the registry the universal `sai-commands` skill resolves against), README, and AGENTS command inventories SHALL list `/sai-build` as a user command that runs implementation planning and apply back-to-back, never as an internal `opsx:*` skill.
 
 #### Scenario: Operator surfaces include build
 - **WHEN** the registry and primary documentation are read

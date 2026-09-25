@@ -1,5 +1,9 @@
 # tasks-existing-test-impact Specification
 
+## Purpose
+
+This capability requires task steps to identify affected existing tests and explain their failure modes without restating test assertions.
+
 ## Requirements
 
 ### Requirement: Each tasks.md step declares the existing tests it breaks

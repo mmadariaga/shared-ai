@@ -2,16 +2,14 @@
 
 Active step: documentation-review. Read all required documentation and confirm conventions, then report the `documentation-review` progress event per the worker contract.
 
-### Step 4: Read Required Documentation (One Time Only)
+### Read Required Documentation (one time only)
 
-MANDATORY: Read every document listed in `## Required Documentation` from `tasks.md`. The path or URL is the text before ` — `, and the note guides the reading:
-- For local file paths: use the Read tool (with line ranges when specified). When reading multiple local files, read them in parallel.
-- For external URLs: use web fetch
+Read every document listed in `## Required Documentation` from `tasks.md`. The path or URL is the text before ` — `, and the note guides the reading:
+- Local file paths: read them directly, in parallel when there are several.
+- External URLs: use web fetch.
 
-Do NOT load `SKILL.md` indexes or explore documentation trees beyond what is listed.
-Do NOT use subagents for documentation research — read the listed files directly. Scoped lookups beyond this one-time read use ONLY the bounded batch permission in `sai/commands/implement/steps/plan-generation.md` research_task §2 (`budget-explorer` only, per-item approval).
+Read only what is listed: no `SKILL.md` indexes, no documentation-tree exploration, and no subagents for this read. Scoped lookups beyond this one-time read use ONLY the bounded batch permission in `sai/commands/implement/steps/plan-generation.md` research_task §2 (`budget-explorer` only, per-item approval).
 
-**Exception (re-run):** If Step 1 detected an existing `implementation.md` (i.e., the applied-steps set is non-empty), research on elements introduced since the last run is permitted — spawn a **`budget-subagent`** subagent scoped to those new elements only.
+**Re-run exception:** when `implementation.md` existed at the start of this run, research on elements introduced since the last run is permitted through one `budget-subagent` scoped to those new elements only.
 
-Once all documents are read, validate findings against the Expertise Profile.
-If a listed document is missing or contradicts the declared stack, STOP and request clarification.
+Once all documents are read, validate them against the Expertise Profile. If a listed document is missing or contradicts the declared stack, return `needs_input` naming the document and the contradiction.

@@ -1,75 +1,76 @@
 <TASK>
 
   Fetch @sai/policies/verified-precondition-handback.md
-  Fetch @sai/policies/stage-machine.md and follow it for every store interaction; verbs, errors, quoting, pointer, and degraded-mode handling are single-sourced there and are not restated here.
+  Fetch @sai/policies/stage-machine.md and follow it for every store interaction.
 
-  ## Review phase adapter
+  ## Your Role: Review Phase Coordinator
 
-  You are the user-facing review coordinator. Own lifecycle routing and terminal presentation only. Do not run prerequisites, parse arguments, query OpenSpec, resolve a change, inspect git or diffs, read or write artifacts, perform review passes, run tests, apply mutations, or make findings. Technical work belongs exclusively to the review worker. The Direct Build close in terminal navigation below is the sole exception: it alone may read the freshly generated `review.md` plus on-disk audits as-is, read the diff its fix loop verifies (the fix worker's resulting diff, read-only), dispatch the existing review-fix worker and the conditional backfill worker, and perform the one path-scoped stage plus one pre-authorized local commit.
+  You are the user-facing review coordinator. You run the shared runner's Result Loop for one `sai-5-review-worker` and own lifecycle routing and terminal presentation. The worker owns every technical act: prerequisites, argument and change resolution, OpenSpec queries, git and diff inspection, review passes, tests, mutations, findings, and `review.md`.
 
-  Supply the closed adapter field set plus the optional `progress_plan`:
+  ## Artifact access
 
-  - `original_envelope`: exactly `arguments_value` from the active wrapper, preserving the complete argument string.
-  - `dispatch_operation`: dispatch exactly one worker through the active review-worker binding.
-  - `continuation_operation`: continue the captured worker with the exact selected answer value.
-  - `allowed_nonterminal_extensions`: progress events — `{event: "progress", step_ids: string[], changed_files: string[]}` as the sole nonterminal extension.
-  - `extension_handlers`: empty.
-  - `replacement_reconstruction_fields`: original envelope, ordered duplicate-free changed-files union, exact opaque input history, `resolved_change_name` when available, and the departing worker's `active_step_id` when the step machine is declared.
-  - `terminal_navigation`: the review navigation below.
-  - `progress_plan`: the canonical progress plan declared below.
-  - `recovery_policy: false` — bounded recovery is disabled for this audit lifecycle: keep no recovery ledger and perform no `continue_after_recovery` continuations.
+  - **Clean route** — every result through the terminal close. The coordinator stays artifact-blind; the no-commit guard's two tool invocations are its only git access.
+  - **Direct Build close** — the sole exception (§ Review navigation). It reads the freshly generated `review.md`, the on-disk audits, and the diff its fix loop verifies, all read-only, and performs the one path-scoped stage and local commit.
 
-  Declare the canonical progress plan for this phase, in order, with exactly these ids and labels — no omissions, reorders, renames, or additions:
+  ## Phase adapter
 
-  - `resolve-change` — "Resolve change"
-  - `establish-diff-scope` — "Resolve diff scope"
-  - `resolve-review-analysis` — "Resolve review analysis"
-  - `resolve-mutation-analysis` — "Resolve mutation-analysis gate"
-  - `close-review-outcome` — "Close review outcome"
+  Declare these fields for the shared runner:
 
-  Declare the step machine that governs step routing: `step_machine: review-standalone@1`. See `@sai/policies/stage-machine.md` § Step machines for the operational contract.
-
-  Render the full plan at dispatch per `@sai/policies/todo-structure.md` (first step `in_progress`, rest `pending`) **before** dispatching the worker — the render is a prerequisite of the dispatch, not a step that follows it. If a declared panel tool is unavailable at runtime, apply the harness panel binding's one-time degradation route before dispatch: record its notice, disable later panel calls for this invocation, and continue without panel rendering; do not runtime-detect or switch surfaces. Only after the render attempt or recorded degradation decision, dispatch the worker. Progress-event panel updates follow `@sai/policies/todo-structure.md` through the shared command runner before worker continuation; an unavailable panel uses the same recorded degradation route and does not block continuation. Mark steps only from worker progress-event `step_ids`; and reconcile at run-closing results: `completed` renders every unmarked step `completed`, `failed` and `cancelled` leave the list exactly as last rendered, and a `needs_input` result — a terminal lifecycle status that is not run-closing — leaves the list exactly as last rendered. The plan is immutable for the invocation, held in invocation-scoped state, survives same-worker continuation and replacement-worker reconstruction, and is never carried in the dispatch envelope or any reconstruction field.
-
-  Validate every closed payload before acting on it. Maintain one ordered duplicate-free changed-files union across dispatch, input, continuation, and at most one replacement. For `needs_input`, present the exact worker-authored question and ordered options through the native picker, append `{question, options, answer_value}` to opaque history, and forward the exact selected value. Never place binding identifiers in worker payloads or reconstruction fields.
-
-  For a progress event, mark the reported step ids in the declared progress plan, union the event's `changed_files` into the invocation-scoped union in first-seen order, and continue the same worker with exactly `continue_after_progress`. The acknowledgement is protocol-only and is never recorded as user input, opaque input history, or pending feedback.
+  - `original_envelope` — exactly one opaque string, the `arguments_value` supplied by the active wrapper.
+  - `dispatch_operation` and `continuation_operation` — the active review-worker binding's dispatch and same-worker continuation.
+  - `allowed_nonterminal_extensions` — only `progress`; `extension_handlers` is empty.
+  - `replacement_reconstruction_fields` — the original envelope, changed-files union, opaque input history, `resolved_change_name` when available, and the departing worker's `active_step_id`.
+  - `progress_plan` — the five steps below, in order, with exactly these ids and labels:
+    - `resolve-change` — "Resolve change"
+    - `establish-diff-scope` — "Resolve diff scope"
+    - `resolve-review-analysis` — "Resolve review analysis"
+    - `resolve-mutation-analysis` — "Resolve mutation-analysis gate"
+    - `close-review-outcome` — "Close review outcome"
+  - `step_machine: review-standalone@1`
+  - `recovery_policy: false` — keep no recovery ledger and send no `continue_after_recovery`.
+  - `terminal_navigation` — § Review navigation.
 
   ## No-commit guard
 
-  Fetch @sai/policies/no-commit-guard.md and follow it for every dispatch of
-  the review worker. Run the guard's `snapshot` step immediately before each
-  dispatch and each same-worker continuation, holding the returned SHA as
-  invocation-scoped `guard_base`, and its `verify` step immediately after
-  every returned result, before acting on that result. On a `violation`
-  verdict, remediate exactly as the policy prescribes — evidence first,
-  `git reset <guard_base>` (mixed), one pinned incident line per
-  `@sai/policies/autonomy-audit-log.md`, then continue the route. The guard's
+  Fetch @sai/policies/no-commit-guard.md and follow its § Window pairing for
+  the review worker's stretches: `snapshot` opens a window, holding the returned SHA as
+  invocation-scoped `guard_base`, and `verify` closes it before each boundary. On a `violation` verdict, remediate exactly as the policy prescribes, then continue the route. The guard's
   own two tool invocations are this coordinator's only git access on the
-  artifact-blind clean route and change no other rule above. The Direct Build
-  close execute window below is the sole additional git surface: guard
-  `snapshot` immediately before each fix dispatch and each same-worker
-  continuation and `verify` immediately after every returned result, with
-  `allow_commit` carried only in that execute window for the one pre-authorized
-  local commit; no review window carries `allow_commit`.
+  artifact-blind clean route and change no other rule above.
+
+  ## Lifecycle Steps
+
+  ### 1. Initialize and render
+
+  Initialize an ordered duplicate-free changed-file union and an empty opaque input history. Render the full plan per `@sai/policies/todo-structure.md` (first step `in_progress`, the rest `pending`) at dispatch, before the dispatch itself. If a declared panel tool is unavailable at runtime, apply the harness panel binding's one-time degradation route instead: record its notice, disable later panel calls for this invocation, and continue without a panel.
+
+  ### 2. Dispatch exactly one worker
+
+  Dispatch exactly one worker per the runner's § Dispatch and task disclosure.
+
+  ### 3. Run the Result Loop
+
+  Process every result through the runner. The review-specific additions:
+
+  - `progress` — Mark steps only from worker progress-event `step_ids`. Progress-event panel updates follow `@sai/policies/todo-structure.md` through the shared command runner before worker continuation; an unavailable panel uses the same recorded degradation route and does not block continuation. The `continue_after_progress` acknowledgement is protocol-only: record it nowhere, neither as user input nor in opaque input history.
+  - `needs_input` — present the exact question and ordered options through the native picker, append `{question, options, answer_value}` to the opaque input history, and continue the same worker with the exact value.
+  - Reconcile at run-closing results: `completed` renders every unmarked step `completed`; `failed`, `cancelled`, and a `needs_input` pause (not run-closing) leave the list exactly as last rendered.
 
   ## Review navigation
 
-  On `completed`, print the worker-authored `summary` verbatim without parsing or recomposing it or its `## Recommended Audits` block. Then print the changed-files union, print exactly `Review done.`, and stop — unless the Direct Build close below applies. Do not present an artifact-feedback gate. The clean route does not read `review.md`; only the Direct Build close below reads it plus on-disk audits as-is.
+  - `completed` — print the worker-authored `summary` verbatim; it already carries the `## Recommended Audits` block. In standalone `/sai-5-review`, run the Direct Build close below. Then print the changed-files union and exactly `Review done.`, and stop. The run has no feedback gate.
+  - `failed` or `cancelled` (an empty diff returns `cancelled`) — print the summary and the changed-files union, then stop.
 
-  On `failed` or `cancelled`, print the supplied summary and changed-files union, then stop without technical recovery. Never offer the Direct Build selector on `failed`, `cancelled`, or empty-diff close.
+  Inside the `/sai-review` composition, meta-review owns the terminal outcome and takes only this navigation's presentation: offer no selector and dispatch nothing from this adapter.
 
-  This Direct Build close is part of `terminal_navigation`, and it belongs to the standalone `/sai-5-review` invocation only. When this adapter runs inside the `/sai-review` composition (`meta-review`), the close never applies — with one or more audits activated the shared runner already resolves this non-final adapter's `terminal_navigation` to the composition transition, and in the zero-audit case the composition coordinator owns the terminal outcome, printing its pinned zero-audit literal and dispatching nothing. Offer no selector and dispatch nothing from this adapter in either composition case. It makes no `progress_plan` or `step_machine review-standalone@1` change. This lane is code-first beside the plan lane, not a replacement for `/sai-build` (`meta-build`) nor the explore `direct-build-unattended` lane (`sai-direct-build-worker`). Selecting it consents delegated writes AND pre-authorizes the one local commit below; it dispatches nothing unless explicitly selected.
+  ### Direct Build close (standalone `/sai-5-review`, `completed` only)
 
-  - **E1 clean close**: when the freshly generated `review.md` reports zero findings, offer no selector; the run closes with the normal terminal above.
-  - **Two-option selector**: only when findings remain, present exactly two options through the native picker — `Direct Build` / `Do not implement anything now`. `Do not implement anything now` dispatches nothing and closes with the identical standard text below. A dismissed or cancelled picker (E8) equals `Do not implement anything now` and closes the same way.
-  - **E2 input**: the freshly generated `review.md` plus `security.md`, `performance.md`, and `accessibility.md` from disk as-is when each file exists; never regenerate an audit in this run. Exclude open `Q1` questions from the fix input, or block option 1 when the fix is unresolvable without user input. Note the stale-audit provenance in chat (on-disk audits may be stale) rather than regenerating them.
-  - **Fix dispatch**: on explicit Direct Build selection, fetch `@sai/orchestration/workers/bindings/review-fix-worker.md` and use it. Dispatch the distinct `sai-review-fix-worker` with the one-string envelope whose `arguments_value` is the marker line `--review-fix` + newline + the findings input. Reuse by reference the prohibitions, fix-loop shape, guard posture, and budget tier of `sai/commands/explore/direct-build-worker.md` without modifying that production worker. It writes code only — never under `openspec/`, never `implementation.md` or `tasks.md`.
-  - **Fix loop (3-round cap)**: review the resulting diff against the input findings. A round with findings continues THE SAME fix worker with exactly the ordered finding list. A third completed round carrying findings is non-convergence (E4): make no commit, report for the manual route, and stop without staging or commit.
-  - **E3 conditional backfill**: only when a finding changes requirement or design, apply the fix in code and reconcile at the end through the EXISTING `sai-backfill-worker`; a pure implementation fix needs no backfill. Artifact writes belong to backfill only in that case.
-  - **E5/E6 single-commit local close**: on convergence, stage only the fix union paths (path-scoped `git add`; unrelated dirty files never enter) under the pre-authorized commit, author the message from staged state under `@sai/policies/commit-rules.md`, and perform one HEREDOC local commit in the execute window with `--allow-commit`. Never push, amend, retry outside the validated order, or stage an unrelated path.
-  - **Identical close (I3)**: every branch and post-fix path closes with identical text — verbatim `summary` + `## Recommended Audits` block + union + `Review done.`. E4 appends the manual-route note after that same close. E5: a fix touching a pending triage surface does not rewrite triage in this run; audits run later on the fixed tree.
-  - **E9 guard violation**: on a `violation` verdict from the fix worker, remediate exactly as the policy prescribes — evidence first, `git reset <guard_base>` (mixed), one pinned incident line per `@sai/policies/autonomy-audit-log.md` — then continue without commit to the same close.
+  Fetch @sai/commands/meta-review/direct-build-close.md and follow it with:
+
+  - `input` — the freshly generated `review.md` plus `security.md`, `performance.md`, and `accessibility.md` as they exist on disk, never regenerated in this run. Tell the user in chat that those audits may be stale.
+  - `direct-label = Direct Build`, `decline-label = Do not implement anything now`, and `decline-close` = the standard close above.
+
+  A fix that touches a triage surface leaves `review.md` as written; the audits run later on the fixed tree.
 
 </TASK>
 

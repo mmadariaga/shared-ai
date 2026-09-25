@@ -1,536 +1,188 @@
 # Merge Presentation Seam
 
-This is the coordinator-owned presentation boundary for `sai-merge`. It is
-limited to this command; it is not a shared UI framework and it never replaces
-the worker binding or the coordinator's mutation procedure. The active
-`concise` renderer exposes decisions directly, moves technical evidence into
-summaries, and keeps the worker lifecycle and mutation boundary explicit. A
-conflict adds one coordinator-owned language hand-off and a two-channel
-interaction: worker information and strategy proposals are ordinary text,
-while closed decisions use the active harness-native question mechanism.
+The coordinator-owned presentation boundary of `sai-merge`: how worker results
+reach the user. It is local to this command. It renders and reports; it never
+dispatches or continues the worker, answers a question, authorizes a mutation,
+runs git, or writes a file.
 
-## Installed source path and projections
+## Three values
 
-`sai/commands/merge/presentation.md` is an installed SAI seam asset, not a
-target-repository merge input. It stays outside the target invocation's
-`changed_files` union and final staging set by default; fetching the installed
-contract never makes it a merge path. The existing recursive `sai-commands`
-projection owns this path for both supported harnesses and materializes the
-same neutral destination:
+The coordinator keeps three values apart:
 
-- Claude Code — `sai/commands/merge/presentation.md`
-- opencode — `sai/commands/merge/presentation.md`
-
-Before the change closes, verify that both harness projections contain this
-file and that the coordinator's `Fetch @sai/commands/merge/presentation.md`
-target resolves in each harness. If a target repository also has a
-repository-local copy, include that path in the merge union only after the
-coordinator independently verifies that the file exists there and is owned by
-the target repository; an installed-only copy is never staged.
-
-## Ownership boundary
-
-The merge worker returns technical source data in the closed worker-core
-payloads. The source payload is opaque to mutation execution and includes the
-worker-authored `summary`, and, for `needs_input`, its exact `question` and
-ordered `options`. The coordinator owns the presentation of that source data.
-
-Maintain three separate coordinator-local values:
-
-1. **Worker source** — the latest validated lifecycle payload, retained without
+1. **Worker source** — the latest validated worker payload, kept verbatim: no
    rewording, reordering, timestamp conversion, or answer interpretation.
-2. **Merge presentation state** — the coordinator's lifecycle state, derived
-   only from the worker result and the coordinator's own operation outcomes.
-3. **Mutation outcome** — the result of a coordinator-owned merge, resolution
-   write, staging operation, ADR/DDR rename or reference update, or commit.
+2. **Presentation state** — the object below, updated only from worker results
+   and the coordinator's own operation outcomes, and only after the lifecycle
+   check (`@sai/commands/merge/lifecycle.md`) accepted the transition.
+3. **Mutation outcome** — the result of a coordinator-owned launch, checkout,
+   staging, rename, reference update, or commit.
 
-The presentation seam may render the first two values and report the third. It
-must never dispatch or continue the worker, select an answer, authorize a
-mutation, run git, write a resolution, rename a record, or update a reference.
-Technical analysis remains the worker's responsibility, and every mutation
-remains the coordinator's responsibility.
+The seam renders the first two and reports the third. It reads state from
+these values, never from rereading artifacts or from prose in a worker summary.
 
-The merge-only seam has these coordinator operations:
+The seam's operations are coordinator-local responsibilities, not a protocol:
+`render_information`, `render_gate`, `render_open_input`, `render_progress`,
+and `render_terminal`.
 
-- `render_information(worker_source, presentation_state)` — print
-  worker-authored information, conflict notices, strategy proposals, and
-  summaries as ordinary conversation text without changing their wording;
-- `render_gate(worker_source, presentation_state)` — build and present the
-  gate summary and its native picker inputs;
-- `render_open_input(worker_source, presentation_state)` — print an exact
-  worker-authored free-form context or correction request once as ordinary
-  conversation text and wait for the answer;
-- `render_progress(presentation_state)` — decide whether the merge progress
-  surface has anything to render; and
-- `render_terminal(worker_source, presentation_state)` — render the terminal
-  summary and completion literal according to commit state.
-
-These names describe coordinator-local responsibilities, not a new runtime
-protocol or a reusable abstraction.
-
-## Merge presentation state
-
-The lifecycle state machine and transition rules are defined in
-@sai/commands/merge/lifecycle.md. The presentation state below tracks the
-current phase and coordinator-owned context for each phase. The lifecycle
-validation seam integrates at the coordinator-owned operation boundaries and
-validates transitions before each operation. Presentation state updates occur
-only after a validated transition crosses the corresponding lifecycle
-boundary; an `invalid` validation result produces no presentation update.
-
-Initialize one state object for the invocation with these fields:
+## Presentation state
 
 ```text
-phase: preflight | method-selection | branch-selection |
-       merge-outcome | language-selection |
-       scope-selection | contextual-analysis | resolution | verification |
-       adr-ddr | authorization | terminal
-presentation_mode: concise
-current_branch
-merged_branch
+phase: a lifecycle state from lifecycle.md
+current_branch, merged_branch
 selected_method: merge | rebase
 squash_selection: yes | no | not-applicable
-target_sha
-source_sha
-merge_base
-source_introduced_adr_ddr_records
-branch_options
+target_sha, source_ref, source_sha, merge_base, source_introduced_adr_ddr_records
+branch_options, branch_selection_source: unresolved | listed | free-text
 merge_outcome: clean | conflicted
-working_language: unresolved | selected invocation-scoped language token
+rebase_state: not-applicable | stopped | finished
+working_language: unresolved | the selected language token
 conflict_files_by_category
-eligible_scope_options
-selected_scope
-contextual_decision_status: not-needed | pending | completed | blocked
-pending_contextual_conflict
-contextual_decisions: ordered records {conflict_id, decision: ours|theirs|synthesis}
-strategy_status: not-applicable | pending | revised | confirmed | blocked
-strategy_revision: non-negative integer
-conflict_detection_round: non-negative integer
+eligible_scope_options, selected_scope
+strategy_status: not-applicable | pending | revised | confirmed | declined
+strategy_revision, conflict_detection_round: non-negative integers
 verification_round: 0 | 1 | 2 | 3
 verification_result: pending | passed | failed | cap-exhausted
 staged_files
 compact_authorization_summary
 unresolved_escalations
-collision_applicability: not-applicable | no-collision | repair-required |
-                       escalation-required
+collision_applicability: not-applicable | no-collision | repair-required | escalation-required
 ambiguous_references
 adr_ddr_renames
-adaptive_todo_steps: ordered canonical item records {id, label, state}
-adaptive_todo_marked: completed canonical item ids
+adaptive_todo_steps, adaptive_todo_marked
 panel_ownership: unclaimed | exclusive | cleared
 authorization_status: pending | committed | refused | cleared
 commit_executed: false | true
 ```
 
-Each `adr_ddr_renames` record carries the worker-supplied collision data:
+Each `adr_ddr_renames` record holds the worker's collision data: `old_path`,
+`new_path`, `family`, `assigned_identifier`, `introduction_anchor`,
+`introduction_path`, `introduction_commit`, `introduction_timestamp`,
+`commit_date`, `suffix`, `old_h1`, `new_h1`, `old_index_label`,
+`new_index_label`. The coordinator records them before executing the rename and
+never rereads an artifact to fill a missing field.
 
-```text
-old_path
-new_path
-family: adr | ddr
-assigned_identifier
-introduction_anchor: source_sha | target_sha | merge_base
-introduction_path
-introduction_commit
-introduction_timestamp
-commit_date
-suffix
-old_h1
-new_h1
-old_index_label
-new_index_label
-```
+## Two channels
 
-Update the state only at the corresponding lifecycle boundary:
+- **Ordinary conversation text** — worker-authored information: summaries,
+  conflict notices, the global strategy, verification findings, collision
+  results, and open requests, printed once in the worker's wording and
+  language. The coordinator's own branch-entry prompt also travels here, in
+  the ambient conversation language.
+- **Native question** — closed decisions with non-empty options: Batch 1,
+  Batch 2, the strategy confirmation, the no-suite question, and the
+  authorization question. Claude Code uses `AskUserQuestion`; opencode uses
+  `question`. The exact question and the ordered option values go to the
+  picker unchanged.
 
-- Start in `preflight`. A dirty-worktree gate remains in `preflight`; the
-  method selector is `method-selection` (skipped under fast-track with the
-  method pinned to `merge`) with three labels (`Merge` / `Rebase` /
-  `Rebase with squash`); the branch selector is `branch-selection` and
-  does not advance until a branch is selected. Store the selected method in
-  `selected_method`, the worker-authored exact branch values and
-  `YYYY-MM-DD HH:mm` labels for only branches whose commits are not already
-  reachable from the current branch in `branch_options`. A `rebase-squash`
-  method answer maps below to `selected_method=rebase` with `squash_selection=yes`
-  (`rebase` alone maps to `squash_selection=no`); no new state is stored and no
-  standalone squash selector exists. The branch question uses single neutral
-  text for all three options; the gate summary carries the current branch plus
-  the explicit direction. Abandoning any of these questions mutates nothing.
-- After the final selection gate, record the current and selected branches
-  (merge source / rebase target), the method and squash choice, capture
-  `target_sha`, `source_sha`, and `merge_base` plus the ordered
-  `source_introduced_adr_ddr_records` inventory before the coordinator-owned
-  integration (merge, plain rebase, or squash-unify then rebase), render the
-  adaptive TODO, run the integration, and record `merge_outcome`. A clean
-  integration advances directly to the incremental `adr-ddr` check; it never
-  enters `language-selection`, asks for a working language, or presents a
-  strategy. A rebase conflict reuses the same merge resolution flow.
-  A conflicted integration first enters `language-selection` when the worker
-  returns `event: conflict_detected` and then advances through
-  `scope-selection`, `contextual-analysis`, and `resolution`.
-- At the first conflict event, store the exact affected-file inventory, render
-  only a concise conflict notice as ordinary text, and ask for
-  `working_language`. Do not expose semantic analysis before that question is
-  answered. Store the selected language only in invocation-scoped state and
-  forward it unchanged through the same-worker continuation.
-- After scope selection, enter `contextual-analysis`. Keep the contextual item
-  `in_progress` while the worker explains a semantically ambiguous conflict,
-  presents the complete global strategy, or continues a `more-context` or
-  free-form revision request. An obvious conflict has no individual semantic
-  picker, but it still belongs to the global strategy confirmation. Do not enter
-  `resolution` or permit a resolution write until the user confirms the current
-  global strategy and the worker returns the matching complete alternative.
-- If application or verification exposes a new conflict or inconsistency,
-  return to `contextual-analysis` with the same worker and selected language.
-  Record the new affected-file inventory and strategy revision, do not ask for
-  the language again, and require a fresh strategy confirmation before any
-  further write.
-- After resolution writes and staging, enter `verification`. Keep the same
-  staged state and increment `verification_round` for each failed round. Round
-  three remains `cap-exhausted` and staged; it is never silently committed or
-  reset by the presentation seam.
-- After verification, run the incremental `adr-ddr` check only when the
-  captured source frontier contains a record present in the final merge state;
-  otherwise skip it. Then enter `authorization` once all coordinator-owned
-  renames, reference updates, and final staging are done. Set
-  `collision_applicability` from the worker's collision result (or its
-  skipped-scan authorization source), and derive collision TODO work only when
-  it is `repair-required` or `escalation-required`. Build the compact
-  authorization summary before the authorization picker. On `yes`, mark the
-  authorization task completed after the commit executes; on `no`, clear the
-  authorization task before terminal rendering. The terminal state records
-  whether the authorized commit actually executed.
+A worker `needs_input` with an empty `options` list is open input:
+`render_open_input` prints its request once as ordinary text; the coordinator
+waits for the user's free-form answer and forwards it unchanged. The same
+renderer prints the branch-entry prompt below.
 
-Do not derive lifecycle state by rereading artifacts or by treating prose in a
-worker summary as a mutation instruction. The coordinator already knows the
-operation outcome it reports to the worker; the seam records that outcome for
-presentation only.
+Paths, hashes, identifiers, option values, protocol tokens, JSON keys, and
+artifact formats never change in either channel.
 
-## Conflict hand-off and two-channel presentation
+## Gates
 
-The worker reports a conflict through the declared closed nonterminal
-`event: conflict_detected` result:
-
-```text
-event: conflict_detected
-summary: <concise conflict-state summary>
-changed_files: <worker-write paths, normally []>
-affected_files: <exact Git-conflicted paths>
-continuation_state: language-selection | strategy-analysis
-```
-
-The coordinator validates this result before presentation. It records
-`affected_files` as conflict state, not as a worker write or staging list, and
-does not derive semantic content from the event. On the initial
-`language-selection` state, `render_information` prints one concise notice in
-ordinary conversation text, then the coordinator owns the working-language
-question. It uses `AskUserQuestion` on Claude Code and `question` on opencode;
-the canonical English question is **"Which language should I use for the
-conflict explanation and resolution strategy?"**, rendered in the ambient
-conversation language, with exact language-token values;
-the selected language value is stored only in invocation state and forwarded
-unchanged through the same-worker continuation. No conflict analysis,
-strategy, or resolution prompt appears before that question.
-
-After the language hand-off, `render_information` prints worker-authored facts,
-inferences, conflict analysis, verification findings, and the complete global
-strategy proposal as ordinary conversation text. It preserves the worker's
-wording and the selected language; paths, hashes, identifiers, protocol tokens,
-JSON keys, and artifact formats remain stable. A closed worker decision is
-rendered separately through the native question channel with its exact ordered
-options and values. The coordinator never translates, rephrases, or selects a
-worker option.
-
-An empty-options `needs_input` is an open-input result, not a closed gate.
-`render_open_input` prints its exact worker-authored request once as ordinary
-conversation text, waits for the user's free-form context or strategy
-correction, and forwards that answer unchanged to the same worker. It never
-invents a picker option. Context requests and corrections preserve the pending
-complete alternatives, selected language, and no-mutation boundary.
-
-When the worker returns a global strategy proposal, the coordinator renders the
-whole proposal before the native confirmation question. The proposal covers
-all files in the selected scope and states what to keep, adopt, combine, or
-escalate, with Facts, Inferences, affected contracts, trade-offs, and complete
-resolution content where required. Only an explicit confirmation of the
-current strategy permits the worker to return the final complete-file payload.
-Until then, the coordinator performs no resolution write, marker removal,
-staging, or commit. A `strategy-analysis` conflict event after application or
-verification follows the same information route but reuses the selected
-language and same worker; it never asks for language again. The worker requires
-a new strategy confirmation before any further resolution write.
-
-Claude Code and opencode consume this same neutral language, source-fidelity,
-strategy, and mutation contract. Their native question mechanisms carry the
-same question text, option values, ordering, and continuation semantics; only
-the task-list binding differs (`TaskUpdate`/`TaskList` versus `todowrite`/the
-session todo surface). Neither harness permits a worker to present directly or
-to write, stage, or commit during strategy discussion.
-
-## Gate presentation
-
-For every worker `needs_input` with a non-empty `options` list,
-`render_gate` creates a coordinator-local gate summary before invoking the
-native picker. A result with an empty `options` list uses `render_open_input`
-instead and is ordinary free-form conversation input, never a picker:
+For each closed gate, `render_gate` builds a local record before the picker:
 
 ```text
 kind
-worker_context
-question
-options
-state_snapshot
+worker_context      the worker-authored summary, unaltered
+question            exact
+options             exact and ordered
+state_snapshot      decision-relevant coordinator state only
 ```
 
-`question` and non-empty `options` come from the validated worker source and
-remain exact and ordered. For a batch, `render_gate` builds one gate record
-per `questions` item in order (each with its stable `id`), presents the items
-together in one trip, and appends one `{id, question, options, answer_value}`
-pair per item in order; when the batch exceeds the harness picker capacity it
-renders as plain text preserving every item's order and exact values.
-Branch options use the exact branch name as `value` and
-`<branch> — last commit <YYYY-MM-DD HH:mm>` as `label`; the worker has already
-filtered them with `git branch --no-merged HEAD` and sorted them by commit
-timestamp descending and branch name ascending for ties. `worker_context`
-carries the worker-authored technical payload
-alongside the ask without alteration. `state_snapshot` carries only the
-decision-relevant coordinator state. Append only the exact `question`, exact
-ordered `options`, and the user's exact `answer_value` to opaque input history;
-presentation state is never added to that history and is never sent as an
-envelope field.
+A batch gets one record per `questions` item, in order, presented in one trip;
+the coordinator appends one `{id, question, options, answer_value}` pair per
+item to the opaque input history. A batch larger than the picker's capacity
+renders as plain text, keeping every item's order and exact values. Presentation
+state never enters the input history or the envelope.
 
-The seam owns the presentation location for the existing dirty-worktree,
-method, branch, runtime-scope, global-strategy,
-contextual semantic-decision, no-suite, and commit-authorization gates, plus
-the conflict-triggered language question.
-It does not add a gate, alter answer values, or change continuation order. The
-method gate uses exact question **"Which integration method do you want to
-use?"** with ordered `Merge` (`merge`) / `Rebase` (`rebase`) /
-`Rebase with squash` (`rebase-squash`); the third label maps below to the
-existing pair `method=rebase` + `squash=yes` with no new state. The method gate
-summary carries the squash explanatory context (unify `merge_base..HEAD` into
-one commit vs. replay commit by commit). No squash gate exists. For
-the runtime scope gate, validate that the
-worker's `eligible_scope_options` matches `conflict_files_by_category` before
-rendering: `full` represents all detected categories and is rendered first as
-`Full scope (Recommended)`; `artifacts` requires a specs or ADR/DDR conflict
-and follows as `Artifacts only (specs + ADR/DDR)` when applicable; `code`
-requires a code conflict and follows as `Code only` when applicable. Render
-only that filtered, canonical option set and never show a category-specific
-option for an absent category.
+Per gate:
 
-For the global-strategy gate, validate that the worker source covers the whole
-selected conflict set in deterministic file and region order and contains the
-worker-authored `## Global resolution strategy`, **Facts**, **Inferences**, both
-branch objectives, what the plan preserves/gains/gives up, concrete risks,
-affected contracts, every complete alternative, and a safe-synthesis assessment
-where applicable. The source must identify what to keep, adopt, combine, or
-escalate across the conflict set; it must not present independent fragment
-choices as a strategy. The coordinator prints this source through ordinary
-conversation text, then presents the closed strategy-confirmation question and
-its exact ordered options through the native picker. `apply-strategy` is the
-only option that can unlock the completed resolution payload; revision and
-decline remain mutation-free.
-
-For a revision, accept only the same worker's empty-options open-input result.
-Print the exact request as ordinary text and forward the user's free-form
-context or correction unchanged. Preserve the selected language and pending
-alternatives across every iteration. Do not add a language question or allow a
-resolution write, marker removal, staging, or commit during an iteration.
-
-For a contextual semantic-decision gate, validate that the worker source names
-one pending conflict and carries both **Facts** and **Inferences**, the two
-branch objectives, the preserve/gain/give-up/risk comparison, affected
-contracts, and the synthesis safety assessment. The only accepted option
-values are `ours`, `theirs`, optional `synthesis`, and `more-context`; values
-are internal and must remain exact. `synthesis` may appear only when the source
-contains a complete safe combined outcome. `more-context` is a continuation
-request, never a resolution choice. Human-facing labels must describe the
-complete behavior and trade-off rather than expose merge jargon or a text
-fragment. These values are retained inside the complete global strategy; the
-seam must not turn them into independent per-file resolution prompts when the
-global strategy gate is active. The seam validates this source and renders it;
-it does not select a value or infer a missing alternative.
-
-The coordinator must not write a resolution, remove conflict markers, or stage
-a path while this gate, the global strategy confirmation, or a `more-context`
-or open-input continuation is pending. The worker writes the resolution content
-after global confirmation and coordinator validation. A forwarded decision is
-not sufficient by itself: the worker must return the matching complete,
-marker-free alternative after global confirmation, and the coordinator validates
-that payload before the worker writes content. After the worker writes authorized
-content, the coordinator performs a post-resolution review to verify the
-materialized result matches the approved strategy. A completed resolution result
-must carry the `## Complete resolution payload` JSON object defined by
-`@sai/commands/merge/instructions.md`. The seam validates that it has one complete `content` string for every conflicted file in the selected scope, that
-each path and category matches the worker's classified source, that every
-semantic decision is an offered value other than `more-context`, and that no
-conflict marker appears in any content string. The worker writes those exact
-content strings; neither the seam nor the coordinator may derive a file by
-applying a region replacement, concatenating alternatives, or reading resolution
-prose.
-
-For branch selection, the canonical English question is neutral for all three
-method options: **"Which branch do you want to operate on?"**. Render its
-concise wording in the ambient conversation language (Spanish keeps
-**"¿Sobre qué rama quieres operar?"**, English uses the canonical, any other
-language falls back to the canonical) with the readable `YYYY-MM-DD HH:mm` labels.
-Branch selection happens before `working_language` is known, so use the
-current ambient language and never open the working-language question early.
-Option values stay exact branch names and labels stay `<branch> — last commit
-<YYYY-MM-DD HH:mm>`. The adjacent gate summary stays in the ambient
-conversation language. Render the detailed current
-branch plus the explicit direction (merge source / rebase target), candidate timestamps, and merge rationale in the gate summary rather
-than inside the question. For authorization, render the compact summary below
-instead of the worker's full staged-file context. A missing test suite remains
-an explicit `needs_input` decision, not an automatic skip.
-
-The authorization question is method-aware (merge keeps the `git commit`
-wording; rebase finalizes the rebase), option order, refusal rule, and
-authorized commit/rebase-continuation surface preserve the merge path
-unchanged. The seam presents these improved summaries; it never selects an
-answer or authorizes a mutation.
+- **Method** — the summary carries the current branch and the difference
+  between the three methods.
+- **Branch** — the question renders in the ambient conversation language
+  (Spanish: **"¿Sobre qué rama quieres operar?"**; English and any other
+  language: the canonical **"Which branch do you want to operate on?"**),
+  because `working_language` is not yet known. Options, labels, and order are
+  exactly the worker's (`instructions.md` Step 3), ending with the
+  `Enter a branch name` option whose value is the sentinel `sai:enter-branch`.
+  The summary carries the current branch, the direction (merge source or new
+  base), the full timestamps, and that entering text runs
+  `git fetch --prune origin` before validation, which may prune stale `origin`
+  tracking refs and authorizes nothing more; with no candidates it says so
+  plainly.
+- **Branch entry** — the coordinator's open prompt after the sentinel
+  (coordinator § Gates; picker free text needs no prompt, and the sentinel
+  leads to this open prompt). Its context says
+  the list holds only unmerged local branches, names the selected method and
+  current branch, and says the branch will be merged into the current branch or
+  used as the rebase base. Text entry accepts any local branch (including a
+  merged one the list omits) or an `origin/<branch>` remote-tracking branch,
+  used directly without creating a local branch; the exact ref must validate
+  before integration starts. Ask: **"Enter the exact local branch name or
+  `origin/<branch>` reference to use."** Localize the prose to the ambient
+  language; keep refs and protocol tokens unchanged.
+- **Batch 2** — the conflict notice prints first as ordinary text, then the
+  `language` item and, outside fast-track, the `scope` item. Before rendering,
+  check that `eligible_scope_options` matches `conflict_files_by_category`:
+  `full` first as `Full scope (Recommended)`, then `artifacts` as
+  `Artifacts only (specs + ADR/DDR)` only with a specs or ADR/DDR conflict, then
+  `code` as `Code only` only with a code conflict.
+- **Strategy confirmation** — before rendering, check that the worker source
+  covers the whole selected conflict set in file and region order and holds
+  `## Global resolution strategy` with **Facts**, **Inferences**, both branch
+  objectives, what the plan preserves, gains, and gives up, risks, affected
+  contracts, the alternatives considered, and a combination assessment where
+  one applies. Print it as ordinary text, then ask the confirmation.
+- **No suite** — an explicit decision, never an automatic skip.
+- **Authorization** — show `compact_authorization_summary` in place of the
+  worker's staged-file context.
 
 ### Compact authorization summary
 
-Immediately before the final authorization picker, derive
-`compact_authorization_summary` from coordinator state and render exactly these
-decision facts:
+Derived from coordinator state immediately before the authorization picker:
 
 ```text
-Method: <merge | rebase (+ squash yes/no for the rebase path)>
+Method: <merge | rebase (squash yes/no)>
 Target branch: <current branch>
-Source branch: <selected branch (merge source / rebase target)>
+Source branch: <selected branch>
 Verification status: <passed | not required (clean integration) | continued without a detectable suite | failed after round N>
 Conflict result: <clean | resolved (N files) | unresolved (N escalations)>
 Collision result: <not applicable | none detected | N repaired | N reported (N escalations)>
 Staged files: <N>
 ```
 
-Do not expand `Staged files` into a path list at this gate. Preserve the exact
-paths in coordinator state for the worker's E9 refusal summary and for staging
-ownership. Technical conflict proposals, verification failures, and collision
-details may be rendered as adjacent worker-authored summary content, but they
-must not replace or duplicate the compact decision summary in the picker.
+`Staged files` stays a count; the exact paths stay in coordinator state for the
+refusal record and for staging. Conflict, verification, and collision details
+may print beside it as worker-authored text.
 
-## Progress rendering
+## Progress
 
-Progress rendering is a coordinator-owned operation over the presentation
-state, not a worker event or a mutation trigger. The merge adapter still
-declares no worker `progress_plan`; this adaptive TODO is a separate
-coordinator-owned task list whose shape can follow the resolved merge path.
-Use the active harness's native task-list binding and the canonical item
-identities, labels, ordering, and transitions in
-`@sai/policies/todo-structure.md` verbatim. The renderer must pass the stable
-canonical ids and labels on every full render; it must not invent a route-local
-id or label. The merge TODO claims exclusive ownership of the active panel on
-its first full render. Before that claim, use the marker `sai-merge-todo` only
-to clear stale merge entries; after the claim, the active binding may displace
-foreign entries and no restoration is promised.
+The adaptive TODO is a coordinator-owned task list, separate from any worker
+`progress_plan`. Its item ids, labels, order, route transitions, and panel
+ownership are defined in `@sai/policies/todo-structure.md` § Merge adaptive
+TODO; `render_progress` applies them verbatim through the active harness
+binding (`TaskUpdate`/`TaskList` on Claude Code, `todowrite` and the session
+todo surface on opencode). A TODO state never authorizes a mutation.
 
-`render_progress(presentation_state)` follows these boundaries:
+## Terminal
 
-1. Before method and source-branch selection, keep `panel_ownership:
-   unclaimed`, clear only stale entries bearing `sai-merge-todo` if the
-   harness binding requires a surface start clear, and render no TODO. Foreign
-   entries remain intact until the first merge render claims the panel.
-2. Immediately after the user selects the method and source branch (the
-   `rebase-squash` shortcut records `method=rebase` + `squash=yes` in
-   presentation state), render the initial
-   canonical `merge` item method-aware with the selected source and target
-   visible:
+`render_terminal` prints the worker source `summary` unchanged and forwards the
+validator's `validated_at` sidecar verbatim. It prints `Merge done.` only when
+`commit_executed` is true. Before clearing the merge-owned TODO surface it
+records the final state; the invocation's changed-files union stays coordinator
+state.
 
-   ```text
-   [~] Merge <source> into <target>
-   [~] Rebase <target> onto <source>
-   ```
+## Collision presentation
 
-   Use the first line for method `merge` and the second for method `rebase`
-   (with the squash choice recorded in presentation state, not in the label).
-   Set `panel_ownership: exclusive` on this first full render. No possible
-   conflict work is shown before the outcome is known.
-3. At a clean outcome, mark canonical `merge` `completed` and remove
-   `scope`, every `resolve-*` item, and `verification`. After the collision
-   pass reports its applicability, append canonical `authorization`; insert
-   canonical `collision` before it only for `repair-required` or
-   `escalation-required`. A skipped scan or a scan with no collisions
-   contributes no collision item; impossible conflict work is never rendered
-   as pending.
-4. After a conflicted outcome, reconcile the list to the actual categories and
-   gate path. Keep the conflict route pending while the coordinator performs
-   the language hand-off; do not expose semantic content before the language
-   question. Append canonical `scope` only when the scope gate is actually
-   presented; fast-track omits it. Add `contextual-analysis` after `scope` (or
-   make it the first active conflict item on fast-track) and keep the applicable
-   `resolve-artifacts`, `resolve-code`, or `resolve-full` item pending. The
-   category-specific scope options are the worker's filtered set, not a new
-   TODO decision.
-5. While the worker is explaining a semantic ambiguity, presenting the complete
-   global strategy, while `more-context` or an open correction is being
-   answered, or while more contextual decisions remain, keep
-   `contextual-analysis` `in_progress` and keep the resolution item pending.
-   Do not render the resolution item as active before the user confirms the
-   current global strategy and the worker returns the selected complete
-   alternatives. An obvious conflict completes semantic analysis without an
-   individual picker but still passes through that global confirmation. Only
-   then may the coordinator write and stage resolutions.
-6. When application or verification reports a new conflict or inconsistency,
-   keep the merge item completed, return the active contextual item to
-   `in_progress`, preserve the selected language, and render the refreshed
-   strategy route. Do not ask for the language again and do not let a TODO
-   transition authorize a write.
-7. After each resolution or verification outcome, mark only the applicable
-   canonical item that the coordinator has actually completed and render the
-   complete current list. Round three remains staged and uncommitted when
-   verification is exhausted; the TODO must not imply that a commit occurred.
-8. After the collision pass, omit canonical `collision` for
-   `not-applicable` or `no-collision`; otherwise keep it before
-   `authorization` and mark it completed only after all coordinator-owned
-   renames and canonical reference updates have finished. Add
-   `authorization` only after final staging and leave it `in_progress` while
-   the native picker is pending. On `yes`, mark it completed only after the
-   method-appropriate finalization succeeds (`git commit` for merge,
-   `git rebase --continue` completion for rebase). On `no` or any other
-   non-committing terminal closure, remove and clear it rather than leaving a
-   pending commit action.
-
-The list may change shape at the merge-outcome boundary by removing impossible
-steps; it remains coordinator-emitted, and progress state is never used to
-authorize a merge, resolution, staging, rename, or commit. Worker verification
-round ownership and continuation behavior remain unchanged. At terminal
-rendering, clear the exclusive merge-owned surface and set
-`panel_ownership: cleared`; do not promise restoration of entries that were
-displaced when ownership was claimed.
-
-## Terminal rendering and record consistency
-
-The concise terminal renderer prints the worker source `summary`
-without rewriting it. It prints `Merge done.` only when `commit_executed` is
-true; every other closure stops without that literal and without mutation. It
-forwards the validator `validated_at` sidecar verbatim and never takes a replacement clock reading.
-The invocation-wide ordered, duplicate-free `changed_files` union remains
-coordinator state and is not replaced by a presentation list.
-
-When terminal rendering begins, record the final state before clearing the
-exclusive merge-owned TODO surface. A successful authorization first marks the
-`authorization` item completed after the commit; a refusal or other
-non-committing closure removes and clears that item so it cannot remain an
-actionable pending task. Preserve the worker's exact refusal summary and
-repository-state record; no foreign panel entries are restored.
-
-Incremental ADR/DDR collision presentation uses one record for each planned
-rename in an affected `(family, numeric prefix)` group, with the family, old
-path, new path, assigned suffixed identifier, suffix, worker-derived introduction
-anchor/path/commit/full timestamp, commit date, exact old/new H1, and exact
-old/new index label supplied by the worker. The coordinator
-records the captured source frontier and final-state applicability before
-rendering collision work; unrelated historical groups never become a
-presentation or staging candidate.
-The coordinator records these values before executing the rename and never
-rereads artifacts to fill a missing presentation field. Every rendered
-reference uses the same family-aware assigned identifier: the filename prefix,
-H1 identifier, index label, same-family token, cross-family token, markdown link
-(including correction-table and reserved historical link text), and structured
-index metadata cannot drift apart. The seam reports orphan, ambiguous, and
-other manual escalations but does not resolve, invent a destination, or
-suppress them.
+Each planned rename renders one record from `adr_ddr_renames`, grouped by
+affected `(family, numeric prefix)`. Every rendered reference uses the record's
+single assigned identifier: filename prefix, H1, index label, relationship
+tokens, markdown links (correction-table and `*Superseded by*` link text
+included), and structured index metadata. Groups outside the source frontier
+never render. Orphan, ambiguous, and delete/modify escalations render as
+reported, unresolved.

@@ -1,5 +1,9 @@
 # sai-1-spec Stop Specification
 
+## Purpose
+
+This capability defines the sai-1-spec feedback gate and mandatory stop after proposal and spec artifacts are produced.
+
 ## Requirements
 
 ### Requirement: sai-1-spec termination behavior

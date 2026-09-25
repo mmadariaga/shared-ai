@@ -1,240 +1,101 @@
 # Merge Lifecycle Validation Seam
 
-This is the neutral executable boundary for merge coordinator lifecycle
-validation. It defines the state machine, valid transitions, and the
-integration point where lifecycle results can be validated before the next
-merge operation is selected. This seam is harness-neutral and does not change
-existing merge behavior; it creates one shared integration point for
-deterministic lifecycle enforcement.
+The coordinator-owned state machine of `sai-merge`: the lifecycle states, the
+permitted transitions, and the check the coordinator runs before selecting each
+next operation. It is harness-neutral and read-only toward the worker: it
+dispatches nothing, answers nothing, and runs no git.
 
-## Ownership and scope
+## States
 
-The lifecycle seam is coordinator-owned and read-only with respect to worker
-analysis. It does not dispatch, continue, or replace the worker; it does not
-select answers, authorize mutations, run git, write resolutions, rename
-records, or update references. Technical analysis remains the worker's
-responsibility, and every mutation remains the coordinator's responsibility.
+| state | holds when |
+| --- | --- |
+| `preflight` | environment checks run; no integration started |
+| `method-selection` | the method (`merge` / `rebase` / `rebase-squash`) is chosen |
+| `branch-selection` | the listed-branch or text-entry route is selected; no integration has launched |
+| `branch-validation` | a free-text branch entry is being refreshed and checked as an exact branch ref; no integration has launched |
+| `merge-outcome` | the coordinator ran a launch or a `git rebase --continue` and recorded the outcome |
+| `language-selection` | the first conflict is detected; the working language is being chosen |
+| `scope-selection` | the conflict scope is being chosen |
+| `contextual-analysis` | the global strategy is being analyzed, revised, or confirmed |
+| `resolution` | the confirmed resolution is being written, reviewed, and staged |
+| `verification` | the suite runs within its three-round budget |
+| `adr-ddr` | the collision pass runs on the final integration state, or is skipped |
+| `authorization` | the finalization question is pending or answered |
+| `terminal` | the run is closed and its final state recorded |
 
-The seam provides:
-
-1. **State definitions** — the closed set of lifecycle phases and their
-   invariants.
-2. **Transition rules** — the valid state transitions and their preconditions.
-3. **Validation contract** — the integration point where the coordinator
-   validates lifecycle results before selecting the next operation.
-
-## Lifecycle states
-
-The merge lifecycle progresses through these states in the defined order. Each
-state has invariants that must hold before transitioning to the next state:
+The usual paths:
 
 ```text
-preflight
-  → method-selection
-    → branch-selection
-      → merge-outcome
-        → [clean path] → adr-ddr → authorization → terminal
-        → [conflict path] → language-selection → scope-selection →
-          contextual-analysis → resolution → verification →
-          adr-ddr → authorization → terminal
+merge, clean:        preflight → method → branch → merge-outcome → adr-ddr → authorization → terminal
+merge, free-text:    … → branch → branch-validation → merge-outcome → adr-ddr → authorization → terminal
+merge, conflicted:   … → merge-outcome → language → scope → contextual-analysis → resolution
+                       → verification → adr-ddr → authorization → terminal
+rebase, per stop:    … → merge-outcome → [language → scope →] contextual-analysis → resolution
+                       → verification → authorization → merge-outcome (git rebase --continue)
+rebase, finished:    merge-outcome → adr-ddr → [authorization →] terminal
 ```
 
-Fast-track skips `method-selection` (method pinned to `merge`); no
-`squash-selection` state exists — the `rebase-squash` method label maps below
-to `method=rebase` + `squash=yes` with no new state.
-`merge-outcome` covers both `git merge` and `git rebase` launches (plus the
-squash unification that precedes a `rebase-squash` run).
+## Transition check
 
-State invariants:
-
-- **preflight** — environment checks complete, no integration operation started.
-- **method-selection** — integration method (`merge`/`rebase`/`rebase-squash`) selected; abandoning mutates nothing.
-- **branch-selection** — source branch selected (merge source / rebase target), merge provenance captured.
-- **merge-outcome** — integration executed (`git merge` or `git rebase`, with squash unification first for `rebase-squash`), outcome recorded (clean or conflicted).
-- **language-selection** — conflict detected, working language selected.
-- **scope-selection** — conflict scope selected.
-- **contextual-analysis** — semantic analysis in progress or complete.
-- **resolution** — resolution writes complete, files staged.
-- **verification** — test suite executed, verification round recorded.
-- **adr-ddr** — incremental collision check complete or skipped.
-- **authorization** — commit authorization pending or executed.
-- **terminal** — lifecycle complete, final state recorded.
-
-## Transition validation
-
-Before selecting the next merge operation, the coordinator SHALL validate that
-the transition from the current state to the target state is permitted by the
-transition rules. The validation contract is:
+Before each operation the coordinator evaluates:
 
 ```text
 validate_transition(current_state, target_state, operation_context) → valid | invalid
 ```
 
-Where:
+`operation_context` is the coordinator-owned state the precondition reads
+(outcome, method, language, strategy status, verification result, staged
+paths). A transition is `valid` only when its row below exists and its
+precondition holds. On `invalid`, halt before the operation: no mutation, no
+dispatch, no presentation update; report the current state, the target state,
+and the violated precondition as ordinary text.
 
-- `current_state` — the current lifecycle phase.
-- `target_state` — the phase the next operation would enter.
-- `operation_context` — the coordinator-owned context for the operation
-  (merge outcome, conflict state, verification round, etc.).
+A batch checks each boundary it covers in item order within its one trip:
+Batch 1 covers `preflight` → `method-selection` → `branch-selection`
+(fast-track: `preflight` → `branch-selection`). Choosing the branch-entry
+sentinel keeps the route in `branch-selection` while the coordinator collects
+the exact text; it then enters `branch-validation`. Batch 2 covers
+`language-selection` → `scope-selection`. An abandoned batch makes no
+transition.
 
-The validation returns `valid` when the transition is permitted and `invalid`
-when it is not. An invalid transition SHALL halt the operation and report the
-lifecycle violation — the current state, target state, and violated
-precondition — without executing or selecting the operation. No mutation,
-worker dispatch, or presentation update follows an `invalid` result.
-
-Batched trips validate each covered boundary in item order within the same
-trip: Batch 1 covers `preflight` → `method-selection` → `branch-selection`
-(fast-track: `preflight` → `branch-selection`); Batch 2 covers
-`language-selection` → `scope-selection`. A partial batch abandonment performs
-no transition and no mutation.
-
-## Allowed transitions and preconditions
-
-The table below is the exhaustive set of permitted transitions. A transition
-not listed is `invalid`. Each row names the precondition that
-`operation_context` MUST satisfy; a missing or unsatisfied precondition is
-`invalid`.
+## Permitted transitions
 
 ```text
-current_state         target_state           precondition
-─────────────────────────────────────────────────────────────────────
-preflight             method-selection       environment checks complete
-preflight             branch-selection       environment checks complete, fast-track pins method to merge
-method-selection      branch-selection       method selected (merge|rebase|rebase-squash)
-branch-selection      merge-outcome          branch selected, merge provenance captured, method and squash resolved (merge → not-applicable, rebase → no, rebase-squash → yes; fast-track pins method to `merge`)
-merge-outcome         adr-ddr                merge_outcome = clean
-merge-outcome         language-selection     merge_outcome = conflicted
-language-selection    scope-selection        working_language resolved to a non-empty token;
-                                             fast_track_active may satisfy scope implicitly
-scope-selection       contextual-analysis    selected_scope is a non-empty eligible scope
-                                             or fast_track_active supplies full scope
-contextual-analysis   resolution             strategy confirmed (strategy_status = confirmed),
-                                             complete resolution payload present and validated
-resolution            verification           resolution writes complete, files staged
-verification          adr-ddr                verification_result ∈ {passed, cap-exhausted}
-adr-ddr               authorization          collision check complete or skipped,
-                                             collision_applicability resolved
-authorization         terminal               authorization_status ∈ {committed, refused, cleared}
-adr-ddr               terminal               non-committing closure: authorization_status = cleared,
-                                             commit_executed = false
+current_state         target_state          precondition
+───────────────────────────────────────────────────────────────────────────────
+preflight             method-selection      environment checks passed
+preflight             branch-selection      environment checks passed; fast_track_active pins method=merge
+method-selection      branch-selection      method stored (merge | rebase | rebase-squash)
+branch-selection      branch-selection      entry sentinel selected; dirty answer is not no; open branch-entry prompt only
+branch-selection      branch-validation     branch-entry text received; method and squash resolved
+branch-selection      merge-outcome         listed local branch selected; provenance captured; no fetch; method and squash resolved
+branch-selection      terminal              listed local ref no longer resolves; worker returned a closing result; no fetch or integration
+branch-validation     merge-outcome         fetch succeeded; exact ref resolves to a commit; provenance captured; method and squash resolved
+branch-validation     terminal              fetch failed or exact ref is unusable; worker returned a closing result; no integration started
+merge-outcome         adr-ddr               outcome clean (merge stopped before commit, or rebase finished)
+merge-outcome         language-selection    outcome conflicted; working_language unresolved
+merge-outcome         contextual-analysis   outcome conflicted; working_language already selected
+language-selection    scope-selection       working_language is a non-empty token
+scope-selection       contextual-analysis   selected_scope is eligible, or fast_track_active supplies full
+contextual-analysis   resolution            strategy_status = confirmed; completed payload validated
+resolution            contextual-analysis   a write or review exposed a new conflict (strategy-analysis event)
+resolution            verification          review passed; resolution staged
+verification          contextual-analysis   a fix or run exposed a new conflict (strategy-analysis event)
+verification          adr-ddr               method=merge; verification_result ∈ {passed, cap-exhausted}
+verification          authorization         rebase stopped; verification_result ∈ {passed, cap-exhausted}
+adr-ddr               authorization         applicability resolved; repairs applied; final staging done;
+                                            a merge in progress, or a finished rebase with staged repair
+adr-ddr               terminal              rebase finished with nothing staged
+authorization         merge-outcome         rebase stopped; answer yes; git rebase --continue ran
+authorization         terminal              answer recorded: committed or refused
+<any>                 terminal              the worker returned a closing result (in-progress guard,
+                                            dirty=no, branch-resolution failure, decline-strategy, no-suite=no,
+                                            review budget exhausted)
 ```
 
-### Precondition details
+`verification_result` is `passed` also when the user continued past the
+no-suite question. A clean integration never passes through `verification`.
 
-- **preflight → method-selection**: `environment checks complete` — the
-  dirty-worktree gate has passed and no integration operation has started.
-  Abandoning the method question mutates nothing.
-- **preflight → branch-selection**: fast-track fast path — `environment checks
-  complete` plus `fast_track_active` pinning the method to `merge` without
-  asking.
-- **method-selection → branch-selection**: `method selected` — a `merge`,
-  `rebase`, or `rebase-squash` value is stored.
-- **branch-selection → merge-outcome**: `branch selected, merge provenance
-  captured` — a branch value is stored, and `target_sha`, `source_sha`,
-  `merge_base`, and `source_introduced_adr_ddr_records` are captured before
-  the integration launch, plus the method and squash are resolved below
-  (`merge` → `squash=not-applicable`, `rebase` → `squash=no`,
-  `rebase-squash` → `method=rebase` + `squash=yes`; fast-track pins method to
-  `merge`).
-- **merge-outcome → adr-ddr**: `merge_outcome = clean` — the merge or rebase completed
-  without conflicts. The clean path skips every conflict-only state
-  (language-selection, scope-selection, contextual-analysis, resolution,
-  verification).
-- **merge-outcome → language-selection**: `merge_outcome = conflicted` — the merge or rebase produced conflicts. The conflicted path MUST enter language-selection before any conflict analysis; a rebase conflict reuses the same merge resolution flow.
-- **language-selection → scope-selection**: `working_language resolved` — the
-  working-language question has been answered with a non-empty language
-  token. Under fast-track, the scope item may be auto-selected, but the
-  language gate is never bypassed.
-- **scope-selection → contextual-analysis**: `selected_scope is non-empty` —
-  a scope value has been selected or fast-track has supplied the full scope.
-- **contextual-analysis → resolution**: `strategy confirmed, payload present`
-  — the user has confirmed the current global strategy
-  (`strategy_status = confirmed`) and the worker has returned a complete,
-  validated resolution payload. A `more-context` or `revise-strategy` answer
-  does not satisfy this precondition.
-- **resolution → verification**: `resolution writes complete, files staged` —
-  every validated resolution file has been written and staged.
-- **verification → adr-ddr**: `verification_result ∈ {passed, cap-exhausted}`
-  — the test suite has passed or the three-round budget is exhausted. A
-  `pending` or `failed` result with remaining budget does not satisfy this
-  precondition.
-- **adr-ddr → authorization**: `collision check complete or skipped` — the
-  incremental ADR/DDR collision scan has completed or been legitimately
-  skipped, and `collision_applicability` is resolved to a final value.
-- **authorization → terminal**: `authorization_status resolved` — the
-  authorization gate has been answered (`committed`, `refused`, or `cleared`).
-- **adr-ddr → terminal**: `non-committing closure` — the authorization step
-  is explicitly cleared without a commit (`authorization_status = cleared`,
-  `commit_executed = false`). This is the E5 non-committing terminal closure.
-
-### Invalid transitions
-
-Any transition not in the table above is `invalid`. The validator reports:
-
-```text
-{
-  result: "invalid",
-  current_state: <current>,
-  target_state: <target>,
-  violated_precondition: <description of the missing or unsatisfied condition>
-}
-```
-
-The coordinator SHALL halt before selecting the operation, perform no
-mutation, dispatch no worker, and render no presentation update for the
-rejected transition.
-
-## Integration point
-
-The lifecycle validation seam integrates at these coordinator-owned boundaries:
-
-1. **Before merge launch** — validate transition from
-   `branch-selection` to `merge-outcome` (`git merge` or `git rebase` launch,
-   with squash unification first for `rebase-squash`). Also validate the preceding
-   `preflight` → `method-selection` (or fast-track `preflight` →
-   `branch-selection`) and `method-selection` → `branch-selection` gates.
-2. **Before conflict analysis** — validate transition from `merge-outcome` to
-   `language-selection` (conflicted path only).
-3. **Before scope selection** — validate transition from `language-selection`
-   to `scope-selection`.
-4. **Before resolution writes** — validate transition from
-   `contextual-analysis` to `resolution`.
-5. **Before verification** — validate transition from `resolution` to
-   `verification`.
-6. **Before ADR/DDR check** — validate transition from `verification` (or
-   `merge-outcome` for clean path) to `adr-ddr`.
-7. **Before commit authorization** — validate transition from `adr-ddr` to
-   `authorization`.
-8. **Before terminal rendering** — validate transition from `authorization`
-   (or `adr-ddr` for non-committing closure) to `terminal`.
-
-The coordinator calls the validation function at each boundary before
-selecting the next operation. The validation is deterministic and controlled
-by coordinator code; the AI worker operates only as an analysis worker for
-conflicts, facts, inferences, and strategies.
-
-## Deterministic enforcement
-
-The seam enforces lifecycle ordering deterministically. The integration is:
-
-- The state machine and transitions are defined.
-- The validation contract is specified.
-- The integration points are identified.
-- The allowed-transition table and precondition checks replace the previous
-  placeholder. Every transition is validated against the table before the
-  coordinator selects the next operation; invalid transitions halt without
-  executing the operation.
-
-The seam ensures that safety-critical ordering does not depend on model
-compliance alone. The coordinator invokes the validator at each integration
-point and halts on `invalid` without selecting the operation, performing any
-mutation, or updating presentation state for the rejected transition.
-
-## Neutrality
-
-The lifecycle seam is neutral for Claude Code and opencode. Both harnesses
-use the same state definitions, transition rules, and validation contract.
-Only the native presentation mechanism differs (task-list binding, question
-mechanism). The seam does not introduce harness-specific logic or diverge
-between the two supported harnesses.
+`commit_executed` is true when the run ends finalized: the merge commit
+succeeded, or the rebase finished and its collision repair (if any) was
+committed. Every other terminal leaves it false.

@@ -61,16 +61,16 @@ The commit SHALL be executed by the coordinator in the main session only: the ST
 
 #### Scenario: terminal documentation commit stays coordinator-side
 
-- **WHEN** the final sweep passes and the Learnings Promotion Pass completes
+- **WHEN** the final sweep passes and the learnings promotion completes
 - **THEN** the coordinator evaluates the fixed terminal set and commits it through the terminal gate, never a worker
 
-### Requirement: Worker payloads author emission time
+### Requirement: Worker payloads stay timeless
 
-The apply coordinator SHALL retain task-list, verification, union, gate, and commit ownership while RED and GREEN workers author `emitted_on` in their lifecycle payloads.
+The apply coordinator SHALL retain task-list, verification, union, gate, and commit ownership while RED and GREEN workers author no time field in their lifecycle payloads (`timeless-worker`).
 
-#### Scenario: Apply receives a timestamped result
+#### Scenario: Apply receives a worker result
 - **WHEN** a RED or GREEN worker returns progress or a terminal result
-- **THEN** the coordinator uses the payload timestamp for progress rendering without taking over its composition.
+- **THEN** the coordinator takes observation time from the validator's `validated_at`, never from the payload.
 
 ### Requirement: Coordinator-owned commit gates honor the session flag
 
@@ -82,10 +82,19 @@ The apply coordinator SHALL retain ownership of both commit gates and SHALL use 
 
 ### Requirement: Every apply dispatch window is guarded and gates run between windows
 
-Each RED, GREEN, or green-exception dispatch — and each same-worker continuation of it, including recovery — SHALL be a separate no-commit-guard window: the coordinator SHALL run the guard's `snapshot` step immediately before that dispatch and before each of its continuations, holding the returned SHA as invocation-scoped `guard_base`, and its `verify` step immediately after every returned result of that dispatch, before the scratch sweep, the comparisons, and any action on the result. On a `violation` verdict the coordinator SHALL remediate exactly as the no-commit-guard policy prescribes — evidence first, `git reset <guard_base>` (mixed), one pinned incident line — and continue the route. The coordinator's own `git add` and `git commit` operations at the two commit-authorization gates SHALL always run between windows and never inside one; no apply window carries `allow_commit`.
+Each Step SHALL be one no-commit-guard window spanning its RED, GREEN, and green-exception dispatches and their same-worker continuations, recovery and replacement workers included. The coordinator SHALL run the guard's `snapshot` step immediately before the Step's first dispatch proceeds, holding the returned SHA as invocation-scoped `guard_base`, and its `verify` step before each boundary the no-commit-guard policy lists: before presenting any question to the user, before the Step's commit gate — whether that gate asks the user or the commit is pre-authorized by fast-track or session authorization — and before acting on a run-closing result. After a human turn the coordinator SHALL snapshot again before the answer reaches a worker. A progress event, a notice, and a RED terminal followed by the GREEN dispatch SHALL take no guard call. The commit gate SHALL close the window, and the next Step SHALL open a fresh one. On a `violation` verdict the coordinator SHALL remediate exactly as the no-commit-guard policy prescribes and continue the route. The coordinator's own `git add` and `git commit` operations at the two commit-authorization gates SHALL always run between windows and never inside one; no apply window carries `allow_commit`.
 
 #### Scenario: a Step dispatch closes its window before the scratch sweep
 
-- **WHEN** a RED or GREEN worker returns its result for a Step
-- **THEN** the coordinator verifies the window's HEAD immobility before the scratch sweep, the comparisons, and any action on the result
-- **AND** the coordinator's own `git add` and `git commit` at the commit-authorization gates run only between windows
+- **WHEN** a RED or GREEN dispatch of a Step returns and the coordinator runs the scratch sweep and comparisons of its post-dispatch sequence
+- **THEN** those run inside the Step's running window with no guard call of their own, and the window is closed by a `verify` before the Step's next boundary — a question to the user or the Step's commit gate — with the coordinator's own `git add` and `git commit` running only between windows
+
+#### Scenario: RED and GREEN of one Step share one window
+
+- **WHEN** the RED worker returns its terminal result and the coordinator dispatches the GREEN worker for the same Step with no human turn in between
+- **THEN** no guard call runs between the two dispatches and the Step's single window stays open
+
+#### Scenario: the commit gate closes the Step window
+
+- **WHEN** a Step reaches its commit gate, whether asked or pre-authorized
+- **THEN** the coordinator verifies the Step's window before the gate, runs its own `git add` and `git commit` outside every window, and opens a fresh window for the next Step

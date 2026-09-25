@@ -55,18 +55,18 @@ Claude installation SHALL reuse exact-compatible user-owned agents without claim
 - **WHEN** a managed Claude agent has been edited by the user
 - **THEN** the uninstaller SHALL preserve the edited agent and skip its removal
 
-### Requirement: Claude Code uses separate low-effort coordinator and high-effort worker bindings
-The Claude Code design wrapper SHALL use the staged routed coordinator model and effort declaration, while the design worker SHALL retain its separate technical-worker binding and harness-native continuation. The coordinator SHALL permit only `Skill`, `Agent`, `SendMessage`, and `AskUserQuestion`; file, search, shell, web, git, and OpenSpec tools SHALL be unavailable to it. It SHALL load the design-worker binding and SHALL NOT load the implementation-worker binding, because `/sai-2-design` no longer dispatches the implementation worker. The SAI-namespaced design worker definition SHALL retain its separate technical-worker model and effort with `Read`, `Glob`, `Grep`, `Bash`, `Edit`, `Write`, `Agent`, and `Skill` access, including the Claude budget-explorer binding required for source discovery. Its binding SHALL capture the dispatched agent ID and use harness-native continuation for later answers and feedback.
+### Requirement: Claude Code uses separate coordinator and worker bindings
+The Claude Code design coordinator SHALL use the `model` and `effort` frontmatter in `commands/claude/sai-2-design.md`. The design worker's shipped seed SHALL use the design entry of `sai/install-manifest.json`'s `worker-matrix`, while its installed agent file controls runtime tunables. The coordinator SHALL permit only `Skill`, `Agent`, `SendMessage`, and `AskUserQuestion`; file, search, shell, web, git, and OpenSpec tools SHALL be unavailable to it. It SHALL load the design-worker binding and SHALL NOT load the implementation-worker binding, because `/sai-2-design` no longer dispatches the implementation worker. The SAI-namespaced design worker definition SHALL retain its separate technical-worker model and effort with `Read`, `Glob`, `Grep`, `Bash`, `Edit`, `Write`, `Agent`, and `Skill` access, including the Claude budget-explorer binding required for source discovery. Its binding SHALL capture the dispatched agent ID and use harness-native continuation for later answers and feedback.
 
 #### Scenario: Claude Code dispatches design work
 - **WHEN** `/sai-2-design` starts in Claude Code
-- **THEN** the low-effort coordinator SHALL dispatch the numbered design worker, capture its agent ID outside the worker payload, and continue that agent for later `needs_input` answers
+- **THEN** the coordinator SHALL use its wrapper frontmatter, dispatch the numbered design worker under its installed agent file's tunables, capture its agent ID outside the worker payload, and continue that agent for later `needs_input` answers
 
 #### Scenario: staged-wrapper-model-is-used
 - **WHEN** the Claude Code design wrapper and worker binding are inspected
 - **THEN** the wrapper's staged coordinator model and effort are preserved separately from the worker's technical I/O and continuation contract.
 
-### Requirement: opencode uses high-reasoning GLM 5.2 for both roles
+### Requirement: opencode uses separate wrapper and worker declarations
 The opencode design wrapper and worker projection SHALL use the staged opencode coordinator and worker declarations, with the wrapper's declared model and variant remaining the source of coordinator routing and the projected worker retaining its binding-owned task continuation. The canonical projected opencode design-worker agent file SHALL define the numbered design worker as a subagent with technical I/O permissions and `permission.task` denying all targets before allowing `explore` for mandatory source discovery; the definition SHALL live in the frontmatter of the manifest-projected `agents/opencode/sai-2-design-worker.md` file rather than in the opencode configuration agent map. SAI SHALL neither install a coordinator agent entry nor select one from a wrapper — a user-defined primary agent is outside this constraint. Its native `question` capability and its `task` dispatch to `sai-2-design-worker` SHALL be preconditions on the active primary agent per `opencode-coordinator-runtime`, not permissions supplied by shipped configuration. The wrapper SHALL load only the design-worker binding. The design-worker binding SHALL capture and continue the harness task ID outside the worker-authored payload.
 
 #### Scenario: opencode dispatches and resumes design work
@@ -75,11 +75,11 @@ The opencode design wrapper and worker projection SHALL use the staged opencode 
 
 #### Scenario: opencode wrapper declares its coordinator runtime
 - **WHEN** `commands/opencode/sai-2-design.md` activates routed design
-- **THEN** its frontmatter SHALL contain `model: opencode-go/glm-5.2`, `variant: high`, and `subtask: false`, and SHALL contain no `agent` field
+- **THEN** its frontmatter SHALL declare `model` and `variant` as the coordinator defaults and `subtask: false`, with no `agent` field
 
 #### Scenario: The projected design-worker agent carries the canonical definition
 - **WHEN** a fresh opencode installation projects `sai-2-design-worker.md`
-- **THEN** the file SHALL declare `mode: subagent`, `model: opencode-go/glm-5.2`, `variant: high`, and `permission.task` denying all targets before allowing `explore`
+- **THEN** the file SHALL declare `mode: subagent`, model and variant tunables seeded from the design worker-matrix entry, and `permission.task` denying all targets before allowing `explore`
 - **AND** the canonical opencode configuration sample SHALL NOT define the design worker entry
 
 #### Scenario: Claude acknowledges a design notice
@@ -103,7 +103,7 @@ Activation SHALL include structural tests for Claude Code and opencode coordinat
 
 #### Scenario: Claude routed smoke runs
 - **WHEN** the Claude routed definitions are ready for activation
-- **THEN** a live smoke SHALL verify low-effort coordinator isolation, high-effort design-worker dispatch, budget-explorer source discovery, agent-ID continuation, reconstruction with interaction history, and explicit-envelope implementation-worker dispatch
+- **THEN** a live smoke SHALL verify coordinator isolation, design-worker dispatch with independently configured tunables, budget-explorer source discovery, agent-ID continuation, reconstruction with interaction history, and explicit-envelope implementation-worker dispatch
 
 #### Scenario: opencode forwards envelope values in either token order
 - **WHEN** opencode invokes routed design with `arguments_value` containing `change-name --fast-track` or `--fast-track change-name`
@@ -117,7 +117,7 @@ The GitHub Copilot `/sai-2-design` wrapper SHALL retain the existing inline desi
 - **THEN** the existing inline path SHALL execute without requiring the routed coordinator, design worker definition, or lifecycle continuation binding
 
 ### Requirement: Design binding definitions are ownership-aware
-Design coordinator and worker identifiers SHALL be SAI-namespaced. Installation SHALL create absent managed definitions. For Claude worker definitions, installation SHALL reuse exact-compatible pre-existing definitions without adopting ownership, overwrite the body and non-tunable frontmatter on subsequent installs while preserving the destination's `model` and `effort` values placed per the structural anchor in `agent-tunable-ownership`, and emit a console notice when a body overwrite occurs; installation SHALL NOT block on incompatible collisions because the new strategy is overwrite-with-notice. Edited managed agents SHALL be preserved during guarded uninstall, and the installer SHALL overwrite the body and non-tunable frontmatter on subsequent installs (so an editor who keeps their tunables will see their customizations preserved as the values the installer does not touch). For opencode definitions, the projected `sai-2-design-worker.md` agent file SHALL follow the same `tunable-seed` lifecycle: created when absent with the canonical GLM 5.2 high-reasoning definition, overwritten (body and non-tunable frontmatter) on subsequent installs while preserving the destination's `model` and `variant` values placed per the structural anchor, and emitting a console notice when a body overwrite occurs; installation SHALL NOT block on incompatible collisions. Doctor SHALL validate the projected opencode agent file against its bundled source by comparing only the body and non-tunable frontmatter, reporting a missing file as an error with re-install remediation, a body-or-non-tunable-frontmatter divergence as an error naming the file, and a compatible file as valid. When `/sai-2-design` dispatches an existing user-edited worker agent file, that file's configured model, variant, mode, and permissions SHALL govern the worker invocation because the installer preserves the destination's tunable values on overwrite; the canonical GLM 5.2 default SHALL apply only to a file created because it was absent. Opencode uninstall SHALL remove the projected agent file only when its body and non-tunable frontmatter match the source, SHALL preserve a body-divergent file as a project-local override, and SHALL leave the opencode configuration untouched.
+Design coordinator and worker identifiers SHALL be SAI-namespaced. Installation SHALL create absent managed definitions. For Claude worker definitions, installation SHALL reuse exact-compatible pre-existing definitions without adopting ownership, overwrite the body and non-tunable frontmatter on subsequent installs while preserving the destination's `model` and `effort` values placed per the structural anchor in `agent-tunable-ownership`, and emit a console notice when a body overwrite occurs; installation SHALL NOT block on incompatible collisions because the new strategy is overwrite-with-notice. Edited managed agents SHALL be preserved during guarded uninstall, and the installer SHALL overwrite the body and non-tunable frontmatter on subsequent installs (so an editor who keeps their tunables will see their customizations preserved as the values the installer does not touch). For opencode definitions, the projected `sai-2-design-worker.md` agent file SHALL follow the same `tunable-seed` lifecycle: created when absent with the design entry's tunables in `sai/install-manifest.json`'s `worker-matrix`, overwritten (body and non-tunable frontmatter) on subsequent installs while preserving the destination's `model` and `variant` values placed per the structural anchor, and emitting a console notice when a body overwrite occurs; installation SHALL NOT block on incompatible collisions. Doctor SHALL validate the projected opencode agent file against its bundled source by comparing only the body and non-tunable frontmatter, reporting a missing file as an error with re-install remediation, a body-or-non-tunable-frontmatter divergence as an error naming the file, and a compatible file as valid. When `/sai-2-design` dispatches an existing user-edited worker agent file, that file's configured model, variant, mode, and permissions SHALL govern the worker invocation because the installer preserves the destination's tunable values on overwrite; the matrix seed SHALL apply only to a file created because it was absent. Opencode uninstall SHALL remove the projected agent file only when its body and non-tunable frontmatter match the source, SHALL preserve a body-divergent file as a project-local override, and SHALL leave the opencode configuration untouched.
 
 #### Scenario: Compatible user-owned Claude worker exists
 - **WHEN** installation finds an exact-compatible `sai-design-planning-worker` definition
@@ -135,11 +135,11 @@ Design coordinator and worker identifiers SHALL be SAI-namespaced. Installation 
 
 #### Scenario: Customized design worker runtime is honored
 - **WHEN** `/sai-2-design` dispatches an existing user-owned `sai-2-design-worker.md` agent file with a customized model or variant
-- **THEN** the invocation SHALL use that existing worker configuration without requiring the canonical GLM 5.2 default
+- **THEN** the invocation SHALL use that existing worker configuration without requiring the worker-matrix seed
 
 #### Scenario: Missing opencode design worker agent file
 - **WHEN** the `sai-2-design-worker.md` agent file is absent
-- **THEN** installation SHALL create it with the canonical GLM 5.2 high-reasoning managed definition
+- **THEN** installation SHALL create it with the managed definition and tunables from the design worker-matrix entry
 - **AND** SHALL NOT create a `.<basename>.owner.json` sidecar
 
 #### Scenario: Edited managed Claude agent survives uninstall

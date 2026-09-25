@@ -1,9 +1,10 @@
 ---
 name: token-efficient-languages
 description: >
-  Activates the 3-rule language contract for token efficient reasoning — english reasoning, language efficiency, think in english. Loaded by token-efficient-languages command or any sai-* skill.
+  Token-efficient language contract: reason in English, reply in the user's language, write artifacts in English.
   TRIGGER when: "budget language", "cheap language", "budget mode", "cheap mode", "low-cost mode", "low cost mode", "economy mode"
 license: MIT
+compatibility: opencode, claude
 metadata:
   author: Mikel Madariaga
   version: "1.0"
@@ -12,5 +13,5 @@ metadata:
 ## Language Contract
 
 1. **Reason in English** — The agent MUST think and reason internally in English unless the user explicitly requests otherwise.
-2. **Respond in user's language** — The agent SHALL respond to the user in the language they write in (default to English if unclear).
-3. **Artifacts in English** — All artifacts (documents, code, technical explanations) SHALL be written in English unless the user explicitly requests otherwise.
+2. **Respond in user's language** — The agent SHALL respond to the user in the language they write in (default to English if unclear), explanations included.
+3. **Artifacts in English** — Artifacts (documents, code, commit messages, PR bodies) SHALL be written in English unless the user explicitly requests otherwise.

@@ -10,7 +10,6 @@ const { installClaude, installOpencode } = require('../bin/install-flow.js');
 
 const repoRoot = path.join(__dirname, '..');
 const ACTIVE_STEP = 'sai/commands/implement/steps/artifact-analysis.md';
-const COMPATIBILITY = 'sai/commands/implement/instructions.md';
 
 function artifact(relativePath) {
   const fullPath = path.join(repoRoot, relativePath);
@@ -25,12 +24,9 @@ function cultureGate(source) {
   return source.slice(start, end >= 0 ? end : source.length);
 }
 
-test('the active and apply-compatible implementation sources share the physical-index culture gate', () => {
+test('the active implementation step declares the physical-index culture gate', () => {
   const active = cultureGate(artifact(ACTIVE_STEP));
-  const compatibility = cultureGate(artifact(COMPATIBILITY));
 
-  assert.equal(active, compatibility,
-    'the routed step and apply compatibility source must keep the gate byte-identical');
   assert.match(active, /physical `0000-INDEX\.md` as the sole culture signal/);
   assert.match(active, /`docs\/adr\/0000-INDEX\.md` for `adr`/);
   assert.match(active, /`docs\/ddr\/0000-INDEX\.md` for `ddr`/);
@@ -71,7 +67,7 @@ test('Claude Code and opencode projections preserve the same culture gate', () =
     const base = fs.mkdtempSync(path.join(os.tmpdir(), `sai-adr-culture-${harness}-`));
     try {
       install(base);
-      for (const relativePath of [ACTIVE_STEP, COMPATIBILITY]) {
+      for (const relativePath of [ACTIVE_STEP]) {
         const installedPath = path.join(base, ...relativePath.split('/'));
         assert.equal(fs.existsSync(installedPath), true,
           `${harness} should project ${relativePath}`);
@@ -84,8 +80,6 @@ test('Claude Code and opencode projections preserve the same culture gate', () =
     }
   }
 
-  assert.equal(cultureGate(projected[0].text), cultureGate(projected[2].text),
+  assert.equal(cultureGate(projected[0].text), cultureGate(projected[1].text),
     'Claude Code and opencode active-step projections must agree');
-  assert.equal(cultureGate(projected[1].text), cultureGate(projected[3].text),
-    'Claude Code and opencode compatibility projections must agree');
 });

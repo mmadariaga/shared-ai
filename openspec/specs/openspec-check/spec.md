@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+This capability requires setup to detect the OpenSpec CLI before OpenSpec-dependent initialization and to offer installation when the CLI is missing.
+
+## Requirements
 
 ### Requirement: path-check
 `bin/setup.js` SHALL verify that the `openspec` binary is resolvable before proceeding with any other setup step. The check MUST probe the binary via `openspec --version` through `child_process.spawnSync` (exit-code semantics: `!error && status === 0`), consistent with the opencode and CodeGraph probes in `bin/install-flow.js`.
@@ -38,7 +42,3 @@ The printed install command MUST be exactly:
 #### Scenario: exact command
 - **WHEN** openspec is missing and the command is printed
 - **THEN** stdout contains the exact string above
-
-## MODIFIED Requirements
-
-## REMOVED Requirements

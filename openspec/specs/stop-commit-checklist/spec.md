@@ -1,41 +1,44 @@
 # stop-commit-checklist Specification
 
 ## Purpose
-Define the 6-step checklist that agents MUST follow when encountering a STOP & COMMIT marker during apply.md execution.
+Define the checklist the apply coordinator follows at every STOP & COMMIT marker. Its home is `sai/commands/apply/runner.md` § Step commit gate.
 
 ## Requirements
 
-### Requirement: Every STOP & COMMIT marker SHALL follow the 6-step checklist
+### Requirement: Every STOP & COMMIT marker SHALL follow the Step commit gate
 
-When `apply.md` is executed and a STOP & COMMIT marker is encountered, the agent MUST execute the following sequence in order:
+When `/sai-4-apply` reaches a Step's STOP & COMMIT marker, the coordinator MUST execute this sequence in order:
 
-    1. **Print the pre-commit file visibility report** per the `apply-pre-commit-file-report` capability: status letter, human-readable status, `Staged` block, `Totals` line, optional `Unstaged (will NOT be committed)` block, `Plan cross-check` block, and `Subagent ↔ git` block. This step is mandatory and is not contingent on the user accepting the report — it runs unconditionally so the user has the file list before being asked to authorize.
-    2. **Propose the commit message** following `commit-rules.md` format. The message must describe only what is staged.
-    3. **Ask explicitly** as a closed-choice prompt with options `yes` / `no` (per the "Closed-choice prompts" rule in `remember.md`, which gives the per-harness option-picker mapping): `Ready to commit Step N. May I create commit with message: '<subject>'?`. Do NOT run `git commit` before the user answers `yes`; anything other than an explicit `yes` selection or reply is a decline.
-    4. **Wait.** Stop here. Do not advance to the next step, do not run other git operations, do not start a subagent.
-    5. **On `yes` only** → run `git commit -m "..."` (or the HEREDOC form for multi-line) and report the resulting SHA + subject. **On anything else (no, silence, redirect)** → do NOT commit. Print: "Commit not authorized. The staged changes are: <summary>. Run `git commit` yourself when ready."
-    6. **Continue the loop.** In both outcomes (commit created, or user declined and was told how to commit themselves), the next action after reporting is dispatching a NEW Step-execution subagent for the next unchecked Step — not implementing it yourself, and not ending the turn. Only if no unchecked Step remains: run the Final sweep and declare the implementation done.
+    1. **Print the pre-commit file visibility report** per the `apply-pre-commit-file-report` capability: header with status letter, human-readable status line, `Will be committed` block, `Totals` line, optional `Will NOT be committed` block, `Plan cross-check` block, and `Subagent ↔ git` block. The report is mandatory and runs unconditionally so the user has the file list before being asked to authorize.
+    2. **Propose the commit message** following `commit-rules.md` format. The message describes only the add-list.
+    3. **Ask** `Ready to commit Step N. May I create commit with message: '<subject>'?` through the commit-rules authorization gate: options `yes (Recommended)` / `no` / `Allow on this session`; an off-option reply or silence re-presents the same ask; only an explicit `no` declines. An active session grant skips only this ask.
+    4. **Commit on authorization** → `git add` exactly the add-list, then `git commit`, and report the resulting SHA + subject. **On `no`** → do NOT commit; print "Commit not authorized. The changes are: <summary>. Run `git commit` yourself when ready."
+    5. **Continue the loop.** In both outcomes the next action is the Step loop's advance: dispatching a NEW worker for the next unchecked Step, never implementing it yourself and never ending the turn. Only if no unchecked Step remains does the terminal lifecycle run.
 
-The report step (step 1) does not require a separate authorization — the single user authorization at step 3 is the only gate. The report's purpose is to inform the user so they can decide at that single gate; if the file list is wrong, the user answers `no` at step 3 and the commit is vetoed.
+The report step does not require a separate authorization — the single authorization at step 3 is the only gate; if the file list is wrong, the user answers `no` and the commit is vetoed.
 
 This checklist overrides any directive in the plan that says "stage and commit". The plan describes the work; this checklist describes the commit gate.
 
 #### Scenario: User grants commit permission
-- **WHEN** the agent reaches a STOP & COMMIT marker and the user answers `yes`
-- **THEN** the agent runs `git commit` and reports the resulting SHA + subject, then dispatches a NEW subagent for the next unchecked Step (step 6)
+- **WHEN** the coordinator reaches a STOP & COMMIT marker and the user answers `yes`
+- **THEN** it stages exactly the add-list, runs `git commit`, reports the resulting SHA + subject, then dispatches a NEW worker for the next unchecked Step
 
-#### Scenario: User declines or does not respond
-- **WHEN** the agent reaches a STOP & COMMIT marker and the user does not answer `yes`
-- **THEN** the agent MUST NOT run `git commit`; MUST describe the staged changes and instruct the user to commit themselves; then dispatches a NEW subagent for the next unchecked Step (step 6)
+#### Scenario: User declines
+- **WHEN** the coordinator reaches a STOP & COMMIT marker and the user answers `no`
+- **THEN** it MUST NOT run `git commit`, prints the "Commit not authorized" message, then dispatches a NEW worker for the next unchecked Step
+
+#### Scenario: Silence does not decline
+- **WHEN** the authorization ask receives no answer or an off-option reply
+- **THEN** the same ask is re-presented and nothing is committed until an explicit option is chosen
 
 #### Scenario: User vetoes the commit because the report shows a wrong file list
-- **WHEN** the pre-commit report (step 1) surfaces a deviation, mismatch, or unstaged file, and the user answers `no` to step 3
-- **THEN** the agent does NOT run `git commit` and prints the existing "Commit not authorized" message — the report successfully informed the veto — then dispatches a NEW subagent for the next unchecked Step (step 6)
+- **WHEN** the pre-commit report surfaces a deviation, mismatch, or leftover file, and the user answers `no`
+- **THEN** the coordinator does NOT run `git commit` and prints the "Commit not authorized" message — the report informed the veto — then continues the Step loop
 
 #### Scenario: Checklist overrides plan directives
 - **WHEN** the implementation plan contains a directive that says "stage and commit"
-- **THEN** the 6-step checklist takes precedence; the plan describes the work, the checklist describes the commit gate
+- **THEN** the checklist takes precedence; the plan describes the work, the checklist describes the commit gate
 
 #### Scenario: No unchecked Step remains
-- **WHEN** the agent finishes step 6 and `implementation.md` has no unchecked Step left
-- **THEN** the agent runs the Final sweep and declares the implementation done instead of dispatching a new subagent
+- **WHEN** the gate finishes and `implementation.md` has no unchecked Step left
+- **THEN** the coordinator runs the terminal lifecycle instead of dispatching a new worker

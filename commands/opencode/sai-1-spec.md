@@ -1,5 +1,5 @@
 ---
-description: Propose a new change — generates proposal.md and specs/ only. Stops before design. Run /sai-2-design when specs are reviewed and approved.
+description: Write or refine a change's proposal.md and specs/ from a /sai-explore Ready to Propose block, or from a change name plus feedback. Stops before design; running /sai-2-design approves the specs.
 model: opencode-go/muse-spark-1.3-contributor
 variant: xhigh
 ---

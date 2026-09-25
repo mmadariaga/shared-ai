@@ -21,7 +21,7 @@ The deferred choice SHALL be presented only through the harness-native picker wi
 
 ### Requirement: Deterministic choice over pending set with retryable failure
 
-The deterministic choice SHALL use only the pending set in crystallization order, SHALL dispatch the sole uncompleted entry without a picker, SHALL present an ordered picker plus Cancel for multiple uncompleted entries, SHALL never re-run a completed slice, and SHALL leave a failed, cancelled, or otherwise unrecovered active step pending and retryable. A material idea change before choice SHALL invalidate the crystallized set and restart at Explore change.
+The deterministic choice SHALL use only the pending set in crystallization order, SHALL dispatch the sole uncompleted entry without a picker, SHALL present an ordered picker plus Cancel for multiple uncompleted entries, SHALL never re-run a completed slice, and SHALL leave a failed, cancelled, or otherwise unrecovered active step pending and retryable by parking the slice in `explore-slice@1`, so a later selection in the same route resumes it at that step. A material idea change before choice SHALL invalidate the crystallized set and restart at Explore change.
 
 #### Scenario: Multi-slice set resolves one slice and preserves the rest
 

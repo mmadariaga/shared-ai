@@ -2,43 +2,26 @@
 
 ## Purpose
 
-TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+Keep coordinator and worker model defaults rooted in their live harness declarations rather than duplicating versioned identifiers in prose.
 
 ## Requirements
-### Requirement: The `/sai-2-design` command SHALL use `claude-opus-4-8` as its default Claude Code model.
 
-Previously `claude-opus-4-7`. Updated to reflect the latest Opus model version.
+### Requirement: Coordinator defaults are declared by wrappers
 
-#### Scenario: User runs /sai-2-design without overriding the model
-- **WHEN** the user invokes `/sai-2-design` in Claude Code without specifying a model override
-- **THEN** the command executes using `claude-opus-4-8` at high effort
+The coordinator defaults for `/sai-1-spec`, `/sai-2-design`, and `/sai-6-security` SHALL come from the `model` and `effort` frontmatter of their respective `commands/claude/sai-*.md` wrappers (or `model` and `variant` for `commands/opencode/sai-*.md`). No spec or README table SHALL independently pin those values.
 
----
+#### Scenario: User runs a numbered command without a model override
+- **WHEN** the user invokes a numbered command in Claude Code or opencode
+- **THEN** its coordinator uses the active wrapper's model and effort or variant declaration
 
-### Requirement: The `/sai-6-security` command SHALL use `claude-opus-4-8` as its default Claude Code model.
+### Requirement: Managed worker seeds are declared by the worker matrix
 
-Previously `claude-opus-4-7`. Updated to reflect the latest Opus model version.
+The default managed worker settings for spec, design, and security SHALL come from their respective entries in `sai/install-manifest.json`'s `worker-matrix`. Runtime dispatch SHALL use the resolved installed agent file's tunables, which may be user-owned overrides. These values are independent of coordinator wrapper defaults.
 
-#### Scenario: User runs /sai-6-security without overriding the model
-- **WHEN** the user invokes `/sai-6-security` in Claude Code without specifying a model override
-- **THEN** the command executes using `claude-opus-4-8` at high effort
+#### Scenario: A worker file is absent during installation
+- **WHEN** the installer materializes the spec, design, or security worker for either harness
+- **THEN** it seeds the worker agent's model and effort or variant from the corresponding worker-matrix entry
 
----
-
-### Requirement: The README model defaults table SHALL reference `claude-sonnet-4-6` for the spec (sai-1-spec) Claude Code column.
-
-Previously `claude-sonnet-4-7`.
-
-#### Scenario: User consults README for recommended model defaults
-- **WHEN** the user reads the model defaults table in README.md
-- **THEN** the spec row Claude Code column shows `claude-sonnet-4-6`
-
----
-
-### Requirement: The README model defaults table SHALL reference `claude-opus-4-8` for the design (sai-2-design) and security (sai-6-security) Claude Code columns.
-
-Previously `claude-opus-4-7`.
-
-#### Scenario: User consults README for recommended model defaults
-- **WHEN** the user reads the model defaults table in README.md
-- **THEN** the design and security rows Claude Code column show `claude-opus-4-8`
+#### Scenario: A worker has customized tunables
+- **WHEN** a worker is dispatched with a user-owned model or effort or variant override
+- **THEN** it runs with the configured agent-file tunables rather than the repository seed

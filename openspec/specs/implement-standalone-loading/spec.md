@@ -2,7 +2,9 @@
 
 ## Purpose
 TBD - created by archiving change implement-standalone-machine. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: Closed standalone stage table
 The machine SHALL expose exactly the six progress-plan ids in order as its closed states: prereqs-resolution, collapse-implemented-steps, artifact-analysis, documentation-review, plan-generation, validation, plus terminal done. The STEPS list, STAGE_FILES mapping, DONE_STAGE marker, and initialState with empty done set SHALL match the coordinator plan with no extra states.
 
@@ -25,11 +27,11 @@ After each emit the coordinator SHALL fetch whatever next.follow names with no f
 - **THEN** the run SHALL stop with an error and fetch nothing
 
 ### Requirement: Minimal wire with mandatory machine identity
-Every emit SHALL travel as stage plus next only, with mandatory machineId on the request and no snapshots or state in the request. A malformed machineId SHALL answer INVALID_EVENT or UNKNOWN_MACHINE with no fallback. The signal SHALL be step_ids with completedIds as tolerant alias, and anything else SHALL advance nothing.
+Every emit SHALL travel as stage plus next only, with mandatory machineId on the request and no snapshots or state in the request or on the wire. A step-machine progress emit (`emit <id> <machineId> --progress -`) SHALL additionally carry its `validation` verdict block, and SHALL carry no other field. A malformed machineId SHALL answer INVALID_EVENT or UNKNOWN_MACHINE with no fallback. The signal SHALL be step_ids with completedIds as tolerant alias, and anything else SHALL advance nothing.
 
 #### Scenario: Minimal emit carries stage and pointer only
 - **WHEN** the sidecar emits after applying reported ids
-- **THEN** the wire SHALL carry only stage and next with the machine identity and no snapshot
+- **THEN** the wire SHALL carry only stage and next with the machine identity and no snapshot, plus the `validation` verdict block when the emit is a progress emit
 
 ### Requirement: Silent ignore of undeclared ids with authoritative re-steer
 Newly completed declared ids SHALL be added in canonical STEPS order with marks monotonic and never reopened. Missing, empty, or only-undeclared ids SHALL be ignored silently with no notification channel and no state change, and the coordinator SHALL re-emit the authoritative pointer which re-steers the worker.
@@ -84,4 +86,3 @@ The machine SHALL govern the implement adapter for every activation — direct (
 
 - **WHEN** the machine emits and the store reports a failure during a chained `/sai-build` segment
 - **THEN** the run stops per stage-machine.md, and `/sai-build` does not proceed to the next segment
-

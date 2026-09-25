@@ -5,7 +5,7 @@ Active step: map-stack-hot-paths. Discover the stack components, hot paths, and 
 ### Phase 1: Discovery & Stack Mapping
 
 1. **Read the change artifacts** first and record all explicitly accepted performance trade-offs from `proposal.md` and `design.md` as *Acknowledged*. Anchors all later phases.
-2. **Determine scope** (see Required Inputs). For diff mode:
+2. **Apply the scope** resolved at startup per `common.md` § Prerequisites. For diff mode:
     - File list: `git diff --name-status {parent-branch}...HEAD`
     - Line count: `git diff --stat {parent-branch}...HEAD` (no content — just totals)
     - **If total LOC ≤ 500:** load the full diff with `git diff {parent-branch}...HEAD` and review directly.

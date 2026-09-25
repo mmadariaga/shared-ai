@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+This capability standardizes MANDATORY STOP wording and requires SAI command bodies to end with a dedicated Completion section.
 
 ## Requirements
 ### Requirement: All sai-* command body files SHALL use consistent completion phrasing
@@ -16,8 +16,6 @@ Each `sai/commands/sai-*.md` file's `## Completion` section SHALL contain a MAND
 #### Scenario: all command wrappers are consistent
 - **WHEN** all files matching `sai/commands/sai-*.md` are listed and read
 - **THEN** every file's completion message follows the same structural pattern
-
-### Requirement: sai command body files SHALL wrap MANDATORY STOP directives in a ## Completion section
 
 ### Requirement: sai command body files SHALL wrap MANDATORY STOP directives in a ## Completion section
 

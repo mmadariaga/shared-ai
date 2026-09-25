@@ -259,13 +259,14 @@ test('the apply worker agents are tunable-seed managed projections in both harne
   }
 });
 
-test('apply agents resolve per-harness budget-tier model configuration, not the routed-phase tier', () => {
+test('apply agents resolve their own per-harness budget-tier matrix configuration', () => {
   const tuningOf = text => {
     const model = (text.match(/^model:\s*(.+)$/m) || [])[1];
-    const tierLine = (text.match(/^(?:variant|effort|mode):\s*(.+)$/m) || [])[1];
+    const tierLine = (text.match(/^(?:variant|effort):\s*(.+)$/m) || [])[1];
     return `${model}|${tierLine}`;
   };
   const applyTiers = {};
+  const manifest = loadInstallManifest(path.join(__dirname, '..'));
   for (const [harness, install] of [['claude', installClaude], ['opencode', installOpencode]]) {
     const base = fs.mkdtempSync(path.join(os.tmpdir(), `sai-apply-tier-${harness}-`));
     try {
@@ -276,12 +277,15 @@ test('apply agents resolve per-harness budget-tier model configuration, not the 
           `${harness} should install the ${name} managed agent`);
         return fs.readFileSync(agentPath, 'utf8');
       };
-      const routedTier = tuningOf(textOf('sai-1-spec-proposal-worker'));
       for (const name of APPLY_WORKER_NAMES) {
         const tier = tuningOf(textOf(name));
         applyTiers[`${harness}/${name}`] = tier;
-        assert.notEqual(tier, routedTier,
-          `${harness} ${name} must not reuse the standard routed-phase model/tuning tier`);
+        const entry = manifest['worker-matrix'].entries.find(candidate => candidate.workerName === name);
+        assert.equal(entry.tier, 'budget', `${name} must retain budget routing`);
+        const declared = entry[harness === 'claude' ? 'claudeAgent' : 'opencodeAgent'];
+        const setting = harness === 'claude' ? declared.effort : declared.variantLine.split(': ')[1];
+        assert.equal(tier, `${declared.model}|${setting}`,
+          `${harness} ${name} must use its declared worker tunables`);
       }
     } finally {
       fs.rmSync(base, { recursive: true, force: true });

@@ -32,6 +32,7 @@ artifacts:
         - **Modified Capabilities**: existing capabilities whose requirements are changing. Only include if spec-level behavior changes.
       - **Impact**: affected code, APIs, dependencies, or systems.
       - **Proposal Research Documentation**: list of relevant files and URLs consulted during proposal research.
+      - **Request Additional Notes**: optional; a verbatim, non-normative copy of the Ready to Propose block's `**Request Additional Notes**` field. Omit the section when the block carries no such field; derive no requirements from it.
       - **Additional Notes**: Any other info gathered during the spec that may be relevant.
 
       The Capabilities section is critical — it is the contract between proposal and specs.

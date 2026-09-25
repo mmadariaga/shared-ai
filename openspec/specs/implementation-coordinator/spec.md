@@ -3,7 +3,9 @@
 ## Purpose
 
 TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
 ## Requirements
+
 ### Requirement: Shared lifecycle adapter integration
 
 The routed `/sai-3-implement` coordinator SHALL consume the canonical shared coordinator contract through an implementation phase adapter. The adapter SHALL provide the original `arguments_value` request, harness binding dispatch and continuation operations, progress events as the sole allowed nonterminal extension, no extension handlers, the enumerated implementation replacement-reconstruction fields below, and parameterized implementation terminal navigation that selects standalone completion or the composition-owned authorized transition by adapter position. The adapter SHALL NOT duplicate lifecycle payload validation, ordered changed-file aggregation, continuation-first recovery, replacement-worker limits, or terminal routing, and SHALL NOT import design feedback, notice, or continue-now behavior.
@@ -42,7 +44,7 @@ The coordinator SHALL retain the accumulated `changed_files` union itself rather
 
 ### Requirement: Lifecycle-only implementation coordinator
 
-The routed implementation coordinator SHALL own adapter routing, progress rendering, pointer delivery, result validation, and terminal navigation only. It SHALL NOT perform technical planning, read implementation artifacts, run git or OpenSpec checks, or write planning files. The single clean-route exception is the no-commit guard: the coordinator SHALL run the guard's `snapshot` and `verify` tool invocations (`sai/tools/no-commit-guard.js`) immediately before each dispatch and same-worker continuation and immediately after every returned result, before acting on it, and those two tool invocations per window are the coordinator's only git observations on the artifact-blind clean route. No other rule of this requirement changes.
+The routed implementation coordinator SHALL own adapter routing, progress rendering, pointer delivery, result validation, and terminal navigation only. It SHALL NOT perform technical planning, read implementation artifacts, run git or OpenSpec checks, or write planning files. The single clean-route exception is the no-commit guard: the coordinator SHALL run the guard's `snapshot` and `verify` tool invocations (`sai/tools/no-commit-guard.js`) at each guard window's opening and immediately before each boundary the no-commit-guard policy lists (human turn, coordinator git mutation, run close), acting on a progress event or notice with no guard call, and those two tool invocations per window are the coordinator's only git observations on the artifact-blind clean route. No other rule of this requirement changes.
 
 #### Scenario: Coordinator processes a worker result
 
@@ -51,7 +53,5 @@ The routed implementation coordinator SHALL own adapter routing, progress render
 
 #### Scenario: the guard's two tool invocations are the only clean-route git access
 
-- **WHEN** the implementation coordinator snapshots before a dispatch and verifies after the returned result
-- **THEN** those two no-commit-guard tool invocations are its only git observations on the clean route
-- **AND** no git or OpenSpec check beyond the guard is performed
-
+- **WHEN** the implementation coordinator snapshots at a window opening and verifies before a boundary
+- **THEN** those two no-commit-guard tool invocations are its only git observations on the clean route, and no git or OpenSpec check beyond the guard is performed

@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+This capability keeps maintained documentation, ADRs, and literal-path tests aligned with SAI's folded command-local instruction and template layout.
+
+## Requirements
 
 ### Requirement: agents-md-structure-table
 `AGENTS.md` structure table SHALL list `sai/commands/` (command cards carrying command-local `instructions.md` and co-located `.template.md` files), the root exceptions `sai/change-overview.md`, `sai/adr-index.template.md`, and `sai/ddr-index.template.md`, `commands/claude/`, `commands/opencode/`, and `configs/` as the canonical source-layout names. The structure table SHALL NOT list a maintained `sai/instructions/` tree. All previous path references (`commands/sai/`, `instructions/sai/`, `claude/commands/`, `opencode/commands/`, `opencode/opencode.jsonc`) SHALL be replaced with their new equivalents.
@@ -61,7 +65,3 @@ The folded migration SHALL leave no dangling active fetch, documentation, manife
 
 - **WHEN** maintained sources, tests, specifications, and installation guidance are scanned after the migration
 - **THEN** every non-historical folded path resolves to an existing file and no removed instruction/template path is referenced as active
-
-## MODIFIED Requirements
-
-## REMOVED Requirements

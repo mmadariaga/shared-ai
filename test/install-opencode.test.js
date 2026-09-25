@@ -48,8 +48,8 @@ const UTILITY_COMMANDS = {
   'sai-worktree': 'worktree',
 };
 const UTILITY_CARD_CONTENTS = {
-  apply: ['command-bootstrap.md', 'coordinator.md', 'green-worker.md', 'invocation.md', 'red-worker.md', 'runner.md'],
-  archive: ['archive-commit-gate.instructions.md', 'command-bootstrap.md', 'coordinator.md', 'instructions.md', 'worker.md'],
+  apply: ['command-bootstrap.md', 'coordinator.md', 'green-worker.md', 'invocation.md', 'red-worker.md', 'runner.md', 'steps', 'worker-common.md'],
+  archive: ['archive-commit-gate.instructions.md', 'command-bootstrap.md', 'coordinator.md', 'instructions.md', 'retirement-declaration.md', 'worker.md'],
   backfill: ['command-bootstrap.md', 'coordinator.md', 'instructions.md', 'worker.md'],
   commit: ['command-bootstrap.md', 'coordinator.md', 'instructions.md', 'worker.md'],
   explore: ['body.md', 'command-bootstrap.md', 'direct-build-worker.md', 'instructions.md', 'steps'],
@@ -141,10 +141,6 @@ function assertInstalledSelectorContract(source) {
   assert.match(source, /return the new active-uncrystallized lifecycle to `Explore change`/);
   assert.match(source, /literal `\*\*Overview language\*\*: None`/);
   assert.match(source, /dispatches no overview generation/);
-  assert.match(source, /Contract tests may observe the harness-neutral trace vocabulary[\s\S]{0,320}crystallization-requested/);
-  for (const event of ['text-question-emitted', 'selector-presented', 'selector-option-received', 'selector-free-text-received', 'edge-case-writing-prompt-emitted', 'explicit-advancement-received', 'stage-advanced', 'material-reset', 'crystallization-requested']) {
-    assert.match(source, new RegExp(`\\b${event}\\b`));
-  }
 }
 
 test('Step 3 roster validation is isolated to opencode consumers and fails before destination mutation', () => {
@@ -277,7 +273,7 @@ test('Step 2 initial Opencode task dispatches deliver the matching contract and 
           `${workerName} initial prompt carries the literal ready example`);
       assert.ok(continuations.length > 0, `${workerName} should retain a continuation task dispatch`);
        for (const continuation of continuations) {
-         assert.match(continuation, /\bprompt\s*[:=]\s*"<selected value>"/,
+         assert.match(continuation, /\bprompt\s*[:=]\s*"<continuation payload>"/,
            `${workerName} continuation dispatch should retain its existing prompt shape`);
        }
     }
@@ -1734,14 +1730,10 @@ test('Step 3 budget skills resolve models from the projected agent files and kee
       file: 'explore.md',
       keyword: 'explore',
       triggers: [
-        'use explorer',
-        'use cheap subagent',
-        'delegate research',
-        'run cheap subagent',
-        'spawn explore subagent',
-        'cheap research agent',
-        'use explore agent',
-        'delegate lookup',
+        'budget explorer',
+        'cheap explorer',
+        'budget mode',
+        'economy mode',
       ],
     },
     {
@@ -1749,12 +1741,10 @@ test('Step 3 budget skills resolve models from the projected agent files and kee
       file: 'executor.md',
       keyword: 'executor',
       triggers: [
-        'use executor',
-        'spawn executor',
-        'run command subagent',
-        'delegate execution',
-        'execute in subagent',
-        'run cheap executor',
+        'budget executor',
+        'cheap executor',
+        'budget mode',
+        'economy mode',
       ],
     },
     {

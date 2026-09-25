@@ -1,6 +1,6 @@
 # Change Picker
 
-Shared instruction that resolves a missing OpenSpec change name for change-consuming `sai-*` commands (`sai-1-spec`, `sai-2-design`, `sai-3-implement`, `sai-4-apply`, `sai-5-review`, `sai-6-security`, `sai-7-performance`, `sai-8-accessibility`, `sai-archive`, `sai-pr`). Fetched identically by every consumer — do not duplicate this logic inline in any command body. For `sai-1-spec` it applies only when the trimmed `arguments_value` is empty (a supplied name still selects an existing change to build on; the picker never invents a new change). `sai-status` is deliberately NOT a consumer — it resolves change names via `sai/policies/status-picker.md` instead.
+Resolves the OpenSpec change name for the commands that fetch it: a supplied name passes through, and an empty one opens the picker. The picker never invents a new change. `sai-status` uses `sai/policies/status-picker.md` instead.
 
 ## Envelope-only resolution source
 
@@ -10,27 +10,9 @@ The resolution itself — the supplied-name short-circuit and the 0/1/N branches
 
 ### The change-picker tool
 
-Resolution order is owned by `@sai/policies/tool-resolution.md`
-(substituting `change-picker.js` for `<name>`); the candidates below are
-mirrored verbatim from there — do not edit here. Use the copy that lives
-beside this policy file: a copy under a different root is a different version.
-Do **not** build its path by joining a root string to a suffix — composed
-absolute paths are known to drop a segment (see the "Path composition" rule in
-the fetch skill). Take the **first candidate below that exists**, copied
-**verbatim**, exactly as written:
+Fetch @sai/policies/tool-resolution.md and resolve the tool path per its § `sai/tools/*.js` copies, substituting `change-picker.js`. If no candidate exists, name the candidates you tried and stop; do not resolve the name in prose.
 
-On **Claude Code**, in this order:
-
-1. `.claude/sai/tools/change-picker.js` — the project-local root, relative to the working directory.
-2. `~/.claude/sai/tools/change-picker.js` — the user-global root.
-
-On **opencode**, in this order:
-
-1. `.opencode/sai/tools/change-picker.js` — the project-local root, relative to the working directory.
-2. `~/.config/opencode/sai/tools/change-picker.js` — the default user-global config root.
-3. Only when neither exists: run `opencode debug paths`, take the config directory **exactly as that command prints it** (an XDG override moves it), and use the fixed suffix `sai/tools/change-picker.js` inside it. This is the one place a path is joined at all, and only to a path the harness itself printed. The first existing copy wins and defines the version. If no candidate exists, say so — name the candidates you tried — and stop; do not fall back to resolving the name in prose.
-
-Whichever candidate wins, the invocation is byte-identical, so a single whitelist entry per root covers it:
+Invoke it the same way from every root:
 
 ```
 node <tool-path> resolve "<arguments_value>" --json --cwd <project-root>

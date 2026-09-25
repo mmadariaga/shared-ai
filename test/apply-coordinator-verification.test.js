@@ -12,6 +12,8 @@ const APPLY_CARDS = {
   redWorker: 'sai/commands/apply/red-worker.md',
   greenWorker: 'sai/commands/apply/green-worker.md',
   runner: 'sai/commands/apply/runner.md',
+  workerCommon: 'sai/commands/apply/worker-common.md',
+  policy: 'sai/policies/bounded-recovery.md',
 };
 
 function artifact(relativePath) {
@@ -26,32 +28,26 @@ function recoverySection(combined) {
   return combined.slice(start);
 }
 
-const scratchRules = [
-  'Scratch path: `.tmp/{change-name}/` (separate from and excluded from `Allowed files`).',
-  'A worker MAY create temporary files only below `.tmp/{change-name}/`, MAY remove all contents of exactly that directory and the directory itself before a clean return, and has no preservation obligation on STOP or failure. A non-clean return has no preservation obligation.',
-  'A worker MUST NOT remove the `.tmp/` parent.',
-  'Files modified MUST contain only non-scratch paths and MUST exclude every path below `.tmp/{change-name}/`.',
-];
 
-test('Step 4 the routed apply cards preserve the scope and scratch contract sentences byte-exactly', () => {
+test('Step 4 the routed apply cards preserve the scope and scratch contract', () => {
   const red = artifact(APPLY_CARDS.redWorker);
   const green = artifact(APPLY_CARDS.greenWorker);
-  const combined = `${red}\n${green}`;
+  const common = artifact(APPLY_CARDS.workerCommon);
 
-  assert.match(combined, /\*Scope\*: Write ONLY the interface stubs and the tests for this Step\. Do NOT write the implementation\./,
-    'specs/apply-test-impl-split/spec.md: the RED scope anchor must remain byte-exact');
-  assert.match(combined, /\*Scope\*: Implement ONLY what is specified in the Step's GREEN body\. Do NOT write tests\./,
-    'specs/apply-test-impl-split/spec.md: the GREEN scope anchor must remain byte-exact');
-  assert.match(combined, /Blind Test-Writer Allowed files contain only plan-authorized test and RED\/interface-stub files and exclude production files\./,
-    'specs/apply-test-impl-split/spec.md: the blind allowed-files rule must remain byte-exact');
-  assert.match(combined, /Implementation Dispatch Allowed files contain only plan-authorized production files and exclude tests and declared interfaces\./,
-    'specs/apply-test-impl-split/spec.md: the implementation allowed-files rule must remain byte-exact');
-  for (const sentence of scratchRules) {
-    assert.match(combined, new RegExp(sentence.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
-      `specs/apply-coordinator-verification/spec.md: missing byte-exact scratch sentence: ${sentence}`);
-  }
-  assert.match(combined, /An explicitly present empty `Files modified` list is valid; an omitted field 8 is malformed\./,
-    'specs/apply-subagent-report-contract/spec.md: the field-8 rule must remain byte-exact');
+  assert.match(red, /Tests and interface stubs the plan authorizes for this Step\. Production files are outside them\./,
+    'specs/apply-test-impl-split/spec.md: RED writes only tests and stubs');
+  assert.match(green, /Production files the plan authorizes for this Step\. Test files and declared interfaces \(`interfaces\.md`\) are outside them\./,
+    'specs/apply-test-impl-split/spec.md: GREEN writes only production files');
+  assert.match(common, /Your scratch path is `\.tmp\/\{change-name\}\/`\. It is outside your allowed files\./,
+    'specs/apply-coordinator-verification/spec.md: the scratch path is declared and excluded from allowed files');
+  assert.match(common, /Create temporary files only below it\. Before a clean return you MAY remove its contents and the directory; after a STOP or failure nothing needs preserving/,
+    'specs/apply-coordinator-verification/spec.md: scratch creation and removal rules');
+  assert.match(common, /Leave the `\.tmp\/` parent in place\./,
+    'specs/apply-coordinator-verification/spec.md: the scratch parent stays');
+  assert.match(common, /Field 8 lists no scratch path\./,
+    'specs/apply-coordinator-verification/spec.md: field 8 excludes scratch');
+  assert.match(common, /Always present: an empty list is valid, a missing field makes the report malformed\./,
+    'specs/apply-subagent-report-contract/spec.md: the field-8 rule');
 });
 
 test('Step 4 the coordinator surface sweeps scratch after every dispatch and checklist run before comparison', () => {
@@ -59,7 +55,7 @@ test('Step 4 the coordinator surface sweeps scratch after every dispatch and che
   const runner = artifact(APPLY_CARDS.runner);
   const combined = `${coordinator}\n${runner}`;
 
-  assert.match(combined, /sweep exactly `\.tmp\/\{change-name\}\/`|sweep exactly the per-change scratch path/i,
+  assert.match(combined, /Sweep\*\* exactly `\.tmp\/\{change-name\}\/`/,
     'specs/apply-coordinator-verification/spec.md: the coordinator must sweep exactly the per-change scratch path');
   assert.match(combined, /every dispatch|each dispatch|once per dispatch/i,
     'specs/apply-coordinator-verification/spec.md: every dispatch return must trigger a sweep');
@@ -85,7 +81,7 @@ test('Step 4 scratch cleanup has the exact pinned trace lines and no empty-sweep
     'specs/apply-coordinator-verification/spec.md: the parent trace line must end with ", .tmp/" on the coordinator');
   assert.doesNotMatch(runner, /> Scratch cleanup: removed \.tmp\/\{change-name\}\//,
     'specs/apply-coordinator-verification/spec.md: runner must not equal-authority restate the exact per-change trace');
-  assert.match(coordinator, /empty sweep[\s\S]{0,180}(?:emits nothing|no output|no message)|(?:emits nothing|no output|no message)[\s\S]{0,180}empty sweep/i,
+  assert.match(coordinator, /An empty sweep prints nothing\./,
     'specs/apply-coordinator-verification/spec.md: an empty sweep must emit no trace line');
 });
 
@@ -93,9 +89,9 @@ test('Step 4 scratch cleanup stays ordered before comparison without broadening 
   const coordinator = artifact(APPLY_CARDS.coordinator);
   const runner = artifact(APPLY_CARDS.runner);
   const combined = `${coordinator}\n${runner}`;
-  assert.match(combined, /ordered sweep[\s\S]{0,320}(?:absent|exclude|excluded)[\s\S]{0,260}(?:report )?comparison/i,
+  assert.match(combined, /Swept paths are excluded from changed paths, the plan cross-check, the `Subagent ↔ git` comparison/,
     'specs/apply-coordinator-verification/spec.md: the ordered sweep must exclude removed paths from comparison');
-  assert.match(combined, /Scratch cleanup[\s\S]{0,260}(?:MUST NOT|does not|not)[\s\S]{0,180}(?:broaden|authorize|remove).*?(?:recovery|unexpected path)/i,
+  assert.match(combined, /The sweep never widens recovery eligibility or authorizes removing any other path;/,
     'specs/apply-coordinator-verification/spec.md: cleanup must not broaden recovery eligibility');
   assert.match(combined, /out-of-scope[\s\S]{0,260}(?:recovery|human intervention)|(?:recovery|human intervention)[\s\S]{0,260}out-of-scope/i,
     'specs/apply-coordinator-verification/spec.md: unrelated out-of-scope paths must keep their existing handling');
@@ -105,7 +101,7 @@ test('Step 4 scratch is excluded from the changed-files union, field-8 add-list,
   const coordinator = artifact(APPLY_CARDS.coordinator);
   const runner = artifact(APPLY_CARDS.runner);
   const combined = `${coordinator}\n${runner}`;
-  assert.match(combined, /Scratch paths? removed by the ordered sweep SHALL be excluded/i,
+  assert.match(combined, /Swept paths are excluded from changed paths[\s\S]{0,160}the field-8 add-list, and line totals/,
     'specs/apply-coordinator-ownership/spec.md: swept scratch paths must be excluded from observed changes');
   assert.match(combined, /union|changed[- ]?files/i,
     'specs/apply-coordinator-ownership/spec.md: the changed-files union must be the comparison surface');
@@ -146,49 +142,42 @@ test('Step 4 in-scope RED and GREEN recovery continues the same worker with cont
     'specs/diagnosis-driven-recovery-apply/spec.md: recovery must never open a fresh worker');
 });
 
-test('Step 4 Known-False recovery branches by Cause Locus and uses an invocation recovery ledger', () => {
+test('Step 4 Known-False recovery branches by Cause Locus and scopes the recovery ledger to the Step', () => {
   const coordinator = artifact(APPLY_CARDS.coordinator);
-  const runner = artifact(APPLY_CARDS.runner);
-  const combined = `${coordinator}\n${runner}`;
-  const recovery = recoverySection(combined);
+  const policy = artifact(APPLY_CARDS.policy);
+  const recovery = coordinator.slice(coordinator.indexOf('## Known-False Report Recovery'));
 
-  assert.match(recovery, /Known[- ]False/i,
-    'specs/diagnosis-driven-recovery-apply/spec.md: recovery must define the Known-False branch');
-  assert.match(recovery, /Cause Locus/i,
-    'specs/diagnosis-driven-recovery-apply/spec.md: recovery must branch on Cause Locus');
-  for (const locus of [/\bRED\b/i, /\bGREEN\b/i, /plan[- ]artifact/i, /out[- ]of[- ]scope/i]) {
-    assert.match(recovery, locus,
-      'specs/diagnosis-driven-recovery-apply/spec.md: every recovery Cause Locus branch must be declared');
+  assert.match(recovery, /Known-False Report Recovery/,
+    'specs/apply-coordinator-verification/spec.md: recovery must define the Known-False branch');
+  assert.match(recovery, /follow `@sai\/policies\/bounded-recovery\.md`: diagnosis, Cause Locus, diagnosis key, ledger/,
+    'the shared machinery must be delegated to the bounded-recovery policy, not restated');
+  for (const locus of ['`in-scope`', '`owner-in-run`', '`out-of-scope`', '`unresolved`']) {
+    assert.ok(policy.includes(locus), `bounded-recovery.md must define the ${locus} Cause Locus`);
   }
-  assert.match(combined, /recovery ledger/i,
-    'specs/diagnosis-driven-recovery-apply/spec.md: recovery attempts must be tracked in a ledger');
-  assert.match(combined, /recovery ledger[\s\S]{0,700}(?:not reset|never reset|must not reset|shall not reset)[\s\S]{0,220}(?:each|per|between)[\s\S]{0,80}Step/i,
-    'specs/diagnosis-driven-recovery-apply/spec.md: the recovery ledger must not reset per Step');
-  assert.match(combined, /exhaust/i,
-    'specs/diagnosis-driven-recovery-apply/spec.md: exhaustion must remain a defined terminal state');
-  assert.match(combined, /checkbox[\s\S]{0,140}(?:commit|advance)|commit[\s\S]{0,140}(?:checkbox|advance)|advance[\s\S]{0,140}(?:checkbox|commit)/i,
-    'specs/diagnosis-driven-recovery-apply/spec.md: exhaustion must block checkbox marking, commit, and advance');
-  assert.match(combined, /human intervention/i,
-    'specs/diagnosis-driven-recovery-apply/spec.md: exhaustion must stop for human intervention');
+  assert.match(recovery, /recovery scope is the Step: on Step entry send `\{kind: step-entry, step: "Step N"\}` to `recovery-ledger@1`, never a bare `reset`/,
+    'specs/apply-coordinator-verification/spec.md: the ledger scope is the Step, granted by the step-entry signal');
+  assert.match(recovery, /A re-entered Step keeps what it already spent\./,
+    'a re-entered Step must not draw a fresh ledger');
+  assert.match(recovery, /Exhaustion, or any hand-back, blocks Automated checkbox marking, commit, and Step advance/,
+    'exhaustion must block checkbox marking, commit, and advance');
+  assert.doesNotMatch(coordinator, /not reset per Step|segment-scoped recovery pool/,
+    'no stale segment-scoped ledger wording may remain');
 });
 
 test('Step 4 recovery appends exactly the ordered five-heading diagnosis without exposing worker output', () => {
   const coordinator = artifact(APPLY_CARDS.coordinator);
-  const red = artifact(APPLY_CARDS.redWorker);
-  const green = artifact(APPLY_CARDS.greenWorker);
-  const combined = `${coordinator}\n${red}\n${green}`;
-  const recovery = recoverySection(combined);
-  const headings = ['Reported', 'Evidence', 'Cause', 'Correction', 'Verification'];
-  const positions = headings.map(heading => recovery.search(new RegExp(`\\b${heading}\\b`)));
+  const recovery = coordinator.slice(coordinator.indexOf('## Known-False Report Recovery'));
+  const positions = ['Reported', 'Evidence', 'Cause', 'Correction', 'Verification']
+    .map(heading => recovery.indexOf(`#### ${heading}`));
 
   for (const position of positions) assert.ok(position >= 0, 'recovery heading should exist');
   assert.deepEqual([...positions].sort((a, b) => a - b), positions,
-    'specs/diagnosis-driven-recovery-apply/spec.md: recovery headings must remain in the required order');
-  assert.match(recovery, /same[- ]worker|same worker/i,
-    'specs/diagnosis-driven-recovery-apply/spec.md: in-scope diagnosis must target the same worker session');
-  assert.match(recovery, /no raw output|raw output.*(?:not|excluded|forbidden)/i,
+    'specs/apply-coordinator-verification/spec.md: recovery headings must remain in the required order');
+  assert.match(recovery, /same worker/i,
+    'in-scope diagnosis must target the same worker session');
+  assert.match(recovery, /no raw output or artifact contents/,
     'specs/apply-coordinator-verification/spec.md: no raw output may enter the recovery prompt');
-  assert.match(recovery, /blind/i,
+  assert.match(recovery, /RED stays blind to the GREEN body/,
     'specs/apply-test-impl-split/spec.md: recovery must preserve the blindness restriction');
 });
 
@@ -200,8 +189,6 @@ test('Step 4 out-of-scope recovery makes zero attempts and permits at most one c
 
   assert.match(recovery, /out[- ]of[- ]scope[\s\S]{0,420}(?:zero|0)[\s\S]{0,100}attempt/i,
     'specs/diagnosis-driven-recovery-apply/spec.md: out-of-scope recovery must take zero worker attempts');
-  assert.match(recovery, /(?:zero|0) attempts[\s\S]{0,420}out[- ]of[- ]scope/i,
-    'specs/diagnosis-driven-recovery-apply/spec.md: zero attempts must be attached to the out-of-scope locus');
   assert.match(recovery, /(?:optional[\s\S]{0,260}(?:at most one|one)[\s\S]{0,320}(?:current[- ]Step|implementation\.md|plan[- ]artifact)|(?:at most one|one)[\s\S]{0,320}(?:optional|current[- ]Step|implementation\.md|plan[- ]artifact))/i,
     'specs/diagnosis-driven-recovery-apply/spec.md: only an optional at-most-one plan-artifact repair is allowed');
   assert.match(recovery, /current[- ]Step[\s\S]{0,360}implementation\.md|implementation\.md[\s\S]{0,360}current[- ]Step/i,
@@ -218,7 +205,7 @@ test('Step 4 Coverage Signature declares fields and field-equivalence for Known-
 
   assert.match(signature, /fields?|field names?/i,
     'specs/diagnosis-driven-recovery-apply/spec.md: Coverage Signature fields must be explicit');
-  for (const field of [/step/i, /(?:test|verification)/i, /assertion/i, /expected/i, /observed/i]) {
+  for (const field of [/step/i, /(?:test|verification)/i, /assertion/i, /expected/i, /observation/i]) {
     assert.match(signature, field,
       'specs/diagnosis-driven-recovery-apply/spec.md: Coverage Signature must pin each diagnostic field');
   }
@@ -228,16 +215,14 @@ test('Step 4 Coverage Signature declares fields and field-equivalence for Known-
 
 test('Step 4 duplicate diagnosis is terminal before exhaustion and the unresolved diagnosis has no Cause Locus', () => {
   const coordinator = artifact(APPLY_CARDS.coordinator);
-  const runner = artifact(APPLY_CARDS.runner);
-  const combined = `${coordinator}\n${runner}`;
-  const recovery = recoverySection(combined);
+  const policy = artifact(APPLY_CARDS.policy);
 
-  assert.match(recovery, /duplicate diagnosis[\s\S]{0,520}(?:before|prior to|without)[\s\S]{0,120}(?:exhaust|human|hand[- ]back)/i,
-    'specs/diagnosis-driven-recovery-apply/spec.md: duplicate diagnosis must stop before recovery exhaustion');
-  assert.match(recovery, /unresolved[\s\S]{0,500}(?:has no|without|must not (?:have|carry)|cannot (?:have|carry)|no)[\s\S]{0,140}(?:Cause Locus|locus)/i,
-    'specs/diagnosis-driven-recovery-apply/spec.md: unresolved diagnosis must have no Cause Locus');
-  assert.doesNotMatch(recovery, /(?:Cause Locus|locus)\s*[:=]\s*unresolved/i,
-    'specs/diagnosis-driven-recovery-apply/spec.md: unresolved must not be represented as a Cause Locus value');
+  assert.match(coordinator, /repeated key returns `rejected: duplicate diagnosis` and hands back the existing diagnosis/,
+    'a duplicate coordinator diagnosis must hand back rather than spend budget');
+  assert.match(policy, /duplicates are\s+rejected before dispatch/,
+    'bounded-recovery.md: a duplicate worker diagnosis is rejected before dispatch');
+  assert.match(policy, /`unresolved` — the evidence cannot establish a concrete point/,
+    'bounded-recovery.md: unresolved carries no concrete locus claim');
 });
 
 test('Step 4 a repair beyond the exhausted coordinator budget hands back to a human', () => {
@@ -245,10 +230,8 @@ test('Step 4 a repair beyond the exhausted coordinator budget hands back to a hu
   const runner = artifact(APPLY_CARDS.runner);
   const recovery = recoverySection(`${coordinator}\n${runner}`);
 
-  assert.match(recovery, /repair beyond the exhausted coordinator budget[\s\S]{0,520}(?:unresolved|human|hand[- ]back)/i,
+  assert.match(recovery, /one past the coordinator budget, is an unresolved hand-back to a human/,
     'specs/diagnosis-driven-recovery-apply/spec.md: a repair beyond the coordinator budget must have an unresolved human hand-back branch');
-  assert.match(recovery, /unresolved[\s\S]{0,420}(?:human hand[- ]back|hand[- ]back to human|human intervention)/i,
-    'specs/diagnosis-driven-recovery-apply/spec.md: unresolved recovery must hand back to a human');
 });
 
 test('Step 4 recovery uses recovery_policy true and independently verifies a plan-artifact repair', () => {
@@ -266,9 +249,7 @@ test('Step 4 recovery uses recovery_policy true and independently verifies a pla
 });
 
 test('Step 4 the worker contracts never receive coordinator-only recovery evidence', () => {
-  const red = artifact(APPLY_CARDS.redWorker);
-  const green = artifact(APPLY_CARDS.greenWorker);
-  const combined = `${red}\n${green}`;
+  const combined = [APPLY_CARDS.redWorker, APPLY_CARDS.greenWorker, APPLY_CARDS.workerCommon].map(artifact).join('\n');
 
   assert.doesNotMatch(combined, /include.*(?:pre-dispatch )?baseline/i,
     'specs/apply-coordinator-verification/spec.md: workers must not receive the pre-dispatch baseline');
@@ -276,7 +257,7 @@ test('Step 4 the worker contracts never receive coordinator-only recovery eviden
     'specs/apply-coordinator-verification/spec.md: workers must not receive the coordinator allowed-file set');
   assert.doesNotMatch(combined, /per-report recovery assessment/i,
     'specs/apply-coordinator-verification/spec.md: workers must not receive the per-report recovery assessment');
-  assert.match(combined, /raw output/i,
+  assert.match(combined, /no raw output/i,
     'specs/apply-coordinator-verification/spec.md: the no-raw-output restriction must remain');
   assert.match(combined, /forbidden/i,
     'specs/apply-test-impl-split/spec.md: the worker prohibitions must remain');
@@ -291,7 +272,9 @@ test('Step 4 report field 8 omission is malformed while an explicit empty list i
   const escapedMessage = message.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   assert.equal((combined.match(new RegExp(escapedMessage, 'g')) || []).length, 1,
     'specs/apply-subagent-report-contract/spec.md: the malformed-report message must be emitted exactly once');
-  assert.match(combined, /An explicitly present empty `Files modified` list is valid; an omitted field 8 is malformed\./,
+  assert.match(combined, /A report without field 8 is malformed\./,
+    'specs/apply-subagent-report-contract/spec.md: an omitted field 8 is malformed');
+  assert.match(artifact(APPLY_CARDS.workerCommon), /an empty list is valid, a missing field makes the report malformed/,
     'specs/apply-subagent-report-contract/spec.md: an explicit empty list must remain valid');
   assert.match(combined, /field 9[\s\S]{0,180}(?:soft[- ]degrad|not malformed|exempt)|soft[- ]degrad[\s\S]{0,180}field 9/i,
     'specs/apply-subagent-report-contract/spec.md: an absent field 9 must soft-degrade, not block');
@@ -313,142 +296,133 @@ test('Step 4 the execution telemetry row shape is pinned with the green-direct d
     'specs/apply-execution-telemetry-appendix/spec.md: the first_failure column must be pinned');
 });
 
-function terminalLifecycleSection(text) {
-  const start = text.indexOf('## Final sweep and terminal lifecycle');
-  assert.ok(start >= 0, 'the routed runner must expose the terminal lifecycle');
-  return text.slice(start);
+function activeTerminalLifecycle() {
+  return artifact('sai/commands/apply/steps/terminal-lifecycle.md');
+}
+
+function terminalDocs() {
+  const section = activeTerminalLifecycle();
+  const start = section.indexOf('## 4. Terminal documentation commit');
+  const end = section.indexOf('## 5. Print and stop');
+  assert.ok(start >= 0 && end > start, 'the terminal documentation commit section must exist');
+  return section.slice(start, end);
 }
 
 test('Step 2 terminal no-op and decline paths do not create or retry a documentation commit', () => {
-  const section = terminalLifecycleSection(artifact(APPLY_CARDS.runner));
-  assert.match(section, /When none of these conditions holds, propose no terminal documentation commit and ask no terminal authorization question/);
-  assert.match(section, /only explicit `yes`[\s\S]{0,240}authorizes `git add` and `git commit`/);
-  assert.match(section, /off-option reply or silence is NOT a decline[\s\S]{0,200}only explicit `no` declines/s);
-  assert.match(section, /On decline, leave eligible files in the working tree/);
-  assert.match(section, /without retrying/);
-  assert.match(section, /continue to MANDATORY STOP/);
+  const docs = terminalDocs();
+  const rules = artifact('sai/policies/commit-rules.md');
+  assert.match(docs, /When the set is empty, skip the rest of this section: no message, no question\./);
+  assert.match(docs, /Ask through commit-rules § Authorization gate/);
+  assert.match(rules, /An off-option reply or silence is not a decline: re-present the same ask unchanged/);
+  assert.match(rules, /`no` declines: execute nothing/);
+  assert.match(docs, /On `no`, leave the files in the working tree, say what remains uncommitted, and continue without retrying\./);
 });
 
 test('Step 2 terminal preview precedes message and authorization and remains non-mutating', () => {
-  const section = terminalLifecycleSection(artifact(APPLY_CARDS.runner));
-  const visibility = section.indexOf('### Terminal visibility listing');
-  const message = section.indexOf('proposed commit message', visibility);
-  const authorization = section.indexOf('### Terminal authorization and commit');
+  const docs = terminalDocs();
+  const visibility = docs.indexOf('**Visibility listing.**');
+  const message = docs.indexOf('**Message.**');
+  const authorization = docs.indexOf('**Authorization.**');
   assert.ok(visibility >= 0 && message > visibility && authorization > message,
     'visibility must precede the proposed message and authorization');
-  assert.match(section, /Before proposing a terminal documentation commit message and before authorization/);
-  assert.match(section, /does not stage, unstage, or otherwise mutate the Git index/);
+  assert.match(docs, /The listing never touches the index/);
 });
 
 test('Step 2 active session authorization and fast-track skip only the terminal ask', () => {
-  const runner = artifact(APPLY_CARDS.runner);
-  const invocation = artifact('sai/commands/apply/invocation.md');
+  const docs = terminalDocs();
   const coordinator = artifact(APPLY_CARDS.coordinator);
-  const combined = `${runner}\n${invocation}\n${coordinator}`;
-  assert.match(combined, /session_commit_authorized/);
-  assert.match(coordinator, /fast-track.*pre-activate|pre-activate.*fast-track/i);
-  assert.match(runner, /When the session flag is already active.*skip only this authorization ask/s);
-  assert.match(runner, /still print the visibility listing and proposed message before staging and committing/s);
-  assert.match(runner, /options `yes \(Recommended\)` \/ `no` \/ `Allow on this session`/);
-  assert.match(runner, /`Allow on this session` selection[\s\S]{0,160}activates `session_commit_authorized`/);
+  const rules = artifact('sai/policies/commit-rules.md');
+  assert.match(docs, /an active `session_commit_authorized` skips only the ask/);
+  assert.match(coordinator, /When fast-track is active at run start, pre-activate the flag\./);
+  assert.match(coordinator, /An active flag skips only the authorization ask: the visibility report and proposed message still print before every commit/);
+  assert.match(rules, /options `yes \(Recommended\)` \/ `no` \/ `Allow on this session`/);
+  assert.match(rules, /`Allow on this session` authorizes this commit and activates the session grant/);
 });
 
 test('Step 2 terminal documentation preserves the pre-Final-sweep halt and field-8 boundaries', () => {
-  const section = terminalLifecycleSection(artifact(APPLY_CARDS.runner));
-  assert.match(section, /run that halts before this Final sweep performs neither learnings promotion nor terminal documentation evaluation/);
-  assert.match(section, /Keep terminal staging separate from per-Step field-8 staging/);
-  assert.match(section, /does not depend on a Step number or worker report/);
-  assert.match(section, /changed-files union.*outside this set/);
-  assert.match(section, /never resolve `GLOSSARY\.md` from `openspec\/changes\/\{change-name\}`/);
+  const section = activeTerminalLifecycle();
+  const docs = terminalDocs();
+  assert.match(section, /A run that stops for a human before this point runs none of it\./);
+  assert.match(docs, /the changed-files union, per-Step add-lists, and unrelated paths are outside the set/);
+  assert.match(docs, /uses no Step number, report, or plan cross-check/);
+  assert.match(docs, /Never resolve it from `openspec\/changes\/\{change-name\}\/`/);
 });
 
-test('Step 4 the unblock ladder traverses autonomously under a Step-scoped coordinator budget', () => {
+function unblockLadder() {
   const coordinator = artifact(APPLY_CARDS.coordinator);
-  const ladder = coordinator.slice(coordinator.search(/## Coordinator-led unblock ladder/));
-  assert.ok(ladder.length > 0, 'the coordinator must declare the unblock ladder');
+  const start = coordinator.indexOf('## Unblock ladder');
+  assert.ok(start >= 0, 'the coordinator must declare the unblock ladder');
+  const end = coordinator.indexOf('\n  ## ', start + 1);
+  return coordinator.slice(start, end);
+}
 
-  assert.match(ladder, /traverses the ladder autonomously[\s\S]{0,260}never asks the user/i,
+test('Step 4 the unblock ladder traverses autonomously under a Step-scoped coordinator budget', () => {
+  const ladder = unblockLadder();
+  assert.match(ladder, /Traverse it autonomously: route rather than write, never ask the user which rung to take\./,
     'the ladder must be traversed without a per-incident user prompt');
-  assert.match(ladder, /three coordinator attempts per Step/i,
-    'the coordinator budget must be three attempts per Step');
-  assert.match(ladder, /held in the state store by `recovery-ledger@1`, not in prose/i,
-    'the coordinator budget must live in the state store rather than in prose');
-  assert.match(ladder, /on entry to each Step[\s\S]{0,200}reset[\s\S]{0,200}`recovery-ledger@1`|reset the ledger machine with `reset <id> recovery-ledger@1`/i,
-    'both budgets must reset on entry to each Step');
-  assert.match(ladder, /Delegating a corrective dispatch spends one coordinator attempt/i,
+  assert.match(ladder, /Each Step has three worker slots and three coordinator attempts, both held by `recovery-ledger@1`/,
+    'the coordinator budget must be three attempts per Step, held in the state store');
+  assert.match(ladder, /granted by the Step-entry signal only on the Step's first entry/,
+    'both budgets must be granted on the first entry to each Step');
+  assert.match(ladder, /A delegated corrective dispatch spends a coordinator attempt exactly as a self-edit does/,
     'delegating must consume a coordinator attempt exactly as a self-edit does');
-  assert.match(ladder, /Self-edit is forbidden while a worker-safe correction exists\./,
-    'the self-edit rule must be preserved verbatim');
+  assert.match(ladder, /Only when the RED-owner retry returns unpassable or `unrecoverable` and no worker-safe path remains/,
+    'self-edit must wait until no worker-safe correction exists');
 });
 
 test('Step 4 the coordinator never writes a test file and routes test causes to their owner', () => {
-  const coordinator = artifact(APPLY_CARDS.coordinator);
-  const ladder = coordinator.slice(coordinator.search(/## Coordinator-led unblock ladder/));
-
-  assert.match(ladder, /coordinator never writes a test file under any rung/i,
+  const ladder = unblockLadder();
+  assert.match(ladder, /You never write a test file\./,
     'the coordinator must never write a test file');
-  assert.match(ladder, /no RED owner[\s\S]{0,200}dispatch a fresh RED/i,
+  assert.match(ladder, /When no RED worker was dispatched for the Step \(GREEN-only\) and the cause is in a test, dispatch a fresh RED worker/,
     'a GREEN-only Step with a test cause must dispatch a fresh RED');
-  assert.match(ladder, /RED owner exists but is exhausted[\s\S]{0,200}escalate/i,
+  assert.match(ladder, /When the Step's RED owner is exhausted or vetoed, escalate to a human/,
     'an exhausted test owner must escalate instead of a coordinator test edit');
-  assert.match(ladder, /never routed to GREEN, whose test-file prohibition stays absolute/i,
+  assert.match(ladder, /A cause in a test file belongs to its RED owner and never goes to GREEN\./,
     'a test cause must never be routed to GREEN');
 });
 
 test('Step 4 budget exhaustion and the enumerated stopping reasons close an unattended Step', () => {
-  const coordinator = artifact(APPLY_CARDS.coordinator);
-  const ladder = coordinator.slice(coordinator.search(/## Coordinator-led unblock ladder/));
-
-  assert.match(ladder, /exhausting either budget inside a Step[\s\S]{0,320}escalates to a human[\s\S]{0,200}naming the Step/i,
+  const ladder = unblockLadder();
+  assert.match(ladder, /Exhausting either budget stops the Step and escalates, naming the Step, the diagnosis, and the spend on each budget\./,
     'exhausting either budget must escalate naming the Step, diagnosis, and attempts');
   for (const reason of [/weakening or deleting an assertion/i, /redefining the agreed contract/i, /safe-operations/i, /`unrecoverable: true` veto/i, /pre-existing failure outside the change's radius/i]) {
     assert.match(ladder, reason, 'the enumerated stopping reasons must stay complete');
   }
-  assert.match(ladder, /No other incident interrupts an unattended run/i,
+  assert.match(ladder, /Nothing else interrupts an unattended run\./,
     'no other condition may stop the run for a user');
-  assert.match(ladder, /record one line per autonomous correction[\s\S]{0,320}report the collected lines at run close/i,
-    'autonomous corrections must leave a trace reported at run close');
 });
 
 test('Step 4 a re-entered Step keeps its spent budgets and duplicate coordinator diagnoses cost zero', () => {
   const coordinator = artifact(APPLY_CARDS.coordinator);
-  const ladder = coordinator.slice(coordinator.search(/## Coordinator-led unblock ladder/));
-
-  assert.match(ladder, /`\{kind: step-entry, step: "Step N"\}`/,
-    'the Step budget must be granted by the Step-guarded step-entry signal');
-  assert.match(ladder, /only when this run has not entered that Step before/i,
-    'a fresh budget must be granted on the first entry to a Step only');
-  assert.match(ladder, /re-entered[\s\S]{0,260}keeps the worker slots and coordinator attempts already spent[\s\S]{0,120}never draws a second budget/i,
+  const ladder = unblockLadder();
+  assert.match(coordinator, /`\{kind: step-entry, step: "Step N"\}` to `recovery-ledger@1`, never a bare `reset`/,
+    'the Step budget must be granted by the Step-guarded step-entry signal, never the bare reset');
+  assert.match(ladder, /`step_entry: first`; a `re-entry` keeps what was spent; `unidentified` grants nothing/,
     'a re-entered Step must keep its spent budgets');
-  assert.match(ladder, /Do not use the bare `reset <id> recovery-ledger@1` between Steps/,
-    'the unguarded reset must not be used between Steps');
   assert.match(ladder, /`\{kind: coordinator-attempt, key: \[artifact path, concrete point, authorized correction boundary\]\}`/,
     'a coordinator attempt must carry a concrete diagnosis key');
-  assert.match(ladder, /already attempted at coordinator level in this Step spends zero[\s\S]{0,200}`rejected: duplicate diagnosis`/i,
+  assert.match(ladder, /repeated key returns `rejected: duplicate diagnosis`/,
     'a duplicate coordinator diagnosis must spend zero attempts');
-  assert.match(ladder, /no concrete key spends zero[\s\S]{0,80}`rejected: unresolved cause`/i,
+  assert.match(ladder, /A key-less attempt returns `rejected: unresolved cause`/,
     'a coordinator attempt without a concrete key must spend zero attempts');
 });
 
 test('Step 4 exhaustion is self-describing and the autonomous-correction trace has an enforced format', () => {
-  const coordinator = artifact(APPLY_CARDS.coordinator);
-  const ladder = coordinator.slice(coordinator.search(/## Coordinator-led unblock ladder/));
-
-  assert.match(ladder, /`budgets` as `\{worker: \{spent, limit\}, coordinator: \{spent, limit\}\}`/,
+  const ladder = unblockLadder();
+  const policy = artifact(APPLY_CARDS.policy);
+  assert.match(policy, /`budgets` as `\{worker: \{spent, limit\}, coordinator: \{spent, limit\}\}`/,
     'every ledger outcome must report what each budget spent');
-  assert.match(ladder, /`exhausted` as `worker` or `coordinator`/,
+  assert.match(policy, /names the budget that ran out as `exhausted`/,
     'an exhaustion must name the budget that ran out');
-  assert.match(ladder, /Take those tallies from the store response rather than from memory of the conversation/,
+  assert.match(ladder, /Read tallies from the response's `budgets`, never from memory\./,
     'the escalation tallies must come from the store, not from conversation memory');
-  assert.match(ladder, /coordinator budget is exhausted stops even when worker slots remain/i,
+  assert.match(ladder, /an exhausted coordinator budget stops the Step even with worker slots left/,
     'leftover worker slots must open no alternative route once the coordinator budget is gone');
-
-  assert.match(ladder, /Each line is exactly `> Autonomous correction: Step <N> \| <rung> \| key <path> :: <point> :: <boundary> \| <budget> <ordinal> of 3 \| <outcome>`/,
+  assert.match(ladder, /`> Autonomous correction: Step <N> \| <rung> \| key <path> :: <point> :: <boundary> \| <budget> <ordinal> of 3 \| <outcome>`/,
     'the trace line format must be pinned');
-  assert.match(ladder, /Coverage is every rung the coordinator takes without asking the user, including a zero-cost outcome/,
+  assert.match(ladder, /Record one line per autonomous rung taken, zero-cost outcomes included/,
     'the trace must cover zero-cost outcomes too');
-  assert.match(ladder, /whether the run ends by completing, by escalating, or by stopping/i,
-    'the trace must be reported at run close even when the run succeeds');
-  assert.match(ladder, /`> Autonomous corrections: none`/,
-    'an empty trace must still be reported');
+  assert.match(ladder, /Print the collected lines at run close however the run ends, or `> Autonomous corrections: none`\./,
+    'the trace must be reported at run close, empty or not');
 });

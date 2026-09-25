@@ -1,5 +1,5 @@
 ---
-description: Pull Request Author — synthesizes title and body from the OpenSpec change artifacts (proposal/design/specs/implementation/review/security/performance/accessibility) and the git diff vs parent branch; saves openspec/changes/{change-name}/pr.md and (with authorization) opens the PR via gh
+description: Write a change's pull request from its OpenSpec artifacts and its diff vs parent into openspec/changes/{change-name}/pr.md, then open it with gh once you authorize it.
 argument-hint: "[change-name] [optional: parent branch]"
 model: sonnet
 effort: medium

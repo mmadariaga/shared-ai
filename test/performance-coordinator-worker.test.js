@@ -42,27 +42,6 @@ test('Step 1 performance card uses neutral root protocols and retires flat canon
   }
 });
 
-test('performance invocation core loads the shared audit sequence in order', () => {
-  const core = artifact('sai/commands/performance/invocation.md');
-  const required = [
-    'Fetch @skills/budget/SKILL.md',
-    'Fetch @sai/commands/performance/instructions.md',
-    'Fetch @sai/policies/remember.md',
-  ];
-
-  let previous = -1;
-  for (const instruction of required) {
-    const position = core.indexOf(instruction);
-    assert.ok(position > previous, `${instruction} should be loaded in order`);
-    previous = position;
-  }
-
-  assert.match(core, /\$ARGUMENTS/);
-  assert.equal((core.match(/Fetch @sai\/commands\/performance\/instructions\.md/g) || []).length, 1);
-  assert.doesNotMatch(core, /InvocationEnvelope|resolved_change_name|terminal navigation|MANDATORY STOP/i);
-  assert.doesNotMatch(core, /Files Affected[\s\S]{0,240}sai\/commands\/performance\/instructions\.md/);
-});
-
 test('performance coordinator exposes the complete adapter contract', () => {
   const coordinator = artifact('sai/commands/performance/coordinator.md');
   const fields = [
@@ -131,7 +110,8 @@ test('canonical performance worker preserves the scope, ordering, tier, and evid
   const worker = artifact('sai/commands/performance/worker.md');
 
   assert.match(worker, /complete scope grammar/i);
-  assert.match(worker, /parent[- ]branch[\s\S]{0,160}order/i);
+  assert.match(worker, /parent branch per `steps\/common\.md` § Scope/);
+  assert.match(artifact('sai/commands/performance/steps/common.md'), /## Scope[\s\S]*?parent branch\. Detection order/);
   assert.match(worker, /four tiers|tier 1[\s\S]{0,120}tier 4/i);
   assert.match(worker, /500[- ]LOC cutover/i);
   assert.match(worker, /eight[- ]call cap|8[- ]call cap/i);
@@ -332,7 +312,7 @@ test('performance worker contract enumerates the five ids and pins the batch sem
   assert.match(worker, /diagnostics[\s\S]{0,240}(?:authorization|not applicable|skip)/i);
   assert.match(worker, /resolve-diagnostics/);
   assert.match(worker, /empty diff[\s\S]{0,240}(?:no-change|completed)/i);
-  assert.match(worker, /no Milestone Stamp/i);
+  assert.doesNotMatch(worker, /no Milestone Stamp/i, 'audit plans carry stamps per todo-structure; the worker states nothing about them');
   assert.match(worker, /never[\s\S]{0,160}(?:before resolution|in place of a terminal|needs_input)/i);
 });
 
@@ -363,8 +343,8 @@ test('performance coordinator and policy render the plan coordinator-only with t
   assert.doesNotMatch(coordinator, /Get-Date/,
     'the coordinator should carry no PowerShell wall-clock command');
 
-  assert.match(worker, /no Milestone Stamp/i,
-    'the worker contract should state audit plans carry no Milestone Stamp');
+  assert.doesNotMatch(worker, /no Milestone Stamp/i,
+    'the worker never renders stamps, so its contract states nothing about them');
   assert.match(coordinator, /todo-structure\.md/,
     'the coordinator should reference the neutral todo-structure policy');
 });
@@ -407,7 +387,7 @@ test('step-gated: progress continuations carry exactly two lines with the determ
     'stage-machine.md should have a Step machines section');
   assert.match(stageMachine, /the two-line continuation/i,
     'stage-machine.md should document the two-line continuation');
-  assert.match(stageMachine, /Active step: none.*complete remaining work/,
+  assert.match(stageMachine, /`Active step: none` line/,
     'stage-machine.md should specify the terminal pointer line');
 });
 
@@ -452,9 +432,20 @@ test('step-gated: the performance worker loads steps/common.md at dispatch and e
     'a legitimately skipped gated stage still advances the pointer past it');
 });
 
-test('step-gated: the carved step library exists beside the untouched monolith', () => {
-  assert.ok(fs.existsSync(path.join(repoRoot, 'sai/commands/performance/instructions.md')),
-    'the original instructions.md stays in place untouched');
+test('step-gated: the step library is the only performance instruction surface', () => {
+  for (const retired of ['instructions.md', 'invocation.md']) {
+    assert.equal(fs.existsSync(path.join(repoRoot, 'sai/commands/performance', retired)), false,
+      `the monolithic performance ${retired} is retired`);
+  }
+  const manifest = JSON.parse(artifact('sai/install-manifest.json'));
+  for (const [id, destination] of [
+    ['retired-sai-7-performance-instructions', 'commands/performance/instructions.md'],
+    ['retired-sai-7-performance-invocation', 'commands/performance/invocation.md'],
+  ]) {
+    const retirement = manifest.retirements.find(record => record.id === id);
+    assert.ok(retirement, `the manifest should retire installed copies of ${destination}`);
+    assert.equal(retirement.destination.path, destination);
+  }
   assert.ok(fs.existsSync(path.join(repoRoot, 'sai/commands/performance/steps/common.md')),
     'steps/common.md should exist');
   for (const [id, relativePath] of Object.entries(PERFORMANCE_STEP_MAP)) {

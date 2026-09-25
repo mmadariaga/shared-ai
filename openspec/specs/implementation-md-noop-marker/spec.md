@@ -8,7 +8,7 @@ TBD - created by change fix-empty-human-check-checkbox. Update Purpose after ini
 ### Requirement: A step with no observable human check SHALL encode it as an italic note, never as a checkbox
 When `/sai-3-implement` generates a step in `implementation.md` whose output has no observable behavior to verify (a service-side, config, migration, scaffolding, or otherwise non-UI step), the step's Verification Checklist SHALL NOT contain a `**Functional (...)**` checklist header and SHALL NOT contain any Functional `- [ ]` checkbox. Instead the plan SHALL emit a single italic parenthetical note stating why no functional check applies. The agent SHALL NOT invent a placeholder checkbox such as `- [ ] No functional check required`.
 
-This is the **Service-side / non-UI step** archetype. It mirrors the existing "component not yet rendered in the app" italic note that `<plan_template>` already uses — both express the absence of a functional check with an explanation, not with a checkbox.
+This is the **Service-side / non-UI step** archetype. It mirrors the existing "component not yet rendered in the app" italic note that the implementation plan template already uses — both express the absence of a functional check with an explanation, not with a checkbox.
 
 The distinction is normative: **a checkbox is an action** (something `/sai-4-apply` runs or the terminal functional review verifies and then marks `[x]`); **an italic note is an explanation** (context for the reader, never marked or acted on). "No functional check applies" is an explanation and MUST be encoded as an italic note.
 

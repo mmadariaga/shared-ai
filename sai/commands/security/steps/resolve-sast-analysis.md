@@ -1,17 +1,17 @@
 # Security Step — Resolve SAST Analysis
 
-Active step: resolve-sast-analysis. Apply taint-tracking and pattern detection across the flaw categories below against the selected scope, then report the `resolve-sast-analysis` progress event per the worker contract.
+Active step: resolve-sast-analysis. Apply taint-tracking and pattern detection to the selected scope. The step is done when every in-scope file has been checked against every flaw category below; then report the `resolve-sast-analysis` progress event per the worker contract.
 
 ### Phase 2: SAST — Static Analysis
 
-Apply taint-tracking and pattern detection across the categories below. For each flaw:
+For each flaw record:
 - File path + line number
 - Flaw category (standard name)
 - CWE ID (most specific) **only if the mapping is direct and obvious**
 - Severity
 - Taint flow (source → propagation → sink) for injection-class flaws
 - Exploit scenario (one concrete sentence describing an attack **on the current code**)
-- Remediation code
+- Remediation (fixed snippet or one-line action)
 
 #### Flaw Categories
 
@@ -75,5 +75,5 @@ Apply taint-tracking and pattern detection across the categories below. For each
 - **C# / .NET** — `SqlCommand` string concat, `Process.Start(userInput)`, `BinaryFormatter.Deserialize`, `XmlReader` without `DtdProcessing.Prohibit`, `MD5.Create()`/`SHA1.Create()` for passwords, `new Random()` for tokens, embedded `.prv`/`.pem`/`.pfx`, cookies without `HttpOnly`/`Secure`/`SameSite`, `Response.Redirect(userInput)`, missing `[Authorize]`, secrets in `appsettings.json`, sensitive data via `ILogger`.
 - **JavaScript / TypeScript** — template literals in `db.query()`, `eval`/`new Function`, `res.redirect(req.query.url)`, `innerHTML = userInput`, `Math.random()` for security, missing `helmet()`/CSP, `require(userInput)`, secrets in committed `.env`.
 - **Python / Django** — `cursor.execute(f"... {userInput}")`, `subprocess.call(cmd, shell=True)`, `pickle.loads`/`yaml.load`, `hashlib.md5(password)`, `random.random` for tokens, `app.debug = True` in prod, raw SQL outside ORM without justification, `mark_safe` on user content.
-- **Java / Spring** — `stmt.executeQuery("... " + userInput)`, `Runtime.exec(userInput)`, `ObjectInputStream.readObject()`, `MessageDigest.getInstance("MD5")`, missing `@PreAuthorize`/`@Secured`, `DocumentBuilderFactory` without `FEATURE_SECURE_PROCESSING`, `@Autowired` field injection on security-relevant beans.
+- **Java / Spring** — `stmt.executeQuery("... " + userInput)`, `Runtime.exec(userInput)`, `ObjectInputStream.readObject()`, `MessageDigest.getInstance("MD5")`, missing `@PreAuthorize`/`@Secured`, `DocumentBuilderFactory` without `FEATURE_SECURE_PROCESSING`.
 - **PowerShell / Shell** — `Invoke-Expression $userInput`, plain credentials in `.ps1`, `Start-Process` with user-controlled args.

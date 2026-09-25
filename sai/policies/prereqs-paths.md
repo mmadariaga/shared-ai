@@ -1,6 +1,6 @@
-### Path resolution
+# OpenSpec artifact paths
 
-As verified above, OpenSpec artifacts live under `openspec/` in the project root. Use direct paths to locate them — no recursive globbing:
+OpenSpec artifacts live under `openspec/` at the project root. Read them at these direct paths instead of searching the tree for them:
 
 - `openspec/config.yaml`
 - `openspec/specs/{name}/spec.md`
@@ -19,5 +19,3 @@ As verified above, OpenSpec artifacts live under `openspec/` in the project root
 - `openspec/changes/{change-name}/change-overview.md`
 - `openspec/changes/{change-name}/.openspec.yaml`
 - `openspec/changes/archive/YYYY-MM-DD-{change-name}/`
-
-Do not create or modify any files if any prerequisite check fails.

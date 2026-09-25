@@ -23,6 +23,6 @@ Citations to the implement testability rule in normative instructions SHALL reso
 
 #### Scenario: Testability rule current location
 
-- **WHEN** `sai/commands/implement/instructions.md` and `sai/commands/implement/steps/plan-generation.md` cite the testability rule
-- **THEN** the citations point to `sai/commands/implement/instructions.md:161`, where the rule currently resides
+- **WHEN** `sai/commands/implement/steps/plan-generation.md` cites the testability rule
+- **THEN** the citation names the RED → GREEN hard rule in `sai/commands/implement/steps/common.md`, where the rule resides, rather than a line number
 

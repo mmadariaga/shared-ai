@@ -41,4 +41,4 @@ ADR 0020's own Consequences section pre-authorised this path: "If a future chang
 - `openspec/changes/persist-sai-learnings/design.md` — Decision D3
 - `openspec/changes/persist-sai-learnings/specs/sai-learnings-promotion/spec.md` — "Promotion source is the deviations appendix"
 - `docs/adr/0020-ephemeral-in-context-technical-learnings-memory.md` — framing reframed by this ADR; its ephemerality decision is unchanged
-- `sai/instructions/apply.md` — `## Learnings Promotion Pass`, `## Technical Learnings Memory`
+- `sai/commands/apply/steps/terminal-lifecycle.md` — § 3. Learnings promotion

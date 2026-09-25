@@ -7,143 +7,112 @@
 
   ## Prerequisite exemption
 
-  `sai-commit` operates on git state only. It performs NO openspec prerequisite
-  checks: never fetch `@sai/policies/prereqs.md`, never require the `openspec`
-  binary, an `openspec/` directory, or `schema: sai-workflow`. This command is
-  the documented exemption that works in projects without openspec.
+  `sai-commit` operates on git state only and is the documented exemption from
+  the openspec prerequisites: it never fetches `@sai/policies/prereqs.md` and
+  needs no `openspec` binary, `openspec/` directory, or `schema: sai-workflow`.
 
   ## Commit phase adapter
 
-  You are the user-facing commit coordinator. Work is divided by mutation boundary:
-
-  **Worker-owned (read-only, no mutations):**
-  - Calls `node <tool-path> collect --json` (resolved per `@sai/policies/tool-resolution.md`, substituting `commit.js` for `<name>`) to retrieve staged state and style
-  - Drafts a message based on that data
-  - Presents the message and asks for authorization via `needs_input`
-  - Returns the authorized message on `yes` / `Allow on this session`, or a declined summary on `no`
-
-  **Coordinator-owned (mutations and execution):**
-  - Lifecycle routing and presentation of the worker's `needs_input` asks through the native option-picker
-  - Forwarding the user's selected answer to the worker through the binding's continuation mechanism
-  - Calling `node <tool-path> apply` (same resolved copy) with the authorized message on stdin after `yes` or `Allow on this session`
-  - Handling the sensitive-file handshake: when apply returns a sensitive-file block, presenting the detected list to the user through the native option-picker; on confirmation, re-invoking apply with `--acknowledge-secrets` carrying the exact list
-  - Session-scoped commit-authorization flag management
-
-  Never compose, alter, or second-guess the proposed message; never inspect
-  staged state on the worker's behalf. The worker calls `collect` (read-only);
-  you call `apply` (mutation).
+  You are the user-facing commit coordinator. The worker reads the staged state
+  (`commit.js collect`), drafts the message, and asks for authorization
+  (`@sai/commands/commit/instructions.md`). You present its questions, forward
+  the answers, and run the only mutation, `commit.js apply`, after an authorized
+  answer. The message is the worker's: present it unchanged and inspect nothing
+  on its behalf.
 
   Declare the minimal phase-adapter field set:
   - `original_envelope` — exactly the opaque single-string `arguments_value`
     received from the active wrapper, byte-for-byte.
   - `dispatch_operation` — dispatch exactly one `sai-commit-worker` through the
-    active commit-worker binding (`Fetch @sai/orchestration/workers/bindings/commit-worker.md`)
-    using the original envelope.
+    active commit-worker binding
+    (`Fetch @sai/orchestration/workers/bindings/commit-worker.md`) with the
+    original envelope.
   - `continuation_operation` — continue the same worker through the binding's
-    continuation mechanism (SendMessage-style / task-id resume), forwarding the
-    selected answer value.
+    continuation mechanism, forwarding the selected answer value.
   - `allowed_nonterminal_extensions` — none; `extension_handlers` empty. This
     adapter declares NO `progress_plan`: no progress event exists in this
     lifecycle, no panel plan renders, and no acknowledgement literal is defined.
-  - `replacement_reconstruction_fields` — the complete original envelope, the
-    opaque input history (including forwarded authorization answers), and the
-    ordered duplicate-free changed-files union; a replacement worker
-    reconstructs only from these.
-  - `terminal_navigation` — on a run closed by an authorized and executed
-    commit: print the worker-authored summary verbatim, print exactly
-    `Commit done.`, stop. Every other closure prints the worker-authored
-    summary verbatim and stops without the completion literal and without any
-    git mutation.
+  - `replacement_reconstruction_fields` — the original envelope, the opaque
+    input history, and the ordered duplicate-free changed-files union; a
+    replacement worker reconstructs only from these.
+  - `terminal_navigation` — after an executed commit, print the
+    worker-authored summary verbatim, then exactly `Commit done.`, and stop.
+    Every other closure prints the worker-authored summary verbatim and stops
+    without the completion literal and without any git mutation.
   - NO `recovery_policy` is declared: this adapter runs a minimal lifecycle
     without bounded recovery. Do not fetch `@sai/policies/bounded-recovery.md`,
     keep no recovery ledger, and perform no recovery continuations.
 
-  Initialize one invocation-scoped ordered, duplicate-free changed-files union
-  and an opaque input history. Validate every returned result against the
-  shared runner's closed-payload rules before acting on it.
+  Keep one invocation-scoped ordered, duplicate-free changed-files union and an
+  opaque input history. Validate every worker result against the shared
+  runner's closed-payload rules before acting on it.
 
   ## No-commit guard
 
-  Fetch @sai/policies/no-commit-guard.md and follow it for the
-  `sai-commit-worker` dispatch. Run the guard's `snapshot` step immediately
-  before each dispatch and each same-worker continuation, holding the
-  returned SHA as invocation-scoped `guard_base`, and its `verify` step
-  immediately after every returned result, before acting on that result. On a
-  `violation` verdict, remediate exactly as the policy prescribes — evidence
-  first, `git reset <guard_base>` (mixed), one pinned incident line per
-  `@sai/policies/autonomy-audit-log.md`, then continue the route. The
-  coordinator's own authorized commit executes only after the verify of the
-  result that carried the authorization ask, outside any guard window; no
-  commit window carries `allow_commit`.
+  Fetch @sai/policies/no-commit-guard.md and follow its § Window pairing for
+  every `sai-commit-worker` stretch: `snapshot` opens a window, holding the returned SHA as
+  invocation-scoped `guard_base`, and `verify` closes it before each boundary. On a `violation` verdict,
+  remediate exactly as the policy prescribes, then continue the route. Your
+  authorized commit runs after the verify of the result that carried the
+  authorization answer, outside every guard window; no commit window carries
+  `allow_commit`.
 
   ## Needs-input routing
 
-  On a worker `needs_input` result — the authorization ask, the secret-file
-  confirmation, or any other worker-authored decision — present the exact
-  question and ordered options through the native option-picker per the
-  "Closed-choice prompts" rule in `@sai/policies/remember.md`, append only
-  `{question, options, answer_value}` to the opaque input history, and forward
-  the exact answer value to the same worker through the binding's continuation
-  mechanism. For the authorization ask, render the worker-authored payload content (the staged file inventory with Totals plus the proposed subject/body) as ordinary text above the picker, unaltered and in fixed order (inventory then message), and keep the picker question to the worker's one short line with no added Totals or option explanations. The secret-file confirmation and the already-pushed amend warning keep full context and are excluded from shortening. On an off-option reply or silence to the authorization ask, re-present the same short ask unchanged. Use identical presentation on Claude Code and opencode with no harness fork.
+  For every worker `needs_input` (the pushed-amend confirmation, the
+  sensitive-file confirmation, the authorization question), print the worker's
+  summary as ordinary text, then present the exact question and ordered options
+  through the native option-picker per "Closed-choice prompts" in
+  `@sai/policies/remember.md`. For the authorization question the summary is the
+  staged inventory with Totals followed by the proposed message, and the picker
+  carries only the worker's one short line. Append
+  `{question, options, answer_value}` to the opaque input history and forward
+  the exact answer to the same worker. An off-option reply or silence re-presents
+  the same question unchanged; only an explicit `no` declines. Claude Code and
+  opencode present identically.
 
-  ## Authorization and coordinator-owned execution
+  ## Execution
 
-  The worker NEVER executes git mutations. The coordinator alone executes the
-  authorized mutation through the resolved `commit.js` `apply`, and only after the
-  forwarded answer authorizes it. Resolve the tool path per
-  `@sai/policies/tool-resolution.md`, substituting `commit.js` for `<name>`:
-  first existing candidate per harness, copied verbatim, never composed from a
-  root string, with the opencode XDG fallback only when neither verbatim
-  candidate exists. The first existing copy wins and defines the version. If no
-  candidate exists, name the tried candidates and stop with no prose fallback.
-  Whichever candidate wins, the invocations below are byte-identical, so a
-  single whitelist entry per root covers them; always pass `--json --cwd
-  <repo>`, changing nothing else:
+  Resolve the `commit.js` path per `@sai/policies/tool-resolution.md`,
+  substituting `commit.js` for `<name>`: the first existing candidate per
+  harness, copied verbatim, with the opencode XDG fallback only when neither
+  verbatim candidate exists. When none exists, name the tried candidates and
+  stop. Every invocation passes `--json --cwd <repo>` and the authorized message
+  on stdin through a quoted heredoc, so it reaches git byte-for-byte:
 
-  - On `yes` (or on an active session-scoped commit authorization): invoke
-    `node <tool-path> apply --json --cwd <repo>` with the authorized
-    message on stdin using a heredoc:
-    ```bash
-    node <tool-path> apply --json --cwd <repo> <<'EOF'
-    {authorized message}
-    EOF
-    ```
-    If apply returns `{"success": true}`, capture and show the resulting
-    commit SHA and subject. Then print the worker-authored summary verbatim,
-    print exactly `Commit done.`, and stop.
-    
-  - On sensitive-file block (apply returns exit code 1 with detected_sensitive_files):
-    Present the exact `detected_sensitive_files` list to the user through the
-    native option-picker, asking for confirmation. On confirmation, re-invoke:
-    ```bash
-    node <tool-path> apply --acknowledge-secrets {exact comma-separated list} --json --cwd <repo> <<'EOF'
-    {same authorized message}
-    EOF
-    ```
-    If the re-invocation succeeds, proceed as above. If it fails again, print
-    the worker-authored summary and the apply error, and stop.
-    
-  - On `Allow on this session`: set the in-memory boolean
-    `session_commit_authorized` active for the remainder of the
-    in-conversation session — never written to `.openspec.yaml`, config, or
-    any file — execute exactly as on `yes`.
-    While active, skip later authorization asks in this session and proceed
-    directly to apply execution after presenting the worker's message.
-    
-  - On `no`: execute nothing. Print the worker-authored summary
-    verbatim — the proposed message remains ready to copy from above — and
-    stop.
-    
-  - On an off-option reply or silence (no answer): neither execute nor
-    decline. Re-present the same ask unchanged through the native picker per
-    the invalid-input rule in `@sai/policies/remember.md`. Only an explicit
-    `no` declines.
+  ```bash
+  node <tool-path> apply [--amend] [--acknowledge-secrets <list>] --json --cwd <repo> <<'EOF'
+  {authorized message}
+  EOF
+  ```
 
-  The authorization grant and its boundaries follow `## Authorization Scope`
-  in `@sai/policies/commit-rules.md`. Staging stays forbidden in this command:
-  the coordinator never stages, unstages, pushes, amends pushed commits
-  without the explicit warning + secondary confirmation, bypasses hooks, or
-  touches anything beyond the authorized `git commit` invocation.
+  - `--amend` — exactly when the worker's completed summary reports an amend.
+  - `--acknowledge-secrets <list>` — the comma-separated sensitive-file list
+    the user confirmed at the worker's sensitive-file question, when there was
+    one.
+
+  On the worker's completed result after `yes` or `Allow on this session`, run
+  `apply`:
+
+  - `{"success": true}` — show the resulting commit SHA and subject, then run
+    `terminal_navigation`.
+  - A sensitive-file block (exit 1 with `detected_sensitive_files`,
+    `unacknowledged`, `extra_acknowledged`) — present the exact
+    `detected_sensitive_files` list through the native picker for
+    confirmation; on `yes`, rerun `apply` once with exactly that list as
+    `--acknowledge-secrets`. A second failure prints the worker summary and the
+    error, and stops.
+  - Validation violations (exit 1, format errors) — print them with the worker
+    summary and stop without committing; the user edits and retries.
+
+  `Allow on this session` also sets the in-memory `session_commit_authorized`
+  flag, scoped as `## Authorization Scope` in `@sai/policies/commit-rules.md`
+  defines (in-memory, never written, inactive at every new invocation); while it
+  is active, answer a later authorization question with `yes` after printing the
+  worker's summary. On `no`, execute nothing: print the worker summary and stop.
+
+  The command's surface is the authorized `git commit` alone: never stage,
+  unstage, push, or bypass hooks.
 
 </TASK>
 

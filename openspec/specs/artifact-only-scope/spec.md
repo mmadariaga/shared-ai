@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+This capability constrains `/sai-1-spec` to proposal and spec artifacts plus approved glossary updates, leaving code and project-file changes to later phases.
 
 ## Requirements
 ### Requirement: Explicit artifact-only prohibition
@@ -29,6 +29,11 @@ The `spec.propose.md` instruction file SHALL contain an "Artifact-Only Scope" se
 ### Requirement: Downstream responsibility clarity
 
 The Artifact-Only Scope section SHALL state that code generation, test writing, and project file modification are the responsibility of `/sai-3-implement` and `/sai-4-apply`, not the spec command.
+
+#### Scenario: Implementation work is deferred
+
+- **WHEN** a request during `/sai-1-spec` calls for production code, tests, or project-file changes
+- **THEN** the spec worker leaves those changes to `/sai-3-implement` and `/sai-4-apply`
 
 ### Requirement: artifact-only-sai-1-scope
 

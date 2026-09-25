@@ -1,6 +1,6 @@
 ---
-description: Propose a new change — generates proposal.md and specs/ only. Stops before design. Run /sai-2-design when specs are reviewed and approved.
-argument-hint: "[change name or feature description]"
+description: Write or refine a change's proposal.md and specs/ from a /sai-explore Ready to Propose block, or from a change name plus feedback. Stops before design; running /sai-2-design approves the specs.
+argument-hint: "[Ready to Propose block | change name + feedback]"
 model: opus
 effort: medium
 allowed-tools: Read, Glob, Skill, Agent, SendMessage, AskUserQuestion, TaskCreate, TaskUpdate, TaskGet, TaskList, Bash(node .claude/sai/tools/worker-report-validator.js:*), Bash(node ~/.claude/sai/tools/worker-report-validator.js:*), Bash(node .claude/sai/tools/no-commit-guard.js:*), Bash(node ~/.claude/sai/tools/no-commit-guard.js:*), Bash(node .claude/sai/bin/sai-state.js:*), Bash(node ~/.claude/sai/bin/sai-state.js:*), Bash(git reset:*)

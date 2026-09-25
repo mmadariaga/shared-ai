@@ -16,4 +16,4 @@ Applies to review.md, security.md, and performance.md. Prevents unconditional lo
 #### Scenario: Diff exceeds token budget
 - **WHEN** `git diff --stat` reports total LOC > 500
 - **THEN** the agent SHALL NOT load the full unified diff
-- **THEN** the agent SHALL delegate per-file inspection to `budget-explorer` subagents (one per file or logical group) with output contract: file:line + finding category + ≤80 words per finding
+- **THEN** the agent SHALL delegate per-file inspection to `budget-explorer` subagents (one per file or logical group, within the command's delegation cap) with output contract: file:line + finding category + ≤80 words per finding

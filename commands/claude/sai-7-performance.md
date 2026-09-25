@@ -1,5 +1,5 @@
 ---
-description: Structured Performance Audit Prompt - backend / frontend / database / queue tiers, diff vs parent branch (or full / path), produces openspec/changes/{change-name}/performance.md
+description: Audit a change for performance problems — backend, frontend, database, and queue tiers on the diff vs parent (or --full / --path) — into openspec/changes/{change-name}/performance.md
 argument-hint: "[change-name] [optional: --full | --path {dir}] [optional: --tier backend|frontend|db|queue] [optional: parent branch]"
 model: opus
 effort: medium

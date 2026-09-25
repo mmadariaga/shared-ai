@@ -3,7 +3,9 @@
 ## Purpose
 
 Define the routed coordinator/worker architecture for `/sai-archive`: a minimal-lifecycle phase adapter whose coordinator owns lifecycle routing, gate presentation, and every mutating execution (the delta-spec sync writes, the archive directory move, and the post-archive commit gate), while the dispatched `sai-archive-worker` owns the read-only technical pre-flight and never mutates anything — with end-to-end worker registration and the openspec prerequisite REQUIREMENT carried by the coordinator card.
+
 ## Requirements
+
 ### Requirement: Routed card set and boot routing
 
 `sai-archive` SHALL be a routed-shaped command whose card set is exactly `sai/commands/archive/coordinator.md` and `sai/commands/archive/worker.md` (no `invocation.md`; the legacy utility `body.md` is retired). Both harness boot adapters (`sai/adapters/claude/boot.md` and `sai/adapters/opencode/boot.md`) SHALL classify `archive` among the routed names so that selecting it fetches `@sai/commands/archive/coordinator.md`, and SHALL exclude `archive` from the utility-name lists byte-symmetrically; no boot path SHALL select an archive `body.md`.
@@ -91,7 +93,7 @@ The `sai-archive-worker` identity SHALL be registered across the full projection
 
 ### Requirement: Fixed content assignment across the two cards
 
-The technical split SHALL remain single-sourced: `sai/commands/archive/instructions.md` belongs to the worker for read-only verification, completeness scanning, delta comparison, collision checking, and the unchecked-items question. The coordinator owns the CLI archive invocation and the post-archive commit gate on the ordinary route. The Direct Build route delegates only its validated closed execution order, consisting of the CLI archive invocation, exact-path staging, and local commit, to the archive worker.
+The technical split SHALL remain single-sourced: `sai/commands/archive/instructions.md` belongs to the worker for read-only verification, completeness scanning, delta comparison, collision checking, and the unchecked-items question. The retirement declaration is single-sourced in `sai/commands/archive/retirement-declaration.md`, fetched by both cards. The coordinator owns the retirement declaration write, the CLI archive invocation, and the post-archive commit gate on the ordinary route; no OpenSpec skill is loaded. The Direct Build route delegates only its validated closed execution order, consisting of the CLI archive invocation, exact-path staging, and local commit, to the archive worker.
 
 #### Scenario: Each technical duty lives in exactly one card
 
@@ -100,12 +102,12 @@ The technical split SHALL remain single-sourced: `sai/commands/archive/instructi
 
 ### Requirement: Archive guard windows and the single allow_commit carrier
 
-The archive coordinator SHALL run the guard's `snapshot` step immediately before each `sai-archive-worker` dispatch and each same-worker continuation, holding the returned SHA as invocation-scoped `guard_base`, and its `verify` step immediately after every returned result, before acting on that result. The coordinator's own CLI archive, staging, and post-archive commit operations SHALL always run between windows and never inside one. The system's one `allow_commit` carrier is the Direct Build (unattended) execute continuation: that window's verify runs with `--allow-commit`, because its validated closed execution order contains the one pre-authorized local commit.
+The archive coordinator SHALL run the guard's `snapshot` step at each window opening and its `verify` step immediately before each boundary the no-commit-guard policy lists (human turn, coordinator git mutation, run close), holding the returned SHA as invocation-scoped `guard_base`, and SHALL act on a progress event or notice with no guard call. The coordinator's own CLI archive, staging, and post-archive commit operations SHALL always run between windows and never inside one. The system's one `allow_commit` carrier is the Direct Build (unattended) execute continuation: it SHALL always open its own window per the policy's `allow_commit` isolation, and that window's verify runs with `--allow-commit`, because its validated closed execution order contains the one pre-authorized local commit.
 
 #### Scenario: the pre-authorized execute continuation is verified with the lax flag
 
 - **WHEN** the archive worker's Direct Build execute continuation completes its validated closed order including the one local commit
-- **THEN** the coordinator runs that window's verify with `--allow-commit`, which resolves verdict `allowed`, and every other archive window runs without the flag
+- **THEN** the coordinator runs that isolated window's verify with `--allow-commit`, which resolves verdict `allowed`, and every other archive window runs without the flag
 
 ### Requirement: Direct Build backfill-artifact correction routing
 
@@ -115,4 +117,3 @@ The Direct Build execute continuation SHALL stop staging and commit on any CLI f
 
 - **WHEN** the Direct Build archive CLI fails with a backfill-artifact error
 - **THEN** the coordinator SHALL return the verbatim error for same-worker backfill correction and archive relaunch without staging or committing
-

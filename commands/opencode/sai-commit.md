@@ -1,5 +1,5 @@
 ---
-description: Conventional Commits message author from staged changes — generates subject (≤50 chars) and optional body, gates `git commit` behind explicit authorization
+description: Commit the staged changes with a Conventional Commits message — drafts the subject (≤50 chars) and optional body, and commits only after you authorize it.
 model: opencode/muse-spark-1.3-contributor-free
 variant: high
 ---

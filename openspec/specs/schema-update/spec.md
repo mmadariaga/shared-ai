@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+This capability defines the narrowly scoped setup update to `openspec/config.yaml` that selects the `sai-workflow` schema.
+
+## Requirements
 
 ### Requirement: config-read
 After `openspec-init-guard` passes, `bin/setup.js` SHALL read `{projectPath}/openspec/config.yaml` as a UTF-8 text file.
@@ -32,7 +36,3 @@ The patch operation SHALL only modify the `schema:` line. All other lines in `co
 #### Scenario: patch scope
 - **WHEN** the config file is patched
 - **THEN** a diff of the file before and after shows only the `schema:` line changed
-
-## MODIFIED Requirements
-
-## REMOVED Requirements

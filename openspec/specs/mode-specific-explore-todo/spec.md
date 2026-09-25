@@ -5,7 +5,7 @@ TBD - created by archiving change mode-specific-explore-todo. Update Purpose aft
 ## Requirements
 ### Requirement: Use named route projections
 
-The mode-specific idea-list projection SHALL identify Plan (unattended), Build (unattended), and Manual using their stable identities and SHALL preserve each route's existing ordered steps and completion transitions.
+The mode-specific idea-list projection SHALL identify Plan (unattended), Direct Build (unattended), and Manual using their stable identities and SHALL preserve each route's existing ordered steps and completion transitions.
 
 #### Scenario: route stages remain ordered
 
@@ -30,11 +30,11 @@ The Auto route SHALL contain exactly `sai-1` followed by `sai-2`. A clean spec c
 - **WHEN** the supervised spec phase converges cleanly and the chained design phase later returns cleanly
 - **THEN** the route progresses from `sai-1` to `sai-2` and completes without exposing or claiming implementation work
 
-### Requirement: Auto-fast exposes only high-level stages
+### Requirement: Direct Build exposes only high-level stages
 
 The Direct Build - Unattended route SHALL contain exactly `Build/Implement`, `Backfill`, and `Archive` in that order. Internal review, authorization, ADR/DDR, preparation, the CLI archive invocation, staging, and commit SHALL remain substeps and MUST NOT become additional panel items. `Build/Implement` MUST NOT be interpreted as `/sai-build` or `meta-build`.
 
-#### Scenario: Auto-fast advances through high-level stages
+#### Scenario: Direct Build advances through high-level stages
 
 - **WHEN** the implementer and functional-fix work, backfill execution, and archive execution each return cleanly
 - **THEN** the route completes `Build/Implement`, then `Backfill`, then `Archive`, while the CLI archive invocation remains an internal Archive substep

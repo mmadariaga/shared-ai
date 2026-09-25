@@ -317,23 +317,28 @@ function checkReadyToPropose(content) {
  *   - Severity is exactly one of: High, Medium, Low
  *   - Identifier format: severity initial (H/M/L) + sequence number
  *   - Summary line format: "Summary: High=<count> Medium=<count> Low=<count>"
+ *   - Summary line present, with counts matching the parsed findings' severities
  */
 function checkArtifactReview(content) {
   const violations = [];
-  const lines = content.split('\n');
+  const normalizedContent = String(content ?? '').replace(/\r\n?/g, '\n');
+  const lines = normalizedContent.split('\n');
 
   // Track findings and their severity
   const findings = [];
   let currentFinding = {};
   let fieldCount = 0;
+  let summary = null;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
 
     // Check for Summary line at the end
     if (line.startsWith('Summary: ')) {
-      const summaryPattern = /^Summary: High=\d+ Medium=\d+ Low=\d+$/;
-      if (!summaryPattern.test(line)) {
+      const summaryPattern = /^Summary: High=(\d+) Medium=(\d+) Low=(\d+)$/;
+      const match = line.match(summaryPattern);
+      summary = { line: i + 1, counts: match ? { High: Number(match[1]), Medium: Number(match[2]), Low: Number(match[3]) } : null };
+      if (!match) {
         violations.push({
           file: 'review',
           line: i + 1,
@@ -412,6 +417,30 @@ function checkArtifactReview(content) {
         line: finding.line,
         problem: 'WRONG_FIELD_COUNT',
         detail: `finding has ${finding.fields} fields, must have exactly 5 (Identifier, Severity, Artifact location, Issue, Recommended correction)`,
+      });
+    }
+  }
+
+  // Validate the closing tally against the parsed findings
+  if (!summary) {
+    violations.push({
+      file: 'review',
+      line: lines.length,
+      problem: 'MISSING_SUMMARY',
+      detail: 'the block must close with: Summary: High=<count> Medium=<count> Low=<count>',
+    });
+  } else if (summary.counts) {
+    const parsed = { High: 0, Medium: 0, Low: 0 };
+    for (const finding of findings) {
+      if (finding.severity in parsed) parsed[finding.severity] += 1;
+    }
+    const mismatched = Object.keys(parsed).filter(severity => parsed[severity] !== summary.counts[severity]);
+    if (mismatched.length > 0) {
+      violations.push({
+        file: 'review',
+        line: summary.line,
+        problem: 'SUMMARY_TALLY_MISMATCH',
+        detail: `Summary counts must match the parsed "- Severity:" findings (parsed High=${parsed.High} Medium=${parsed.Medium} Low=${parsed.Low})`,
       });
     }
   }
