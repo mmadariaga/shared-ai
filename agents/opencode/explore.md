@@ -1,7 +1,7 @@
 ---
 description: Fast, cost-effective read-only research for SAI-built projects. Knows their architecture and where to start versus generic search, and tells current decisions from superseded ones. Returns bounded summaries; writes nothing.
 mode: subagent
-model: opencode/muse-spark-1.3-contributor-free#high
+model: opencode/muse-spark-1.3-contributor-free#xhigh
 permission:
   edit: deny
 ---
