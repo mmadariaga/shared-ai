@@ -230,24 +230,6 @@ If something looks off after install or setup, run a read-only health check — 
 
 `npx github:mmadariaga/shared-ai setup` ends with an interactive **Customize models** menu. It walks provider → model → variant per target and writes project-local overrides, so you can retune a phase without editing any wrapper by hand. You can also save and load presets. The write is surgical: only the `model` line (single `model: <id>#<variant>` line on opencode, `model` + `effort` on Claude Code) changes; the rest of the file is left untouched. On opencode any available model can be selected; on Claude Code it works with Anthropic models.
 
-### Example presets
-
-The installer ships four opencode example presets to `~/.config/opencode/sai/presets/` (harness segment stripped). They install copy-if-absent: a missing file is copied once, an existing file is left intact with no merge, overwrite, or content validation.
-
-The installer ships one Claude example preset to `~/.claude/sai/presets/` (harness segment stripped) with the same copy-if-absent behavior.
-
-| Preset | Use when |
-|--------|----------|
-| `GO.json` | All coordinators and workers on `opencode-go/muse-spark-1.3-contributor`; keep everything on one provider. |
-| `GO+OC-FREE.json` | Same as `GO.json`, but the `budget` / `executor` / `explore` helpers run on the free `opencode/muse-spark-1.3-contributor` map to cut bulk I/O cost. |
-| `OAI-LUNA+OC-FREE.json` | Coordinators and workers on `openai/gpt-6-luna` / `gpt-5.6-luna` with free helpers; use when OpenAI is the primary provider. |
-| `OAI-SOL+OAI-LUNA+OC-FREE.json` | Same as above, but `/sai-explore` runs on `openai/gpt-6-sol`; use when you want Sol to lead exploration. |
-| `OPUS.json` | All coordinators and workers on `opus`; the `budget` helpers run on `haiku` / `sonnet` to cut bulk I/O cost. Claude-only example. |
-
-Load one with `npx github:mmadariaga/shared-ai setup` → **Customize models** → **Load preset** → **OpenCode** → preset name (without `.json`; names containing `+` are literal).
-
-Load the Claude example with `npx github:mmadariaga/shared-ai setup` → **Customize models** → **Load preset** → **Claude Code** → `OPUS` (without `.json`).
-
 ### Per project installation / override
 
 Per-project commands and agents are still possible: a file placed in a supported harness's project-local folder at the repo root overrides the user-global file of the same name. Globals act as a base; project-local files override them by filename.
@@ -308,13 +290,31 @@ Shipped opencode defaults, tunable per project via the setup model menu (the sin
   [x] UTILITY       sai-worktree                 ↑                opencode/muse-spark-1.3-contributor-free (high)
 ```
 
+### Example presets
+
+The installer ships four opencode example presets to `~/.config/opencode/sai/presets/` (harness segment stripped). They install copy-if-absent: a missing file is copied once, an existing file is left intact with no merge, overwrite, or content validation.
+
+The installer ships one Claude example preset to `~/.claude/sai/presets/` (harness segment stripped) with the same copy-if-absent behavior.
+
+| Preset | Use when |
+|--------|----------|
+| `Go.json` | All coordinators and workers on `opencode-go/muse-spark-1.3-contributor`; keep everything on one provider. |
+| `Go+Zen.json` | Same as `Go.json`, but the `budget` / `executor` / `explore` helpers run on the free `opencode/muse-spark-1.3-contributor-free` map to cut bulk I/O cost. |
+| `oAI-LUNA+Zen.json` | Coordinators and workers on `openai/gpt-6-luna` / `gpt-5.6-luna` with free helpers; use when OpenAI is the primary provider. |
+| `oAI-SOL+Zen.json` | Same as above, but `/sai-explore` runs on `openai/gpt-6-sol`; use when you want Sol to lead exploration. |
+| `OPUS.json` | All coordinators and workers on `opus`; the `budget` helpers run on `haiku` / `sonnet` to cut bulk I/O cost. Claude-only example. |
+
+Load one with `npx github:mmadariaga/shared-ai setup` → **Customize models** → **Load preset** → **OpenCode** → preset name (without `.json`; names containing `+` are literal).
+
+Load the Claude example with `npx github:mmadariaga/shared-ai setup` → **Customize models** → **Load preset** → **Claude Code** → `OPUS` (without `.json`).
+
 ### Choosing your models
 
 This chart may help you identify which models to test. The intelligence axis is highly task-type-dependent — do not rely on it without running your own tests tailored to your project and specific use case.
 
 The x-axis (cost) is usually more reliable, but again, do your own tests. Note that costs can vary depending on the provider — the same model may be priced differently across API providers, subscriptions, and regions.
 
-![Intelligence vs Cost (Sep 2026)](Intelligence-vs-Cost-(21-Sep-'26).png)
+![Intelligence vs Cost (Sep 2026)](Intelligence-vs-Cost-(23-Sep-'26).png)
 [+ Info](https://artificialanalysis.ai/?models=glm-5-3-flash%2Cgpt-6-luna-xhigh%2Cgpt-6-astra-xhigh%2Cgrok-4-7-high%2Cclaude-opus-5-5%2Cgpt-6-sol-high%2Cgpt-6-luna%2Cgrok-4-5%2Cmuse-spark-1-3%2Cqwen3-8-flash-next%2Cqwen3-8-27b%2Cgpt-6-sol%2Cgrok-4-6%2Cglm-5-3%2Cmuse-spark-1-3-xhigh%2Cgpt-6-sol-xhigh%2Cdeepseek-v4-1-flash%2Cclaude-opus-5-5-xhigh%2Cgpt-6-astra-high%2Cgpt-6-astra-medium%2Cclaude-opus-5-5-medium%2Cclaude-opus-5-5-high%2Ckimi-k3&cost=intelligence-vs-cost-per-task&total-cost=intelligence-vs-total-cost&coding-agents=execution-time&intelligence=agentic-index&intelligence-efficiency=cost-per-task)
 
 Other rankings that can help you choose:
