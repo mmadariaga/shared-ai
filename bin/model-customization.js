@@ -121,7 +121,7 @@ const COMMAND_WORKER_ORDER = Object.freeze({
   'sai-2-design': Object.freeze(['sai-2-design-worker']),
   'sai-3-implement': Object.freeze(['sai-3-implementation-worker']),
   'sai-4-apply': Object.freeze(['sai-4-red-worker', 'sai-4-green-worker']),
-  'sai-5-review': Object.freeze(['sai-5-review-worker']),
+  'sai-5-review': Object.freeze(['sai-5-review-worker', 'sai-review-fix-worker']),
   'sai-6-security': Object.freeze(['sai-6-security-worker']),
   'sai-7-performance': Object.freeze(['sai-7-performance-worker']),
   'sai-8-accessibility': Object.freeze(['sai-8-accessibility-worker']),
