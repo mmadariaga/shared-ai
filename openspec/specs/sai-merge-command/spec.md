@@ -314,3 +314,33 @@ The merge coordinator SHALL classify the branch answer the picker returns, in th
 
 - **WHEN** the coordinator branch-classification block and the presentation Branch entry gate are read
 - **THEN** neither names `Claude Code` nor `opencode`
+
+### Requirement: Informative merge finalization message
+The system SHALL compose the merge finalization commit with the subject as today within 50 characters followed by a body listing every contained commit in `merge_base..source_sha`, enumerated with `git log --reverse --format=%s` in chronological order, one `- <first line>` body line per commit, literal with no reformat, translation, or hash, all commits with no truncation, with a blank line between subject and list and each bullet kept on one line even past 72 characters with no rewrap or trim.
+
+#### Scenario: Multiple contained commits listed
+- **WHEN** the merge range contains more than one commit
+- **THEN** the body lists every first line as its own bullet in chronological order with no truncation
+
+#### Scenario: Empty range yields subject alone
+- **WHEN** the merge range contains no new commit
+- **THEN** the commit carries the subject alone with no list
+
+#### Scenario: Single commit still yields one bullet
+- **WHEN** the merge range contains exactly one commit
+- **THEN** the body carries one bullet and the line is never folded into the subject
+
+#### Scenario: Resolution changes no bullets
+- **WHEN** conflict resolution completes before finalization
+- **THEN** the list still reflects only the contained commits
+
+### Requirement: Informative squash creation message
+The system SHALL compose the `rebase-squash` squash commit with the same informative format, listing every squashed commit in `merge_base..HEAD` with the identical subject, enumeration, literal, ordering, no-truncation, blank-line, and one-line bullet rules, while plain rebase and a finished rebase with nothing staged SHALL carry no list.
+
+#### Scenario: Squash lists current-branch uniques
+- **WHEN** `rebase-squash` unifies the current-branch uniques before rebasing
+- **THEN** the squash commit body lists every unique first line in chronological order
+
+#### Scenario: Plain rebase carries no list
+- **WHEN** the method is plain rebase or a finished rebase has nothing staged
+- **THEN** no inventory list applies

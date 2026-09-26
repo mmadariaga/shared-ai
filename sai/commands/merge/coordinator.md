@@ -223,6 +223,25 @@
     using this exact `source_ref`; remain in the current branch state until
     Launch.
 
+  - **Informative messages.** A synthesized merge or squash message is an
+    inventory of contained work, not a summary. Compose the subject as today
+    and keep it within 50 characters (squash creation per
+    `@sai/policies/commit-rules.md`; merge finalization by applying
+    `sai/commands/commit/instructions.md` Steps 1–5 under
+    `@sai/policies/commit-rules.md`), then append a body listing every
+    contained commit. Enumerate the range with
+    `git log --reverse --format=%s <range>` and emit one `- <first line>` body
+    line per output line, in that order, literal, with no reformat,
+    translation, or hash, all commits, no truncation (huge messages accepted), keeping each bullet on
+    one line even past 72 characters with no rewrap or trim, with a blank line
+    between subject and list. Ranges: merge finalization uses
+    `merge_base..source_sha`; squash creation uses `merge_base..HEAD` (the
+    current-branch uniques before the soft reset). With no contained commits
+    emit the subject alone with no list; one contained commit still yields one
+    bullet, never folded into the subject. The list reflects only contained
+    commits; conflict resolution adds or removes no bullets. Plain rebase and
+    a finished rebase with nothing staged carry no list.
+
   - **Launch.** After branch validation succeeds (or a listed local branch is
     selected without fetch), keep the captured provenance from the unchanged
     refs invocation-scoped, outside `arguments_value`, and forward it unchanged
@@ -235,8 +254,8 @@
     - `rebase` — `git rebase <source_ref>`;
     - `rebase-squash` — when `merge_base` differs from `target_sha`,
       `git reset --soft <merge_base>` then one `git commit` holding the
-      squashed change, with its message composed per
-      `@sai/policies/commit-rules.md`; then `git rebase <source_ref>`.
+      squashed change, with its informative message per **Informative messages**
+      (`merge_base..HEAD`); then `git rebase <source_ref>`.
 
     Record the outcome — `clean` or `conflicted`, and for a rebase `stopped` or
     `finished` — report it with the provenance to the worker, and reconcile the
@@ -295,9 +314,8 @@
     `compact_authorization_summary` and present it with the exact question
     and options. On `yes`:
     - merge in progress, or a finished rebase with a staged repair —
-      `git commit -m "$(cat <<'EOF' ... EOF)"` with a message composed by
-      applying `sai/commands/commit/instructions.md` Steps 1–5 under
-      `@sai/policies/commit-rules.md`; show the resulting SHA and subject;
+      `git commit -m "$(cat <<'EOF' ... EOF)"` with its informative message per
+      **Informative messages** (`merge_base..source_sha`); show the resulting SHA and subject;
     - rebase stopped — `GIT_EDITOR=true git rebase --continue`, then report
       the new outcome to the worker: a new conflicted commit re-enters
       § Conflict hand-off as `strategy-analysis`; a finished rebase goes to the
