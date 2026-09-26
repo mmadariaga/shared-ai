@@ -1,7 +1,6 @@
 ---
 description: Reconstruct proposal.md and capability specs from an already-implemented diff, for a change that skipped the SAI workflow.
-model: opencode-go/muse-spark-1.3-contributor
-variant: xhigh
+model: opencode-go/muse-spark-1.3-contributor#xhigh
 ---
 Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.
 Fetch @sai/adapters/opencode/boot.md and follow it.

@@ -53,7 +53,7 @@
         "opencodeAgent": {
           "description": "Spec-proposal worker for /sai-1-spec and /sai-explore, dispatched only by their coordinators. Writes a change's proposal.md and specs/.",
           "model": "opencode-go/muse-spark-1.3-contributor",
-          "variantLine": "variant: high",
+          "variantLine": "#high",
           "permissionBlock": "    budget: allow\n    explore: allow"
         }
       },
@@ -72,7 +72,7 @@
         "opencodeAgent": {
           "description": "Design worker for /sai-2-design and /sai-explore, dispatched only by their coordinators. Writes design.md, tasks.md, and interfaces.md.",
           "model": "opencode-go/muse-spark-1.3-contributor",
-          "variantLine": "variant: high",
+          "variantLine": "#high",
           "permissionBlock": "    budget: allow\n    explore: allow"
         }
       },
@@ -91,7 +91,7 @@
         "opencodeAgent": {
           "description": "Implementation-planning worker for /sai-3-implement and /sai-build, dispatched only by their coordinators. Writes implementation.md.",
           "model": "opencode-go/muse-spark-1.3-contributor",
-          "variantLine": "variant: high",
+          "variantLine": "#high",
           "permissionBlock": "    budget: allow\n    explore: allow"
         }
       },
@@ -110,7 +110,7 @@
         "opencodeAgent": {
           "description": "Review worker for /sai-5-review and /sai-review, dispatched only by their coordinators. Writes review.md.",
           "model": "opencode-go/gpt-5.6-luna",
-          "variantLine": "variant: max",
+          "variantLine": "#max",
           "permissionBlock": "    budget: allow\n    explore: allow"
         }
       },
@@ -129,7 +129,7 @@
         "opencodeAgent": {
           "description": "Security-audit worker for /sai-6-security and /sai-review, dispatched only by their coordinators. Writes security.md.",
           "model": "opencode-go/deepseek-v4.1-flash",
-          "variantLine": "variant: max",
+          "variantLine": "#max",
           "permissionBlock": "    budget: allow\n    explore: allow"
         }
       },
@@ -148,7 +148,7 @@
         "opencodeAgent": {
           "description": "Performance-audit worker for /sai-7-performance and /sai-review, dispatched only by their coordinators. Writes performance.md.",
           "model": "opencode-go/glm-5.3-flash",
-          "variantLine": "variant: max",
+          "variantLine": "#max",
           "permissionBlock": "    budget: allow\n    explore: allow"
         }
       },
@@ -167,7 +167,7 @@
         "opencodeAgent": {
           "description": "Accessibility-audit worker for /sai-8-accessibility and /sai-review, dispatched only by their coordinators. Writes accessibility.md.",
           "model": "opencode-go/glm-5.3-flash",
-          "variantLine": "variant: max",
+          "variantLine": "#max",
           "permissionBlock": "    budget: allow\n    explore: allow"
         }
       },
@@ -186,7 +186,7 @@
         "opencodeAgent": {
           "description": "Commit-message worker for /sai-commit, dispatched only by its coordinator. Drafts the message from the staged changes; the coordinator runs git.",
           "model": "opencode/muse-spark-1.3-contributor-free",
-          "variantLine": "variant: high",
+          "variantLine": "#high",
           "permissionBlock": "    budget: allow\n    explore: allow"
         }
       },
@@ -205,7 +205,7 @@
         "opencodeAgent": {
           "description": "Archive worker for /sai-archive and /sai-explore, dispatched only by their coordinators. Runs the read-only archive pre-flight and, under Direct Build, the authorized sync, move, staging, and commit.",
           "model": "opencode-go/muse-spark-1.3-contributor",
-          "variantLine": "variant: high",
+          "variantLine": "#high",
           "permissionBlock": "    budget: allow\n    explore: allow"
         }
       },
@@ -224,7 +224,7 @@
         "opencodeAgent": {
           "description": "Backfill worker for /sai-backfill, /sai-archive, and /sai-explore, dispatched only by their coordinators. Interviews and drafts proposal and spec content from a diff and, under Direct Build, writes the authorized drafts.",
           "model": "opencode-go/muse-spark-1.3-contributor",
-          "variantLine": "variant: high",
+          "variantLine": "#high",
           "permissionBlock": "    budget: allow\n    explore: allow"
         }
       },
@@ -243,7 +243,7 @@
         "opencodeAgent": {
           "description": "Merge worker for /sai-merge, dispatched only by its coordinator. Analyzes conflicts, proposes one resolution strategy, scans ADR/DDR collisions, and writes resolution content.",
           "model": "opencode-go/muse-spark-1.3-contributor",
-          "variantLine": "variant: high",
+          "variantLine": "#high",
           "permissionBlock": "    budget: allow\n    explore: allow"
         }
       },
@@ -263,7 +263,7 @@
         "opencodeAgent": {
           "description": "RED worker for /sai-4-apply and /sai-build, dispatched only by their coordinators. Writes one plan Step's failing tests.",
           "model": "opencode-go/muse-spark-1.3-contributor",
-          "variantLine": "variant: high",
+          "variantLine": "#high",
           "permissionBlock": "    budget: allow\n    explore: allow"
         }
       },
@@ -283,7 +283,7 @@
         "opencodeAgent": {
           "description": "GREEN worker for /sai-4-apply and /sai-build, dispatched only by their coordinators. Implements one plan Step's code, leaving its tests as written.",
           "model": "opencode-go/muse-spark-1.3-contributor",
-          "variantLine": "variant: high",
+          "variantLine": "#high",
           "permissionBlock": "    budget: allow\n    explore: allow"
         }
       },
@@ -303,7 +303,7 @@
         "opencodeAgent": {
           "description": "Direct Build implementer for /sai-explore, dispatched only by its coordinator. Implements a change straight from its Ready to Propose block.",
           "model": "opencode-go/muse-spark-1.3-contributor",
-          "variantLine": "variant: high",
+          "variantLine": "#high",
           "permissionBlock": "    budget: allow\n    explore: allow"
         }
       },
@@ -323,7 +323,7 @@
         "opencodeAgent": {
           "description": "Review-fix worker for /sai-5-review and /sai-review, dispatched only by their coordinators. Fixes the review findings in a Direct Build close.",
           "model": "opencode-go/muse-spark-1.3-contributor",
-          "variantLine": "variant: high",
+          "variantLine": "#high",
           "permissionBlock": "    budget: allow\n    explore: allow"
         }
       }

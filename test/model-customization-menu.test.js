@@ -636,7 +636,11 @@ test('opencode createLocalOverride persists a selected variant through the adapt
     assert.equal(result.agent, PERSIST_OPENCODE_AGENT);
     assert.match(
       fs.readFileSync(result.destination, 'utf8'),
-      /model: opencode-go\/glm-5\.2\nvariant: high/
+      /model: opencode-go\/glm-5\.2#high/
+    );
+    assert.doesNotMatch(
+      fs.readFileSync(result.destination, 'utf8'),
+      /^variant:/m
     );
   } finally {
     fs.rmSync(fixture.root, { recursive: true, force: true });
@@ -3438,7 +3442,11 @@ test('opencode command createLocalOverride persists the selected model and optio
     );
     assert.match(
       fs.readFileSync(result.destination, 'utf8'),
-      /model: opencode-go\/glm-5\.2\nvariant: high/
+      /model: opencode-go\/glm-5\.2#high/
+    );
+    assert.doesNotMatch(
+      fs.readFileSync(result.destination, 'utf8'),
+      /^variant:/m
     );
   } finally {
     fs.rmSync(fixture.root, { recursive: true, force: true });
@@ -3466,14 +3474,16 @@ test('a command frontmatter lacking tunable keys gains the selected model and ef
       assert.equal(result.status, 'persisted',
         `${harness}: a description-only command source is persisted`);
       const written = fs.readFileSync(result.destination, 'utf8');
-      assert.match(written, /^model: (sonnet|opencode-go\/glm-5\.2)$/m,
-        `${harness}: the selected model key is pinned into the command without a tunable key`);
       if (harness === 'claude') {
+        assert.match(written, /^model: sonnet$/m,
+          `${harness}: the selected model key is pinned into the command without a tunable key`);
         assert.match(written, /^effort: medium$/m,
           'claude gains the selected effort key');
       } else {
-        assert.match(written, /^variant: high$/m,
-          'opencode gains the selected variant key');
+        assert.match(written, /^model: opencode-go\/glm-5\.2#high$/m,
+          'opencode gains the selected model with its variant suffix in a single line');
+        assert.doesNotMatch(written, /^variant:/m,
+          'opencode does not emit a separate variant line');
       }
       assert.match(written, /^description: fixture command with no tunables$/m,
         `${harness}: the pre-existing description line is preserved`);

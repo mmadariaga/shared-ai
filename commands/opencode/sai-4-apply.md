@@ -1,7 +1,6 @@
 ---
 description: Apply a change's implementation.md step by step — budget-tier workers write each step's failing test, then the code, with a commit gate after every step.
-model: opencode-go/muse-spark-1.3-contributor
-variant: xhigh
+model: opencode-go/muse-spark-1.3-contributor#xhigh
 ---
 Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.
 Fetch @sai/adapters/opencode/boot.md and follow it.

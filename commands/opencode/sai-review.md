@@ -1,7 +1,6 @@
 ---
 description: Review a change, run the security / performance / accessibility audits the review recommends, and optionally fix the findings with Direct Build (one local commit).
-model: opencode-go/muse-spark-1.3-contributor
-variant: xhigh
+model: opencode-go/muse-spark-1.3-contributor#xhigh
 subtask: false
 ---
 Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.

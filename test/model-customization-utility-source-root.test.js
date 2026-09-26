@@ -111,7 +111,8 @@ test('utility without a local override persists from the global commands directo
       `${name}: utility destination stays under .opencode/commands`
     );
     const written = fs.readFileSync(result.destination, 'utf8');
-    assert.match(written, /model: opencode-go\/glm-5\.2\nvariant: high/);
+    assert.match(written, /model: opencode-go\/glm-5\.2#high/);
+    assert.doesNotMatch(written, /^variant:/m);
     assert.match(written, new RegExp(`Utility body of ${name}`), `${name}: source body is preserved`);
   }
 });
@@ -170,7 +171,8 @@ test('utility with an existing local override keeps patching the local file', ()
     if (harness === 'claude') {
       assert.match(written, /model: sonnet\neffort: medium/);
     } else {
-      assert.match(written, /model: opencode-go\/glm-5\.2\nvariant: high/);
+      assert.match(written, /model: opencode-go\/glm-5\.2#high/);
+      assert.doesNotMatch(written, /^variant:/m);
     }
   }
 });
@@ -304,7 +306,8 @@ test('adapter createLocalOverride persists a utility without a local override fr
     opencodeResult.destination,
     path.join(opencodeFixture.projectPath, '.opencode', 'commands', `${name}.md`)
   );
-  assert.match(fs.readFileSync(opencodeResult.destination, 'utf8'), /model: opencode-go\/glm-5\.2\nvariant: high/);
+  assert.match(fs.readFileSync(opencodeResult.destination, 'utf8'), /model: opencode-go\/glm-5\.2#high/);
+  assert.doesNotMatch(fs.readFileSync(opencodeResult.destination, 'utf8'), /^variant:/m);
 
   const claudeFixture = makeFixture();
   fs.writeFileSync(path.join(claudeFixture.globalCommandRoot, `${name}.md`), claudeCommandSource(name));

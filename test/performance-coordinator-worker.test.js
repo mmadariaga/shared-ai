@@ -258,9 +258,10 @@ test('Step 4 routed performance wrappers fetch only their matching launcher and 
     {
       name: 'opencode',
       path: 'commands/opencode/sai-7-performance.md',
-      model: /^model:\s*\S+$/m,
-      setting: /^variant:\s*\S+$/m,
+      model: /^model:\s*\S+#\S+$/m,
+      setting: /^model:\s*\S+#\S+$/m,
       forbidden: /skills[\\/]claude[\\/]sai-7-performance-worker|claude-worker/i,
+      forbiddenVariant: /^variant:\s*\S+$/m,
     },
   ];
 
@@ -268,6 +269,10 @@ test('Step 4 routed performance wrappers fetch only their matching launcher and 
     const source = artifact(wrapper.path);
     assert.match(source, wrapper.model, `${wrapper.name} wrapper should declare its model`);
     assert.match(source, wrapper.setting, `${wrapper.name} wrapper should declare its harness setting`);
+    if (wrapper.forbiddenVariant) {
+      assert.doesNotMatch(source, wrapper.forbiddenVariant,
+        `${wrapper.name} wrapper should not carry a separate variant line`);
+    }
     assert.match(source, /sai[\\/]commands[\\/]performance[\\/]command-bootstrap\.md/,
       `${wrapper.name} wrapper should fetch the performance launcher`);
     assert.doesNotMatch(source, /Fetch @skills\/sai-7-performance-worker\/SKILL\.md/,

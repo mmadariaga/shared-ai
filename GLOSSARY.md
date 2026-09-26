@@ -166,7 +166,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Machine Registry**: "The code registry of hosted state machines backing the stage machine platform, where each entry defines `initialState`, `transition`, and `project` and adding a machine is a module plus one registration line."
 *Avoid*: machine list, model registry, machine catalog
 
-**Managed Worker**: "A phase worker whose agent and harness-specific registration are installed and tracked by the shared-AI installer. The user owns the tunable frontmatter keys (`model` and `effort` for Claude; `model` and `variant` for opencode): the installer preserves their lines on every update while overwriting the managed body and non-tunable frontmatter."
+**Managed Worker**: "A phase worker whose agent and harness-specific registration are installed and tracked by the shared-AI installer. The user owns the tunable frontmatter (`model` and `effort` for Claude; the single `model` line with `#variant` suffix for opencode): the installer preserves those lines on every update while overwriting the managed body and non-tunable frontmatter."
 *Avoid*: worker agent, installer worker, managed agent
 
 **Manual Verification**: "The closing section of `design.md` listing the checks that are cheap by hand and expensive to automate — generated-artifact drift and end-to-end smoke — naming the middle tier between automated tests and `/sai-5-review`."
@@ -175,7 +175,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Milestone Stamp**: "The single HH:mm annotation the coordinator attaches to a **Progress Step** of a routed phase progress task list at the moment it renders `completed`, taken from the **Validated At** sidecar of the verdict that marked it — a progress verdict, or the terminal `completed` verdict at run-closing reconciliation."
 *Avoid*: timestamp, time mark, clock note, HH:mm label, step time, start stamp, closure stamp
 
-**Model Variant**: "An OpenCode model-specific settings modifier (such as `low`, `high`, or `max`) exposed by a model record's `variants` object in the opencode CLI model catalog and selectable per model through the post-setup model customizer; carried by the opencode `variant` tunable key, it is the model-specific successor of the retired shared `effort` UI concept."
+**Model Variant**: "An OpenCode model-specific settings modifier (such as `low`, `high`, or `max`) exposed by a model record's `variants` object in the opencode CLI model catalog and selectable per model through the post-setup model customizer; materialized as the `#variant` suffix of the single opencode `model` frontmatter line, it is the model-specific successor of the retired shared `effort` UI concept."
 *Avoid*: effort, model effort, global effort list
 
 **Native Task Panel**: "The harness-owned UI surface that renders a live task list during a session — Claude Code's task panel via its task-list tool and opencode's task panel via `todowrite` — a single-slot resource with exactly one declared owner at a time; a harness without one falls back to plain in-conversation text."

@@ -1,7 +1,6 @@
 ---
 description: Plan and apply a change in one run — /sai-3-implement then /sai-4-apply, with fast-track always on (commits pre-authorized, no stop between phases).
-model: opencode-go/muse-spark-1.3-contributor
-variant: xhigh
+model: opencode-go/muse-spark-1.3-contributor#xhigh
 subtask: false
 ---
 Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.

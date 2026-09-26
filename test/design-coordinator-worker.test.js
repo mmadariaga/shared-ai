@@ -199,8 +199,8 @@ test('design wrappers activate routed Claude/opencode entry and preserve phase b
      assert.match(claude, /sai\/commands\/design\/command-bootstrap\.md/);
     assert.doesNotMatch(claude, /Fetch @skills\/sai-2-design-worker\/SKILL\.md/);
 
-    assert.match(opencode, /^model: opencode-go\/muse-spark-1\.3-contributor$/m);
-   assert.match(opencode, /^variant: xhigh$/m);
+    assert.match(opencode, /^model: opencode-go\/muse-spark-1\.3-contributor#xhigh$/m);
+   assert.doesNotMatch(opencode, /^variant:/m);
     assert.match(opencode, /^subtask: false$/m);
     assert.doesNotMatch(opencode, /^agent:/m);
     assert.doesNotMatch(opencode, /sai-2-design-worker/);
