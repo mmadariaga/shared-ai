@@ -34,6 +34,34 @@ depleted or remaining slots:
   spent.
 - **Segment boundary:** run `reset <id> recovery-ledger@1`.
 
+### Apply-only authorized Step retry
+
+Apply has one explicit exception to first-entry-only grants. When either budget
+for the active Step is exhausted, the apply coordinator offers the user a choice
+between manual correction and one **new attempt**. A new attempt is one new
+invocation of the whole blocked Step with fresh worker and coordinator budgets,
+while prior cycle history remains available. **Explicit authorization** means
+the user's selection of the retry option or an unequivocal order naming that
+exact Step; a question or general request for help does not authorize a new
+attempt. `--fast-track` never authorizes it.
+
+After authorization, the coordinator sends
+`{kind: authorized-step-retry, step: "Step N", authorized: true}`. The machine
+accepts this event only for the active, already-entered Step when at least one
+budget is exhausted. It archives the exhausted cycle's normalized worker and
+coordinator diagnosis keys and both spent tallies in `attempt_history`, then
+clears both active ledgers and counters together. Every ledger response includes
+the retained `attempt_history`, so a re-entered invocation can report earlier
+cycles without reading project artifacts. A following ordinary `step-entry` is
+still a re-entry and does not grant another budget. If the fresh pair is
+exhausted, the coordinator must ask again; no retry chains automatically. An
+unaccepted event changes neither budget nor history.
+
+The grant changes only the two recovery budgets. It does not change recovery
+eligibility, worker ownership, verification, commit gates, or
+safe-operations confirmations, and it cannot override an `unrecoverable: true`
+veto or a safe-operations denial.
+
 ## Clean and non-clean results
 
 The clean route is artifact-blind: a clean `completed` (not disproved by
@@ -61,8 +89,10 @@ dispatches recovery. Diagnosis is ephemeral invocation state: never persist
 the diagnosis, selected channel, repair markers, attempt counters, or history in
 artifacts, worker payloads, worker journals, change metadata, or any other
 project or durable store. The one exception is the `recovery-ledger@1` session
-in the `sai-state` store, a per-invocation temporary file outside the project
-that holds normalized diagnosis keys and budget tallies until its reset.
+in the `sai-state` store, a temporary file outside the project that holds
+normalized diagnosis keys and budget tallies until its reset. For an apply-only
+authorized Step retry, that same temporary state also holds exhausted-cycle
+history until the recovery scope resets; it never enters a project artifact.
 
 1. **Routing diagnosis.** Select exactly one:
    - `continuation/transport loss` — the coordinator cannot receive or resume

@@ -78,11 +78,23 @@ Re-entry after interruption or partial apply SHALL run the implement `collapse-i
 - **THEN** implement stops and apply does not activate
 
 ### Requirement: Apply stops and worker isolation remain unchanged
-Build SHALL preserve routing-tree STOP, GREEN-conflict STOP, three-attempt recovery exhaustion, pending-work stops, safe-operations confirmations, RED blindness to GREEN, and GREEN's test-file prohibition. It SHALL dispatch only existing implement and RED/GREEN workers and shall not add a build worker or matrix entry.
+
+Build SHALL preserve routing-tree STOP, GREEN-conflict STOP, three-attempt recovery exhaustion, pending-work stops, safe-operations confirmations, RED blindness to GREEN, and GREEN's test-file prohibition. It SHALL dispatch only existing implement and RED/GREEN workers and shall not add a build worker or matrix entry. When apply reaches recovery-budget exhaustion for an active Step, the apply coordinator SHALL stop before marking, committing, or advancing and SHALL own the exhausted-Step choice. Build SHALL keep that choice and answer on the active apply segment, SHALL not re-present it, SHALL not restart the implement segment, and SHALL not mint a second retry grant. An explicitly authorized retry SHALL cover both apply budgets for the blocked Step and retain earlier attempt history; manual correction or refusal SHALL leave the Step incomplete and Build without successful final completion.
 
 #### Scenario: Non-removable stop prevents completion
+
 - **WHEN** apply reaches a retained stop
 - **THEN** build ends without successful final completion and checkbox state remains the recovery record
+
+#### Scenario: Build delegates exhausted-Step recovery to apply
+
+- **WHEN** apply reaches recovery-budget exhaustion for an active Step during Build
+- **THEN** the apply coordinator SHALL present the exhausted-Step choice while Build adds no second prompt, grant, or implementation restart
+
+#### Scenario: Authorized Build retry resumes only apply
+
+- **WHEN** the user authorizes one fresh attempt for the blocked apply Step inside Build
+- **THEN** Build SHALL resume only that apply Step with one paired fresh budget grant and SHALL retain the completed implement segment and earlier attempt history
 
 ### Requirement: Final navigation is apply completion
 When apply completes successfully as the final segment, build SHALL print exactly `Implementation applied. Run \`/sai-5-review {name}\` in a new chat when ready.` and shall not chain another phase.
@@ -128,3 +140,12 @@ At apply segment entry the apply coordinator SHALL set `session_commit_authorize
 - **WHEN** build or standalone fast-track apply reaches the first Step commit gate
 - **THEN** the visibility report and proposed message print and only the Step add-list is staged without a local-commit permission prompt
 - **AND** the same grant applies at the eligible terminal documentation commit gate
+
+### Requirement: Build preserves one retry grant across both harnesses
+
+Claude Code and opencode Build invocations SHALL use the same apply-owned exhausted-Step choice and SHALL grant at most one fresh budget pair for the blocked Step per explicit authorization. Build SHALL not implement a second recovery ledger or authorize a retry merely because it invokes apply.
+
+#### Scenario: Harnesses retain the same apply recovery ownership
+
+- **WHEN** equivalent Claude Code and opencode Build invocations exhaust the same apply Step budget
+- **THEN** both routes use the apply coordinator's identical options, authorization semantics, retained history, and no-second-grant rule

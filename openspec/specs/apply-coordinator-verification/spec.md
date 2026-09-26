@@ -317,7 +317,7 @@ The apply coordinator SHALL traverse the unblock ladder without asking the user 
 
 ### Requirement: The coordinator budget is three attempts per Step held in the state store
 
-On entry to each Step the coordinator SHALL grant the Step's budgets with the Step-guarded `{kind: step-entry, step: "Step N"}` signal to `recovery-ledger@1`, which clears the three-slot worker ledger and the coordinator budget together only when this run has not entered that Step before, answering `step_entry: first`. A Step re-entered after a correction or a route retry SHALL answer `step_entry: re-entry`, SHALL keep the worker slots and coordinator attempts already spent in it, and SHALL never draw a second budget; a signal carrying no concrete Step identifier SHALL answer `step_entry: unidentified` and SHALL grant nothing. The coordinator SHALL NOT use the bare `reset <id> recovery-ledger@1` between Steps, because that unguarded reset belongs to the composition-segment boundary and would hand a re-entered Step a fresh cap. The coordinator budget SHALL be three coordinator attempts per Step and SHALL be held in the state store by `recovery-ledger@1` rather than in prose: the coordinator SHALL consult the machine with a `{kind: coordinator-attempt, key: [artifact path, concrete point, authorized correction boundary]}` signal before each coordinator attempt and SHALL announce the returned ordinal in conversation text. The key SHALL be required: an attempt whose diagnosis has no concrete key SHALL spend zero and return `rejected: unresolved cause`, and a key already attempted at coordinator level in that Step SHALL spend zero and return `rejected: duplicate diagnosis`, upon which the coordinator SHALL hand back the existing diagnosis instead of opening a second attempt. Delegating a corrective dispatch SHALL spend one coordinator attempt exactly as a coordinator self-edit does, so a Step whose coordinator budget is exhausted SHALL stop even when worker slots remain and those leftover slots SHALL open no alternative route. This single budget SHALL replace the earlier at-most-one-per-segment caps for the plan-artifact repair and for the last-resort infra fix.
+On entry to each Step the coordinator SHALL grant the Step's budgets with the Step-guarded `{kind: step-entry, step: "Step N"}` signal to `recovery-ledger@1`, which clears the three-slot worker ledger and the coordinator budget together only when this run has not entered that Step before, answering `step_entry: first`. A Step re-entered after a correction or a route retry SHALL answer `step_entry: re-entry`, SHALL keep the worker slots and coordinator attempts already spent in it, and SHALL never draw a second budget; a signal carrying no concrete Step identifier SHALL answer `step_entry: unidentified` and SHALL grant nothing. The coordinator SHALL NOT use the bare `reset <id> recovery-ledger@1` between Steps, because that unguarded reset belongs to the composition-segment boundary and would hand a re-entered Step a fresh cap. The coordinator budget SHALL be three coordinator attempts per Step and SHALL be held in the state store by `recovery-ledger@1` rather than in prose: the coordinator SHALL consult the machine with a `{kind: coordinator-attempt, key: [artifact path, concrete point, authorized correction boundary]}` signal before each coordinator attempt and SHALL announce the returned ordinal in conversation text. The key SHALL be required: an attempt whose diagnosis has no concrete key SHALL spend zero and return `rejected: unresolved cause`, and a key already attempted at coordinator level in that Step SHALL spend zero and return `rejected: duplicate diagnosis`, upon which the coordinator SHALL hand back the existing diagnosis instead of opening a second attempt. Delegating a corrective dispatch SHALL spend one coordinator attempt exactly as a coordinator self-edit does, so a Step whose coordinator budget is exhausted SHALL stop the current Step attempt even when worker slots remain and SHALL present the exhausted-Step choice rather than route the correction through leftover worker slots. This single budget SHALL replace the earlier at-most-one-per-segment caps for the plan-artifact repair and for the last-resort infra fix. The only fresh-budget exception SHALL be the explicitly authorized `authorized-step-retry` event for the active exhausted Step, which SHALL archive the exhausted cycle before clearing both ledgers and counters together.
 
 #### Scenario: Delegation spends a coordinator attempt
 
@@ -342,7 +342,12 @@ On entry to each Step the coordinator SHALL grant the Step's budgets with the St
 #### Scenario: An exhausted coordinator budget stops the Step despite free worker slots
 
 - **WHEN** a Step's three coordinator attempts are spent while worker ledger slots remain unused
-- **THEN** the Step SHALL stop rather than route the correction through the leftover worker slots
+- **THEN** the Step SHALL stop and present the exhausted-Step choice rather than route the correction through the leftover worker slots
+
+#### Scenario: An authorized retry archives the exhausted coordinator cycle
+
+- **WHEN** the user explicitly authorizes a fresh attempt for the active Step after coordinator-budget exhaustion and the Step contract remains viable
+- **THEN** the machine SHALL archive the exhausted coordinator cycle, clear both active budgets together, and permit one fresh whole-Step invocation
 
 ### Requirement: The coordinator never writes a test file
 
@@ -360,12 +365,12 @@ Under no rung of the unblock ladder SHALL the apply coordinator write a test fil
 
 ### Requirement: Budget exhaustion and the enumerated stopping reasons close a Step
 
-Exhausting either budget inside a Step — the three worker slots or the three coordinator attempts — SHALL stop that Step and escalate to a human, naming the Step, the diagnosis, and the attempts spent on each budget. Those tallies SHALL be taken from the store response rather than from memory of the conversation: every `recovery-ledger@1` outcome carries `budgets` as `{worker: {spent, limit}, coordinator: {spent, limit}}`, and an exhaustion additionally carries `exhausted` as `worker` or `coordinator`, naming which budget ran out. Having budget left SHALL never authorize a correction the enumerated list forbids, and a destructive or shared-system action SHALL stay gated by `safe-operations` with or without remaining budget. Apart from exhaustion, the only reasons that SHALL stop the ladder for a human are weakening or deleting an assertion, redefining the agreed contract (`implementation.md` or the change's specs), a destructive or shared-system action gated by safe-operations, a worker `unrecoverable: true` veto, and a pre-existing failure outside the change's radius. No other incident SHALL interrupt an unattended run.
+Exhausting either budget inside a Step — the three worker slots or the three coordinator attempts — SHALL stop the current Step attempt and escalate to the exhausted-Step choice, naming the Step, the diagnosis, and the attempts spent on each budget. Those tallies SHALL be taken from the store response rather than from memory of the conversation: every `recovery-ledger@1` outcome carries `budgets` as `{worker: {spent, limit}, coordinator: {spent, limit}}`, and an exhaustion additionally carries `exhausted` as `worker` or `coordinator`, naming which budget ran out. The response SHALL also provide retained prior cycle history when an authorized retry has occurred. Having budget left SHALL never authorize a correction the enumerated list forbids, and a destructive or shared-system action SHALL stay gated by `safe-operations` with or without remaining budget. Apart from exhaustion, the only reasons that SHALL stop the ladder for a human are weakening or deleting an assertion, redefining the agreed contract (`implementation.md` or the change's specs), a destructive or shared-system action gated by safe-operations, a worker `unrecoverable: true` veto, and a pre-existing failure outside the change's radius. No other incident SHALL interrupt an unattended run.
 
 #### Scenario: Coordinator budget exhaustion escalates with both tallies named
 
 - **WHEN** a Step requires a further coordinator attempt after its three coordinator attempts are spent
-- **THEN** the coordinator SHALL stop that Step and escalate to a human naming the Step, the diagnosis, and the attempts spent on each budget
+- **THEN** the coordinator SHALL stop that Step and present the exhausted-Step choice while naming the Step, the diagnosis, and the attempts spent on each budget
 
 #### Scenario: An incident outside the enumerated reasons does not interrupt the run
 
@@ -386,6 +391,16 @@ Exhausting either budget inside a Step — the three worker slots or the three c
 
 - **WHEN** an unblock rung would take a destructive or shared-system action while budget remains
 - **THEN** the action SHALL stay gated by `safe-operations` exactly as it is when no budget remains
+
+#### Scenario: A fresh budget requires explicit authorization
+
+- **WHEN** a Step budget is exhausted and the user has not selected `authorize-step-retry` or unequivocally named that exact Step for a fresh attempt
+- **THEN** the coordinator SHALL not clear the budgets, mark the Step, commit, or advance it
+
+#### Scenario: Fast-track does not authorize a fresh budget
+
+- **WHEN** an exhausted Step occurs under `--fast-track`
+- **THEN** the coordinator SHALL present the same exhausted-Step choice and SHALL not auto-select or grant the retry
 
 ### Requirement: Autonomous corrections leave a reported trace
 
@@ -410,3 +425,17 @@ The coordinator SHALL record one line per autonomous correction naming the Step,
 
 - **WHEN** an unattended run that applied autonomous corrections ends by completing rather than by escalating
 - **THEN** the coordinator SHALL still report the collected trace lines at run close
+
+### Requirement: Exhausted-Step choice authorizes exactly one fresh whole-Step attempt
+
+The apply coordinator SHALL treat `authorize-step-retry` as a one-time grant for the entire blocked Step, not for one diagnosis or one worker return. The grant SHALL renew the worker and coordinator budgets together, retain the earlier cycle history, preserve the current worktree and unchanged plan, and leave all verification, ownership, commit, and safe-operations rules in force. The coordinator SHALL not treat the grant as commit authorization.
+
+#### Scenario: Whole-Step grant covers both budgets
+
+- **WHEN** the user authorizes a fresh attempt after either the worker or coordinator budget is exhausted
+- **THEN** the coordinator SHALL start the whole blocked Step with three worker attempts and three coordinator attempts and SHALL retain the earlier cycle history
+
+#### Scenario: Retry grant does not bypass gates
+
+- **WHEN** a fresh authorized Step invocation begins
+- **THEN** it SHALL reselect routing, open a fresh no-commit-guard window, verify the Step, and run the ordinary commit and advancement gates

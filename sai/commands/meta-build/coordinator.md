@@ -90,10 +90,21 @@
   re-planning. On-disk `implementation.md` checkbox state remains the recovery
   record. Implement collapse remains the default: a human-authorized retry reuses the current `implementation.md` and worktree state without a full collapse only when the plan contents are unchanged and the on-disk checkbox state is preserved; a changed plan collapses normally.
 
+  ## Apply recovery choice
+  During position 1, the existing apply coordinator owns the exhausted-Step
+  choice between manual correction and one explicitly authorized fresh attempt.
+  Keep that choice and answer on the active apply segment; Build does not
+  re-present it, mint a second budget, or restart the implement segment for an
+  authorized Step retry. The apply ledger's one grant covers the blocked Step's
+  worker and coordinator budgets together. A later, separate `/sai-build`
+  re-entry still follows § Re-entry and runs implement before apply.
+
   ## Non-removable stops
-  Do not suppress apply's non-removable stops: routing-tree STOP, GREEN-conflict STOP, recovery-pool exhaustion after three same-GREEN-worker attempts, and
-  every safe-operations confirmation. Incomplete apply (pending checkboxes,
-  pending non-deferred HV outside fast-track deferral, or pending commits) closes
+  Do not suppress apply's routing-tree STOP, GREEN-conflict STOP, or any
+  safe-operations confirmation. Recovery-budget exhaustion stops the current
+  Step until the apply coordinator receives the explicit choice above; it never
+  auto-grants a retry. Incomplete apply (pending checkboxes, pending
+  non-deferred HV outside fast-track deferral, or pending commits) closes
   without the successful final completion transition.
 
   ## Final terminal navigation

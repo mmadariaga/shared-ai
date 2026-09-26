@@ -367,6 +367,115 @@ test('recovery-ledger@1 grants nothing for a Step entry with no concrete Step id
   }
 });
 
+test('recovery-ledger@1 grants one fresh whole-Step budget only after explicit authorization and exhaustion', () => {
+  let state = machine.transition(machine.initialState, { kind: 'step-entry', step: 'Step 2' }).state;
+  const workerKeys = [
+    ['src/a.js', 'line 4', 'red-worker'],
+    ['src/b.js', 'line 9', 'green-worker'],
+    ['src/c.js', 'line 12', 'green-worker'],
+  ];
+  const coordinatorKeys = [
+    ['src/d.js', 'line 16', 'coordinator'],
+    ['src/e.js', 'line 20', 'coordinator'],
+    ['src/f.js', 'line 24', 'coordinator'],
+  ];
+
+  for (const key of workerKeys) state = machine.transition(state, { key }).state;
+  for (const key of coordinatorKeys) {
+    state = machine.transition(state, { kind: 'coordinator-attempt', key }).state;
+  }
+
+  const unauthorized = machine.transition(state, {
+    kind: 'authorized-step-retry',
+    step: 'Step 2',
+    authorized: false,
+  });
+  assert.equal(unauthorized.rejected, 'explicit authorization required');
+  assert.deepEqual(unauthorized.budgets, {
+    worker: { spent: 3, limit: 3 },
+    coordinator: { spent: 3, limit: 3 },
+  }, 'a missing human grant must preserve both exhausted budgets');
+
+  const wrongStep = machine.transition(state, {
+    kind: 'authorized-step-retry',
+    step: 'Step 3',
+    authorized: true,
+  });
+  assert.equal(wrongStep.rejected, 'Step is not active');
+  assert.equal(wrongStep.state.ledger.length, 3, 'a grant for another Step must not clear worker history');
+
+  const grant = machine.transition(state, {
+    kind: 'authorized-step-retry',
+    step: 'Step 2',
+    authorized: true,
+  });
+  assert.equal(grant.retry_grant, 'granted');
+  assert.equal(grant.retry_cycle, 2, 'the accepted grant opens cycle 2 for this Step');
+  assert.deepEqual(grant.budgets, {
+    worker: { spent: 0, limit: 3 },
+    coordinator: { spent: 0, limit: 3 },
+  }, 'one grant refreshes both budgets together');
+  assert.deepEqual(grant.attempt_history, [{
+    step: 'Step 2',
+    cycle: 1,
+    worker_spent: 3,
+    coordinator_spent: 3,
+    worker_keys: workerKeys,
+    coordinator_keys: coordinatorKeys,
+  }], 'the exhausted cycle and its diagnosis keys remain available for reporting');
+
+  const reentry = machine.transition(grant.state, { kind: 'step-entry', step: 'Step 2' });
+  assert.equal(reentry.step_entry, 're-entry');
+  assert.deepEqual(reentry.attempt_history, grant.attempt_history,
+    'every ledger response must retain earlier cycles for reporting after Step re-entry');
+  assert.deepEqual(reentry.budgets, {
+    worker: { spent: 0, limit: 3 },
+    coordinator: { spent: 0, limit: 3 },
+  }, 'ordinary Step entry after the grant must not issue another budget');
+
+  const retry = machine.transition(reentry.state, { key: workerKeys[0] });
+  assert.equal(retry.state.stage, '1', 'a previous key can be retried in the new authorized cycle');
+  assert.equal(retry.state.ledger.length, 1);
+  assert.equal(retry.state.attempt_history.length, 1, 'the earlier cycle remains archived');
+
+  const chained = machine.transition(retry.state, {
+    kind: 'authorized-step-retry',
+    step: 'Step 2',
+    authorized: true,
+  });
+  assert.equal(chained.rejected, 'budget not exhausted', 'a grant cannot chain before the fresh budget is exhausted');
+  assert.equal(chained.state.ledger.length, 1);
+  assert.equal(chained.state.attempt_history.length, 1);
+});
+
+test('recovery-ledger@1 accepts the authorized Step retry after either budget is exhausted', () => {
+  for (const exhaustedBudget of ['worker', 'coordinator']) {
+    let state = machine.transition(machine.initialState, { kind: 'step-entry', step: 'Step 4' }).state;
+    if (exhaustedBudget === 'worker') {
+      for (let i = 0; i < 3; i += 1) {
+        state = machine.transition(state, { key: [`worker-${i}.js`, `point ${i}`, 'worker'] }).state;
+      }
+    } else {
+      for (let i = 0; i < 3; i += 1) {
+        state = machine.transition(state, {
+          kind: 'coordinator-attempt',
+          key: [`coordinator-${i}.js`, `point ${i}`, 'coordinator'],
+        }).state;
+      }
+    }
+    const grant = machine.transition(state, {
+      kind: 'authorized-step-retry',
+      step: 'Step 4',
+      authorized: true,
+    });
+    assert.equal(grant.retry_grant, 'granted', `${exhaustedBudget} exhaustion must allow the authorized whole-Step grant`);
+    assert.deepEqual(grant.budgets, {
+      worker: { spent: 0, limit: 3 },
+      coordinator: { spent: 0, limit: 3 },
+    }, 'both budgets reset together regardless of which one exhausted first');
+  }
+});
+
 test('recovery-ledger@1 reports both budget tallies and names the exhausted budget', () => {
   let state = machine.initialState;
 
@@ -439,4 +548,25 @@ test('recovery-ledger@1 CLI emit carries budgets, exhaustion and Step-entry outc
   const reentry = callSaiState('emit', sessionId, 'recovery-ledger@1', JSON.stringify({ kind: 'step-entry', step: 'Step 2' }));
   assert.equal(reentry.payload.step_entry, 're-entry', 'the wire must report a re-entered Step');
   assert.equal(reentry.payload.budgets.coordinator.spent, 3, 'a re-entered Step keeps its spent budget on the wire');
+
+  const grant = callSaiState('emit', sessionId, 'recovery-ledger@1', JSON.stringify({
+    kind: 'authorized-step-retry',
+    step: 'Step 2',
+    authorized: true,
+  }));
+  assert.equal(grant.payload.retry_grant, 'granted', 'the CLI must expose an accepted retry grant');
+  assert.equal(grant.payload.retry_cycle, 2);
+  assert.equal(grant.payload.attempt_history.length, 1, 'the CLI must expose prior cycle history for reporting');
+  assert.equal(grant.payload.attempt_history[0].coordinator_spent, 3);
+  assert.deepEqual(grant.payload.budgets, {
+    worker: { spent: 0, limit: 3 },
+    coordinator: { spent: 0, limit: 3 },
+  });
+
+  const postGrantEntry = callSaiState('emit', sessionId, 'recovery-ledger@1', JSON.stringify({ kind: 'step-entry', step: 'Step 2' }));
+  assert.equal(postGrantEntry.payload.step_entry, 're-entry', 'the ordinary entry after a grant stays a re-entry');
+  assert.deepEqual(postGrantEntry.payload.attempt_history, grant.payload.attempt_history,
+    'subsequent CLI responses must keep prior cycles available to a new invocation');
+  assert.equal(postGrantEntry.payload.budgets.worker.spent, 0);
+  assert.equal(postGrantEntry.payload.budgets.coordinator.spent, 0);
 });

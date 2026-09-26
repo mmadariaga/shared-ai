@@ -3,7 +3,9 @@
 ## Purpose
 
 Defines the same-worker retry contract for `/sai-4-apply`: coordinator validation failure continues the same GREEN worker session with the failing path and evidence — capped at 3 continuations, never a fresh dispatch — and exhaustion escalates to the human.
+
 ## Requirements
+
 ### Requirement: validation-failure-continues-same-green-worker
 
 The apply phase adapter SHALL declare `recovery_policy: true` (per `@sai/policies/bounded-recovery.md`), opting the invocation into the shared bounded same-worker recovery ledger of exactly three mutually distinct diagnosis slots. Each new eligible in-scope diagnosis receives at most one attempt; a duplicate diagnosis stops recovery before dispatch and before exhaustion, even if a slot remains. When the coordinator's own verification or path comparison disproves a GREEN worker's result, the coordinator SHALL inspect the non-clean closure and assign the shared `coordinator rejection` diagnosis. It SHALL assign a `Cause Locus` only when concrete evidence proves the cause is inside or outside the GREEN worker's authorized scope, and SHALL continue the SAME GREEN worker session only when the correction is clear, safe, current-Step, and inside the GREEN worker's authorized non-test scope. If the boundary cannot be established, it SHALL hand back with an unresolved cause and zero attempts rather than guessing. The coordinator SHALL NOT dispatch a fresh worker for the correction; same-worker recovery continuation is the only worker correction channel, and recovery never dispatches a replacement worker.
@@ -68,10 +70,9 @@ The same shared route SHALL accept a recoverable non-clean RED result through th
 - **THEN** the coordinator SHALL diagnose the non-clean closure before eligibility
 - **AND** an out-of-scope, unresolved, vetoed, or blocking diagnosis SHALL spend zero attempts and SHALL not be forced into the GREEN recovery route
 
-
 ### Requirement: retry-cap-of-three
 
-Same-worker recovery continuation on an eligible validation failure or other eligible shared diagnosis SHALL use at most three mutually distinct diagnosis slots in the active apply phase-adapter segment, per the shared bounded recovery ledger. All Steps and report-handling cycles in that active segment draw from the same ledger; starting a new Step, RED dispatch, GREEN dispatch, or report cycle SHALL not reset or multiply it. Each new diagnosis key receives one continuation at most, never a new dispatch. A duplicate diagnosis SHALL stop before another continuation and before ledger exhaustion. An out-of-scope or unresolved cause, a blocking contradiction with `unrecoverable: true`, a worker veto, or a continuation/transport loss SHALL spend zero additional attempts beyond any already spent before that stopping event; an in-scope blocking contradiction with `unrecoverable: false` follows `bounded-worker-recovery`'s `Recovery eligibility and worker veto` requirement and may spend one new slot. Exhaustion of all three distinct slots SHALL follow the shared exhaustion hand-back before the human escalation rule.
+Same-worker recovery continuation on an eligible validation failure or other eligible shared diagnosis SHALL use at most three mutually distinct diagnosis slots in the active Step recovery scope, per the shared bounded recovery ledger. For the Step-executing apply adapter, the recovery scope SHALL be the current Step: the first `step-entry` for a new Step SHALL grant a fresh worker and coordinator budget pair, while re-entry to the same Step SHALL retain the slots and coordinator attempts already spent. Each new diagnosis key receives one continuation at most, never a new dispatch. A duplicate diagnosis SHALL stop before another continuation and before ledger exhaustion. An out-of-scope or unresolved cause, a blocking contradiction with `unrecoverable: true`, a worker veto, or a continuation/transport loss SHALL spend zero additional attempts beyond any already spent before that stopping event; an in-scope blocking contradiction with `unrecoverable: false` follows `bounded-worker-recovery`'s `Recovery eligibility and worker veto` requirement and may spend one new slot. Exhaustion of all three distinct slots SHALL follow the shared exhaustion hand-back and the exhausted-Step choice before the human escalation rule. An explicit authorization for the active blocked Step SHALL be the only exception that opens a new whole-Step invocation with a fresh paired budget; it SHALL retain the earlier cycle history.
 
 #### Scenario: first continuation does not converge
 
@@ -81,25 +82,42 @@ Same-worker recovery continuation on an eligible validation failure or other eli
 #### Scenario: third continuation does not converge
 
 - **WHEN** three continuations of the same authorized worker session have not produced a coordinator-validated clean result
-- **THEN** the coordinator does not issue a fourth continuation, reports the shared exhaustion hand-back, and escalates per the exhaustion rule
+- **THEN** the coordinator reports the shared exhaustion hand-back and exhausted-Step choice and escalates according to the user's selected option
 
 #### Scenario: A new Step does not reset the apply pool
 
-- **WHEN** one apply Step has spent recovery attempts and a later Step in the same active apply segment reaches an eligible non-clean closure
-- **THEN** the later Step uses only the remaining segment-scoped budget
-- **AND** it does not receive a fresh three-slot diagnosis ledger
+- **WHEN** one apply Step has spent recovery attempts and the coordinator first enters a different Step with its Step-guarded `step-entry` signal
+- **THEN** the later Step receives its own fresh three-slot worker pool and three-attempt coordinator budget, while re-entry to the previously entered Step retains its spent slots and attempts
+
+#### Scenario: Explicit authorization opens one new whole-Step attempt
+
+- **WHEN** the user explicitly authorizes a fresh attempt for the exact active Step after exhaustion
+- **THEN** the coordinator opens one new whole-Step invocation with fresh paired budgets and retains the earlier attempt history
 
 ### Requirement: exhaustion-escalates-to-human
 
-After the 3-attempt recovery pool is exhausted without convergence, the coordinator SHALL escalate the conflict to the human: for GREEN the decision is whether the fault is the implementation, the test, or the interface; for RED the decision is whether the test/stub contract, testing context, or source boundary is contradictory. The coordinator SHALL NOT mark the Step's checkboxes, propose a commit, or advance to the next Step while the conflict is open. The presentation SHALL comply with `@sai/policies/question-context.md` and preserve the GREEN-conflict and RED-stop halt semantics.
+After the 3-attempt recovery pool is exhausted without convergence, the coordinator SHALL escalate the conflict to the human through the exhausted-Step choice: `Authorize one fresh attempt` (`authorize-step-retry`) or `I will correct it manually` (`manual-correction`). The coordinator SHALL NOT mark the Step's checkboxes, propose a commit, or advance to the next Step while the conflict is open. A retry selection or unequivocal order naming the exact Step SHALL open one fresh whole-Step invocation; a question or general request for help SHALL not authorize it, and `--fast-track` SHALL not auto-select it. The presentation SHALL comply with `@sai/policies/question-context.md` and preserve the GREEN-conflict and RED-stop halt semantics.
 
 #### Scenario: cap exhaustion raises the three-way question
 
 - **WHEN** the 3-attempt pool is exhausted without a coordinator-verified clean result
-- **THEN** the coordinator surfaces the relevant RED or GREEN conflict to the human, marks no checkboxes, and proposes no commit until the human decides
+- **THEN** the coordinator surfaces the relevant RED or GREEN conflict and the two-option exhausted-Step choice to the human, marks no checkboxes, and proposes no commit until the human decides
 
 #### Scenario: conflict stays open during escalation
 
 - **WHEN** the conflict is open
 - **THEN** the coordinator neither advances the Step nor dispatches a new worker for it
 
+#### Scenario: Manual correction remains a terminal option
+
+- **WHEN** the user selects `manual-correction`
+- **THEN** the coordinator closes apply with the Step blocked and without marking, committing, or advancing it
+
+### Requirement: Whole-Step retry preserves recovery restrictions
+
+A fresh authorized Step invocation SHALL reuse the current `implementation.md` and worktree only after the coordinator verifies that the plan is unchanged and the Step contract is viable. It SHALL retain RED blindness, GREEN test-file prohibitions, coordinator verification, safe-operations confirmations, commit gates, and changed-file accounting. The retry SHALL authorize no commit, push, assertion weakening, contract change, or unrelated mutation.
+
+#### Scenario: Fresh invocation retains worker ownership
+
+- **WHEN** a fresh authorized Step invocation is opened after exhaustion
+- **THEN** each RED or GREEN dispatch receives the same plan-derived ownership boundaries and the coordinator retains verification and commit ownership

@@ -333,7 +333,7 @@ test('Step 2 active session authorization and fast-track skip only the terminal 
   const coordinator = artifact(APPLY_CARDS.coordinator);
   const rules = artifact('sai/policies/commit-rules.md');
   assert.match(docs, /an active `session_commit_authorized` skips only the ask/);
-  assert.match(coordinator, /When fast-track is active at run start, pre-activate the flag\./);
+  assert.match(coordinator, /At apply segment entry,[\s\S]{0,300}set `session_commit_authorized=true` if and only if fast-track is active/);
   assert.match(coordinator, /An active flag skips only the authorization ask: the visibility report and proposed message still print before every commit/);
   assert.match(rules, /options `yes \(Recommended\)` \/ `no` \/ `Allow on this session`/);
   assert.match(rules, /`Allow on this session` authorizes this commit and activates the session grant/);
@@ -382,15 +382,45 @@ test('Step 4 the coordinator never writes a test file and routes test causes to 
     'a test cause must never be routed to GREEN');
 });
 
-test('Step 4 budget exhaustion and the enumerated stopping reasons close an unattended Step', () => {
+test('Step 4 budget exhaustion stops the current Step attempt and keeps the enumerated stopping reasons', () => {
   const ladder = unblockLadder();
-  assert.match(ladder, /Exhausting either budget stops the Step and escalates, naming the Step, the diagnosis, and the spend on each budget\./,
-    'exhausting either budget must escalate naming the Step, diagnosis, and attempts');
+  assert.match(ladder, /Exhausting either budget stops the current Step attempt and escalates, naming the Step, the diagnosis, and the spend on each budget/,
+    'exhausting either budget must stop the current Step attempt and name the Step, diagnosis, and attempts');
+  assert.match(ladder, /the exhausted-Step choice above is the only path to a fresh budget/,
+    'a fresh budget must require the exhausted-Step choice');
   for (const reason of [/weakening or deleting an assertion/i, /redefining the agreed contract/i, /safe-operations/i, /`unrecoverable: true` veto/i, /pre-existing failure outside the change's radius/i]) {
     assert.match(ladder, reason, 'the enumerated stopping reasons must stay complete');
   }
   assert.match(ladder, /Nothing else interrupts an unattended run\./,
     'no other condition may stop the run for a user');
+});
+
+test('Step 4 exhausted budgets offer one explicit whole-Step retry choice with no fast-track grant', () => {
+  const coordinator = artifact(APPLY_CARDS.coordinator);
+  const policy = artifact(APPLY_CARDS.policy);
+  const recovery = coordinator.slice(coordinator.indexOf('## Known-False Report Recovery'));
+  const grantContract = policy.slice(policy.indexOf('### Apply-only authorized Step retry'));
+
+  assert.match(coordinator, /Fetch @sai\/policies\/question-context\.md and follow it for the exhausted-budget choice/);
+  assert.match(recovery, /\*\*Exhausted-Step choice\.\*\*/);
+  assert.match(recovery, /native picker/);
+  assert.match(recovery, /`Authorize one fresh attempt` \(`authorize-step-retry`\)/);
+  assert.match(recovery, /`I will correct it manually` \(`manual-correction`\)/);
+  assert.match(recovery, /`Can't you fix it\?`[\s\S]{0,180}authorizes nothing/);
+  assert.match(recovery, /Never auto-select either option under `--fast-track`/);
+  assert.match(recovery, /fresh whole-Step budget/);
+  assert.match(recovery, /re-read the current `implementation\.md` Step contract and verification scope/);
+  assert.match(recovery, /new no-commit-guard window with a fresh snapshot/);
+  assert.match(recovery, /Read both tallies, the exhausted budget, and all prior cycles from the recovery-ledger response/);
+  assert.match(recovery, /report the retained history and new cycle to the user/);
+  assert.match(recovery, /If either fresh budget is exhausted again[\s\S]{0,180}never chain a grant/);
+
+  assert.match(grantContract, /`\{kind: authorized-step-retry, step: "Step N", authorized: true\}`/);
+  assert.match(grantContract, /A new attempt is one new\s+invocation of the whole blocked Step with fresh worker and coordinator budgets/);
+  assert.match(grantContract, /Explicit authorization\*\* means\s+the user's selection of the retry option or an unequivocal order/);
+  assert.match(grantContract, /archives the exhausted cycle/);
+  assert.match(grantContract, /clears both active ledgers and counters together/);
+  assert.match(grantContract, /cannot override an `unrecoverable: true`\s+veto/);
 });
 
 test('Step 4 a re-entered Step keeps its spent budgets and duplicate coordinator diagnoses cost zero', () => {
@@ -400,6 +430,8 @@ test('Step 4 a re-entered Step keeps its spent budgets and duplicate coordinator
     'the Step budget must be granted by the Step-guarded step-entry signal, never the bare reset');
   assert.match(ladder, /`step_entry: first`; a `re-entry` keeps what was spent; `unidentified` grants nothing/,
     'a re-entered Step must keep its spent budgets');
+  assert.match(ladder, /only fresh-budget exception is the user-authorized `authorized-step-retry` event/,
+    'ordinary Step re-entry must remain distinct from the explicit grant');
   assert.match(ladder, /`\{kind: coordinator-attempt, key: \[artifact path, concrete point, authorized correction boundary\]\}`/,
     'a coordinator attempt must carry a concrete diagnosis key');
   assert.match(ladder, /repeated key returns `rejected: duplicate diagnosis`/,

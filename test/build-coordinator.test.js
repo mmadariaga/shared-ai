@@ -92,13 +92,41 @@ test('build coordinator preserves re-entry, stops, completion, and changed-files
   assertContains(source, 'Non-removable stops');
   assertContains(source, 'routing-tree STOP');
   assertContains(source, 'GREEN-conflict STOP');
-  assertContains(source, 'recovery-pool exhaustion after three same-GREEN-worker attempts');
+  assertContains(source, 'Recovery-budget exhaustion stops the current');
   assertContains(source, 'Implementation applied. Run `/sai-5-review {name}` in a new chat when ready.');
   assertContains(source, 'Do not declare a maximum Step count');
   assertContains(source, 'Large plans are accepted');
   assertContains(source, 'ordered, duplicate-free changed-files union');
   assertContains(source, 'without resetting the union on segment activation');
   assertContains(source, 'Phase 2 dispatches existing `sai-4-red-worker` / `sai-4-green-worker` only through the apply adapter');
+});
+
+test('apply retry choice remains the same single Step grant inside build on both harnesses', () => {
+  const build = readRequired(coordinatorPath);
+  const apply = readRequired(applyCoordinatorPath);
+
+  assert.match(apply, /Authorize one fresh attempt/);
+  assert.match(apply, /manual-correction/);
+  assert.match(apply, /authorized-step-retry/);
+  assert.match(apply, /one fresh budget for the whole Step|fresh whole-Step budget/);
+  assert.match(build, /existing apply coordinator owns the exhausted-Step\s+choice/);
+  assert.match(build, /Keep that choice and answer on the active apply segment/);
+  assert.match(build, /does not\s+re-present it, mint a second budget, or restart the implement segment/);
+  assert.match(build, /one grant covers the blocked Step's\s+worker and coordinator budgets together/);
+  assert.doesNotMatch(build, /authorized-step-retry|attempt_history|kind: coordinator-attempt|diagnosis_key/i,
+    'build must bind to apply recovery without implementing a second recovery grant');
+
+  for (const harness of ['claude', 'opencode']) {
+    const boot = readRequired(`sai/adapters/${harness}/boot.md`);
+    const applyWrapper = readRequired(`commands/${harness}/sai-4-apply.md`);
+    const buildWrapper = readRequired(`commands/${harness}/sai-build.md`);
+    assert.match(boot, /@sai\/commands\/apply\/coordinator\.md/,
+      `${harness} standalone apply must select the shared apply coordinator`);
+    assert.match(boot, /@sai\/commands\/meta-build\/coordinator\.md/,
+      `${harness} build must select the composition coordinator`);
+    assert.ok(applyWrapper.includes(`@sai/adapters/${harness}/boot.md`));
+    assert.ok(buildWrapper.includes(`@sai/adapters/${harness}/boot.md`));
+  }
 });
 
 test('Step 6 compatibility inherits diagnosis-driven recovery through apply and the shared runner', () => {
