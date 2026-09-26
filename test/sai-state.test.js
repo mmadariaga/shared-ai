@@ -329,13 +329,13 @@ test('machines: explore-slice@1 persists a parked slice across emits and resumes
   try {
     invokeCommand('reset', id, 'explore-slice@1');
     emit({ recordedList: ['a', 'b'] });
-    assert.equal(emit({ intent: 'plan', pick: 'b' }).stage, 'sai-1');
+    assert.equal(emit({ intent: 'plan' }).stage, 'sai-1');
     assert.equal(emit({ intent: 'complete' }).stage, 'sai-2');
     const failed = emit({ intent: 'fail' });
     assert.equal(failed.stage, 'idle');
     assert.ok(!('parked' in failed), 'parked cursors never travel on the wire');
-    assert.equal(emit({ intent: 'direct-build', pick: 'b' }).rejected, 'ALREADY_RUNNING');
-    const retry = emit({ intent: 'plan', pick: 'b' });
+    assert.equal(emit({ intent: 'direct-build' }).rejected, 'ALREADY_RUNNING');
+    const retry = emit({ intent: 'plan' });
     assert.ok(!('rejected' in retry));
     assert.equal(retry.stage, 'sai-2');
   } finally {

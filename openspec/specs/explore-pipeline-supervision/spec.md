@@ -255,22 +255,18 @@ On a Direct Build - Unattended selection, explore SHALL run one unattended code-
 - **THEN** explore states what completed and what remains, does not describe the run as completed, and preserves the existing non-clean failure handling and commit ownership
 
 ### Requirement: Direct Build slice completion transition
-
-On a Direct Build - Unattended selection, explore SHALL execute the existing eight-step worker flow in fixed order for the selected slice. After, and only after, the final `--direct-build-execute` archive worker returns a clean terminal `completed` result, explore SHALL record that result in the first-seen changed-file union, add the selected change to `completed_changes`, preserve the completed slice's progress states, and enter the completion transition exactly once. The transition SHALL preserve existing worker order, worker payloads, commit ownership, and failure semantics.
+On a Direct Build - Unattended selection, explore SHALL execute the existing eight-step worker flow in fixed order for the first pending slice. After, and only after, the final direct-build-execute archive worker returns a clean terminal completed result, explore SHALL record that result in the first-seen changed-file union, add the selected change to completed_changes, preserve the completed slice progress states, and enter the completion transition exactly once. Failed, cancelled, incomplete-recovery, coordinator-disproved, or STOP-bearing results SHALL NOT mark the slice completed or start a later slice. The transition SHALL preserve existing worker order, worker payloads, commit ownership, and failure semantics.
 
 #### Scenario: A cleanly completed slice hands off to the next slice
-
-- **WHEN** the final archive execution worker returns a clean terminal `completed` result and another crystallized slice is not in `completed_changes`
-- **THEN** explore records the completed slice before recomputing remaining slices and re-enters the existing selector without dispatching a worker from the transition.
+- **WHEN** the final archive execution worker returns a clean terminal completed result and another crystallized slice is not in completed_changes
+- **THEN** explore records the completed slice before recomputing remaining slices; when continuation resolves to auto_continue it starts the first pending slice as Direct Build, and when it resolves to route_choice it dispatches no worker from the transition.
 
 ### Requirement: Direct Build re-entry uses deterministic selection
-
-When the completion transition finds uncompleted entries in `last_crystallization_set`, explore SHALL recompute them only by subtracting `completed_changes`, preserve crystallization order, and apply the existing deterministic selection rules. The re-entered selector SHALL never select a completed name, run `openspec list --json`, or re-sort names; it SHALL retain the existing single-entry, multiple-entry, empty-set, and active-run behavior.
+When the completion transition finds uncompleted entries in last_crystallization_set, explore SHALL recompute them only by subtracting completed_changes, preserve crystallization order, route only the first pending slice, and apply the existing deterministic selection rules with no slice-name picker. The re-entered selector SHALL never select a completed name, run openspec list, or re-sort names; it SHALL retain the existing empty-set, exhausted-set, single-entry, and active-run behavior.
 
 #### Scenario: Re-entry excludes completed slices
-
 - **WHEN** a completed slice and one or more uncompleted slices remain in the crystallization set
-- **THEN** the selector offers or dispatches only the uncompleted slices in their original crystallization order.
+- **THEN** continuation operates only on the first pending slice in the original crystallization order.
 
 ### Requirement: Direct Build slice attempts reset only per-attempt state
 
@@ -291,27 +287,22 @@ Explore SHALL defer the existing Direct Build terminal report and navigation whi
 - **THEN** explore emits the existing terminal report and navigation once and clears `active_change` without showing another selector.
 
 ### Requirement: Direct Build - Unattended deterministic selection inheritance
-
-On a Direct Build - Unattended selection, explore SHALL apply the Deterministic selection rules verbatim against `last_crystallization_set` and `completed_changes` including every degenerate state: an empty set acknowledges nothing crystallized and dispatches nothing; no uncompleted entry acknowledges completion and dispatches nothing; exactly one uncompleted entry dispatches without a picker; multiple entries use the ordered native picker with Cancel; and an active run rejects another selection for the full interval. It SHALL NOT run `openspec list --json` or re-sort names, and earlier clauses describing the selector as carrying two options are superseded for count only by this third option.
+On a Direct Build - Unattended selection, explore SHALL apply the first-pending ordered selection verbatim against last_crystallization_set and completed_changes including every degenerate state: an empty set acknowledges nothing crystallized and dispatches nothing; no uncompleted entry acknowledges completion and dispatches nothing; one or more uncompleted entries route only the first pending slice with no picker and no Cancel; and an active run rejects another selection for the full interval. It SHALL NOT run openspec list or re-sort names, and earlier clauses describing an ordered picker with Cancel are superseded for selection only.
 
 #### Scenario: Build inherits deterministic slice selection
-
 - **WHEN** Direct Build - Unattended is selected with multiple pending crystallized slices
-- **THEN** the existing ordered picker and Cancel behavior are used without repository enumeration or re-sorting.
+- **THEN** only the first pending slice is used without repository enumeration, re-sorting, picker, or Cancel.
 
 ### Requirement: Direct Build continuation preserves pending and completed slice state
-
-After a successful slice completion, explore SHALL preserve completed progress states, filter remaining slices from `last_crystallization_set` minus `completed_changes` in crystallization order, and defer terminal navigation while pending slices remain.
+After a successful slice completion, explore SHALL preserve completed progress states, filter remaining slices from last_crystallization_set minus completed_changes in crystallization order, and defer terminal navigation while pending slices remain. Answer yes with no queued route request SHALL resolve to auto_continue; answer no or a queued route request SHALL resolve to route_choice.
 
 #### Scenario: continuation has pending work
-
 - **WHEN** a clean completion leaves one or more uncompleted slices
 - **THEN** the completed slice remains completed and continuation operates only on the pending set.
 
 #### Scenario: Degenerate selection states behave deterministically
-
 - **WHEN** the selection state is empty, fully completed, single-entry, multi-entry, or already active at selection time
-- **THEN** the matching degenerate rule fires unchanged with no repository enumeration or re-sorting.
+- **THEN** the matching degenerate rule fires unchanged with first-pending routing, no repository enumeration, and no re-sorting.
 
 ### Requirement: Direct Build - Unattended run state and failure handling
 
@@ -414,22 +405,18 @@ Every dispatch of a Direct Build (unattended) run SHALL be guarded by the determ
 - **THEN** the archive window is closed by a normal verify first, and the continuation runs in its own window from a fresh snapshot whose verify alone carries `--allow-commit`
 
 ### Requirement: Direct Build slice-machine emits
-
-On a Direct Build (unattended) selection, explore SHALL emit intent direct-build with `pick` set to the chosen change name to explore-slice@1. If the response carries rejected ALREADY_RUNNING, including when Plan is already active, explore SHALL acknowledge already running and dispatch nothing. If the response carries rejected NO_PENDING_SLICE explore SHALL acknowledge missing inventory, dispatch nothing, and prompt block-first. After each high-level route item converges (Build/Implement, then Backfill, then Archive), explore SHALL emit intent complete. Completing Archive is the machine's done signal: it marks the slice done and clears active. Direct Build SHALL NEVER emit next-slice. Every retryable non-clean ending SHALL emit intent fail, which parks the slice at its current route item without marking it done; a later Direct Build selection of that slice SHALL resume at the parked item.
+On a user-selected or automatically authorized Direct Build start, explore SHALL emit intent direct-build with no slice name and no pick to explore-slice; the machine starts only the first pending slice. If the response carries rejected ALREADY_RUNNING, including when Plan is already active, explore SHALL acknowledge already running and dispatch nothing. If the response carries rejected NO_PENDING_SLICE explore SHALL acknowledge missing inventory, dispatch nothing, and prompt block-first. After each high-level route item converges (Build/Implement, then Backfill, then Archive), explore SHALL emit intent complete. Completing Archive is the machine done signal. Direct Build SHALL NEVER emit next-slice. Every retryable non-clean ending SHALL emit intent fail without starting a later slice.
 
 #### Scenario: Direct Build selection emits direct-build
-
-- **WHEN** the user selects Direct Build - Unattended and explore-slice@1 has no active slice
-- **THEN** explore emits intent direct-build to explore-slice@1 and starts the Build/Implement route item
+- **WHEN** the user selects Direct Build - Unattended and explore-slice has no active slice
+- **THEN** explore emits intent direct-build with no pick to explore-slice and starts the Build/Implement route item
 
 #### Scenario: Already-running Direct Build dispatches nothing
-
-- **WHEN** Direct Build is selected again while explore-slice@1 returns rejected ALREADY_RUNNING
+- **WHEN** Direct Build is selected again while explore-slice returns rejected ALREADY_RUNNING
 - **THEN** explore acknowledges already running and dispatches no worker
 
 #### Scenario: Empty inventory rejects Direct Build start
-
-- **WHEN** the user selects Direct Build Unattended while explore-slice@1 has no pending slice
+- **WHEN** the user selects Direct Build Unattended while explore-slice has no pending slice
 - **THEN** explore emits direct-build intent and on rejected NO_PENDING_SLICE acknowledges missing inventory and dispatches nothing
 
 ### Requirement: Direct Build archive failure correction routing
@@ -447,20 +434,16 @@ The supervision SHALL evaluate an archive preparation or execution failure as a 
 - **THEN** the supervision SHALL close as failed-retryable with the verbatim failure in view and no further automatic continuation
 
 ### Requirement: Plan slice-machine emits
-
-On a Plan (unattended) selection, explore SHALL emit intent plan with `pick` set to the chosen change name to explore-slice@1. If the response carries rejected ALREADY_RUNNING, including when Direct Build is already active, explore SHALL acknowledge already running and dispatch nothing. If the response carries rejected NO_PENDING_SLICE explore SHALL acknowledge missing inventory, dispatch nothing, and prompt block-first. After spec convergence, explore SHALL emit intent complete (sai-1 to sai-2). After a clean terminal design result, explore SHALL emit intent complete (sai-2 to implement). pipeline-plan-unattended.md SHALL be next.follow for all three Plan stages. Fail, cancel, STOP, or exhausted recovery on sai-1 or sai-2 SHALL leave that step pending, keep prior completed steps, and leave the slice retryable, with no skip to implement; explore SHALL emit intent fail at that ending, and the later Plan selection that retries the slice SHALL resume the machine on the same step. Implement has no worker. Implement completes only on next-slice; that emit marks the slice done, clears active, and returns stage to idle. If pending slices remain, explore SHALL re-present the selector, as after Archive. next-slice while Plan is on sai-1 or sai-2 SHALL NOT complete Implement and SHALL NOT mark the slice done.
+On a Plan (unattended) selection, explore SHALL emit intent plan with no slice name and no pick to explore-slice; the machine starts only the first pending slice. If the response carries rejected ALREADY_RUNNING, including when Direct Build is already active, explore SHALL acknowledge already running and dispatch nothing. If the response carries rejected NO_PENDING_SLICE explore SHALL acknowledge missing inventory, dispatch nothing, and prompt block-first. After spec convergence, explore SHALL emit intent complete (sai-1 to sai-2). After a clean terminal design result, explore SHALL emit intent complete (sai-2 to implement). Pipeline-plan-unattended SHALL be next.follow for all three Plan stages. Fail, cancel, STOP, or exhausted recovery SHALL leave that step pending with no skip to implement; explore SHALL emit intent fail at that ending. Implement completes only on next-slice.
 
 #### Scenario: Plan selection emits plan
-
-- **WHEN** the user selects Plan - Unattended and explore-slice@1 has no active slice
-- **THEN** explore emits intent plan to explore-slice@1 and starts the sai-1 route item
+- **WHEN** the user selects Plan - Unattended and explore-slice has no active slice
+- **THEN** explore emits intent plan with no pick to explore-slice and starts the sai-1 route item
 
 #### Scenario: next-slice on Implement marks the slice done
-
 - **WHEN** Plan is at Implement and the user sends next-slice
-- **THEN** explore emits next-slice to explore-slice@1, the slice is marked done, active is cleared, and stage returns to idle
+- **THEN** explore emits next-slice to explore-slice, the slice is marked done, active is cleared, and stage returns to idle
 
 #### Scenario: Empty inventory rejects Plan start
-
-- **WHEN** the user selects Plan Unattended while explore-slice@1 has no pending slice
+- **WHEN** the user selects Plan Unattended while explore-slice has no pending slice
 - **THEN** explore emits plan intent and on rejected NO_PENDING_SLICE acknowledges missing inventory and dispatches nothing

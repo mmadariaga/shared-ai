@@ -125,14 +125,14 @@ function finishSlice(current) {
   return outcome(current);
 }
 
-// `pick` names the slice the user chose; without it the first pending slice
-// starts. A parked slice resumes at its saved stage, and only in its own mode.
-function startRoute(current, mode, steps, pick) {
+// Route order is crystallization order: every route starts the first pending
+// slice. A parked slice resumes at its saved stage, and only in its own mode.
+function startRoute(current, mode, steps) {
   if (current.active != null) {
     return outcome(current, 'ALREADY_RUNNING');
   }
   const pending = pendingOf(current);
-  const target = pick === undefined ? pending[0] : pick;
+  const target = pending[0];
   if (target === undefined || pending.indexOf(target) === -1) {
     return outcome(current, 'NO_PENDING_SLICE');
   }
@@ -202,11 +202,11 @@ function transition(state, signal) {
   }
 
   if (intent === DIRECT_BUILD_MODE) {
-    return startRoute(current, DIRECT_BUILD_MODE, DIRECT_BUILD_STEPS, sig.pick);
+    return startRoute(current, DIRECT_BUILD_MODE, DIRECT_BUILD_STEPS);
   }
 
   if (intent === PLAN_MODE) {
-    return startRoute(current, PLAN_MODE, PLAN_STEPS, sig.pick);
+    return startRoute(current, PLAN_MODE, PLAN_STEPS);
   }
 
   if (intent === 'complete') {

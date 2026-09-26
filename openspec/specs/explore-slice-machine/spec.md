@@ -2,7 +2,9 @@
 
 ## Purpose
 TBD - created by archiving change explore-slice-machine. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: Combined slice inventory and Direct Build TODO
 
 The store CLI tool SHALL host `explore-slice@1` as the post-crystallization machine. The machine SHALL keep slice inventory (`set`, `active`, `done`), parked steps, and Plan / Direct Build TODO (`mode` plus `stage` cursor) in CLI-owned state (persisted in the session file, not sidecar in-memory state). A `recordedList` event SHALL replace `set` with the emitted change names without moving a running slice's Direct Build or Plan cursor, and SHALL discard every parked step so a re-crystallized slice restarts at its route's first step. Inventory, active, done, parked steps, and mode SHALL NOT appear on the wire.
@@ -18,13 +20,15 @@ The store CLI tool SHALL host `explore-slice@1` as the post-crystallization mach
 - **THEN** no parked step remains, and a later `plan` for that slice starts at `sai-1`
 
 ### Requirement: Direct Build cursor travels in stage
-
-Selecting Direct Build SHALL emit `{intent: "direct-build", pick: <chosen change name>}` to `explore-slice@1`. The machine SHALL set `active` to the pending name `pick` carries, or to the first pending inventory name when `pick` is absent, set `mode` to `direct-build`, and set `stage` to `build-implement`. Completing each route item SHALL emit `{intent: "complete"}` and advance `stage` `build-implement` → `backfill` → `archive`. The wire SHALL keep `stage` as the cursor and SHALL NOT add response fields beyond the existing `{stage, next, rejected?, warnings?}`.
+Selecting Direct Build SHALL emit intent direct-build with no pick and no slice name to explore-slice. The machine SHALL set active to the first pending inventory name, set mode to direct-build, and set stage to build-implement. Completing each route item SHALL emit intent complete and advance stage build-implement to backfill to archive. The wire SHALL keep stage as the cursor and SHALL NOT add response fields beyond stage, next, rejected, and warnings.
 
 #### Scenario: Direct Build walks build-implement then backfill then archive
+- **WHEN** the caller emits direct-build and then two complete intents against explore-slice
+- **THEN** stage is build-implement, then backfill, then archive, and each response stays pointer-only plus optional rejected and warnings
 
-- **WHEN** the caller emits `direct-build` and then two `complete` intents against `explore-slice@1`
-- **THEN** `stage` is `build-implement`, then `backfill`, then `archive`, and each response stays pointer-only `{stage, next}` plus optional `rejected` and `warnings`
+#### Scenario: Direct Build starts first pending without pick
+- **WHEN** the caller emits direct-build with a legacy pick value against a non-empty pending set
+- **THEN** active is the first pending name regardless of that pick value.
 
 ### Requirement: Archive completion marks the slice done
 
@@ -36,50 +40,44 @@ Completing Archive SHALL mark the active slice done, clear `active`, clear `mode
 - **THEN** `stage` is `idle`, `active` is null, `mode` is null, and the former active name is in `done`
 
 ### Requirement: Fail, cancel, already-running, and next-slice do not mark done
-
-A `fail` or `cancel` intent SHALL park the active slice at its current Direct Build or Plan step, clear `active` and `mode`, return `stage` to `idle`, and SHALL NOT mark the slice done. A later `direct-build` or `plan` selecting the parked slice in its own mode SHALL resume it at the parked step; selecting it in the other mode SHALL reject with `ALREADY_RUNNING` and change nothing. A parked slice SHALL NOT block another pending slice. A second `direct-build` or `plan` while `active` is set, including a cross-mode selection, SHALL reject with `ALREADY_RUNNING` and SHALL NOT change `mode` or `stage`. A `next-slice` intent SHALL reject with `READINESS_IS_NOT_INTENT` except when Plan is at `implement`. Direct Build SHALL NEVER treat `next-slice` as a done signal.
+A fail or cancel intent SHALL park the active slice at its current Direct Build or Plan step, clear active and mode, return stage to idle, and SHALL NOT mark the slice done. A parked first slice SHALL block later slices until it resumes in its own mode at the parked step; selecting it in the other mode SHALL reject with ALREADY_RUNNING. A second direct-build or plan while active is set SHALL reject with ALREADY_RUNNING. A next-slice intent SHALL reject with READINESS_IS_NOT_INTENT except when Plan is at implement. Direct Build SHALL NEVER treat next-slice as a done signal.
 
 #### Scenario: Already-running rejects a second Direct Build
-
-- **WHEN** the caller emits `direct-build` while `explore-slice@1` already has `active` set
-- **THEN** the response carries `rejected: ALREADY_RUNNING`, `stage` stays on the pending Direct Build step, and `done` is unchanged
+- **WHEN** the caller emits direct-build while explore-slice already has active set
+- **THEN** the response carries rejected: ALREADY_RUNNING, stage stays on the pending Direct Build step, and done is unchanged
 
 #### Scenario: Already-running rejects Plan while Direct Build is active
-
-- **WHEN** the caller emits `plan` while `explore-slice@1` already has `active` set in `direct-build` mode
-- **THEN** the response carries `rejected: ALREADY_RUNNING`, `mode` stays `direct-build`, and `done` is unchanged
+- **WHEN** the caller emits plan while explore-slice already has active set in direct-build mode
+- **THEN** the response carries rejected: ALREADY_RUNNING, mode stays direct-build, and done is unchanged
 
 #### Scenario: Fail leaves the active step pending
-
-- **WHEN** the caller emits `fail` during an active Direct Build
-- **THEN** `stage` returns to `idle`, `active` is null, the slice is parked at its current step, and the slice is not appended to `done`
+- **WHEN** the caller emits fail during an active Direct Build
+- **THEN** stage returns to idle, active is null, the slice is parked at its current step, and the slice is not appended to done
 
 #### Scenario: A parked slice resumes at its parked step
-
-- **WHEN** a Plan slice parked on `sai-2` is selected again with `plan`
-- **THEN** `active` is that slice, `stage` is `sai-2`, and no parked step remains for it
+- **WHEN** a Plan slice parked on sai-2 is selected again with plan
+- **THEN** active is that slice, stage is sai-2, and no parked step remains for it
 
 #### Scenario: A parked slice rejects the other mode
-
-- **WHEN** a Plan slice parked on `sai-2` is selected with `direct-build`
-- **THEN** the response carries `rejected: ALREADY_RUNNING`, `stage` stays `idle`, and the slice stays parked on `sai-2`
+- **WHEN** a Plan slice parked on sai-2 is selected with direct-build
+- **THEN** the response carries rejected: ALREADY_RUNNING, stage stays idle, and the slice stays parked on sai-2
 
 #### Scenario: next-slice does not complete Direct Build Archive
+- **WHEN** the caller emits next-slice while explore-slice is at archive
+- **THEN** the response carries rejected: READINESS_IS_NOT_INTENT, stage stays archive, and active is not cleared
 
-- **WHEN** the caller emits `next-slice` while `explore-slice@1` is at `archive`
-- **THEN** the response carries `rejected: READINESS_IS_NOT_INTENT`, `stage` stays `archive`, and `active` is not cleared
+#### Scenario: Parked first slice blocks a later slice
+- **WHEN** a first slice is parked and a route start is emitted while it remains first pending
+- **THEN** the response carries ALREADY_RUNNING and no later pending slice starts.
 
 ### Requirement: Anonymous active slice when inventory is empty
-
-When Direct Build or Plan starts and no pending inventory name exists, the machine SHALL reject with NO_PENDING_SLICE instead of setting active to current. The rejection SHALL leave stage idle with active null and mode null and SHALL dispatch nothing and change nothing in set or done. A non-empty pending set SHALL start with the pending name `pick` carries, or with pending[0] when `pick` is absent; a `pick` outside the pending set SHALL reject with NO_PENDING_SLICE and change nothing. An active run SHALL keep ALREADY_RUNNING precedence over NO_PENDING_SLICE. An exhausted set after slice completion SHALL reject like the empty case without starting current. Store or panel failure SHALL keep degraded mode with no blind selector. The prior active-is-current behavior is explicitly superseded and SHALL NOT be used.
+When Direct Build or Plan starts and no pending inventory name exists, the machine SHALL reject with NO_PENDING_SLICE with stage idle, active null, and mode null and SHALL dispatch nothing. A non-empty pending set SHALL start with pending[0] and SHALL ignore any legacy pick value, even one outside the pending set, with no rejection on that basis. An active run SHALL keep ALREADY_RUNNING precedence over NO_PENDING_SLICE. An exhausted set SHALL reject like the empty case. Store or panel failure SHALL keep degraded mode with no blind selector.
 
 #### Scenario: Empty inventory uses current as active
-
 - **WHEN** the caller emits direct-build while set is empty or every name is already in done under the prior behavior
 - **THEN** the prior active-is-current behavior is superseded by NO_PENDING_SLICE rejection with stage idle, active null, mode null, and no dispatch
 
 #### Scenario: Empty inventory rejects without dispatch
-
 - **WHEN** the caller emits direct-build while set is empty or every name is already in done
 - **THEN** the response carries rejected NO_PENDING_SLICE with stage idle, active null, mode null, and unchanged set and done and no dispatch
 
@@ -93,13 +91,15 @@ Every `/emit` and `/restore` targeting `explore-slice@1` SHALL name `machineId: 
 - **THEN** the response is `INVALID_EVENT` and does not restore the first persisted machine
 
 ### Requirement: Plan cursor travels in stage
-
-Selecting Plan SHALL emit `{intent: "plan", pick: <chosen change name>}` to `explore-slice@1`. The machine SHALL set `active` to the pending name `pick` carries, or to the first pending inventory name when `pick` is absent, set `mode` to `plan`, and set `stage` to `sai-1`. Completing sai-1 then sai-2 SHALL emit `{intent: "complete"}` and advance `stage` `sai-1` → `sai-2` → `implement`. `pipeline-plan-unattended.md` SHALL be `next.follow` for all three Plan stages. Last `idle` is rest (slice done, `active` cleared); it SHALL NOT restart Plan.
+Selecting Plan SHALL emit intent plan with no pick and no slice name to explore-slice. The machine SHALL set active to the first pending inventory name, set mode to plan, and set stage to sai-1. Completing sai-1 then sai-2 SHALL emit intent complete and advance stage sai-1 to sai-2 to implement. Pipeline-plan-unattended SHALL be next.follow for all three Plan stages. Last idle is rest and SHALL NOT restart Plan.
 
 #### Scenario: Plan walks sai-1 then sai-2 then implement
+- **WHEN** the caller emits plan and then two complete intents against explore-slice
+- **THEN** stage is sai-1, then sai-2, then implement, mode is plan, and next.follow remains the Plan pipeline path
 
-- **WHEN** the caller emits `plan` and then two `complete` intents against `explore-slice@1`
-- **THEN** `stage` is `sai-1`, then `sai-2`, then `implement`, `mode` is `plan`, and `next.follow` remains `sai/commands/explore/steps/pipeline-plan-unattended.md`
+#### Scenario: Plan starts first pending without pick
+- **WHEN** the caller emits plan with a legacy pick value against a non-empty pending set
+- **THEN** active is the first pending name regardless of that pick value.
 
 ### Requirement: Plan implement completes only on next-slice
 
@@ -121,4 +121,3 @@ A `complete` intent while Plan is at `implement` SHALL reject with `READINESS_IS
 #### Scenario: Slice close resolves in slice step
 - **WHEN** a Plan or Manual slice closes
 - **THEN** the slice ownership rules govern completion with no Direct Build next-slice
-

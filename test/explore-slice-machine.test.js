@@ -233,32 +233,32 @@ test('a parked slice resumes only in its own mode', () => {
   assert.deepEqual(cross.state.parked, { a: { mode: 'plan', stage: 'sai-2' } });
 });
 
-test('a parked slice does not block another pending slice', () => {
+test('a parked first slice blocks later slices until it resumes in its own mode', () => {
   const recorded = slice.transition(slice.initialState, { recordedList: ['a', 'b'] });
   const started = slice.transition(recorded.state, { intent: 'plan' });
   const failed = slice.transition(started.state, { intent: 'fail' });
-  const other = slice.transition(failed.state, { intent: 'direct-build', pick: 'b' });
-  assert.ok(!('rejected' in other));
-  assert.equal(other.state.active, 'b');
-  assert.equal(other.state.stage, 'build-implement');
-  assert.deepEqual(other.state.parked, { a: { mode: 'plan', stage: 'sai-1' } });
+  const blocked = slice.transition(failed.state, { intent: 'direct-build' });
+  assert.equal(blocked.rejected, 'ALREADY_RUNNING');
+  assert.equal(blocked.state.active, null);
+  assert.equal(blocked.state.stage, 'idle');
+  assert.deepEqual(blocked.state.parked, { a: { mode: 'plan', stage: 'sai-1' } });
 });
 
-test('pick starts the chosen pending slice; a pick outside the pending set rejects', () => {
+test('every route starts the first pending slice, even when a legacy pick names a later slice', () => {
   const recorded = slice.transition(slice.initialState, { recordedList: ['a', 'b'] });
   const picked = slice.transition(recorded.state, { intent: 'plan', pick: 'b' });
-  assert.equal(picked.state.active, 'b');
+  assert.equal(picked.state.active, 'a');
   assert.equal(picked.state.stage, 'sai-1');
-  const impl = slice.transition(slice.transition(picked.state, { intent: 'complete' }).state, { intent: 'complete' });
+  const directBuildWithLegacyPick = slice.transition(recorded.state, { intent: 'direct-build', pick: 'b' });
+  assert.equal(directBuildWithLegacyPick.state.active, 'a');
+  assert.equal(directBuildWithLegacyPick.state.stage, 'build-implement');
+  const sai2 = slice.transition(picked.state, { intent: 'complete' });
+  const impl = slice.transition(sai2.state, { intent: 'complete' });
   const closed = slice.transition(impl.state, { intent: 'next-slice' });
-  assert.deepEqual(closed.state.done, ['b']);
-  const repick = slice.transition(closed.state, { intent: 'plan', pick: 'b' });
-  assert.equal(repick.rejected, 'NO_PENDING_SLICE');
-  assert.equal(repick.state.active, null);
-  const unknown = slice.transition(recorded.state, { intent: 'direct-build', pick: 'zzz' });
-  assert.equal(unknown.rejected, 'NO_PENDING_SLICE');
-  const notString = slice.transition(recorded.state, { intent: 'plan', pick: 1 });
-  assert.equal(notString.rejected, 'NO_PENDING_SLICE');
+  assert.deepEqual(closed.state.done, ['a']);
+  const next = slice.transition(closed.state, { intent: 'direct-build' });
+  assert.equal(next.state.active, 'b');
+  assert.equal(next.state.stage, 'build-implement');
 });
 
 test('a recordedList discards parked cursors so re-crystallized slices restart', () => {

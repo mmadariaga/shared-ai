@@ -32,8 +32,12 @@ The stage-machine policy SHALL let a caller retry an emit without asking the use
 - **THEN** it runs the corrective retry before treating the result as a store failure
 
 ### Requirement: Recorded lists carry identifiers only
-The stage-machine policy SHALL require that a `recordedList` event carries only list identifiers (such as `"E1"`, `"E2"`, `"I1"`, or Step ids) and never item text, because the machine uses the list only for its recorded or empty state. `explore-slice@1` is the sole exception: its `recordedList` and `pick` carry change names, which are kebab-case identifiers, because that machine tracks slices by name.
+The stage-machine policy SHALL require that a recordedList event carries only list identifiers (such as E1, E2, I1, or Step ids) and never item text, because the machine uses the list only for its recorded or empty state. Explore-slice is the sole exception: its recordedList carries change names, which are kebab-case identifiers, because that machine tracks slices by name. Route events SHALL carry no slice name and no pick; the machine always chooses the first pending entry in that ordered inventory.
 
 #### Scenario: Caller records an agreed edge-case list
-- **WHEN** a caller records an agreed edge-case list through a `recordedList` emit
-- **THEN** the payload carries identifiers such as `["E1","E2"]` and no item text
+- **WHEN** a caller records an agreed edge-case list through a recordedList emit
+- **THEN** the payload carries identifiers such as E1,E2 and no item text
+
+#### Scenario: Explore route emits carry no slice name
+- **WHEN** a Plan or Direct Build route emits to explore-slice
+- **THEN** the emit carries only route intent with no slice name and the first pending entry starts.

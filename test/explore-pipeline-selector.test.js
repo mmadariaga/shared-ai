@@ -112,7 +112,7 @@ test('Manual and unmapped answers preserve the shared close without suppressing 
   const selectorSpec = spec('openspec/specs/explore-pipeline-selector/spec.md');
 
   assert.match(source, /Manual creates no delegated entries, dispatches no worker, changes no supervision state/i);
-  assert.match(source, /A free-text answer that maps to neither option is treated as \*\*Manual\*\*/i);
+  assert.match(source, /A free-text answer that maps to neither route option is treated as \*\*Manual\*\*/i);
   assert.match(source, /no-dispatch, no-state-change, no-injected-marker, and no-second-choice rules/i);
   assert.match(source, /\*\*Manual is not terminal\*\*[\s\S]{0,400}no cap on re-presentations/i);
   assert.match(source, /every new deferred \*\*Manual\*\* resolution re-emits handoff plus recommendation once/i);
@@ -1234,7 +1234,7 @@ test('Step 4: Manual and unmapped answers refer to the already-emitted handoff w
   const selectorSpecFile = spec('openspec/specs/explore-pipeline-selector/spec.md');
 
   assert.match(routeSelector, /Manual creates no delegated entries, dispatches no worker, changes no supervision state/i);
-  assert.match(routeSelector, /A free-text answer that maps to neither option is treated as \*\*Manual\*\*/i);
+  assert.match(routeSelector, /A free-text answer that maps to neither route option is treated as \*\*Manual\*\*/i);
   assert.match(routeSelector, /emit exactly once the closing path's handoff plus the recommendation, with no second choice in that turn/i);
   assert.match(routeSelector, /Choice re-presentations carry no prior handoff/i);
   assert.match(selectorSpecFile, /Selecting `Manual` SHALL dispatch nothing and SHALL NOT change supervision state/i);
@@ -1260,7 +1260,7 @@ test('Step 4: successful Plan (unattended) emits the build handoff and never dis
     'successful Plan should not emit the obsolete terminal text');
 });
 
-test('Step 4: Direct Build (unattended) completion re-presents a per-slice selector and Manual pauses pending slices', () => {
+test('Direct Build continuation starts the next ordered slice only after clean success and explicit consent', () => {
   const source = exploreContract();
   const transitionStart = source.indexOf('**Successful slice completion transition');
   const transitionEnd = source.indexOf('**Failures**', transitionStart);
@@ -1269,12 +1269,15 @@ test('Step 4: Direct Build (unattended) completion re-presents a per-slice selec
 
   const transition = source.slice(transitionStart, transitionEnd);
   assert.match(transition, /recompute `pending_slices` only from `last_crystallization_set` minus `completed_changes`/i);
-  assert.match(transition, /re-present the existing full three-option `Plan \(unattended\)` \/ `Direct Build \(unattended\)` \/ `Manual` selector exactly once/i);
-  assert.match(transition, /per-slice authorization gate, not a one-time authorization/i);
-  assert.match(transition, /even when exactly one pending slice remains/i);
-  assert.match(transition, /Never re-select or re-run a name already in `completed_changes`/i);
+  assert.match(transition, /Resolve the authoritative continuation state in `route-selector\.md`[\s\S]{0,250}If it resolves to `auto_continue`, start the first pending slice as Direct Build/i);
+  assert.match(transition, /emit `\{intent: direct-build\}` with no `pick`/i);
+  assert.match(transition, /exactly one local commit for this automatically started slice/i);
+  assert.match(transition, /If it resolves to `route_choice`[\s\S]{0,250}re-present the existing three-option/i);
+  assert.match(transition, /no slice-name picker/i);
+  assert.match(transition, /never select a completed name or re-run a name already in `completed_changes`/i);
   assert.match(transition, /Selecting `Manual` on this continuation selector starts no additional slice/i);
   assert.match(transition, /require a later explicit request before any pending slice runs/i);
+  assert.match(transition, /Failed, cancelled, incomplete-recovery, coordinator-disproved, or STOP-bearing results do not mark a slice completed or start or select a later slice/i);
 });
 
 test('Direct Build final report is outcome-first and leaves the Plan report unchanged', () => {
@@ -1625,14 +1628,44 @@ test('crystallization renders a temporary mode-specific route without changing t
   assert.match(ideaList, /is never persisted, and creates no milestone stamps/i);
 });
 
-test('selector does not fetch Plan or Direct Build files at presentation', () => {
+test('selector starts only the first pending slice and does not fetch Plan or Direct Build files at presentation', () => {
   const routeSelector = spec('sai/commands/explore/steps/route-selector.md');
   assert.doesNotMatch(routeSelector, /Fetch @sai\/commands\/explore\/steps\/pipeline-plan-unattended\.md/);
   assert.doesNotMatch(routeSelector, /Fetch @sai\/commands\/explore\/steps\/pipeline-direct-build\.md/);
-  assert.match(routeSelector, /\{intent: plan, pick: <chosen \*\*Change name\*\*>\}` to `explore-slice@1` per `@sai\/policies\/stage-machine\.md`/);
-  assert.match(routeSelector, /\{intent: direct-build, pick: <chosen \*\*Change name\*\*>\}` to the same machine per the same policy/);
+  assert.match(routeSelector, /emit `\{intent: plan\}` or `\{intent: direct-build\}` to `explore-slice@1`/);
+  assert.match(routeSelector, /machine starts only the first pending slice/i);
+  assert.match(routeSelector, /never send a slice name or `pick`/i);
+  assert.doesNotMatch(routeSelector, /pick:\s*<chosen/i);
+  assert.match(routeSelector, /Do not present a slice-name picker, even when multiple entries remain/i);
   assert.doesNotMatch(routeSelector, /sai-state emit/);
-  assert.match(routeSelector, /Do not fetch `pipeline-plan-unattended\.md` or `pipeline-direct-build\.md` at choice presentation/);
+  assert.match(routeSelector, /Do not fetch `pipeline-plan-unattended\.md` or `pipeline-direct-build\.md` at route-choice presentation/);
+});
+
+test('Direct Build continuation consent is one-time, set-scoped, context-complete, and resolves queued changes after slice completion', () => {
+  const routeSelector = spec('sai/commands/explore/steps/route-selector.md');
+  const directBuild = spec('sai/commands/explore/steps/pipeline-direct-build.md');
+
+  assert.match(routeSelector, /`direct_build_continuation_answer`[\s\S]{0,240}to `unasked`[\s\S]{0,80}becomes `yes` or `no`/);
+  assert.match(routeSelector, /Initialize `direct_build_continuation_prompted` to `false` and `direct_build_continuation_answer` to `unasked`/);
+  assert.match(routeSelector, /Reset both values and set `pending_direct_build_change` to `null` only when a new crystallization replaces that set/i);
+  assert.match(routeSelector, /chosen with more than one pending slice and `direct_build_continuation_prompted` is `false`, ask once/i);
+  assert.match(routeSelector, /ask once through the harness-native picker, even if earlier slices used Manual or Plan/i);
+  assert.match(routeSelector, /Only an explicit `yes` authorizes automatic continuation/i);
+  assert.match(routeSelector, /authorizes one local commit per automatically started slice; nothing is pushed/i);
+  assert.match(routeSelector, /There are \{pending_count\} proposed slices still pending[\s\S]{0,220}current slice is \{active_change\}/i);
+  assert.match(routeSelector, /each automatically started later slice makes a local commit[\s\S]{0,300}nothing is pushed/i);
+  assert.match(routeSelector, /No lets this slice finish, then asks you which route to use for the next slice/i);
+  assert.match(routeSelector, /Should later slices start automatically after each successful slice\?/);
+  assert.match(routeSelector, /localized option labels and descriptions of about 100 characters maximum/i);
+  assert.match(routeSelector, /Queue it without interrupting the active slice/i);
+  assert.match(routeSelector, /`route_requested` \(`true` only when the user explicitly asks to choose another route\)/i);
+  assert.match(routeSelector, /After the current slice returns a clean terminal result, apply any queued answer, then resolve in this order[\s\S]{0,450}answer `yes` returns `auto_continue` and answer `no` returns `route_choice`/i);
+  assert.match(routeSelector, /with `route_requested: true`, return `route_choice`/i);
+  assert.match(routeSelector, /a queued change from `no` to `yes` auto-starts the next Direct Build slice/i);
+  assert.match(routeSelector, /an explicit request to choose another route offers the route choice regardless of the answer/i);
+  assert.match(directBuild, /authoritative continuation state in `route-selector\.md`/i);
+  assert.match(directBuild, /If it resolves to `auto_continue`[\s\S]{0,500}If it resolves to `route_choice`[\s\S]{0,200}re-present the existing three-option/i);
+  assert.match(directBuild, /even an authorized continuation never starts the next slice after a non-clean result/i);
 });
 
 test('mode-specific route labels and Plan/Build progression are explicit', () => {

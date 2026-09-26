@@ -104,8 +104,10 @@ the pipe and the store accepts them as received, so events carry identifiers,
 never free text: a `recordedList` holds only list ids (`"E1"`, `"E2"`, …,
 `"I1"`, …, or the Step ids), because the machine reads only whether the list
 is recorded or empty. `explore-slice@1` is the one exception: its
-`recordedList` and `pick` carry `**Change name**` values, which are kebab-case
-ASCII identifiers, because that machine tracks slices by name.
+`recordedList` carries `**Change name**` values, which are kebab-case ASCII
+identifiers, because that machine tracks slices by name. Route events carry no
+slice name; the machine always chooses the first pending entry in that ordered
+inventory.
 
 ## Corrective retry
 
