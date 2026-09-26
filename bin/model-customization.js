@@ -121,7 +121,7 @@ const COMMAND_WORKER_ORDER = Object.freeze({
   'sai-2-design': Object.freeze(['sai-2-design-worker']),
   'sai-3-implement': Object.freeze(['sai-3-implementation-worker']),
   'sai-4-apply': Object.freeze(['sai-4-red-worker', 'sai-4-green-worker']),
-  'sai-5-review': Object.freeze(['sai-5-review-worker']),
+  'sai-5-review': Object.freeze(['sai-5-review-worker', 'sai-review-fix-worker']),
   'sai-6-security': Object.freeze(['sai-6-security-worker']),
   'sai-7-performance': Object.freeze(['sai-7-performance-worker']),
   'sai-8-accessibility': Object.freeze(['sai-8-accessibility-worker']),
@@ -255,6 +255,72 @@ function splitFrontmatter(text) {
 function patchFrontmatter(text, tunableKeys, settings) {
   const split = splitFrontmatter(text);
   if (split === null) return null;
+
+  // Opencode markdown uses a single-line `model: <provider>/<model>#<variant>`
+  // with no `variant:` line. The reader accepts the legacy separated form for
+  // migration, but the writer always emits the new single-line form and removes
+  // residual `variant:` lines. A model without variant renders as bare
+  // `model: <id>` with no `#` suffix. Claude keeps separate `model`/`effort` lines.
+  if (tunableKeys.includes('variant')) {
+    const selectedModelRaw = settings['model'] !== undefined ? String(settings['model']) : undefined;
+    const selectedVariantRaw = settings['variant'] !== undefined ? String(settings['variant']) : undefined;
+    let desiredModelValue;
+    if (selectedModelRaw !== undefined) {
+      if (selectedModelRaw.includes('#')) {
+        desiredModelValue = selectedModelRaw;
+      } else if (selectedVariantRaw !== undefined && selectedVariantRaw !== '') {
+        desiredModelValue = `${selectedModelRaw}#${selectedVariantRaw}`;
+      } else {
+        desiredModelValue = selectedModelRaw;
+      }
+    } else {
+      let origModel;
+      let origVariant;
+      for (const line of split.lines.slice(1, split.endIndex)) {
+        const m = TOP_LEVEL_SCALAR.exec(line);
+        if (!m) continue;
+        if (m[1] === 'model' && origModel === undefined) origModel = m[2].trim();
+        else if (m[1] === 'variant' && origVariant === undefined) origVariant = m[2].trim();
+      }
+      if (origModel !== undefined) {
+        if (origModel.includes('#')) desiredModelValue = origModel;
+        else if (origVariant) desiredModelValue = `${origModel}#${origVariant}`;
+        else desiredModelValue = origModel;
+      }
+    }
+    const seen = new Set();
+    const patchedFrontmatter = [];
+    for (const line of split.lines.slice(1, split.endIndex)) {
+      const match = TOP_LEVEL_SCALAR.exec(line);
+      if (!match) {
+        patchedFrontmatter.push(line);
+        continue;
+      }
+      const key = match[1];
+      if (key === 'variant') continue;
+      if (key !== 'model') {
+        patchedFrontmatter.push(line);
+        continue;
+      }
+      if (desiredModelValue === undefined) {
+        patchedFrontmatter.push(line);
+        continue;
+      }
+      if (seen.has('model')) continue;
+      patchedFrontmatter.push(`model: ${desiredModelValue}`);
+      seen.add('model');
+    }
+    if (desiredModelValue !== undefined && !seen.has('model')) {
+      patchedFrontmatter.push(`model: ${desiredModelValue}`);
+    }
+    const lines = [
+      split.lines[0],
+      ...patchedFrontmatter,
+      split.lines[split.endIndex],
+      ...split.lines.slice(split.endIndex + 1),
+    ];
+    return lines.join(split.lineEnding) + (split.trailingLineEnding ? split.lineEnding : '');
+  }
 
   const selected = new Map(
     tunableKeys
@@ -412,8 +478,23 @@ function readFrontmatterSettings(filePath, harness) {
       if (match && ['model', 'effort', 'variant'].includes(match[1])) values[match[1]] = match[2].trim();
     }
     if (!values.model) return null;
-    const tuning = values[harness === 'claude' ? 'effort' : 'variant'];
-    return `${harness === 'claude' ? `anthropic/${values.model}` : values.model}${tuning ? ` (${tuning})` : ''}`;
+    if (harness === 'claude') {
+      const tuning = values['effort'];
+      return `anthropic/${values.model}${tuning ? ` (${tuning})` : ''}`;
+    }
+    // Opencode: single-line `model: <id>#<variant>` is the canonical form;
+    // the legacy separated `variant:` line is accepted for migration.
+    let baseModel = values.model;
+    let variant;
+    const hashIndex = baseModel.indexOf('#');
+    if (hashIndex !== -1) {
+      variant = baseModel.slice(hashIndex + 1).trim();
+      baseModel = baseModel.slice(0, hashIndex).trim();
+      if (variant === '') variant = undefined;
+    } else if (values.variant) {
+      variant = values.variant;
+    }
+    return `${baseModel}${variant ? ` (${variant})` : ''}`;
   } catch {
     return null;
   }
@@ -1071,6 +1152,20 @@ function effectiveRawSetting(targetEntry, projectPath, globalAgentRoot, globalCo
         }
       }
       if (!values.model) return null;
+      if (harnessKey === 'opencode') {
+        // Split the canonical single-line `model: <id>#<variant>` back into the
+        // logical `{model, variant}` pair so preset JSON keeps the separate form.
+        // Legacy separated `variant:` lines are accepted for migration.
+        const hashIndex = values.model.indexOf('#');
+        if (hashIndex !== -1) {
+          const base = values.model.slice(0, hashIndex).trim();
+          const hashVariant = values.model.slice(hashIndex + 1).trim();
+          if (!base) return null;
+          const out = { model: base };
+          if (hashVariant !== '') out.variant = hashVariant;
+          return out;
+        }
+      }
       return values;
     } catch {
       return null;

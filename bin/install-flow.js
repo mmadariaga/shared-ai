@@ -47,6 +47,56 @@ function spliceTunables(sourceText, destinationText, tunableKeys) {
   const split = splitFrontmatter(sourceText);
   if (!split) return sourceText;
   if (!splitFrontmatter(destinationText)) return sourceText;
+  // Opencode markdown uses a single-line `model: <id>#<variant>` with no
+  // `variant:` line. Preserve the destination's combined model line and drop
+  // any residual `variant:` lines so a reinstall migrates legacy files.
+  if (tunableKeys.includes('variant')) {
+    const destValues = extractTunableValues(destinationText, tunableKeys);
+    const destModelRaw = destValues.get('model');
+    const destVariantRaw = destValues.get('variant');
+    let destCombined;
+    if (destModelRaw !== undefined) {
+      const trimmed = String(destModelRaw).trim();
+      if (trimmed.includes('#')) destCombined = trimmed;
+      else if (destVariantRaw !== undefined) destCombined = `${trimmed}#${String(destVariantRaw).trim()}`;
+      else destCombined = trimmed;
+    }
+    const fm = split.frontmatter;
+    const kept = [];
+    let insertionIndex = fm.length;
+    let seenModel = false;
+    for (let i = 0; i < fm.length; i++) {
+      const line = fm[i];
+      const match = TUNABLE_SCALAR.exec(line);
+      if (!match) {
+        if (/^\s/.test(line) && insertionIndex === fm.length) insertionIndex = kept.length - 1;
+        kept.push(line);
+        continue;
+      }
+      if (match[1] === 'variant') continue;
+      if (match[1] === 'model') {
+        if (destCombined !== undefined) {
+          if (!seenModel) {
+            kept.push(`model: ${destCombined}`);
+            seenModel = true;
+          }
+          continue;
+        }
+        kept.push(line);
+        seenModel = true;
+        continue;
+      }
+      kept.push(line);
+    }
+    if (destCombined !== undefined && !seenModel) {
+      if (insertionIndex === fm.length) insertionIndex = kept.length;
+      kept.splice(insertionIndex, 0, `model: ${destCombined}`);
+      if (insertionIndex === fm.length) insertionIndex = kept.length;
+      return [split.header, ...kept.slice(0, insertionIndex), ...kept.slice(insertionIndex), ...split.rest].join('\n');
+    }
+    if (insertionIndex === fm.length) insertionIndex = kept.length;
+    return [split.header, ...kept.slice(0, insertionIndex), ...kept.slice(insertionIndex), ...split.rest].join('\n');
+  }
   const fm = split.frontmatter;
   const destValues = extractTunableValues(destinationText, tunableKeys);
   const sourceKeys = extractTunableValues(sourceText, tunableKeys);
@@ -76,6 +126,9 @@ function spliceTunables(sourceText, destinationText, tunableKeys) {
 }
 
 function stripTunableLines(bytes, tunableKeys) {
+  // Strips both `model:` (including the canonical single-line
+  // `model: <id>#<variant>`) and legacy `variant:` lines so body-identity
+  // comparison ignores tunables in either physical shape during migration.
   const text = bytes.toString('utf8');
   const split = splitFrontmatter(text);
   if (!split) return bytes;

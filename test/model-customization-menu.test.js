@@ -177,6 +177,7 @@ const COMBINED_BOTH_FULL = [
   'command:sai-review',
   'command:sai-5-review',
   'worker:sai-5-review-worker',
+  'worker:sai-review-fix-worker',
   'command:sai-6-security',
   'worker:sai-6-security-worker',
   'command:sai-7-performance',
@@ -193,7 +194,6 @@ const COMBINED_BOTH_FULL = [
   'worker:executor',
   'worker:explore',
   'worker:sai-merge-worker',
-  'worker:sai-review-fix-worker',
   'utility:sai-pr',
   'utility:sai-retire-docs',
   'utility:sai-status',
@@ -636,7 +636,11 @@ test('opencode createLocalOverride persists a selected variant through the adapt
     assert.equal(result.agent, PERSIST_OPENCODE_AGENT);
     assert.match(
       fs.readFileSync(result.destination, 'utf8'),
-      /model: opencode-go\/glm-5\.2\nvariant: high/
+      /model: opencode-go\/glm-5\.2#high/
+    );
+    assert.doesNotMatch(
+      fs.readFileSync(result.destination, 'utf8'),
+      /^variant:/m
     );
   } finally {
     fs.rmSync(fixture.root, { recursive: true, force: true });
@@ -807,7 +811,7 @@ test('checklist receives the full enumerated target list of the chosen harness a
     { scope: 'Orchestrators', items: MODEL_COMMANDS.map(name => `command:${name}`).sort() },
     {
       scope: 'All',
-      items: [...COMBINED_BOTH_FULL.slice(0, 6), '', ...COMBINED_BOTH_FULL.slice(6, 12), '', ...COMBINED_BOTH_FULL.slice(12, 21), '', ...COMBINED_BOTH_FULL.slice(21, 32), '', ...COMBINED_BOTH_FULL.slice(32)],
+      items: [...COMBINED_BOTH_FULL.slice(0, 6), '', ...COMBINED_BOTH_FULL.slice(6, 12), '', ...COMBINED_BOTH_FULL.slice(12, 22), '', ...COMBINED_BOTH_FULL.slice(22, 32), '', ...COMBINED_BOTH_FULL.slice(32)],
       defaults: COMBINED_BOTH_FULL,
     },
   ];
@@ -972,6 +976,80 @@ test('scope All presents phased orchestrator blocks with semantic worker pairs i
   } finally {
     restoreOpencode();
     restoreClaude();
+  }
+});
+
+test('review-fix worker follows the review worker in All and stays alphabetical in Workers for both harnesses', async () => {
+  for (const [harness, factoryName] of [['OpenCode', 'createOpencodeAdapter'], ['Claude Code', 'createClaudeAdapter']]) {
+    const workers = ['sai-6-security-worker', 'sai-review-fix-worker', 'sai-5-review-worker'];
+    const commands = ['sai-6-security', 'sai-5-review'];
+    const ops = { select: [], create: [] };
+    const restore = patchFactory(factoryName, () => makeFakeAdapter(workers, ops, { model: 'opencode-go/test-model' }, commands));
+    try {
+      const answers = ['Customize models', harness, 'All', 'Exit'];
+      const checklistCalls = [];
+      const result = await runPostSetupMenu({
+        projectPath: REPO_ROOT,
+        isTTY: true,
+        promptChoice: async () => answers.shift() ?? '<model>',
+        promptChecklist: recordChecklist(checklistCalls),
+      });
+      assert.equal(result.reason, 'cancelled');
+      assert.deepEqual(checklistCalls[0][1], [
+        'command:sai-5-review',
+        'worker:sai-5-review-worker',
+        'worker:sai-review-fix-worker',
+        'command:sai-6-security',
+        'worker:sai-6-security-worker',
+      ],
+        `${harness}: All shows sai-review-fix-worker immediately after sai-5-review-worker and before sai-6-security`);
+    } finally {
+      restore();
+    }
+  }
+
+  for (const [harness, factoryName, agents] of [['OpenCode', 'createOpencodeAdapter', OPENCODE_AGENTS], ['Claude Code', 'createClaudeAdapter', CLAUDE_AGENTS]]) {
+    const ops = { select: [], create: [] };
+    const restore = patchFactory(factoryName, () => makeFakeAdapter(agents, ops, { model: 'opencode-go/test-model' }, COMMANDS));
+    try {
+      const answers = ['Customize models', harness, 'Workers', 'Exit'];
+      const checklistCalls = [];
+      const result = await runPostSetupMenu({
+        projectPath: REPO_ROOT,
+        isTTY: true,
+        promptChoice: async () => answers.shift() ?? '<model>',
+        promptChecklist: recordChecklist(checklistCalls),
+      });
+      assert.equal(result.reason, 'cancelled');
+      const expected = [...agents].sort().map(name => `worker:${name}`);
+      assert.deepEqual(checklistCalls[0][0], expected,
+        `${harness}: Workers keeps alphabetical ordering`);
+    } finally {
+      restore();
+    }
+  }
+
+  for (const [harness, factoryName] of [['OpenCode', 'createOpencodeAdapter'], ['Claude Code', 'createClaudeAdapter']]) {
+    for (const missing of ['sai-review-fix-worker', 'sai-5-review-worker']) {
+      const present = missing === 'sai-review-fix-worker' ? 'sai-5-review-worker' : 'sai-review-fix-worker';
+      const ops = { select: [], create: [] };
+      const restore = patchFactory(factoryName, () => makeFakeAdapter(
+        [present], ops, { model: 'opencode-go/test-model' }, ['sai-5-review', 'sai-6-security']));
+      try {
+        const answers = ['Customize models', harness, 'All', 'Exit'];
+        const checklistCalls = [];
+        await runPostSetupMenu({
+          projectPath: REPO_ROOT,
+          isTTY: true,
+          promptChoice: async () => answers.shift() ?? '<model>',
+          promptChecklist: recordChecklist(checklistCalls),
+        });
+        assert.deepEqual(checklistCalls[0][1], ['command:sai-5-review', `worker:${present}`, 'command:sai-6-security'],
+          `${harness}: missing ${missing} shows only available workers without empty or duplicate rows`);
+      } finally {
+        restore();
+      }
+    }
   }
 });
 
@@ -3438,7 +3516,11 @@ test('opencode command createLocalOverride persists the selected model and optio
     );
     assert.match(
       fs.readFileSync(result.destination, 'utf8'),
-      /model: opencode-go\/glm-5\.2\nvariant: high/
+      /model: opencode-go\/glm-5\.2#high/
+    );
+    assert.doesNotMatch(
+      fs.readFileSync(result.destination, 'utf8'),
+      /^variant:/m
     );
   } finally {
     fs.rmSync(fixture.root, { recursive: true, force: true });
@@ -3466,14 +3548,16 @@ test('a command frontmatter lacking tunable keys gains the selected model and ef
       assert.equal(result.status, 'persisted',
         `${harness}: a description-only command source is persisted`);
       const written = fs.readFileSync(result.destination, 'utf8');
-      assert.match(written, /^model: (sonnet|opencode-go\/glm-5\.2)$/m,
-        `${harness}: the selected model key is pinned into the command without a tunable key`);
       if (harness === 'claude') {
+        assert.match(written, /^model: sonnet$/m,
+          `${harness}: the selected model key is pinned into the command without a tunable key`);
         assert.match(written, /^effort: medium$/m,
           'claude gains the selected effort key');
       } else {
-        assert.match(written, /^variant: high$/m,
-          'opencode gains the selected variant key');
+        assert.match(written, /^model: opencode-go\/glm-5\.2#high$/m,
+          'opencode gains the selected model with its variant suffix in a single line');
+        assert.doesNotMatch(written, /^variant:/m,
+          'opencode does not emit a separate variant line');
       }
       assert.match(written, /^description: fixture command with no tunables$/m,
         `${harness}: the pre-existing description line is preserved`);

@@ -145,8 +145,7 @@ test('doctor flags a destination whose only change is a tunable', async () => {
     installOpencode(opencodeBase);
     const agentPath = path.join(opencodeBase, 'agents', 'sai-2-design-worker.md');
     const tuned = fs.readFileSync(agentPath, 'utf8')
-      .replace(/^model:.*$/m, 'model: user-tuned-model')
-      .replace(/^variant:.*$/m, 'variant: low');
+      .replace(/^model:.*$/m, 'model: user-tuned-model#low');
     fs.writeFileSync(agentPath, tuned);
 
     const { code, report } = await runDoctor(projectRoot, claudeBase, opencodeBase);

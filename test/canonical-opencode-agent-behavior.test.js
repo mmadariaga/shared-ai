@@ -160,12 +160,13 @@ test('managed OpenCode generic agents are exact Fetch wrappers with preserved id
     for (const field of [
       `description: ${descriptions[name]}`,
       'mode: subagent',
-      'model: opencode/muse-spark-1.3-contributor-free',
-      'variant: high',
+      'model: opencode/muse-spark-1.3-contributor-free#high',
     ]) {
       assert.equal(fields.filter(line => line === field).length, 1,
         `${name} frontmatter should contain exactly ${field}`);
     }
+    assert.equal(fields.filter(line => /^variant:/.test(line)).length, 0,
+      `${name} frontmatter should not carry a separate variant line`);
 
     if (name === 'explore') {
       for (const field of ['permission:', '  edit: deny']) {
@@ -305,10 +306,10 @@ test('OpenCode Fetch wrapper propagation preserves local tuning and resolves upd
       'the OpenCode adapter should persist the local explore override');
 
     const initialLocal = fs.readFileSync(localAgentPath, 'utf8');
-    assert.match(initialLocal, /^model: opencode-go\/glm-5\.2$/m,
-      'the local explore override should retain the selected model');
-    assert.match(initialLocal, /^variant: high$/m,
-      'the local explore override should retain the selected variant');
+    assert.match(initialLocal, /^model: opencode-go\/glm-5\.2#high$/m,
+      'the local explore override should retain the selected model with its variant suffix');
+    assert.doesNotMatch(initialLocal, /^variant:/m,
+      'the local explore override should not carry a separate variant line');
     assert.match(initialLocal, new RegExp(`^${fetchLine.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'm'),
       'the local explore override should retain its canonical policy Fetch line');
 

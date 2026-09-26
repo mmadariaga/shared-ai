@@ -260,10 +260,14 @@ test('the apply worker agents are tunable-seed managed projections in both harne
 });
 
 test('apply agents resolve their own per-harness budget-tier matrix configuration', () => {
-  const tuningOf = text => {
+  const tuningOf = (text, harness) => {
     const model = (text.match(/^model:\s*(.+)$/m) || [])[1];
-    const tierLine = (text.match(/^(?:variant|effort):\s*(.+)$/m) || [])[1];
-    return `${model}|${tierLine}`;
+    const trimmed = model ? model.trim() : model;
+    if (harness === 'claude') {
+      const effort = (text.match(/^effort:\s*(.+)$/m) || [])[1];
+      return `${trimmed}|${effort ? effort.trim() : effort}`;
+    }
+    return trimmed;
   };
   const applyTiers = {};
   const manifest = loadInstallManifest(path.join(__dirname, '..'));
@@ -278,14 +282,20 @@ test('apply agents resolve their own per-harness budget-tier matrix configuratio
         return fs.readFileSync(agentPath, 'utf8');
       };
       for (const name of APPLY_WORKER_NAMES) {
-        const tier = tuningOf(textOf(name));
+        const tier = tuningOf(textOf(name), harness);
         applyTiers[`${harness}/${name}`] = tier;
         const entry = manifest['worker-matrix'].entries.find(candidate => candidate.workerName === name);
         assert.equal(entry.tier, 'budget', `${name} must retain budget routing`);
         const declared = entry[harness === 'claude' ? 'claudeAgent' : 'opencodeAgent'];
-        const setting = harness === 'claude' ? declared.effort : declared.variantLine.split(': ')[1];
-        assert.equal(tier, `${declared.model}|${setting}`,
-          `${harness} ${name} must use its declared worker tunables`);
+        if (harness === 'claude') {
+          assert.equal(tier, `${declared.model}|${declared.effort}`,
+            `${harness} ${name} must use its declared worker tunables`);
+        } else {
+          assert.equal(tier, `${declared.model}${declared.variantLine}`,
+            `${harness} ${name} must use its declared single-line model with variant suffix`);
+          assert.doesNotMatch(textOf(name), /^variant:/m,
+            `${harness} ${name} must not carry a separate variant line`);
+        }
       }
     } finally {
       fs.rmSync(base, { recursive: true, force: true });

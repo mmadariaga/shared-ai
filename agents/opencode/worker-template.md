@@ -1,8 +1,7 @@
 ---
 description: {{description}}
 mode: subagent
-model: {{model}}
-{{variantLine}}
+model: {{model}}{{variantLine}}
 permission:
   task:
     "*": deny

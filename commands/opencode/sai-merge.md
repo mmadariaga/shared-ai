@@ -1,7 +1,6 @@
 ---
 description: Merge, rebase, or squash-rebase a local branch — resolves conflicts under one confirmed strategy, repairs ADR/DDR number collisions, and commits only after you authorize it.
-model: opencode-go/muse-spark-1.3-contributor
-variant: xhigh
+model: opencode-go/muse-spark-1.3-contributor#xhigh
 ---
 Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.
 Fetch @sai/adapters/opencode/boot.md and follow it.
