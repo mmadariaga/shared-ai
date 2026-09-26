@@ -16,24 +16,24 @@
     "variant": "xhigh"
   },
   "worker:sai-direct-build-worker": {
-    "model": "opencode-go/muse-spark-1.3-contributor",
-    "variant": "xhigh"
+    "model": "opencode-go/deepseek-v4.1-flash",
+    "variant": "max"
   },
   "command:sai-1-spec": {
     "model": "opencode-go/muse-spark-1.3-contributor",
     "variant": "xhigh"
   },
   "worker:sai-1-spec-proposal-worker": {
-    "model": "opencode-go/muse-spark-1.3-contributor",
-    "variant": "xhigh"
+    "model": "opencode-go/deepseek-v4.1-flash",
+    "variant": "max"
   },
   "command:sai-2-design": {
     "model": "opencode-go/muse-spark-1.3-contributor",
     "variant": "xhigh"
   },
   "worker:sai-2-design-worker": {
-    "model": "opencode-go/muse-spark-1.3-contributor",
-    "variant": "xhigh"
+    "model": "opencode-go/deepseek-v4.1-flash",
+    "variant": "max"
   },
   "command:sai-build": {
     "model": "opencode-go/muse-spark-1.3-contributor",
@@ -44,20 +44,20 @@
     "variant": "xhigh"
   },
   "worker:sai-3-implementation-worker": {
-    "model": "opencode-go/muse-spark-1.3-contributor",
-    "variant": "high"
+    "model": "opencode-go/deepseek-v4.1-flash",
+    "variant": "max"
   },
   "command:sai-4-apply": {
     "model": "opencode-go/muse-spark-1.3-contributor",
     "variant": "xhigh"
   },
   "worker:sai-4-red-worker": {
-    "model": "opencode-go/muse-spark-1.3-contributor",
-    "variant": "high"
+    "model": "opencode-go/deepseek-v4.1-flash",
+    "variant": "max"
   },
   "worker:sai-4-green-worker": {
-    "model": "opencode-go/muse-spark-1.3-contributor",
-    "variant": "high"
+    "model": "opencode-go/deepseek-v4.1-flash",
+    "variant": "max"
   },
   "command:sai-review": {
     "model": "opencode-go/muse-spark-1.3-contributor",
@@ -84,7 +84,7 @@
     "variant": "xhigh"
   },
   "worker:sai-7-performance-worker": {
-    "model": "opencode-go/glm-5.3-flash",
+    "model": "opencode-go/deepseek-v4.1-flash",
     "variant": "max"
   },
   "command:sai-8-accessibility": {
@@ -92,7 +92,7 @@
     "variant": "xhigh"
   },
   "worker:sai-8-accessibility-worker": {
-    "model": "opencode-go/glm-5.3-flash",
+    "model": "opencode-go/deepseek-v4.1-flash",
     "variant": "max"
   },
   "command:sai-backfill": {
@@ -100,8 +100,8 @@
     "variant": "xhigh"
   },
   "worker:sai-backfill-worker": {
-    "model": "opencode-go/muse-spark-1.3-contributor",
-    "variant": "high"
+    "model": "opencode-go/deepseek-v4.1-flash",
+    "variant": "max"
   },
   "command:sai-archive": {
     "model": "opencode-go/muse-spark-1.3-contributor",
@@ -116,8 +116,8 @@
     "variant": "xhigh"
   },
   "worker:sai-merge-worker": {
-    "model": "opencode-go/muse-spark-1.3-contributor",
-    "variant": "high"
+    "model": "opencode-go/deepseek-v4.1-flash",
+    "variant": "max"
   },
   "command:sai-commit": {
     "model": "opencode-go/muse-spark-1.3-contributor",
@@ -128,8 +128,8 @@
     "variant": "xhigh"
   },
   "worker:sai-review-fix-worker": {
-    "model": "opencode-go/muse-spark-1.3-contributor",
-    "variant": "high"
+    "model": "opencode-go/deepseek-v4.1-flash",
+    "variant": "max"
   },
   "utility:sai-pr": {
     "model": "opencode-go/muse-spark-1.3-contributor",
