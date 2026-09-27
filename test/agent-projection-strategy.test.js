@@ -291,10 +291,10 @@ test('apply agents resolve their own per-harness budget-tier matrix configuratio
           assert.equal(tier, `${declared.model}|${declared.effort}`,
             `${harness} ${name} must use its declared worker tunables`);
         } else {
-          assert.equal(tier, `${declared.model}${declared.variantLine}`,
-            `${harness} ${name} must use its declared single-line model with variant suffix`);
-          assert.doesNotMatch(textOf(name), /^variant:/m,
-            `${harness} ${name} must not carry a separate variant line`);
+          assert.equal(tier, declared.model,
+            `${harness} ${name} must use its declared bare model`);
+          assert.match(textOf(name), new RegExp(`^variant: ${declared.variant}$`, 'm'),
+            `${harness} ${name} must carry its declared variant separately`);
         }
       }
     } finally {
@@ -305,4 +305,69 @@ test('apply agents resolve their own per-harness budget-tier matrix configuratio
     'the RED apply agent must resolve its own harness budget tier with no universal pinned model identifier');
   assert.notEqual(applyTiers['claude/sai-4-green-worker'], applyTiers['opencode/sai-4-green-worker'],
     'the GREEN apply agent must resolve its own harness budget tier with no universal pinned model identifier');
+});
+
+test('OpenCode worker generation omits optional variant without changing Claude worker generation', () => {
+  const { defineWorkerMatrix, materializeWorkerMatrix } = require('../bin/worker-matrix.js');
+  const manifest = loadInstallManifest(path.join(__dirname, '..'));
+  const entries = structuredClone(manifest['worker-matrix'].entries);
+  const worker = entries.find(entry => entry.workerName === 'sai-4-red-worker');
+  delete worker.opencodeAgent.variant;
+  const templates = {
+    claudeBinding: '{{canonicalFetch}}', opencodeBinding: '{{canonicalFetch}}',
+    claudeAgent: 'model: {{model}}\neffort: {{effort}}',
+    opencodeAgent: fs.readFileSync(path.join(__dirname, '..', 'agents/opencode/worker-template.md'), 'utf8'),
+  };
+  const outputs = materializeWorkerMatrix(defineWorkerMatrix(entries), templates);
+  const generated = outputs.find(item => item.kind === 'agent' && item.harness === 'opencode'
+    && item.workerName === worker.workerName).text;
+  assert.match(generated, /^model: opencode-go\/deepseek-v4\.1-flash$/m);
+  assert.doesNotMatch(generated, /^variant:/m);
+  assert.match(generated, /^permission:$/m);
+  const claude = outputs.find(item => item.kind === 'agent' && item.harness === 'claude'
+    && item.workerName === worker.workerName).text;
+  assert.match(claude, /^model: sonnet\neffort: medium$/m);
+});
+
+test('fresh OpenCode install separates every managed agent model from its variant', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-agent-separate-model-'));
+  try {
+    installOpencode(root);
+    const manifest = loadInstallManifest(path.join(__dirname, '..'));
+    const expected = manifest['worker-matrix'].entries.map(entry => ({
+      name: entry.workerName,
+      model: entry.opencodeAgent.model,
+      variant: entry.opencodeAgent.variant,
+    }));
+    expected.push(...['budget', 'executor', 'explore'].map(name => ({
+      name, model: 'opencode/muse-spark-1.3-contributor-free', variant: 'xhigh',
+    })));
+    for (const { name, model, variant } of expected) {
+      const text = fs.readFileSync(path.join(root, 'agents', `${name}.md`), 'utf8');
+      assert.match(text, new RegExp(`^model: ${model.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'm'));
+      assert.match(text, new RegExp(`^variant: ${variant}$`, 'm'));
+      assert.doesNotMatch(text, /^model:.*#/m);
+    }
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('installing global OpenCode agents leaves existing project-local agent definitions untouched', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-agent-local-preservation-'));
+  const priorCwd = process.cwd();
+  const project = path.join(root, 'project');
+  const local = path.join(project, '.opencode', 'agents', 'explore.md');
+  const legacy = Buffer.from('---\nmode: subagent\nmodel: custom/provider#high\n---\n\nLocal instructions.\n');
+  try {
+    fs.mkdirSync(path.dirname(local), { recursive: true });
+    fs.writeFileSync(local, legacy);
+    process.chdir(project);
+    installOpencode(path.join(root, 'global-opencode'));
+    assert.deepEqual(fs.readFileSync(local), legacy,
+      'global installation must not migrate existing project-local agent definitions');
+  } finally {
+    process.chdir(priorCwd);
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });

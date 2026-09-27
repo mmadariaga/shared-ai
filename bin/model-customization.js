@@ -252,15 +252,40 @@ function splitFrontmatter(text) {
   return { lines, endIndex, lineEnding, trailingLineEnding };
 }
 
-function patchFrontmatter(text, tunableKeys, settings) {
+function patchFrontmatter(text, tunableKeys, settings, { separateVariant = false } = {}) {
   const split = splitFrontmatter(text);
   if (split === null) return null;
 
-  // Opencode markdown uses a single-line `model: <provider>/<model>#<variant>`
-  // with no `variant:` line. The reader accepts the legacy separated form for
-  // migration, but the writer always emits the new single-line form and removes
-  // residual `variant:` lines. A model without variant renders as bare
-  // `model: <id>` with no `#` suffix. Claude keeps separate `model`/`effort` lines.
+  // OpenCode commands keep their combined model#variant frontmatter. Agents
+  // use separate model and variant fields; both accept legacy combined input.
+  if (tunableKeys.includes('variant') && separateVariant) {
+    const rawModel = settings.model === undefined ? undefined : String(settings.model);
+    const hashIndex = rawModel === undefined ? -1 : rawModel.indexOf('#');
+    const model = hashIndex === -1 ? rawModel : rawModel.slice(0, hashIndex);
+    const variant = settings.variant !== undefined && settings.variant !== ''
+      ? String(settings.variant)
+      : hashIndex === -1 ? undefined : rawModel.slice(hashIndex + 1) || undefined;
+    const kept = [];
+    let wroteModel = false;
+    for (const line of split.lines.slice(1, split.endIndex)) {
+      const match = TOP_LEVEL_SCALAR.exec(line);
+      if (match && match[1] === 'variant') continue;
+      if (match && match[1] === 'model') {
+        if (wroteModel) continue;
+        kept.push(`model: ${model === undefined ? match[2].trim().split('#')[0] : model}`);
+        if (variant) kept.push(`variant: ${variant}`);
+        wroteModel = true;
+      } else {
+        kept.push(line);
+      }
+    }
+    if (!wroteModel && model !== undefined) {
+      kept.push(`model: ${model}`);
+      if (variant) kept.push(`variant: ${variant}`);
+    }
+    return [split.lines[0], ...kept, ...split.lines.slice(split.endIndex)]
+      .join(split.lineEnding) + (split.trailingLineEnding ? split.lineEnding : '');
+  }
   if (tunableKeys.includes('variant')) {
     const selectedModelRaw = settings['model'] !== undefined ? String(settings['model']) : undefined;
     const selectedVariantRaw = settings['variant'] !== undefined ? String(settings['variant']) : undefined;
@@ -430,7 +455,9 @@ function materializeLocalOverride({
     );
   }
 
-  const patchedText = patchFrontmatter(currentText, tunableKeys, settings);
+  const patchedText = patchFrontmatter(currentText, tunableKeys, settings, {
+    separateVariant: harness === 'opencode' && familyDirectory === 'agents',
+  });
   if (patchedText === null) {
     return materializationFailure(agentName, `Target ${agentName} has no valid frontmatter block.`);
   }
@@ -482,8 +509,8 @@ function readFrontmatterSettings(filePath, harness) {
       const tuning = values['effort'];
       return `anthropic/${values.model}${tuning ? ` (${tuning})` : ''}`;
     }
-    // Opencode: single-line `model: <id>#<variant>` is the canonical form;
-    // the legacy separated `variant:` line is accepted for migration.
+    // OpenCode agents use separate fields; commands use a combined model value.
+    // Read both shapes to show the effective setting of older local overrides.
     let baseModel = values.model;
     let variant;
     const hashIndex = baseModel.indexOf('#');

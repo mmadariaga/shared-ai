@@ -299,7 +299,11 @@ function materializeWorkerMatrix(matrix, templates) {
         workerName: entry.workerName,
         destinationName: `${entry.workerName}.md`,
         templateName: 'opencodeAgent',
-        text: renderWorkerTemplate(templates.opencodeAgent, { ...common, ...entry.opencodeAgent }),
+        text: renderWorkerTemplate(templates.opencodeAgent, {
+          ...common,
+          ...entry.opencodeAgent,
+          variantLine: entry.opencodeAgent.variant ? `variant: ${entry.opencodeAgent.variant}` : '',
+        }),
       },
     ];
   });

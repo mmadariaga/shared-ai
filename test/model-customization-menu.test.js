@@ -636,11 +636,11 @@ test('opencode createLocalOverride persists a selected variant through the adapt
     assert.equal(result.agent, PERSIST_OPENCODE_AGENT);
     assert.match(
       fs.readFileSync(result.destination, 'utf8'),
-      /model: opencode-go\/glm-5\.2#high/
+      /^model: opencode-go\/glm-5\.2$/m
     );
-    assert.doesNotMatch(
+    assert.match(
       fs.readFileSync(result.destination, 'utf8'),
-      /^variant:/m
+      /^variant: high$/m
     );
   } finally {
     fs.rmSync(fixture.root, { recursive: true, force: true });

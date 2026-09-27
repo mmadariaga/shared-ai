@@ -228,7 +228,7 @@ If something looks off after install or setup, run a read-only health check — 
 
 ## Post Install
 
-`npx github:mmadariaga/shared-ai setup` ends with an interactive **Customize models** menu. It walks provider → model → variant per target and writes project-local overrides, so you can retune a phase without editing any wrapper by hand. You can also save and load presets. The write is surgical: only the `model` line (single `model: <id>#<variant>` line on opencode, `model` + `effort` on Claude Code) changes; the rest of the file is left untouched. On opencode any available model can be selected; on Claude Code it works with Anthropic models.
+`npx github:mmadariaga/shared-ai setup` ends with an interactive **Customize models** menu. It walks provider → model → variant per target and writes project-local overrides, so you can retune a phase without editing any wrapper by hand. You can also save and load presets. The write is surgical: opencode agents use separate `model: <id>` and optional `variant: <level>` lines; opencode commands keep a single `model: <id>#<variant>` line; Claude Code uses `model` and optional `effort` lines. Other content stays untouched. On opencode any available model can be selected; on Claude Code it works with Anthropic models.
 
 ### Per project installation / override
 
@@ -243,7 +243,7 @@ Copy the canonical command or agent into your harness's folder above and edit it
 
 ### Default opencode models
 
-Shipped opencode defaults, tunable per project via the setup model menu (the single `model` line with `#variant` suffix is user-owned). You may find better alternatives for your project.
+Shipped opencode defaults, tunable per project via the setup model menu (agents use separate user-owned `model` and optional `variant` lines; command orchestrators retain their single `model` line with `#variant` suffix). You may find better alternatives for your project.
 
 ```
       TYPE          TARGET                       TASK COMPLEXITY  SETTING

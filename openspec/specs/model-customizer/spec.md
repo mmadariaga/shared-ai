@@ -7,30 +7,40 @@ TBD - created by archiving change fix-opencode-model-variant-frontmatter. Update
 
 ### Requirement: Migrating frontmatter writer
 
-The customizer and installer writers SHALL accept the legacy separated variant form on read and SHALL always emit the single-line model form on write, removing any residual variant lines.
+The customization writer MUST accept an earlier combined `model#variant` value for an OpenCode agent and MUST write the selected agent's bare `model` and optional separate `variant` lines. It MUST remove residual top-level variant lines before writing the selected variant, so the output contains at most one such line. OpenCode command customization MUST continue to write the combined model-with-variant form. Claude Code customization MUST retain its existing model and effort format.
 
 #### Scenario: Writer migrates legacy file
 
-- **WHEN** a legacy markdown file with a separate variant line is patched or spliced
-- **THEN** the result holds a single model line with the variant suffix and no variant line
+- **WHEN** an OpenCode agent with an earlier combined model value is selected for customization with a model and variant
+- **THEN** its selected local file holds a bare model line and exactly one separate variant line, with no variant suffix in the model
+
+#### Scenario: Command writer retains its format
+
+- **WHEN** an OpenCode command is selected for customization with a model and variant
+- **THEN** its model line retains the combined model-with-variant form rather than gaining a separate variant line
 
 ### Requirement: Migrating frontmatter reader
 
-The settings readers SHALL parse the canonical single-line model suffix form and SHALL fall back to the legacy separated variant line during migration, splitting the suffix back into the logical model and variant pair for preset JSON.
+The customization settings reader MUST interpret both earlier combined `model#variant` values and separate `model` and `variant` lines as a logical model and variant selection. It MUST preserve the selected values when reporting the effective setting.
 
 #### Scenario: Reader accepts both shapes
 
-- **WHEN** frontmatter in either the single-line or legacy separated shape is read
-- **THEN** the resolved logical model and variant match the declared selection
+- **WHEN** the customizer reads an OpenCode agent with either a combined model value or separate model and variant fields
+- **THEN** it resolves the intended model and variant values for the effective setting
 
 ### Requirement: Bare model for variant-less selection
 
-A selection without a variant SHALL be written as a bare model line with no suffix and no variant line.
+An OpenCode agent customization that selects no variant MUST write a bare model line without a suffix and MUST remove any previous top-level variant line. OpenCode commands without a variant MUST retain their existing bare-model behavior.
 
 #### Scenario: Variant-less write stays bare
 
-- **WHEN** a model without a variant is persisted to markdown
+- **WHEN** a model without a variant is persisted to an OpenCode agent or command markdown file
 - **THEN** the file holds a bare model line with no suffix and no variant line
+
+#### Scenario: Variant-less agent write removes an earlier variant
+
+- **WHEN** an OpenCode agent with an existing variant is customized with a model and no selected variant
+- **THEN** its selected local file contains the new bare model and no top-level variant line
 
 ### Requirement: Tunable identity across shapes
 

@@ -32,15 +32,23 @@ When a selected agent has no project-local destination, the adapter MUST create 
 - **THEN** the adapter SHALL still create the project-local agent file
 
 ### Requirement: Existing local content is user-owned
-When a selected project-local agent already exists, the adapter MUST preserve its body and every non-tunable frontmatter line exactly, changing only the selected harness tunable lines. If a selected tunable carries a value and is absent, the adapter MUST add its top-level frontmatter line; for Claude Code, an absent selected `effort` means the adapter MUST remove any existing top-level `effort` line. An opencode `variant` remains optional and SHALL be absent when no variant is selected. The adapter MUST NOT replace the existing local file wholesale with the installed source.
+
+When a selected project-local agent already exists, the adapter MUST preserve its body and every non-tunable frontmatter line exactly, changing only the selected harness tunable lines. If a selected tunable has a value and is absent, the adapter MUST add its top-level frontmatter line. For Claude Code, an absent selected `effort` MUST remove any existing top-level `effort` line. For OpenCode agents, the adapter MUST accept an earlier combined `model#variant` value, write the selected bare model and at most one separate variant line, and omit that line when no variant is selected. The adapter MUST NOT replace the existing local file wholesale with the installed source.
 
 #### Scenario: Existing Claude Code customization preserves local prompt content
+
 - **WHEN** an existing Claude Code agent contains project-specific body text or non-tunable frontmatter and the selected settings are `{ model: 'haiku' }`
-- **THEN** the adapter SHALL retain those bytes, change the top-level `model` to `haiku`, remove the top-level `effort` line if present, and make no other content change
+- **THEN** the adapter retains that content, changes the top-level `model` to `haiku`, removes the top-level `effort` line if present, and makes no other content change
 
 #### Scenario: Existing opencode customization preserves local permissions
-- **WHEN** an existing opencode agent contains project-specific body text or a non-tunable frontmatter block such as `permission`
-- **THEN** the adapter SHALL retain that content and SHALL change only the top-level `model` and `variant` values
+
+- **WHEN** an existing OpenCode agent contains project-specific body text or a non-tunable frontmatter block such as `permission`
+- **THEN** the adapter retains that content and changes only the top-level `model` and optional `variant` values, using separate lines
+
+#### Scenario: Selected legacy agent is rewritten without replacing its body
+
+- **WHEN** a user selects an existing OpenCode agent with a combined `model#variant` value for customization
+- **THEN** the selected local file contains the newly selected bare model and optional separate variant while retaining its body and non-tunable frontmatter
 
 ### Requirement: Harness tunables are mapped independently
 The Claude Code adapter MUST persist the selected `model` and optional `effort` tunables for a Claude Code agent. When `effort` is selected, it MUST persist the selected top-level `effort` value; when no effort is selected, it MUST omit the top-level `effort` line. The opencode adapter MUST persist the selected `model` and optional `variant` tunables for an opencode agent. Neither adapter SHALL rewrite a non-tunable frontmatter key, body content, or the other harness's tunable vocabulary.
@@ -73,15 +81,23 @@ When a selected agent has no project-local destination and its installed global 
 - **THEN** the adapter SHALL update the selected tunables in the existing local file while preserving its body and non-tunable frontmatter
 
 ### Requirement: Selection and cancellation constrain writes
-The customization flow MUST write only selected agents for the selected harness. An empty selection, cancellation, or non-TTY setup run MUST perform no project-local agent writes. Customization MUST NOT modify installed global agents, `opencode.json`, `opencode.jsonc`, or any unrelated project file, and MUST NOT delete an existing project-local agent.
+
+The customization flow MUST write only selected agents for the selected harness. An empty selection, cancellation, or non-TTY setup run MUST perform no project-local agent writes. Customization MUST NOT modify installed global agents, `opencode.json`, `opencode.jsonc`, or any unrelated project file, and MUST NOT delete an existing project-local agent. Installation MUST NOT automatically rewrite project-local `.opencode/agents/` definitions, including definitions with earlier combined model values.
 
 #### Scenario: Narrowed selection writes only selected agents
+
 - **WHEN** the user confirms a subset of the displayed agents
-- **THEN** the adapter SHALL materialize or update exactly that subset and SHALL leave every unselected agent unchanged
+- **THEN** the adapter materializes or updates exactly that subset and leaves every unselected agent unchanged
 
 #### Scenario: Cancellation performs no writes
+
 - **WHEN** the user cancels at any customization surface before completion
-- **THEN** the flow SHALL complete normally without creating, modifying, or deleting any project-local agent file
+- **THEN** the flow completes normally without creating, modifying, or deleting any project-local agent file
+
+#### Scenario: Global installation does not migrate local agents
+
+- **WHEN** global OpenCode agents are installed while a project-local agent contains an earlier combined model value
+- **THEN** that project-local agent remains unchanged until the user selects it for customization
 
 ### Requirement: Repeated customization updates the existing override
 On a later customization run, the adapter MUST reuse the existing project-local agent file and apply newly selected harness tunables without re-cloning the global body or non-tunable frontmatter. Repeating the same selection and settings MUST be idempotent for the project-local agent content.
