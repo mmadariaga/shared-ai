@@ -47,9 +47,11 @@ function spliceTunables(sourceText, destinationText, tunableKeys) {
   const split = splitFrontmatter(sourceText);
   if (!split) return sourceText;
   if (!splitFrontmatter(destinationText)) return sourceText;
-  // Opencode markdown uses a single-line `model: <id>#<variant>` with no
-  // `variant:` line. Preserve the destination's combined model line and drop
-  // any residual `variant:` lines so a reinstall migrates legacy files.
+  // Opencode agents use separate `model:` and optional `variant:` lines;
+  // opencode commands keep a single-line `model: <id>#<variant>`.
+  // This (currently unused) helper preserves the destination's tunable
+  // lines in the command single-line shape and drops any residual
+  // `variant:` lines so a reinstall migrates legacy command files.
   if (tunableKeys.includes('variant')) {
     const destValues = extractTunableValues(destinationText, tunableKeys);
     const destModelRaw = destValues.get('model');
@@ -126,8 +128,8 @@ function spliceTunables(sourceText, destinationText, tunableKeys) {
 }
 
 function stripTunableLines(bytes, tunableKeys) {
-  // Strips both `model:` (including the canonical single-line
-  // `model: <id>#<variant>`) and legacy `variant:` lines so body-identity
+  // Strips `model:` (including the command single-line
+  // `model: <id>#<variant>`) and `variant:` lines so body-identity
   // comparison ignores tunables in either physical shape during migration.
   const text = bytes.toString('utf8');
   const split = splitFrontmatter(text);

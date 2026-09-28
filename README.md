@@ -12,13 +12,18 @@ Works great on **opencode v2** with an **opencode-go** subscription + any fronti
 
 Spec-driven: agree on purpose and acceptance criteria before development. For urgent or small changes that start in code, **`/sai-backfill`** can reconstruct the specification afterward.
 
-Structured as a framework, closer to Superpowers than to Matt Pocock-style skills: no loose tips, but still quite flexible.
+Structured as a flexible framework rather than a collection of standalone skills (such as Matt Pocock's).
 
-Try it with the command below:
+Install the commands globally, then set up each project:
 
 ```bash
-npx github:mmadariaga/shared-ai
+# 1. Install shared-AI commands globally
+npx --allow-git=all github:mmadariaga/shared-ai
+# 2. In each project where you want to use shared-AI:
+npx github:mmadariaga/shared-ai setup /path/to/your/project
 ```
+
+In the configured project, start with `/sai-explore`. See [Installation](#installation) for details.
 
 ## Index
 
@@ -31,7 +36,10 @@ npx github:mmadariaga/shared-ai
 - [Cost-Effective Strategies](#cost-effective-strategies)
 - [Project highlights](#project-highlights)
 - [Installation](#installation)
+- [Post Install](#post-install)
 - [Model defaults](#default-opencode-models)
+- [Third Party Tools](#third-party-tools)
+- [Uninstall](#uninstall)
 
 ## Why use this
 
@@ -45,23 +53,20 @@ npx github:mmadariaga/shared-ai
 
 - Each task runs on the cheapest model that can do the job. A CLI tool lets you customize models and effort levels for each project.
 - The YAGNI philosophy (You Aren't Gonna Need It) focuses work on what the change actually requires, so tokens aren't wasted on unnecessary scope.
-- When CodeGraph is available, structural queries use the code graph instead of scanning the tree.
+- For codebase research, the research agent prefers CodeGraph for structural questions and `git grep` for text searches, reading specific files directly when needed.
 - Framework advantage: SAI already writes specs, ADRs, and DDRs and maintains their indexes, so research counts on it and knows where to start.
 
 **Testing is not optional.**
 
 - Documentation can say something is done; tests demonstrate it. There is no better documentation.
-- The workflow enforces RED → GREEN.
-- Test assertions are defined during design, and tests are written before production code is applied.
-- Different agents own the tests and the implementation, producing higher-quality tests through independent perspectives.
-- The implementation agent cannot modify the tests, preventing it from weakening assertions or otherwise cheating to make them pass.
-- In the more interactive strategies, behavior that cannot be covered automatically — visual behavior and end-to-end flows — becomes an explicit verification request at the earliest point where you can observe it.
+- The workflow enforces RED → GREEN: test assertions are defined beforehand during design, tests are written first, and production code follows.
+- Different agents own the tests and the implementation: the implementation agent cannot weaken, rewrite, or delete a failing test just to make the suite pass. It has to fix the code instead — no moving the goalposts.
+- When tests cannot check something, such as visual or end-to-end behavior, SAI asks you to verify it as soon as you can see it working — or defers the check if you choose an unattended implementation.
 
 **Adversarial review out of the box.**
 
-- A dedicated review pass checks the change for bugs, weak tests, maintainability, and resilience.
-- Security, performance, and accessibility audits run when the diff warrants them.
-- Reuses agents that already understand the change — more effective and much cheaper than spawning new reviewers from scratch.
+- Because the workflow starts by refining the idea with `/sai-explore`, that same agent uses its context to adversarially review what comes next: the planning artifacts on the planned route, or the implementation on the Direct Build route.
+- After implementation, dedicated commands offer a deeper review focused on bugs, weak tests, maintainability, and resilience, plus security, performance, and accessibility audits. Run `/sai-review` to coordinate the review process.
 
 ## How to use it
 
@@ -75,8 +80,7 @@ npx github:mmadariaga/shared-ai
 /sai-build <change-name>          # implement → apply in one run
 
 /sai-review <change-name>         # review bugs, resilience, maintainability, and test quality;
-                                  # then run security, performance, and accessibility audits
-                                  # when review triage recommends them
+                                  # coordinate security, performance, and accessibility audits
 
 # If review findings need fixes, run sai-build again, then repeat review
 
@@ -98,34 +102,30 @@ When `/sai-explore` finishes crystallizing an idea it presents three routes. Not
 | Option | What happens |
 |--------|--------------|
 | **Plan - Unattended** | Runs `/sai-1-spec` and `/sai-2-design` back to back. After each phase, `/sai-explore` uses the change context it already holds to run an automatic agent-to-agent feedback loop: it reviews the worker's output and sends corrections back to the same worker. It then stops for your final pre-implementation review. Bounded auto-answering handles routine worker questions; anything ambiguous escalates to you, and every auto-answer is announced inline. This path and the commands that follow it provide the most technically rigorous workflow, but also consume the most tokens. |
-| **Direct Build - Unattended** | Code first, specs after: implements the change directly, then the main agent runs a bounded adversarial review-and-fix loop. It reconstructs `proposal.md` and the capability specs from both the diff and the previous discussion about the change in `/sai-explore`, validates them against the schema, and archives with one pre-authorized local commit. Never pushes. Ideal for fixes and simple changes. |
-| **Manual** | Dispatches nothing. Hands you the `Ready to Propose` block to paste into a new chat with `/sai-1-spec`. Full control. |
+| **Direct Build - Unattended** | Code first, specs after: implements the change directly, then the main agent runs a bounded adversarial review-and-fix loop. It reconstructs `proposal.md` and the capability specs from both the diff and the previous discussion about the change in `/sai-explore`. Ideal for fixes and simple changes. |
+| **Manual** | Dispatches nothing. Hands you the `Ready to Propose` block to paste into a new chat with `/sai-1-spec`. Full control over every command — see [docs/sequential-pipeline.md](docs/sequential-pipeline.md). |
 
 If the idea was sliced, the selector reappears after each slice completes — a per-slice authorization gate rather than one blanket approval.
-
-Taking manual control? Run the numbered commands step by step — full reference in [docs/sequential-pipeline.md](docs/sequential-pipeline.md).
 
 ## Main commands
 
 | Command | Role | Output |
 |---------|------|--------|
 | `/sai-explore` | Discover, crystallize, and choose an implementation route | Ready-to-propose plan or completed Direct Build |
-| `/sai-build` | Chain `sai-3-implement` → `sai-4-apply` | Implementation plan and code |
-| `/sai-review` | Chain `sai-5-review` → audits selected by triage | `review.md` and applicable audit reports |
+| `/sai-build` | Chain `sai-3-implement` → `sai-4-apply` | Tests and production code |
+| `/sai-review` | Coordinate code review and specialized audits | `review.md` and audit reports (`security.md`, `performance.md`, `accessibility.md`) |
 | `/sai-archive` | Sync specs and archive the completed change | Archived change and optional local commit |
 
 The core planning, build, and review phases are also exposed as eight numbered commands — full reference in [docs/sequential-pipeline.md](docs/sequential-pipeline.md). Review audit triage lives in [docs/review-triage.md](docs/review-triage.md).
-
-Claude Code and opencode route these core phases through a coordinator and a managed worker. In the spec phase, the worker creates only the proposal and capability specs (plus permitted glossary updates); later phases own design and implementation artifacts.
 
 ## Utility commands
 
 | Command | Purpose |
 |---------|---------|
-| `/sai-retire-docs` | Read-only, index-driven analysis of active ADRs, DDRs, and related specs. Asks for explicit per-candidate confirmation before any archival move. |
+| `/sai-merge` | Integrate a local branch into the current branch with `Merge`, `Rebase`, or `Rebase with squash` — conflict resolution, ADR/DDR collision repair, and explicit final authorization. |
+| `/sai-worktree` | Interactive git worktree manager — inventory, create, and delete linked worktrees. Attempts to initialize CodeGraph in new worktrees when available. |
 | `/sai-status` | Read-only progress panel — single change or table over every active change. Never writes anything. |
-| `/sai-worktree` | Interactive git worktree manager — inventory, create, and delete linked worktrees. No OpenSpec prerequisites. |
-| `/sai-merge` | Integrate a local branch into the current branch with `Merge`, `Rebase`, or `Rebase with squash` — conflict resolution, ADR/DDR collision repair, and explicit final authorization. No OpenSpec prerequisites. |
+| `/sai-retire-docs` | Read-only, index-driven analysis of active ADRs, DDRs, and related specs. Asks for explicit per-candidate confirmation before any archival move. |
 
 Full unnumbered reference in [docs/on-demand-commands.md](docs/on-demand-commands.md).
 
@@ -135,55 +135,35 @@ Every phase in this pipeline is optimized to minimize token consumption without 
 
 ### Token-Efficient Languages
 
-All agents think and reason internally in English, regardless of the user's input language. English tokenizers produce fewer tokens per unit of meaning than most other languages [—non-English languages can cost 2–3× more tokens for the same meaning](https://x.com/arankomatsuzaki/status/2049125048792006965). This keeps reasoning efficient while user-facing chat always responds in the user's own language (Spanish, French, German, etc.). Generated artifacts (`proposal.md`, `design.md`, `implementation.md`, `review.md`, code, commit messages, PRs) are written in English unless the user explicitly requests another language.
+Agents reason internally in English to reduce token costs, but respond to you in your language. Generated documents and code default to English unless you request another language.
 
 ### Task-Matched Model Selection
-Coordinators and workers can use different models: coordinators handle routing and gates, while managed workers perform the technical work. Defaults balance reasoning quality and cost by role, and every installed agent's model tuning remains user-owned. See the [default opencode models](#default-opencode-models) below.
+SAI uses different models for different kinds of work, balancing quality and cost. You can customize them per project during setup; see the [default opencode models](#default-opencode-models).
 
 ### Explore Sub-Agent
-Research or exploratory tasks are delegated to **sub-agents running cost-effective models** matched to the subtask complexity. By default, sub-agents do not inherit the main session's token window, keeping costs predictable. Each subagent call declares an **output contract** (exact fields, length cap, no raw content) so only distilled signal enters the main context. The main agent never calls WebFetch directly — all external doc lookups go through the cheap explore subagent. Caps: ≤8 research-subagent invocations per audit; in audit mode, ≤15 main-agent reads + ≤30 main-agent `Grep`/`Glob` calls per pass.
-
-In Claude Code, the explorer is a single tier with a **30 tool-call maximum** per spawn, its model selected by the matching `budget-explorer.md` agent file, and multi-step synthesis retained by the main agent. Opencode keeps its own mechanism — the `explore` keyword binding with the model from the explore agent file.
-
-> On I/O-heavy spec tasks — codebase-wide searches, deprecated library audits, doc lookups — this technique can cut costs to a third.
-
-Available as skills for Claude Code and opencode.
+Research and documentation lookup can run on lower-cost agents that return concise findings instead of filling the main conversation with raw material. This keeps the focus on decisions while reducing cost.
 
 ### Executor Sub-Agent
 
-Verbose shell commands (tests, builds, lints) are delegated to the **executor sub-agent** (running a cheap model). The executor runs the exact command as instructed — no retrying, no workarounds — and returns a structured failure report (exit code + key reason + file:line). This prevents the main agent from wasting tokens on verbose build logs or test output. Available as skills for Claude Code and opencode.
+A lower-cost agent can run tests, builds, and linters and report the result briefly, without flooding the main conversation with logs.
 
 ### Budget Sub-Agent
 
-General-purpose task delegation (file reads, searches, writes, code analysis) is handed off to the **budget sub-agent** (running a cheap model). The budget sub-agent executes exactly one task, returns a structured completion report (`status` / `actions_taken` / `failures`), and aborts on permission blocks rather than waiting. A soft ~30-call cap prevents scope drift on multi-step work. Available as skills for Claude Code and opencode — full reference in [docs/skills.md](docs/skills.md).
+Small, well-scoped tasks can go to a lower-cost agent while the main agent handles decisions and synthesis. See [docs/skills.md](docs/skills.md).
 
 ## Project highlights
 
 ### Spec-Driven Development
-The change artifacts are the source of truth for the entire pipeline: `proposal.md` + `specs/**` (from `/sai-1-spec`) capture goals and acceptance criteria; `design.md` captures technical constraints and trade-offs, while `tasks.md` lists the concrete atomic work to do; `interfaces.md` defines the exact public signatures and per-step test assertions; and `implementation.md` is derived from all of them, with code following the plan. The trio of `/sai-1-spec` → `/sai-2-design` → `/sai-3-implement` guarantees every line of generated code is grounded in an explicit contract — no *vibe coding*. This is Spec-Driven Development.
+Alongside code and tests, SAI records each change's purpose and acceptance criteria. That context helps future developers and AI agents understand why the change was made, instead of leaving the reasoning only in the original requester's head.
 
 ### Built-In Code Quality
-The pipeline enforces the same practices experienced developers rely on: build only what you need now, keep each piece focused on one thing, name things so they explain themselves, reuse what already exists, favor extension over modification (the open-closed principle), and ship the smallest change that works. Testable acceptance criteria are backed by tests; behavior that needs visual or end-to-end confirmation becomes an explicit human-verification step. The result is code that's easier to read, easier to change, and easier to trust — no matter your experience level.
-
-### Independent review context
-Worker output is reviewed automatically rather than trusted as-is.
+SAI favors focused changes, clear names, and tests tied to acceptance criteria. When something cannot be checked automatically, it asks you to verify it yourself. The goal is code that's easier to understand, change, and trust.
 
 ### Multi-Pass Review
-The review agent runs eleven read-only analysis passes across the full diff: Domain Alignment, Correctness & Bugs, Security triage, Performance triage, Accessibility triage, Maintainability, Testing, Consistency with Codebase, Domain Language Consistency, Documentation & Migrations, and Resilience. A gated twelfth pass runs deterministic mutation analysis when the diff contains testable production code, the repository has tests, and a supported mutation tool is declared. Missing or failed tooling is reported explicitly; mutation results are never inferred.
+The change is checked for bugs, weak tests, maintainability, and alignment with the project's requirements. Security, performance, and accessibility audits are part of the review toolkit.
 
 ### RED → GREEN
 For every testable step, the test is written first (RED) and run against the not-yet-implemented function — so it fails because the behavior is missing, not because of a setup bug. A separate agent then writes the implementation to make the test pass (GREEN), with **no permission to modify the tests** — no cheating. The production code ends up validated against an assertion it never touched.
-
-### Deferred Human Verification
-Human checks (browser/UI behavior, visual confirmation) are deferred to the integration step where the behavior is first observable — the plan asks the user to verify parts of the feature as early as possible, not all at the end. Every deferred check appears exactly once, labeled with its origin step.
-
-### Deterministic tools, not re-derived prose
-
-Decisions that must be identical every run were moved out of prompt prose into small Node tools under `sai/tools/`, projected into both harnesses. The tool decides; the command prose asks the questions and owns the wording. That covers the OpenSpec prerequisite preflight, change-name resolution, the `/sai-status` panel and table, the `/sai-worktree` state machine, `/sai-commit` git mechanics, artifact-format linting, findings-block validation, delta-header checks, and the no-commit guard below. Each exits `0` on success, `1` on refusal, `2` on usage error, and speaks JSON.
-
-### No-commit guard
-
-Worker instructions say "never run a mutating git command", but prose is not enforcement. The guard turns the one invariant true in every project — HEAD must not move while workers run — into a filesystem check: a snapshot when a window opens and a verify before each boundary (a question to you, a git operation the coordinator runs itself, or the end of the run). Consecutive worker dispatches and continuations with no boundary between them share one window, so progress updates cost no guard calls. If HEAD moved without authorization the coordinator captures the evidence, resets back to the recorded base, prints one incident line, and continues. Exactly one flow carries permission for HEAD to move: the archive worker's pre-authorized Direct Build commit.
 
 ### ADR Proposals
 Proposes creating an ADR/DDR if all 3 criteria below are met:
@@ -191,23 +171,21 @@ Proposes creating an ADR/DDR if all 3 criteria below are met:
 2. **Surprising without context** — a future reader would wonder "why did they do it this way?"
 3. **Real trade-off** — genuine alternatives existed and one was chosen for specific reasons.
 
-### Isolation Mode
-Every command starts with zero inherited context — the boot adapter opens each invocation with a clean-session preamble, so a command reads only its instruction cards and the artifacts it needs. This prevents context pollution across phases, makes each run replicable, and enables safe model switching between phases.
+### Fresh context for each command
+Each command starts fresh and reads the project artifacts it needs instead of relying on earlier chat context. That makes runs easier to reproduce and lets you switch models between phases.
 
 ### Ubiquitous Language via GLOSSARY.md
-Domain terms are captured in a living `GLOSSARY.md` at the project root. Spec reads and appends new terms inline (no batching), Plan uses canonical terms for all new identifiers, and Review validates language consistency in the diff. This enforces a DDD-style ubiquitous language across the entire pipeline — every agent and every artifact speaks the same vocabulary.
+Project terms live in `GLOSSARY.md`. Planning reuses them in names, and review checks that new code stays consistent with the project's language.
 
 ## Installation
 
-Commands are designed as **user globals**, not per project. A single copy in the CLI's global directory makes them available in any repo. Maintained phase assets use the grouped `sai/commands/{spec,design,implement,apply}/` command-card trees; the `/sai-build` composition uses `sai/commands/meta-build/command-bootstrap.md` and `coordinator.md`.
-
-The installer projects both harnesses from `sai/install-manifest.json`, including shared `sai/policies/` and shared Orchestration Core files plus each harness's routed worker bindings. `doctor` checks the managed inventory, and `uninstall` uses the same projection rules.
+Install the commands once for Claude Code, opencode, or both; then run setup in each project you want to use. A read-only `doctor` command checks the installation, and `uninstall` removes managed files.
 
 ### npx installer
 
 ```bash
 # 1. Install shared-AI commands globally
-npx github:mmadariaga/shared-ai
+npx --allow-git=all github:mmadariaga/shared-ai
 ```
 
 Presents an interactive checklist to select Claude Code and/or opencode as targets. If you pick opencode and its CLI isn't on PATH, the installer offers to install it for you. It also offers (once, editor-agnostic) to install the **CodeGraph** CLI and wire its MCP server — see [Third Party Tools](#third-party-tools).
@@ -228,7 +206,7 @@ If something looks off after install or setup, run a read-only health check — 
 
 ## Post Install
 
-`npx github:mmadariaga/shared-ai setup` ends with an interactive **Customize models** menu. It walks provider → model → variant per target and writes project-local overrides, so you can retune a phase without editing any wrapper by hand. You can also save and load presets. The write is surgical: opencode agents use separate `model: <id>` and optional `variant: <level>` lines; opencode commands keep a single `model: <id>#<variant>` line; Claude Code uses `model` and optional `effort` lines. Other content stays untouched. On opencode any available model can be selected; on Claude Code it works with Anthropic models.
+`npx github:mmadariaga/shared-ai setup` ends with an interactive **Customize models** menu. Choose models for individual commands and agents, or save and load presets, without editing configuration files by hand. On opencode you can select any available model; Claude Code supports Anthropic models.
 
 ### Per project installation / override
 
@@ -239,74 +217,72 @@ Per-project commands and agents are still possible: a file placed in a supported
 | opencode | `.opencode/commands/` | `.opencode/agents/` |
 | Claude Code | `.claude/commands/` | `.claude/agents/` |
 
-Copy the canonical command or agent into your harness's folder above and edit its `model` field, append new instructions, invoke skills, etc. Project-local wins over user-global by filename. Just leave the shipped `Fetch @` imports untouched so the override stays compatible with future updates.
+The **Customize models** menu in `setup` creates project-local model overrides for you. You can edit those overrides to add instructions or invoke skills; just keep the original `Fetch @` imports intact so future updates remain compatible. Later model customizations preserve your other edits to these overrides.
 
 ### Default opencode models
 
-Shipped opencode defaults, tunable per project via the setup model menu (agents use separate user-owned `model` and optional `variant` lines; command orchestrators retain their single `model` line with `#variant` suffix). You may find better alternatives for your project.
+These opencode defaults were chosen for good results at reasonable cost. Feel free to use the setup model menu to replace them with models you know work better for your projects.
 
 ```
       TYPE          TARGET                       TASK COMPLEXITY  SETTING
       ────────────  ───────────────────────────  ───────────────  ─────────────────────────────────────────────────
-> [x] AGENT         budget                       ↑                opencode/muse-spark-1.3-contributor-free (high)
-  [x] AGENT         executor                     ↑                opencode/muse-spark-1.3-contributor-free (high)
-  [x] AGENT         explore                      ↑                opencode/muse-spark-1.3-contributor-free (high)
+> [x] AGENT         budget                       ↑                opencode/muse-spark-1.3-contributor-free (xhigh)
+  [x] AGENT         executor                     ↑                opencode/muse-spark-1.3-contributor-free (xhigh)
+  [x] AGENT         explore                      ↑                opencode/muse-spark-1.3-contributor-free (xhigh)
 
-  [x] ORCHESTRATOR  sai-explore                  ↑↑               opencode-go/muse-spark-1.3-contributor-free (xhigh)
-  [x] WORKER        sai-direct-build-worker      ↑↑               opencode-go/muse-spark-1.3-contributor (high)
+  [x] ORCHESTRATOR  sai-explore                  ↑↑               opencode-go/muse-spark-1.3-contributor (xhigh)
+  [x] WORKER        sai-direct-build-worker      ↑↑               opencode-go/deepseek-v4.1-flash (max)
   [x] ORCHESTRATOR  sai-1-spec                   ↑↑               opencode-go/muse-spark-1.3-contributor (xhigh)
-  [x] WORKER        sai-1-spec-proposal-worker   ↑↑               opencode-go/muse-spark-1.3-contributor (high)
+  [x] WORKER        sai-1-spec-proposal-worker   ↑↑               opencode-go/deepseek-v4.1-flash (max)
   [x] ORCHESTRATOR  sai-2-design                 ↑↑               opencode-go/muse-spark-1.3-contributor (xhigh)
-  [x] WORKER        sai-2-design-worker          ↑↑↑              opencode-go/muse-spark-1.3-contributor (high)
+  [x] WORKER        sai-2-design-worker          ↑↑↑              opencode-go/deepseek-v4.1-flash (max)
 
   [x] ORCHESTRATOR  sai-build                    ↑↑               opencode-go/muse-spark-1.3-contributor (xhigh)
   [x] ORCHESTRATOR  sai-3-implement              ↑↑               opencode-go/muse-spark-1.3-contributor (xhigh)
-  [x] WORKER        sai-3-implementation-worker  ↑↑               opencode-go/muse-spark-1.3-contributor (high)
+  [x] WORKER        sai-3-implementation-worker  ↑↑               opencode-go/deepseek-v4.1-flash (max)
   [x] ORCHESTRATOR  sai-4-apply                  ↑↑               opencode-go/muse-spark-1.3-contributor (xhigh)
-  [x] WORKER        sai-4-red-worker             ↑                opencode-go/muse-spark-1.3-contributor (high)
-  [x] WORKER        sai-4-green-worker           ↑↑               opencode-go/muse-spark-1.3-contributor (high)
+  [x] WORKER        sai-4-red-worker             ↑                opencode-go/deepseek-v4.1-flash (max)
+  [x] WORKER        sai-4-green-worker           ↑↑               opencode-go/deepseek-v4.1-flash (max)
 
   [x] ORCHESTRATOR  sai-review                   ↑↑               opencode-go/muse-spark-1.3-contributor (xhigh)
   [x] ORCHESTRATOR  sai-5-review                 ↑↑               opencode-go/muse-spark-1.3-contributor (xhigh)
   [x] WORKER        sai-5-review-worker          ↑↑               opencode-go/gpt-5.6-luna (max)
+  [x] WORKER        sai-review-fix-worker        ↑↑               opencode-go/deepseek-v4.1-flash (max)
   [x] ORCHESTRATOR  sai-6-security               ↑↑               opencode-go/muse-spark-1.3-contributor (xhigh)
   [x] WORKER        sai-6-security-worker        ↑↑↑              opencode-go/deepseek-v4.1-flash (max)
   [x] ORCHESTRATOR  sai-7-performance            ↑↑               opencode-go/muse-spark-1.3-contributor (xhigh)
-  [x] WORKER        sai-7-performance-worker     ↑↑               opencode-go/glm-5.3-flash (max)
+  [x] WORKER        sai-7-performance-worker     ↑↑               opencode-go/deepseek-v4.1-flash (max)
   [x] ORCHESTRATOR  sai-8-accessibility          ↑↑               opencode-go/muse-spark-1.3-contributor (xhigh)
-  [x] WORKER        sai-8-accessibility-worker   ↑↑               opencode-go/glm-5.3-flash (max)
+  [x] WORKER        sai-8-accessibility-worker   ↑↑               opencode-go/deepseek-v4.1-flash (max)
 
   [x] ORCHESTRATOR  sai-backfill                 ↑↑               opencode-go/muse-spark-1.3-contributor (xhigh)
-  [x] WORKER        sai-backfill-worker          ↑↑               opencode-go/muse-spark-1.3-contributor (high)
+  [x] WORKER        sai-backfill-worker          ↑↑               opencode-go/deepseek-v4.1-flash (max)
   [x] ORCHESTRATOR  sai-archive                  ↑↑               opencode-go/muse-spark-1.3-contributor (xhigh)
   [x] WORKER        sai-archive-worker           ↑                opencode-go/muse-spark-1.3-contributor (high)
   [x] ORCHESTRATOR  sai-merge                    ↑↑               opencode-go/muse-spark-1.3-contributor (xhigh)
-  [x] WORKER        sai-merge-worker             ↑↑               opencode-go/muse-spark-1.3-contributor (high)
-  [x] ORCHESTRATOR  sai-commit                   ↑                opencode/muse-spark-1.3-contributor-free (high)
-  [x] WORKER        sai-commit-worker            ↑                opencode/muse-spark-1.3-contributor-free (high)
+  [x] WORKER        sai-merge-worker             ↑↑               opencode-go/deepseek-v4.1-flash (max)
+  [x] ORCHESTRATOR  sai-commit                   ↑                opencode-go/muse-spark-1.3-contributor (xhigh)
+  [x] WORKER        sai-commit-worker            ↑                opencode-go/muse-spark-1.3-contributor (xhigh)
+  [x] ORCHESTRATOR  sai-pr                       ↑                opencode-go/muse-spark-1.3-contributor (xhigh)
 
-  [x] UTILITY       sai-retire-docs              ↑↑               opencode/muse-spark-1.3-contributor-free (high)
-  [x] UTILITY       sai-status                   ↑                opencode/muse-spark-1.3-contributor-free (high)
-  [x] UTILITY       sai-worktree                 ↑                opencode/muse-spark-1.3-contributor-free (high)
+  [x] UTILITY       sai-worktree                 ↑                opencode-go/muse-spark-1.3-contributor (xhigh)
+  [x] UTILITY       sai-status                   ↑                opencode-go/muse-spark-1.3-contributor (xhigh)
+  [x] UTILITY       sai-retire-docs              ↑↑               opencode-go/muse-spark-1.3-contributor (xhigh)
 ```
 
 ### Example presets
 
-The installer ships four opencode example presets to `~/.config/opencode/sai/presets/` (harness segment stripped). They install copy-if-absent: a missing file is copied once, an existing file is left intact with no merge, overwrite, or content validation.
+The installer includes four example presets for opencode and one for Claude Code.
 
-The installer ships one Claude example preset to `~/.claude/sai/presets/` (harness segment stripped) with the same copy-if-absent behavior.
+| Preset | Model mix |
+|--------|-----------|
+| `Go.json` | OpenCode Go models throughout: Muse Spark for commands and helper subagents, DeepSeek Flash for most workers, and GPT Luna for the review worker. |
+| `Go+Zen.json` | Same as `Go.json`, with free `opencode` models for the `budget`, `executor`, and `explore` subagents. |
+| `oAI-LUNA+Zen.json` | OpenAI Luna models for most commands and workers, with free `opencode` models for the `budget`, `executor`, and `explore` subagents. |
+| `oAI-SOL+Zen.json` | Same as `oAI-LUNA+Zen.json`, with GPT-6 Sol for `/sai-explore`. |
+| `OPUS.json` | Claude Code: Opus for most commands and workers, Sonnet for selected roles, and Haiku/Sonnet for the budget subagents. |
 
-| Preset | Use when |
-|--------|----------|
-| `Go.json` | All coordinators and workers on `opencode-go/muse-spark-1.3-contributor`; keep everything on one provider. |
-| `Go+Zen.json` | Same as `Go.json`, but the `budget` / `executor` / `explore` helpers run on the free `opencode/muse-spark-1.3-contributor-free` map to cut bulk I/O cost. |
-| `oAI-LUNA+Zen.json` | Coordinators and workers on `openai/gpt-6-luna` / `gpt-5.6-luna` with free helpers; use when OpenAI is the primary provider. |
-| `oAI-SOL+Zen.json` | Same as above, but `/sai-explore` runs on `openai/gpt-6-sol`; use when you want Sol to lead exploration. |
-| `OPUS.json` | All coordinators and workers on `opus`; the `budget` helpers run on `haiku` / `sonnet` to cut bulk I/O cost. Claude-only example. |
-
-Load one with `npx github:mmadariaga/shared-ai setup` → **Customize models** → **Load preset** → **OpenCode** → preset name (without `.json`; names containing `+` are literal).
-
-Load the Claude example with `npx github:mmadariaga/shared-ai setup` → **Customize models** → **Load preset** → **Claude Code** → `OPUS` (without `.json`).
+Load a preset with `npx github:mmadariaga/shared-ai setup` → **Customize models** → **Load preset** → **OpenCode** or **Claude Code** → preset name.
 
 ### Choosing your models
 
@@ -352,5 +328,3 @@ The `uninstall` command reverses the installation process:
 - opencode config merges — `opencode.json` / `opencode.jsonc` are left intact
 - Per-project `setup` artifacts — `openspec/config.yaml`, `openspec/schemas/sai-workflow/`
 - External CLIs — `openspec`, `opencode-ai`, and `@colbymchenry/codegraph` are never uninstalled
-
-**Version-skew guidance**: If you upgraded shared-AI and some files were updated, run `npx github:mmadariaga/shared-ai install` first to sync the installed files, then `npx github:mmadariaga/shared-ai uninstall` to remove them cleanly.
