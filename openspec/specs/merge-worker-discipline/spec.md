@@ -1,7 +1,7 @@
 # merge-worker-discipline Specification
 
 ## Purpose
-TBD - created by archiving change merge-worker-closed-read-list. Update Purpose after archive.
+Defines the merge worker's closed read list, its summary language before and after the working-language hand-off, and its reuse of settled read-only checks.
 ## Requirements
 ### Requirement: Merge worker closed read list
 

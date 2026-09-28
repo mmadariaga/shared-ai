@@ -13,7 +13,7 @@ inline.
   pointer delivery, feedback-gate presentation, and terminal navigation. It
   performs no technical design work and never writes phase artifacts.
 - **Worker** — owns prerequisite checks, change resolution, research, design
-  artifact generation, validation, permitted glossary changes, feedback
+  artifact generation, validation, glossary consultation, feedback
   corrections on the authorized surface, and overview lifecycle. It returns
   metadata-only lifecycle results; it never renders panels or presents the
   artifact gate.
@@ -60,7 +60,23 @@ by raw `--overview-lang` token presence. Both are exactly:
 
 ### Step-machine routing
 
-Step-pointer routing runs exclusively through the `design-standalone@1` step machine registered in `sai-state/machines/design-standalone.js`. The machine owns the step cursor and its `STAGE_FILES` mapping; this contract declares no static `step_pointer_map`.
+Step-pointer routing runs exclusively through the `design-standalone@1` step machine registered in `sai-state/machines/design-standalone.js`. The machine owns the step cursor and its `STAGE_FILES` mapping.
+
+**Variant initialization (standalone and supervised).** Before dispatch, the
+coordinator derives the boolean `withOverview` from raw `--overview-lang` token
+presence in the design worker's `arguments_value`: present is `true`, absent is
+`false`. Malformed, missing-value, and duplicate occurrences still count as
+present; value validation stays worker-owned. After the segment's machine reset,
+pass this boolean as the `--with-overview` option of the first progress emit,
+before any completed id has been recorded (even when that event reports no
+ids). For an opted-in run, that call is
+`sai-state emit <id> design-standalone@1 --progress --with-overview true -`
+with the worker's progress payload on stdin, and the tool derives the event
+`{"step_ids":[...],"withOverview":true}`; an unopted run passes
+`--with-overview false`. This is coordinator-owned machine initialization, not a worker payload
+or an argument to `spawn`. Later progress emits omit `--with-overview`: the
+variant is immutable once progress starts. A replacement worker uses the surviving machine
+state; a new segment or retry initializes it again after reset.
 
 Progress-plan rendering and step-pointer routing are separate operations. When
 the machine is consulted, a progress continuation carries the protocol continuation

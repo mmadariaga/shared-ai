@@ -152,4 +152,45 @@ function validateFindings(findingsText, options = {}) {
   }
 }
 
-module.exports = { validateFindings, resolveLintToolPath };
+/**
+ * CLI: node validate-findings.js [<file>] [--cwd <dir>] [--json]
+ * Reads the findings block from <file>, or from stdin when no file is given,
+ * prints the result as JSON, and exits 0 (valid), 1 (violations), or 2 (error).
+ * `--json` is accepted for symmetry with the other tools; output is always JSON.
+ */
+function main(argv) {
+  let file = null;
+  let cwd = process.cwd();
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    if (arg === '--json') continue;
+    if (arg === '--cwd') {
+      if (i + 1 >= argv.length) return { code: 2, result: { ok: false, violations: [], error: '--cwd requires a directory' } };
+      cwd = argv[++i];
+      continue;
+    }
+    if (arg.startsWith('--')) return { code: 2, result: { ok: false, violations: [], error: `unknown option ${arg}` } };
+    if (file !== null) return { code: 2, result: { ok: false, violations: [], error: 'expected at most one findings file' } };
+    file = arg;
+  }
+
+  let text;
+  try {
+    text = file === null ? fs.readFileSync(0, 'utf8') : fs.readFileSync(path.resolve(cwd, file), 'utf8');
+  } catch (err) {
+    return { code: 2, result: { ok: false, violations: [], error: `cannot read findings: ${err.message}` } };
+  }
+  if (!text.trim()) return { code: 2, result: { ok: false, violations: [], error: 'empty findings block' } };
+
+  const result = validateFindings(text, { cwd });
+  const code = result.error ? 2 : (result.ok ? 0 : 1);
+  return { code, result };
+}
+
+if (require.main === module) {
+  const { code, result } = main(process.argv.slice(2));
+  process.stdout.write(JSON.stringify(result) + '\n');
+  process.exitCode = code;
+}
+
+module.exports = { validateFindings, resolveLintToolPath, main };

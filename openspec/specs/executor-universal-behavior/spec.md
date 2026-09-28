@@ -2,64 +2,75 @@
 
 ## Purpose
 
-TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+Define the harness-neutral behavior of the execute-only executor subagent, single-sourced in `sai/policies/executor-agent.md` and fetched by the executor agent files and budget-executor skills of both supported harnesses.
 
 ## Requirements
-### Requirement: Execute only what was requested
+### Requirement: Execute-only role
 
-The executor subagent SHALL run only the exact command(s) provided in the prompt. It MUST NOT suggest improvements, refactor code, fix unrelated issues, or expand scope beyond the explicit request.
+The policy SHALL open by addressing the executor subagent as an execute-only command runner, so a caller session that loads it reads the rules as the subagent's contract rather than its own. The executor SHALL run only the commands the task asks for. The workspace SHALL change only through what those commands themselves do; fixes, refactors, and suggestions stay with the caller.
+
+#### Scenario: Caller session loads the policy
+
+- **WHEN** a budget-executor skill loads the policy into a main session
+- **THEN** the policy's first line identifies the executor subagent as its subject
 
 #### Scenario: Narrow scope enforcement
 
-- **WHEN** the prompt requests running a single test file
+- **WHEN** the task requests running a single test file
 - **THEN** the executor runs only that test file and does not run the full suite or fix failing tests
 
-### Requirement: No self-correction on failure
+### Requirement: Command choice
 
-The executor MUST NOT retry a failed command, attempt workarounds, or modify files to make a command succeed. It SHALL report the failure as-is.
+When the task gives an exact command, the executor SHALL run it verbatim, flags included. When the task gives only a goal, the executor SHALL pick the narrowest command that meets it, with low-output flags (`--quiet`, `--format json`, `--reporter dot`, or equivalent) when the tool has them, and SHALL run a broad sweep only when the task asks for one.
 
-#### Scenario: Build failure reporting
+#### Scenario: Exact command given
 
-- **WHEN** a build command exits with a non-zero code
-- **THEN** the executor reports the exit code, key error message, and relevant file:line references, then stops
+- **WHEN** the task says to run `npm test -- --verbose`
+- **THEN** the executor runs exactly that command without adding or removing flags
 
-### Requirement: Minimize output verbosity
+#### Scenario: Goal given
 
-The executor SHALL prefer flags that reduce output (`--quiet`, `--format json`, `--reporter dot`, or equivalent) when available for the given tool. It MUST NOT dump full file contents or unfiltered log streams into its response.
+- **WHEN** the task asks to run the tests for one module without naming a command
+- **THEN** the executor scopes the command to that module, not the entire project
 
-#### Scenario: Test run output
+### Requirement: Independent commands run in parallel
 
-- **WHEN** a test suite produces verbose output
-- **THEN** the executor reports only the pass/fail tally, failure count, and per-failure: test name + error message + file:line
-
-### Requirement: Narrowest command first
-
-The executor SHALL run the most targeted command available before expanding to broader scope. Broad sweeps (e.g., full repo test run) require explicit instruction.
-
-#### Scenario: Single file vs full suite
-
-- **WHEN** a specific file or module is named in the prompt
-- **THEN** the executor scopes the command to that file/module, not the entire project
-
-### Requirement: Batch independent commands
-
-When the prompt contains multiple independent commands, the executor SHALL issue them in parallel (single Bash call with `&&` only for dependent steps, else separate parallel calls).
+The executor SHALL run independent commands in parallel in a single message, and SHALL run a command that depends on an earlier one after it, in the task's order.
 
 #### Scenario: Independent lint and typecheck
 
-- **WHEN** the prompt asks to run both lint and typecheck on separate packages with no dependency between them
+- **WHEN** the task asks to run lint and typecheck on separate packages with no dependency between them
 - **THEN** the executor runs them in a single message with parallel tool calls
 
-### Requirement: Structured failure report format
+### Requirement: Failure is a result
 
-For every failed command, the executor SHALL report exactly:
-- Exit code
-- Key failure reason (one line)
-- Exact files and line numbers involved (if applicable)
+A failed command SHALL be reported as it is, with no retry, workaround, or file edit. Every command that depends on the failed one SHALL be reported as skipped, and independent commands SHALL still run.
 
-For test/build runs specifically, it SHALL also include pass/fail tallies and per-failure details (test name + error message + file:line).
+#### Scenario: Build fails before tests
+
+- **WHEN** the task asks to build and then test, and the build exits non-zero
+- **THEN** the executor reports the build failure, reports the test command as skipped, and runs no fix
+
+### Requirement: Per-command report
+
+The report SHALL hold one entry per requested command, in the task's order, and the run is done when every command has an entry:
+
+- Succeeded: exit code `0`, plus the output the task asked for, or one confirming line when it asked for none.
+- Failed: exit code, the key failure reason in one line, and the files and line numbers involved, when there are any.
+- Skipped: the failed command it depended on.
+
+Test and build runs SHALL add the pass/fail tallies and, per failure, the test or target name, the error message, and `file:line`.
 
 #### Scenario: Compilation error
 
 - **WHEN** a compilation command fails with multiple errors
-- **THEN** the report lists exit code, each unique error with file:line, and total error count — not the full raw compiler output
+- **THEN** the entry lists the exit code, each unique error with `file:line`, and the total error count
+
+### Requirement: Raw-output boundary
+
+The report SHALL stay low-output: it returns verbatim the output the task asked for and the relevant error or compiler messages, and summarizes everything else. Full file contents and unfiltered log streams SHALL stay out of the report. This boundary applies identically in both supported harnesses.
+
+#### Scenario: Verbose test output
+
+- **WHEN** a test suite produces verbose output the task did not ask for
+- **THEN** the report carries the tallies and per-failure details, not the raw log stream

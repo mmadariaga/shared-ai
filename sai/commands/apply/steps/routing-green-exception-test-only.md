@@ -1,3 +1,7 @@
 # Routing: GREEN Exception — Test Only
 
-**RED block absent + no production file** → dispatch exactly one RED green-exception: a test-authoring worker invocation with the `test-authoring → green-verification` plan.
+No RED block, no production file in scope (test-only, interfaces-only, or other production-free scope). Dispatch one RED worker as `green-exception`. The GREEN worker's test-file prohibition would make this body unexecutable, so the RED worker runs it.
+
+Task disclosure: the Step's body, its allowed files, and the testing slice (framework and assertion libraries, the Step's Automated checklist commands per coordinator § Verification commands). There is no RED block to classify: the worker leaves the tests green and reports `RED result: n/a`, `GREEN result: pass`.
+
+The dispatch is terminal for the Step: no GREEN dispatch follows.

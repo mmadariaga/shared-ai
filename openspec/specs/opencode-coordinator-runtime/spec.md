@@ -7,17 +7,17 @@ Define the wrapper-declared runtime and invoking-agent prerequisites for routed 
 
 ### Requirement: Opencode wrappers declare the coordinator runtime
 
-The opencode `/sai-2-design` and `/sai-3-implement` wrappers SHALL declare the logical coordinator's runtime in their own frontmatter: `model: opencode-go/glm-5.2` and `variant: high`. Neither wrapper SHALL declare an `agent:` field. Both wrappers SHALL retain `subtask: false`. Because `variant: high` is not the platform default, it SHALL be stated explicitly and SHALL NOT be omitted under the wrapper default-variant omission rule.
+The opencode `/sai-2-design` and `/sai-3-implement` wrappers SHALL declare the logical coordinator's runtime in their own frontmatter as explicit `model` and `variant` lines; that frontmatter is the sole authority for the coordinator defaults. Neither wrapper SHALL declare an `agent:` field. Both wrappers SHALL retain `subtask: false`.
 
 #### Scenario: opencode design wrapper carries its coordinator runtime
 
 - **WHEN** `commands/opencode/sai-2-design.md` frontmatter is read
-- **THEN** it SHALL contain `model: opencode-go/glm-5.2`, `variant: high`, and `subtask: false`, and SHALL contain no `agent:` field
+- **THEN** it SHALL contain `model`, `variant`, and `subtask: false` lines, and SHALL contain no `agent:` field
 
 #### Scenario: opencode implement wrapper carries its coordinator runtime
 
 - **WHEN** `commands/opencode/sai-3-implement.md` frontmatter is read
-- **THEN** it SHALL contain `model: opencode-go/glm-5.2`, `variant: high`, and `subtask: false`, and SHALL contain no `agent:` field
+- **THEN** it SHALL contain `model`, `variant`, and `subtask: false` lines, and SHALL contain no `agent:` field
 
 ### Requirement: The invoking primary agent must supply task dispatch and native questions
 

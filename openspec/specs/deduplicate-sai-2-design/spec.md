@@ -30,17 +30,6 @@ The design workflow SHALL be single-sourced through the routed coordinator, rout
 - **WHEN** the active design workflow is inspected
 - **THEN** the routed worker and step-local instructions provide the technical phase content without a separate inline design workflow.
 
-### Requirement: opencode-remember-path-fix
-The opencode `sai-1-spec` wrapper SHALL load `remember.md` from `~/.config/opencode/sai/policies/remember.md`, not from the `~/.claude/` path.
-
-#### Scenario: opencode sai-1-spec uses opencode path
-- **WHEN** `commands/opencode/sai-1-spec.md` is read
-- **THEN** the final `Fetch` line references `@~/.config/opencode/sai/policies/remember.md`
-
-#### Scenario: no claude path leak in opencode commands
-- **WHEN** any file under `commands/opencode/` is searched
-- **THEN** no file contains the string `~/.claude/`
-
 ### Requirement: active-infrastructure-boundary
 
 Claude Code and opencode SHALL use the routed coordinator-worker infrastructure and the step-local design instruction surfaces. The active infrastructure SHALL not define or require a compatibility inline path.

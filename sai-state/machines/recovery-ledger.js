@@ -9,7 +9,9 @@
 // attempts spent. Always returns next: { follow: 'none', ... } per E4.
 // A reset (segment boundary) clears everything; a `step-entry` signal grants a
 // fresh pair of budgets on the first entry to a Step only, so a Step re-entered
-// after a correction keeps its already spent budgets (E9).
+// after a correction keeps its already spent budgets (E9). An explicit,
+// human-authorized retry after exhaustion archives the exhausted cycle before
+// granting one fresh pair for that same Step.
 // Every outcome reports both budgets, and an exhaustion names the budget that
 // ran out, so what was spent on each is readable from the store response.
 
@@ -24,6 +26,8 @@ const initialState = Object.freeze({
   coordinator_attempts: 0, // Coordinator attempts spent in this recovery scope
   coordinator_ledger: [],  // Normalized keys the coordinator already attempted
   entered_steps: [],       // Step identifiers already entered in this scope
+  active_step: '',         // Current Step identifier, when this is a Step scope
+  attempt_history: [],     // Exhausted Step cycles archived by an authorized retry
 });
 
 // Normalize diagnosis key components per spec item 5:
@@ -91,12 +95,35 @@ function cloneState(state) {
   const enteredSteps = Array.isArray(src.entered_steps)
     ? src.entered_steps.filter((entry) => typeof entry === 'string')
     : [];
+  const activeStep = typeof src.active_step === 'string' ? src.active_step : '';
+  const attemptHistory = Array.isArray(src.attempt_history)
+    ? src.attempt_history
+      .filter((entry) => entry && typeof entry === 'object' && !Array.isArray(entry))
+      .map((entry) => ({
+        step: typeof entry.step === 'string' ? entry.step : '',
+        cycle: Number.isFinite(Number(entry.cycle)) ? Math.max(0, Math.floor(Number(entry.cycle))) : 0,
+        worker_spent: Number.isFinite(Number(entry.worker_spent))
+          ? Math.max(0, Math.min(Math.floor(Number(entry.worker_spent)), WORKER_SLOTS))
+          : 0,
+        coordinator_spent: Number.isFinite(Number(entry.coordinator_spent))
+          ? Math.max(0, Math.min(Math.floor(Number(entry.coordinator_spent)), COORDINATOR_BUDGET))
+          : 0,
+        worker_keys: Array.isArray(entry.worker_keys)
+          ? entry.worker_keys.filter((key) => Array.isArray(key)).map((key) => key.slice())
+          : [],
+        coordinator_keys: Array.isArray(entry.coordinator_keys)
+          ? entry.coordinator_keys.filter((key) => Array.isArray(key)).map((key) => key.slice())
+          : [],
+      }))
+    : [];
   return {
     ledger,
     stage,
     coordinator_attempts: coordinatorAttempts,
     coordinator_ledger: coordinatorLedger,
     entered_steps: enteredSteps,
+    active_step: activeStep,
+    attempt_history: attemptHistory,
   };
 }
 
@@ -107,6 +134,8 @@ function snapshotOf(current) {
     coordinator_attempts: current.coordinator_attempts || 0,
     coordinator_ledger: (current.coordinator_ledger || []).slice(),
     entered_steps: (current.entered_steps || []).slice(),
+    active_step: current.active_step || '',
+    attempt_history: cloneState({ attempt_history: current.attempt_history }).attempt_history,
   };
 }
 
@@ -133,6 +162,7 @@ function slotsUsed(ledger) {
 
 function finish(result, stateAfter) {
   result.budgets = budgetsOf(stateAfter);
+  result.attempt_history = cloneState({ attempt_history: stateAfter.attempt_history }).attempt_history;
   result.state = Object.freeze(result.state);
   return result;
 }
@@ -151,6 +181,8 @@ function transition(state, signal) {
       coordinator_attempts: current.coordinator_attempts,
       coordinator_ledger: current.coordinator_ledger.slice(),
       entered_steps: current.entered_steps.slice(),
+      active_step: current.active_step,
+      attempt_history: cloneState({ attempt_history: current.attempt_history }).attempt_history,
     },
     snapshot: {
       state: snapshotOf(Object.assign({}, current, { stage: '' })),
@@ -170,6 +202,12 @@ function transition(state, signal) {
       return finish(result, result.state);
     }
     if (current.entered_steps.indexOf(stepId) !== -1) {
+      if (current.active_step && current.active_step !== stepId) {
+        result.step_entry = 're-entry';
+        result.rejected = 'step is not active';
+        return finish(result, result.state);
+      }
+      result.state.active_step = stepId;
       result.step_entry = 're-entry';
       return finish(result, result.state);
     }
@@ -177,7 +215,53 @@ function transition(state, signal) {
     result.state.coordinator_ledger = [];
     result.state.coordinator_attempts = 0;
     result.state.entered_steps = current.entered_steps.concat([stepId]);
+    result.state.active_step = stepId;
     result.step_entry = 'first';
+    return finish(result, result.state);
+  }
+
+  // An explicit retry is the only event that can grant a new pair of budgets
+  // to an already-entered Step. The coordinator emits it only after receiving
+  // the user's explicit authorization; the machine also requires the named
+  // Step to be active and at least one of its budgets to be exhausted.
+  if (sig.kind === 'authorized-step-retry') {
+    const stepId = normalizeStepId(sig.step);
+    if (sig.authorized !== true) {
+      result.rejected = 'explicit authorization required';
+      return finish(result, result.state);
+    }
+    if (!stepId) {
+      result.rejected = 'unidentified Step';
+      return finish(result, result.state);
+    }
+    if (current.active_step !== stepId || current.entered_steps.indexOf(stepId) === -1) {
+      result.rejected = 'Step is not active';
+      return finish(result, result.state);
+    }
+
+    const currentBudgets = budgetsOf(current);
+    const exhausted = currentBudgets.worker.spent >= currentBudgets.worker.limit
+      || currentBudgets.coordinator.spent >= currentBudgets.coordinator.limit;
+    if (!exhausted) {
+      result.rejected = 'budget not exhausted';
+      return finish(result, result.state);
+    }
+
+    const priorCycles = current.attempt_history.filter((entry) => entry.step === stepId).length;
+    const archivedCycle = {
+      step: stepId,
+      cycle: priorCycles + 1,
+      worker_spent: currentBudgets.worker.spent,
+      coordinator_spent: currentBudgets.coordinator.spent,
+      worker_keys: current.ledger.map((key) => Array.isArray(key) ? key.slice() : key),
+      coordinator_keys: current.coordinator_ledger.map((key) => Array.isArray(key) ? key.slice() : key),
+    };
+    result.state.attempt_history = current.attempt_history.concat([archivedCycle]);
+    result.state.ledger = [];
+    result.state.coordinator_ledger = [];
+    result.state.coordinator_attempts = 0;
+    result.retry_grant = 'granted';
+    result.retry_cycle = archivedCycle.cycle + 1;
     return finish(result, result.state);
   }
 

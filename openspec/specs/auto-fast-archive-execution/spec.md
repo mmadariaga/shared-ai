@@ -5,11 +5,11 @@ TBD - created by archiving change worker-owned-autofast-mutations. Update Purpos
 
 ## Requirements
 
-### Requirement: Attribute archive execution to Build
+### Requirement: Attribute archive execution to Direct Build
 
 Direct Build (unattended) SHALL use the existing archive worker's read-only preparation followed by one validated CLI archive invocation, owned-path staging, and pre-authorized local commit continuation.
 
-#### Scenario: Build completes archive execution
+#### Scenario: Direct Build completes archive execution
 
 - **WHEN** Direct Build reaches archive execution
 - **THEN** the existing one-commit boundary remains unchanged and the archive worker uses the validated CLI archive order
@@ -18,7 +18,7 @@ Direct Build (unattended) SHALL use the existing archive worker's read-only prep
 
 The archive worker SHALL perform classification, completion, informational delta comparison, unchecked-item, and collision checks during preparation before accepting an execution order. Preparation SHALL return the validated archive destination, owned staging paths, and commit boundary without mutating files, archive directories, staging, or commits.
 
-#### Scenario: Build preparation returns a non-mutating plan
+#### Scenario: Direct Build preparation returns a non-mutating plan
 
 - **WHEN** the archive worker prepares a Direct Build operation
 - **THEN** it returns the validated mutation plan without invoking the CLI, writing files, moving directories, staging paths, or creating a commit
@@ -61,16 +61,16 @@ The worker MUST stop after a failed CLI invocation, classification, staging oper
 - **WHEN** classification or exact-path staging fails for a reason other than an ignored untracked path
 - **THEN** execution terminates without retrying, authoring a message, or creating a commit
 
-### Requirement: Archive worker names Bash as its mutation vehicle in Build execution
+### Requirement: Archive worker names Bash as its mutation vehicle in Direct Build execution
 
 In the Direct Build execution continuation, `sai/commands/archive/worker.md` SHALL state that the worker holds no Write or Edit tool and SHALL name Bash as its write vehicle. The worker SHALL perform the CLI archive invocation, exact-path staging, and HEREDOC local commit through Bash shell commands and SHALL never attempt a Write or Edit call. When Bash is unavailable, it SHALL return a closed `failed` result rather than simulating a write through another channel.
 
-#### Scenario: Build execution mutations run through Bash
+#### Scenario: Direct Build execution mutations run through Bash
 
 - **WHEN** the archive worker executes its validated Direct Build order
 - **THEN** the CLI invocation, staging, and local commit run through Bash and no Write or Edit call is attempted
 
-#### Scenario: Bash is unavailable during Build execution
+#### Scenario: Bash is unavailable during Direct Build execution
 
 - **WHEN** Bash is unavailable in the Direct Build execution continuation
 - **THEN** the worker returns a closed `failed` result and performs no mutation through another channel

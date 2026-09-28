@@ -1,7 +1,7 @@
 # explore-two-phase-startup Specification
 
 ## Purpose
-TBD - created by archiving change explore-two-phase-startup. Update Purpose after archive.
+Start every pre-crystallization `sai-explore` budget-explorer dispatch with a ready-only phase, and state that handshake in `sai/commands/explore/body.md`, the only surface that uses it.
 ## Requirements
 ### Requirement: Ready-only initial dispatch is strict-zero
 Pre-crystallization sai-explore budget-explorer dispatches SHALL start ready-only with base instructions only and SHALL withhold goal, output contract, change or topic, and provenance until after ready. The ready prompt SHALL never name a tool and the tool-preference ladder SHALL govern tool choice.

@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+This capability defines when the explorer consults ADR and DDR indexes and how it interprets current, superseded, and cross-family decisions.
+
+## Requirements
 
 ### Requirement: Explorer consults decision-record indexes as research inputs
 

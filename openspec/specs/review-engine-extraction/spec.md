@@ -205,7 +205,7 @@ The engine SHALL be strictly read-only: it SHALL NOT create, modify, or delete `
 
 ### Requirement: supervised-caller-invocation
 
-The supervised pipeline (item 10 of `sai/commands/explore/instructions.md`) SHALL invoke the engine for each of its review rounds with the authoritative change name and the phase's artifact-set designator — `sai-1` for spec-phase rounds, `sai-2` for design-phase rounds — and the engine SHALL run the same transaction sequence for the supervised caller as for the manual loop: exact directory resolution, existence checks, per-path checks, fresh disk reread, and finding formation from those reads only. The supervised invocation SHALL depend on no navigation state, no prior review output, and no cached artifact contents, and the engine SHALL remain strictly read-only for the supervised caller.
+The supervised pipeline (`sai/commands/explore/steps/pipeline-selector.md`) SHALL invoke the engine for each of its review rounds with the authoritative change name and the phase's artifact-set designator — `sai-1` for spec-phase rounds, `sai-2` for design-phase rounds — and the engine SHALL run the same transaction sequence for the supervised caller as for the manual loop: exact directory resolution, existence checks, per-path checks, fresh disk reread, and finding formation from those reads only. The supervised invocation SHALL depend on no navigation state, no prior review output, and no cached artifact contents, and the engine SHALL remain strictly read-only for the supervised caller.
 
 #### Scenario: supervised spec rounds invoke the engine
 

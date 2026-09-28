@@ -61,8 +61,8 @@ Every research subagent spawned by the design worker or the Copilot inline desig
 
 ### Requirement: Payload-sourced stamps remove coordinator clock access
 
-The routed design coordinator SHALL source milestone stamps from worker-authored `emitted_on` and SHALL perform no wall-clock shell call; source discovery remains delegated to the design worker.
+The routed design coordinator SHALL source milestone stamps from the validator's `validated_at` and SHALL perform no wall-clock shell call; source discovery remains delegated to the design worker.
 
 #### Scenario: Design renders a completed step
 - **WHEN** a design result marks a progress step completed
-- **THEN** the coordinator reads the result's `emitted_on` and performs no shell operation.
+- **THEN** the coordinator reads the verdict's `validated_at` and performs no shell operation.

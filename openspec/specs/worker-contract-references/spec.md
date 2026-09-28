@@ -28,10 +28,10 @@ The spec-proposal worker contract (`sai/orchestration/workers/sai-1-spec-proposa
 
 ### Requirement: worker-contract-pinned-strings-preserved
 
-The anatomy requirement SHALL be added without removing or altering the worker contracts' pinned selection strings — `Use change '{name}'?` and `Which change?` — or their option labels, ordering, and invalid-input semantics. The exemption of these pinned prompts from the full anatomy SHALL be defined in `sai/policies/question-context.md` (the single source), not restated in this spec.
+The anatomy requirement SHALL be added without removing or altering the worker contracts' pinned selection strings — `Use change '{name}'?` and `Which change?` — or their option labels, ordering, and invalid-input semantics. How these pinned prompts satisfy the anatomy (as the picker's summary question, with the rest in preceding plain text) SHALL be defined in `sai/policies/question-context.md` (the single source), not restated in this spec.
 
 #### Scenario: picker strings remain intact
 
 - **WHEN** the worker contracts are edited to add the anatomy requirement
 - **THEN** the pinned `Use change '{name}'?` and `Which change?` strings and their ordered options remain unchanged
-- **AND** the exemption of those pinned prompts from the full anatomy is stated in the policy, not in this spec
+- **AND** how those pinned prompts satisfy the anatomy is stated in the policy, not in this spec

@@ -2,17 +2,24 @@
 
 ## Purpose
 TBD - created by archiving change replace-state-sidecar-with-cli. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: Local CLI three-verb interface
-The stage machine store SHALL provide four CLI verbs via the `sai-state` script: 1. `spawn --key <stable-key>` — initializes or locates a session, deriving a deterministic UUIDv4 from the stable key, returning `{id}` on success 2. `emit <id> <machineId> <eventJson>` — applies a transition, accepting the session id, target machine id, and JSON event object, returning minimal wire outcome 3. `reset <id> <machineId>` — clears only that machine's state to its initialState with an atomic write, leaving other machines untouched, returning `{reset: <machineId>}` on success 4. `close <id>` — terminates a session by deleting the session file, returning `{closed: id}` on success. Each verb writes minimal JSON to stdout on success and writes error text to stderr on failure. Exit code 0 indicates success; exit code 1 or 2 indicates failure.
+The stage machine store SHALL provide four CLI verbs via the `sai-state` script:
+1. `spawn --key <stable-key>` initializes or locates a session, deriving a deterministic UUIDv4 from the stable key, and returns `{id}` on success.
+2. `emit <id> <machineId> -` applies a transition. It accepts the session id and target machine id as arguments and reads the JSON event object from stdin, and it returns the minimal wire outcome. In progress mode, `emit <id> <machineId> --progress [--with-overview true|false] -`, it instead reads a worker progress payload from stdin. It validates the payload, derives the event `{"step_ids": [...]}` from a valid payload, and returns the verdict as `validation` alongside the minimal wire outcome.
+3. `reset <id> <machineId>` clears only that machine's state to its initialState with an atomic write, leaves other machines untouched, and returns `{reset: <machineId>}` on success.
+4. `close <id>` terminates a session by deleting the session file and returns `{closed: id}` on success.
+Each verb writes minimal JSON to stdout on success and writes error text to stderr on failure. Exit code 0 indicates success; exit code 1 or 2 indicates failure.
 
 #### Scenario: CLI spawn returns session id
 - **WHEN** the caller invokes `sai-state spawn --key <key>` for a new or existing session
 - **THEN** the process outputs a JSON `{id}` with exit code 0
 
 #### Scenario: CLI emit returns minimal wire outcome
-- **WHEN** the caller invokes `sai-state emit <id> <machineId> <eventJson>`
-- **THEN** the process outputs JSON `{stage, next, rejected?, warnings?}` and exits with code 0 on success, or exits with code 1 and outputs `{error: <name>, next: {follow, hint}}` on failure
+- **WHEN** the caller pipes an event JSON to `sai-state emit <id> <machineId> -`
+- **THEN** the process exits 0 and outputs JSON `{stage, next, rejected?, warnings?}` on success. On failure it exits 1 and outputs `{error: <name>, reason?, next: {follow, hint}}`.
 
 #### Scenario: CLI reset clears one machine and returns confirmation
 - **WHEN** the caller invokes `sai-state reset <id> <machineId>` with a registered machine id
@@ -68,12 +75,17 @@ The store SHALL persist each session's state in a JSON file under `$TMPDIR/sai-s
 
 ### Requirement: Closed error vocabulary via JSON error field
 
-Every failed emit (invalid event, unknown machine, version mismatch) SHALL return a JSON response carrying a mandatory `error` field with one of the closed-vocabulary values: `INVALID_EVENT`, `UNKNOWN_MACHINE`, `VERSION_MISMATCH`, `ALREADY_RUNNING`, or `READINESS_IS_NOT_INTENT`. The response SHALL also carry the current state's `next` pointer. Exit code SHALL be 1. Reset failures also return `error` with closed-vocabulary values, but without a `next` pointer.
+Every failed emit (invalid event, unknown machine, version mismatch) SHALL return a JSON response. The response SHALL carry a mandatory `error` field with one of the closed-vocabulary values `INVALID_EVENT`, `UNKNOWN_MACHINE`, `VERSION_MISMATCH`, `ALREADY_RUNNING`, or `READINESS_IS_NOT_INTENT`. It SHALL also carry the current state's `next` pointer. An `INVALID_EVENT` caused by an event read from stdin that cannot be parsed SHALL additionally carry `reason: "EVENT_UNPARSEABLE"`; every other failed emit SHALL carry no `reason`. Exit code SHALL be 1. In progress mode, stdin that fails validation, including stdin that is not JSON, SHALL produce an invalid `validation` block with exit code 1 and no `error` field, and never `EVENT_UNPARSEABLE`. A machine error after a valid verdict SHALL carry the same `error` vocabulary alongside `validation`. Reset failures also return `error` with closed-vocabulary values, but without a `next` pointer.
 
 #### Scenario: Invalid machineId returns INVALID_EVENT
 
 - **WHEN** `emit` is called with a missing or unparsable `machineId`
-- **THEN** the response carries `{error: "INVALID_EVENT", next: {follow, hint}}`
+- **THEN** the response carries `{error: "INVALID_EVENT", next: {follow, hint}}` with no `reason`
+
+#### Scenario: Unparseable event returns INVALID_EVENT with reason
+
+- **WHEN** `emit` reads event text from stdin that fails to parse as JSON
+- **THEN** the response carries `{error: "INVALID_EVENT", reason: "EVENT_UNPARSEABLE", next: {follow, hint}}` with exit code 1 and no transition
 
 #### Scenario: Unknown machine returns UNKNOWN_MACHINE
 
@@ -90,7 +102,8 @@ Every failed emit (invalid event, unknown machine, version mismatch) SHALL retur
 Each CLI verb SHALL return minimal JSON without state serialization:
 - `spawn`: `{id}`
 - `emit` success: `{stage, next: {follow, hint}, rejected?, warnings?}`
-- `emit` failure: `{error: <name>, next: {follow, hint}}`
+- `emit` failure: `{error: <name>, reason?, next: {follow, hint}}`, where `reason` is present only as `EVENT_UNPARSEABLE` on a delivery failure
+- `emit --progress`: `{validation}` on an invalid verdict; on a valid verdict, `{validation, …}` followed by the `emit` success or failure fields above, unchanged
 - `reset` success: `{reset: <machineId>}`
 - `reset` failure: `{error: <name>}`
 - `close`: `{closed: id}`
@@ -128,3 +141,41 @@ The store SHALL operate as a local-only service with no HTTP server, no listenin
 - **WHEN** `close` is invoked
 - **THEN** the session file is deleted immediately with no tombstone delay, graceful shutdown period, or lingering liveness window
 
+### Requirement: Event delivery on stdin
+The `emit` verb SHALL read its event JSON only from stdin, marked by `-` as the third and last positional argument, and SHALL read all of stdin as UTF-8. Before parsing, it SHALL strip a leading BOM (`U+FEFF`) and trim surrounding whitespace and line breaks. In progress mode, it SHALL instead pass the raw, unnormalized stdin text to the validator module, so its verdict matches `validate --kind progress` byte-for-byte. `--progress` is a flag that takes no value, so the following `-` stays positional. It SHALL return a usage error with exit code 2, without reading stdin, in any of these cases:
+- the id or machine id is missing;
+- the third positional argument is not `-`;
+- any positional argument follows `-`;
+- stdin is an interactive terminal.
+The usage-error stderr message SHALL show the canonical form `echo '<json>' | node <tool-path> emit <id> <machineId> -`, or in progress mode the progress form `echo '<progress-payload-json>' | node <tool-path> emit <id> <machineId> --progress [--with-overview true|false] -`. Characters degraded to `?` by the sending shell SHALL be accepted as received, without error. The `spawn`, `reset`, and `close` verbs SHALL be unchanged.
+
+#### Scenario: BOM and CRLF around a valid event are accepted
+- **WHEN** the caller pipes `﻿{"intent":"next-step"}\r\n` to `emit <id> explore-idea@1 -`
+- **THEN** the process exits 0 with a `stage` in the response, no `reason`, and nothing written to stderr
+
+#### Scenario: Event JSON passed as an argument is a usage error
+- **WHEN** the caller invokes `emit <id> explore-idea@1 '{"intent":"next-step"}'`
+- **THEN** the process exits 2 without reading stdin, writes no JSON payload to stdout, and writes a stderr message showing the `emit <id> <machineId> -` stdin form
+
+#### Scenario: Missing marker or extra arguments is a usage error
+- **WHEN** the caller invokes `emit <id> <machineId>` without `-`, or `emit <id> <machineId> - extra`
+- **THEN** the process exits 2
+
+#### Scenario: Payload with spaces and degraded characters is accepted
+- **WHEN** the caller pipes `{"recordedList":["E1","a b ?"]}` to `emit <id> explore-idea@1 -`
+- **THEN** the process exits 0 and the event is applied as received
+
+### Requirement: Delivery failure reason on unparseable events
+When the normalized stdin text fails `JSON.parse`, `emit` SHALL answer `{error: "INVALID_EVENT", reason: "EVENT_UNPARSEABLE", next: {follow, hint}}` with exit code 1 and no transition. This SHALL apply to every parse failure of an event emit, including empty stdin, truncated JSON, trailing text, and broken or escaped quotes. `emit` SHALL write one stderr line showing the canonical stdin form. The `reason` field SHALL appear only on these delivery failures. An `INVALID_EVENT` for a valid event that the machine rejects, or for a malformed machine id, SHALL carry no `reason`, and neither SHALL `UNKNOWN_MACHINE` or `VERSION_MISMATCH`. In progress mode, a parse failure SHALL instead be an invalid `validation` verdict carrying the validator's invalid-JSON error, with no `reason` and no machine read. The store SHALL NOT detect quote-stripping or escaped-quote signatures and SHALL NOT write a hint pointing to a quoting section.
+
+#### Scenario: Empty stdin is a delivery failure
+- **WHEN** the caller invokes `emit <id> explore-idea@1 -` with empty stdin
+- **THEN** the process exits 1 with `error: "INVALID_EVENT"`, `reason: "EVENT_UNPARSEABLE"`, and a `next` pointer, and stderr shows the `emit <id> <machineId> -` form
+
+#### Scenario: Every parse failure carries the reason
+- **WHEN** the caller pipes `{"intent":`, `{"intent":"plan"} extra`, `{\"intent\":\"plan\"}`, `{intent:plan}`, or `not-json` to `emit <id> explore-idea@1 -`
+- **THEN** each invocation exits 1 with `error: "INVALID_EVENT"` and `reason: "EVENT_UNPARSEABLE"` and no transition
+
+#### Scenario: Non-delivery failures carry no reason
+- **WHEN** the caller pipes valid JSON to `emit <id> invalid-machine -` or to `emit <id> no-such-machine@1 -`
+- **THEN** the responses carry `INVALID_EVENT` and `UNKNOWN_MACHINE` respectively with exit 1 and no `reason` field

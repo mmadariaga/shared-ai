@@ -23,13 +23,17 @@ function findFetchDirectives(filePath) {
   }
 }
 
-const FOLLOW_LOADED = [
-  'crystallization-protocol.md',
-  'poc-lane.md',
-  'slice.md',
-  'pipeline-direct-build.md',
-  'pipeline-plan-unattended.md',
-];
+// Files named by the explore machines' `next.follow`, read from the machine sources.
+const machinesDir = path.join(__dirname, '..', 'sai-state', 'machines');
+const FOLLOW_LOADED = [...new Set(
+  ['explore-idea.js', 'explore-slice.js'].flatMap(machine => {
+    const source = fs.readFileSync(path.join(machinesDir, machine), 'utf8');
+    return [...source.matchAll(/'sai\/commands\/explore\/steps\/([a-z-]+\.md)'/g)].map(m => m[1]);
+  }),
+)];
+
+// Files the explore instructions load directly, outside any machine stage.
+const DIRECT_LOADED = ['review-loop.md'];
 
 function getReachableStepFiles() {
   const reachable = new Set();
@@ -48,6 +52,7 @@ function getReachableStepFiles() {
 
   // Follow-loaded files are named by sidecar next.follow, not by nucleus Fetch.
   FOLLOW_LOADED.forEach(file => toProcess.add(file));
+  DIRECT_LOADED.forEach(file => toProcess.add(file));
 
   // Process all reachable files
   while (toProcess.size > 0) {
@@ -94,7 +99,8 @@ test('boot pack does not fetch follow-loaded step files', () => {
   const nucleusFetches = findFetchDirectives(nucleusFile);
   const commonFetches = findFetchDirectives(path.join(explorerStepsDir, 'common.md'));
   const bootFetches = new Set([...nucleusFetches, ...commonFetches]);
-  for (const file of FOLLOW_LOADED) {
+  // common.md is both the boot fetch and the `explore-change` stage file.
+  for (const file of FOLLOW_LOADED.filter(name => name !== 'common.md')) {
     assert.ok(!bootFetches.has(file), `boot must not fetch ${file}`);
   }
 });
@@ -130,7 +136,8 @@ test('follow-load is driven by next.follow with no whitelist and a stop-on-failu
   assert.match(policy, /show the error and wait for the user/);
   assert.match(policy, /Guess no other file/);
   assert.match(policy, /never route the failure through worker Bounded/);
-  assert.match(policy, /An emit failure or `rejected` response stops the same way/);
+  assert.match(policy, /A follow-load failure or an emit error stops the run/);
+  assert.match(policy, /`rejected` field[\s\S]{0,200}fetch nothing and give the\s+acknowledgement the owning command defines/);
   assert.match(policy, /conversation loaded-set already contains that path/);
   assert.match(policy, /Never parse `next\.hint` to decide whether to/);
   assert.doesNotMatch(instructions, /5\. \*\*Crystallization protocol \(single change\)\*\*/);
@@ -217,4 +224,12 @@ test('should have all reachable files present in steps directory', () => {
   assert.deepEqual(missingFiles, [],
     `The following fetched files are missing from the steps directory: ${missingFiles.join(', ')}`
   );
+});
+
+test('each directly loaded step file is named by the explore instructions load exception', () => {
+  const nucleus = fs.readFileSync(nucleusFile, 'utf8');
+  for (const file of DIRECT_LOADED) {
+    assert.match(nucleus, new RegExp(`The one exception is \`steps/${file.replace('.', '\\.')}\``),
+      `${file} must be named by the explicit load exception`);
+  }
 });

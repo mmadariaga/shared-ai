@@ -1,17 +1,17 @@
 # branch-selector-localization Specification
 
 ## Purpose
-TBD - created by archiving change localize-merge-branch-question. Update Purpose after archive.
+Defines how the merge branch selector keeps a canonical English source question and renders it in the ambient conversation language while preserving exact branch values and date labels.
 ## Requirements
 ### Requirement: Branch selector uses canonical English source
-The merge branch selector SHALL ask the canonical English source Which branch do you want to merge? as its worker source, with coordinator ambient rendering that never opens the working-language question early because selection happens before working_language is known.
+The merge branch selector SHALL ask the canonical English source Which branch do you want to operate on? as its worker source, with coordinator ambient rendering that never opens the working-language question early because selection happens before working_language is known.
 
 #### Scenario: Canonical source replaces fixed literal
 - **WHEN** the merge worker returns the branch-selection gate
-- **THEN** the worker source SHALL be Which branch do you want to merge? and the coordinator SHALL render it in the ambient conversation language without opening the working-language question early
+- **THEN** the worker source SHALL be Which branch do you want to operate on? and the coordinator SHALL render it in the ambient conversation language without opening the working-language question early
 
 ### Requirement: Ambient render preserves values and labels
-The branch selector SHALL preserve exact option values and readable date labels across languages: Spanish keeps ¿Qué rama quieres mergear?, English uses the canonical, any other language falls back to the canonical, while values stay exact branch names and labels stay <branch> — last commit <YYYY-MM-DD HH:mm>.
+The branch selector SHALL preserve exact option values and readable date labels across languages: Spanish keeps ¿Sobre qué rama quieres operar?, English uses the canonical, any other language falls back to the canonical, while values stay exact branch names and labels stay <branch> — last commit <YYYY-MM-DD HH:mm>.
 
 #### Scenario: Stable values across languages
 - **WHEN** the branch selector is rendered in any ambient language

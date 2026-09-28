@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+This capability defines the setup CLI entry point, project-path resolution, and ordered prerequisite and schema initialization sequence.
+
+## Requirements
 
 ### Requirement: setup-entry
 `bin/setup.js` SHALL be the entry point for the `setup` subcommand. It MUST be a pure module — it SHALL NOT call `process.exit` or produce side effects when required; execution MUST be guarded by an `if (require.main === module)` or equivalent entry guard.
@@ -39,7 +43,3 @@ When invoked as `npx shared-ai setup [path]`, `bin/setup.js` SHALL resolve the t
 #### Scenario: full success
 - **WHEN** all steps complete without error
 - **THEN** prints `"SAI workflow configured at <projectPath>."` and exits 0
-
-## MODIFIED Requirements
-
-## REMOVED Requirements

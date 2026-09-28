@@ -22,8 +22,12 @@ The subagent model is controlled by the `model` frontmatter of the resolved `bud
 
 Dispatch in the background only from a main agent, routed SAI coordinator, or routed SAI worker whose lifetime outlives the child. Capture and await the continuation on the dispatcher's own turn.
 
+## Spawn prompt
+
+Give one task per spawn: what to do, the files or area it covers, and, when you need a specific result, the exact shape to return. Without a shape the subagent returns its structured completion report. Split independent tasks into separate spawns.
+
 ## Task contract
 
-The agent fetches `@sai/policies/budget-agent.md`, which owns single-task scope, bounded structured output, permission-block aborts, no self-correction, and the approximately 30-call soft limit.
+The agent fetches `@sai/policies/budget-agent.md`, which owns single-task scope, the result shape (the task's own when it defines one, else the structured completion report), bounded output, permission-block aborts, no self-correction, and the approximately 30-call soft limit.
 
 Fetch @sai/policies/budget-agent.md

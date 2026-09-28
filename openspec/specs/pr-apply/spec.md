@@ -1,7 +1,7 @@
 # pr-apply Specification
 
 ## Purpose
-TBD - created by archiving change pr-deterministic-extraction. Update Purpose after archive.
+Defines the `sai/tools/pr.js apply` subcommand that reads a title and body from stdin, validates the title, and creates the pull request.
 ## Requirements
 ### Requirement: pr-apply creates pull requests from stdin-supplied title and body
 

@@ -2,7 +2,9 @@
 
 ## Purpose
 TBD - created by archiving change two-phase-worker-handshake. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: Ready-Only Initial Dispatch
 The system SHALL open every routed stretch with an initial dispatch carrying only the ready prompt plus base instructions and zero task content.
 #### Scenario: Open routed stretch
@@ -60,11 +62,11 @@ The system SHALL disclose arguments_value and all derivatives exclusively in the
 - **THEN** the coordinator continues the same worker with the task as a sequential continuation and never discloses task content before ready
 
 ### Requirement: Handle-Then-Guard-Then-Task Ordering With Fresh Relaunch
-The system SHALL retain the handle before any guard snapshot, SHALL open the no-commit guard window only after handle capture, and SHALL relaunch fresh with the original minimal envelope with no timeouts and no open guard window when ready never arrives or cancellation happens before the handle returns.
+The system SHALL retain the handle before any guard snapshot, SHALL open the no-commit guard window only after handle capture, and SHALL relaunch fresh with the original minimal envelope with no timeouts and no newly opened guard window when ready never arrives or cancellation happens before the handle returns; the relaunch SHALL take a deferred snapshot only when no guard window is already running.
 
 #### Scenario: Guard opens only after handle
-- **WHEN** a routed stretch starts and no handle has been captured
-- **THEN** no guard window opens and no snapshot runs until the handle is retained, and a missing ready relaunches fresh with deferred snapshot
+- **WHEN** a routed stretch starts, no handle has been captured, and no guard window is running
+- **THEN** no guard window opens and no snapshot runs until the handle is retained, and a missing ready relaunches fresh with a deferred snapshot
 
 ### Requirement: Opaque-History-Only Replacement Reconstruction
 The system SHALL reconstruct a replacement worker solely from the opaque history of already-sent continuations including the task-carrying one plus reconstruction metadata, and SHALL return a failed restart with no dispatch when that history is incomplete, never guessing task content.
@@ -100,4 +102,3 @@ Installer and test validation SHALL require every routed initial dispatch to car
 #### Scenario: Validation requires example under strict zero
 - **WHEN** worker bindings are installed or tested
 - **THEN** each initial dispatch SHALL contain the ready-only literal plus the example and no task content
-

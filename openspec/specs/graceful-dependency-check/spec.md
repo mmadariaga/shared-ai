@@ -11,7 +11,7 @@ Commands that depend on the OpenSpec CLI (`ai-explore`, `ai-1-spec`, `ai-2-imple
 #### Scenario: openspec binary missing
 - **WHEN** user invokes an openspec-dependent ai-* command
 - **WHEN** `openspec` binary is not found in PATH
-- **THEN** command halts immediately with message: "openspec CLI not found. Install it first: [install instructions]"
+- **THEN** command halts immediately with message: "openspec CLI not found. Install it first: https://github.com/Fission-AI/OpenSpec — To verify by hand, run: `openspec --version`"
 - **THEN** no artifacts are created or modified
 
 #### Scenario: project not initialized

@@ -1,7 +1,9 @@
 ## Purpose
 
 Define the shared-AI OpenSpec schema, artifact graph, and authoring-template contracts.
+
 ## Requirements
+
 ### Requirement: sai-workflow schema defines the full artifact graph
 A custom OpenSpec schema at `openspec/schemas/sai-workflow/schema.yaml` SHALL declare all artifacts of the shared-AI pipeline with their IDs, output paths, dependency edges, and apply requirements.
 
@@ -167,3 +169,17 @@ The `design` artifact description in `openspec/schemas/sai-workflow/schema.yaml`
 - **THEN** it does not claim that `design.md` contains an endpoint map
 - **AND** `generates`, `requires`, `apply.requires`, and `apply.tracks` remain unchanged
 - **AND** the design description is deliberately corrected
+
+### Requirement: sai-workflow proposal template includes an optional Request Additional Notes section
+
+The proposal template at `openspec/schemas/sai-workflow/templates/proposal.md` SHALL include a `## Request Additional Notes` section immediately before `## Additional Notes`. Its comment SHALL state that the section is a verbatim, non-normative copy of the block's `**Request Additional Notes**` field, that no requirement or scenario is derived from it, and that the section is omitted when the block carries no such field. `## Additional Notes` SHALL remain the last section. The `artifacts.proposal` description in `openspec/schemas/sai-workflow/schema.yaml` SHALL list **Request Additional Notes** as an optional, verbatim, non-normative section right before **Additional Notes**.
+
+#### Scenario: Template places the section before Additional Notes
+
+- **WHEN** a spec author opens `openspec/schemas/sai-workflow/templates/proposal.md`
+- **THEN** a `## Request Additional Notes` section with its verbatim, non-normative comment appears immediately before the final `## Additional Notes` section
+
+#### Scenario: Schema documents the optional section
+
+- **WHEN** the `artifacts.proposal` description in `openspec/schemas/sai-workflow/schema.yaml` is read
+- **THEN** a `**Request Additional Notes**` bullet marked optional and non-normative appears immediately before the `**Additional Notes**` bullet

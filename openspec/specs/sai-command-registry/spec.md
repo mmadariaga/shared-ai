@@ -2,49 +2,39 @@
 
 ## Purpose
 
-TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+Make every `/sai-*` invocation run through its installed command file, using the installed command files themselves as the registry.
 
 ## Requirements
-### Requirement: Registry table coverage
+### Requirement: Installed command files are the registry
 
-The SAI command registry skill SHALL list a `/sai-merge` row describing the merge-a-local-branch command with criteria-based conflict resolution and ADR/DDR collision repair, keeping the enumerated command set consistent with the installed wrapper files.
+The universal `sai-commands` skill SHALL name the installed `commands/sai-*.md` files under the harness root as the registry of SAI commands, and SHALL carry no enumerated command table. A name with no installed command file SHALL be reported as not a SAI command, and the skill SHALL stop there.
 
-#### Scenario: Registry matches installed commands
+#### Scenario: A new command needs no registry edit
 
-- **WHEN** the registry table is rendered from the universal sai-commands skill
-- **THEN** `/sai-merge` appears beside the other routed-shaped commands pointing at `@commands/sai-merge.md`
+- **WHEN** a new `commands/{claude,opencode}/sai-<name>.md` wrapper pair is installed
+- **THEN** `/sai-<name>` resolves through the skill without any change to the skill file
 
+#### Scenario: Unknown command name
+
+- **WHEN** the skill receives `/sai-<name>` and no `commands/sai-<name>.md` is installed
+- **THEN** it reports that `/sai-<name>` is not a SAI command and stops
 
 ### Requirement: Skill declares fetch-before-execute rule
 
-The skill SHALL state that the LLM MUST resolve `/sai-*` commands by reading the corresponding file from `@commands/sai-<name>.md` and MUST NOT interpret or execute a sai-* task directly.
+The skill SHALL state that a `/sai-*` invocation runs only through its command file: when the harness has already expanded the command into context, the LLM follows that content; otherwise it fetches `@commands/sai-<name>.md`. In both cases it SHALL follow the file exactly, from its first directive, before acting on the task itself.
 
-#### Scenario: LLM attempts to skip command loading
-- **WHEN** the LLM receives a `/sai-*` invocation
-- **THEN** it MUST fetch the command file first, not interpret the task freely
+#### Scenario: Invocation arrives as text
+- **WHEN** the LLM receives a `/sai-*` invocation that the harness did not expand
+- **THEN** it fetches the command file first, not interpreting the task freely
+
+#### Scenario: Invocation already expanded
+- **WHEN** the harness has expanded the `/sai-*` command into context
+- **THEN** the LLM follows the expanded content without fetching the file again
 
 ### Requirement: Skill explains why loading matters
 
-The skill SHALL document the quality layers that sai-* commands provide: prerequisite checks, cost discipline via budget skills, phase-specific instructions, and OpenSpec skill chaining.
+The skill SHALL state that every behavior a SAI command has (prerequisite checks, budget routing, phase instructions, gates) comes from the chain its command file loads, so a task run without the file skips all of them.
 
 #### Scenario: LLM understands consequence of skipping
 - **WHEN** the LLM considers skipping the command file
-- **THEN** it recognizes that skipping means skipping all quality layers
-
-### Requirement: Registry table covers sai-retire-docs
-
-The universal SAI command registry SHALL contain a `/sai-retire-docs` entry pointing to its wrapper and describing its bounded, confirmation-gated archival analysis.
-
-#### Scenario: Registry lookup identifies the utility
-
-- **WHEN** a user or harness resolves the SAI command registry
-- **THEN** `/sai-retire-docs` SHALL resolve to the retire-docs wrapper before execution begins
-
-### Requirement: Registry preserves fetch-before-execute discipline
-
-The command registration SHALL preserve the existing fetch-before-execute contract for the utility wrapper and its boot adapter.
-
-#### Scenario: Registered command loads its contract
-
-- **WHEN** the utility is selected from the registry
-- **THEN** the harness SHALL load the declared wrapper and command card before interpreting the task
+- **THEN** it recognizes that skipping means skipping every behavior the file's chain loads

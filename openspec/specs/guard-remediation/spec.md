@@ -16,7 +16,7 @@ The planning and audit coordinators SHALL be permitted the scoped Bash(git reset
 
 ### Requirement: Closed scoped grant recording
 
-The permissions policy SHALL record the remediation as exactly three node tools in both roots plus the one scoped remediation grant, and SHALL permit no other node invocation and no unscoped Bash on those wrappers.
+The permissions policy SHALL record the remediation as exactly three node tools in both roots plus the one scoped remediation grant, and SHALL permit no other node invocation and no unscoped Bash on those wrappers. The Direct Build close grants of `sai-5-review` and `sai-review` are recorded separately in the review-direct-build-close capability.
 
 #### Scenario: wrapper scope stays closed
 

@@ -7,26 +7,26 @@ TBD - created by archiving change sai-5-review-coordinator-worker-split. Update 
 
 ### Requirement: Review worker owns the complete technical workflow
 
-The review worker SHALL own envelope parsing, prerequisite checks, change resolution, parent-branch detection, diff scoping, review passes 1–10, Pass 11 mutation analysis, report generation, report verification, and the lifecycle summary. The coordinator SHALL not share ownership of these activities.
+The review worker SHALL own envelope parsing, prerequisite checks, change resolution, parent-branch detection, diff scoping, review passes 1–11, Pass 12 mutation analysis, report generation, report verification, and the lifecycle summary. The coordinator SHALL not share ownership of these activities.
 
 #### Scenario: Worker starts from an invocation envelope
 - **WHEN** a review worker receives `arguments_value`
 - **THEN** it performs the complete review workflow from that value and durable repository state
 - **AND** it returns paths and summaries rather than artifact contents through its lifecycle payload
 
-### Requirement: Technical workflow is loaded through the shared review invocation core
+### Requirement: Technical workflow is loaded through the review step library
 
-The routed review worker SHALL NOT fetch `sai/commands/review/invocation.md`; its technical-core loading is step-gated instead. The worker contract plus `sai/commands/review/steps/common.md` SHALL form the sealed initial surface loaded at dispatch, carrying the boundaries that outlive any single step (budget skill, glossary format, and remember-policy loads, input paths, communication mode, prerequisites, collaboration style, hard rules), and all remaining instruction mass SHALL arrive just-in-time via coordinator `Active step:` pointer lines naming the files under `sai/commands/review/steps/`. The original monolithic `sai/commands/review/instructions.md` and the invocation core SHALL remain in place untouched beside the new step library — a deliberately preserved duplication awaiting a future retirement decision.
+The routed review worker SHALL load its technical workflow step-gated. The worker contract plus `sai/commands/review/steps/common.md` SHALL form the sealed initial surface loaded at dispatch, carrying the boundaries that outlive any single step (budget skill, glossary format, and remember-policy loads, input paths, communication mode, prerequisites, collaboration style, hard rules), and all remaining instruction mass SHALL arrive just-in-time via coordinator `Active step:` pointer lines naming the files under `sai/commands/review/steps/`. The worker contract SHALL NOT restate step-file content. The former monolithic `sai/commands/review/instructions.md` and the invocation core `sai/commands/review/invocation.md` are retired: the step library is the only review instruction surface, and the install manifest retires installed copies of both.
 
 #### Scenario: Routed worker starts technical review
 
 - **WHEN** the routed review worker begins technical work
 - **THEN** it holds only the worker contract plus `steps/common.md` as its initial instruction surface and receives every remaining phase instruction through coordinator-named step files
 
-#### Scenario: Monolith stays beside the carved library
+#### Scenario: Monolith is retired
 
 - **WHEN** the step-gated review delivery is in force
-- **THEN** `sai/commands/review/instructions.md` remains present and unchanged next to the `steps/` library
+- **THEN** neither `sai/commands/review/instructions.md` nor `sai/commands/review/invocation.md` exists, and the install manifest carries a retirement for each installed copy
 
 ### Requirement: Prerequisite failures stop technical work
 
@@ -53,7 +53,7 @@ The worker SHALL parse the resolved `arguments_value` as up to two positional va
 
 ### Requirement: Parent branch and diff scope remain unchanged
 
-The worker SHALL detect the parent branch in the existing order: user-provided branch, remote default branch, then verified `master` and `main`. It SHALL state the selected parent branch, compute the `{parent}...HEAD` name-status, stat, commit map, and diff, enforce the existing 500-LOC full-diff threshold and eight-call maximum for `budget-explorer` delegation, and terminate with exactly `No changes detected against {parent-branch}. Nothing to review.` when the diff is empty.
+The worker SHALL detect the parent branch as the first candidate that verifies, in the existing order: user-provided branch, remote default branch, `master`, then `main`; when no candidate verifies it SHALL return `failed` naming the candidates tried. It SHALL check the name-status for an empty diff before reading change artifacts or loading the diff. It SHALL state the selected parent branch, compute the `{parent}...HEAD` name-status, stat, commit map, and diff, enforce the existing 500-LOC full-diff threshold and eight-call maximum for `budget-explorer` delegation, and terminate with exactly `No changes detected against {parent-branch}. Nothing to review.` when the diff is empty.
 
 #### Scenario: Parent branch is inferred
 - **WHEN** the user does not provide a parent branch
@@ -65,79 +65,57 @@ The worker SHALL detect the parent branch in the existing order: user-provided b
 - **THEN** the worker does not load the full diff into the main review context
 - **AND** it delegates per-file or logical-group inspection to read-only `budget-explorer` branches within the existing maximum
 
-### Requirement: Passes 1 through 10 preserve the existing review policy
+#### Scenario: No parent-branch candidate verifies
+- **WHEN** neither the supplied branch, the remote default, `master`, nor `main` verifies
+- **THEN** the worker returns `failed` naming the candidates tried and computes no diff
 
-The worker SHALL execute the existing passes 1–10 against the full diff and change artifacts, preserving domain alignment, correctness, security triage, performance triage, accessibility triage, maintainability, testing, codebase consistency, glossary language consistency, and documentation/migration review. Security, performance, and accessibility remain triage-only in this phase.
+### Requirement: Passes 1 through 11 preserve the existing review policy
+
+The worker SHALL execute passes 1–11 against the full diff and change artifacts, preserving domain alignment, correctness, security triage, performance triage, accessibility triage, maintainability, testing, codebase consistency, glossary language consistency, documentation/migration review, and the dedicated Resilience pass. Security, performance, and accessibility remain triage-only in this phase.
 
 #### Scenario: UI and security surfaces are touched
 - **WHEN** the diff touches a security surface or UI surface
 - **THEN** the worker records the existing triage result and corresponding audit recommendation
 - **AND** it does not run SAST, profiling, axe, Lighthouse, or a deep accessibility audit as part of review
 
-### Requirement: Pass 11 keeps its activation and mutation scope
+### Requirement: Pass 12 keeps its activation and mutation scope
 
-The worker SHALL run Pass 11 only when the diff contains testable production code and the repository contains at least one test file. When either condition is false, it SHALL record exactly `Mutation Analysis (Pass 11): skipped — {no testable production code in diff | repository has no test files}. No mutation findings.` using the applicable reason and emit no mutation findings. An undetermined test command is a separate Tier-2 detection outcome, not an activation-gate reason. Eligible mutation targets SHALL be exactly changed production-code files in the diff.
+The worker SHALL run Pass 12 only when the diff contains testable production code and the repository contains at least one test file. When either condition is false, it SHALL record exactly `Mutation Analysis (Pass 12): skipped — {no testable production code in diff | repository has no test files}. No mutation findings.` using the applicable reason and emit no mutation findings. Eligible mutation targets SHALL be exactly changed production-code files in the diff.
 
 #### Scenario: Activation gate is not satisfied
 - **WHEN** the diff has no testable production code or the repository has no test file
-- **THEN** Pass 11 is skipped with exactly `Mutation Analysis (Pass 11): skipped — {no testable production code in diff | repository has no test files}. No mutation findings.` using the applicable reason
+- **THEN** Pass 12 is skipped with exactly `Mutation Analysis (Pass 12): skipped — {no testable production code in diff | repository has no test files}. No mutation findings.` using the applicable reason
 - **AND** no production file is mutated
 
 #### Scenario: Activation gate is satisfied
 - **WHEN** both testable changed production code and at least one repository test file exist
-- **THEN** Pass 11 proceeds with only changed production-code files as mutation targets
+- **THEN** Pass 12 proceeds with only changed production-code files as mutation targets
 - **AND** no file outside the diff is selected
 
-### Requirement: Pass 11 handles empty eligible-target sets
+### Requirement: Pass 12 handles empty eligible-target sets
 
-The review worker SHALL distinguish an admitted Pass 11 activation gate from an empty eligible mutation-target set and SHALL emit the exact no-eligible-target skip without inferred findings.
+The review worker SHALL distinguish an admitted Pass 12 activation gate from an empty eligible mutation-target set and SHALL emit the exact no-eligible-target skip without inferred findings.
 
 #### Scenario: Mutation scope is empty after activation
 
-- **WHEN** the activation gate admits Pass 11 but no changed production-code file is eligible for mutation
-- **THEN** the worker records `Mutation Analysis (Pass 11): skipped — no eligible mutation targets. No mutation findings.` and continues the review.
+- **WHEN** the activation gate admits Pass 12 but no changed production-code file is eligible for mutation
+- **THEN** the worker records `Mutation Analysis (Pass 12): skipped — no eligible mutation targets. No mutation findings.` and continues the review.
 
-### Requirement: Pass 11 preserves two-tier detection and safety
+### Requirement: Pass 12 runs only the declared deterministic engine
 
-The worker SHALL prefer a declared supported mutation tool and skip the LLM-as-mutator path when one is available. Otherwise it SHALL detect the project test command, run a passing baseline, and enforce the existing per-mutation 60-second timeout, dirty-file pre-check, file-scoped `git checkout -- {file}` revert, and revert verification. It SHALL record exactly one outcome for every selected mutation. An observed `revert-failed` result from a completed subagent batch SHALL continue subsequent sequential batches; a `revert-failed`-equivalent classification caused by missing subagent output SHALL halt later batch dispatch because the distinction is the unverified cause, not the shared safety label.
+The worker SHALL run Pass 12 only through a supported mutation tool declared as a project dependency, with its checked-in configuration, scoped to the eligible diff files; the engine owns baseline, mutation application, timeout, revert, and result collection. With no declared tool, a failed baseline, a failed execution, or an unparseable report, the worker SHALL record the matching exact `unavailable` note and emit no mutation findings. It SHALL never apply a hand-authored or inferred mutation.
 
 #### Scenario: Declared mutation tooling exists
 - **WHEN** a supported mutation tool is declared in the project manifest
-- **THEN** the worker runs that tool and parses surviving mutants
-- **AND** it does not dispatch the LLM-as-mutator path
+- **THEN** the worker runs that tool against the eligible diff files and parses its report
 
-#### Scenario: Baseline tests fail
-- **WHEN** no declared mutation tool exists and the detected baseline test command fails
-- **THEN** the worker records the baseline failure and applies no LLM mutation
-- **AND** it emits no mutation findings
-
-#### Scenario: No Tier-2 test command is detected
-- **WHEN** Pass 11 is activated, no supported mutation tool is declared, and no test command can be detected from the project manifests
-- **THEN** the worker records that `mutation analysis could not run due to an undetermined test command` in `review.md`
-- **AND** it emits no mutation findings and stops Pass 11 without applying mutations
-
-#### Scenario: A mutation revert fails
-- **WHEN** file-scoped revert verification finds the mutated file still dirty
-- **THEN** the worker records that mutation as `revert-failed` and emits the existing Critical and working-tree-pollution warning
-- **AND** it continues subsequent sequential batches
-
-### Requirement: Pass 11 authorizes sequential write-capable mutation dispatch
-
-For the LLM-as-mutator path, the worker SHALL decide mutation targets and mutation definitions itself and SHALL delegate only mechanical apply/test/revert/verify I/O to `budget-subagent`. It SHALL dispatch batches sequentially, with at most 5–6 mutations per batch, and SHALL require one outcome for every assigned mutation. The aggregate outcome counts SHALL equal the total selected mutations. If a batch omits an outcome, the worker SHALL classify every unaccounted mutation as `revert-failed`-equivalent and count it as `revert-failed` for safety accounting, record the discrepancy in `review.md`, emit the existing critical working-tree-pollution warning, stop dispatching further mutation batches, and complete the report with the discrepancy rather than waiting indefinitely.
-
-#### Scenario: Multiple mutation batches exist
-- **WHEN** more than one mutation batch is needed
-- **THEN** the worker dispatches the batches sequentially
-- **AND** it never runs concurrent working-tree mutation branches
-
-#### Scenario: A batch omits a result
-- **WHEN** a mutation subagent returns fewer outcomes than assigned mutations
-- **THEN** the worker records every missing mutation as `revert-failed`-equivalent, counts it as `revert-failed`, includes the discrepancy in `review.md`, and emits the existing critical working-tree-pollution warning
-- **AND** it stops later mutation-batch dispatches and completes with the discrepancy instead of leaving an unresolved lifecycle state
+#### Scenario: No mutation tool is declared
+- **WHEN** Pass 12 is activated and no supported mutation tool is declared
+- **THEN** the worker records `Mutation Analysis (Pass 12): unavailable — no deterministic mutation tool declared. No mutation findings.` and mutates nothing
 
 ### Requirement: Worker writes and verifies only the review artifact
 
-The worker SHALL write `openspec/changes/{change-name}/review.md` using the existing review report template, including findings with severity-prefixed identifiers, severity roll-up, the closing `Summary:` tally line, coverage, Pass 11 outcomes, and all three audit recommendations. The completed payload's `summary` SHALL contain the complete existing `## Recommended Audits` block, including all three audit lines, as worker-authored text. Outside the explicitly bounded and reverted Pass 11 mutations, it SHALL never modify production code or any other durable artifact, and it SHALL never leave a production file persistently changed. `changed_files` SHALL contain only durable writes by the worker: `review.md`, plus any production file whose revert failed or whose revert result was unaccounted and therefore safety-classified as revert-failed-equivalent; cleanly reverted mutation targets SHALL be excluded.
+The worker SHALL write `openspec/changes/{change-name}/review.md` using the existing review report template, including findings with severity-prefixed identifiers, severity roll-up, the closing `Summary:` tally line, coverage, Pass 12 outcomes, and all three audit recommendations. The completed payload's `summary` SHALL contain the complete existing `## Recommended Audits` block, including all three audit lines, as worker-authored text. Outside the explicitly bounded and reverted Pass 12 mutations, it SHALL never modify production code or any other durable artifact, and it SHALL never leave a production file persistently changed. `changed_files` SHALL contain only durable writes by the worker: `review.md`, plus any production file whose revert failed or whose revert result was unaccounted and therefore safety-classified as revert-failed-equivalent; cleanly reverted mutation targets SHALL be excluded.
 
 #### Scenario: Review report is generated
 - **WHEN** all review passes and any active mutation analysis are complete
@@ -149,13 +127,13 @@ The worker SHALL write `openspec/changes/{change-name}/review.md` using the exis
 - **THEN** the worker returns `completed` with severity counts, top three Critical findings when present, report path, the complete worker-authored `## Recommended Audits` block, and parent-branch statement
 - **AND** it returns no report contents in the lifecycle payload
 
-### Requirement: Review lifecycle results carry emission time
+### Requirement: Review lifecycle results carry no time field
 
-The review worker SHALL emit worker-authored `emitted_on` through progress and terminal lifecycle results while retaining review passes, mutation analysis, report generation, and triage ownership.
+The review worker SHALL return progress and terminal lifecycle results with no time field, while retaining review passes, mutation analysis, report generation, and triage ownership; the validator's `validated_at` sidecar is the only observed time.
 
 #### Scenario: Review reports a milestone
 - **WHEN** a review milestone completes
-- **THEN** its progress result includes `emitted_on` and changed paths.
+- **THEN** its progress result carries the step ids and changed paths and no time field.
 
 ### Requirement: Review findings use the shared audit severity vocabulary
 
@@ -175,7 +153,7 @@ The review instruction and worker contract SHALL classify every finding with one
 
 #### Scenario: Mutation findings fold into the report by remapped severity
 
-- **WHEN** Pass 11 produced mutation findings
+- **WHEN** Pass 12 produced mutation findings
 - **THEN** each surviving and pre-check-failed mutation is counted as `High` and each revert-failed mutation as `Critical` in the review counts and verdict
 - **AND** their `mMUT-N` identifiers are unchanged
 
@@ -196,7 +174,11 @@ The review instruction SHALL assign every finding a severity-prefixed identifier
 - **AND** the worker completion verification names the top three `Critical` findings when present
 
 ### Requirement: Review close runs a pre-save adversarial findings check
-The review close step SHALL challenge the in-memory draft before saving to discard false positives and correct severity. It SHALL skip the adversary when the draft has zero findings including zero mMUT-N findings, otherwise dispatch exactly one budget-explorer subagent receiving only per-finding identifier, file:line, category, and one-line problem statement without diff or raw code, scope the adversary to the current diff findings only, require per-finding keep or discard or downgrade verdict with why under 40 words and total report under 800 words, let the worker accept or reject each verdict with discards invisible and tally recomputed over kept findings at final severity, and close with worker findings on subagent failure without blocking.
+The review close step SHALL challenge the in-memory draft before saving to discard false positives and correct severity. Mutation findings (mMUT-N) come from the deterministic engine and SHALL stay outside the adversary at their mapped severity. It SHALL skip the adversary when the draft has no finding other than mMUT-N findings, otherwise dispatch exactly one budget-explorer subagent receiving only per-finding identifier, file:line, category, and one-line problem statement without diff or raw code, scope the adversary to the current diff findings only, require per-finding keep or discard or downgrade verdict with why under 40 words and total report under 800 words, let the worker accept or reject each verdict with discards invisible and tally recomputed over kept findings at final severity, and close with worker findings on subagent failure without blocking.
 #### Scenario: Adversarial check filters review draft
 - **WHEN** the in-memory review draft contains findings
 - **THEN** the worker runs one bounded adversary and saves only kept findings with recomputed Summary tally
+
+#### Scenario: Mutation findings bypass the adversary
+- **WHEN** the draft carries mMUT-N findings
+- **THEN** they are saved at their mapped severity without adversary review, and a draft whose only findings are mMUT-N skips the adversary

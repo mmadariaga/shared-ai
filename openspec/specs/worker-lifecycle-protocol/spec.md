@@ -103,21 +103,21 @@ Every routed SAI planning worker SHALL author a structured payload with exactly 
 - **WHEN** the coordinator forwards an answer other than `yes` to the one-change selection question
 - **THEN** the worker SHALL return `cancelled` with a concise clean-stop summary and SHALL not request the same selection again
 
-### Requirement: Every closed payload carries worker emission time
+### Requirement: Closed payloads carry no time field
 
-Every terminal status, design notice, and progress event SHALL carry worker-authored `emitted_on` immediately after its `status` or `event` discriminator in `YYYY-MM-DDTHH:MM:SS±HH:MM` form. The value SHALL be validated and forwarded verbatim, including for pre-resolution and no-plan results.
+Every terminal status, design notice, and progress event SHALL carry no time field, including pre-resolution and no-plan results. The validator observes each valid result and emits a `validated_at` sidecar in `YYYY-MM-DDTHH:MM:SS±HH:MM` form, which the coordinator forwards verbatim.
 
 #### Scenario: Lifecycle stream is timestamped
 - **WHEN** any worker returns a terminal result, notice, or progress event
-- **THEN** the coordinator validates its offset-bearing `emitted_on` value and preserves it without recomputing or formatting it.
+- **THEN** the coordinator validates it and preserves the verdict's `validated_at` without recomputing or formatting it.
 
-### Requirement: Audit workers share the timestamped progress extension
+### Requirement: Audit workers share the progress extension
 
-Review, security, performance, and accessibility workers SHALL use the same timestamped progress-event lifecycle as planning workers when their adapters declare a progress plan. The extension SHALL remain additive and SHALL not change terminal status semantics.
+Review, security, performance, and accessibility workers SHALL use the same progress-event lifecycle as planning workers when their adapters declare a progress plan. The extension SHALL remain additive and SHALL not change terminal status semantics.
 
 #### Scenario: An audit worker reports progress
 - **WHEN** an audit worker completes one or more declared plan steps
-- **THEN** it returns `event: "progress"` with `emitted_on`, `step_ids`, and `changed_files` before continuing the same worker.
+- **THEN** it returns `event: "progress"` with `step_ids` and `changed_files` before continuing the same worker.
 
 ### Requirement: Resumable worker sessions
 
@@ -185,18 +185,18 @@ As a further planning-phase-scoped, additive extension, after prerequisite check
 - **WHEN** the coordinator continues a planning worker using `continue_after_progress`
 - **THEN** the acknowledgement SHALL be excluded from opaque input history, user-answer handling, and pending feedback
 
-### Requirement: Contextual continuation uses the existing worker lifecycle
+### Requirement: Merge strategy revision uses the existing worker lifecycle
 
-A contextual merge decision SHALL use the existing `needs_input` lifecycle status. A `more-context` response SHALL continue the same worker with pending alternatives and SHALL not introduce a new status, progress event, continuation field, or mutation channel.
+A merge strategy revision SHALL use the existing `needs_input` lifecycle status with an empty `options` list. The user's free-form context or correction SHALL continue the same worker and SHALL not introduce a new status, progress event, continuation field, or mutation channel.
 
-#### Scenario: More-context continues the same worker
+#### Scenario: Revision continues the same worker
 
-- **WHEN** the user requests more context for a pending semantic merge decision
-- **THEN** the coordinator forwards the exact answer to the same worker and the worker returns another contextual decision without writing or staging
+- **WHEN** the user answers `revise-strategy` and supplies a correction
+- **THEN** the coordinator forwards the exact answer to the same worker and the worker returns a rebuilt strategy proposal without writing or staging
 
 ### Requirement: Phase-defined closed nonterminal extensions
 
-The shared worker lifecycle protocol SHALL permit a declared phase-specific closed nonterminal extension with its discriminator, worker-authored `emitted_on`, summary, changed-files list, and exact additional fields. The merge conflict extension SHALL use `affected_files` and `continuation_state` with values `language-selection` or `strategy-analysis`.
+The shared worker lifecycle protocol SHALL permit a declared phase-specific closed nonterminal extension with its discriminator, summary, changed-files list, and exact additional fields. The merge conflict extension SHALL use `affected_files` and `continuation_state` with values `language-selection` or `strategy-analysis`.
 
 #### Scenario: Conflict extension is validated
 

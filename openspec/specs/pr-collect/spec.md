@@ -1,11 +1,15 @@
 # pr-collect Specification
 
 ## Purpose
-TBD - created by archiving change pr-deterministic-extraction. Update Purpose after archive.
+Defines the read-only `sai/tools/pr.js collect` subcommand that reports pull request readiness data as JSON.
 ## Requirements
 ### Requirement: pr-collect gathers pull request readiness data
 
 The `sai/tools/pr.js collect` subcommand SHALL gather branch state, commit history, diff statistics, artifact inventory, capability specifications, authentication status, and existing pull request information from the current working directory and report all findings as a single JSON object.
+
+#### Scenario: an explicit parent sets the commit and diff base
+- **WHEN** pr-collect is invoked with `--parent <branch>`
+- **THEN** it reports that branch as `parent_branch` and computes commits, diff statistics, and changed files from it instead of the derived parent
 
 #### Scenario: reports branch and parent derivation
 - **WHEN** pr-collect is invoked in a git repository with established branch tracking

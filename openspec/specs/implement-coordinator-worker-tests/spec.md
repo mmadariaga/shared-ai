@@ -31,7 +31,7 @@ Pin the implementation coordinator and implementation-planning worker to the can
 - **THEN** they SHALL assert that the declared plan block contains no step id equal to the literal id `review` — a whole-file substring match on `review` is insufficient, because `documentation-review`, its `Review required documentation` label, and the coordinator's MANDATORY STOP text legitimately contain that substring — and no evidence-marked designation
 - **AND** they SHALL assert the run-closing `completed` reconciliation clause renders every unmarked step `completed`, with no carve-out
 
-#### Scenario: skip-fold stays asserted under the renamed id
+#### Scenario: first-run skip-fold stays asserted
 
 - **WHEN** the tests inspect the implementation-planning worker contract
-- **THEN** they SHALL keep asserting the first-run skip-fold — the skipped `collapse-implemented-steps` id folds into the next completed batch in plan order with no separate `skipped` field
+- **THEN** they SHALL keep asserting the first-run skip-fold — on a first run the startup batch reports `prereqs-resolution` and `collapse-implemented-steps` together with no separate `skipped` field

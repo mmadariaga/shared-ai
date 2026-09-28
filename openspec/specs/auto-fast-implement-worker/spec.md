@@ -2,23 +2,23 @@
 
 ## Purpose
 TBD - created by archiving change auto-fast-selector-option. Update Purpose after archive.
+
 ## Requirements
-### Requirement: Attribute implementation to Build
 
-The existing `sai-autofast-implement-worker` SHALL be documented as the implementation worker for Build (unattended). Its worker identity and protocol marker SHALL remain unchanged, and its existing code-only exclusions SHALL remain in force.
+### Requirement: Attribute implementation to Direct Build
+`sai-direct-build-worker`, whose contract is `sai/commands/explore/direct-build-worker.md`, SHALL be the implementation worker for Direct Build (unattended), and its repository-artifact scope with protected update protocols SHALL remain in force.
 
-#### Scenario: Build dispatches implementation
-
-- **WHEN** Build reaches its implementation step
-- **THEN** the existing implement worker receives the same block-driven request under the Build route.
+#### Scenario: Direct Build dispatches implementation
+- **WHEN** Direct Build reaches its implementation step
+- **THEN** the existing implement worker receives the same block-driven request under the Direct Build route
 
 ### Requirement: Alpha input model
 
-The implementer worker SHALL receive exactly one opaque `arguments_value` whose first line is the marker `--autofast` and whose remainder is the complete crystallized Ready to Propose block; it SHALL strip the marker line and treat that block as its sole substantive input, with no conversation context forwarded and no requirements inferred from repository discovery beyond what implementing the block requires.
+The implementer worker SHALL receive exactly one opaque `arguments_value` whose first line is the marker `--direct-build` and whose remainder is the complete crystallized Ready to Propose block; it SHALL strip the marker line and treat that block as its sole substantive input, with no conversation context forwarded and no requirements inferred from repository discovery beyond what implementing the block requires.
 
 #### Scenario: Block-only input
 
-- **WHEN** the worker is dispatched by explore's Build - Unattended flow
+- **WHEN** the worker is dispatched by explore's Direct Build - Unattended flow
 - **THEN** it implements directly from Capabilities in scope, Key constraints, Implementation Details, and Edge Cases, treating Research Leads as non-authoritative starting points only
 
 #### Scenario: Slice-scoped implementation
@@ -29,27 +29,22 @@ The implementer worker SHALL receive exactly one opaque `arguments_value` whose 
 - **AND** an `I` item serving a capability of a later slice is not implemented, stubbed, or referenced in this run
 
 ### Requirement: Write containment
-
-The implementer worker SHALL treat exactly code, tests, the project configuration the change requires, and shipped product schemas under `openspec/schemas/**` as writable, and SHALL write nothing else under a closed exclusion list. It MUST NOT create or modify anything under `openspec/` except `openspec/schemas/**`. It MUST NOT create or modify `openspec/specs/**`, `openspec/changes/**`, or `openspec/config.yaml`, which stay forbidden or reserved while proposal, specs, design, tasks, and metadata are reconstructed later by backfill. It MUST NOT create planning artifacts, MUST NOT run a mutating git command, and MUST NOT dispatch subagents.
+The implementer worker SHALL treat any repository artifact required by the crystallized block as writable, regardless of file format, under the shared protected update protocols and its role restrictions. It SHALL NOT directly modify `openspec/specs/**`, with proposal, specs, design, tasks, and metadata reconstructed later by backfill. It SHALL NOT create planning artifacts, SHALL NOT run a mutating git command, and SHALL NOT dispatch subagents.
 
 #### Scenario: Contained implementation diff
-
 - **WHEN** implementation completes across all rounds
-- **THEN** changed_files contains only code, test, required configuration, and shipped product schemas under `openspec/schemas/**` paths, with no planning artifact and no `openspec/specs/**`, `openspec/changes/**`, or `openspec/config.yaml` writes
+- **THEN** changed_files contains only required repository artifacts with no planning artifact and no direct published-spec writes
 
 #### Scenario: Tests are in scope
-
 - **WHEN** an emitted block requires test coverage for its capabilities
 - **THEN** the implementer worker creates or modifies test files as ordinary in-scope writes
 
 #### Scenario: Schema product write is permitted
-
 - **WHEN** implementation requires a schemas product fix
 - **THEN** the implementer writes under `openspec/schemas/**`
 
 #### Scenario: Excluded write refused
-
-- **WHEN** satisfying the block would require writing under `openspec/` except `openspec/schemas/**` (including `openspec/specs/**`, `openspec/changes/**`, or `openspec/config.yaml`), creating a planning artifact, running a mutating git command, or dispatching a subagent
+- **WHEN** satisfying the block would require a direct published-spec write, a planning artifact, a mutating git command, or a subagent dispatch
 - **THEN** the implementer performs no such action and reports the violated exclusion
 
 ### Requirement: Fix-loop continuation discipline
@@ -80,3 +75,11 @@ The Direct Build implementer dispatch SHALL be a no-commit-guard window opened b
 - **THEN** its returned head is recorded as both `base_sha` and the window's `guard_base`, and the window is verified after the implementer stretch closes and before Step 3 staging
 - **AND** the implementer worker's write containment and git prohibition prose are unchanged
 
+### Requirement: Implementer reads Request Additional Notes as non-authoritative context
+
+When the block carries `**Request Additional Notes**`, the Direct Build implementer SHALL read it as non-authoritative context in the same way as **Research Leads**. The field SHALL add no scope and no requirement to the implementation.
+
+#### Scenario: Notes inform but do not scope the implementation
+
+- **WHEN** the implementer receives a block that carries Request Additional Notes content
+- **THEN** it implements only from Capabilities in scope, Key constraints, Implementation Details, and Edge Cases, and treats the notes as context that adds no scope

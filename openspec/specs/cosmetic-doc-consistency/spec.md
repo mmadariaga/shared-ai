@@ -30,10 +30,10 @@ Both boot cards SHALL close the utility body example without an extra closing pa
 - **THEN** the explore body example ends with a single period and no stray paren
 
 ### Requirement: ADR-DDR consumer coverage
-The adr-ddr-criteria policy SHALL list design steps, implement instructions Step 3, implement steps/artifact-analysis.md, and explore steps/pipeline-direct-build.md as consumers and SHALL state that no fetching body restates the criteria inline.
+The adr-ddr-criteria policy SHALL list design steps, implement steps/artifact-analysis.md, and explore steps/pipeline-direct-build.md as consumers and SHALL state that no fetching body restates the criteria inline.
 #### Scenario: Consumer list complete
 - **WHEN** a reader checks the consumer list in sai/policies/adr-ddr-criteria.md
-- **THEN** all four consumers are listed and the single-source rule names no restating body
+- **THEN** all three consumers are listed and the single-source rule names no restating body
 
 ### Requirement: Apply projection consumer reference
 The todo-structure policy SHALL cite sai/commands/apply/coordinator.md as the consuming surface for the apply step projection.

@@ -130,7 +130,7 @@ When `/sai-2-design` finds no such disagreement, it SHALL print nothing.
 
 This is required by `/sai-3-implement`'s existing contract, which restricts it to the documents listed in `## Required Documentation` and forbids additional codebase exploration. Granting it a direct read of the learnings file would contradict that contract.
 
-No instruction file SHALL add `SAI_LEARNINGS.md` to `/sai-3-implement`'s reading list, and `sai/commands/implement/instructions.md` SHALL NOT be modified by this change.
+No instruction file SHALL add `SAI_LEARNINGS.md` to `/sai-3-implement`'s reading list, and the `sai-3-implement` step library (`sai/commands/implement/steps/`) SHALL NOT read it.
 
 #### Scenario: sai-3-implement plans a change in a repo with a learnings file
 

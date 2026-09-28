@@ -1,6 +1,6 @@
 # Design Step — Research
 
-Active step: research. Complete codebase research and resolve all Open Questions, then report the `research` progress event per the worker contract.
+Active step: research. Gather source evidence for design and identify any unresolved facts; report the `research` progress event per the worker contract. The `design.md` Open Questions gate runs in the tasks step after design is written.
 
 ## Inputs
 
@@ -8,22 +8,18 @@ Read the following known files in the main agent (paths are fixed by convention)
 - `openspec/changes/{resolved_change_name}/proposal.md` — motivation, what changes, capabilities in scope
 - All files matching `openspec/changes/{resolved_change_name}/specs/**/*.md` — capability delta specs
 
-## Codebase Research (DELEGATED)
+## Codebase research (delegated)
 
-**ALL** codebase discovery and deep reading MUST be delegated to a **`budget-explorer`** subagent. The main agent MUST NOT run `glob`, `grep`, `Read`, or any file operation on source code.
+Delegate all codebase discovery and deep reading to `budget-explorer`. The design worker reads the known OpenSpec inputs above but does not search or open source files itself.
 
-Launch ONE **`budget-explorer`** subagent with this prompt:
+Launch one `budget-explorer` with this goal and output contract:
 
-> Read the proposal and specs for change `{resolved_change_name}`. Discover and deeply read the most relevant source files for this change. Search broadly (glob/grep) — do not assume frameworks. For each discovered file, report: `filePath`, `keyExports`, `isReusableForThisChange` (boolean), `notes` (max 20 words). Return structured data only. No prose narrative.
+> Read the proposal and specs for change `{resolved_change_name}`. Discover the relevant existing source, callers, and test hooks without assuming a framework. Choose search tools by your research ladder. Return structured data with exactly `files` and `unresolved` (plus the explorer's mandatory `ladder_discards` and `out_of_root_requests`). `files` contains at most 12 entries, each with `filePath`, `keyExports`, `isReusableForThisChange` (boolean), and `notes` (at most 20 words, citing source lines for claims that determine the design). `unresolved` lists relevant files or claims not yet verified, with a reason. Limit the entire response to 350 words; no raw file contents or narrative.
 
-The main agent acts **exclusively** on the `budget-explorer` subagent's output. If the output is ambiguous, spawn another `budget-explorer` subagent with a more targeted prompt. Do NOT open files to "verify".
+Use the report to make design decisions. If directly affected callers, tests, or claims remain unverified, continue research with a targeted `budget-explorer` request before closing this step. Carry unresolved design decisions into `design.md` for the tasks-step gate.
 
-## Trust Rule
+## Evidence boundary
 
-The `budget-explorer` subagent is the single source of truth for codebase facts during design. The main agent MUST NOT re-read any source file the `budget-explorer` has already reported on, even if the report contains something surprising (e.g. "this component has a bug" or "this pattern is unusual"). Assume the `budget-explorer` is correct and design accordingly.
+Source files are the authority for codebase facts; the explorer reports bounded evidence from them. When a report is surprising, ambiguous, or conflicts with another source, ask the explorer to check the specific claim and cite the source lines. If the evidence remains unresolved and blocks drafting `design.md`, return `needs_input` for that decision.
 
-The only exception: files the `budget-explorer` explicitly marks as `NOT_FOUND` or files not in its list (e.g. external URLs, newly created files).
-
-## Budget-explorer delegation specifics
-
-How to spawn subagents, which model tier to use, task classification (lookup / synthesis / audit), tool-call caps, and output contract format are all defined by the budget skill (loaded at dispatch via common.md). Follow it.
+The budget skill loaded through `common.md` owns dispatch mechanics and tool-call limits. A file marked `NOT_FOUND` remains unresolved.

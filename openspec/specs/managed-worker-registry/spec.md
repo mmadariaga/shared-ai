@@ -92,7 +92,7 @@ Tunable-seed projection SHALL install the bytes of the manifest row's declared `
 #### Scenario: Opencode tunable-seed rows project opencode sources
 - **WHEN** the manifest expands an opencode tunable-seed row whose source is `agents/opencode/sai-2-design-worker.md`
 - **THEN** the file installed at `~/.config/opencode/agents/sai-2-design-worker.md` SHALL be byte-identical to `agents/opencode/sai-2-design-worker.md` when the destination did not exist before the install
-- **AND** it SHALL NOT contain Claude frontmatter (no `model: claude-opus-4-8`, no `effort` key, no `tools` field)
+- **AND** it SHALL NOT contain Claude frontmatter (no Claude model identifier, no `effort` key, no `tools` field)
 - **AND** it SHALL carry the opencode frontmatter (`mode`, `model`, `variant`, `permission.task`) and the canonical contract fetch in the body
 
 #### Scenario: Claude tunable-seed rows remain byte-preserving
@@ -112,3 +112,22 @@ The canonical sample `configs/opencode.jsonc` SHALL NOT define any agent key —
 - **WHEN** the installer copies `configs/opencode.jsonc` to a fresh destination and applies the configuration merge
 - **THEN** the resulting configuration contains no `agent` key
 - **AND** the merged configuration retains `permission.external_directory["~/.config/opencode/sai/**"]`
+
+### Requirement: Delegating managed workers grant subagent dispatch on both harnesses
+
+Every worker-matrix entry in `sai/install-manifest.json` whose worker contract, transitive `Fetch @sai/...` closure, or sibling `steps/` files contain a `Fetch` line for `@skills/budget/SKILL.md`, `@skills/budget-explorer/SKILL.md`, `@skills/budget-executor/SKILL.md`, or `@skills/budget-subagent/SKILL.md` SHALL declare `Agent` in its `claudeAgent.tools` list, and SHALL declare both `budget: allow` and `explore: allow` in its `opencodeAgent.permissionBlock`. A prose mention of a budget skill without a `Fetch` line MUST NOT make a worker delegating. The requirement is one-directional: it MUST NOT forbid `Agent` on a worker that does not delegate, and it MUST NOT require `executor: allow`. A regression test MUST enforce this over repository sources only, never installed copies. The test MUST evaluate each worker-matrix entry by its own `workerContract`. It MUST fail when the set of delegating workers is empty or omits `sai-backfill-worker`.
+
+#### Scenario: Backfill worker can dispatch its budget-explorer conflict scan
+
+- **WHEN** the installer materializes `sai-backfill-worker` from its worker-matrix entry, whose worker card fetches `@skills/budget/SKILL.md`
+- **THEN** its `claudeAgent.tools` is `Read, Glob, Grep, Bash, Write, Agent, Skill, SendMessage` and its `opencodeAgent.permissionBlock` contains `budget: allow` and `explore: allow`
+
+#### Scenario: A delegating worker without dispatch capability fails the guard test
+
+- **WHEN** a worker-matrix entry's loaded instructions contain a budget-skill `Fetch` line but its `claudeAgent.tools` lacks `Agent` or its `opencodeAgent.permissionBlock` lacks `budget: allow` or `explore: allow`
+- **THEN** `test/worker-delegation-tools.test.js` fails with a message naming the worker and the file that contains the `Fetch` line
+
+#### Scenario: Non-delegating workers holding Agent are not flagged
+
+- **WHEN** a worker-matrix entry such as `sai-4-red-worker` declares `Agent` but its loaded instructions contain no budget-skill `Fetch` line
+- **THEN** the guard test passes for that entry without requiring or forbidding any dispatch capability

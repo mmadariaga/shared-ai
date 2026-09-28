@@ -6,7 +6,7 @@ Defines the two managed Step-execution workers for `/sai-4-apply` — `sai-4-red
 ## Requirements
 ### Requirement: apply-worker-matrix-entries
 
-The worker-matrix SHALL contain exactly two apply entries: `sai-4-red-worker` and `sai-4-green-worker`. Each entry SHALL declare its phase, worker identity, worker contract path under `sai/commands/apply/`, binding stem, dispatch primitive, initial dispatch and continuation literals, replacement fields, helper permissions, progress declaration, and the per-harness agent parameters. Both entries SHALL be on the budget tier — the first worker-matrix entries whose model tier is the budget tier rather than the standard routed model tier. The existing seven routed phase entries SHALL remain unchanged in identity and order.
+The worker-matrix SHALL contain exactly two apply entries: `sai-4-red-worker` and `sai-4-green-worker`. Each entry SHALL declare its phase, worker identity, worker contract path under `sai/commands/apply/`, binding stem, and the per-harness agent parameters. Both entries SHALL be on the budget tier — the first worker-matrix entries whose model tier is the budget tier rather than the standard routed model tier. The existing seven routed phase entries SHALL remain unchanged in identity and order.
 
 #### Scenario: matrix materializes both apply workers
 
@@ -111,14 +111,14 @@ On `continue_after_recovery`, the GREEN worker SHALL resume the same session and
 - **WHEN** a Step's plan-level file scope contains no production file
 - **THEN** it is never dispatched to the GREEN worker; it routes to the RED worker under the green-exception
 
-### Requirement: Apply worker lifecycle payloads carry emission time
+### Requirement: Apply worker lifecycle payloads stay timeless
 
-RED and GREEN workers SHALL include worker-authored `emitted_on` in every progress and terminal payload while preserving their scope boundaries, test-file prohibition, green-exception routing, and worker-core failure metadata. A failed unpassable STOP SHALL carry `failure_class: blocking-contradiction` and boolean `unrecoverable` in the lifecycle envelope; the worker sets the veto only from concrete worker-side evidence, while the coordinator's Cause Locus decides eligibility when the veto is false. The fixed nine-field apply report remains the only report extension and carries evidence through its existing summary, learning, STOP, and file fields rather than adding a tenth field.
+RED and GREEN workers SHALL author no time field in any progress or terminal payload (`timeless-worker`) while preserving their scope boundaries, test-file prohibition, green-exception routing, and worker-core failure metadata. A failed unpassable STOP SHALL carry `failure_class: blocking-contradiction` and boolean `unrecoverable` in the lifecycle envelope; the worker sets the veto only from concrete worker-side evidence, while the coordinator's Cause Locus decides eligibility when the veto is false. The fixed nine-field apply report remains the only report extension and carries evidence through its existing summary, learning, STOP, and file fields rather than adding a tenth field.
 
 #### Scenario: Apply worker reports a milestone
 
 - **WHEN** a RED or GREEN worker completes a declared milestone
-- **THEN** its lifecycle result includes `emitted_on` and the existing changed-file data
+- **THEN** its lifecycle result carries the existing changed-file data and no time field
 
 #### Scenario: Apply worker reports an unpassable STOP
 

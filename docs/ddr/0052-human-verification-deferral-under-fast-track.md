@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Superseded — the per-Step Human Verification gate no longer exists (ADR 0186); Functional checks go to the terminal functional review, identically with and without fast-track.
 
 ## Context
 
@@ -22,6 +22,7 @@ Under fast-track, per-Step Human Verification checkboxes are accumulated in the 
 - The run proceeds without mid-Step pauses, preserving the fast-track speed benefit.
 - Bounded-failure semantics: the Step-ordered combined list makes corrective re-runs target only the failing Step.
 - The divergence from the no-flag invariant (marking ahead of human review) is confined to the explicit opt-in and announced by the banner.
+- Superseded: ADR 0186 removed the per-Step human gate for every run, so fast-track no longer has anything to defer; the terminal functional review marks the Functional checks it verifies and reports the rest as pending human review.
 
 ## Related
 

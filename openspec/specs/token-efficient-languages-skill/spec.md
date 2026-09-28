@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+Give sessions outside the SAI command surfaces the same three-rule language contract that `sai/policies/remember.md` carries inside them, triggered by the cost-mode phrases.
 
 ## Requirements
 ### Requirement: Skill file location
@@ -18,23 +18,24 @@ The skill SHALL be created as a single file at `skills/universal/token-efficient
 
 The skill file SHALL contain a YAML frontmatter block with:
 - `name: token-efficient-languages`
-- `description:` — a single line that includes the trigger keywords: "token efficient", "english reasoning", "language efficiency", "think in english"
+- `description:` — one sentence summarizing the three rules, followed by the `TRIGGER when:` cost-mode phrases
 - `license: MIT`
-- `metadata.author: shared-ai`
+- `compatibility: opencode, claude`
+- `metadata.author: Mikel Madariaga`
 - `metadata.version: "1.0"`
 
 #### Scenario: Frontmatter completeness
 
 - **WHEN** the file is read by an agent
-- **THEN** all five frontmatter fields are present and non-empty
+- **THEN** all six frontmatter fields are present and non-empty
 
 ### Requirement: Three-rule language contract
 
 The skill body SHALL define exactly three rules:
 
 1. **Reason in English** — The agent MUST think and reason internally in English unless the user explicitly requests otherwise.
-2. **Respond in user's language** — The agent SHALL respond to the user in the language they write in (default to English if unclear).
-3. **Artifacts in English** — All artifacts (documents, code, technical explanations) SHALL be written in English unless the user explicitly requests otherwise.
+2. **Respond in user's language** — The agent SHALL respond to the user in the language they write in (default to English if unclear), explanations included.
+3. **Artifacts in English** — Artifacts (documents, code, commit messages, PR bodies) SHALL be written in English unless the user explicitly requests otherwise.
 
 Each rule SHALL be stated as a normative sentence using MUST or SHALL.
 

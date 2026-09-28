@@ -3,7 +3,9 @@
 ## Purpose
 
 Define the routed coordinator/worker architecture for `/sai-backfill`: a minimal-lifecycle phase adapter whose coordinator owns lifecycle routing, ask presentation, sai-workflow schema validation, and every final artifact write into `openspec/changes/{name}/`, while the dispatched `sai-backfill-worker` owns the read-only technical flow — interview, delegated conflict scanning, and draft composition returned as payload content — never writing a file or mutating git, with end-to-end worker registration and the openspec prerequisite REQUIREMENT carried by the coordinator card.
+
 ## Requirements
+
 ### Requirement: Routed card set and boot routing
 
 `sai-backfill` SHALL be a routed-shaped command whose card set is exactly `sai/commands/backfill/coordinator.md` and `sai/commands/backfill/worker.md` (no `invocation.md`; the legacy utility `body.md` is retired). Both harness boot adapters (`sai/adapters/claude/boot.md` and `sai/adapters/opencode/boot.md`) SHALL classify `backfill` among the routed names so that selecting it fetches `@sai/commands/backfill/coordinator.md`, and SHALL exclude `backfill` from the utility-name lists byte-symmetrically; no boot path SHALL select a backfill `body.md`.
@@ -49,7 +51,7 @@ The dispatched `sai-backfill-worker` SHALL perform the entire technical flow of 
 
 #### Scenario: Stop texts survive the transport unchanged
 
-- **WHEN** `$ARGUMENTS` is empty with no derivable name, or the user aborts at the conflict gate
+- **WHEN** `$ARGUMENTS` is empty, or the user aborts at the conflict gate
 - **THEN** the worker returns a terminal payload whose summary is exactly `Change name required. Run: /sai-backfill <name>` or exactly `Backfill aborted. No files written.` respectively
 
 ### Requirement: Needs-input interview transport with byte-faithful forwarding
@@ -123,11 +125,9 @@ The split of today's technical content SHALL be fixed and single-sourced: `sai/c
 
 ### Requirement: Backfill guard windows are draft-write-only
 
-The backfill coordinator SHALL run the guard's `snapshot` step immediately before each `sai-backfill-worker` dispatch and each same-worker continuation, holding the returned SHA as invocation-scoped `guard_base`, and its `verify` step immediately after every returned result, before acting on that result. Both the ordinary route and the Direct Build (unattended) execute continuation are draft-write-only guard windows — the backfill worker never commits, so no backfill window carries `allow_commit` — and the coordinator's own schema validation and final writes always run between windows and never inside one.
+The backfill coordinator SHALL run the guard's `snapshot` step at each window opening and its `verify` step immediately before each boundary the no-commit-guard policy lists (human turn, coordinator git mutation, run close), holding the returned SHA as invocation-scoped `guard_base`, and SHALL act on a progress event or notice with no guard call. Both the ordinary route and the Direct Build (unattended) execute continuation are draft-write-only guard windows — the backfill worker never commits, so no backfill window carries `allow_commit` — and the coordinator's own schema validation and final writes always run between windows and never inside one.
 
 #### Scenario: a backfill window never authorizes HEAD movement
 
-- **WHEN** a backfill dispatch or execute continuation window closes with a verify
-- **THEN** the window carries no `allow_commit` and any HEAD movement during it resolves as a violation to remediate
-- **AND** the coordinator's final validated writes run only between windows
-
+- **WHEN** a backfill window spanning a dispatch or execute continuation closes with a verify
+- **THEN** the window carries no `allow_commit`, any HEAD movement during it resolves as a violation to remediate, and the coordinator's final validated writes run only between windows

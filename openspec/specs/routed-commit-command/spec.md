@@ -3,7 +3,9 @@
 ## Purpose
 
 Define the routed coordinator/worker architecture for `/sai-commit`: a minimal-lifecycle phase adapter whose coordinator owns lifecycle routing, authorization presentation, and the destructive git mutation, while the dispatched `sai-commit-worker` owns message authoring and never mutates git — with end-to-end worker registration and the openspec prerequisite exemption carried by the routed cards.
+
 ## Requirements
+
 ### Requirement: Routed card set and boot routing
 
 `sai-commit` SHALL be a routed-shaped command whose card set is exactly `sai/commands/commit/coordinator.md` and `sai/commands/commit/worker.md` (no `invocation.md`; the legacy utility `body.md` is retired). Both harness boot adapters (`sai/adapters/claude/boot.md` and `sai/adapters/opencode/boot.md`) SHALL classify `commit` among the routed names so that selecting it fetches `@sai/commands/commit/coordinator.md`, and SHALL exclude `commit` from the utility-name lists; no boot path SHALL select a commit `body.md`.
@@ -47,7 +49,7 @@ The dispatched `sai-commit-worker` SHALL perform the technical procedure of call
 
 ### Requirement: Authorization transport and coordinator-only execution
 
-The authorization ask SHALL be returned by the worker as a `needs_input` lifecycle result carrying the question "Run `git commit`?" with the ordered options `yes (Recommended)` / `no` / `Allow on this session`. The coordinator SHALL present the exact question and options through the native option-picker, append only `{question, options, answer_value}` to the opaque input history, and forward the exact answer value to the same worker. Only the coordinator SHALL execute the authorized mutation, and only after an authorizing answer: on `yes` (or on an already-active session-scoped grant) it invokes `node sai/tools/commit.js apply --json --cwd <repo>` with the worker-authored message on stdin using a heredoc, or the equivalent `node sai/tools/commit.js apply --json --amend --cwd <repo>` invocation when an amend was requested, captures the result, and on success shows the message output. On `Allow on this session` the coordinator additionally activates the in-memory `session_commit_authorized` flag for the remainder of the in-conversation session, never written to any file. On `no` or no answer the coordinator executes nothing, prints the worker-authored summary verbatim, and stops without any git mutation. Terminal output SHALL print the worker-authored summary verbatim on every closure and SHALL close with exactly `Commit done.` only when a commit was executed; every other closure stops without the completion literal.
+The authorization ask SHALL be returned by the worker as a `needs_input` lifecycle result carrying the question "Run `git commit` on the staged changes above?" (for an amend, "Run `git commit --amend` with the message above?") with the ordered options `yes (Recommended)` / `no` / `Allow on this session`. The coordinator SHALL present the exact question and options through the native option-picker, append only `{question, options, answer_value}` to the opaque input history, and forward the exact answer value to the same worker. Only the coordinator SHALL execute the authorized mutation, and only after an authorizing answer: on `yes` (or on an already-active session-scoped grant) it invokes `node sai/tools/commit.js apply --json --cwd <repo>` with the worker-authored message on stdin using a heredoc, adding `--amend` when an amend was requested and `--acknowledge-secrets <list>` with the sensitive-file list the user already confirmed, captures the result, and on success shows the message output. On `Allow on this session` the coordinator additionally activates the in-memory `session_commit_authorized` flag for the remainder of the in-conversation session, never written to any file. On `no` or no answer the coordinator executes nothing, prints the worker-authored summary verbatim, and stops without any git mutation. Terminal output SHALL print the worker-authored summary verbatim on every closure and SHALL close with exactly `Commit done.` only when a commit was executed; every other closure stops without the completion literal.
 
 #### Scenario: Authorized answer triggers coordinator execution
 - **WHEN** the user selects `yes` at the presented ask
@@ -90,10 +92,9 @@ The exclusion list for session-scoped commit authorization SHALL live exactly on
 
 ### Requirement: The authorized commit executes outside any guard window
 
-The commit coordinator SHALL run the guard's `snapshot` step immediately before each `sai-commit-worker` dispatch and each same-worker continuation, holding the returned SHA as invocation-scoped `guard_base`, and its `verify` step immediately after every returned result, before acting on that result. The coordinator's own authorized `git commit` SHALL execute only after the verify of the result that carried the authorization ask, outside any guard window; no commit window carries `allow_commit`.
+The commit coordinator SHALL run the guard's `snapshot` step at each window opening and its `verify` step immediately before each boundary the no-commit-guard policy lists (human turn, coordinator git mutation, run close), holding the returned SHA as invocation-scoped `guard_base`, and SHALL act on a progress event or notice with no guard call. The coordinator's own authorized `git commit` SHALL execute only after the verify of the result that carried the authorization ask, outside any guard window; no commit window carries `allow_commit`.
 
 #### Scenario: the authorization result closes its window before the commit
 
 - **WHEN** the worker returns the result carrying the authorization ask and the user authorizes the commit
-- **THEN** the coordinator verifies the dispatch window first and executes the authorized commit only after that verify, outside the window
-
+- **THEN** the coordinator verifies the window before presenting the ask and executes the authorized commit only after that verify, outside the window

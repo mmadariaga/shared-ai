@@ -41,7 +41,7 @@ Each launcher SHALL hold exactly the directives its command needs beyond the fet
 
 ### Requirement: near-empty-launchers
 
-A command whose wrapper carries no directives beyond the fetch-skill, boot-adapter, and command bootstrap loads SHALL still ship a `command-bootstrap.md`, explicitly stating that it is intentionally empty of command-specific loads, is not missing, and that execution continues with the card selected by the harness boot adapter. An intentionally empty command bootstrap SHALL contain no behaviour-skill load and no binding; the absence of coordinator-card fetches follows from the command-bootstrap-content rule. Which commands are empty is a property of their wrappers, not a membership list: when a command gains a launch-time load its command bootstrap grows and it stops being empty, with no specification change.
+A command whose wrapper carries no directives beyond the fetch-skill, boot-adapter, and command bootstrap loads SHALL still ship a `command-bootstrap.md`, explicitly stating that it has no command-specific loads, that the file is complete as written, and that execution continues with the card selected by the harness boot adapter. An intentionally empty command bootstrap SHALL contain no behaviour-skill load and no binding; the absence of coordinator-card fetches follows from the command-bootstrap-content rule. Which commands are empty is a property of their wrappers, not a membership list: when a command gains a launch-time load its command bootstrap grows and it stops being empty, with no specification change.
 
 #### Scenario: wrappers without extra directives ship near-empty launchers
 

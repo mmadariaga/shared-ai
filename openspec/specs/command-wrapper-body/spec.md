@@ -2,13 +2,13 @@
 
 ## Purpose
 
-TBD placeholder — purpose to be written when the change completes.
+Fix the body shape of every `sai-*` command wrapper so each stays a thin entry point into its command bootstrap.
 
 ## Requirements
 
 ### Requirement: three-directive-wrapper-body
 
-The body of every in-scope `commands/claude/sai-*.md` and `commands/opencode/sai-*.md` wrapper SHALL consist of exactly three directives, in order: (1) the harness fetch-skill load, (2) the harness boot-adapter load, and (3) the command bootstrap call to `@sai/commands/{name}/command-bootstrap.md` — plus a standalone two-key invocation envelope block rendered directly after the command-bootstrap directive, and no other content. The legacy `## Sai <Phase>` heading SHALL remain absent. `sai-explore` remains the sole load-set exception. All other wrapper content, isolation blocks, prerequisite checks, and behavior sections remain forbidden, and frontmatter remains byte-identical. This requirement remains the single normative owner of wrapper body shape.
+The body of every in-scope `commands/claude/sai-*.md` and `commands/opencode/sai-*.md` wrapper SHALL consist of exactly three directives, in order: (1) the harness fetch-skill load, (2) the harness boot-adapter load, and (3) the command bootstrap call to `@sai/commands/{name}/command-bootstrap.md` — plus a standalone two-key invocation envelope block rendered directly after the command-bootstrap directive, and no other content. The legacy `## Sai <Phase>` heading SHALL remain absent. `sai-explore` remains the sole load-set exception. All other wrapper content, isolation blocks, prerequisite checks, and behavior sections remain forbidden. Frontmatter is outside this requirement. This requirement remains the single normative owner of wrapper body shape.
 
 #### Scenario: Claude Code wrapper body shape
 
@@ -26,17 +26,12 @@ The body of every in-scope `commands/claude/sai-*.md` and `commands/opencode/sai
 
 - **WHEN** any in-scope wrapper other than `sai-explore.md` is read
 - **THEN** no `Fetch @sai/policies/...`, `Fetch @skills/budget/...`, `Fetch @skills/safe-operations/...`, or `Fetch @sai/orchestration/workers/bindings/...` directive appears in its body
-- **THEN** the only binding directive permitted in `sai-explore.md`'s body is the opencode `spec-worker` load, per `explore-harness-specific-loads`
-
-#### Scenario: frontmatter untouched
-
-- **WHEN** a wrapper's frontmatter before and after the change is compared
-- **THEN** the frontmatter block is byte-identical, including `model`, `effort`, `variant`, `allowed-tools`, `argument-hint`, and `description`
+- **THEN** `sai-explore.md`'s one extra load is the harness `idea-list-render` card, per `explore-harness-specific-loads`, and no binding directive appears in any wrapper body
 
 #### Scenario: no section heading survives
 
 - **WHEN** any wrapper is read
-- **THEN** its body contains no `## Sai ...` heading line — the legacy `## Sai <Phase>` heading is dropped by the rewrite
+- **THEN** its body contains no `## Sai ...` heading line
 
 #### Scenario: maximum body shape with a label-free envelope
 
@@ -59,7 +54,7 @@ The invocation envelope SHALL remain in the command file, directly after the com
 
 ### Requirement: explore-harness-specific-loads
 
-`sai-explore` SHALL load a harness-specific card beyond the boot adapter — the fetch stays in the wrapper because the command bootstrap cannot know its harness — making the Claude explore body four directives rather than three (the opencode explore body is five). Any additional binding fetch whose presence diverges between the harnesses (the opencode-only `spec-worker` binding — a harness-neutral-form path that only the opencode wrapper carries) SHALL also remain in the wrapper, per the divergence rule in `command-bootstrap-card`'s `harness-neutral-launcher`. The explore command bootstrap SHALL receive only the binding fetch both wrappers carry (the `design-worker` binding).
+`sai-explore` SHALL load a harness-specific card beyond the boot adapter — the fetch stays in the wrapper because the command bootstrap cannot know its harness — making each explore wrapper body four directives rather than three. The explore command bootstrap SHALL carry no command-specific load; the Plan - Unattended worker bindings load at their dispatch point in `sai/commands/explore/steps/pipeline-plan-unattended.md`.
 
 #### Scenario: Claude explore body shape
 
@@ -69,17 +64,12 @@ The invocation envelope SHALL remain in the command file, directly after the com
 #### Scenario: opencode explore body shape
 
 - **WHEN** `commands/opencode/sai-explore.md` is read
-- **THEN** its directive set is the fetch-skill load, the boot-adapter load, the `spec-worker` binding load, the `idea-list-render` card load, and the launcher call
+- **THEN** its directive set is the fetch-skill load, the boot-adapter load, the `idea-list-render` card load, and the launcher call — four directives
 
-#### Scenario: explore launcher is harness-neutral
-
-- **WHEN** `sai/commands/explore/command-bootstrap.md` is read
-- **THEN** it contains no harness-specific card or binding fetch (no `idea-list-render` load, no `spec-worker` binding load)
-
-#### Scenario: explore launcher receives the neutral binding
+#### Scenario: explore launcher carries no load
 
 - **WHEN** `sai/commands/explore/command-bootstrap.md` is read
-- **THEN** it contains the `design-worker` binding fetch — the one binding both explore wrappers carry today — and no other directive
+- **THEN** it contains no card or binding fetch and states that execution continues with the card selected by the harness boot adapter
 
 ### Requirement: wrapper-directory-shape-unchanged
 

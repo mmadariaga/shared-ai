@@ -1,5 +1,9 @@
 # design-deferred-decisions Specification
 
+## Purpose
+
+This capability defines a structured place for costly-to-postpone decisions that are intentionally left unresolved without blocking design.
+
 ## Requirements
 
 ### Requirement: design.md carries a Deferred section

@@ -1,5 +1,9 @@
 # Spec: Glossary canonical location at project root
 
+## Purpose
+
+Keep one canonical `GLOSSARY.md` at the project root that every SAI phase reads and writes.
+
 ## Requirements
 
 ### Requirement: Canonical single-root location
@@ -29,28 +33,18 @@ The spec command's MAY-modify list in `sai/policies/spec-phase-contract.md` SHAL
 
 ### Requirement: Reader phases resolve GLOSSARY.md at project root
 
-The implement and review phases SHALL resolve `GLOSSARY.md` at the project root. `sai/commands/implement/instructions.md` SHALL state the project-root location explicitly rather than an unqualified "if it exists". `sai/commands/review/instructions.md` SHALL continue to resolve `GLOSSARY.md` at the repo root.
+The implement and review phases SHALL resolve `GLOSSARY.md` at the project root. `sai/commands/implement/steps/plan-generation.md` SHALL state the project-root location explicitly rather than an unqualified "if it exists". `sai/commands/review/steps/resolve-review-analysis.md` SHALL continue to resolve `GLOSSARY.md` at the repo root.
 
 #### Scenario: implement resolves at root
 
-- **WHEN** `sai/commands/implement/instructions.md` is read
+- **WHEN** `sai/commands/implement/steps/plan-generation.md` is read
 - **THEN** its `GLOSSARY.md` reader step names the project root as the location
 - **AND** the "if it exists" wording resolves to the project-root path, not the change folder
 
 #### Scenario: review resolves at root
 
-- **WHEN** `sai/commands/review/instructions.md` is read
-- **THEN** its Domain Language Consistency step resolves `GLOSSARY.md` at the repo root
-
-### Requirement: Multi-context mechanism does not contradict single root
-
-The multi-context `GLOSSARY-MAP.md` mechanism SHALL be presented as deferred/optional and SHALL NOT contradict the single-root rule. Resolving multi-context bounded contexts is out of scope for this capability.
-
-#### Scenario: multi-context note is subordinate to single root
-
-- **WHEN** the "Multi-context repos" content in `sai/policies/glossary-format.md` is read
-- **THEN** it is marked as deferred or optional
-- **AND** it does not override or contradict the single canonical project-root location for `GLOSSARY.md`
+- **WHEN** `sai/commands/review/steps/resolve-review-analysis.md` is read
+- **THEN** its Domain Language Consistency pass resolves `GLOSSARY.md` at the repo root
 
 ### Requirement: One-way migration with no backward-compat shim
 

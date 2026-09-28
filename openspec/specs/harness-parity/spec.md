@@ -50,4 +50,4 @@ The shared crystallization-close selector contract MUST keep the selector titles
 #### Scenario: Both supported harnesses present the renamed selector
 
 - **WHEN** either supported harness presents the crystallization-close selector
-- **THEN** it presents `Plan - Unattended`, `Build - Unattended`, and `Manual` in the same order.
+- **THEN** it presents `Plan - Unattended`, `Direct Build - Unattended`, and `Manual` in the same order.

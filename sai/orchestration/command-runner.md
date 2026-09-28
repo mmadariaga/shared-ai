@@ -7,140 +7,150 @@ not perform the technical work delegated to a worker.
 
 ## Result Loop
 
-Initialize one invocation-scoped ordered, duplicate-free `changed_files` union.
-Add reported paths in first-seen order; the union is never reset.
-Dispatch one worker with the phase adapter's minimal `original_envelope`
-(ready prompt plus base instructions; zero task content — strict zero: no
-change name, flags, or provenance of any kind), retain the
-harness-native resumable handle captured at dispatch return before any guard
-snapshot or continuation, and validate every returned result before acting on
-it. Handle, then guard snapshot, then task: with no captured handle no guard
-window opens. The task (`arguments_value` and derivatives) is disclosed only
-in the post-ready same-worker continuation after `event: ready` on the captured
-handle. A dispatch cancelled before the handle returns leaves no handle; its retry
-starts from zero with a deferred snapshot and opens no guard window. Every
-routed stretch costs two round trips with no per-phase exemption, including
-every RED and GREEN dispatch per apply Step.
+### Dispatch and task disclosure
 
-Worker results are closed payloads. A terminal result has exactly one of these
-statuses: `completed`, `needs_input`, `failed`, or `cancelled`. `completed`,
-`failed`, and `cancelled` are run-closing; `needs_input` is a terminal
-lifecycle status that is not run-closing — it pauses the run for the
-forwarded answer, and the loop processes the next result. A worker's `completed`
-status closes its current dispatch phase but does not end its resumability for
-recovery purposes; worker resumability ends only when the run closes or the
-segment boundary is crossed. Resolve the validator tool path per
-`@sai/policies/tool-resolution.md`, substituting `worker-report-validator.js`
-for `<name>`: first existing candidate per harness, copied verbatim, never
-composed from a root string, with the opencode XDG fallback only when neither
-verbatim candidate exists. The first existing copy wins and defines the
-version. Resolve on every Result Loop turn; if no candidate exists, name the
-tried candidates and stop — a missing validator never skips validation and
-there is no prose fallback. Whichever candidate wins, every invocation below
-is byte-identical (`node <tool-path> validate --kind <kind>` with the payload
-on stdin, plus `--json --cwd` where the tool accepts them), so a single
-whitelist entry per root covers them. Validate terminal result payloads by running
-`node <tool-path> validate --kind terminal` with the
-payload on stdin and reading its verdict; the tool validates the status, string
-`summary`, and field shapes; `needs_input` also requires its question, ordered
-options where applicable, and binding-owned continuation metadata; do not
-re-derive the checks in prose. Worker payloads carry no time field; unknown
-fields are ignored with no explicit legacy handling. A design notice is the separate closed shape
-`{event: "notice", message: string, changed_files: string[]}`.
+Every routed stretch costs two round trips, with no per-phase exemption and no
+batching that breaks withholding:
 
-An adapter may also declare a phase-defined closed nonterminal extension in
-`allowed_nonterminal_extensions`. Validate extension payloads by running
-`node <tool-path> validate --kind <extension-event>` with
-the payload on stdin and reading its verdict; the tool validates the
-discriminator, `summary`, and every additional field in the
-adapter's exact extension shape; do not re-derive the checks in prose. An
-extension is a pause, not a terminal status: add its paths to the union, route
-its source through the declared coordinator handler, and resume only through the
-handler's exact same-worker continuation. Do not infer a question, answer, or
-mutation from an extension payload. In the merge phase, `event: conflict_detected`
-carries an `affected_files` inventory and a `continuation_state` of
-`language-selection|strategy-analysis`; validate with
-`node <tool-path> validate --kind conflict_detected`; it coexists with ready without replacing
-it and runs after ready, never before. The coordinator uses that extension to announce the conflict, ask for a working
-language only on the first state, and re-enter strategy analysis without asking
-again on the second state.
+1. **Dispatch without the task.** Dispatch one worker with the minimal envelope:
+   the ready prompt plus the base instructions, with strict zero task content —
+   no change name, flags, or provenance of any kind. The adapter's
+   `original_envelope` (for a standalone invocation, exactly `arguments_value`)
+   is the task, and this dispatch withholds it.
+2. **Capture the handle.** Retain the harness-native resumable handle captured
+   at dispatch return. Handle, then guard snapshot when no guard window is
+   running, then task: with no captured handle no guard window opens.
+3. **Disclose the task after ready.** When the ready return (`event: ready`)
+   arrives, continue the same worker on the retained handle with the task
+   (`arguments_value` and derivatives) as a sequential same-worker
+   continuation. The task travels only in this continuation and in the opaque
+   continuation history, never in the dispatch.
+4. **Process results.** Validate every returned result before acting on it
+   (§ Validation), handle it by kind (§ Result kinds), and keep continuing the
+   same worker until a run-closing result.
 
-Add every reported path to the invocation-scoped union in first-seen order.
-The non-reset enumeration spans input, feedback, notice, progress,
-continuation, and recovery, and is never reset.
+When ready never arrives — including a dispatch cancelled before the handle
+returns — there is no handle and no guard window opens: relaunch fresh with the
+minimal envelope and, when no guard window is running, a deferred snapshot. The relaunch adds no timeout, retry
+loop, or new escalation.
 
-Every closed payload — terminal status, notice, and progress event alike —
-carries no time field. Worker payloads are timeless in every phase; a missing
-required field (never a missing time field) is a malformed payload, handled
-through the same route as any other closed-shape violation (validated by
-`node <tool-path>` — the same resolved copy). On valid results the validator emits an
-additive display-only `validated_at` sidecar (validator-observed validation
-timestamp in `YYYY-MM-DDTHH:MM:SS±HH:MM` form — local wall-clock with numeric
-offset, never `Z`); invalid results carry no timestamp. Forward the verdict
-verbatim and surface `validated_at` in the coordinator prompt for terminal and
-progress results at minimum; never invent, correct, re-derive, or reformat it.
-It is also the sole source of the Milestone Stamp: the `HH:mm` a
-progress task list attaches to a step it renders `completed` is that step's
-marking verdict's `validated_at` per `@sai/policies/todo-structure.md`, read straight
-off the value with no conversion, so the coordinator issues no wall-clock call and
-resolves no zone. Zone handling lives in the tool.
+### Continuation and replacement
 
-For `needs_input` with a closed option set, present the exact question and
-options, forward the exact answer through the active binding, and process the
-next result through this loop. When a phase explicitly permits an empty option
-set as open input, present its exact question through that phase's ordinary
-conversation channel, forward the user's exact free-form answer, and process
-the next result through the same loop; do not synthesize options. For a notice,
-validate with `node <tool-path> validate --kind notice` and
-read its verdict; invoke the design adapter's notice extension and forward its
-fixed acknowledgement. Notices are not a worker status.
+After ready, attempt same-worker continuation first on the retained handle,
+resuming with the adapter's existing continuation literals. A cancellation after
+the handshake but before expensive work resumes via continue on the captured
+handle; a handshake-then-stall with no further progress follows the
+continuation/transport-loss path. If continuation fails, preserve the union and
+dispatch at most one replacement worker with the minimal envelope, the exact
+opaque input history including the task-carrying continuation, pending phase
+feedback when present, and all required reconstruction metadata. The replacement
+recovers the task solely from that history plus the reconstruction metadata,
+since the minimal envelope carries no task content. Replacement reconstruction
+must have complete phase state: if any required field is unavailable, return a
+failed restart request and dispatch no replacement.
 
-A progress event is the separate closed shape
-`{event: "progress", step_ids: string[], changed_files: string[]}`;
-validate with `node <tool-path> validate --kind progress` and
-read its verdict.
-Mark reported ids against the adapter's declared `progress_plan` when one is
-present, or against the declared `step_pointer_map` when the adapter uses a
-routing-only map. Ignore ids outside the active declaration — neither a plan
-nor a map is extended or amended at runtime. The active declaration is never
-extended or amended at runtime. In particular, undeclared step ids
-are ignored rather than added to the active declaration. The runner records whether the
-event reported at least one previously unmarked declared id before rendering,
-and add every path in
-`changed_files` to the invocation-scoped union in first-seen order. When a
-visual `progress_plan` exists and the event changed its marked set, apply the
-progress-event render act from `@sai/policies/todo-structure.md` before
-continuing the same worker. A routing-only event performs no render and stamps
-nothing. Then continue the same worker with exactly `continue_after_progress`.
-Render before resuming when rendering is enabled, so the user sees the mark
-before the next stretch of worker work begins. Progress events are not a worker
-status.
+### Validation
 
-Disclose the task only after ready: when the ready return (`event: ready`)
-arrives, continue
-the same worker on the retained handle with the task as a sequential
-same-worker continuation. When ready never arrives, there is no handle and no
-guard window opens: relaunch fresh with the
-original minimal envelope, with no timeouts, retries, or new escalation. Attempt
-same-worker continuation first on the retained handle thereafter, resuming with
-the adapter's existing continuation literals. A cancellation after the
-handshake but before expensive work resumes via continue on the captured
-handle; a handshake-then-stall with no further progress follows the existing
-continuation/transport-loss path. If it fails, preserve the union and
-dispatch at most one replacement worker with the minimal original envelope, exact
-opaque input history including the task-carrying continuation, pending phase feedback when present, and all required
-reconstruction metadata. Replacement reconstruction recovers the task solely from the
-opaque continuation history of already-sent continuations (including the
-task-carrying one) plus reconstruction metadata, since the minimal envelope alone carries no task
-content. Replacement reconstruction must have complete phase
-state. If any required field is unavailable, return a failed restart request
-and do not dispatch a replacement. The double round-trip per stretch is a fixed
-cost with no batching that breaks withholding.
+Resolve the validator per `@sai/policies/tool-resolution.md` with `<name>` set
+to `worker-report-validator.js`, on every Result Loop turn that runs a separate
+`validate` call. If no candidate exists, name the tried candidates and stop: a
+missing validator never skips validation and there is no prose fallback. On a
+`step_machine` progress turn (the exception below) the progress emit loads the
+validator itself; when it is missing, the emit exits 2 naming the tried paths,
+and the coordinator stops the same way. Every validation runs
+`node <tool-path> validate --kind <kind>` with the payload on stdin, plus
+`--json --cwd` where the tool accepts them — byte-identical whichever candidate
+wins, so a single whitelist entry per root covers them. Read its verdict; the
+tool owns every field check, so do not re-derive the checks in prose.
 
-The coordinator invokes only these phase-adapter fields, plus the optional
-static, ordered `progress_plan` declaration, the optional static
-`recovery_policy` declaration, the optional static `step_pointer_map`
-declaration, and the optional static `step_machine` declaration:
+One exception: when the active adapter declares a `step_machine`, a progress
+result is validated inside the progress emit, not by a separate `validate`
+call. The coordinator pipes the worker's progress payload, as received, into
+`sai-state emit <id> <machineId> --progress -` per `@sai/policies/stage-machine.md`
+§ Step machines; that one invocation runs the same validator module before any
+store read and returns its verdict as the `validation` block, then advances the
+machine only when the verdict is valid. The verdict shape, the `validated_at`
+source, and the malformed-payload route are unchanged: read `validation.ok`,
+`validation.errors`, and `validation.validated_at` exactly as the `validate`
+verdict's `ok`, `errors`, and `validated_at`. Every other result kind, and a
+progress result under an adapter without a `step_machine`, keeps the separate
+`validate --kind <kind>` call.
+
+Worker payloads carry no time field in any phase; unknown fields are ignored. A
+missing required field is a malformed payload, handled through the same route as
+any other closed-shape violation.
+
+On a valid result the validator module, which owns the only clock, emits an additive
+display-only `validated_at` sidecar: the validator-observed validation
+timestamp in `YYYY-MM-DDTHH:MM:SS±HH:MM` form — local wall-clock time with the
+session's numeric offset, never the `Z` designator, so a machine on UTC writes
+`+00:00`. Reception time substitutes emission time; the small transport delta
+is accepted as a duration proxy. The sidecar never alters the verdict or the
+payload, and an invalid result carries no timestamp. Forward the verdict
+verbatim and surface `validated_at` in the coordinator prompt for terminal and progress results at minimum; never
+invent, correct, re-derive, or reformat it. It is also the sole source of the
+Milestone Stamp: the `HH:mm` a progress task list attaches to a step it renders
+`completed` is that step's marking verdict's `validated_at` (under a progress
+emit, `validation.validated_at`) per
+`@sai/policies/todo-structure.md`, read straight off the value with no
+conversion, so the coordinator issues no wall-clock call and resolves no zone.
+
+### Result kinds
+
+- **Terminal status** (`--kind terminal`) — exactly one of `completed`,
+  `needs_input`, `failed`, or `cancelled`. `completed`, `failed`, and
+  `cancelled` close the run; `completed` closes the worker's current dispatch
+  phase, but its resumability for recovery ends only when the run closes or a
+  segment boundary is crossed (§ Chained phase composition). `needs_input`
+  pauses the run instead; the validator also checks its question, ordered
+  options where applicable, and binding-owned continuation metadata. For a
+  closed option set, present the exact question and options and forward the
+  exact answer through the active binding. When a phase explicitly permits an
+  empty option set as open input, present its exact question through that
+  phase's ordinary conversation channel and forward the user's exact free-form
+  answer; do not synthesize options. Either way, process the next result
+  through this loop.
+- **Notice** (`--kind notice`) — the closed shape
+  `{event: "notice", message: string, changed_files: string[]}`. Invoke the
+  adapter's declared notice extension and forward its fixed acknowledgement.
+  Notices are not a worker status.
+- **Progress event** (`--kind progress`, or the progress emit under a
+  `step_machine` per § Validation) — the closed shape
+  `{event: "progress", step_ids: string[], changed_files: string[]}`; not a
+  worker status. Mark reported ids against the adapter's declared
+  `progress_plan` when one is present; a declared `step_machine` receives them
+  per § Step-gated pointer delivery. Reported ids outside the active declaration
+  (undeclared ids) are ignored: the active declaration is never extended or
+  amended at runtime. The runner records whether the event reported at least one
+  previously unmarked declared id before rendering, and adds every path in
+  `changed_files` to the union. When a visual `progress_plan` exists and the
+  event changed its marked set, apply the progress-event render act from
+  `@sai/policies/todo-structure.md` before continuing, so the user sees the mark
+  before the next stretch of worker work begins. A routing-only event performs
+  no render and stamps nothing. Then continue the same worker with exactly
+  `continue_after_progress` (plus the pointer line of § Step-gated pointer delivery when one applies).
+- **Nonterminal extension** (`--kind <extension-event>`) — an adapter may
+  declare a phase-defined closed nonterminal extension in
+  `allowed_nonterminal_extensions`; the tool validates its discriminator,
+  `summary`, and every additional field of the adapter's exact extension shape.
+  An extension is a pause, not a terminal status: add its paths to the union,
+  route its source through the declared coordinator handler, and resume only
+  through the handler's exact same-worker continuation. Do not infer a
+  question, answer, or mutation from an extension payload. An extension arrives
+  only after ready and never replaces it. Each extension's shape and handler
+  semantics live in the declaring coordinator card.
+
+### Changed-files union
+
+Initialize one invocation-scoped ordered, duplicate-free `changed_files` union
+at invocation start and add every reported path in first-seen order. The
+non-reset enumeration spans input, feedback, notice, progress, extension,
+continuation, and recovery: the union is never reset.
+
+### Phase-adapter fields
+
+The coordinator invokes only these phase-adapter fields; the last three are
+optional static declarations:
 
 - `original_envelope`
 - `dispatch_operation`
@@ -150,18 +160,9 @@ declaration, and the optional static `step_machine` declaration:
   extensions; empty when none are declared)
 - `replacement_reconstruction_fields`
 - `terminal_navigation`
-- `progress_plan` (optional — static, ordered, fully known at dispatch, immutable for the active adapter segment; under composition the pre-delta phrase "immutable for the invocation" means immutable for the active adapter segment, and a one-adapter invocation keeps segment scope identical to today's invocation scope; it controls visual task-list rendering only)
-- `recovery_policy` (optional — static boolean, fully known at dispatch, immutable for the active adapter segment under the same segment reading as `progress_plan`) (recovery semantics: @sai/policies/bounded-recovery.md)
-- `step_pointer_map` (optional — static map from phase progress ids to just-in-time step instruction paths, fully known at dispatch, immutable for the active adapter segment under the same segment reading as `progress_plan`; it may be declared without a visual `progress_plan`)
-- `step_machine` (optional — static machine id of the form `<name>@<version>`, fully known at dispatch, immutable for the active adapter segment. When declared, the coordinator consults the step machine per progress event instead of a static routing table. See `@sai/policies/stage-machine.md` § Step machines for the operational contract.)
-
-The dispatch passes exactly `arguments_value` as the minimal ready envelope; the
-task travels only in the post-ready continuation and the opaque history, never
-in the minimal envelope. The
-progress plan is declared by the phase adapter, is never carried in the
-dispatch envelope or in any reconstruction field, and survives same-worker
-continuation and replacement-worker reconstruction in invocation-scoped
-state.
+- `progress_plan` (optional — static, ordered, fully known at dispatch, and immutable for the active adapter segment, which in a one-adapter invocation is the whole invocation; it controls visual task-list rendering only. The plan is never carried in the dispatch envelope or in any reconstruction field, and it survives same-worker continuation and replacement-worker reconstruction in invocation-scoped state.)
+- `recovery_policy` (optional — static boolean, fully known at dispatch, immutable for the active adapter segment; recovery semantics: @sai/policies/bounded-recovery.md)
+- `step_machine` (optional — static machine id of the form `<name>@<version>`, fully known at dispatch, immutable for the active adapter segment; it may be declared without a visual `progress_plan`. When declared, the coordinator consults the step machine per progress event. See `@sai/policies/stage-machine.md` § Step machines for the operational contract.)
 
 Terminal behavior is supplied by `terminal_navigation`. The coordinator never
 reads artifacts, resolves phase data, or invents phase-specific payload fields.
@@ -170,102 +171,39 @@ reads artifacts, resolves phase data, or invents phase-specific payload fields.
 
 Step-pointer routing is independent from visual progress-plan rendering. A
 `progress_plan` supplies the ordered task list and its panel state; a
-`step_pointer_map` supplies just-in-time worker instruction routing. An adapter
-may declare the pointer map without declaring a progress plan when a supervising
-surface must hide the worker plan but still preserve step continuity. In that
-shape the runner tracks valid mapped step ids internally, performs no task-list
-render, and still derives every pointer deterministically.
+`step_machine` supplies just-in-time worker instruction routing. An adapter may
+declare a `step_machine` without a progress plan when a supervising surface must
+hide the worker plan but still preserve step continuity. In that shape the
+runner performs no task-list render and still derives every pointer
+deterministically.
 
-When the active adapter declares an optional static `step_pointer_map`, each
-progress-event continuation payload sent to the same worker is exactly two
-lines: today's protocol continuation line first, then one pointer line derived
-deterministically from the mapped phase ids — apply the just-processed event's
-marks and take the first mapped step still unmarked in canonical map order;
-that second line reads `Active step: <id> — follow <path>` with that step's id
-and its mapped path from the static map. With every mapped step marked, the
-second line reads exactly `Active step: none — complete remaining work and return your terminal result.` The pointer travels only in this continuation
-payload: the materialized binding literal is untouched, and no dispatch
-envelope or reconstruction field carries step paths. Continuations that are not
-progress continuations — feedback turns, notices, and `continue_after_recovery`
-— carry no pointer line, so the worker's active step file persists across them
-in its continuous session. When the declaring adapter also requires replacement
-reconstruction, that reconstruction state additionally includes the worker's
-`active_step_id`, and the replacement's first continuation carries the pointer
-line for that step. Render-before-resume ordering is unchanged: the coordinator
-renders the progress mark when a visual `progress_plan` exists before sending
-the two-line continuation. Without a declared `step_pointer_map`, progress
-continuations keep today's exact-literal behavior and no other phase surface
-changes.
+When the active adapter declares a `step_machine`, each progress-event
+continuation payload sent to the same worker is exactly two lines: the protocol
+continuation line first, then one pointer line taken from the machine's
+`next.follow` per `@sai/policies/stage-machine.md` § Step machines. The
+`next` comes from the same progress emit that validated the payload
+(§ Validation), so a progress event costs one tool call for validation and
+routing together. The second
+line reads `Active step: <id> — follow <path>`. With every step complete, it
+reads exactly
+`Active step: none — complete remaining work and return your terminal result.`
+
+The pointer travels only in this continuation payload: the materialized binding
+literal is untouched, and no dispatch envelope or reconstruction field carries
+step paths. Continuations that are not progress continuations — feedback turns,
+notices, and `continue_after_recovery` — carry no pointer line, so the worker's
+active step file persists across them in its continuous session. When the
+declaring adapter also requires replacement reconstruction, that reconstruction
+state additionally includes the worker's `active_step_id`, and the replacement's
+first continuation carries the pointer line for that step. The coordinator
+renders the progress mark, when a visual `progress_plan` exists, before sending
+the two-line continuation. Without a `step_machine`, a progress continuation is
+exactly `continue_after_progress`.
 
 ## Chained phase composition
 
-The shared coordinator contract permits one invocation to execute an ordered
-sequence of phase adapters without introducing a new orchestration file and
-without relocating this file. Composition obeys exactly three rules:
-
-1. **Ordered multi-adapter invocation** — A single supervising invocation MAY
-   declare an ordered sequence of phase adapters as an indexable list and SHALL
-   execute them strictly in list order through this Result Loop. The composition
-   retains a zero-based position into that list. Activating a segment SHALL
-    rebind that segment's adapter fields (including that segment's `progress_plan`,
-    `step_pointer_map`, and `recovery_policy` when declared); recovery-ledger creation, scoping, and
-   non-inheritance across segments follow `@sai/policies/bounded-recovery.md`.
-   The invocation-scoped changed-files
-   union initialized by this runner SHALL continue across segment activations
-   in first-seen order and SHALL NOT reset at a transition.
-   Intra-segment multi-dispatch behavior a phase already owns (for example apply's
-   per-dispatch plan selection) remains phase-owned inside the active segment and
-   is not a second composition axis.
-
-2. **Non-final terminal navigation resolves to transition** — When a non-final
-   phase adapter (position `i` where `i + 1` is still in range) reaches an
-   adapter-authorized successful phase completion, its `terminal_navigation`
-   SHALL resolve to the composition's authorized transition rather than to that
-   phase's standalone pinned completion literal or run-ending stop. The
-   authorized transition SHALL name exactly the successor at position `i + 1` and
-   that successor's `original_envelope` values the composition authorizes for the
-   next segment (including any composition-injected session signals such as
-   apply's fast-track boolean). The shared contract SHALL activate only that
-   consecutive successor with that envelope. It SHALL NOT skip ahead to a later
-   list entry. Only the final adapter's `terminal_navigation` (or the sole
-   adapter in a one-adapter invocation) SHALL emit the user-facing
-   invocation-closing completion presentation on a successful run. `failed`,
-   `cancelled`, malformed worker terminal payloads, and malformed transitions
-   SHALL close the supervising invocation without advancing.
-   The runner must not infer the next phase or successor from worker summaries,
-   artifacts, or `changed_files` text; only the authorized transition names the
-   successor.
-
-3. **Chained Isolation Mode does not reset supervisor state** — Entering a
-   chained phase adapter's Isolation Mode preamble SHALL isolate that phase's
-   worker-facing input as the phase already requires and SHALL NOT clear
-   supervisor session state retained by the supervising invocation (including the
-   resolved change identity, composition position, invocation-scoped
-   changed-files union, and other supervisor-owned session signals the
-   composition carries). Worker isolation and supervisor continuity remain
-   distinct.
-
-A transition is malformed when it omits the successor identity, names any adapter
-other than position `i + 1`, omits an envelope field the successor adapter's
-contract requires for dispatch, or duplicates a segment already completed in this
-invocation. Handoff of supervisor-retained state is by continuity of the
-supervising invocation — not by copying artifact bodies into the transition. The
-composition constructs each successor's `original_envelope` directly; it does not
-invoke a harness boot adapter or wrapper to produce that envelope. For a chained
-apply segment the composition-authorized envelope SHALL carry exactly:
-`command_name` set to the apply command identity (it is not a routing or
-card-selection input on the chained path — the composition already selected the
-apply adapter), and `arguments_value` set to the already-resolved change name.
-Worker dispatch inside the apply segment continues to use the runner's
-`arguments_value` worker envelope as today. Apply's normalized fast-track
-boolean and other supervisor-retained session signals are set by the composition
-as session state for that segment and are not required to appear as additional
-envelope keys. The historical apply boot-envelope versus worker-dispatch-envelope
-seam remains for standalone wrapper boots and is not reopened as a redesign
-target by this delta.
-
-The three rules are a delta on the existing shared contract. They do not
-authorize explore-supervisor semantics (selector gates, chat-scoped autonomy, or
-explore's inline item-10 transition) as the default composition pattern. A
-composition with a single phase adapter retains today's one-phase behavior
-unchanged.
+An invocation may execute an ordered sequence of phase adapters, each segment
+through this Result Loop. The composition rules — segment rebinding, consecutive
+transitions, and supervisor continuity across segments — live in
+`sai/orchestration/composition.md`, which only composition coordinators load. A
+one-adapter invocation is a single segment spanning the whole invocation.

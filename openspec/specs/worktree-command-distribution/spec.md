@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD: distribution of the `/sai-worktree` command across harness wrappers, shared body, registry, and installer.
+Distribute the `/sai-worktree` command across both harness wrappers, its shared body, and the installer.
 ## Requirements
 ### Requirement: Both harness wrappers ship together
 
@@ -29,14 +29,6 @@ The shared command body SHALL live at `sai/commands/worktree/body.md` — openin
 
 - **WHEN** the shared body's `<TASK>` block is read
 - **THEN** it loads `@skills/safe-operations/SKILL.md` as its only behaviour and the worktree instruction plus `@sai/policies/remember.md` as instructions, with no `@skills/budget/SKILL.md` fetch
-
-### Requirement: Registry table registration
-
-The Command Registry table in `skills/universal/sai-commands/SKILL.md` SHALL gain one row for `/sai-worktree` naming the command file and its description.
-
-#### Scenario: Registry contains the new row
-- **WHEN** the Command Registry table in `skills/universal/sai-commands/SKILL.md` is read
-- **THEN** it contains a `/sai-worktree` row with the command file reference and a description, and the existing rows are unchanged
 
 ### Requirement: Existing glob projections install the new files
 

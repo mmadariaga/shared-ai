@@ -37,7 +37,7 @@ Functional checkboxes (formerly `**Human (...)**`, now `**Functional (...)**`) a
 
 ## Related
 
-- `docs/adr/0018-checkbox-override-scoped-to-apply-not-remember.md` — the per-Step batched-marking override, now restated in `sai/commands/apply/runner.md` § Step checkbox marking (Automated)
-- `sai/commands/apply/runner.md` — § Coordinator Checklist Execution, Automated marking slot
+- `docs/adr/0018-checkbox-override-scoped-to-apply-not-remember.md` — the per-Step batched-marking override, now restated in `sai/commands/apply/runner.md` § Appendices
+- `sai/commands/apply/runner.md` — § Step loop, record step (Automated marking slot)
 - `sai/commands/apply/steps/terminal-lifecycle.md` — terminal functional review and Final sweep
 - `openspec/specs/apply/spec.md` — the per-Step marking requirement this repair restores

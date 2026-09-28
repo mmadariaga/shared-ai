@@ -126,6 +126,21 @@ test('collect reports correct parent..HEAD commit range', () => {
   }
 });
 
+test('collect honours an explicit --parent as the commit and diff base', () => {
+  const { parent, repo } = makeRepoWithCommits();
+  try {
+    // A second base one commit into the feature branch narrows the range to one commit.
+    git(['branch', 'midpoint', 'HEAD~1'], repo);
+    const result = tool('collect', ['--parent', 'midpoint'], repo);
+    assert.equal(result.status, 0);
+    assert.equal(result.payload.parent_branch, 'midpoint');
+    assert.equal(result.payload.commit_count, 1);
+    assert.deepEqual(result.payload.changed_files.map((file) => file.path), ['file2.js']);
+  } finally {
+    cleanup(parent);
+  }
+});
+
 test('collect reports artifact presence and absence', () => {
   const { parent, repo, changeDir } = makeRepoWithChangeArtifacts();
   try {

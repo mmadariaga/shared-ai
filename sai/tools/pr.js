@@ -21,8 +21,8 @@
  *                              and create the pull request.
  *
  * Usage:
- *   node sai/tools/pr.js collect [--json] [--cwd <dir>]
- *   node sai/tools/pr.js apply [--cwd <dir>]
+ *   node sai/tools/pr.js collect [--json] [--change <name>] [--parent <branch>] [--cwd <dir>]
+ *   node sai/tools/pr.js apply [--parent <branch>] [--cwd <dir>]
  *
  * Exit codes:
  *   0 = success (collect reports, apply creates PR successfully)
@@ -312,9 +312,9 @@ function hasUpstream(cwd) {
 /**
  * Collect branch state, commits, diff inventory, artifacts, and existing PR status.
  */
-function collectState(cwd, changeName = null) {
+function collectState(cwd, changeName = null, parentOverride = null) {
   const currentBranch = getCurrentBranch(cwd);
-  const parentBranch = deriveParentBranch(cwd);
+  const parentBranch = parentOverride || deriveParentBranch(cwd);
   const commits = getCommits(parentBranch, cwd);
   const fullCommits = getFullCommits(parentBranch, cwd);
   const diffStats = getDiffStats(parentBranch, cwd);
@@ -424,7 +424,7 @@ function usage() {
     '    --json                     Emit output as JSON (collect only)',
     '    --cwd <dir>                Working directory (default: current directory)',
     '    --change <name>            Change name for artifact checking (collect only)',
-    '    --parent <branch>          Parent branch for PR (apply only)',
+    '    --parent <branch>          Parent branch (collect: commit and diff base; apply: PR base)',
     '',
     '  Examples:',
     '    node sai/tools/pr.js collect --json',
@@ -487,7 +487,7 @@ function main(argv) {
 
   try {
     if (opts.subcommand === 'collect') {
-      const result = collectState(opts.cwd, opts.change);
+      const result = collectState(opts.cwd, opts.change, opts.parent);
       if (opts.json) {
         process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
       } else {

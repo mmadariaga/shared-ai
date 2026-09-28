@@ -1,4 +1,4 @@
-# ADR 0175: Merge renders user-facing output through a coordinator-owned presentation seam
+# ADR 0175a: Merge renders user-facing output through a coordinator-owned presentation seam
 
 <!-- adr-index: refs 0075; refs 0083; refs 0086 -->
 

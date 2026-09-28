@@ -1,15 +1,38 @@
-Remember:
-- Agent thinking/reasoning: **English only** unless the user explicitly requests otherwise
-- Artifacts in English unless the user explicitly requests otherwise.
-- Agent responses to user: **Same language as user input by default**
-- Once your task is done, **do not propose new tasks or follow-up actions**
-- **Checkbox discipline:** when executing or modifying an artifact with task-list checkboxes (primarily `implementation.md`), mark each `- [ ]` as `- [x]` immediately after the task is verified complete. Apply this only to artifacts you are executing or modifying — not to read-only references (specs, proposals, designs).
-- **Scope boundary:** unless your task is applying `implementation.md` to the project via `/sai-4-apply`, your work is limited to creating artifacts or printing information. Do NOT touch production code.
-- **Cost discipline:** delegate I/O work (web fetch, broad reads/searches, diffs, audits) to a **`budget-explorer`** subagent. Main agent reasons; subagents do I/O. Every subagent call declares an output contract (exact fields, length cap, no raw content). Never WebFetch from main. Never use frontier-tier subagents for lookup work.
-- **OpenSpec paths:** artifacts live under `openspec/` in the project root (verified by prerequisite #2). Use direct paths — no recursive globs.
-- **Closed-choice prompts:** whenever you ask the user to pick from a closed set of options (a numbered list, a yes/no question, a commit gate), you MUST present the choices through the native option-picker on supported routed surfaces; plain text is a deliberate fallback only — used on a surface without a native picker, never a co-equal alternative on a supported surface. Per harness (declared picker capacity — never inferred from runtime tool behavior):
-  - **Claude Code** — use the `AskUserQuestion` tool (one clickable option per choice; a free-text "Other" is appended automatically). Picker capacity: 4 options.
-  - **opencode** — use the `question` tool (one option per choice under `options`; single-select by default). No documented option cap — no cap is declared.
-  A closed set that exceeds the harness's declared picker capacity uses plain text preserving every option and its order, only while the picker cannot fit all of them. Capacity is declared per harness above and is never inferred from runtime tool behavior.
-  Use full words for option labels (`yes` / `no`, not `y` / `n`) — clickable options carry no character pressure, and full words stay legible in plain-text fallbacks. Presentation changes; semantics do not: the question text, what each option means, retry/decline rules, and any "wait for the answer" requirement stay exactly as the defining instruction specifies. A free-text reply that does not map to a listed option follows that instruction's invalid-input rule.
-  Format brevity (split, limits) is owned by `@sai/policies/question-context.md`; this file owns presentation mechanics only.
+# Remember
+
+Standing rules for every SAI command session: main session, coordinator, or worker.
+
+## Language
+
+- Reason in English.
+- Write artifacts in English (`implementation.md`, reports, commit messages, PR bodies, code).
+- Reply to the user in the language of their input.
+
+The user can override any of the three explicitly.
+
+## Scope
+
+- **Write scope.** Write only what your command's contract assigns. Production code changes only under a contract that assigns them (apply, Direct Build implementation, review fixes, merge resolution); every other command creates artifacts or prints information.
+- **Terminal output.** End on the terminal output your command defines, with no follow-up task of your own.
+- **Checkbox discipline.** When you execute or modify an artifact with task-list checkboxes, mark each `- [ ]` as `- [x]` as soon as its task is verified complete. Read-only references (specs, proposals, designs) keep their checkboxes as they are.
+
+## Cost discipline
+
+Delegate bulk I/O lookups (web fetches, broad reads and searches, diffs) to a `budget-explorer` subagent, with an output contract (exact fields, length cap, raw-content rule). Keep reasoning and synthesis in your own session.
+
+Read OpenSpec artifacts at their direct paths under `openspec/`, never by recursive glob.
+
+## Closed-choice prompts
+
+A closed-choice prompt asks the user to pick from a closed set: a numbered list, a yes/no question, a commit gate. The session that talks to the user presents it through the harness's native option-picker; a worker returns it as `needs_input` and its coordinator presents it. Each harness declares its picker capacity here, never inferred from runtime tool behavior:
+
+- **Claude Code**: the `AskUserQuestion` tool, one clickable option per choice; a free-text "Other" is appended automatically. Picker capacity: 4 options.
+- **opencode**: the `question` tool, one option per choice under `options`, single-select by default. No cap is declared.
+
+Plain text is the fallback, only on a surface without a native picker or for a set larger than the declared capacity; it keeps every option in its order.
+
+- Label options with full words (`yes` / `no`, not `y` / `n`).
+- The presentation changes, the semantics do not: the question text, each option's meaning, the retry and decline rules, and any wait-for-the-answer requirement stay as the defining instruction specifies.
+- A free-text reply that maps to no listed option follows that instruction's invalid-input rule.
+
+Format brevity (split, limits) is owned by `@sai/policies/question-context.md`.

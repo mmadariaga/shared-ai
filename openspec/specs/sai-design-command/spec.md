@@ -1,3 +1,7 @@
+## Purpose
+
+This capability defines the sai-2-design entry points, generated artifacts, and wrapper model declarations across both supported harnesses.
+
 ## Requirements
 
 ### Requirement: sai-2-design command exists in both harnesses

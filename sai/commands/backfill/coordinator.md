@@ -83,14 +83,9 @@
 
   ## No-commit guard
 
-  Fetch @sai/policies/no-commit-guard.md and follow it for the
-  `sai-backfill-worker` dispatch. Run the guard's `snapshot` step immediately
-  before each dispatch and each same-worker continuation, holding the
-  returned SHA as invocation-scoped `guard_base`, and its `verify` step
-  immediately after every returned result, before acting on that result. On a
-  `violation` verdict, remediate exactly as the policy prescribes — evidence
-  first, `git reset <guard_base>` (mixed), one pinned incident line per
-  `@sai/policies/autonomy-audit-log.md`, then continue the route. Both the
+  Fetch @sai/policies/no-commit-guard.md and follow its § Window pairing for
+  every `sai-backfill-worker` stretch: `snapshot` opens a window, holding the returned SHA as
+  invocation-scoped `guard_base`, and `verify` closes it before each boundary. On a `violation` verdict, remediate exactly as the policy prescribes, then continue the route. Both the
   ordinary route and the Direct Build (unattended) execute continuation are
   draft-write-only windows — the worker never commits, so no backfill window
   carries `allow_commit`, and the coordinator's own final writes run between

@@ -2,7 +2,9 @@
 
 ## Purpose
 TBD — shared raw-readline navigator engine backing the interactive tool-selection checklist and single-select prompts in `bin/install-flow.js`.
+
 ## Requirements
+
 ### Requirement: Shared raw-readline navigator engine
 
 `bin/install-flow.js` SHALL back the interactive tool-selection checklist (`promptChecklist`) and a new navigable single-select `promptSelect` with ONE shared raw-readline keypress engine. The engine SHALL use only Node.js built-in modules (`readline`, `process.stdin` raw mode, keypress events) per ADR 0010, and SHALL NOT introduce a runtime npm dependency. `promptChecklist`'s externally observable interaction — arrow-key navigation, space toggling, Enter confirmation, the `>` cursor, and `[x]` selection markers — SHALL remain unchanged when moved onto the shared engine. The engine SHALL separate list selection from process-exit policy: non-interactive-stdin and cancellation outcomes SHALL be surfaced to the caller (e.g. a sentinel result) rather than embedded as `process.exit` calls, so the installer's hard-exit behavior stays caller-owned and no caller — in particular the configurator, whose TTY-only contract MUST NOT hard-exit — is forced to terminate the process through the shared functions.
@@ -24,7 +26,7 @@ TBD — shared raw-readline navigator engine backing the interactive tool-select
 
 ### Requirement: promptSelect navigable single-select contract
 
-`bin/install-flow.js` SHALL export `promptSelect(question, options)`, a navigable single-select menu resolving to the selected option string. Up/down arrows SHALL move the `>` cursor within the option range, and Enter (or space) SHALL confirm the highlighted option and resolve with that option's value. The signature SHALL be `(question, options) -> option`, so any injected selection function with that contract remains a drop-in replacement. Callers SHALL gate navigation on an interactive-stdin check before invoking `promptSelect`, because raw-mode input requires a TTY.
+`bin/install-flow.js` SHALL export `promptSelect(question, options)`, a navigable single-select menu resolving to the selected option string. Up/down arrows SHALL move the `>` cursor within the option range, and Enter (or space) SHALL confirm the highlighted option and resolve with that option's value. The signature SHALL remain callable as `(question, options) -> option`, so any injected selection function with that contract remains a drop-in replacement; an optional trailing `distinguishClosedInput` flag defaulting to false SHALL select closed-input behavior without changing the default call shape. When the flag is true and the engine reports `input-closed`, `promptSelect` SHALL resolve with the `INPUT_CLOSED` sentinel; when the flag is false it SHALL resolve with null. Callers SHALL gate navigation on an interactive-stdin check before invoking `promptSelect`, because raw-mode input requires a TTY.
 
 #### Scenario: Arrow keys move the cursor and Enter confirms
 
@@ -40,6 +42,11 @@ TBD — shared raw-readline navigator engine backing the interactive tool-select
 
 - **WHEN** the user presses space while a single option is highlighted
 - **THEN** `promptSelect` SHALL confirm that option and resolve with its value
+
+#### Scenario: Optional closed-input distinction preserves the default contract
+
+- **WHEN** `promptSelect` is called without the trailing distinction flag and terminal input closes
+- **THEN** it SHALL resolve with null exactly as before, and only a call with the flag enabled SHALL resolve with the `INPUT_CLOSED` sentinel
 
 ### Requirement: Machine-testable input seam
 
@@ -65,3 +72,20 @@ The shared navigator engine SHALL accept an optional header supplied as a string
 - **WHEN** the input source is not a TTY and a header is supplied
 - **THEN** the navigator SHALL resolve non-interactive with no frame content painted, header included
 
+### Requirement: Closed terminal input settles the navigator
+
+The shared navigator engine SHALL settle a pending menu when terminal input ends, closes, or errors. On `end`, `close`, or `error` it SHALL resolve with status `input-closed`, SHALL remove every `keypress`, `end`, `close`, and `error` listener, SHALL settle at most once through a settled guard so a later terminal event cannot change the result, and SHALL NOT let a closed output writer throw out of cleanup.
+
+#### Scenario: Terminal input closure settles and detaches
+
+- **WHEN** terminal input emits `end`, `close`, or `error` while a navigator is pending
+- **THEN** the navigator SHALL resolve with status `input-closed` and zero listeners SHALL remain on the input source
+
+### Requirement: Closed-input sentinel export
+
+`bin/install-flow.js` SHALL export an `INPUT_CLOSED` sentinel distinct from every selectable option string, from null cancellation, and from `BACK`. The sentinel SHALL be returned only for closed terminal input when the caller opts into closed-input distinction and SHALL never be produced for `q`, Ctrl-C, back navigation, or normal confirmation.
+
+#### Scenario: Sentinel is reserved for distinguished closed input
+
+- **WHEN** a caller enables closed-input distinction and terminal input closes while a single-select menu is pending
+- **THEN** the menu SHALL resolve with the `INPUT_CLOSED` sentinel and SHALL NOT resolve with an option string, null cancellation, or `BACK`

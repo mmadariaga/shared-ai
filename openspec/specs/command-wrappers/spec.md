@@ -1,24 +1,28 @@
 # Command Wrappers Specification
 
+## Purpose
+
+Define the thin `sai-*` wrappers for Claude Code and opencode: what each one loads, how it routes, and where its model routing is declared.
+
 ## Requirements
 ### Requirement: ai-* commands wrap opsx skills additively
 
-Each sai-* command that maps to an opsx skill SHALL load the skill content via `Fetch` and prepend shared-AI behaviors (isolation mode, model routing, relevant instructions) from `~/.claude/sai/` paths. The skill SKILL.md files SHALL NOT be modified.
+Each sai-* command that maps to an opsx skill SHALL load the skill content via `Fetch` and prepend shared-AI behaviors (isolation mode, model routing, relevant instructions) from installed `sai/` paths. The skill SKILL.md files SHALL NOT be modified.
 
 #### Scenario: sai-1-spec executes with full enrichment but stops before design
 
-- **WHEN** user invokes `sai-1-spec`
+- **WHEN** user invokes `sai-1-spec` with a `Ready to Propose` block (creation) or an existing change name plus feedback (refinement)
 - **THEN** command loads the fetch skill and the boot adapter, fetches `@sai/commands/spec/command-bootstrap.md` which routes to the coordinator, and generates only proposal.md and specs/ without proceeding to design.md or tasks.md
 
-#### Scenario: sai-2-design executes with enrichment and approval check
+#### Scenario: sai-2-design executes with enrichment and approval stamp
 
 - **WHEN** user invokes `sai-2-design`
-- **THEN** command loads `~/.claude/sai/policies/glossary-format.md`, verifies specs approval in `.openspec.yaml`, then generates design.md and tasks.md
+- **THEN** invoking it is the specs approval: the phase stamps `approval.specs` in `.openspec.yaml`, then generates design.md, tasks.md, and interfaces.md
 
-#### Scenario: all wrappers use sai/ instruction paths
+#### Scenario: all wrappers use harness-resolved fetch paths
 
-- **WHEN** any `commands/claude/sai-*.md` wrapper is executed
-- **THEN** all `Fetch` directives pointing to `~/.claude/sai/` use the `~/.claude/sai/` prefix
+- **WHEN** any `commands/claude/sai-*.md` or `commands/opencode/sai-*.md` wrapper is executed
+- **THEN** its `Fetch` directives after the fetch-skill load use `@sai/` and `@skills/` paths resolved by the harness fetch skill
 
 ### Requirement: opsx commands are never invoked directly by users
 The project documentation and pipeline descriptions SHALL indicate that opsx:* commands are internal — users MUST use sai-* wrappers exclusively.
@@ -28,63 +32,19 @@ The project documentation and pipeline descriptions SHALL indicate that opsx:* c
 - **THEN** only sai-* commands appear in workflow examples — no opsx:* commands shown as user-facing steps
 
 ### Requirement: model routing preserved per command
-Each sai-* wrapper SHALL declare the appropriate model in frontmatter, matching the values in the live Claude Code wrappers at the time of writing and consistent with the `command-wrappers` spec's own canonical list and the `README.md` model reference table. The canonical Claude Code assignments are: `claude-sonnet-4-6` for `sai-1-spec` (`effort: medium`), `sai-3-implement` (`effort: high`), `sai-5-review` (`effort: high`), `sai-7-performance` (`effort: high`), `sai-8-accessibility` (`effort: high`), `sai-explore` (`effort: medium`), and `sai-backfill` (`effort: medium`); `claude-opus-4-8` for `sai-2-design` (`effort: high`) and `sai-6-security` (`effort: high`); `claude-haiku-4-5` for `sai-4-apply`, `sai-archive`, `sai-commit`, and `sai-pr` (no `effort` field). The model identifiers and effort levels track the live wrapper frontmatter; the spec is the description of those values, not the prescription.
+Each sai-* wrapper SHALL declare its model in frontmatter: `model` plus `effort` on Claude Code, `model` plus `variant` on opencode where the command uses a non-default variant. The wrapper frontmatter is the single source of truth for command model routing; specs and docs SHALL NOT restate per-command model values except the README's default opencode models block, which SHALL match the opencode wrappers.
 
-#### Scenario: sai-1-spec uses Sonnet
-- **WHEN** sai-1-spec is invoked on Claude Code
-- **THEN** it runs on `claude-sonnet-4-6` (`effort: medium`) as declared in the wrapper frontmatter
+#### Scenario: Claude Code wrapper declares its model
+- **WHEN** any `commands/claude/sai-*.md` wrapper is inspected
+- **THEN** its frontmatter declares `model`, and `effort` when the command runs at a non-default effort
 
-#### Scenario: sai-2-design uses Opus
-- **WHEN** sai-2-design is invoked on Claude Code
-- **THEN** it runs on `claude-opus-4-8` (`effort: high`) as declared in the wrapper frontmatter
+#### Scenario: opencode wrapper declares its model
+- **WHEN** any `commands/opencode/sai-*.md` wrapper is inspected
+- **THEN** its frontmatter declares `model`, and `variant` when the command runs at a non-default variant
 
-#### Scenario: sai-3-implement uses Sonnet
-- **WHEN** sai-3-implement is invoked on Claude Code
-- **THEN** it runs on `claude-sonnet-4-6` (`effort: high`) as declared in the wrapper frontmatter
-
-#### Scenario: sai-4-apply uses Haiku
-- **WHEN** sai-4-apply is invoked on Claude Code
-- **THEN** it runs on `claude-haiku-4-5` (no `effort` field) as declared in the wrapper frontmatter
-
-#### Scenario: sai-5-review uses Sonnet
-- **WHEN** sai-5-review is invoked on Claude Code
-- **THEN** it runs on `claude-sonnet-4-6` (`effort: high`) as declared in the wrapper frontmatter
-
-#### Scenario: sai-6-security uses Opus
-- **WHEN** sai-6-security is invoked on Claude Code
-- **THEN** it runs on `claude-opus-4-8` (`effort: high`) as declared in the wrapper frontmatter
-
-#### Scenario: sai-7-performance uses Sonnet
-- **WHEN** sai-7-performance is invoked on Claude Code
-- **THEN** it runs on `claude-sonnet-4-6` (`effort: high`) as declared in the wrapper frontmatter
-
-#### Scenario: sai-8-accessibility uses Sonnet
-- **WHEN** sai-8-accessibility is invoked on Claude Code
-- **THEN** it runs on `claude-sonnet-4-6` (`effort: high`) as declared in the wrapper frontmatter
-
-#### Scenario: sai-explore uses Sonnet
-- **WHEN** sai-explore is invoked on Claude Code
-- **THEN** it runs on `claude-sonnet-4-6` (`effort: medium`) as declared in the wrapper frontmatter
-
-#### Scenario: sai-backfill uses Sonnet
-- **WHEN** sai-backfill is invoked on Claude Code
-- **THEN** it runs on `claude-sonnet-4-6` (`effort: medium`) as declared in the wrapper frontmatter
-
-#### Scenario: sai-archive uses Haiku
-- **WHEN** sai-archive is invoked on Claude Code
-- **THEN** it runs on `claude-haiku-4-5` (no `effort` field) as declared in the wrapper frontmatter
-
-#### Scenario: sai-commit uses Haiku
-- **WHEN** sai-commit is invoked on Claude Code
-- **THEN** it runs on `claude-haiku-4-5` (no `effort` field) as declared in the wrapper frontmatter
-
-#### Scenario: sai-pr uses Haiku
-- **WHEN** sai-pr is invoked on Claude Code
-- **THEN** it runs on `claude-haiku-4-5` (no `effort` field) as declared in the wrapper frontmatter
-
-#### Scenario: README model table is consistent with wrappers
-- **WHEN** the `README.md` model reference table is read
-- **THEN** every `Claude Code` cell in the table contains the same model identifier and effort suffix as the corresponding wrapper frontmatter (or its absence for the Haiku wrappers that have no `effort` field)
+#### Scenario: README opencode defaults are consistent with wrappers
+- **WHEN** the README's default opencode models block is read
+- **THEN** every ORCHESTRATOR row shows the same model and variant as the corresponding `commands/opencode/sai-*.md` frontmatter
 
 ### Requirement: single canonical wrapper per command per harness
 Each supported harness SHALL provide exactly one wrapper per sai-* command. Model-variant duplicates SHALL NOT exist.
@@ -113,16 +73,19 @@ The Claude Code wrapper SHALL declare its utility model and the opencode wrapper
 
 ### Requirement: spec-command-routes-through-coordinator-and-steps
 
-The `sai-1-spec` command fetches `@sai/commands/spec/command-bootstrap.md`, which boots the coordinator at `@sai/commands/spec/coordinator.md`, which routes to the worker, which loads `@sai/commands/spec/steps/common.md` at dispatch and later steps through coordinator pointers. The command fetches no static spec-generation instruction file as its primary phase instruction. The completion-phase gate instruction `sai/policies/artifact-feedback-gate.md` is NOT a spec-generation instruction and is therefore exempt from this rule: the `sai-1-spec` body file MAY additionally fetch it at its completion phase.
+The `sai-1-spec` wrapper SHALL fetch `@sai/commands/spec/command-bootstrap.md`, which boots the coordinator at `@sai/commands/spec/coordinator.md`; the coordinator SHALL route to the worker, which loads `@sai/commands/spec/steps/common.md` at dispatch and later steps through coordinator pointers. No static spec-generation instruction file SHALL be the command's primary phase instruction. The coordinator's fetch of `@sai/policies/artifact-feedback-gate.md` for the completion gate is not a spec-generation instruction and is permitted.
 
 #### Scenario: claude wrapper routes through coordinator and steps
 
 - **WHEN** `commands/claude/sai-1-spec.md` is executed
 - **THEN** it fetches `@sai/commands/spec/command-bootstrap.md` which boots the coordinator at `@sai/commands/spec/coordinator.md`, and the coordinator routes to the worker which loads `@sai/commands/spec/steps/common.md`
-- **AND** the completion-phase fetch of `~/.claude/sai/policies/artifact-feedback-gate.md` is permitted and does not count as a spec-generation instruction
 
 #### Scenario: opencode wrapper routes through coordinator and steps
 
 - **WHEN** `commands/opencode/sai-1-spec.md` is executed
 - **THEN** it fetches `@sai/commands/spec/command-bootstrap.md` which boots the coordinator at `@sai/commands/spec/coordinator.md`, and the coordinator routes to the worker which loads `@sai/commands/spec/steps/common.md`
-- **AND** the completion-phase fetch of the artifact-feedback-gate instruction is permitted
+
+#### Scenario: completion gate fetch is permitted
+
+- **WHEN** the spec coordinator reaches its completion phase
+- **THEN** its fetch of `@sai/policies/artifact-feedback-gate.md` does not count as a spec-generation instruction

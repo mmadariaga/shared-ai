@@ -40,8 +40,7 @@ test('store-owned state cycle: the policy owns the durable store and the spawn-t
   assert.match(policy, /sai-state spawn/);
   assert.match(policy, /sai-state emit/);
   assert.match(policy, /\{stage, next: \{follow, hint\}, rejected\?, warnings\?\}/);
-  assert.match(policy, /no state object and no/i);
-  assert.match(policy, /snapshot travel/i);
+  assert.match(policy, /never travels in a request or a response/i);
   assert.match(policy, /SESSION_FILE_CORRUPT/);
   assert.match(policy, /disposable presentation hint/i);
   assert.match(policy, /deletes the session file/);

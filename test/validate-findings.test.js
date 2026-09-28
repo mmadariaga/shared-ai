@@ -275,3 +275,37 @@ test('the manifest projects sai tools to both harnesses includes validate-findin
   assert.ok(rule, 'sai-tools projection exists');
   assert.deepEqual(rule.destination, { class: 'sai', path: 'tools' });
 });
+
+const { spawnSync } = require('child_process');
+const VALIDATOR_CLI = path.join(REPO_ROOT, 'sai', 'tools', 'validate-findings.js');
+const VALID_BLOCK = `- Identifier: M1
+- Severity: Medium
+- Artifact location: proposal.md
+- Issue: Clarity issue.
+- Recommended correction: Rephrase for clarity.
+
+Summary: High=0 Medium=1 Low=0
+`;
+
+test('validate-findings CLI: a valid block on stdin exits 0 with ok JSON', () => {
+  const run = spawnSync(process.execPath, [VALIDATOR_CLI], { input: VALID_BLOCK, encoding: 'utf8' });
+  assert.equal(run.status, 0, run.stderr);
+  assert.deepEqual(JSON.parse(run.stdout), { ok: true, violations: [] });
+});
+
+test('validate-findings CLI: a malformed block exits 1 and lists violations', () => {
+  const run = spawnSync(process.execPath, [VALIDATOR_CLI], {
+    input: VALID_BLOCK.replace('Severity: Medium', 'Severity: Critical'),
+    encoding: 'utf8',
+  });
+  assert.equal(run.status, 1, run.stdout);
+  const result = JSON.parse(run.stdout);
+  assert.equal(result.ok, false);
+  assert.ok(result.violations.length > 0);
+});
+
+test('validate-findings CLI: an empty block is a usage error, never a pass', () => {
+  const run = spawnSync(process.execPath, [VALIDATOR_CLI], { input: '', encoding: 'utf8' });
+  assert.equal(run.status, 2);
+  assert.equal(JSON.parse(run.stdout).ok, false);
+});

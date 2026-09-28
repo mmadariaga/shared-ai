@@ -2,13 +2,13 @@
 
 ## Purpose
 
-TBD - seeded from delta spec `review-loop-navigation` in change `extract-review-engine`.
+Define how `sai-explore`'s review loop is entered, navigated through its per-change picker, and closed, separately from the crystallization-close route selection.
 
 ## Requirements
 
 ### Requirement: Keep review navigation separate from route selection
 
-The post-crystallization review loop SHALL remain a separate user-triggered path, while the crystallization close SHALL use the three-option Plan (unattended), Build (unattended), and Manual selector.
+The post-crystallization review loop SHALL remain a separate user-triggered path, while the crystallization close SHALL use the three-option Plan (unattended), Direct Build (unattended), and Manual selector.
 
 #### Scenario: crystallization does not start review
 
@@ -245,7 +245,7 @@ Re-presenting the picker SHALL be loop navigation only: it SHALL NOT filter, pre
 
 ### Requirement: print-for-paste-handoff
 
-When a review transaction surfaces findings, the loop SHALL print exactly one findings block — every finding from the transaction in the engine's deterministic order (by severity High → Medium → Low, then by ascending numeric identifier within each severity), each presented with the severity-prefixed identifier heading (the `Finding H1`-style label) that renders the contract's `Identifier` field, followed by the contract's remaining four fields in their contract order, closing with the contract's base-form summary tally — and SHALL print nothing else: no separate `## DesignCorrectionRequest` block, no `change:` header, and no acceptance step (no per-finding `Accept` / `Decline` picker, no accepted-set confirmation, and no in-loop filtering of the findings that enter the block). A completed review that surfaces no findings SHALL still close with the contract's base-form summary tally as the findings block's only content (the tally-only block); the picker is then re-presented per the re-entry invariant. The findings block IS the handoff payload: the user pastes it at the feedback gate of a re-invoked `/sai-2-design`, and the user MAY drop any line when pasting.
+When a review transaction surfaces findings, the loop SHALL print exactly one findings block — every finding from the transaction in the engine's deterministic order (by severity High → Medium → Low, then by ascending numeric identifier within each severity), each rendered in the contract's line layout — the `- Identifier: H1`-style line carrying the severity-prefixed identifier, followed by the contract's remaining four fields in their contract order — closing with the contract's base-form summary tally — and SHALL print nothing else: no separate `## DesignCorrectionRequest` block, no `change:` header, and no acceptance step (no per-finding `Accept` / `Decline` picker, no accepted-set confirmation, and no in-loop filtering of the findings that enter the block). A completed review that surfaces no findings SHALL still close with the contract's base-form summary tally as the findings block's only content (the tally-only block); the picker is then re-presented per the re-entry invariant. The findings block IS the handoff payload: the user pastes it at the feedback gate of a re-invoked `/sai-2-design`, and the user MAY drop any line when pasting.
 
 Handed-off corrections SHALL be applied by a worker that can consume the current change, with ownership following the source artifact's writer: findings on `design.md`, `tasks.md`, or `interfaces.md` are owned by the design worker and applied only through a writable design-worker transaction (a re-invoked `/sai-2-design` or the supervised design phase's feedback channel); findings on `proposal.md` or `specs/**` are owned by the design worker's consent-gated spec-amendment path, applied only with explicit user consent through the closed choice **apply in place** vs **do not apply / leave open** — routing to `/sai-1-spec` SHALL NOT be offered for review-loop findings, because `/sai-1-spec` creates a new change and cannot amend the current one.
 

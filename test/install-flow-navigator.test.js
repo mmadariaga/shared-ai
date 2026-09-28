@@ -22,7 +22,7 @@ const { EventEmitter } = require('node:events');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const { promptChecklist, promptSelect, runNavigator } = require('../bin/install-flow.js');
+const { promptChecklist, promptSelect, runNavigator, INPUT_CLOSED, BACK } = require('../bin/install-flow.js');
 
 const INSTALLER_ITEMS = ['Claude Code', 'Opencode'];
 const TTY_MESSAGE = 'Error: interactive mode requires a TTY. Run directly in a terminal.';
@@ -171,6 +171,34 @@ test('Engine reports cancellation without terminating the process: Ctrl-C keypre
   } finally {
     spy.restore();
   }
+});
+
+for (const event of ['end', 'close', 'error']) {
+  test(`terminal input ${event} settles a pending navigator and removes its listeners`, { timeout: INTERACTION_TIMEOUT }, async () => {
+    const input = createFakeInput(true);
+    const promise = promptChecklist(INSTALLER_ITEMS, [], input);
+    input.emit(event, event === 'error' ? new Error('input failed') : undefined);
+    assert.deepEqual(await promise, { status: 'input-closed' });
+    for (const name of ['keypress', 'end', 'close', 'error']) {
+      assert.equal(input.listenerCount(name), 0, `${name} listener must be removed`);
+    }
+    // A second terminal event after settlement cannot change the result.
+    input.emit('close');
+  });
+}
+
+test('selector distinguishes closed input from q cancellation and back navigation', { timeout: INTERACTION_TIMEOUT }, async () => {
+  const closedInput = createFakeInput(true);
+  const closed = promptSelect('Pick:', INSTALLER_ITEMS, closedInput, undefined, true);
+  closedInput.emit('end');
+  assert.equal(await closed, INPUT_CLOSED);
+
+  const cancelInput = createFakeInput(true);
+  assert.equal(await runSelect({ question: 'Pick:', options: INSTALLER_ITEMS, input: cancelInput,
+    presses: [['q', keyInfo('q', 'q')]] }), null);
+  const backInput = createFakeInput(true);
+  assert.equal(await runSelect({ question: 'Pick:', options: INSTALLER_ITEMS, input: backInput,
+    presses: [['', keyInfo('left', '\x1b[D')]] }), BACK);
 });
 
 test('Engine reports cancellation without terminating the process: non-TTY input resolves non-interactive', { timeout: INTERACTION_TIMEOUT }, async () => {

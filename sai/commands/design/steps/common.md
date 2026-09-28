@@ -25,12 +25,7 @@ Generate `design.md`, `tasks.md`, and `interfaces.md` for the resolved change as
 
 ## Artifact-only scope
 
-The ONLY files you are allowed to create or modify are the `openspec/changes/{name}/` subset:
-- `openspec/changes/{name}/design.md`
-- `openspec/changes/{name}/tasks.md`
-- `openspec/changes/{name}/interfaces.md`
-- `openspec/changes/{name}/.openspec.yaml`
-- `openspec/changes/{name}/proposal.md` and `openspec/changes/{name}/specs/**/*.md` — only under the spec-problem handling rules of the design step.
+The authorized write surface is `DesignWriteSurface` in `@sai/commands/design/phase-contract.md`. Within `openspec/changes/{name}/`, the design worker writes `design.md`, `tasks.md`, `interfaces.md`, and `.openspec.yaml` under their respective phase rules. The opted-in overview generator writes only `change-overview.md` under `@sai/commands/design/change-overview.md`; the parent worker owns overview state in `.openspec.yaml`. Amend `proposal.md` and `specs/**/*.md` only under the design step's spec-problem handling rule after explicit user consent.
 
 Never write `implementation.md`, test files, or any other artifact. Code generation and project modifications are the explicit responsibility of downstream commands.
 

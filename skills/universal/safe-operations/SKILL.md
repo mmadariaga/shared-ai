@@ -2,7 +2,7 @@
 name: safe-operations
 description: >
   Enforces reversibility and impact awareness — the agent must ask before performing destructive, hard-to-reverse, or shared-system operations, and must not use destructive actions as shortcuts.
-  TRIGGER when: users mentions dangerous, destructive, or shared-system operations, or when the task involves git push --force, rm -rf, deleting files/branches, or bypassing safety checks
+  TRIGGER when: the user mentions dangerous, destructive, or shared-system operations, or when the task involves git push --force, rm -rf, deleting files/branches, or bypassing safety checks
 license: MIT
 compatibility: opencode, claude
 metadata:
@@ -10,11 +10,12 @@ metadata:
   version: "1.0"
 ---
 
-Consider the reversibility and potential impact of your actions. You are encouraged to take local, reversible actions like editing files or running tests, but for actions that are hard to reverse, affect shared systems, or could be destructive, ask the user before proceeding.
+Weigh the reversibility and impact of every action. Local, reversible actions (editing files, running tests) go ahead. An action that is hard to reverse, destructive, or visible on a shared system waits for the user's confirmation:
 
-Examples of actions that warrant confirmation:
-- Destructive operations: deleting files or branches, dropping database tables, rm -rf
-- Hard to reverse operations: git push --force, git reset --hard, amending published commits
-- Operations visible to others: pushing code, commenting on PRs/issues, sending messages, modifying shared infrastructure
+- **Destructive**: deleting files or branches, dropping database tables, `rm -rf`.
+- **Hard to reverse**: `git push --force`, `git reset --hard`, amending published commits.
+- **Visible to others**: pushing code, commenting on PRs or issues, sending messages, modifying shared infrastructure.
 
-When encountering obstacles, do not use destructive actions as a shortcut. For example, don't bypass safety checks (e.g. --no-verify) or discard unfamiliar files that may be in-progress work.
+A confirmation the running command already holds for that exact operation counts: an authorization gate the user answered, or a user selection the command defines as pre-authorizing it (such as Direct Build's one local commit, or the no-commit guard's mixed `git reset <guard_base>`). Ask again only for an operation that confirmation does not name. `--fast-track` is never such a confirmation: it skips a command's own gates, not these.
+
+When an obstacle blocks you, resolve its cause or report it and ask how to proceed. Safety checks stay on (no `--no-verify`), and unfamiliar files stay in place, since they may be someone's in-progress work.

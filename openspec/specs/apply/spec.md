@@ -95,19 +95,19 @@ When the implementation plan reaches a STOP & COMMIT marker, the agent SHALL app
 - **THEN** the proposed subject MUST follow `type(scope): description` format, be ≤ 50 characters, and every claim MUST map to staged hunks only
 
 ### Requirement: Explicit permission gate at STOP & COMMIT stays in the main thread
-When `apply.md` is executed and a STOP & COMMIT marker is encountered, the main thread (coordinator) SHALL propose the commit message and ask the user for explicit per-invocation authorization before running `git commit`. The STOP & COMMIT human authorization gate SHALL remain in the coordinator — it SHALL NOT be delegated to the subagent. Silently skipping the commit step is a spec violation. The authorization prompt MUST be presented as a closed-choice prompt with options `yes` / `no` (per the "Closed-choice prompts" rule in `remember.md`, which gives the per-harness option-picker mapping). The coordinator commits only on an explicit `yes`; anything else (no, silence, redirect, or any other reply) is a decline.
+When `/sai-4-apply` reaches a STOP & COMMIT marker, the coordinator SHALL propose the commit message and ask for authorization before running `git commit`, per `stop-commit-checklist`. The gate SHALL remain in the coordinator — it SHALL NOT be delegated to a worker. Silently skipping the commit step is a spec violation. The ask follows the `commit-rules` authorization gate: options `yes (Recommended)` / `no` / `Allow on this session`; an off-option reply or silence re-presents the same ask; only an explicit `no` declines.
 
 #### Scenario: User grants commit permission
 - **WHEN** the coordinator reaches a STOP & COMMIT marker and the user answers `yes` to the proposed commit
 - **THEN** the coordinator runs `git commit` and reports the resulting SHA + subject
 
-#### Scenario: User declines or does not respond
-- **WHEN** the coordinator reaches a STOP & COMMIT marker and the user does not answer `yes`
-- **THEN** the coordinator MUST NOT run `git commit`; MUST describe the staged changes and instruct the user to commit themselves
+#### Scenario: User declines
+- **WHEN** the coordinator reaches a STOP & COMMIT marker and the user answers `no`
+- **THEN** the coordinator MUST NOT run `git commit`; MUST describe the changes and instruct the user to commit themselves
 
 #### Scenario: Subagent reports a STOP & COMMIT was reached
 - **WHEN** a subagent report indicates a STOP was reached at a STOP & COMMIT marker
-- **THEN** the coordinator proposes the commit message and asks via a closed-choice yes/no prompt, committing only on explicit `yes` and otherwise describing the staged changes for the user to commit themselves
+- **THEN** the coordinator proposes the commit message and asks through the authorization gate, committing only on `yes` or `Allow on this session` and, on `no`, describing the changes for the user to commit themselves
 
 ### Requirement: Agent SHALL perform a final checkbox sweep after all steps complete
 When all Steps in `implementation.md` are complete, the apply agent MUST scan the entire file and verify that every **Automated** checkbox is marked `[x]`. Any unchecked Automated item MUST be reported and MUST block entry into the terminal lifecycle. Unmarked **Functional** checkboxes MUST be reported as pending human review and MUST NOT block the sweep.

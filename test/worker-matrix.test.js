@@ -58,12 +58,6 @@ const REQUIRED_FIELDS = [
   'workerName',
   'workerContract',
   'bindingStem',
-  'dispatchPrimitive',
-  'initialDispatch',
-  'continuationLiteral',
-  'replacementFields',
-  'helperPermissions',
-  'progressDeclaration',
   'claudeAgent',
   'opencodeAgent',
 ];
@@ -87,12 +81,6 @@ function applyEntry(workerName, overrides = {}) {
     workerName,
     workerContract: `sai/commands/apply/${role}-worker.md`,
     bindingStem: role,
-    dispatchPrimitive: 'task',
-    initialDispatch: `dispatch ${workerName}`,
-    continuationLiteral: `continue ${workerName}`,
-    replacementFields: ['model', 'effort'],
-    helperPermissions: ['read', 'write'],
-    progressDeclaration: 'apply milestones',
     claudeAgent: { name: workerName, model: 'claude-apply-model', keyword: `claude-apply-${role}` },
     opencodeAgent: { name: workerName, model: 'opencode-apply-model', keyword: `opencode-apply-${role}` },
   };
@@ -109,12 +97,6 @@ function directBuildEntry(workerName, overrides = {}) {
     workerName,
     workerContract: contract,
     bindingStem: phase,
-    dispatchPrimitive: 'task',
-    initialDispatch: `dispatch ${workerName}`,
-    continuationLiteral: `continue ${workerName}`,
-    replacementFields: ['model', 'effort'],
-    helperPermissions: ['read', 'write'],
-    progressDeclaration: `${phase} milestones`,
     claudeAgent: { name: workerName, model: 'claude-direct-build-model', keyword: `claude-${phase}` },
     opencodeAgent: { name: workerName, model: 'opencode-direct-build-model', keyword: `opencode-${phase}` },
   };
@@ -148,19 +130,9 @@ function entry(phase, overrides = {}) {
     workerName,
     workerContract: `sai/commands/${WORKER_DIR[phase]}/worker.md`,
     bindingStem: phase,
-    dispatchPrimitive: phase === 'design' ? 'Agent' : 'task',
-    initialDispatch: `dispatch ${workerName}`,
-    continuationLiteral: `continue ${workerName}`,
-    replacementFields: ['model', 'effort'],
-    helperPermissions: ['read', 'write'],
-    progressDeclaration: `${phase} milestones`,
     claudeAgent: { name: workerName, model: 'claude-model', keyword: `claude-${phase}` },
     opencodeAgent: { name: workerName, model: 'opencode-model', keyword: `opencode-${phase}` },
   };
-  if (phase === 'design') {
-    base.overviewGeneration = true;
-    base.noticeContinuation = true;
-  }
   return { ...base, ...overrides };
 }
 
@@ -332,7 +304,7 @@ test('defineWorkerMatrix rejects entries with missing required fields naming the
       `an entry missing ${field} should be rejected naming the field`
     );
   }
-  for (const field of ['workerContract', 'initialDispatch', 'progressDeclaration']) {
+  for (const field of ['workerContract']) {
     assert.throws(
       () => defineWorkerMatrix(twelveEntries().map((item, index) => index === 0 ? { ...item, [field]: null } : item)),
       error => {
@@ -352,7 +324,7 @@ test('defineWorkerMatrix rejects entries with missing required fields naming the
   }
 });
 
-test('defineWorkerMatrix rejects invalid worker identities, contract paths, and dispatch primitives', () => {
+test('defineWorkerMatrix rejects invalid worker identities and contract paths', () => {
   assert.throws(
     () => defineWorkerMatrix(twelveEntries().map((item, index) => index === 0 ? { ...item, workerName: 'sai-9-watcher' } : item)),
     error => {
@@ -368,27 +340,6 @@ test('defineWorkerMatrix rejects invalid worker identities, contract paths, and 
       return message.includes('Invalid Worker Matrix contract path') && message.includes('spec');
     },
     'a contract path without the sai- prefix should be rejected for its phase'
-  );
-  assert.throws(
-    () => defineWorkerMatrix(twelveEntries().map((item, index) => index === 0 ? { ...item, dispatchPrimitive: 'tool' } : item)),
-    error => {
-      const message = String(error && error.message || error);
-      return message.includes('Invalid Worker Matrix dispatch primitive') && message.includes('spec');
-    },
-    'a dispatch primitive outside Agent/task should be rejected for its phase'
-  );
-});
-
-test('defineWorkerMatrix rejects invalid collection fields', () => {
-  assert.throws(
-    () => defineWorkerMatrix(twelveEntries().map((item, index) => index === 0 ? { ...item, replacementFields: [] } : item)),
-    error => String(error && error.message || error).includes('must be non-empty'),
-    'an empty replacementFields array should be rejected'
-  );
-  assert.throws(
-    () => defineWorkerMatrix(twelveEntries().map((item, index) => index === 0 ? { ...item, helperPermissions: 'read' } : item)),
-    error => String(error && error.message || error).includes('must be an array'),
-    'a non-array helperPermissions should be rejected'
   );
 });
 
@@ -626,68 +577,6 @@ test('materializeWorkerMatrix requires a matrix and all four templates', () => {
     'a non-string opencodeBinding template should be rejected');
 });
 
-test('defineWorkerMatrix keeps overview and notice options only on the design entry', () => {
-  const matrix = defineOrNull(twelveEntries());
-  assert.ok(matrix, 'the fifteen-entry matrix should validate');
-  for (const item of matrix.entries) {
-    if (item.phase === 'design') {
-      assert.equal(item.overviewGeneration, true, 'design should carry overviewGeneration');
-      assert.equal(item.noticeContinuation, true, 'design should carry noticeContinuation');
-    } else {
-      assert.equal(Object.hasOwn(item, 'overviewGeneration'), false,
-        `${item.workerName} should omit overviewGeneration`);
-      assert.equal(Object.hasOwn(item, 'noticeContinuation'), false,
-        `${item.workerName} should omit noticeContinuation`);
-    }
-  }
-});
-
-test('defineWorkerMatrix rejects design-only options on non-design phases', () => {
-  assert.throws(
-    () => defineWorkerMatrix(twelveEntries().map(item => item.phase === 'spec' ? { ...item, overviewGeneration: true } : item)),
-    error => {
-      const message = String(error && error.message || error);
-      return message.includes('Design-only Worker Matrix options leaked into') && message.includes('spec');
-    },
-    'a non-design phase carrying overviewGeneration should be rejected naming the phase'
-  );
-  assert.throws(
-    () => defineWorkerMatrix(twelveEntries().map(item => item.phase === 'review' ? { ...item, noticeContinuation: true } : item)),
-    error => {
-      const message = String(error && error.message || error);
-      return message.includes('Design-only Worker Matrix options leaked into') && message.includes('review');
-    },
-    'a non-design phase carrying noticeContinuation should be rejected naming the phase'
-  );
-});
-
-test('defineWorkerMatrix requires the design entry to declare both design-only options', () => {
-  assert.throws(
-    () => defineWorkerMatrix(twelveEntries().map(item =>
-      item.phase === 'design' ? { ...item, overviewGeneration: undefined } : item)),
-    error => String(error && error.message || error).includes('must declare overview and notice options'),
-    'design missing overviewGeneration should be rejected'
-  );
-  assert.throws(
-    () => defineWorkerMatrix(twelveEntries().map(item =>
-      item.phase === 'design' ? { ...item, noticeContinuation: undefined } : item)),
-    error => String(error && error.message || error).includes('must declare overview and notice options'),
-    'design missing noticeContinuation should be rejected'
-  );
-});
-
-test('renderWorkerTemplate renders the design-only options only for design', () => {
-  const designTemplate = 'Overview: {{overviewGeneration}}; Notice: {{noticeContinuation}}; worker: {{workerName}}.';
-  const designRendered = renderWorkerTemplate(designTemplate, entry('design'));
-  assert.equal(designRendered, 'Overview: true; Notice: true; worker: sai-2-design-worker.',
-    'design should render its overview and notice options');
-  assert.throws(
-    () => renderWorkerTemplate(designTemplate, entry('spec')),
-    error => String(error && error.message || error).includes('Missing Worker Matrix template parameter: overviewGeneration'),
-    'a non-design entry should not resolve the design-only overview token'
-  );
-});
-
 test('defineWorkerMatrix rejects unknown sai-4 worker identities naming the role', () => {
   const unknown = twelveEntries().map((item, index) =>
     index === 9 ? applyEntry('sai-4-amber-worker') : item);
@@ -773,12 +662,6 @@ test('the seven existing phase checks retain their outcomes beside the apply ent
       index === 0 ? { ...item, workerContract: 'sai/orchestration/workers/generic-worker.md' } : item)),
     error => String(error && error.message || error).includes('Invalid Worker Matrix contract path'),
     'the phase contract check should still reject a non-command contract path'
-  );
-  assert.throws(
-    () => defineWorkerMatrix(twelveEntries().map((item, index) =>
-      index === 0 ? { ...item, dispatchPrimitive: 'tool' } : item)),
-    error => String(error && error.message || error).includes('Invalid Worker Matrix dispatch primitive'),
-    'the phase dispatch check should still reject a primitive outside Agent/task'
   );
 });
 

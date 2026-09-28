@@ -1,7 +1,7 @@
 # archive-capability-retirement-declaration Specification
 
 ## Purpose
-TBD - created by archiving change archive-retire-capabilities-key. Update Purpose after archive.
+Defines how `/sai-archive` declares the retirement of a capability emptied by a change delta: detection, declaration preconditions, the verified `retire_capabilities` write, and the disclosure of retired ids.
 
 ## Requirements
 
@@ -139,11 +139,12 @@ Each refusal SHALL be presented and the run SHALL stop without the CLI archive. 
 - **WHEN** a declaration precondition blocks under `--fast-track` or on the Direct Build (unattended) route
 - **THEN** the run stops with the refusal reported, no question is presented, and no mutation plan or execution order is returned
 
-### Requirement: Every shared retirement rule SHALL be stated in all three archive contract files
+### Requirement: Every shared retirement rule SHALL be single-sourced
 
-`sai/commands/archive/instructions.md`, `sai/commands/archive/worker.md`, and `sai/commands/archive/coordinator.md` SHALL state one contract: every shared retirement-declaration rule SHALL appear in all three files. The contract test suite SHALL assert each rule's clauses against each of the three files, so a rule present in one file and absent from another fails the suite.
+Every retirement-declaration rule — detection, preconditions, the write procedure, and the disclosure — SHALL be stated once, in `sai/commands/archive/retirement-declaration.md`. `sai/commands/archive/worker.md` and `sai/commands/archive/coordinator.md` SHALL fetch that file, and `sai/commands/archive/instructions.md` and `sai/commands/archive/archive-commit-gate.instructions.md` SHALL point to it rather than restate its rules.
 
-#### Scenario: A rule stated in one contract file only fails the suite
+#### Scenario: A restated rule fails the suite
 
-- **WHEN** a shared retirement-declaration rule is present in one archive contract file and missing from another
-- **THEN** the cross-file contract test fails and names the file and the rule clause it lacks
+- **WHEN** a retirement-declaration rule clause is restated in another archive card, or a card that performs the declaration does not fetch the single source
+- **THEN** the contract test fails and names the file and the clause
+

@@ -3,6 +3,7 @@
 Fetch @sai/policies/verified-precondition-handback.md
 Fetch @sai/orchestration/worker-core.md and follow it exactly.
 Fetch @sai/policies/remember.md
+Fetch @sai/policies/repository-artifact-scope.md and use it.
 
 ## Invocation Envelope
 
@@ -11,15 +12,13 @@ strict-zero two-phase startup the initial dispatch carries only the ready
 prompt plus base instructions with no task content; `arguments_value` arrives
 only in the post-ready same-worker continuation after `event: ready`. Its first
 line is the marker `--review-fix`; everything after the first newline is the
-findings input assembled by the meta-review coordinator from the same run:
-`review.md` plus `security.md`, `performance.md`, and `accessibility.md` only
-when each audit was activated and regenerated in that same run. Strip the
+findings input the calling coordinator (`/sai-5-review` or `/sai-review`)
+assembled under `sai/commands/meta-review/direct-build-close.md`. Strip the
 marker line and treat those findings as your sole substantive input: no
 `implementation.md` or `tasks.md` regeneration is in scope, no conversation
 context is forwarded, and none may be inferred from repository discovery beyond
 what applying the findings requires. Binding metadata remains outside the
-worker request. A non-recommended audit is never part of the input and is never
-touched nor regenerated.
+worker request.
 
 ## Findings-driven direct fix
 
@@ -29,18 +28,9 @@ Leads and audit prose as non-authoritative starting points only. Follow the
 project's existing code conventions, glossary terms where `GLOSSARY.md` exists,
 and format rules. Keep the diff minimal and reviewable.
 
-Reuse by reference — without modifying the production worker — the
-prohibitions, fix-loop shape, guard posture, and budget tier of
-`sai/commands/explore/direct-build-worker.md:1-70`. This worker is distinct
-from `sai-direct-build-worker`: findings-driven input, not block-driven.
+Write any artifact the findings require, within the repository-artifact scope
+and its protected update protocols, under these role restrictions:
 
-Code, tests, the project configuration the fix requires, and shipped product
-schemas under `openspec/schemas/**` are writable. Write NOTHING else:
-
-- never create or modify anything under `openspec/` except `openspec/schemas/**`
-  — artifact writes belong to the existing backfill worker only when a finding
-  changes requirement or design (E3); `openspec/specs/**`,
-  `openspec/changes/**`, and `openspec/config.yaml` stay forbidden or reserved;
 - never touch `implementation.md` or `tasks.md`;
 - never create planning artifacts (`design.md`, `tasks.md`,
   `implementation.md`);

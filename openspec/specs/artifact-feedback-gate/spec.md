@@ -49,11 +49,6 @@ The gate logic SHALL live in exactly one shared instruction file, `sai/policies/
 - **THEN** each fetches `sai/policies/artifact-feedback-gate.md` and supplies its own artifact list, proceed-label, and next-action
 - **AND** neither coordinator nor worker contract restates the gate's loop logic inline
 
-#### Scenario: Copilot inline consumer remains on the shared policy
-
-- **WHEN** the Copilot inline path reaches its completion phase
-- **THEN** it continues to consume the same `sai/policies/artifact-feedback-gate.md` policy without changing its existing feedback behavior
-
 #### Scenario: parameters differ per step
 
 - **WHEN** the shared instruction is fetched by sai-1 versus sai-2
@@ -66,7 +61,7 @@ When `mode` is `supervised`, the gate SHALL NOT present the option-picker and SH
 
 The gate SHALL present its two choices through the harness's native option-picker per the "Closed-choice prompts" rule in `sai/policies/remember.md` (on Claude Code, the `AskUserQuestion` tool). Option labels SHALL be full words. The two options are a feedback option and the step-specific proceed option (`Finish step` for sai-1, `Continue` for sai-2).
 
-The feedback option label SHALL be iteration-aware: on the first presentation of the gate within a given `/sai-*` invocation, the label SHALL read `Give feedback (Recommended)`; on every subsequent re-presentation within the same invocation (i.e. after the user has selected the feedback option and the gate is being offered again), the label SHALL read `Give more feedback`. On the first presentation, only the feedback option carries the `Recommended` marker; on every subsequent re-presentation, neither option carries that marker. The option description text SHALL remain unchanged across iterations. The internal `## On "Give feedback"` section heading in the gate instruction SHALL stay literal and SHALL NOT be re-titled to match the iteration-aware label (it is internal section prose, not user-visible). The iteration-aware label and recommendation-marker rules apply identically under Claude Code, opencode, and Copilot.
+The feedback option label SHALL be iteration-aware: on the first presentation of the gate within a given `/sai-*` invocation, the label SHALL read `Give feedback (Recommended)`; on every subsequent re-presentation within the same invocation (i.e. after the user has selected the feedback option and the gate is being offered again), the label SHALL read `Give more feedback`. On the first presentation, only the feedback option carries the `Recommended` marker; on every subsequent re-presentation, neither option carries that marker. The option description text SHALL remain unchanged across iterations. The internal `## On "Give feedback"` section heading in the gate instruction SHALL stay literal and SHALL NOT be re-titled to match the iteration-aware label (it is internal section prose, not user-visible). The iteration-aware label and recommendation-marker rules apply identically under Claude Code and opencode.
 
 #### Scenario: Claude Code presentation
 
@@ -99,10 +94,10 @@ The feedback option label SHALL be iteration-aware: on the first presentation of
 - **WHEN** the gate instruction is updated to add the iteration-aware label rule
 - **THEN** the internal `## On "Give feedback"` section heading in `sai/policies/artifact-feedback-gate.md` SHALL remain byte-for-byte unchanged — it is internal prose, not user-visible, and re-titling it would be cosmetic noise
 
-#### Scenario: iteration-aware label applies across all three harnesses
+#### Scenario: iteration-aware label applies on both harnesses
 
-- **WHEN** the gate is offered on Claude Code, opencode, or Copilot
-- **THEN** the same iteration-aware label and recommendation-marker rules apply — first presentation `Give feedback (Recommended)` with only the feedback option recommended, subsequent `Give more feedback` with neither option recommended — because the rules live in the shared gate instruction that all three harnesses fetch
+- **WHEN** the gate is offered on Claude Code or opencode
+- **THEN** the same iteration-aware label and recommendation-marker rules apply — first presentation `Give feedback (Recommended)` with only the feedback option recommended, subsequent `Give more feedback` with neither option recommended — because the rules live in the shared gate instruction that both harnesses fetch
 
 ### Requirement: Per-step artifact listing
 
@@ -124,13 +119,14 @@ When `mode` is `supervised`, the gate SHALL NOT emit the free-text question, fre
 
 In interactive mode, the artifact feedback gate SHALL add a non-option presentation note immediately before the existing canonical question. The note's prose SHALL be rendered in the user's language per `sai/policies/remember.md` and SHALL explain that the user can use `sai-explore`'s literal `review-loop` token to obtain an artifact review and paste its findings here. Only the command identifier `sai-explore` and the token `review-loop` SHALL remain verbatim English.
 
-The artifact feedback gate SHALL use the canonical question `Share your feedback on {artifacts} below. You can also type feedback directly in the free-text box.` and the canonical `Give feedback` option description `Feedback on {artifacts}; you can also type feedback directly in the free-text box.`, replacing `{artifacts}` with the supplied artifact list and rendering both strings in the user's language per `sai/policies/remember.md`. The shared instruction SHALL use this harness-neutral wording rather than substitute harness-specific labels. The gate SHALL continue to present exactly two declared choices in the existing order: `Give feedback (Recommended)` on the first presentation or `Give more feedback` thereafter, followed by the supplied proceed option. The note is informational presentation text, not a third option, feedback input, approval, or progress event. The option labels, ordering, `Recommended` marker, iteration counter, proceed-label values, artifact list, and proceed semantics SHALL remain unchanged.
+Per the concise prompt format of `sai/policies/question-context.md`, the artifact feedback gate SHALL advertise the free-text channel in the ordinary-chat context emitted immediately before the picker, and SHALL use the short canonical picker question `Share feedback on {artifacts}?` and the canonical `Give feedback` option description `Feedback on {artifacts}.`, replacing `{artifacts}` with the supplied artifact list and rendering the context, question, and description in the user's language per `sai/policies/remember.md`. The shared instruction SHALL use this harness-neutral wording rather than substitute harness-specific labels. The gate SHALL continue to present exactly two declared choices in the existing order: `Give feedback (Recommended)` on the first presentation or `Give more feedback` thereafter, followed by the supplied proceed option. The note is informational presentation text, not a third option, feedback input, approval, or progress event. The option labels, ordering, `Recommended` marker, iteration counter, proceed-label values, artifact list, and proceed semantics SHALL remain unchanged.
 
 #### Scenario: initial gate advertises free-text feedback
 
 - **WHEN** the gate is presented for the first time in a sai-1 or sai-2 step
-- **THEN** its question reads `Share your feedback on {artifacts} below. You can also type feedback directly in the free-text box.` after `{artifacts}` is replaced and the text is rendered in the user's language
-- **AND** the `Give feedback (Recommended)` option description reads `Feedback on {artifacts}; you can also type feedback directly in the free-text box.` after the same replacement and language rendering
+- **THEN** the context before the picker names every artifact and states that feedback can also be typed directly in the free-text channel
+- **AND** its question reads `Share feedback on {artifacts}?` after `{artifacts}` is replaced and the text is rendered in the user's language
+- **AND** the `Give feedback (Recommended)` option description reads `Feedback on {artifacts}.` after the same replacement and language rendering
 - **AND** the declared options remain `Give feedback (Recommended)` followed by the step-specific proceed option
 
 #### Scenario: later gate presentations preserve the existing controls
@@ -222,12 +218,12 @@ The gate SHALL report every discarded item individually — the item and the rea
 
 ### Requirement: Routed design adapts ownership without forking gate semantics
 
-The shared gate instruction, `sai/policies/artifact-feedback-gate.md`, SHALL remain the single source of artifact lists, option labels and order, recommendation-marker behavior, iteration semantics, selective feedback rules, summary placement, and proceed behavior for both sai-1 and sai-2. The routed design adapter MAY assign presentation state, including the single feedback-text prompt emission, to the coordinator and design-artifact evaluation and edits to the worker, but SHALL NOT duplicate or change those shared semantics.
+The shared gate instruction, `sai/policies/artifact-feedback-gate.md`, SHALL remain the single source of artifact lists, option labels and order, recommendation-marker behavior, iteration semantics, selective feedback rules, summary placement, and proceed behavior for both sai-1 and sai-2. The routed sai-1 and sai-2 coordinators MAY take presentation state, including the single feedback-text prompt emission, while the worker takes artifact evaluation and edits, but neither SHALL duplicate or change those shared semantics.
 
 #### Scenario: Shared gate policy is updated for routed design
 
 - **WHEN** `sai/policies/artifact-feedback-gate.md` gains coordinator-worker ownership guidance
-- **THEN** the guidance SHALL explicitly preserve the Copilot inline execution path and SHALL keep one canonical definition of the gate's user-visible and selective-edit behavior
+- **THEN** the guidance SHALL keep one canonical definition of the gate's user-visible and selective-edit behavior
 
 #### Scenario: Routed design retains its artifact set
 
@@ -379,7 +375,7 @@ Machine-feedback processing is not a user feedback-selection turn. It SHALL NOT 
 
 ### Requirement: Supervised mode is a sequencing auto-proceed, not gate removal
 
-When `mode` is `supervised`, the gate SHALL keep its role as a phase sequencer: it SHALL perform the supplied `next-action` exactly once after the deferred-gate condition resolves (convergence, one-round cap exhaustion, or empty findings). Supervised mode SHALL NOT delete the gate call, invent a combined post-sai-2 gate, write `.openspec.yaml`, or act as an approval gate. Supervised mode SHALL add no new conversation text of its own; visibility remains the reports the fetching body already emits at those points. Execution of `next-action` under supervised mode is owned by the shared gate policy, not reimplemented inline by the fetching body.
+When `mode` is `supervised`, the gate SHALL keep its role as a phase sequencer: it SHALL perform the supplied `next-action` exactly once after the deferred-gate condition resolves (convergence, three-round cap exhaustion, or empty findings). Supervised mode SHALL NOT delete the gate call, invent a combined post-sai-2 gate, write `.openspec.yaml`, or act as an approval gate. Supervised mode SHALL add no new conversation text of its own; visibility remains the reports the fetching body already emits at those points. Execution of `next-action` under supervised mode is owned by the shared gate policy, not reimplemented inline by the fetching body.
 
 #### Scenario: supervised proceed executes the fetch site's supplied next-action
 - **WHEN** `mode` is `supervised` and the deferred-gate condition resolves

@@ -8,19 +8,19 @@ Accepted
 
 ## Context
 
-Claude Code and opencode expose different worker configuration, dispatch, continuation, and permission surfaces. The coordinator and implementation-planning worker also need independently pinned models and reasoning levels. Encoding those details in the shared coordinator would make harness-neutral lifecycle instructions depend on vendor syntax, while reusing generic budget agents would not provide the required model, tool, permission, or continuation contracts.
+Claude Code and opencode expose different worker configuration, dispatch, continuation, and permission surfaces. The coordinator and implementation-planning worker need independently configurable models and reasoning levels. Encoding those details in the shared coordinator would make harness-neutral lifecycle instructions depend on vendor syntax, while reusing generic budget agents would not provide the required model, tool, permission, or continuation contracts.
 
-The bindings introduce globally installed namespaced surfaces, so installation must distinguish managed content from compatible user-owned content and must not overwrite incompatible definitions.
+The bindings introduce globally installed namespaced surfaces, so installation must distinguish managed content from user-owned tunables.
 
 ## Decision
 
-Place model selection, dispatch syntax, continuation, and result augmentation in SAI-namespaced harness-specific worker binding skills.
+Place dispatch syntax, continuation, and result augmentation in SAI-namespaced harness-specific worker bindings. Coordinator model defaults live in the respective `commands/claude/` and `commands/opencode/` wrapper frontmatter. Worker seeds live in `sai/install-manifest.json`'s `worker-matrix`, and the resolved installed agent file supplies the runtime model and effort or variant. These are the model authorities; this ADR pins no model IDs or effort levels.
 
-Claude Code uses a low-effort `claude-opus-4-8` coordinator and a high-effort background custom worker with agent-ID continuation through `SendMessage`. Installation creates an ownership sidecar only when SAI creates the agent; uninstall removes only an owned, unchanged agent.
+Claude Code dispatches a background custom worker with agent-ID continuation through `SendMessage`. Its coordinator and worker use separately configured tunables. Managed worker files follow the tunable-seed lifecycle: installation preserves destination tunables, doctor checks the body and non-tunable frontmatter, and uninstall removes body-matching definitions regardless of tunable values.
 
-Opencode declares the logical coordinator runtime in each routed wrapper and registers its workers and the three generic helper agents as ten managed markdown agent files projected by the install manifest to `~/.config/opencode/agents/` (the explore agent at `~/.config/opencode/agents/explore.md`, plus `executor.md` and `budget.md`): `sai-1-spec-proposal-worker.md`, `sai-2-design-worker.md`, `sai-3-implementation-worker.md`, `sai-5-review-worker.md`, `sai-6-security-worker.md`, `sai-7-performance-worker.md`, and `sai-8-accessibility-worker.md`. Each projected file follows the tunable-seed lifecycle: created when absent with the repository default definition (the shipped tunables are seeded), reused when the body and non-tunable frontmatter match, and overwritten with a console notice when the body or non-tunable frontmatter diverges, while the destination's `model` and `variant` tunable lines are preserved and never emitted inside the `permission:` block. Doctor and uninstall identify a projected file by the body-and-non-tunable identity rule: doctor strips the tunable lines before comparing, reports a missing file with re-run-the-installer remediation and a body divergence as an error, and never emits a sidecar record; uninstall deletes a body-matching file regardless of tunable values and keeps a body-divergent file as a project-local override. No `.<basename>.owner.json` sidecar is written or read. The installer's opencode configuration merge is permission-only — it covers the SAI external-directory permission and nothing else; no agent key is inserted into `opencode.json`/`opencode.jsonc`, and the opencode configuration is excluded from uninstall.
+Opencode declares its coordinator model in each routed wrapper and projects managed worker and generic helper agent files under `~/.config/opencode/agents/` (`explore.md`, `executor.md`, and `budget.md` for the generic agents). Each projected worker follows the tunable-seed lifecycle: created when absent with the worker-matrix seed, reused when the body and non-tunable frontmatter match, and overwritten with a console notice on body divergence while preserving user-owned `model` and `variant` lines. Doctor and uninstall compare by body and non-tunable frontmatter. No `.<basename>.owner.json` sidecar is written or read. The installer keeps its opencode configuration merge permission-only — only the SAI external-directory rule is merged, never an agent registration — and excludes `opencode.json`/`opencode.jsonc` from uninstall.
 
-Claude Code and opencode overwrite body-divergent worker agent files with a console notice under the tunable-seed lifecycle, and neither harness writes an ownership sidecar; ordinary managed destinations keep their collision protection and no-overwrite behavior. Uninstall never removes configuration entries and keeps body-divergent worker files as project-local overrides. Copilot receives no routed worker binding and keeps the inline route selected by its wrapper.
+Claude Code and opencode overwrite body-divergent worker agent files with a console notice under the tunable-seed lifecycle; ordinary managed destinations keep their collision protection. Uninstall keeps body-divergent worker files as project-local overrides and never removes opencode configuration entries.
 
 ## Alternatives Considered
 
@@ -31,10 +31,10 @@ Claude Code and opencode overwrite body-divergent worker agent files with a cons
 
 ## Consequences
 
-- Installer, doctor, version-skew, and uninstall inventories must treat Claude agents and opencode agent files according to their distinct ownership rules.
+- Installer, doctor, version-skew, and uninstall inventories must resolve each harness's managed agents from the worker matrix and compare body and non-tunable frontmatter.
 - Activation requires collision checks and a blocking live opencode capability probe before wrappers switch routes.
 - Contract-delivery parity is outcome-based: Claude and opencode may use different harness preambles, but both load the same canonical worker contract before interpreting the opaque invocation envelope.
-- Documentation must name all three harnesses and distinguish Copilot's missing portable contract from general subagent availability.
+- Documentation must describe both supported harnesses without duplicating their versioned model defaults.
 
 ## Related
 

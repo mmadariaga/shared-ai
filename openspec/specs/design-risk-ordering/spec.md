@@ -1,5 +1,9 @@
 # design-risk-ordering Specification
 
+## Purpose
+
+This capability lets design risks declare verify-first ordering constraints for tasks without turning known risks into blocking Open Questions.
+
 ## Requirements
 
 ### Requirement: A risk may carry a verify-first ordering marker

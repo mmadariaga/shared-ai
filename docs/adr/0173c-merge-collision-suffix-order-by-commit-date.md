@@ -1,4 +1,4 @@
-# ADR 0173: Merge Collision Suffixes Ordered by Ascending Commit Date
+# ADR 0173c: Merge Collision Suffixes Ordered by Ascending Commit Date
 
 ## Status
 

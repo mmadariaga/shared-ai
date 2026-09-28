@@ -2,27 +2,18 @@
 
 ## Purpose
 
-TBD — seeded from the `repair-copilot-contract-prose` delta spec.
+Keep every remaining invocation core truthful about its active consumer.
 
 ## Requirements
 
-### Requirement: Shared invocation cores name their routed worker consumers
+### Requirement: Invocation cores name no retired party
 
-The active invocation-core inventory SHALL consist only of existing files matching `sai/commands/*/invocation.md`. The deleted `sai/commands/implement/invocation.md` SHALL not be treated as an active invocation core or as a current implementation consumer. Every remaining active invocation core SHALL identify its corresponding routed phase worker and SHALL not describe a retired inline caller or deleted adapter as active.
+The active invocation-core inventory SHALL consist only of existing files matching `sai/commands/*/invocation.md`; today that is `sai/commands/apply/invocation.md`, fetched by the apply coordinator. The deleted spec, design, implement, review, security, performance, and accessibility invocation cores SHALL not be treated as active invocation cores or as current consumers. No remaining active invocation core SHALL describe a retired inline caller or the deleted inline adapter as active. The single maintained retired-party prose guard defined by `routed-contract-truth` SHALL include this inventory; this capability does not define a second guard.
 
-For this capability, the active invocation-core inventory is every file matching `sai/commands/*/invocation.md`. Each active shared invocation core SHALL describe its active consumer as the corresponding routed phase worker: the spec-proposal, design-planning, implementation-planning, review, security, performance, or accessibility worker. It SHALL not describe a retired inline caller or the deleted inline adapter as an active consumer. The single maintained retired-party prose guard defined by `routed-contract-truth` SHALL include this inventory; this capability does not define a second guard.
-
-#### Scenario: Corrected invocation-core content names the routed consumer
+#### Scenario: Invocation-core content names no retired party
 
 - **WHEN** a reviewer examines each corrected invocation core in the active inventory
-- **THEN** its opening consumer description identifies the corresponding routed phase worker as the active consumer
-- **AND** it contains no inline-caller or retired-adapter party to the current contract
-
-#### Scenario: Corrected invocation-core content preserves the existing core contract
-
-- **WHEN** a reviewer compares a corrected invocation core with its existing contract
-- **THEN** it retains its ownership exclusions, ordered instruction loads, audit-policy-only boundaries where present, and argument passthrough
-- **AND** no prerequisite, lifecycle, feedback, navigation, or technical-workflow responsibility moves into the invocation core
+- **THEN** it contains no inline-caller or retired-adapter party to the current contract
 
 #### Scenario: The shared retired-party guard covers every invocation core
 
@@ -33,4 +24,4 @@ For this capability, the active invocation-core inventory is every file matching
 #### Scenario: Retired implementation invocation is absent from the active inventory
 
 - **WHEN** the invocation-core inventory is audited
-- **THEN** `sai/commands/implement/invocation.md` is absent and the guard covers only the remaining existing invocation cores.
+- **THEN** the retired spec, design, implement, review, security, performance, and accessibility invocation cores are absent and the guard covers only the remaining existing invocation cores.

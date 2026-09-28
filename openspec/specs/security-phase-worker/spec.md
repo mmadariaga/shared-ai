@@ -21,6 +21,11 @@ The routed security worker SHALL own envelope parsing, prerequisite checks, chan
 - **THEN** its initial surface references only its contract plus `sai/commands/security/steps/common.md`, with every other step path first arriving inside a coordinator `Active step:` pointer line
 - **AND** the security policy content remains single-sourced across the carved step files
 
+#### Scenario: Monolith is retired
+
+- **WHEN** the step-gated security delivery is in force
+- **THEN** neither `sai/commands/security/instructions.md` nor `sai/commands/security/invocation.md` exists, and the install manifest carries a retirement for each installed copy
+
 ### Requirement: Worker preserves security prerequisites, argument parsing, and diff scope
 
 Before analysis, the worker SHALL enforce the existing OpenSpec CLI, `openspec/` directory, `schema: sai-workflow`, and required `proposal.md` prerequisites. It SHALL preserve the existing change-name and optional `--full` or `--path` scope arguments, zero/one/multiple-change selection behavior, missing-proposal failure text, and parent-branch detection order of user input, remote default, verified `master`, then verified `main`. It SHALL state the selected parent branch, inspect only the selected scope, use the existing file list/stat/diff workflow, and apply the 500-LOC full-diff cutover.
@@ -82,13 +87,13 @@ The security instruction and report contract SHALL assign every finding a severi
 - **THEN** it closes with a `Summary:` line tallying `Critical`, `High`, `Medium`, and `Low` counts that match the listed findings
 - **AND** the tally does not include an `Informational` counter
 
-### Requirement: Security lifecycle results carry emission time
+### Requirement: Security lifecycle results carry no time field
 
-The security worker SHALL emit worker-authored `emitted_on` through progress and terminal lifecycle results while retaining SAST, SCA, report, and no-production-write boundaries.
+The security worker SHALL return progress and terminal lifecycle results with no time field, while retaining SAST, SCA, report, and no-production-write boundaries; the validator's `validated_at` sidecar is the only observed time.
 
 #### Scenario: Security reports a milestone
 - **WHEN** a security milestone completes
-- **THEN** its progress result includes `emitted_on` and changed paths.
+- **THEN** its progress result carries the step ids and changed paths and no time field.
 
 #### Scenario: Severity floor is unchanged
 

@@ -84,27 +84,9 @@ test('Step 1 accessibility card uses neutral root protocols and retires flat can
   }
 });
 
-test('accessibility invocation core loads budget, instruction, and remember in order', () => {
-  const core = artifact('sai/commands/accessibility/invocation.md');
-  const required = [
-    'Fetch @skills/budget/SKILL.md',
-    'Fetch @sai/commands/accessibility/instructions.md',
-    'Fetch @sai/policies/remember.md',
-  ];
-
-  let previous = -1;
-  for (const instruction of required) {
-    const position = core.indexOf(instruction);
-    assert.ok(position > previous, `${instruction} should be loaded in order`);
-    previous = position;
-  }
-
-  assert.match(core, /^arguments:\s*\$ARGUMENTS\s*$/m);
-});
-
-test('accessibility scope, runtime, and parent arguments reach the shared core unchanged', () => {
+test('accessibility scope, runtime, and parent arguments reach the worker unchanged', () => {
   const coordinator = artifact('sai/commands/accessibility/coordinator.md');
-  const core = artifact('sai/commands/accessibility/invocation.md');
+  const worker = artifact('sai/commands/accessibility/worker.md');
   const claudeWrapper = artifact('commands/claude/sai-8-accessibility.md');
   const opencodeWrapper = artifact('commands/opencode/sai-8-accessibility.md');
   const argumentsValue = '--full --path src/components --runtime feature-branch';
@@ -119,15 +101,17 @@ test('accessibility scope, runtime, and parent arguments reach the shared core u
   assert.doesNotMatch(opencodeWrapper, /wrapper_echo_value/,
     'the opencode accessibility wrapper must not construct or forward wrapper_echo_value');
   assert.match(opencodeWrapper, /arguments_value:\s*\$ARGUMENTS/);
-  assert.match(core, /arguments:\s*\$ARGUMENTS/);
-  assert.ok(core.includes('$ARGUMENTS'), `complete arguments should reach the core: ${argumentsValue}`);
+  assert.match(worker, /Reconstruct `\$ARGUMENTS` as the resolved change name plus the preserved optional scope, `--runtime`, and parent-branch values/,
+    `complete arguments should reach the worker: ${argumentsValue}`);
 });
 
 test('accessibility review defaults to static-only without a runtime scanner', () => {
-  const instruction = artifact('sai/commands/accessibility/instructions.md');
+  const common = artifact('sai/commands/accessibility/steps/common.md');
+  const runtimeStep = artifact('sai/commands/accessibility/steps/resolve-runtime-audit.md');
 
-  assert.match(instruction, /`--runtime` to enable browser-based[\s\S]{0,160}Default:\s*static-only/i);
-  assert.match(instruction, /Runtime requires[\s\S]{0,160}explicitly authorize each command/i);
+  assert.match(common, /`--runtime` enables browser-based[\s\S]{0,160}Default:\s*static-only/i);
+  assert.match(runtimeStep, /Without `--runtime`, resolve the gate as legitimately skipped without asking/);
+  assert.match(artifact('sai/commands/accessibility/worker.md'), /## Runtime Authorization/);
 });
 
 // ─── Step 2: routed accessibility lifecycle ─────────────────────────────────
@@ -205,13 +189,13 @@ test('Step 2 applicable scanners require one authorize-or-skip question and expl
   assert.match(worker, /only.*explicitly authorized|execute only.*authorized|authorized command/i);
 });
 
-test('Step 2 Claude and opencode bindings continue the same worker with only the selected value', () => {
+test('Step 2 Claude and opencode bindings continue the same worker with the continuation payload', () => {
   for (const harness of ['claude', 'opencode']) {
     const binding = matrixBinding(harness, 'accessibility');
     assert.match(binding, /Continue on the same (?:worker|task)|same[- ]?(?:worker|task) continuation/i,
       'the binding should continue the same worker');
-    assert.match(binding, /selected value|selected_value/,
-      'the binding should forward the selected value');
+    assert.match(binding, /<continuation payload>/,
+      'the binding should forward the continuation payload');
     assert.doesNotMatch(binding, /sai\/orchestration\/inline-invocation\.md/);
   }
 });
@@ -356,7 +340,8 @@ test('Step 3 doctor and uninstall enumerate accessibility assets from the manife
       const expected = accessibilityProjections(harness, base).map(projection => projection.destinationPath);
       const actual = enumerate(base)
         .filter(entry => entry.assetType !== 'retired-managed-file' &&
-          (entry.dest.includes('accessibility-worker') || entry.dest.includes('accessibility\\worker')))
+          (entry.dest.includes('accessibility-worker') ||
+            /[\\/]commands[\\/]accessibility[\\/]worker\.md$/.test(entry.dest)))
         .map(entry => entry.dest)
         .sort();
       assert.deepEqual(actual, expected.sort(), `${harness} inventory should match manifest projections`);
@@ -456,8 +441,8 @@ test('accessibility worker contract enumerates the five ids and pins the batch s
   assert.match(worker, /resolve-accessibility-scope/);
   assert.match(worker, /runtime[\s\S]{0,240}(?:authorization|not applicable|skip)/i);
   assert.match(worker, /resolve-runtime-audit/);
-  assert.match(worker, /no-?UI[\s\S]{0,240}(?:cancelled|skip)/i);
-  assert.match(worker, /no Milestone Stamp/i);
+  assert.match(worker, /no-?UI[\s\S]{0,240}Not Applicable report[\s\S]{0,80}`completed`/i);
+  assert.doesNotMatch(worker, /no Milestone Stamp/i, 'audit plans carry stamps per todo-structure; the worker states nothing about them');
   assert.match(worker, /never[\s\S]{0,160}(?:before resolution|in place of a terminal|needs_input)/i);
 });
 
@@ -488,8 +473,8 @@ test('accessibility coordinator and policy carry a Progress rendering contract w
   assert.doesNotMatch(coordinator, /Get-Date/,
     'the coordinator should carry no PowerShell wall-clock command');
 
-  assert.match(worker, /no Milestone Stamp/i,
-    'the worker contract should state audit plans carry no Milestone Stamp');
+  assert.doesNotMatch(worker, /no Milestone Stamp/i,
+    'the worker never renders stamps, so its contract states nothing about them');
   assert.match(coordinator, /todo-structure\.md/,
     'the coordinator should reference the neutral todo-structure policy');
 });
@@ -532,7 +517,7 @@ test('step-gated: progress continuations carry exactly two lines with the determ
     'stage-machine.md should have a Step machines section');
   assert.match(stageMachine, /the two-line continuation/i,
     'stage-machine.md should document the two-line continuation');
-  assert.match(stageMachine, /Active step: none.*complete remaining work/,
+  assert.match(stageMachine, /`Active step: none` line/,
     'stage-machine.md should specify the terminal pointer line');
 });
 
@@ -577,9 +562,20 @@ test('step-gated: the accessibility worker loads steps/common.md at dispatch and
     'a legitimately skipped gated stage still advances the pointer past it');
 });
 
-test('step-gated: the carved step library exists beside the untouched monolith', () => {
-  assert.ok(fs.existsSync(path.join(repoRoot, 'sai/commands/accessibility/instructions.md')),
-    'the original instructions.md stays in place untouched');
+test('step-gated: the step library is the only accessibility instruction surface', () => {
+  for (const retired of ['instructions.md', 'invocation.md']) {
+    assert.equal(fs.existsSync(path.join(repoRoot, 'sai/commands/accessibility', retired)), false,
+      `the monolithic accessibility ${retired} is retired`);
+  }
+  const manifest = JSON.parse(artifact('sai/install-manifest.json'));
+  for (const [id, destination] of [
+    ['retired-sai-8-accessibility-instructions', 'commands/accessibility/instructions.md'],
+    ['retired-sai-8-accessibility-invocation', 'commands/accessibility/invocation.md'],
+  ]) {
+    const retirement = manifest.retirements.find(record => record.id === id);
+    assert.ok(retirement, `the manifest should retire installed copies of ${destination}`);
+    assert.equal(retirement.destination.path, destination);
+  }
   assert.ok(fs.existsSync(path.join(repoRoot, 'sai/commands/accessibility/steps/common.md')),
     'steps/common.md should exist');
   for (const [id, relativePath] of Object.entries(ACCESSIBILITY_STEP_MAP)) {

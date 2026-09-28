@@ -2,7 +2,9 @@
 
 ## Purpose
 TBD - created by archiving change add-pipeline-autonomous-question-answering. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: Auto-answered questions are reported at every phase ending
 
 The supervised spec phase ends by any of its documented terminal outcomes — convergence, cap exhaustion, or a `failed` or `cancelled` spec-proposal worker. At every such ending, `sai-explore` SHALL present an audit log of the autonomous answering it performed during that phase. The log SHALL list, for every question explore auto-answered, the worker's question, the answer explore gave, and the reasoning behind that answer. The reasoning SHALL include the grounding citation required by the pipeline question-autonomy capability — which permitted grounding source, and what within it, determined the answer — rather than free prose alone, so the log is the verification surface for the grounding gate and a later reader can distinguish a properly grounded answer from a confident-sounding one. The audit log SHALL be presented in the conversation, so the user can review each decision made on their behalf. Presenting the log at a `failed` or `cancelled` ending is required precisely because auto-answers made before a failure would otherwise be buried by that failure. It reframes the user from answering every question to auditing the answers that were given.
@@ -48,13 +50,11 @@ The autonomy audit log SHALL be rendered in the pinned scannable layout single-s
 - **WHEN** a supervised phase ends and explore renders the autonomy audit
 - **THEN** it invokes the shared layout with its phase label and presents the pinned empty report without fabricated entries when nothing was auto-answered
 
-### Requirement: The guard's violation line is pinned in the shared audit layout
+### Requirement: Direct Build final report omits the autonomy audit
 
-The autonomy-audit-log policy SHALL own a `## Incident line (no-commit guard)` section pinning the one visible violation line the no-commit guard's coordinator prints per remediation, in the fixed field order: `> NO-COMMIT GUARD: unauthorized commit(s) detected after <worker label> dispatch — reset to <base> (mixed); commits preserved unstaged; evidence: <sha> <subject>[; <sha> <subject>]`. Like the audit log, the line SHALL be conversation-only: NEVER written to any file, artifact, change directory, or configuration, and never more than one line printed per violation. `<worker label>` is the dispatched worker's name, `<base>` is the window's `guard_base`, and the evidence pairs come verbatim from the verify payload's `commits` list; when that list is empty the evidence field SHALL read exactly `evidence: none reported`. The section SHALL also record that every coordinator surface fetching `@sai/policies/no-commit-guard.md` consumes the layout by reference.
+The Direct Build - Unattended final report SHALL NOT present an autonomy audit, including the empty-report case. This exception SHALL apply only to that final report; supervised spec and design phases and every other audit-emitting route SHALL retain the existing autonomy-audit display behavior.
 
-#### Scenario: a remediation prints exactly one pinned line
+#### Scenario: Direct Build closes without an autonomy audit
 
-- **WHEN** the guard remediates a violation whose evidence lists one unauthorized commit
-- **THEN** the coordinator prints exactly one conversation line in the pinned field order carrying the worker label, the guard_base, and that commit's sha and subject
-- **AND** no incident text is written to any file or artifact
-
+- **WHEN** Direct Build - Unattended reaches its final terminal report
+- **THEN** the report omits the autonomy audit while the shared audit layout and display behavior remain unchanged for every other audit-emitting route

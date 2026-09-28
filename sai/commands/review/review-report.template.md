@@ -16,7 +16,7 @@
 **Verdict:** {Ready to merge | Ready after Critical findings fixed | Needs rework}
 
 **Findings count:** {X Critical · Y High · Z Medium · W Low · V Questions}
-*(Mutation Analysis severities are folded into these counts: each `Survived`, `Timeout`, and `NoCoverage` mutation is High; engine impediments do not become findings.)*
+*(Mutation findings are folded into these counts at their mapped severity.)*
 
 ---
 
@@ -47,7 +47,7 @@
 
 ## Accessibility Surface Triage
 
-- **Surface touched:** {Yes / No — Yes if diff contains UI files: `.tsx`/`.jsx`/`.astro`/`.html`/`.vue`/`.svelte`/`.css` or component-bearing markdown}
+- **Surface touched:** {Yes / No}
 - **Areas affected:** {interactive widgets / forms / navigation / media / dynamic-SPA / visual-design tokens / route announcements — list only the ones that apply, with file paths}
 - **Recommendation:** {"Run `/sai-8-accessibility {change-name}`" if Yes, else "Not required"}
 
@@ -55,13 +55,15 @@
 
 ## Resilience Surface Triage
 
-- **Surface touched:** {Yes / No — Yes only when the diff touches external I/O, retryable handlers, consumers/queues, or timeout boundaries; UI files without I/O, docs-only, comments, CSS without I/O, or renames are no surface}
+- **Surface touched:** {Yes / No}
 - **Areas affected:** {unbounded retries / missing timeouts / missing idempotency / absent fallback / circuit-breaker — list only the ones that apply, with file paths}
-- **Notes:** {Idempotency applies only when retry, redelivery or double submit is possible; never require a pattern absent from the repo — at most Question or Low in that case; Critical only for cascade, loss or duplication risk with impact}
+- **Notes:** {the idempotency and no-existing-pattern notes that apply}
 
 ---
 
 ## Findings
+
+{Under a severity heading with no findings, write `None.`}
 
 ### Critical
 
@@ -105,33 +107,22 @@
 
 ## Mutation Analysis (Pass 12)
 
-> Include this section only when pass 12 ran. If the activation gate was not met, no deterministic mutation tool was declared, the deterministic baseline failed, the tool could not execute, or its report could not be parsed, replace the entire section body with exactly one applicable skipped or unavailable note and emit no mutation findings:
->
-> *Mutation Analysis (Pass 12): skipped — {no testable production code in diff | repository has no test files}. No mutation findings.*
->
-> *Mutation Analysis (Pass 12): skipped — no eligible mutation targets. No mutation findings.*
->
-> *Mutation Analysis (Pass 12): unavailable — no deterministic mutation tool declared. No mutation findings.*
->
-> *Mutation Analysis (Pass 12): unavailable — deterministic baseline failed. No mutation findings.*
->
-> *Mutation Analysis (Pass 12): unavailable — deterministic tool execution failed. No mutation findings.*
->
-> *Mutation Analysis (Pass 12): unavailable — deterministic report could not be parsed. No mutation findings.*
+> Include this section only when Pass 12 ran. Otherwise replace the entire section body with exactly the Pass 12 outcome note recorded by the mutation step.
 
 **Strategy:** Deterministic — `{tool}`
 **Test command:** `{detected test command}`
 **Mutations decided:** {totalMutations}
 
 **Aggregate:** Killed {k} + Survived {s} + Timeout {t} + NoCoverage {n} + CompileError {c} + RuntimeError {r} + Ignored {i} = {totalMutations}
-*(This identity MUST hold: `Killed + Survived + Timeout + NoCoverage + CompileError + RuntimeError + Ignored == totalMutations`. Preserve the engine-native status for every mutation; an unknown status makes the deterministic report unavailable.)*
+*(The canonical counts MUST sum to `totalMutations`.)*
 
-Stryker status mapping is fixed: `Killed` is internal and produces no finding; `Survived`, `Timeout`, and `NoCoverage` produce High `mMUT-N` findings; `CompileError`, `RuntimeError`, and `Ignored` are engine impediments recorded verbatim without inferred findings or severity. `mMUT-N` is a 1-based counter over mutation findings in this review.
+Statuses follow the mutation step's canonical mapping. `mMUT-N` is a 1-based counter over mutation findings in this review.
 
 ### Surviving mutants
 
 #### mMUT-1 — {Short title}
 - **Location:** `path/to/file.ext:LINE` (or range `LINE-LINE`)
+- **Engine status:** `{native status}`
 - **Mutation class:** {NegatedCondition | ChangedOperator | RemovedCall | ChangedReturn | NegatedBoolean | InvertedBranch | OffByOne | another concise label}
 - **Original:** `{unmutated code at the location, or its essence}`
 - **Applied:** `{the mutated code that was applied and reverted}`
@@ -143,6 +134,7 @@ Stryker status mapping is fixed: `Killed` is internal and produces no finding; `
 
 #### mMUT-N — {Short title}
 - **Location:** `path/to/file.ext:LINE` (or range `LINE-LINE`)
+- **Engine status:** `{native status}`
 - **Mutation class:** {NegatedCondition | ChangedOperator | RemovedCall | ChangedReturn | NegatedBoolean | InvertedBranch | OffByOne | another concise label}
 - **Original:** `{unmutated code at the location, or its essence}`
 - **Applied:** `{the mutated code that was applied and reverted}`
@@ -154,6 +146,7 @@ Stryker status mapping is fixed: `Killed` is internal and produces no finding; `
 
 #### mMUT-N — {Short title}
 - **Location:** `path/to/file.ext:LINE` (or range `LINE-LINE`)
+- **Engine status:** `{native status}`
 - **Mutation class:** {NegatedCondition | ChangedOperator | RemovedCall | ChangedReturn | NegatedBoolean | InvertedBranch | OffByOne | another concise label}
 - **Original:** `{unmutated code at the location, or its essence}`
 - **Applied:** `{the mutated code that was applied and reverted}`
@@ -166,7 +159,7 @@ Stryker status mapping is fixed: `Killed` is internal and produces no finding; `
 > Engine results that do not establish a surviving or killed mutant. Each still appears here with its native status to preserve deterministic visibility.
 
 #### Engine result N — {CompileError | RuntimeError | Ignored}
-- **Engine status:** `{CompileError | RuntimeError | Ignored}`
+- **Engine status:** `{native status}` ({CompileError | RuntimeError | Ignored})
 - **Location:** `path/to/file.ext:LINE` (or the engine-reported location)
 - **Result:** Deterministic engine impediment. No mutation result was inferred.
 

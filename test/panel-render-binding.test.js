@@ -33,18 +33,20 @@ test('Claude and opencode expose symmetric surface-neutral panel bindings', () =
   }
 });
 
-test('explore bindings delegate mechanics while retaining their idea-list policy', () => {
+test('explore bindings delegate mechanics and surface policy, keeping only the field mapping', () => {
   const claude = read('sai/adapters/claude/idea-list-render.md');
   const opencode = read('sai/adapters/opencode/idea-list-render.md');
 
   assert.match(claude, /Fetch @sai\/adapters\/claude\/panel-render\.md/);
   assert.match(opencode, /Fetch @sai\/adapters\/opencode\/panel-render\.md/);
-  assert.match(claude, /sai-idea-list:<change-name>/);
-  assert.match(opencode, /sai-idea-list:<change-name>/);
-  assert.match(claude, /active review item/);
-  assert.match(opencode, /active review item/);
-  assert.match(claude, /change name/);
-  assert.match(opencode, /change name/);
+  for (const binding of [claude, opencode]) {
+    assert.match(binding, /sai-explore-stage:<stage-id>/);
+    assert.match(binding, /sai-idea-list:<change-name>/);
+    assert.match(binding, /change name/);
+    assert.match(binding, /sai\/commands\/explore\/steps\/common\.md/);
+    assert.match(binding, /sai\/commands\/explore\/steps\/idea-list\.md/);
+    assert.doesNotMatch(binding, /pending \| in_progress \| completed|reviewed-sai-|explore-change|crystallize`/);
+  }
   assert.doesNotMatch(claude, /TaskList|TaskGet|TaskUpdate/);
   assert.doesNotMatch(opencode, /todowrite|todos/);
 });

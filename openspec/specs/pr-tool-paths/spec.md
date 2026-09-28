@@ -1,7 +1,7 @@
 # pr-tool-paths Specification
 
 ## Purpose
-TBD - created by archiving change shared-tool-resolution-rule. Update Purpose after archive.
+Defines how `/sai-pr` resolves the installed `pr.js` path per harness.
 ## Requirements
 ### Requirement: PR tool path resolution
 

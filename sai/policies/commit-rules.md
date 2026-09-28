@@ -1,5 +1,9 @@
 <!-- Format validator: node sai/tools/lint.js commit-rules <file> -->
 
+# Commit Rules
+
+Commit-message format and the authorization gate shared by every command that proposes a commit. What gets staged belongs to the consuming command's own gate; this policy never widens it.
+
 ## Commit Type Classification
 
 Pick exactly one Conventional Commits type, in this priority order:
@@ -85,8 +89,8 @@ Adopt the detected style when composing:
 - Mirror the detected **body/footer style** (bulleted bodies and recurring body
   section headers) when a body is emitted.
 
-Adoption never relaxes faithfulness: every claim must still map to a staged hunk,
-and detected vocabulary never introduces content absent from `git diff --cached`.
+Adoption never relaxes faithfulness: every claim must still map to a change the
+commit contains, and detected vocabulary never introduces content absent from it.
 
 ### Fallback branch (match rate < 70%)
 
@@ -108,18 +112,23 @@ or body style.
 
 ## Hard Rules
 
-- **Never stage or unstage files.** Operate only on what is already staged.
-- **Never run `git commit` without explicit per-invocation authorization, unless a session-scoped commit authorization is active.**
-- **Always ask for explicit per-invocation authorization before running `git commit`, unless a session-scoped commit authorization is active.** Once the user has granted permission for a commit, `git add` for the same step is implicitly authorized — do not ask again. If the user does not respond or declines, do not commit; describe the staged changes and instruct the user to commit themselves.
+- **Never run `git commit` without authorization** from § Authorization gate.
 - **Never amend a commit that is already pushed** without explicit warning + secondary confirmation.
 - **Never use `--no-verify`** to skip hooks. If a pre-commit hook fails, surface the failure, do not bypass it.
-- **Never include unstaged content** in the message — describe only `git diff --cached`.
-- **Subject ≤ 50 chars, body wrap 72.** Hard limits.
-- **Imperative mood, no trailing period, lowercase after colon.**
-- **No `Co-Authored-By` or AI-generated attribution trailers** unless the user explicitly asks.
-- **No emoji** unless the user explicitly asks.
-- **No speculation.** Every claim must map to a staged hunk.
+- **Describe only what the commit will contain** — never unrelated working-tree content.
+- **No speculation.** Every claim must map to a change the commit contains.
 - **Match the repo's commit style** per the Repo Commit-Style Detection Rubric above — apply the adoption branch (match rate ≥ 70%) or the fallback branch (match rate < 70%) rather than treating this as advisory only.
+
+The format limits (subject ≤ 50, body wrap 72, imperative mood, no emoji, no attribution trailers) are defined in § Subject Format, § Body, and § Footer.
+
+## Authorization gate
+
+Ask through the native closed-choice picker (per the "Closed-choice prompts" rule in `@sai/policies/remember.md`) with the options `yes (Recommended)` / `no` / `Allow on this session`, in that order:
+
+- `yes` authorizes this commit: its `git add` and `git commit` need no second ask.
+- `Allow on this session` authorizes this commit and activates the session grant (§ Authorization Scope); later gates the grant covers skip the ask.
+- `no` declines: execute nothing and follow the consuming command's decline path.
+- An off-option reply or silence is not a decline: re-present the same ask unchanged per the invalid-input rule in `@sai/policies/remember.md`.
 
 ## Authorization Scope
 
@@ -143,7 +152,7 @@ Verify:
 1. **Type accuracy** — `feat` only for new capabilities; `fix` only when behavior changed.
 2. **Subject length** — ≤ 50 chars, no period, imperative.
 3. **Body wrap** — 72 chars per line if body present.
-4. **Faithfulness** — every claim backed by `git diff --cached`.
+4. **Faithfulness** — every claim backed by a change the commit contains (`git diff --cached` when the command commits what is already staged).
 5. **No anticipated work** in the message.
 6. **Repo convention match** — applied the correct rubric branch: adoption (match rate ≥ 70%: detected type/scope/body vocabulary) or fallback (match rate < 70%: hard-coded rules) per the detection rubric — not a free-form "consistent with recent commits" judgement.
 7. **Secrets check** — no obvious secret-looking files in staging without warning.

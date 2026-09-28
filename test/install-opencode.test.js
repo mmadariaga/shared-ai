@@ -48,8 +48,8 @@ const UTILITY_COMMANDS = {
   'sai-worktree': 'worktree',
 };
 const UTILITY_CARD_CONTENTS = {
-  apply: ['command-bootstrap.md', 'coordinator.md', 'green-worker.md', 'invocation.md', 'red-worker.md', 'runner.md'],
-  archive: ['archive-commit-gate.instructions.md', 'command-bootstrap.md', 'coordinator.md', 'instructions.md', 'worker.md'],
+  apply: ['command-bootstrap.md', 'coordinator.md', 'green-worker.md', 'invocation.md', 'red-worker.md', 'runner.md', 'steps', 'worker-common.md'],
+  archive: ['archive-commit-gate.instructions.md', 'command-bootstrap.md', 'coordinator.md', 'instructions.md', 'retirement-declaration.md', 'worker.md'],
   backfill: ['command-bootstrap.md', 'coordinator.md', 'instructions.md', 'worker.md'],
   commit: ['command-bootstrap.md', 'coordinator.md', 'instructions.md', 'worker.md'],
   explore: ['body.md', 'command-bootstrap.md', 'direct-build-worker.md', 'instructions.md', 'steps'],
@@ -141,10 +141,6 @@ function assertInstalledSelectorContract(source) {
   assert.match(source, /return the new active-uncrystallized lifecycle to `Explore change`/);
   assert.match(source, /literal `\*\*Overview language\*\*: None`/);
   assert.match(source, /dispatches no overview generation/);
-  assert.match(source, /Contract tests may observe the harness-neutral trace vocabulary[\s\S]{0,320}crystallization-requested/);
-  for (const event of ['text-question-emitted', 'selector-presented', 'selector-option-received', 'selector-free-text-received', 'edge-case-writing-prompt-emitted', 'explicit-advancement-received', 'stage-advanced', 'material-reset', 'crystallization-requested']) {
-    assert.match(source, new RegExp(`\\b${event}\\b`));
-  }
 }
 
 test('Step 3 roster validation is isolated to opencode consumers and fails before destination mutation', () => {
@@ -277,7 +273,7 @@ test('Step 2 initial Opencode task dispatches deliver the matching contract and 
           `${workerName} initial prompt carries the literal ready example`);
       assert.ok(continuations.length > 0, `${workerName} should retain a continuation task dispatch`);
        for (const continuation of continuations) {
-         assert.match(continuation, /\bprompt\s*[:=]\s*"<selected value>"/,
+         assert.match(continuation, /\bprompt\s*[:=]\s*"<continuation payload>"/,
            `${workerName} continuation dispatch should retain its existing prompt shape`);
        }
     }
@@ -296,8 +292,8 @@ test('installOpencode copies commands/opencode/*.md to dest/commands/', () => {
   assert.ok(files.includes('sai-build.md'), 'sai-build.md should be in commands/');
   assert.equal(files.includes('budget.md'), false, 'budget.md should not be in commands/');
   const design = fs.readFileSync(path.join(cmdDir, 'sai-2-design.md'), 'utf8');
-   assert.match(design, /^model: opencode-go\/muse-spark-1\.3-contributor$/m);
-   assert.match(design, /^variant: xhigh$/m);
+   assert.match(design, /^model: opencode-go\/muse-spark-1\.3-contributor#xhigh$/m);
+   assert.doesNotMatch(design, /^variant:/m);
    assert.match(design, /^subtask: false$/m);
    assert.doesNotMatch(design, /^agent:/m);
    assert.doesNotMatch(design, /^\*\*Change-name argument and and optional flags:\*\*\s*\$ARGUMENTS\s*$/m,
@@ -1734,14 +1730,10 @@ test('Step 3 budget skills resolve models from the projected agent files and kee
       file: 'explore.md',
       keyword: 'explore',
       triggers: [
-        'use explorer',
-        'use cheap subagent',
-        'delegate research',
-        'run cheap subagent',
-        'spawn explore subagent',
-        'cheap research agent',
-        'use explore agent',
-        'delegate lookup',
+        'budget explorer',
+        'cheap explorer',
+        'budget mode',
+        'economy mode',
       ],
     },
     {
@@ -1749,12 +1741,10 @@ test('Step 3 budget skills resolve models from the projected agent files and kee
       file: 'executor.md',
       keyword: 'executor',
       triggers: [
-        'use executor',
-        'spawn executor',
-        'run command subagent',
-        'delegate execution',
-        'execute in subagent',
-        'run cheap executor',
+        'budget executor',
+        'cheap executor',
+        'budget mode',
+        'economy mode',
       ],
     },
     {
@@ -1861,11 +1851,16 @@ test('Step 3 the opencode neutral inventory is equivalent to Claude and differs 
        'sai/adapters/opencode/boot.md',
        'sai/adapters/opencode/idea-list-render.md',
        'sai/adapters/opencode/panel-render.md',
+       'sai/presets/opencode/Go+Zen.json',
+       'sai/presets/opencode/Go.json',
+       'sai/presets/opencode/oAI-LUNA+Zen.json',
+       'sai/presets/opencode/oAI-SOL+Zen.json',
      ], 'opencode-specific SAI sources should be its boot adapter plus its panel and idea-list runtime glue');
      assert.deepEqual(claudeOnly, [
        'sai/adapters/claude/boot.md',
        'sai/adapters/claude/idea-list-render.md',
        'sai/adapters/claude/panel-render.md',
+       'sai/presets/claude/OPUS.json',
      ], 'Claude-specific SAI sources should be its boot adapter plus its panel and idea-list runtime glue');
   } finally {
     for (const harness of ['claude', 'opencode']) {

@@ -1,57 +1,26 @@
 # {{phase}} worker binding — {{harness}}
 
-This binding wires the {{workerName}} worker contract into {{harness}} and performs
-exactly one bounded replacement task per run.
+{{harness}} calls for dispatching and continuing {{workerName}}. The lifecycle —
+ready handshake, task disclosure, guard windows, and at most one bounded
+replacement dispatch — is owned by `sai/orchestration/command-runner.md`.
 
-{{panelRenderBinding}}Dispatch the worker once with the harness-native subagent primitive and capture the
-resulting task ID. The `task` dispatch returns the task ID immediately;
-retain that captured task ID before any guard snapshot or continuation.
-Handle, then guard snapshot, then task: with no captured handle no guard
-window opens. A dispatch cancelled before the task ID returns leaves no handle; its
-retry starts from zero with a deferred snapshot and opens no guard window.
+{{panelRenderBinding}}## Dispatch
 
-The initial dispatch is ready-only under strict zero: ready prompt plus base
-instructions only, with no change name, flags, provenance, or task content.
-The original envelope is minimal; binding metadata remains outside the worker
-request. The `arguments_value` content and derivatives travel only in the
-post-ready same-worker continuation after `event: ready` on the captured handle,
-and in the opaque continuation history for replacement reconstruction.
+Dispatch the worker once; the returned task ID is the runner's resumable
+handle. A replacement dispatch reuses this call, then the continuation
+restores the original envelope (`arguments_value`) and the adapter's
+`replacement_reconstruction_fields`.
 
 ```
 task(subagent_type: "{{workerName}}", prompt: "Worker contract: Fetch @{{workerContract}} and follow it exactly.\n\nReturn event: ready now; await task disclosure in the same-worker continuation.\n\nReturn exactly:\n```yaml\nevent: ready\nchanged_files: []\n```")
 ```
 
-Continue on the same task by sending the selected value back to the captured task:
+## Continue
+
+Continue on the same task by sending every continuation — task disclosure,
+`continue_after_*` payloads with any pointer line, answers, and feedback — to
+the captured handle:
 
 ```
-task(task_id: "<captured task ID>", prompt: "<selected value>")
+task(task_id: "<captured task ID>", prompt: "<continuation payload>")
 ```
-
-Continuation literal: {{continuationLiteral}}
-
-Helper permissions supplied to the worker:
-
-```
-{{helperPermissions}}
-```
-
-Reconstruction fields restored from the originating binding context:
-
-```
-{{replacementFields}}
-```
-
-Progress declaration reported by the worker:
-
-```
-{{progressDeclaration}}
-
-The coordinator's visual `progress_plan` and routing-only `step_pointer_map`
-are separate adapter declarations. When only the map is active, no task list
-or milestone stamp is rendered, but progress continuations still carry the
-canonical active-step pointer.
-```
-
-{{overviewGeneration}}
-
-{{noticeContinuation}}

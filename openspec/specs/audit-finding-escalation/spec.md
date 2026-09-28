@@ -97,9 +97,9 @@ Each Ready to Propose block for an Escalation group SHALL include: a change name
 
 ### Requirement: Terminal run status on escalation
 
-When Escalate findings are detected, artifact-analysis SHALL return a terminal run status with all emitted Ready to Propose blocks as chat output. The run SHALL conclude without proceeding to plan-generation.
+When Escalate findings are detected, artifact-analysis SHALL return `failed`, with `summary` carrying every emitted Ready to Propose block for the coordinator to print as chat output. The run SHALL conclude without proceeding to plan-generation.
 
 #### Scenario: Run terminates with block output
 
 - **WHEN** artifact-analysis detects Escalate findings and emits Ready to Propose blocks
-- **THEN** artifact-analysis SHALL return a terminal status with all blocks in the summary and stop the run
+- **THEN** artifact-analysis SHALL return `failed` with all blocks in the summary and stop the run

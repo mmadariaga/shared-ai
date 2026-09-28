@@ -15,7 +15,7 @@
  *   2 dir     `openspec/` exists as a directory at the project root.
  *   3 schema  `openspec/config.yaml` has a line matching
  *             /^schema:\s*sai-workflow\s*$/m.
- *   4 skills  the three OpenSpec skills the pipeline fetches are installed in
+ *   4 skills  the two OpenSpec skills the pipeline fetches are installed in
  *             the active harness's project-local skills root. Selected by the
  *             mandatory `--require-openspec-skills opencode|claude` flag; it
  *             runs only after `cli`, `dir`, and `schema` pass, and aggregates
@@ -52,7 +52,7 @@ const SCHEMA_LINE = /^schema:\s*sai-workflow\s*$/m;
 const SKILLS_ROOT_SEGMENTS = { opencode: '.opencode', claude: '.claude' };
 
 /** The OpenSpec skills every full lifecycle fetches; presence-only check. */
-const REQUIRED_SKILLS = ['openspec-explore', 'openspec-propose', 'openspec-archive-change'];
+const REQUIRED_SKILLS = ['openspec-explore', 'openspec-propose'];
 
 /** Ordered check ids. The first failing one decides the verdict. */
 const CHECKS = ['cli', 'dir', 'schema'];
@@ -236,7 +236,7 @@ function usage() {
     '  check                    Evaluate the four OpenSpec preconditions — the',
     '                           openspec binary, the openspec/ directory, the',
     '                           schema: sai-workflow line in openspec/config.yaml,',
-    "                           and the three OpenSpec skills in the active",
+    "                           and the two OpenSpec skills in the active",
     "                           harness's project-local skills root — and report",
     '                           verdict pass or halt.',
     '',
@@ -272,7 +272,7 @@ function renderText(payload) {
   if (payload.verdict === 'halt') return `halt (${payload.reason}): ${payload.message}`;
   const skillsRan = Array.isArray(payload.checks) && payload.checks.some((check) => check.id === 'skills');
   return skillsRan
-    ? 'pass: openspec CLI, openspec/ directory, schema: sai-workflow, and the three OpenSpec skills all present.'
+    ? 'pass: openspec CLI, openspec/ directory, schema: sai-workflow, and the two OpenSpec skills all present.'
     : 'pass: openspec CLI, openspec/ directory, and schema: sai-workflow all present.';
 }
 

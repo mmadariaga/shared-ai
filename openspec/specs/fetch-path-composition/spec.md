@@ -1,7 +1,7 @@
 # fetch-path-composition Specification
 
 ## Purpose
-TBD: define how fetch instructions compose paths inside and outside the project.
+Define how agents that load a fetch skill write paths inside and outside the project.
 
 ## Requirements
 

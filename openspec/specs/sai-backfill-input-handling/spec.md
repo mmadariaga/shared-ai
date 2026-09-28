@@ -19,7 +19,7 @@ When `/sai-backfill` is invoked with an empty `$ARGUMENTS`, the boot MUST forwar
 
 #### Scenario: Empty arguments falls through to STOP Conditions
 
-- **WHEN** the user runs `/sai-backfill` with no arguments and no name can be derived from conversation context
+- **WHEN** the user runs `/sai-backfill` with no arguments
 - **THEN** the worker returns a terminal payload whose summary is exactly `Change name required. Run: /sai-backfill <name>`, presented by the coordinator as the run's stop
 
 #### Scenario: Non-empty arguments proceed unchanged

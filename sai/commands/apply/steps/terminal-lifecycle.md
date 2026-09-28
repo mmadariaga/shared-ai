@@ -1,55 +1,56 @@
 # Terminal Lifecycle
 
-## Final sweep and terminal lifecycle
+Run once, after the Step loop has closed every Step (Step commit gates included). A run that stops for a human before this point runs none of it. Sections run in this order.
 
-The coordinator enters this section only after the Step loop, every required per-Step commit gate, and the existing appendices have completed. A run that halts before this Final sweep performs neither learnings promotion nor terminal documentation evaluation.
-The retired monolithic apply instruction is not an executable source.
+## 0. Terminal suite gate
 
-### Terminal functional review — execute
+Run the plan's full-suite command (coordinator § Verification commands) once, verbatim. A pass continues to § 1.
 
-The coordinator performs exactly one terminal functional review execution after the Step loop, every required per-Step commit gate, and the existing appendices have completed, and before the Final sweep (E1). The review is coordinator-owned empirical re-verification of the aggregated Functional checks — an extension of Coordinator Checklist Execution with no worker dispatch, no RED/GREEN cycle, no recovery slot, and no extra commit (E2, E5). Its only write is the Functional checkbox marking defined below.
+When the plan's `## Verification commands` section lacks the command, the command cannot run, or the suite fails, report the command and the failure and stop: §§ 1–5 do not run, and neither the Functional checks nor the synthetic terminal entry is marked. Every Step is already committed, so the next `/sai-4-apply` run finds every Step done, re-enters here, and runs the suite afresh.
 
-Coverage is the aggregated Functional `- [ ]` checkboxes from `openspec/changes/{change-name}/implementation.md` across all Steps, including `*Deferred from Step N*` blocks; a Functional block carries the header `**Functional (...)**` or the legacy header `**Human (...)**`, and both are read as the same block with no artifact migration. Italic parenthetical notes contribute nothing and Steps without Functional checks contribute nothing (E4). Already-marked `[x]` checks are outside coverage and are never re-verified. Automated checks are not re-run (E2). Re-exercise each Functional check empirically against current working-tree state where a runnable surface exists; assign exactly one verdict per check — `pass`, `fail`, or `unverifiable` with a one-line reason — where `unverifiable` means the check needs human senses with no runnable surface to re-exercise (E3).
+A plan with no `## Verification commands` section predates this gate: print exactly `> Terminal suite gate: skipped — plan has no full-suite command` and continue to § 1.
 
-Execute assigns verdicts, marks `[x]` exactly the checks whose verdict is `pass`, and holds every verdict in invocation memory; it prints nothing at this moment (E1, E9). A `fail` or `unverifiable` check stays `- [ ]` and is reported as pending human review — a valid terminal state, not missing work. Execute writes no file other than the Functional checkboxes it marked in `implementation.md`, and does not re-run Automated checks, dispatch a worker, or create an extra commit (E2).
+## 1. Terminal functional review
 
-### Terminal functional review — print
+Coordinator-owned empirical re-verification of the plan's Functional checks: no worker dispatch, no RED/GREEN cycle, no recovery slot, no commit.
 
-After the terminal documentation commit, no-op, or decline, invoke the bound `terminal_navigation` action; this lifecycle section does not print findings itself (E3, E9). Print order lives in `invocation.md` § Completion for sole or final apply and in `sai/commands/apply/coordinator.md` § Terminal Navigation for non-final chained apply.
+- **Coverage:** every unmarked Functional `- [ ]` checkbox in `implementation.md`, across all Steps and `*Deferred from Step N*` blocks. A Functional block has the header `**Functional (...)**` or the legacy `**Human (...)**`; both read the same. Italic parenthetical notes are not checks. Already-marked `[x]` checks and Automated checks are not re-run.
+- **Verdicts:** re-exercise each check against the current working tree and assign exactly one: `pass`, `fail`, or `unverifiable` with a one-line reason. `unverifiable` means the check needs human senses and has no runnable surface.
+- **Write:** mark `[x]` exactly the `pass` checks. This is the review's only write.
+- **Hold:** keep every verdict in memory and print nothing now; § 5 prints them. `fail` and `unverifiable` checks stay `- [ ]` as pending human review, a valid end state. Verdicts are never persisted: a re-entry re-derives them.
 
-Lax semantics: findings are non-blocking warnings only — the synthetic entry completes even with findings, the Final sweep passes independently of them, and there is no auto-fix, no recovery continuation, and no selector (E5). The findings report is screen-only: the review's only artifact write is the Functional checkbox marking at execute (E5). If every check passes, or there are no Functional checks, the findings slot is silent; the sweep and the bound action still run (E4). The run-start Step Projection MAY carry exactly one coordinator-derived synthetic terminal entry for this review (no `#### Step N:` heading, no checkbox, no dispatch) which stays pending through execute, sweep, learnings, and commit and becomes completed when the print slot is emitted, including when it is empty; see `sai/commands/apply/coordinator.md` § Run-Start Step Projection (E4, E6). Learnings and navigation do not latch on "warnings have printed" (E6). Findings print exactly once — never at execute and never duplicated when navigation is invoked (E9). Held verdicts are ephemeral — a re-entry re-derives them from the current `implementation.md` and previous findings are lost (E10).
+Findings never block anything: no auto-fix, no recovery, no selector.
 
-### Final sweep
+## 2. Final sweep
 
-Scan the complete `openspec/changes/{change-name}/implementation.md` file and verify that every **Automated** checkbox is `[x]`. Report any unchecked Automated item and do not enter the terminal lifecycle until the sweep passes. Unmarked **Functional** checkboxes never block the sweep: report them as pending human review and continue. This is the final checkbox sweep, not a new Step dispatch.
+Scan all of `implementation.md` and confirm every **Automated** checkbox is `[x]`. An unchecked Automated item means the Step loop is unfinished: report it and resume the loop at that Step. Unmarked Functional checkboxes never block the sweep.
 
-### Learnings Promotion Pass
+## 3. Learnings promotion
 
-After a passing Final sweep, perform exactly one learnings promotion pass for the run. Read the complete `## Appendix: Plan vs Final Implementation` from `implementation.md` and use the coordinator's field-6 technical-learnings memory only as a supplementary source. Do not promote per Step, do not promote from a successful Step with no deviation, and do not dispatch promotion to RED or GREEN.
+Once, after a passing sweep. Candidates come from the complete `## Appendix: Plan vs Final Implementation`, with the workers' field-6 learnings as a supplementary source. Promote once per run, never per Step and never through a worker.
 
-For each candidate, apply only the single SAI learnings classification: the candidate must name a repository-level artifact rather than a symbol or file introduced or renamed by this change. Use the named artifact as the section key, supersede key, and reader anchor; use the candidate's `**Final:**` value as what works instead. Write only the root `SAI_LEARNINGS.md` and preserve its four-section format. If there is no qualifying entry and the file is absent, do not create an empty file. If the promotion writes the file, disclose the root path, entries added and superseded by section, and any contradicted pre-seeded keys.
+A candidate qualifies only when it names a repository-level artifact, not a symbol or file this change introduced or renamed. Use that artifact as the section key, supersede key, and reader anchor, and the candidate's `**Final:**` value as what works instead. Write only the root `SAI_LEARNINGS.md`, in its four-section format per `@sai/policies/sai-learnings-format.md`; create no empty file when nothing qualifies. When you write it, disclose the path, the entries added and superseded per section, and any contradicted pre-seeded keys.
 
-### Terminal documentation evaluation
+## 4. Terminal documentation commit
 
-Immediately after the single promotion pass, evaluate the terminal documentation set from terminal working-tree state with tracked and untracked paths visible. The eligible set is closed:
+**Eligible set**, from the terminal working tree (tracked and untracked), and nothing else:
 
 - changed paths under `docs/**`;
-- root `SAI_LEARNINGS.md` only when this run's promotion pass wrote it; and
-- changed root `GLOSSARY.md`, whether tracked-modified or untracked.
+- root `SAI_LEARNINGS.md`, only when § 3 wrote it in this run;
+- root `GLOSSARY.md` when changed (tracked-modified or untracked). Never resolve it from `openspec/changes/{change-name}/`.
 
-The terminal set is proposed whenever at least one eligible path exists, even when promotion produced no qualifying entry. When none of these conditions holds, propose no terminal documentation commit and ask no terminal authorization question. never resolve `GLOSSARY.md` from `openspec/changes/{change-name}`. `openspec/changes/**`, `implementation.md`, unrelated working-tree paths, the changed-files union, and every per-Step field-8 add-list remain outside this set.
+`openspec/changes/**`, `implementation.md`, the changed-files union, per-Step add-lists, and unrelated paths are outside the set. When the set is empty, skip the rest of this section: no message, no question.
 
-### Terminal visibility listing
+1. **Visibility listing.** Print the eligible paths under `Will be committed` and every other working-tree path under `Will NOT be committed`. The listing never touches the index and uses no Step number, report, or plan cross-check.
+2. **Message.** Propose one per `@sai/policies/commit-rules.md`, describing only the eligible paths.
+3. **Authorization.** Ask through commit-rules § Authorization gate; an active `session_commit_authorized` skips only the ask.
+4. **Commit.** On authorization, `git add -- <eligible paths>` exactly, then `git commit`. Never `git add -A` or a broad fallback. On `no`, leave the files in the working tree, say what remains uncommitted, and continue without retrying.
 
-Before proposing a terminal documentation commit message and before authorization, print a non-mutating visibility listing. Show the exact eligible paths under `Will be committed` and every working-tree path outside the closed set under `Will NOT be committed`. The preview does not stage, unstage, or otherwise mutate the Git index, does not depend on a Step number or worker report, and does not use a broad working-tree sweep.
-The visibility listing is followed by the proposed commit message and then authorization; the preview remains non-mutating.
+## 5. Print and stop
 
-### Terminal authorization and commit
+Invoke the bound `terminal_navigation` action (coordinator § Terminal navigation). The **print cluster** is the last user-visible block of the run, printed exactly once and identical with or without fast-track:
 
-Apply `sai/policies/commit-rules.md` before composing the message. The proposed message describes only the terminal documentation paths and staged hunks. Keep terminal staging separate from per-Step field-8 staging and add-lists. After authorization, stage exactly the closed terminal set; SHALL NOT use `git add -A`, a broad staging fallback, or any path under `openspec/changes/{change-name}/`.
+- **(a) Findings:** each held `fail` / `unverifiable` check with its reason, as pending human review, plus one recommendation line in the user's input language (English fallback). Silent when every check passed or there were none.
+- **(b) Target:** the standalone completion literal of `invocation.md` § Completion, or, for a non-final chained apply, the composition transition.
 
-When `session_commit_authorized` is inactive, present the native closed-choice options `yes (Recommended)` / `no` / `Allow on this session` for this final gate — the same option set as every commit-authorization gate in the pipeline: only explicit `yes` (or an `Allow on this session` selection, which additionally activates `session_commit_authorized` per its definition in `sai/commands/apply/coordinator.md`) authorizes `git add` and `git commit`. An off-option reply or silence is NOT a decline: re-present the same ask unchanged through the native picker per the invalid-input rule in `@sai/policies/remember.md`; only explicit `no` declines. The session-scoped grant and its boundaries follow `## Authorization Scope` in `sai/policies/commit-rules.md`. When the session flag is already active, including fast-track pre-activation, skip only this authorization ask; still print the visibility listing and proposed message before staging and committing. On decline, leave eligible files in the working tree, describe what remains uncommitted, and continue to MANDATORY STOP without retrying.
-
-### MANDATORY STOP
-
-After the terminal documentation commit succeeds, or after a no-op terminal evaluation or declined terminal authorization, invoke the existing standalone or chained `terminal_navigation` action. The final standalone completion literal remains owned by `invocation.md`; do not continue into another implementation Step from this section.
+Nothing prints between (a) and (b). The projection's synthetic terminal entry turns `completed` when the cluster prints, even when (a) is silent.

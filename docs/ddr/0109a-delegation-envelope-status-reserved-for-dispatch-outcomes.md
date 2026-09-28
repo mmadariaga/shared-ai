@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Superseded: `sai-explore` now runs the prerequisite check inline in the main session (`sai/commands/explore/body.md`), so no delegated check report remains to carry a verdict.
 
 ## Context
 

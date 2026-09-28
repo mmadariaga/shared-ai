@@ -1,49 +1,27 @@
 # rerun-guard-restructure Specification
 
 ## Purpose
-TBD - created by archiving change simplify-existing-implementation. Update Purpose after archive.
+Keep the `/sai-3-implement` re-run guard a dedicated, self-contained step of the implement step library.
+
 ## Requirements
-### Requirement: The re-run guard SHALL be a top-level numbered step, not a sub-step
+### Requirement: The re-run guard SHALL be its own step file
 
-`sai/commands/implement/instructions.md` SHALL designate the re-run guard as **Step 1** (a top-level `### Step 1:` section), not as a sub-step (e.g., `### Step 1b:`). No other step SHALL occupy Step 1.
+The re-run guard SHALL live in `sai/commands/implement/steps/collapse-implemented-steps.md`, delivered under the `collapse-implemented-steps` progress-plan id. It SHALL run only on a re-run, when `implementation.md` exists at the start of the invocation; on a first run its id is reported in the startup batch and the step is never delivered.
 
-#### Scenario: re-run guard appears as Step 1
-- **WHEN** `sai/commands/implement/instructions.md` is read
-- **THEN** the first `### Step` heading is `### Step 1: Simplify existing implementation.md` (or equivalent top-level phrasing)
-- **THEN** no `### Step 1b` heading exists in the file
+#### Scenario: re-run guard is a dedicated step
+- **WHEN** the implement step library is read
+- **THEN** `collapse-implemented-steps.md` holds the re-run guard and no other step file restates it
 
 ---
 
-### Requirement: The subagent directive for the re-run guard SHALL be a bold mandatory instruction with a self-contained prompt
+### Requirement: The re-run guard SHALL delegate through a self-contained subagent prompt
 
-The re-run guard step in `sai/commands/implement/instructions.md` SHALL carry a directive of the form `**MANDATORY: Spawn a subagent for this step. Do NOT read \`implementation.md\` yourself.**` followed by a complete, self-contained subagent prompt. The prior blockquote format (`> **Subagent:** Run this step in a separate subagent.`) SHALL NOT be used.
+The re-run guard step SHALL direct the worker to delegate the read and rewrite of `implementation.md` to one `budget-subagent` and to act only on its report, followed by a complete, self-contained numbered prompt for that subagent.
 
-#### Scenario: directive uses bold mandatory phrasing
-- **WHEN** the re-run guard step in `sai/commands/implement/instructions.md` is read
-- **THEN** it contains a bold `**MANDATORY:**` directive explicitly forbidding the main agent from reading `implementation.md` directly
+#### Scenario: delegation directive is explicit
+- **WHEN** the re-run guard step is read
+- **THEN** it directs the worker to delegate the read and rewrite to one `budget-subagent` and act only on its report
 
 #### Scenario: subagent prompt is self-contained
 - **WHEN** the re-run guard step is read
-- **THEN** it contains a numbered prompt listing all steps the subagent must perform (read file, evaluate checkboxes, collapse fully-checked steps, write back, report)
-- **THEN** no separate blockquote hint appears in place of this prompt
-
----
-
-### Requirement: Subsequent implement steps SHALL be renumbered to follow the promoted Step 1
-
-After the re-run guard occupies Step 1, the remaining steps in `sai/commands/implement/instructions.md` SHALL be renumbered: old Step 1 (Parse Artifacts) becomes Step 2, old Step 2 (Validate ADR/DDR) becomes Step 3, old Step 3 (Read Required Documentation) becomes Step 4, old Step 4 (Generate Full Implementation) becomes Step 5.
-
-#### Scenario: step headings are sequential after renumbering
-- **WHEN** all `### Step N:` headings in `sai/commands/implement/instructions.md` are listed
-- **THEN** they appear as Step 1 through Step 5 with no gaps or duplicate numbers
-
----
-
-### Requirement: The research-exception cross-reference SHALL point to Step 1, not Step 1b
-
-The research-exception note in `sai/commands/implement/instructions.md` (`## Required Documentation` step) SHALL reference "Step 1" when describing the re-run condition, replacing the prior "Step 1b" reference.
-
-#### Scenario: cross-reference uses updated step name
-- **WHEN** the `## Required Documentation` section of `sai/commands/implement/instructions.md` is read
-- **THEN** the re-run exception clause reads "If Step 1 detected an existing `implementation.md`" (not "Step 1b")
-
+- **THEN** it contains a numbered prompt listing all steps the subagent must perform (read file, evaluate checkboxes, collapse fully-checked steps, prune matching `interfaces.md` contracts, write back, report)

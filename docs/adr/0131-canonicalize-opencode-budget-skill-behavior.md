@@ -16,7 +16,7 @@ agent contracts even though both surfaces use the same Fetch namespace.
 Each OpenCode budget skill contains exactly one Fetch directive for its matching
 `sai/policies/*-agent.md` policy. The skills remove policy-owned universal
 behavior or output-contract blocks while retaining their OpenCode-specific
-binding, dispatch, model-resolution, cap, raw-output, permission, and cost
+binding, dispatch, model-resolution, cap, permission, and cost
 guidance. The Claude Code budget skills keep their separate harness binding and
 are not changed by this decision.
 

@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+This capability requires setup to initialize the selected project's `openspec/` directory when it is absent and to run initialization in that project.
+
+## Requirements
 
 ### Requirement: openspec-dir-check
 After a successful `openspec-check`, `bin/setup.js` SHALL verify that the directory `{projectPath}/openspec/` exists.
@@ -25,7 +29,3 @@ The `openspec init` spawn MUST use `{ cwd: projectPath }` as the spawn option. `
 #### Scenario: spawn options
 - **WHEN** `openspec init` is spawned
 - **THEN** the child process `cwd` is `projectPath`, not `process.cwd()`
-
-## MODIFIED Requirements
-
-## REMOVED Requirements

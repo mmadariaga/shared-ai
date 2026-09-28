@@ -1,7 +1,7 @@
 # audit-artifact-ingestion Specification
 
 ## Purpose
-TBD - created by archiving change audit-finding-judgment. Update Purpose after archive.
+Turn review, security, performance, and accessibility findings into judged, dedicated steps of `implementation.md`.
 ## Requirements
 ### Requirement: The `/sai-3-implement` agent SHALL read all existing audit artifacts for a change before generating `implementation.md`.
 
@@ -25,6 +25,11 @@ When producing an implementation plan, the agent SHALL check for audit artifacts
 
 Each audit artifact produces its own dedicated step. Findings from different artifacts are kept separate and appended after all steps derived from `design.md` and `tasks.md`.
 
+#### Scenario: two audit artifacts produce two steps
+
+- **WHEN** `review.md` and `security.md` both exist for the change
+- **THEN** the plan gains one dedicated review step and one dedicated security step after every `tasks.md`-derived step, and neither is merged into an existing step
+
 ### Requirement: Apply/Discard classification SHALL follow a five-criterion judgment rubric
 
 The judgment rubric evaluates each finding against five criteria: (1) **severity** — does the finding rise to critical/high or is it a non-issue? (2) **actionability** — is the proposed fix specific enough to implement (a concrete file:line change rather than a vague suggestion)? (3) **spec-decision consistency** — does the finding contradict a decision in `design.md` or a requirement in `specs/**/*.md`? (4) **duplication** — does the finding repeat another finding already addressed in an earlier step of `implementation.md`? (5) **scope** — does the finding stay within the change's declared scope or propose out-of-scope work? The Apply/Discard classification SHALL follow from the rubric outcome, not from gut feel.
@@ -37,7 +42,7 @@ The judgment rubric evaluates each finding against five criteria: (1) **severity
 
 ### Requirement: Apply findings SHALL be rendered as concrete code actions in the appended audit step
 
-Every finding classified Apply SHALL appear in the appended audit step as a concrete code-writing action with a file:line location and a specific change. Apply actions are the same kind of code-writing checkboxes the `<plan_template>` already uses elsewhere in `implementation.md`.
+Every finding classified Apply SHALL appear in the appended audit step as a concrete code-writing action with a file:line location and a specific change. Apply actions are the same kind of code-writing checkboxes the implementation plan template already uses elsewhere in `implementation.md`.
 
 #### Scenario: Apply finding becomes a code action
 
@@ -57,12 +62,12 @@ Every finding classified Discard SHALL appear in a Discarded findings sub-block 
 
 ### Requirement: Discarded findings SHALL be surfaced in chat for conversational confirmation
 
-When the agent finishes generating the appended audit step, it SHALL print the list of Discarded findings to chat (one line per Discard, plus the verbatim Q text for any Q Discard) and ask the user to confirm or override. Confirmation SHALL be conversational in the same chat. The agent SHALL NOT write any approval key to `.openspec.yaml` and SHALL NOT introduce any new approval gate for Discards.
+When the agent finishes generating the appended audit step, it SHALL list the Discarded findings in its terminal `summary` (one line per Discard, plus the verbatim Q text for any Q Discard), which the coordinator prints to chat, and invite the user to confirm or override. Confirmation SHALL be conversational in the same chat. The agent SHALL NOT write any approval key to `.openspec.yaml` and SHALL NOT introduce any new approval gate for Discards.
 
 #### Scenario: discards surfaced in chat only
 
 - **WHEN** the agent finishes generating the appended audit step
-- **THEN** the agent prints one line per Discarded finding to chat, asking the user to confirm
+- **THEN** the agent's terminal summary lists one line per Discarded finding, printed to chat, asking the user to confirm
 - **AND** it does NOT write any approval key to `.openspec.yaml`
 - **AND** the user can override any Discard by responding in chat before `/sai-4-apply` starts
 
@@ -93,7 +98,7 @@ Each audit artifact produces its own dedicated step (e.g., `Step N: Address revi
 
 #### Scenario: one step per artifact is enforced
 
-- **WHEN** Step 5 appends audit-derived steps for one or more existing audit artifacts
+- **WHEN** the plan-generation step appends audit-derived steps for one or more existing audit artifacts
 - **THEN** exactly one new step is appended per existing artifact
 - **AND** no audit step is folded into a prior step derived from `tasks.md` or from a previous audit artifact
 

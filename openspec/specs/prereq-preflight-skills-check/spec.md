@@ -1,7 +1,7 @@
 # prereq-preflight-skills-check Specification
 
 ## Purpose
-TBD - created by archiving change prereqs-openspec-skills-check. Update Purpose after archive.
+Defines the fourth OpenSpec prerequisite check: presence of the required OpenSpec skills at the active harness's project-local skills root.
 ## Requirements
 ### Requirement: Mandatory harness selector on the check sub-command
 
@@ -13,7 +13,7 @@ The `sai/tools/prereqs.js` `check` sub-command SHALL require a `--require-opensp
 
 ### Requirement: Skills presence check as the fourth preflight condition
 
-The OpenSpec prerequisite preflight SHALL include a `skills` check that runs only after the `cli`, `dir`, and `schema` checks pass, preserving first-failure-stops across checks, and SHALL verify that the three required OpenSpec skills (`openspec-explore`, `openspec-propose`, `openspec-archive-change`) are installed at the active harness's project-local skills root — `<cwd>/.opencode/skills/` when the harness is `opencode` and `<cwd>/.claude/skills/` when it is `claude`, with no user-global or XDG fallback — where "installed" means the `<name>/SKILL.md` file exists (the file is stat'd, not the directory), and the verification is presence-only with no version, drift, or content validation.
+The OpenSpec prerequisite preflight SHALL include a `skills` check that runs only after the `cli`, `dir`, and `schema` checks pass, preserving first-failure-stops across checks, and SHALL verify that the two required OpenSpec skills (`openspec-explore`, `openspec-propose`) are installed at the active harness's project-local skills root — `<cwd>/.opencode/skills/` when the harness is `opencode` and `<cwd>/.claude/skills/` when it is `claude`, with no user-global or XDG fallback — where "installed" means the `<name>/SKILL.md` file exists (the file is stat'd, not the directory), and the verification is presence-only with no version, drift, or content validation.
 
 #### Scenario: Project-local skill file presence decides the check
 - **WHEN** `check` runs with a valid harness value on a project whose first three checks pass and every required skill's `SKILL.md` file exists under that harness's project-local skills root

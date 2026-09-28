@@ -2,17 +2,17 @@
 
 ## Purpose
 
-Defines the routed card set for `/sai-4-apply` — coordinator.md + runner.md + invocation.md + worker contracts under `sai/commands/apply/`, with runner.md extracted from the current monolithic instructions.md — so apply gains the same routed shape as the other seven numbered commands.
+Defines the routed card set for `/sai-4-apply` — coordinator.md + runner.md + invocation.md + the RED/GREEN worker contracts with their shared worker-common.md, plus the step library under `sai/commands/apply/steps/` — so apply has the same routed shape as the other numbered commands.
 ## Requirements
 ### Requirement: apply-terminal-lifecycle-contract-coverage
 
-The repository SHALL contain focused contract tests for the active routed apply source that assert the coordinator-owned terminal lifecycle is accessible from `sai/commands/apply/runner.md` through a Fetch directive to `sai/commands/apply/steps/terminal-lifecycle.md`: Final sweep, exactly one learnings promotion pass, terminal documentation-set evaluation, visibility disclosure, authorization/commit behavior, and MANDATORY STOP in that order. The tests SHALL cover the no-op path, decline path, active session-flag and `--fast-track` paths, and the boundary that halts before the Final sweep.
+The repository SHALL contain focused contract tests for the active routed apply source that assert the coordinator-owned terminal lifecycle in `sai/commands/apply/steps/terminal-lifecycle.md` is reached from the runner's Step loop once every Step is done (the `apply-standalone@1` terminal pointer, or after the last Step in the degraded fallback): terminal functional review, Final sweep, exactly one learnings promotion pass, terminal documentation-set evaluation, visibility disclosure, authorization/commit behavior, and the print cluster with MANDATORY STOP, in that order. The tests SHALL cover the no-op path, decline path, active session-flag and `--fast-track` paths, and the boundary that halts before the Final sweep.
 
-The tests SHALL protect the routed source as the authority and SHALL fail if the behavior is removed from the active card set or moved only into the retired monolithic `sai/commands/apply/instructions.md`.
+The tests SHALL protect the routed source as the authority and SHALL fail if the behavior is removed from the active card set.
 
 #### Scenario: Routed runner loses the terminal lifecycle
 
-- **WHEN** a future edit removes the Fetch directive to `terminal-lifecycle.md`, removes terminal evaluation from the stepped file, or omits the behavior from the active card set
+- **WHEN** a future edit removes the Step loop's hand-off to `terminal-lifecycle.md`, removes terminal evaluation from the stepped file, or omits the behavior from the active card set
 - **THEN** the contract suite fails with a focused assertion identifying the missing routed lifecycle behavior
 
 #### Scenario: Halt and no-op semantics regress
@@ -52,18 +52,18 @@ The contract suite SHALL verify parity across Claude Code and opencode for the r
 
 ### Requirement: apply-card-set-is-routed
 
-The `sai/commands/apply/` folder SHALL contain the routed card set: `coordinator.md`, `runner.md`, `invocation.md`, and the RED and GREEN worker contracts. The utility `body.md` surface SHALL be retired and SHALL NOT be selected by any boot adapter. The active `runner.md` SHALL carry the Step loop contract — dispatch routing, coordinator verification, scratch sweeps, human gates, checkbox marking, appendices, pre-commit report, STOP & COMMIT checklist, learnings memory — directly, and SHALL carry the once-per-run learnings promotion, terminal documentation commit, and final sweep through Fetch directives to step files under `sai/commands/apply/steps/`. The retired monolithic `instructions.md` SHALL NOT be required as an executable authority for these operations.
+The `sai/commands/apply/` folder SHALL contain the routed card set: `coordinator.md`, `runner.md`, `invocation.md`, the RED and GREEN worker contracts, and `worker-common.md`, the rules both workers share (the runner reads its report contract). The utility `body.md` surface SHALL be retired and SHALL NOT be selected by any boot adapter. The active `runner.md` SHALL carry the Step loop directly — the routing table, dispatch plan selection, report validation, checkbox marking, appendices, and the per-Step commit gate (pre-commit file visibility report and STOP & COMMIT checklist). The coordinator SHALL carry verification, scratch sweeps, and recovery. Each routing mode's rules SHALL live in its `steps/routing-*.md` file, and the Final sweep, once-per-run learnings promotion, and terminal documentation commit SHALL live in `steps/terminal-lifecycle.md`, each loaded only when the machine's pointer names it.
 
 #### Scenario: apply folder holds the routed surfaces
 
 - **WHEN** the routed card set is implemented
-- **THEN** `sai/commands/apply/` contains `coordinator.md`, `runner.md`, `invocation.md`, and the RED/GREEN worker contracts
+- **THEN** `sai/commands/apply/` contains `coordinator.md`, `runner.md`, `invocation.md`, `worker-common.md`, and the RED/GREEN worker contracts
 - **AND** `body.md` no longer exists in the apply folder
 
 #### Scenario: runner.md carries the complete loop contract
 
 - **WHEN** a maintainer reads `sai/commands/apply/runner.md` after this change lands
-- **THEN** it contains the Step loop and the routing table, and Fetch directives to step files that supply the promotion pass, terminal documentation-set evaluation, terminal visibility, authorization, commit boundaries, final sweep, and terminal navigation contracts
+- **THEN** it contains the ordered Step loop, the routing table naming each mode's step file as a plain path, and the per-Step commit gate, and its Step loop hands off to `steps/terminal-lifecycle.md` for the final sweep, promotion pass, terminal documentation commit, and print cluster
 
 #### Scenario: boot adapter never selects apply body.md
 
@@ -96,13 +96,13 @@ The apply runner's multi-dispatch carve-out remains unchanged: each Step dispatc
 - **WHEN** workers return results across dispatches and retries
 - **THEN** the coordinator adds every `changed_files` path once in first-seen order and never resets the union during the run
 
-### Requirement: Timestamped apply progress validation
+### Requirement: Apply progress validation
 
-The apply adapter SHALL validate `emitted_on` in every RED, GREEN, and green-exception progress event while preserving each immutable dispatch-local plan, ordered union, and same-worker continuation.
+The apply adapter SHALL validate every RED, GREEN, and green-exception progress event through the shared validator while preserving each immutable dispatch-local plan, ordered union, and same-worker continuation. Workers author no time field (`timeless-worker`); observation time comes from the validator.
 
 #### Scenario: Apply dispatch reports progress
 - **WHEN** a dispatched apply worker returns a progress event
-- **THEN** the coordinator validates its timestamp, marks declared ids, unions paths, and continues the same worker.
+- **THEN** the coordinator validates it, marks declared ids, unions paths, and continues the same worker.
 
 ### Requirement: apply-invocation-core-preserves-loading
 
@@ -125,11 +125,11 @@ The apply `invocation.md` SHALL preserve the utility body's loading behavior min
 
 ### Requirement: apply-mandatory-stop-preserved
 
-The routed apply run SHALL close with the same MANDATORY STOP semantics as the utility card: the coordinator prints exactly `Implementation applied. Run \`/sai-5-review {name}\` in a new chat when ready.` only when every Step is applied, every human gate reviewed, and every commit done. A run halted early SHALL NOT print the completion message.
+The routed apply run SHALL close with the same MANDATORY STOP semantics as the utility card: the coordinator prints exactly `Implementation applied. Run \`/sai-5-review {name}\` in a new chat when ready.` only when every Step's Automated checkboxes are marked and every commit gate has finished; unmarked Functional checks are reported, not gating. A run halted early SHALL NOT print the completion message.
 
 #### Scenario: completed run prints the stop literal
 
-- **WHEN** all Steps are applied, all human gates reviewed, and all commits done
+- **WHEN** all Steps are applied and every commit gate has finished
 - **THEN** the coordinator prints the exact completion literal and stops
 
 #### Scenario: halted run prints no completion message
@@ -165,7 +165,7 @@ This per-dispatch plan reconciles with `sai/orchestration/command-runner.md`'s `
 
 ### Requirement: apply-coordinator-centric-execution
 
-The apply coordinator SHALL remain the executing main-session driver: it performs change resolution, the run-start step projection, scratch sweeps, coordinator verification, checkbox marking, appendices, learnings memory, per-Step and terminal human gates, terminal visibility reporting, exact-path staging, and commits itself. It SHALL perform the once-per-run learnings promotion after the Final sweep and SHALL evaluate the terminal documentation commit immediately afterward. It SHALL NOT delegate these coordinator responsibilities to a worker. The thin-coordinator routed model SHALL NOT be adopted for apply.
+The apply coordinator SHALL remain the executing main-session driver: it performs change resolution, the run-start step projection, scratch sweeps, coordinator verification, checkbox marking, appendices, learnings memory, the per-Step and terminal commit gates, terminal visibility reporting, exact-path staging, and commits itself. It SHALL perform the once-per-run learnings promotion after the Final sweep and SHALL evaluate the terminal documentation commit immediately afterward. It SHALL NOT delegate these coordinator responsibilities to a worker. The thin-coordinator routed model SHALL NOT be adopted for apply.
 
 #### Scenario: coordinator executes the terminal responsibilities
 

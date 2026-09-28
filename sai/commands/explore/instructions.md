@@ -1,33 +1,28 @@
-You are in explore mode — a read-and-discuss context. These restrictions are in effect for the entire session:
+You are in explore mode — a read-and-discuss context. These rules hold for the entire session:
 
 1. **No file writes**: This command MUST NOT create, modify, or delete files — read, search, and discuss only. Delegated writes exist solely via the crystallization-close choice under its owned scopes.
 
-2. **Research ladder discard logging (sai-explore only)**: When the `budget-explorer` subagent completes a research task, any ladder levels that were skipped are logged in the `ladder_discards` field of the subagent's structured response. Print these discards to the chat (if any are present) as a single informational notice per subagent result, in the form:
+2. **Research ladder discards**: When a `budget-explorer` result carries a non-empty `ladder_discards` field, print it once per result as an informational notice that gates nothing:
 
    > Research ladder: [reason 1], [reason 2], …
 
-   This logging helps identify environment constraints (missing tools, unavailable shell) and any caller prompt violations (calls that prescribe tools despite the ladder policy). Print only when discards are present; omit the notice when all ladder levels were attempted. This relay is purely informational and does not gate continued work.
+3. **Direct-looking request classification.** Treat an input phrased as a direct implementation command — a `direct-looking request` (e.g. "Implement …", "Fix …", "Add …", "Apply …") — as the initial content of a candidate idea, never as authorization to implement, dispatch, or leave Explore. Preserve its stated objectives, constraints, and acceptance criteria as the idea's starting content and ask only the unresolved substantive questions; do not re-run full discovery for already-supplied detail. Imperative wording alone never triggers a handoff to `/sai-4-apply` or `/sai-build`, never advises exiting Explore, and never dispatches implementation before the crystallization-close route selector — the sole route-selection and delegated-write gate. `Explore change`, `Review edge cases`, `Implementation details`, and `Crystallize` (including final route selection) remain mandatory for such inputs. An explicit artifact-review deliverable keeps its existing review path, and mentioning an existing change or its artifacts authorizes nothing. Destructive or shared actions remain unperformed under the existing safety constraints.
+
+## Step loading
 
 Fetch @sai/commands/explore/steps/common.md
+Fetch @sai/policies/stage-machine.md and follow it for every store interaction; the verbs, errors, quoting, pointer, and degraded-mode contract are single-sourced there.
 
-3. Boot preloads only this explore instruction pack (`instructions.md` and `steps/common.md`) plus `sai/policies/stage-machine.md` for step files; worker bindings are owned by the wrapper/bootstrap (see `command-bootstrap.md`). Every other step file loads only when a returned `next.follow` names that exact file after `/emit`. If the chat never reaches that stage they are not fetched.
+Load any other step file only when a returned `next.follow` names that exact file after `/emit`. The one exception is `steps/review-loop.md`, which no machine stage names: after crystallization, fetch it when the user fires the literal `review-loop` token or asks to review the crystallized changes. Worker bindings load at their dispatch points in `steps/pipeline-plan-unattended.md` and `steps/pipeline-direct-build.md`.
 
-4. Fetch @sai/policies/stage-machine.md and follow it for every store interaction; the verbs, errors, quoting, pointer, and degraded-mode contract are single-sourced there and are not restated here.
+**Stage machines.** Pre-crystallization progression consumes `explore-idea@1`; after crystallization the same chat consumes `explore-slice@1` for slice inventory and the Plan / Direct Build TODO. Every stage-event turn (a user intent that advances the progression, or a recorded list at an agreement gate) runs the policy's spawn-then-emit cycle against the owning machine in the same session id; entering crystallize does not close the session. The machine consumes content-based recordings of agreed or empty lists, not readiness judgments.
 
-5. **Stage machine session lifecycle (explore-idea and explore-slice machines).** Pre-crystallization stage progression consumes the `explore-idea` machine (`explore-idea@1`); after crystallization the same chat consumes the `explore-slice` machine (`explore-slice@1`) for slice inventory and Plan / Direct Build TODO. Every stage-event turn (a user intent that advances the progression or a recorded list at an agreement gate) runs the policy's spawn-then-emit cycle against the owning machine in the same session id; entering crystallize does not close the session (`explore-slice@1` can emit while `explore-idea@1` stays at crystallize). Per-machine stages, intents, and recorded-list shapes live in the step files named by `next.follow`.
-
-6. **Staged progression (early mechanics live in `common.md`; slice close lives in `slice.md`).** Pre-crystallization TODO, `next-step` advancement, and persistence state are owned by `steps/common.md`; post-crystallization `next-slice` close is owned by `steps/slice.md`. Load via `next.follow`; `recordedList` emits before the selector per the shared close. The machine consumes content-based recordings of agreed or empty lists rather than readiness; these are not readiness judgments. Mere containment of the string `next-slice` SHALL NOT fire the token, and a turn that negates, defers, quotes, or discusses the token SHALL NOT close the slice. Direct Build never uses `next-slice`.
-
-7. **Crystallization-turn close (shared) lives in `crystallization-protocol.md` by reference.** Load via `next.follow`; checkpoint, `recordedList`-before-selector order, and `fast-track` never-auto-selects live there only.
-
-8. **Post-crystallization review loop:** the literal token `review-loop` triggers the user-invited review loop; load via `next.follow` only then.
-
-9. **Crystallization-close selector (sai-explore only)** — summary only; full contract lives in `sai/commands/explore/steps/` (load via `next.follow` at close). After the final `---`, present the three-option **Plan - Unattended** / **Direct Build - Unattended** / **Manual** choice; see `route-selector.md` for presentation and `pipeline-selector.md` for supervision.
-
-10. **Idea Progress List (sai-explore only)** — marker only; Phase A single source lives in `steps/common.md`, Phase B full spec lives in `steps/idea-list.md`.
-
-   Detail lives in those files, not here.
-
-   Phase A stage TODO owns panel before emission (`sai-explore-stage:`, `steps/common.md` preloaded); Phase B route list owns it after choice (`sai-idea-list:`, load via `next.follow` at choice resolution); prefixes unmixed.
-
-11. **Direct-looking request classification (sai-explore only).** Treat an input phrased as a direct implementation command — a `direct-looking request` (e.g. "Implement …", "Fix …", "Add …", "Apply …") — as the initial content of a candidate idea, never as authorization to implement, dispatch, or leave Explore. Preserve its stated objectives, constraints, and acceptance criteria as the idea's starting content and ask only the unresolved substantive questions; do not re-run full discovery for already-supplied detail. Imperative wording alone never triggers a handoff to `/sai-4-apply` or `/sai-build`, never advises exiting Explore, and never dispatches implementation before the crystallization-close route selector — the sole route-selection and delegated-write gate. `Explore change`, `Review edge cases`, `Implementation details`, and `Crystallize` (including final route selection) remain mandatory for such inputs. An explicit artifact-review deliverable keeps its existing review path, and mentioning an existing change or its artifacts authorizes nothing. Destructive or shared actions remain unperformed under the existing safety constraints.
+**Step map** (each reached through `next.follow` unless noted):
+- Pre-crystallization TODO, `next-step` advancement, persistence, Phase A panel — `steps/common.md`
+- `Review edge cases` stage — `steps/review-edge-cases.md`
+- `Implementation details` stage — `steps/implementation-details.md`
+- Crystallization-turn close — `steps/crystallization-protocol.md`
+- `review-loop` token — `steps/review-loop.md` (fetched directly, per the exception above)
+- Crystallization-close selector — `steps/route-selector.md`; supervision — `steps/pipeline-selector.md`
+- Phase B idea-list panel — `steps/idea-list.md`
+- `next-slice` slice close — `steps/slice.md`

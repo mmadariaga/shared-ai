@@ -22,13 +22,13 @@ The key difference is the deriving party: in 0172c, the worker derives what it r
 
 2. The machine is seeded from the parsed `#### Step N:` headings and per-Step checkbox state via `{ recordedList: [...], recordedDone: [...] }`, implementing the derivation rule currently written as prose in coordinator.md § Run-Start Step Projection: a fully-marked Step is done, the first not-fully-marked is active, the remainder pending.
 
-3. For each Step, the coordinator determines which of the five routing conditions (per runner.md § Step Routing Tree) the Step satisfies, emits `{ mode: <mode-name> }` to the machine, and fetches only the routing file named by the returned `next.follow` pointer. The machine does no file I/O; it provides deterministic routing only.
+3. For each Step, the coordinator determines which of the five routing conditions (per runner.md § Step Routing Tree) the Step satisfies, emits `{ mode: <mode-name> }` to the machine, and fetches only the routing file named by the returned `next.follow` pointer. After the Step's commit gate it emits `{ intent: complete-step }`; once every Step is done the pointer names `sai/commands/apply/steps/terminal-lifecycle.md`. The machine does no file I/O; it provides deterministic routing only.
 
 4. The machine is a run-scoped cursor: it is re-seeded at each spawn from the authoritative `implementation.md` file and is never carried across runs. On any divergence, the file wins.
 
 5. No progress protocol is added to apply. The Step loop remains as specified: no `progress_plan`, no progress event, no progress payload.
 
-6. On apply-standalone@1 store failure or unreachability, the coordinator falls back to loading every routing file in `sai/commands/apply/steps/` conditionally based on the five routing conditions, deriving the cursor inline from `implementation.md` and on-disk checkboxes without the machine, and completes the run at full context cost; only session state saving is lost.
+6. On apply-standalone@1 store failure or unreachability, the coordinator falls back to picking each routing file in `sai/commands/apply/steps/` from the five routing conditions and fetching the terminal lifecycle after the last Step, deriving the cursor inline from `implementation.md` and on-disk checkboxes without the machine, and completes the run at full context cost; only session state saving is lost.
 
 ## Alternatives Considered
 
@@ -47,6 +47,8 @@ The key difference is the deriving party: in 0172c, the worker derives what it r
 - A crashed Step re-dispatches its work (one repeated dispatch cost per crash), as oppose to resuming from an inner checkpoint.
 
 - On coordinator-observable store failure (unavailability or malformed state), apply does not halt; it degrades gracefully and completes the run at full context cost.
+
+- Amended: the runner's routing table names the five routing files as plain paths, not `Fetch @` directives, so the fetch skill no longer loads all of them with the runner; the `complete-step` emit and the terminal pointer replace the runner's former eager load of `terminal-lifecycle.md`.
 
 ## Related
 

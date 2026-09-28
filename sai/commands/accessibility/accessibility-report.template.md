@@ -13,11 +13,13 @@
 
 ## Not Applicable
 
-{REQUIRED: Fill this section even when accessibility audit is not applicable.
-If the diff contains no UI files (.tsx/.jsx/.astro/.html/.vue/.svelte/.css
-or component-bearing markdown), explain why here and leave findings empty.}
+{Keep this section only when the scope contains no UI files
+(.tsx/.jsx/.astro/.html/.vue/.svelte/.css or component-bearing markdown): the
+report is then this header plus this section, with every other section
+omitted. Otherwise delete this heading entirely — /sai-status and /sai-archive
+read its presence as "audit not applicable".}
 
-**Justification:** {Why no UI surface is touched, OR leave blank and fill findings below}
+**Justification:** {Why no UI surface is touched}
 
 ---
 

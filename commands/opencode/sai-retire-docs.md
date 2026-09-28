@@ -1,7 +1,6 @@
 ---
-description: Analyze active ADRs, DDRs, and related specifications for bounded, confirmation-gated archival. No OpenSpec prerequisite.
-model: opencode/muse-spark-1.3-contributor-free
-variant: high
+description: Find ADRs, DDRs, and the specs that retire with them that may be obsolete, back each with evidence, and archive the ones you confirm. No OpenSpec prerequisite.
+model: opencode-go/muse-spark-1.3-contributor#xhigh
 ---
 Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.
 Fetch @sai/adapters/opencode/boot.md and follow it.

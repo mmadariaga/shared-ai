@@ -12,9 +12,8 @@
   `steps/common.md` and the one step file named by the active pointer.
 
   The boot request envelope has exactly these two keys, `command_name` for card
-  selection and `arguments_value` for the complete opaque request; the retired
-  wrapper-echo field has been removed. The implementation phase adapter supplies
-  exactly:
+  selection and `arguments_value` for the complete opaque request. The
+  implementation phase adapter supplies exactly:
 
   - `original_envelope`: exactly the opaque single-string `arguments_value`
     received from the active wrapper, byte-for-byte.
@@ -23,7 +22,7 @@
   - `allowed_nonterminal_extensions`: progress events — `{event: "progress", step_ids: string[], changed_files: string[]}` as the sole nonterminal extension
   - `extension_handlers`: empty
   - `recovery_policy: true` — bounded recovery is enabled for this planning phase (parity with spec and design); recovery semantics follow `@sai/policies/bounded-recovery.md`. The worker-owned, authorized, path-bounded non-clean read set for recovery inspection is only `openspec/changes/{change-name}/implementation.md`; same-worker correction on that surface regenerates or repairs the plan in place, and the coordinator has zero write or repair authority on it.
-  - `replacement_reconstruction_fields`: `resolved_change_name` when already known, ordered `opaque_input_history`, the fixed durable-artifact reconstruction instruction, the worker's `active_step_id`, and `fast_track_active`
+  - `replacement_reconstruction_fields`: `resolved_change_name` when already known, ordered `opaque_input_history`, the fixed durable-artifact reconstruction instruction, the worker's `active_step_id`, `fast_track_active`, and the ordered typed `lookup_request_history` (requests plus exact decisions, when any)
   - `terminal_navigation` — parameterized binding over two terminal actions; selection is positional:
     - sole adapter (direct `/sai-3-implement`) → shell-owned standalone completion action (exact pinned literal + stop)
     - final adapter in a multi-adapter sequence → same shell-owned standalone completion action
@@ -74,38 +73,52 @@
   `active_step_id`; the replacement's first continuation carries the correct
   pointer line for that step. Do not include artifact contents, the
   accumulated coordinator changed-file union, the prior worker journal, design
-  state, or binding identifiers.
+  state, or binding identifiers. Keep `lookup_request_history` separate from
+  `opaque_input_history`; it records each validated request with the ordered
+  exact `lookup_decisions` and the original area, reason, Step, and limits. A
+  replacement resumes a decided request without presenting it again or widening
+  any area. An undecided request remains pending and cannot authorize a lookup.
 
-  Construct the opaque `arguments_value` envelope field from the fast-track-cleaned remainder (the active wrapper's value after the Fast-track parse strip below). Use the active `sai-3-implementation-worker` binding's `dispatch_operation` to dispatch exactly one worker and declare `fast_track_active` alongside the envelope as invocation-scoped session state (never an envelope key, never written to any file). `continuation_reference` is binding-owned and never worker output; binding-owned `continuation_reference` is not worker output.
+  Construct the opaque `arguments_value` envelope field from the fast-track-cleaned remainder (the active wrapper's value after the Fast-track parse strip below). Use the active `sai-3-implementation-worker` binding's `dispatch_operation` to dispatch exactly one worker and declare `fast_track_active` alongside the envelope as invocation-scoped session state (never an envelope key, never written to any file). Deliver its explicit boolean in the post-ready task disclosure (after `event: ready`, never in the zero-task dispatch) and in replacement reconstruction, including when the supervisor injects it for `/sai-build`. Do not send the raw `--fast-track` token to the worker. `continuation_reference` is binding-owned and never worker output.
 
   Keep an invocation-scoped ordered union of `payload.changed_files`; add each path once and never reset it. Validate every result: the payload status must be exactly one of `completed`, `needs_input`, `failed`, or `cancelled`, with string `summary` and string-list `changed_files`. `needs_input` requires its question and ordered options where applicable. Every post-resolution payload, including `completed`, requires `resolved_change_name`.
 
   ## Fast-track parse
 
-  Follow the canonical model in `@sai/policies/fast-track-flag.md` — this coordinator owns BOTH the parse and the banner. Before dispatch, inspect the boot-provided `arguments_value` for the positional token `--fast-track`:
-  - If the token is present anywhere in `arguments_value`:
-    1. Set the invocation-scoped boolean `fast_track_active` to true.
-    2. Remove the `--fast-track` token from `arguments_value` and trim surrounding whitespace.
-    3. Print the exact line `> FAST-TRACK MODE ACTIVE` exactly once per invocation as ordinary conversation text (do not write it to any file); the banner never repeats within the run, including across replacement reconstruction.
-    4. Use the cleaned remainder as the effective request for the dispatch envelope and all downstream steps.
-  - If the token is absent:
-    1. Leave `fast_track_active` false.
-    2. Use `arguments_value` verbatim.
-
-  Presence-plus-strip only: while parsing fast-track inspect no other token's semantics. The activation signal travels everywhere as invocation-scoped session state named exactly `fast_track_active` (never written to `.openspec.yaml`, configuration, or any file) and is declared alongside the envelope for the worker's fast-track branches. The worker never parses `--fast-track` and never emits the banner.
+  Fetch @sai/policies/fast-track-flag.md. This coordinator is the owner: run its parse and banner on the boot-provided `arguments_value` before dispatch, and declare `fast_track_active` as an explicit true or false alongside the envelope for the worker's fast-track branches. The cleaned remainder is the effective request for the dispatch envelope and every downstream step.
 
   ## No-commit guard
 
-  Fetch @sai/policies/no-commit-guard.md and follow it for every dispatch of
-  the implementation worker. Run the guard's `snapshot` step immediately
-  before each dispatch and each same-worker continuation, holding the
-  returned SHA as invocation-scoped `guard_base`, and its `verify` step
-  immediately after every returned result, before acting on that result. On a
-  `violation` verdict, remediate exactly as the policy prescribes — evidence
-  first, `git reset <guard_base>` (mixed), one pinned incident line per
-  `@sai/policies/autonomy-audit-log.md`, then continue the route. The guard's
+  Fetch @sai/policies/no-commit-guard.md and follow its § Window pairing for
+  the implementation worker's stretches: `snapshot` opens a window, holding the returned SHA as
+  invocation-scoped `guard_base`, and `verify` closes it before each boundary. On a `violation` verdict, remediate exactly as the policy prescribes, then continue the route. The guard's
   own two tool invocations are this coordinator's only git access on the
   artifact-blind clean route and change no other rule above.
+
+  ## Bounded lookup authorization
+
+  Only a valid `needs_input` with `lookup_request.type: bounded-project-lookup`
+  and 1–5 ordered, matching per-item yes/no `questions` is a lookup request.
+  Validate the entire payload with `worker-report-validator.js` before any
+  decision. Never classify by question wording or approve a malformed payload.
+  Inspect each typed area, Step-linked reason, and scope: an exact path,
+  repo-wide search, or request outside the existing project-root/read-only
+  limits is not approvable. If a request is invalid or broader, stop safely
+  under the runner's malformed-payload route; do not fall back to a general
+  question or silently authorize it. The worker alone selects the gaps; the
+  coordinator only decides authorization and does no technical lookup.
+
+  With `fast_track_active=true` (standalone `/sai-3-implement --fast-track` or
+  the injected `/sai-build` implement segment), approve every valid item with
+  `answer_value: yes` without presenting the picker. Otherwise present each
+  question and its ordered yes/no options through the active harness's native
+  picker and collect one decision per item. Send one ordered
+  `lookup_decisions: [{id, answer_value}]` continuation to the same worker;
+  record the complete typed request and decisions as `lookup_request_history`
+  before sending. A `no` remains a denial and triggers the worker's convention
+  question fallback. Missing or mismatched decisions authorize nothing. This
+  grant never applies to design choices, unrelated questions, branch changes,
+  pushes, or safe-operations confirmations.
 
   ## Result loop
   Progress events are the only allowed nonterminal extension. For a progress
@@ -113,12 +126,10 @@
   event's `changed_files` into the invocation-scoped union in first-seen
   order, and continue the same worker with exactly `continue_after_progress` —
   protocol-only, never recorded as user input, opaque input history, or
-  pending feedback. For `needs_input`, present the worker's question and ordered labels through the active harness's native option picker, forward the selected value through `continuation_operation`, await the same worker's next payload, and re-present repeated requests without dispatching a second worker. On continuation failure, preserve the union and dispatch one fresh worker only after the original envelope and reconstruction instruction are available; never package artifact context yourself.
+  pending feedback. For `needs_input`, handle a validated typed lookup request under § Bounded lookup authorization first; otherwise present the worker's question and ordered labels through the active harness's native option picker, forward the selected value through `continuation_operation`, await the same worker's next payload, and re-present repeated requests without dispatching a second worker. On continuation failure, preserve the union and dispatch one fresh worker only after the original envelope and reconstruction instruction are available; never package artifact context yourself.
 
   On `failed`, print the blocking summary and accumulated changed-file list, then stop without the completion message and without a composition transition. On `cancelled`, print the clean-stop summary and accumulated changed-file list, then stop without claiming completion and without a composition transition. On `completed`, print the concise summary and accumulated changed-file list, then invoke the bound `terminal_navigation` action:
   - sole or final implement → then print exactly: `Implementation plan done in openspec/changes/{name}/. Review and run \`/sai-4-apply {name}\` (--fast-track) **in a new chat** when ready.` Stop immediately.
   - non-final chained implement → invoke only the composition-owned authorized transition to the consecutive successor; do not print the standalone MANDATORY STOP message.
 
 </TASK>
-
-Follow instruction on <TASK> step by step

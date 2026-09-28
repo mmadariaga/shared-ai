@@ -1,7 +1,7 @@
 # worktree-tool-engine Specification
 
 ## Purpose
-TBD - created by archiving change project-sai-tools-and-extract-worktree. Update Purpose after archive.
+Defines `sai/tools/worktree.js`, the engine behind `/sai-worktree`: its sub-commands, exit-code contract, and path resolution.
 ## Requirements
 ### Requirement: The whole state machine runs through the worktree tool
 
@@ -73,7 +73,7 @@ The consuming instruction SHALL surface a tool `message` and a stderr report ver
 
 ### Requirement: Tool path resolves through verbatim root candidates
 
-The consuming instruction SHALL locate the tool by taking the first existing candidate from an ordered list of verbatim path literals, project-local before user-global, and SHALL NOT compose an absolute path by joining a root string to a suffix. On Claude Code the candidates SHALL be `.claude/sai/tools/worktree.js` then `~/.claude/sai/tools/worktree.js`; on opencode they SHALL be `.opencode/sai/tools/worktree.js` then `~/.config/opencode/sai/tools/worktree.js`, and only when neither exists MAY the instruction run `opencode debug paths` and append the fixed suffix `sai/tools/worktree.js` to the config directory exactly as that command prints it.
+The consuming instruction SHALL locate the tool through `sai/policies/tool-resolution.md` (substituting `worktree.js`), which owns the candidate list, by taking the first existing candidate from an ordered list of verbatim path literals, project-local before user-global, and SHALL NOT compose an absolute path by joining a root string to a suffix. On Claude Code the candidates SHALL be `.claude/sai/tools/worktree.js` then `~/.claude/sai/tools/worktree.js`; on opencode they SHALL be `.opencode/sai/tools/worktree.js` then `~/.config/opencode/sai/tools/worktree.js`, and only when neither exists MAY the instruction run `opencode debug paths` and append the fixed suffix `sai/tools/worktree.js` to the config directory exactly as that command prints it.
 
 #### Scenario: The project-local copy wins
 - **WHEN** both a project-local and a user-global copy exist

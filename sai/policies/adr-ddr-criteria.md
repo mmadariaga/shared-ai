@@ -1,8 +1,6 @@
 # ADR/DDR Criteria and Routing Test (shared instruction)
 
-Shared decision-record criteria fetched by `sai/commands/design/steps/design.md` (which records the resolved family), `sai/commands/implement/instructions.md` Step 3 and `sai/commands/implement/steps/artifact-analysis.md` (which act on it), and `sai/commands/explore/steps/pipeline-direct-build.md` (Direct Build pass). The criteria and the routing test live ONLY here — no fetching body restates them inline.
-
-This instruction is flat: it takes no parameters and the fetch site supplies nothing.
+Shared decision-record criteria fetched by `sai/commands/design/steps/design.md` (which records the resolved family), `sai/commands/implement/steps/artifact-analysis.md` (which acts on it), and `sai/commands/explore/steps/pipeline-direct-build.md` (Direct Build pass). The criteria and the routing test live ONLY here — no fetching body restates them inline.
 
 ## The three criteria
 
@@ -16,7 +14,7 @@ If a decision does not meet all three, no record is created.
 
 ## The ordered routing test
 
-Only when all three criteria hold, resolve the decision's record family before anything else depends on it. A decision that encodes a **domain invariant** — a constraint the pipeline's domain imposes that must hold of the pipeline's artifacts, records, or behavior at all times, stated as a property of the domain rather than as the mechanism that upholds it (e.g. "a record's entry lives in exactly one index, its own family's"; "supersedes SHALL NOT cross families") — is a `ddr`; otherwise — a choice about how the pipeline is built (layout, mechanism, tooling, ordering, policy) — it is an `adr`.
+Only when all three criteria hold, resolve the decision's record family before anything else depends on it. A decision that encodes a **domain invariant** — a constraint the project's domain imposes on its records or behavior at all times, stated as the property rather than the mechanism that enforces it (for example, "each invoice has exactly one currency") — is a `ddr`; otherwise — a choice about how the project is built (layout, mechanism, tooling, ordering, policy) — it is an `adr`.
 
 The test is ordered, so a decision readable both ways resolves to `ddr`; there is no tie.
 

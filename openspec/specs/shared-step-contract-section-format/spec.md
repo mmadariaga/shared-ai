@@ -1,6 +1,10 @@
 # Shared Step Contract Section Format Specification
 
-## ADDED Requirements
+## Purpose
+
+This capability single-sources the per-step interfaces contract format so design and apply consumers generate and interpret it consistently.
+
+## Requirements
 
 ### Requirement: Canonical step contract section format for interfaces.md
 

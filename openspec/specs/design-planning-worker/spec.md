@@ -10,7 +10,6 @@ Define the design planning worker lifecycle: change resolution, prerequisite che
 
 ```yaml
 status: "completed" | "needs_input" | "failed" | "cancelled"
-emitted_on: string
 summary: string
 changed_files: string[]
 resolved_change_name?: string
@@ -22,7 +21,6 @@ options?: Array<{ label: string, value: string }>
 
 ```yaml
 event: "notice"
-emitted_on: string
 message: string
 changed_files: string[]
 ```
@@ -114,13 +112,13 @@ Completion SHALL verify `design.md`, `tasks.md`, AND `interfaces.md` before clai
 - **THEN** it has verified all three artifacts on disk
 - **AND** it does not claim completion when any of them is missing or empty
 
-### Requirement: Design lifecycle payloads carry emission time
+### Requirement: Design lifecycle payloads carry no time field
 
-The design worker SHALL include worker-authored `emitted_on` in notices, progress events, and terminal payloads while preserving worker-owned design workflow and continuation.
+The design worker SHALL return notices, progress events, and terminal payloads with no time field while preserving worker-owned design workflow and continuation; the validator's `validated_at` sidecar is the only observed time.
 
 #### Scenario: Design composes a closed result
 - **WHEN** the design worker emits a notice, progress event, or terminal result
-- **THEN** the payload includes its actual composition instant in `emitted_on`.
+- **THEN** the payload carries no time field and the worker reads no clock.
 
 ### Requirement: The design worker owns the complete technical design workflow
 The design worker SHALL own prerequisite checks, fast-track parsing, change selection, proposal and spec validation, specs approval state, codebase research, technical question resolution, design decisions, artifact generation, and artifact verification. The coordinator SHALL not share ownership. The worker SHALL parse the sole `arguments_value` request; wrapper-echo precedence and wrapper-label extraction do not exist.
@@ -155,7 +153,7 @@ The design worker SHALL own prerequisite checks, fast-track parsing, change sele
 
 #### Scenario: OpenSpec CLI prerequisite fails
 - **WHEN** `openspec --version` cannot verify an OpenSpec binary in PATH
-- **THEN** the worker SHALL return `failed` with exactly `openspec CLI not found. Install it first: https://github.com/Fission-AI/OpenSpec` and SHALL NOT parse fast-track or emit a notice
+- **THEN** the worker SHALL return `failed` with exactly `` openspec CLI not found. Install it first: https://github.com/Fission-AI/OpenSpec — To verify by hand, run: `openspec --version` `` and SHALL NOT parse fast-track or emit a notice
 
 #### Scenario: OpenSpec project prerequisite fails
 - **WHEN** the project-root `openspec/` directory does not exist

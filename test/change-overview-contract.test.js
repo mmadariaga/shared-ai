@@ -27,6 +27,8 @@ function exploreContract() {
   const exploreSources = [
     'sai/commands/explore/instructions.md',
     'sai/commands/explore/steps/common.md',
+    'sai/commands/explore/steps/review-edge-cases.md',
+    'sai/commands/explore/steps/implementation-details.md',
     'sai/commands/explore/steps/artifact-review-language-gate.md',
     'sai/commands/explore/steps/slicing-assessment.md',
     'sai/commands/explore/steps/crystallization-protocol.md',
@@ -207,9 +209,12 @@ test('Target State is the first section of design.md', () => {
 
 test('sentinel emitted when no step admits a contract', () => {
   const instruction = artifact('sai/commands/design/steps/interfaces.md');
+  const format = artifact('sai/policies/step-contract-format.md');
 
-  assert.match(instruction, /None — no step contracts/,
-    'the design instruction should define the exact None — no step contracts sentinel');
+  assert.match(instruction, /Fetch @sai\/policies\/step-contract-format\.md/,
+    'the design instruction should fetch the canonical step-contract format');
+  assert.match(format, /None — no step contracts/,
+    'the format policy should define the exact None — no step contracts sentinel');
 });
 
 test('Target State present in design surfaces, absent from interfaces template', () => {
@@ -377,15 +382,9 @@ test('design worker persists diagnostics for generator and parent-owned failure 
 
 test('opencode design worker permits budget dispatch beside explore', () => {
   const agent = matrixItem('opencode', 'design', 'agent');
-  const binding = matrixItem('opencode', 'design', 'binding');
 
   assert.match(agent, /explore:\s*allow/, 'permission.task should allow explore');
   assert.match(agent, /budget:\s*allow/, 'permission.task should allow budget dispatch beside explore');
-  assert.match(binding, /budget/, 'opencode design worker binding should mention budget dispatch');
-  assert.match(binding, /overview_generation|overview_language/,
-    'the design binding should carry the overview-generation option');
-  assert.match(binding, /continue_after_notice/,
-    'the design binding should carry the notice continuation option');
 });
 
 test('installation projects the shared change-overview instruction through the recursive commands projection', () => {
@@ -684,10 +683,10 @@ test('review output is a single findings block handed off without acceptance', (
   const blockEnd = nextWhen === -1 ? blockStart + 1600 : nextWhen;
   const block = explore.slice(blockStart, blockEnd);
 
-  assert.match(block, /Finding\s+H\d+/i,
-    'the findings block should open with a severity-prefixed identifier heading');
-  assert.match(block, /Finding\s+H1/i,
-    'the findings block should carry the Finding H1 label');
+  assert.match(block, /`- Identifier: H1`/,
+    'the findings block should render the severity-prefixed identifier on the contract Identifier line');
+  assert.doesNotMatch(block, /Finding\s+H\d+/i,
+    'the findings block should not use a heading layout the findings validator cannot parse');
   assert.match(block,
     /`?Severity`?[\s\S]{0,120}`?Artifact location`?[\s\S]{0,120}`?Issue`?[\s\S]{0,120}`?Recommended correction`?/,
     'the shared finding shape should list Severity, Artifact location, Issue, Recommended correction in order');
@@ -735,15 +734,15 @@ test('findings route to the design worker at the feedback gate without a handoff
     'the spec-amendment path should not offer /sai-1-spec for design corrections');
 });
 
-test('completed Review change-overview participates in reviewed-sai-2 marking', () => {
+test('completed Review change-overview forms findings only and marks no review item', () => {
   const explore = exploreContract();
 
-  assert.match(explore, /Review change-overview[\s\S]{0,4000}reviewed-sai-2/,
-    'the Review change-overview action should participate in reviewed-sai-2 marking');
-  assert.match(explore, /most recent completed review[\s\S]{0,400}reviewed-sai-2/,
-    'the most recent completed review should decide the reviewed-sai-2 marking');
-  assert.match(explore, /High[\s\S]{0,400}reviewed-sai-2/,
-    'a High finding should clear the reviewed-sai-2 marking');
+  assert.match(explore, /Review change-overview/,
+    'the Review change-overview action should remain available');
+  assert.match(explore, /Reviews form findings only and own no review-item `in_progress` state/,
+    'reviews form findings only');
+  assert.match(explore, /mark, clear, or render nothing for `reviewed-sai-1` or `reviewed-sai-2`; those references are inert/,
+    'the retired reviewed-sai-* items are inert');
 });
 
 // ─── Step 6: Eleven-artifact archive classification and status panel ─
@@ -775,12 +774,12 @@ test('backfilled changes skip change-overview alongside interfaces', () => {
 test('archive synchronizes delta specs via CLI without presenting a sync choice', () => {
   const archive = artifact('sai/commands/archive/instructions.md');
 
-  assert.match(archive, /openspec archive[\s\S]*--yes --json/,
+  assert.match(archive, /`openspec archive <name> --yes --json`/,
     'archive should use the CLI as the sync + move primitive');
-  assert.match(archive, /CLI[\s\S]*deterministic[\s\S]*validation/,
+  assert.match(archive, /performs\s+the actual synchronization and move in one validated\s+operation/,
     'archive should reference CLI validation as the scenario-preservation guarantee');
-  assert.match(archive, /no delta specs exist[\s\S]*CLI archives[\s\S]*without modifying/,
-    'archive should handle the no-delta case via CLI');
+  assert.match(archive, /never\s+duplicates, that work/,
+    'archive should report rather than duplicate the CLI sync');
 });
 
 test('status panel lists the 11 artifact ids in order and derives overview state', () => {
@@ -964,13 +963,11 @@ test('set exhaustion and the active exit token both emit a minimal close acknowl
   assert.match(explore, /zero reviews|no reviews (?:occurred|were (?:performed|made))|without (?:any|a single) review/i);
 });
 
-test('the active exit token resolves the active review item to pending exactly as Skip does, without marking or clearing evidence', () => {
+test('the active exit token leaves route state unchanged exactly as Skip does', () => {
   const explore = exploreContract();
 
-  assert.match(explore, /active-loop `exit` token[\s\S]{0,360}`?pending`?/i);
-  assert.match(explore, /Skip[\s\S]{0,260}`?pending`?/i);
-  assert.match(explore, /(?:same as|exactly as|identical to)[\s\S]{0,180}Skip/i);
-  assert.match(explore, /(?:active-loop `exit` token|Skip)[\s\S]{0,360}(?:does not mark|without marking|does not clear|without clearing)/i);
+  assert.match(explore, /When the active-loop `exit` token fires, terminate the loop immediately, leave later tracked changes unprocessed, leave route state unchanged/);
+  assert.match(explore, /Selecting `Skip`, firing the active-loop `exit` token, or closing the loop leaves route state/);
 });
 
 test('contract coverage names both close paths including zero-review exit with identical closure across harnesses', () => {
@@ -1381,17 +1378,11 @@ test('RED skeleton oracle pins the single-source design artifact contracts', () 
   assert.doesNotMatch(designTasksInstruction, /### Local files[\s\S]*?use line ranges/,
     'tasks.md instruction Local files section must not contain "use line ranges" instruction');
 
-  const instructionsFile = artifact('sai/commands/implement/instructions.md');
-  assert.match(instructionsFile, /—[\s\S]*?path or URL is the text before/,
-    'instructions.md must mention the — separator and path/URL extraction');
-  assert.match(instructionsFile, /with line ranges when specified/,
-    'instructions.md must still mention "(with line ranges when specified)"');
-
   const docReviewFile = artifact('sai/commands/implement/steps/documentation-review.md');
   assert.match(docReviewFile, /—[\s\S]*?path or URL is the text before/,
     'documentation-review.md must mention the — separator and path/URL extraction');
-  assert.match(docReviewFile, /with line ranges when specified/,
-    'documentation-review.md must still mention "(with line ranges when specified)"');
+  assert.doesNotMatch(docReviewFile, /line ranges/,
+    'documentation-review.md must not read line ranges: Required Documentation lists whole files');
 
   assert.match(interfaces, /^\*\*Interfaces\*\*/m,
     'interfaces.md must contain the **Interfaces** marker');

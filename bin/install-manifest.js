@@ -10,6 +10,7 @@ const {
 
 const STRATEGIES = Object.freeze([
   'copy',
+  'copy-if-absent',
   'tunable-seed',
   'merge-jsonc',
   'forwarding-manifest',
@@ -58,12 +59,6 @@ const MATRIX_ENTRY_REQUIRED_FIELDS = Object.freeze([
   'workerName',
   'workerContract',
   'bindingStem',
-  'dispatchPrimitive',
-  'initialDispatch',
-  'continuationLiteral',
-  'replacementFields',
-  'helperPermissions',
-  'progressDeclaration',
   'claudeAgent',
   'opencodeAgent',
 ]);

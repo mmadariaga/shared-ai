@@ -10,7 +10,6 @@ const {
   loadInstallManifest,
   expandInstallManifest,
   expandRetirementManifest,
-  matrixRenderFor,
 } = require('../bin/install-manifest.js');
 const { MANAGED_WORKERS } = require('../bin/install-flow.js');
 
@@ -652,12 +651,6 @@ test('Installer projects deterministic routed performance surfaces with ownershi
       strategy: 'copy',
       ownership: 'managed',
     },
-    'sai/commands/performance/invocation.md': {
-      harnesses: ['claude', 'opencode'],
-      destination: 'commands/performance/invocation.md',
-      strategy: 'copy',
-      ownership: 'managed',
-    },
     'sai/commands/performance/worker.md': {
       harnesses: ['claude', 'opencode'],
       destination: 'commands/performance/worker.md',
@@ -759,24 +752,6 @@ test('compatibility and policy projections resolve for every supported harness',
      assert.equal(projections.some(p => p.destinationPath.endsWith(path.join('compat', 'implement-invocation.md'))), false);
      assert.equal(projections.some(p => p.destinationPath.endsWith(path.join('compat', 'sai-2-design-core.md'))), false);
      assert.equal(projections.some(p => p.destinationPath.endsWith(path.join('compat', 'sai-3-implementation-core.md'))), false);
-  }
-});
-
-test('design matrix projections carry opt-in overview generation semantics for both harnesses', () => {
-  const repoRoot = path.join(__dirname, '..');
-  const manifest = loadInstallManifest(repoRoot);
-  const designEntry = manifest['worker-matrix'].entries.find(entry => entry.phase === 'design');
-  assert.ok(designEntry, 'the design worker matrix entry should exist');
-  assert.match(designEntry.overviewGeneration, /only when --overview-lang is present and valid/);
-  assert.doesNotMatch(designEntry.overviewGeneration, /flag was absent|using English when/i);
-
-  for (const harness of ['claude', 'opencode']) {
-    const binding = matrixRenderFor(manifest, harness, repoRoot)
-      .find(item => item.kind === 'binding' && item.phase === 'design');
-    assert.ok(binding, `${harness} should render the design binding`);
-    assert.match(binding.text, /overview_generation/);
-    assert.match(binding.text, /only when --overview-lang is present and valid/);
-    assert.doesNotMatch(binding.text, /flag was absent|using English when/i);
   }
 });
 

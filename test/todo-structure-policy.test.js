@@ -218,8 +218,12 @@ test('step 7 todo policy keeps Explore-only manual review, supervised Review Eng
     'the todo policy should remain limited to progress-list semantics');
   assert.doesNotMatch(source, /automatic worker-owned planning-artifact review loop|worker[- ]owned[\s-]+(?:planning[- ]artifact )?review (?:loop|pass)/i,
     'the finding contract must not retain the retired worker-owned loop');
-  assert.match(combined, /(?:manual|interactive)[\s\S]{0,220}(?:only|solely|exclusively)[\s\S]{0,180}(?:Explore|sai-explore)|(?:Explore|sai-explore)[\s\S]{0,180}(?:manual|interactive)[\s\S]{0,220}(?:only|solely|exclusively)/i,
-    'manual review must be an Explore-only surface');
+  const reviewLoop = fs.readFileSync(
+    path.join(repoRoot, 'sai/commands/explore/steps/review-loop.md'),
+    'utf8',
+  );
+  assert.match(reviewLoop, /Post-crystallization review loop \(sai-explore only\)[\s\S]{0,600}user-triggered/,
+    'manual review must be an Explore-only, user-triggered surface');
   assert.match(combined, /supervis(?:ed|ion)[\s\S]{0,320}Review Engine|Review Engine[\s\S]{0,320}supervis(?:ed|ion)/i,
     'supervised review must use the Review Engine surface');
   assert.match(combined, /workers?[\s\S]{0,220}(?:consume|consumers?|receive|apply)[\s\S]{0,220}(?:external )?(?:findings?|review evidence)/i,

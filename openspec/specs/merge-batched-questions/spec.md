@@ -1,7 +1,7 @@
 # merge-batched-questions Specification
 
 ## Purpose
-TBD - created by archiving change merge-batched-questions. Update Purpose after archive.
+Defines how `/sai-merge` groups its closed decisions into batched user trips (Batch 1 before the launch, Batch 2 on the first conflict) and the batch shape the worker-report validator accepts.
 
 ## Requirements
 

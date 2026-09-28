@@ -10,7 +10,7 @@ const repoRoot = path.join(__dirname, '..');
 const PATHS = {
   redWorker: 'sai/commands/apply/red-worker.md',
   greenWorker: 'sai/commands/apply/green-worker.md',
-  implementInstructions: 'sai/commands/implement/instructions.md',
+  implementCommon: 'sai/commands/implement/steps/common.md',
   implementationTemplate: 'sai/commands/implement/implementation-plan.template.md',
   agents: 'AGENTS.md',
 };
@@ -26,92 +26,86 @@ function artifact(relativePath) {
 test('the RED worker scope grants a bounded retirement exception for plan-named retired test files only', () => {
   const red = artifact(PATHS.redWorker);
 
-  const blindLine = red.indexOf('Blind Test-Writer Allowed files contain only plan-authorized test and RED/interface-stub files and exclude production files.');
-  assert.ok(blindLine >= 0, 'the blind allowed-files anchor must remain byte-exact');
-  const exceptionIndex = red.search(/Bounded retirement exception:/);
-  assert.ok(exceptionIndex >= 0, 'the scope must declare the bounded retirement exception');
-  assert.ok(exceptionIndex > blindLine,
-    'the retirement exception must extend, not replace, the blind allowed-files rule');
+  const allowedLine = red.indexOf('Tests and interface stubs the plan authorizes for this Step. Production files are outside them.');
+  assert.ok(allowedLine >= 0, 'the blind allowed-files rule must remain');
+  const exceptionIndex = red.search(/\*\*Retired tests\.\*\*/);
+  assert.ok(exceptionIndex > allowedLine,
+    'the retirement exception must extend, not replace, the allowed-files rule');
 
-  assert.match(red, /plan names obsolete test files as retired[\s\S]{0,200}exact repository-relative path/,
+  assert.match(red, /plan names obsolete test files as retired, each by exact repo-relative path/,
     'the exception must key on plan-named retired files with exact repository-relative paths');
-  assert.match(red, /MAY remove exactly those plan-named retired files and nothing else/,
+  assert.match(red, /MAY remove exactly those files and nothing else/,
     'the worker may remove exactly the plan-named retired files and nothing else');
-  assert.match(red, /grants no read access[\s\S]{0,160}(?:MUST NOT|never|without)[\s\S]{0,120}reading production files or change artifacts/i,
+  assert.match(red, /needs no read of production files or change artifacts, and grants none/,
     'removal must grant no read access to production files or change artifacts');
-  assert.match(red, /every path not named as retired remains forbidden to write, modify, or remove/,
+  assert.match(red, /Every path not named as retired stays forbidden to remove\./,
     'every non-retired path must stay forbidden');
 });
 
 test('the RED worker keeps its absolute boundaries outside the retirement exception', () => {
   const red = artifact(PATHS.redWorker);
   const green = artifact(PATHS.greenWorker);
+  const common = artifact('sai/commands/apply/worker-common.md');
 
-  assert.match(red, /Read any production source file outside the blindness fallback\./,
+  assert.match(red, /read production source only for that same fallback/,
     'the production-read prohibition must remain intact');
-  assert.match(red, /A worker MUST NOT remove the `\.tmp\/` parent\./,
-    'the scratch-parent prohibition must remain intact');
-  assert.match(red, /MUST NOT run any git operation or create any commit\./,
-    'the git prohibition must remain intact');
-  assert.match(red, /MUST NOT edit or modify `implementation\.md` or mark any checkbox\./,
-    'the plan-artifact prohibition must remain intact');
   for (const worker of [red, green]) {
-    assert.match(worker, /Files modified MUST contain only non-scratch paths and MUST exclude every path below `\.tmp\/\{change-name\}\/`\./,
-      'the field-8 scratch exclusion rule must remain byte-exact on both workers');
+    assert.ok(worker.includes('Fetch @sai/commands/apply/worker-common.md and follow it exactly.'),
+      'both workers must load the shared worker rules');
   }
+  assert.match(common, /Leave the `\.tmp\/` parent in place\./,
+    'the scratch-parent prohibition must remain intact');
+  assert.match(common, /Run no git operation and create no commit\./,
+    'the git prohibition must remain intact');
+  assert.match(common, /Leave `implementation\.md` and every checkbox untouched\./,
+    'the plan-artifact prohibition must remain intact');
+  assert.match(common, /Field 8 lists no scratch path\./,
+    'the field-8 scratch exclusion rule must remain');
   assert.doesNotMatch(green, /retired/i,
     'GREEN must not gain any retirement authorization of its own');
 });
 
 test('a recovery continuation inherits the removal authorization for the same plan-named retired files only', () => {
   const red = artifact(PATHS.redWorker);
-  const start = red.indexOf('## Recovery Continuation');
-  assert.ok(start >= 0, 'the Recovery Continuation section must exist');
-  const recovery = red.slice(start);
-
-  assert.match(recovery, /recovery continuation inherits[\s\S]{0,200}(?:bounded )?retirement(?: removal)? authorization/i,
-    'the continuation must inherit the retirement removal authorization');
-  assert.match(recovery, /inherits[\s\S]{0,320}exactly the same plan-named retired test files and no others/i,
-    'the inheritance must be limited to the same plan-named retired files only');
+  assert.match(red, /A recovery continuation keeps this permission for exactly the same files and no others\./,
+    'the continuation must inherit the retirement authorization for the same plan-named files only');
 });
 
 // ─── (b) report field 8 declares removed paths ──────────────────────────────
 
 test('report field 8 declares removed paths alongside written and created ones', () => {
+  const common = artifact('sai/commands/apply/worker-common.md');
   const red = artifact(PATHS.redWorker);
-  const fieldStart = red.indexOf('8. **Files modified**');
+  const fieldStart = common.indexOf('8. **Files modified**');
   assert.ok(fieldStart >= 0, 'field 8 must remain declared');
-  const field = red.slice(fieldStart, red.indexOf('\n9.', fieldStart));
+  const field = common.slice(fieldStart, common.indexOf('\n9.', fieldStart));
 
-  assert.match(field, /non-scratch paths written, created, or removed/,
+  assert.match(field, /every non-scratch path you wrote, created, or removed/,
     'field 8 must cover written, created, and removed paths');
-  assert.match(field, /plan-named retired test file removed under the bounded retirement exception is declared here by its exact repository-relative path/,
+  assert.match(red, /declaring each in field 8 by that path/,
     'removed retired files must be declared by exact repository-relative path');
-  assert.match(field, /An explicitly present empty `Files modified` list is valid; an omitted field 8 is malformed\./,
-    'the pinned field-8 empty-list rule must remain byte-exact');
+  assert.match(field, /an empty list is valid, a missing field makes the report malformed/,
+    'the field-8 empty-list rule must remain');
 });
 
 // ─── (c) planner guidance: placement, green-direct exclusion, checklist ─────
 
-test('implement instructions confine retirements to RED blocks with per-file absence checklist items', () => {
-  const instructions = artifact(PATHS.implementInstructions);
-
-  assert.match(instructions, /\*\*Test retirements:\*\*[\s\S]{0,240}ONLY inside that step's RED block/,
-    'retirements must live only inside RED blocks');
-  assert.match(instructions, /exact repository-relative path, marked `retired`/,
-    'each retirement must carry its exact repository-relative path marked retired');
-  assert.match(instructions, /green-direct Step \(no RED block\) never carries retirements/,
-    'a green-direct Step must never carry retirements');
-  assert.match(instructions, /one Verification Checklist item per retired file asserting that file's absence/,
-    'each retired file needs one absence checklist item');
-  assert.match(instructions, /coordinator runs it after the RED dispatch returns and before GREEN may be dispatched/,
-    'the coordinator must run the absence item between RED and GREEN');
-
-  const hardRulesStart = instructions.indexOf('## Hard Rules');
+test('implement hard rules confine retirements to RED blocks with per-file absence checklist items', () => {
+  const common = artifact(PATHS.implementCommon);
+  const hardRulesStart = common.indexOf('## Hard Rules');
   assert.ok(hardRulesStart >= 0, 'Hard Rules must exist');
-  assert.match(instructions.slice(hardRulesStart),
-    /\*\*Test retirements:\*\* A Step retires obsolete test files only inside its RED block/,
-    'Hard Rules must restate the retirement placement rule');
+  const hardRules = common.slice(hardRulesStart);
+
+  assert.match(hardRules, /\*\*Test retirements:\*\* A Step retires obsolete test files only inside its RED block/,
+    'retirements must live only inside RED blocks');
+  assert.match(hardRules, /exact repository-relative path as `retired`/,
+    'each retirement must carry its exact repository-relative path marked retired');
+  assert.match(hardRules, /green-direct Step \(no RED block\) never carries retirements/,
+    'a green-direct Step must never carry retirements');
+  assert.match(hardRules, /one Verification Checklist item asserting its absence/,
+    'each retired file needs one absence checklist item');
+  assert.match(hardRules, /run by the coordinator after the RED dispatch returns and before GREEN may be dispatched/,
+    'the coordinator must run the absence item between RED and GREEN');
 });
 
 test('the implementation plan template carries the RED-block retirement rule', () => {

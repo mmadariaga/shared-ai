@@ -2,11 +2,11 @@
 
 ## Status
 
-Accepted
+Superseded — `sai-implement-branch-prompt` now delegates branch selection to the plan-level prompt, so each pipeline run asks once.
 
 ## Context
 
-The `sai-apply-branch-prompt` change embeds a 3-option branch-selection prompt inside the `<plan_template>` `## Prerequisites` block of `sai/instructions/implement.md`. This prompt runs at `/sai-4-apply` time (plan-level), baked into every generated `implementation.md`.
+The `sai-apply-branch-prompt` change embeds a 3-option branch-selection prompt inside the `## Prerequisites` block of the implementation plan template (now `sai/commands/implement/implementation-plan.template.md`). This prompt runs at `/sai-4-apply` time (plan-level), baked into every generated `implementation.md`.
 
 A sibling capability spec, `openspec/specs/sai-implement-branch-prompt/spec.md`, already defines an agent-level branch prompt that runs at `/sai-3-implement` runtime (before plan generation). The proposal explicitly states the sibling spec is NOT modified by this change.
 
@@ -21,10 +21,12 @@ Accept the documented duplication. The plan-level prompt is self-contained in ea
 | Option | Pro | Con |
 |---|---|---|
 | Suppress the sibling spec when the plan-level prompt is present | Single prompt per run | Expands scope beyond the stated `## Prerequisites`-only edit; the proposal forbids modifying the sibling spec |
-| Merge both prompts into a single shared instruction fetched by both `/sai-3-implement` and the plan template | One source of truth | Requires touching multiple instruction files; breaks the self-contained nature of `<plan_template>` |
+| Merge both prompts into a single shared instruction fetched by both `/sai-3-implement` and the plan template | One source of truth | Requires touching multiple instruction files; breaks the self-contained nature of the plan template |
 | Accept documented duplication (chosen) | Keeps the change scoped to one block; plan-level prompt is self-contained and survives archival of the change directory | User is asked twice per full pipeline run |
 
 ## Consequences
+
+- Superseded outcome: the sibling spec was consolidated; `/sai-3-implement` asks no branch question and the plan-level prompt in `implementation.md` is the only branch selection.
 
 - A user running `/sai-3-implement` then `/sai-4-apply` may be asked about branch selection twice. The plan-level prompt is authoritative at `/sai-4-apply` time; the earlier agent-level prompt may be treated as informational.
 - After `/sai-archive`, two specs in `openspec/specs/` describe overlapping branch-prompt behavior: `sai-implement-branch-prompt` (sibling) and `sai-apply-branch-prompt` (this change). A future change may consolidate them.
@@ -33,6 +35,6 @@ Accept the documented duplication. The plan-level prompt is self-contained in ea
 ## Related
 
 - `openspec/changes/sai-apply-branch-prompt/design.md` — decision D4
-- `openspec/specs/sai-implement-branch-prompt/spec.md` — sibling spec (not modified)
+- `openspec/specs/sai-implement-branch-prompt/spec.md` — sibling spec, since consolidated into the plan-level prompt
 - `openspec/changes/sai-apply-branch-prompt/proposal.md` — Additional Notes (documented trade-off)
 

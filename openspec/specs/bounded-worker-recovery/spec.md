@@ -522,7 +522,7 @@ When Cause Locus is `owner-in-run` and the owner worker returns a successful `co
 
 ### Requirement: The recovery ledger is owned by a registered stage machine
 
-The per-recovery-scope recovery ledger SHALL be owned by the `recovery-ledger@1` stage machine registered in `sai-state/registry.js`. Before spending a slot the coordinator SHALL consult that machine with the raw ordered tuple `(artifact path, concrete point, authorized correction boundary)`, and the machine SHALL perform the normalization, key-equality comparison, duplicate detection and slot accounting. Normalization SHALL canonicalize the artifact path as a repository-relative path with `/` separators and a leading `./` removed, and SHALL trim and collapse non-semantic whitespace in the concrete point. The machine SHALL report a consumed slot through the existing emit wire `stage` field as a string ordinal, and SHALL report every zero-slot outcome through the existing `rejected` field carrying a value from the closed stopping-reason vocabulary. The machine SHALL route to no step file and SHALL always return `next.follow` as `none`. The machine SHALL additionally own the coordinator's own attempt budget for the same recovery scope: three coordinator attempts per recovery scope, tracked in machine state as `coordinator_attempts` and counted separately from the three worker slots. A coordinator-attempt signal SHALL carry the same ordered diagnosis tuple as a worker attempt and SHALL be normalized and compared against a coordinator-owned key ledger for the scope: a signal with no concrete key SHALL spend zero attempts and reject with `unresolved cause`, a key already attempted at coordinator level in that scope SHALL spend zero attempts and reject with `duplicate diagnosis`, and only a new key SHALL spend one attempt and report the resulting ordinal through the existing `stage` field; once three attempts are spent it SHALL reject the next coordinator attempt through the existing `rejected` field with `exhaustion` and SHALL spend nothing. Entering a new recovery scope SHALL clear the ledger — for a Step-executing adapter through a `step-entry` signal naming the Step, for an adapter that executes no Steps through `reset <id> recovery-ledger@1` at each composition-segment boundary — clearing the worker slots and the coordinator attempts together and leaving every other machine in the same session untouched. A `step-entry` signal SHALL grant that fresh pair of budgets only on the first entry to that Step in the run, reporting `step_entry` as `first`; a Step already entered SHALL report `step_entry` as `re-entry` and SHALL retain the worker slots and coordinator attempts already spent in it; a signal carrying no usable Step identifier SHALL report `step_entry` as `unidentified` and SHALL grant nothing. Every machine outcome, including the read-only projection, SHALL report `budgets` as `{worker: {spent, limit}, coordinator: {spent, limit}}`, and an exhaustion SHALL additionally report `exhausted` as `worker` or `coordinator` naming the budget that ran out. `bin/sai-state.js` SHALL carry the closed machine-authored observability field set `budgets`, `exhausted` and `step_entry` verbatim onto the emit wire, into the persisted merged wire, and into the stored last outcome, adding no other wire field. The coordinator SHALL retain ownership of constructing the diagnosis and assigning Cause Locus.
+The per-recovery-scope recovery ledger SHALL be owned by the `recovery-ledger@1` stage machine registered in `sai-state/registry.js`. Before spending a slot the coordinator SHALL consult that machine with the raw ordered tuple `(artifact path, concrete point, authorized correction boundary)`, and the machine SHALL perform the normalization, key-equality comparison, duplicate detection and slot accounting. Normalization SHALL canonicalize the artifact path as a repository-relative path with `/` separators and a leading `./` removed, and SHALL trim and collapse non-semantic whitespace in the concrete point. The machine SHALL report a consumed slot through the existing emit wire `stage` field as a string ordinal, and SHALL report every zero-slot outcome through the existing `rejected` field carrying a value from the closed stopping-reason vocabulary. The machine SHALL route to no step file and SHALL always return `next.follow` as `none`. The machine SHALL additionally own the coordinator's own attempt budget for the same recovery scope: three coordinator attempts per recovery scope, tracked in machine state as `coordinator_attempts` and counted separately from the three worker slots. A coordinator-attempt signal SHALL carry the same ordered diagnosis tuple as a worker attempt and SHALL be normalized and compared against a coordinator-owned key ledger for the scope: a signal with no concrete key SHALL spend zero attempts and reject with `unresolved cause`, a key already attempted at coordinator level in that scope SHALL spend zero attempts and reject with `duplicate diagnosis`, and only a new key SHALL spend one attempt and report the resulting ordinal through the existing `stage` field; once three attempts are spent it SHALL reject the next coordinator attempt through the existing `rejected` field with `exhaustion` and SHALL spend nothing. Entering a new recovery scope SHALL clear the ledger — for a Step-executing adapter through a `step-entry` signal naming the Step, for an adapter that executes no Steps through `reset <id> recovery-ledger@1` at each composition-segment boundary — clearing the worker slots and the coordinator attempts together and leaving every other machine in the same session untouched. A `step-entry` signal SHALL grant that fresh pair of budgets only on the first entry to that Step in the run, reporting `step_entry` as `first`; a Step already entered SHALL report `step_entry` as `re-entry` and SHALL retain the worker slots and coordinator attempts already spent in it; a signal carrying no usable Step identifier SHALL report `step_entry` as `unidentified` and SHALL grant nothing. Every machine outcome, including the read-only projection, SHALL report `budgets` as `{worker: {spent, limit}, coordinator: {spent, limit}}`, and an exhaustion SHALL additionally report `exhausted` as `worker` or `coordinator` naming which budget ran out. `bin/sai-state.js` SHALL carry the closed machine-authored observability field set `budgets`, `exhausted`, `step_entry`, `retry_grant`, `retry_cycle`, and `attempt_history` verbatim onto the emit wire, into the persisted merged wire, and into the stored last outcome. The machine SHALL retain the active Step and ordered exhausted-cycle history for an apply Step scope. The machine SHALL accept `{kind: authorized-step-retry, step: "Step N", authorized: true}` only when the named Step is active and already entered and at least one budget is exhausted. On acceptance it SHALL archive the exhausted cycle's normalized worker and coordinator keys and both spent tallies in `attempt_history`, clear both active ledgers and counters together, and return `retry_grant: granted` with the next cycle number. An unaccepted event SHALL change neither budgets nor history. The coordinator SHALL retain ownership of constructing the diagnosis and assigning Cause Locus.
 
 #### Scenario: Distinct diagnosis keys consume successive slots
 
@@ -596,7 +596,22 @@ The per-recovery-scope recovery ledger SHALL be owned by the `recovery-ledger@1`
 #### Scenario: Observability fields reach the emit wire
 
 - **WHEN** a `recovery-ledger@1` signal is emitted through `bin/sai-state.js`
-- **THEN** the emitted payload and the stored last outcome SHALL carry the machine's `budgets`, `exhausted` and `step_entry` values verbatim
+- **THEN** the emitted payload and the stored last outcome SHALL carry the machine's `budgets`, `exhausted`, `step_entry`, `retry_grant`, `retry_cycle`, and `attempt_history` values verbatim
+
+#### Scenario: Unauthorized retry preserves the exhausted cycle
+
+- **WHEN** an authorized retry event is missing authorization, names a non-active Step, or arrives before either budget is exhausted
+- **THEN** the machine SHALL reject it without clearing ledgers, changing budgets, or appending attempt history
+
+#### Scenario: Accepted retry archives and renews a cycle
+
+- **WHEN** an authorized retry event names the active exhausted Step
+- **THEN** the machine SHALL archive the exhausted cycle with its keys and tallies, return `retry_grant: granted`, and reset both budgets to zero spent
+
+#### Scenario: Re-entry preserves archived history
+
+- **WHEN** the coordinator sends ordinary `step-entry` after an accepted retry
+- **THEN** the machine SHALL report `re-entry`, retain the archived cycle history, and not grant another budget
 
 ### Requirement: Cause Locus is decided by ownership, not artifact kind
 
@@ -619,7 +634,7 @@ The shared bounded-recovery policy SHALL decide `out-of-scope` by ownership and 
 
 ### Requirement: Recovery hand-backs read budget tallies from the ledger response
 
-A recovery hand-back SHALL take `attempts_spent` and the remaining capacity from the ledger machine's response rather than from recalled conversation text. The machine SHALL supply those tallies on every outcome as `budgets` — `{worker: {spent, limit}, coordinator: {spent, limit}}` — and SHALL name the budget that ran out as `exhausted` on an exhaustion, so a long unattended run never has to remember what each budget spent.
+A recovery hand-back SHALL take `attempts_spent` and the remaining capacity from the ledger machine's response rather than from recalled conversation text. The machine SHALL supply those tallies on every outcome as `budgets` — `{worker: {spent, limit}, coordinator: {spent, limit}}` — and SHALL name the budget that ran out as `exhausted` on an exhaustion, so a long unattended run never has to remember what each budget spent. When an authorized Step retry has occurred, the hand-back SHALL also read the retained `attempt_history` and report the prior cycles and new cycle from the ledger response. These temporary values SHALL never enter project artifacts.
 
 #### Scenario: An escalation names both tallies from the store
 
@@ -630,3 +645,17 @@ A recovery hand-back SHALL take `attempts_spent` and the remaining capacity from
 
 - **WHEN** a hand-back reports exhaustion inside a recovery scope
 - **THEN** it SHALL name the exhausted budget from the response's `exhausted` value rather than inferring which budget ran out
+
+#### Scenario: An authorized retry hand-back reports retained cycles
+
+- **WHEN** the coordinator reports a Step after an authorized retry
+- **THEN** it SHALL take prior cycle history and the new cycle from the ledger response rather than reconstructing them from conversation memory
+
+### Requirement: Authorized Step retry is an apply-only recovery exception
+
+The shared recovery policy SHALL permit the authorized-step-retry event only for the active Step scope governed by apply. The exception SHALL renew both budgets together without changing recovery eligibility, worker ownership, verification, commit gates, safe-operations confirmations, or the no-automatic-chain rule. Other phase adapters, ordinary Step re-entry, and `--fast-track` SHALL receive no equivalent automatic grant.
+
+#### Scenario: Apply alone can renew an exhausted Step
+
+- **WHEN** apply receives explicit authorization for its active exhausted Step
+- **THEN** only that Step's ledger cycle is archived and renewed while all other recovery scopes retain their existing behavior

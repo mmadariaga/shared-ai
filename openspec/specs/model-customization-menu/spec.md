@@ -1,6 +1,8 @@
 ## Purpose
 TTY-only post-setup customization menu and isolated harness adapters that apply a selected model and optional effort or variant to project-local worker and command overrides for both supported harnesses, with an explicit scope screen and per-family checklist labeling.
+
 ## Requirements
+
 ### Requirement: Post-setup customization menu
 
 The setup flow MUST present a post-setup menu only after all existing setup operations have completed. The menu MUST provide exactly five actions: `Customize models`, `Reset to default models`, `Save preset`, `Load preset`, and `Exit`. The menu MUST be presented as a navigable single-select list: up/down arrows move the `>` cursor and Enter (or space) confirms the highlighted action. Selecting `Save preset` or `Load preset` MUST route harness selection to the save-preset or load-preset screen with no scope screen.
@@ -154,81 +156,106 @@ The target checklist SHALL keep stable family-prefixed selection values separate
 - **THEN** the SETTING column SHALL show `unavailable` as plain column text with no ANSI wrapper and the target SHALL remain selectable
 
 ### Requirement: Claude settings selection
-For every Claude Code customization run with a non-empty confirmed subset, the Claude Code adapter MUST invoke exactly one navigable single-select frame whose options are derived from the adapter-owned static Claude settings catalog. An entry with an `efforts` array MUST be displayed as a concrete model and effort choice together, using the `<model> | <effort>` form; an entry without an `efforts` array MUST be displayed as the model alone. The catalog MUST be the authoritative source for the available model identifiers and each model's effort values, MUST contain at least one valid model entry, and MUST contain no placeholder values such as `<model>` or `<effort>`. The selected result MUST contain only catalog members: `{ model, effort }` for an effort-bearing entry or `{ model }` with no `effort` property for a model-only entry. If the catalog is unavailable or contains no valid model entries, the selector MUST return no settings and MUST allow customization to complete without writing a target. The selector MUST NOT perform Claude live model discovery, claim that end-to-end customization is fake, or perform OpenCode provider, model, or variant discovery. The collected values MUST be forwarded to the persistent local-override operation. The OpenCode adapter MUST continue to use its dependent provider-to-model-to-variant selection instead of this combined frame.
+
+For every Claude Code customization run with a non-empty confirmed subset, the Claude Code adapter MUST invoke exactly one navigable single-select frame whose options are derived from the adapter-owned static Claude settings catalog. An entry with an `efforts` array MUST be displayed as a concrete model and effort choice together, using the `<model> | <effort>` form; an entry without an `efforts` array MUST be displayed as the model alone. The catalog MUST be the authoritative source for the available model identifiers and each model's effort values, MUST contain at least one valid model entry, and MUST contain no placeholder values such as `<model>` or `<effort>`. The selected result MUST contain only catalog members: `{ model, effort }` for an effort-bearing entry or `{ model }` with no `effort` property for a model-only entry. If the catalog is unavailable or contains no valid model entries, or the selector returns a null or invalid setting, the post-setup menu SHALL return status `failed` with a diagnostic naming the cause and SHALL configure no target on that path. The selector MUST NOT perform Claude live model discovery, claim that end-to-end customization is fake, or perform OpenCode provider, model, or variant discovery. The collected values MUST be forwarded to the persistent local-override operation. The OpenCode adapter MUST continue to use its dependent provider-to-model-to-variant selection instead of this combined frame.
 
 #### Scenario: Static Claude catalog contains the current model and effort set
+
 - **WHEN** the Claude adapter loads its built-in settings catalog
 - **THEN** the catalog SHALL contain `opus` with efforts `low`, `medium`, `high`, `xhigh`, and `max`; `sonnet` with the same five efforts; `fable` with the same five efforts; and `haiku` with no `efforts` array
 
 #### Scenario: Claude selection returns concrete model and effort
+
 - **WHEN** a non-empty Claude Code subset reaches settings selection and the user confirms an effort-bearing catalog option such as `sonnet | medium`
 - **THEN** the selector SHALL return exactly the concrete catalog values `{ model: 'sonnet', effort: 'medium' }`
 
 #### Scenario: Claude selection returns a model without effort
+
 - **WHEN** a non-empty Claude Code subset reaches settings selection and the user confirms the `haiku` catalog entry, whose entry has no `efforts` array
 - **THEN** the frame SHALL display `haiku` alone, and the selector SHALL return exactly `{ model: 'haiku' }` without a top-level `effort` property
 
 #### Scenario: Claude selection does not use placeholders
+
 - **WHEN** the Claude Code settings frame is rendered
 - **THEN** no selectable option SHALL use `<model>` or `<effort>` placeholder values, and a model-only option SHALL NOT fabricate an effort label
 
 #### Scenario: Claude selection is bounded by per-model catalog entries
+
 - **WHEN** the Claude adapter-owned catalog contains model entries with model-specific effort arrays or no effort array
 - **THEN** every displayed and returned Claude setting SHALL be derived from one catalog entry, with no effort accepted for a model-only entry and no effort borrowed from another model
 
 #### Scenario: Missing Claude settings catalog produces no settings
+
 - **WHEN** the Claude settings catalog is unavailable or contains no valid model entries
-- **THEN** the selector SHALL return no settings and customization SHALL perform no target write
+- **THEN** the menu SHALL return status `failed` with a diagnostic naming the unavailable catalog and customization SHALL configure no target on that path
 
 #### Scenario: OpenCode does not use the Claude frame
+
 - **WHEN** OpenCode customization reaches settings selection
 - **THEN** the flow SHALL use the dependent provider, model, and optional variant screens and SHALL not present the Claude combined frame or use the Claude static catalog
 
 ### Requirement: Cyclic post-setup customization passes
-After a customization pass has selected settings and invoked the local-override operation once for every selected target, without any operation reporting a persistence failure, the post-setup flow SHALL return to the `Post-setup customization:` menu instead of terminating. A customization pass is the completed path from choosing `Customize models` through a confirmed target set, one settings-selection result, and one operation attempt for every selected target; navigating back before those operations does not complete a pass. `completed` is the per-pass outcome used for this successful re-entry transition, not the final `runPostSetupMenu` result after the user later selects `Exit`. A per-target skipped result is non-fatal: it means that target was attempted but no override was written, and the pass may still re-enter the menu. Before re-entering that menu, the flow SHALL reset the adapter, harness, scope, selected targets, settings, pass outcome, and pass diagnostics to their initial empty state; each newly rendered single-select navigator SHALL start with cursor index 0 and no selected items, and the target checklist SHALL start with cursor index 0 and all enumerated targets selected, so the next pass re-creates all pass-specific choices. Only a pass with no persistence failure SHALL create this re-entry transition; cancellation, settings unavailability, and persistence failure SHALL terminate the loop. Selecting `Exit` at the menu SHALL return the final normal cancelled outcome after zero or more successful passes; prior pass outcomes SHALL not be aggregated into a failure.
+
+After a customization pass has selected settings and invoked the local-override operation once for every selected target, without any operation reporting a persistence failure, the post-setup flow SHALL return to the `Post-setup customization:` menu instead of terminating. A customization pass is the completed path from choosing `Customize models` through a confirmed target set, one settings-selection result, and one operation attempt for every selected target; navigating back before those operations does not complete a pass. `completed` is the per-pass outcome used for this successful re-entry transition, not the final `runPostSetupMenu` result after the user later selects `Exit`. A per-target skipped result is non-fatal: it means that target was attempted but no override was written, and the pass may still re-enter the menu. Before re-entering that menu, the flow SHALL reset the adapter, harness, scope, selected targets, settings, pass outcome, and pass diagnostics to their initial empty state; each newly rendered single-select navigator SHALL start with cursor index 0 and no selected items, and the target checklist SHALL start with cursor index 0 and all enumerated targets selected, so the next pass re-creates all pass-specific choices. Only a pass with no persistence failure SHALL create this re-entry transition; cancellation SHALL terminate the loop with a normal cancelled outcome, a null or invalid settings result SHALL terminate the loop with a reported `failed` outcome, and persistence failure SHALL terminate the loop with a persistence-failed outcome. Selecting `Exit` at the menu SHALL return the final normal cancelled outcome after zero or more successful passes; prior pass outcomes SHALL not be aggregated into a failure.
 
 #### Scenario: Successful customization returns to the menu
+
 - **WHEN** the local-override operation has been attempted once for every selected target and any non-fatal per-target skips are the only non-persisted results
 - **THEN** the flow SHALL finish that pass and present the `Post-setup customization:` menu again
 
 #### Scenario: A later pass starts with no selections from the prior pass
+
 - **WHEN** the flow re-enters the post-setup menu after a successful pass
 - **THEN** the adapter, harness, scope, selected-target, settings, outcome, and diagnostics state SHALL have been reset before the menu is shown, each single-select screen SHALL start at its first row, and the target checklist SHALL start at its first row with every enumerated target selected rather than carrying any prior choice forward
 
 #### Scenario: Non-interactive setup does not enter the cycle
+
 - **WHEN** the injectable TTY check reports that standard input is not interactive
 - **THEN** `runPostSetupMenu` SHALL return its existing non-TTY skipped outcome without presenting the menu or entering any pass
 
 #### Scenario: Cancellation terminates the current cycle without rollback
+
 - **WHEN** the user presses `q` or Ctrl-C at the post-setup menu, harness selector, scope screen, target checklist, or settings screen during the first or a later pass
 - **THEN** the customization loop SHALL stop without presenting another screen, return its normal cancelled outcome, and preserve overrides written by any earlier successful pass without rollback
 
 #### Scenario: Back navigation abandons only the current unmaterialized path
+
 - **WHEN** the user presses left-arrow, Backspace, or Esc on a harness, scope, target, or settings screen before the selected-target operations run
 - **THEN** the flow SHALL reopen that screen's predecessor without creating an override or completing a pass, and later choices on the revisited path SHALL determine the eventual pass
 
 ### Requirement: Post-setup pass diagnostics and exit status
-When a persistence-failed pass also contains skipped targets, their names SHALL intentionally remain omitted from the `persistence-failed` record because the ordered diagnostics already convey those skips; this preserves the existing outcome asymmetry. The customization flow SHALL retain these observable outcomes: `completed` for a pass whose selected-target operations have no persistence failure, including passes with skipped targets, with skipped-target names and diagnostics when applicable; `skipped` with reason `cancelled`, `settings-unavailable`, or `non-tty` for normal cancellation, unavailable settings, or no TTY; and `persistence-failed` with failure diagnostics when any selected-target operation fails to persist. A successful pass record SHALL contain `status: completed`, `skippedAgents: string[]`, and `diagnostics: string[]`; a persistence-failed pass record SHALL contain `status: persistence-failed`, `failedAgents: string[]`, and `diagnostics: string[]`; a terminal skipped result SHALL contain `status: skipped` and one of the stated reasons. The diagnostics array SHALL retain confirmed target operation order. Each selected target SHALL contribute at most one diagnostic string: persisted targets contribute none, skipped targets contribute `Skipped <name>: installed source is unavailable.`, and failed targets contribute the operation's returned diagnostic string. The local-override operation SHALL classify its result as `persisted`, `skipped`, or `persistence-failed` with a diagnostic string for the latter; an unexpected exception SHALL stop the current flow and propagate through the existing setup catch as `post-setup-failure`, with a non-zero process exit code and no requirement to attempt later targets or render a per-pass diagnostic list. When one selected-target operation reports a persistence failure, the remaining selected-target operations SHALL still be attempted once, after which the pass SHALL report `persistence-failed` and SHALL NOT re-enter the menu. `runPostSetupMenu` SHALL print each materialization pass's produced diagnostic string exactly once at the end of that pass, in selected-target operation order, using the existing `Post-setup customization: <diagnostic>` presentation; `bin/setup.js` SHALL not duplicate those diagnostics.
+
+When a persistence-failed pass also contains skipped targets, their names SHALL intentionally remain omitted from the `persistence-failed` record because the ordered diagnostics already convey those skips; this preserves the existing outcome asymmetry. The customization flow SHALL retain these observable outcomes: `completed` for a pass whose selected-target operations have no persistence failure, including passes with skipped targets, with skipped-target names and diagnostics when applicable; `skipped` with reason `cancelled` or `non-tty` for normal cancellation or no TTY; `failed` with a diagnostic for a null or invalid settings result, closed terminal input, or a later customization step failure; and `persistence-failed` with failure diagnostics when any selected-target operation fails to persist. A successful pass record SHALL contain `status: completed`, `skippedAgents: string[]`, and `diagnostics: string[]`; a persistence-failed pass record SHALL contain `status: persistence-failed`, `failedAgents: string[]`, and `diagnostics: string[]`; a terminal skipped result SHALL contain `status: skipped` and one of the stated reasons; a failed customization result SHALL contain `status: failed` and its diagnostic. The diagnostics array SHALL retain confirmed target operation order. Each selected target SHALL contribute at most one diagnostic string: persisted targets contribute none, skipped targets contribute `Skipped <name>: installed source is unavailable.`, and failed targets contribute the operation's returned diagnostic string. The local-override operation SHALL classify its result as `persisted`, `skipped`, or `persistence-failed` with a diagnostic string for the latter; an unexpected exception in the menu flow SHALL be caught by `runPostSetupMenu` and SHALL return status `failed` with its diagnostic through the failed-customization path, which setup SHALL map to `post-setup-failure`, with a non-zero process exit code and no requirement to attempt later targets or render a per-pass diagnostic list. When one selected-target operation reports a persistence failure, the remaining selected-target operations SHALL still be attempted once, after which the pass SHALL report `persistence-failed` and SHALL NOT re-enter the menu. `runPostSetupMenu` SHALL print each materialization pass's produced diagnostic string exactly once at the end of that pass, in selected-target operation order, using the existing `Post-setup customization: <diagnostic>` presentation; `bin/setup.js` SHALL not duplicate those diagnostics.
 
 #### Scenario: Diagnostics are emitted once for a completed pass
+
 - **WHEN** a pass completes with one or more per-target diagnostics
 - **THEN** the flow SHALL print each diagnostic once, in selected-target operation order, before showing the next menu, and `bin/setup.js` SHALL not duplicate them
 
 #### Scenario: Diagnostics remain separated across passes
+
 - **WHEN** two successful passes each produce diagnostics
 - **THEN** the flow SHALL print each pass's diagnostics once before that pass's next menu or termination transition, SHALL print no diagnostics for a pass with none, and SHALL not reprint an earlier pass's diagnostics
 
 #### Scenario: Persistence-failure diagnostics are emitted before termination
+
 - **WHEN** a selected-target operation reports a persistence failure with a diagnostic
 - **THEN** the flow SHALL print that diagnostic once before returning the `persistence-failed` outcome, and setup SHALL not print it again
 
 #### Scenario: Exit after successful passes is successful
+
 - **WHEN** the user completes one or more successful passes and then selects `Exit`
 - **THEN** the setup process SHALL terminate with exit code 0
 
 #### Scenario: Exit before any pass is a normal cancellation
+
 - **WHEN** the user selects `Exit` from the post-setup menu before completing a customization pass
 - **THEN** `runPostSetupMenu` SHALL return `skipped` with reason `cancelled` and setup SHALL terminate with exit code 0
+
+#### Scenario: Null or invalid settings report failure instead of a normal exit
+
+- **WHEN** a settings selector returns no usable settings because the selector returned null or an invalid setting, or terminal input closed while waiting
+- **THEN** the menu SHALL return status `failed` with a diagnostic naming the cause and setup SHALL terminate with a non-zero exit code
 
 ### Requirement: Retire-docs belongs to the utility target family
 
@@ -240,24 +267,29 @@ Model customization SHALL derive `sai-retire-docs` as a utility target from the 
 - **THEN** it SHALL expose `utility:sai-retire-docs` as a selectable target
 
 #### Scenario: Cancellation preserves earlier passes
+
 - **WHEN** an earlier pass has persisted overrides and the user presses `q` or Ctrl-C on a later menu, selector, checklist, or settings screen
 - **THEN** the flow SHALL terminate normally with exit code 0 and SHALL preserve the earlier persisted overrides without rollback
 
 #### Scenario: Persistence failure is non-zero
+
 - **WHEN** a materialization pass reports `persistence-failed`
 - **THEN** the customization loop SHALL terminate after the selected-target attempts for that pass and setup SHALL terminate with a non-zero exit code, even if an earlier pass completed successfully
 
 #### Scenario: Remaining targets are attempted after a persistence failure
+
 - **WHEN** one selected target reports a persistence failure before the final selected target
 - **THEN** every remaining selected target SHALL still be attempted once, the pass SHALL emit its collected diagnostics once, and the loop SHALL then terminate without opening another menu
 
 #### Scenario: Mixed target outcomes keep diagnostic order and omission
+
 - **WHEN** one pass contains a persisted target, a skipped target, and a failed target in that confirmed order
 - **THEN** the persisted target SHALL contribute no diagnostic, the skipped and failed targets SHALL contribute their diagnostics in that order, each SHALL be rendered once before termination, and the pass SHALL return `persistence-failed`
 
 #### Scenario: Settings unavailability is a normal exit
+
 - **WHEN** a settings selector returns no usable settings because the catalog or dependent settings source is unavailable
-- **THEN** the customization loop SHALL terminate with its existing settings-unavailable outcome and setup SHALL terminate with exit code 0
+- **THEN** the menu SHALL return status `failed` with a diagnostic naming the unavailable source and setup SHALL terminate with a non-zero exit code, distinct from voluntary cancellation which SHALL remain a normal exit 0
 
 ### Requirement: Opt-in empty-confirm protection
 The navigator SHALL expose an opt-in guard for multi-select confirmation with no marked items, defaulting to disabled when the option is omitted. When enabled, Enter SHALL refuse confirmation and keep the checklist open; when disabled, the navigator SHALL preserve its existing empty-confirm behavior. The sole enabling call SHALL be the model-customization target checklist in `runPostSetupMenu`; the installer's first screen is inside `main()` in `bin/install-flow.js` at its `promptChecklist` call and SHALL omit the option, preserving its existing empty-confirm branch. Regression coverage SHALL statically assert these two production `promptChecklist` call sites and the enabled/omitted option at each call site.
@@ -445,3 +477,11 @@ A reset pass with zero persistence-failed results SHALL return to Post-setup cus
 - **WHEN** a reset pass completes with no persistence failure
 - **THEN** the flow SHALL re-enter the Post-setup customization menu instead of terminating
 
+### Requirement: Closed menu input reports failure
+
+The post-setup menu SHALL treat closed terminal input as a failure, not as a voluntary exit. When a wrapped choice resolves `INPUT_CLOSED` or a checklist resolves `input-closed`, the menu SHALL raise and report `Terminal input closed while waiting for a menu selection`, SHALL write the diagnostic through the failed-customization path, and SHALL return status `failed`.
+
+#### Scenario: Closed input during the menu returns a reported failure
+
+- **WHEN** terminal input closes while a post-setup menu selection is pending
+- **THEN** the menu SHALL return status `failed` with a terminal-input-closed diagnostic and SHALL log that diagnostic

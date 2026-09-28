@@ -296,7 +296,7 @@ test('implementation schema scaffold preserves the conditional plan shape and ap
     'implementation scaffold must describe non-testable steps');
   assert.match(scaffold, /deferred/i,
     'implementation scaffold must describe deferred steps');
-  assert.match(scaffold, /without RED\/GREEN when behavior is not yet rendered/i,
+  assert.match(scaffold, /without RED\/GREEN when the step has no testable logic/i,
     'implementation scaffold must make RED/GREEN conditional rather than universal');
 
   const stopIndex = scaffold.indexOf('STOP & COMMIT');

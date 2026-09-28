@@ -1,7 +1,7 @@
 # canonical-opencode-agent-behavior Specification
 
 ## Purpose
-TBD - created by syncing change canonicalize-opencode-agent-behavior. Update Purpose after archive.
+Single-source the behavior of the three generic agent roles (explorer, executor, budget subagent) in harness-neutral `sai/policies/*-agent.md` files that the agents of both supported harnesses fetch.
 ## Requirements
 ### Requirement: Canonical generic-agent behavior policies
 The repository SHALL provide behavior-only policy files at `sai/policies/budget-agent.md`, `sai/policies/executor-agent.md`, and `sai/policies/explore-agent.md`. Each file SHALL be the canonical source for the behavior of the correspondingly named generic-agent role of either supported harness — the opencode agents `agents/opencode/{explore,executor,budget}.md` and the Claude agents `agents/claude/{budget-explorer,budget-executor,budget-subagent}.md` — SHALL be independently fetchable through the `sai/policies/` namespace, and SHALL contain no agent frontmatter, model selection, installer logic, native harness import, or harness-specific registration.
@@ -22,7 +22,7 @@ The repository SHALL provide behavior-only policy files at `sai/policies/budget-
 - **THEN** it resolves its behavior from the same-named `sai/policies/` policy that the corresponding opencode role resolves
 
 ### Requirement: Budget behavior remains canonical
-The budget policy SHALL preserve the cost-controlled single-task contract: execute exactly one requested task, do not expand scope or self-correct after failure, minimize output, return the structured completion fields `status`, `actions_taken`, optional `failures`, and optional `output`, abort on an interactive permission block with a failed result, and stop after approximately 30 tool calls rather than expanding the task.
+The budget policy SHALL preserve the cost-controlled single-task contract: execute exactly one requested task, do not expand scope or self-correct after failure, minimize output, return the task's own result shape when the task defines one and otherwise the structured completion fields `status`, `actions_taken`, optional `failures`, and optional `output`, abort on an interactive permission block with a failed result, and stop after approximately 30 tool calls rather than expanding the task.
 
 #### Scenario: budget work completes within the contract
 - **WHEN** the budget agent receives one file-operation, search, write, or code-analysis task without an interactive permission block

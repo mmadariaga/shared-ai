@@ -8,14 +8,14 @@ The shared backfill instruction flow optionally captures ephemeral user intent a
 
 ### Requirement: Capture optional intent after diff selection
 
-After a valid diff source has been selected and the diff summary has been loaded, `/sai-backfill` SHALL first test the request body for a crystallized block: when the `## Ready to Propose` heading appears together with its byte-exact pinned labels, the block SHALL replace the intent-capture choice entirely, its consumed fields SHALL resolve through the label → mined-prose → ask chain identically with and without fast-track, and its resolved records SHALL enter classification identically to statement-derived records with no raw statement retained. When no block is detected, the command SHALL offer exactly two declared choices using the established two-option-plus-free-text shape: `Provide intent (Recommended)` and `Continue without intent`, in that order, under the canonical English prompt rendered per `sai/policies/remember.md`.
+After a valid diff source has been selected and the diff summary has been loaded, `/sai-backfill` SHALL first test the request body for a crystallized block: when the nine mandatory consulted plain literals appear as bold-insensitive case-sensitive exact-spacing substrings anywhere, the block SHALL replace the intent-capture choice entirely, its consumed fields SHALL skip by existence identically with and without fast-track, and its resolved records SHALL enter classification identically to statement-derived records with no raw statement retained. When no block is detected, the command SHALL offer exactly two declared choices using the established two-option-plus-free-text shape: `Provide intent (Recommended)` and `Continue without intent`, in that order, under the canonical English prompt rendered per `sai/policies/remember.md`.
 
 #### Scenario: Detected block skips the capture choice
-- **WHEN** the request body contains the `## Ready to Propose` heading with its pinned labels
+- **WHEN** the request body contains the nine plain literals as substrings without requiring the heading
 - **THEN** no intent-capture choice is offered and reconciliation begins from block-derived records
 
 #### Scenario: No block offers the two choices unchanged
-- **WHEN** the request body carries no pinned labels
+- **WHEN** the request body carries none of the nine plain literals
 - **THEN** the intent-capture choice is offered exactly as before this capability's extension
 
 ### Requirement: Preserve the no-intent backfill path

@@ -72,7 +72,7 @@ test('the lane is left by ordinary next-step advancement into review-edge-cases'
   const back = idea.transition(lane.state, { intent: 'next-step' });
 
   assert.equal(back.state.stage, 'review-edge-cases');
-  assert.equal(back.next.follow, 'sai/commands/explore/steps/common.md');
+  assert.equal(back.next.follow, 'sai/commands/explore/steps/review-edge-cases.md');
   assert.ok(!('rejected' in back));
   // The fifth painted entry survives the lane it belongs to.
   assert.equal(back.state.pocLane, true);

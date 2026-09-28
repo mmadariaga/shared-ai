@@ -1,5 +1,5 @@
 ---
-description: Granular implementation plan through the canonical coordinator contract and a routed worker.
+description: Plan a change's implementation into implementation.md — ordered RED→GREEN steps sized for a cheap model to apply. Stops before /sai-4-apply.
 argument-hint: "[change-name]"
 model: opus
 effort: medium

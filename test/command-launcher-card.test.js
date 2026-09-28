@@ -27,7 +27,7 @@ const commands = [
   ['sai-status.md', 'status'],
   ['sai-worktree.md', 'worktree'],
 ];
-const emptyBootstraps = new Set(['apply', 'pr', 'retire-docs', 'status', 'worktree']);
+const emptyBootstraps = new Set(['apply', 'explore', 'pr', 'retire-docs', 'status', 'worktree']);
 const loadFreeBootstraps = new Set([...emptyBootstraps, 'meta-review']);
 function activeWrapperCommands(harness) {
   const directory = path.join(repoRoot, 'commands', harness);
@@ -77,10 +77,6 @@ const movedDirectives = {
   merge: [
     'Fetch @sai/orchestration/workers/bindings/merge-worker.md and use it.',
   ],
-  explore: [
-    'Fetch @sai/orchestration/workers/bindings/spec-worker.md and use it.',
-    'Fetch @sai/orchestration/workers/bindings/design-worker.md and use it.',
-  ],
   'meta-review': [],
 };
 
@@ -90,19 +86,13 @@ function read(relativePath) {
   return fs.readFileSync(fullPath, 'utf8');
 }
 
-// Scan-scope only: excluding immutable history from the wrapper_echo_value
-// surface scan is not permission to edit. Archive protection lives in the
-// separate forward-only guard below and in sai/commands/archive/instructions.md.
+// Scan scope only: immutable history is excluded from the wrapper_echo_value
+// surface scan.
 const IMMUTABLE_HISTORY = [
   /^docs\/(?:adr|ddr)\//,
   /^openspec\/changes\//,
   /^openspec\/specs\/_archived\//,
 ];
-
-// Separate forward-only guard: archived history is immutable outside the
-// authorized sai-archive creation flow. This allowlist is the only archive
-// write the immutability tests accept.
-const ARCHIVE_AUTHORIZED_CREATION = /archive\/YYYY-MM-DD-\{name\}\/.*openspec archive <name> --yes --json/s;
 
 function activeSurfaceFiles(root) {
   const files = [];
@@ -160,7 +150,7 @@ test('command bootstrap content is exact, ordered, and harness-neutral', () => {
     assert.doesNotMatch(source, /InvocationEnvelope|command_name|wrapper_echo_value|arguments_value/);
     if (emptyBootstraps.has(folder)) {
       assert.deepEqual(fetchLines(source), [], `${folder} command bootstrap must remain load-free`);
-      assert.match(source, /intentionally empty of command-specific loads; it is not missing/);
+      assert.match(source, /has no command-specific loads, and this file is complete as written/);
       assert.match(source, /Execution continues with the card selected by the harness boot adapter/);
     } else if (loadFreeBootstraps.has(folder)) {
       assert.deepEqual(fetchLines(source), [], `${folder} command bootstrap must remain load-free`);
@@ -319,14 +309,16 @@ test('final wrappers: no ## Sai heading, User input, @commands/sai/, flat @sai/c
   }
 });
 
-test('final wrappers: both sai-explore wrappers keep idea-list-render while launcher owns both workers', () => {
+test('final wrappers: both sai-explore wrappers keep idea-list-render while the Plan route owns both workers', () => {
   const claudeExplore = read('commands/claude/sai-explore.md');
   const opencodeExplore = read('commands/opencode/sai-explore.md');
   assert.match(claudeExplore, /Fetch @sai\/adapters\/claude\/idea-list-render\.md/, 'Claude explore should keep idea-list-render');
   assert.match(opencodeExplore, /Fetch @sai\/adapters\/opencode\/idea-list-render\.md/, 'opencode explore should keep idea-list-render');
   const exploreBootstrap = read('sai/commands/explore/command-bootstrap.md');
-  assert.match(exploreBootstrap, /Fetch @sai\/orchestration\/workers\/bindings\/spec-worker\.md/);
-  assert.match(exploreBootstrap, /Fetch @sai\/orchestration\/workers\/bindings\/design-worker\.md/, 'explore command bootstrap should carry design-worker binding');
+  assert.doesNotMatch(exploreBootstrap, /Fetch @/, 'explore command bootstrap should preload nothing');
+  const planRoute = read('sai/commands/explore/steps/pipeline-plan-unattended.md');
+  assert.match(planRoute, /Fetch @sai\/orchestration\/workers\/bindings\/spec-worker\.md/);
+  assert.match(planRoute, /Fetch @sai\/orchestration\/workers\/bindings\/design-worker\.md/, 'the Plan route should load the design-worker binding at dispatch');
 });
 
 test('final wrappers: all known labelled argument lines are absent after the envelope in both harnesses', () => {
@@ -402,34 +394,56 @@ test('Command Bootstrap glossary term and relationship remain canonical', () => 
   assert.match(glossary, /- A \*\*Command Bootstrap\*\* is loaded by one \/sai-\* wrapper after its \*\*Harness Boot Adapter\*\*/);
 });
 
-test('forward-only history guard blocks direct archive edits without reusing the scan exclusion as permission', () => {
-  const instructions = read('sai/commands/archive/instructions.md');
 
-  assert.match(instructions, /## Forward-only history guard/,
-    'archive instructions should declare the separate forward-only guard');
-  assert.match(instructions, /Archived history under `openspec\/changes\/archive\/` is immutable/,
-    'guard should state archived history immutability');
-  assert.match(instructions, /Archived history is immutable: <path> is under `openspec\/changes\/archive\/`/,
-    'guard should carry the immutable-history error with the offending path');
-  assert.match(instructions, /Only `sai-archive` may create `archive\/YYYY-MM-DD-\{name\}\/` via `openspec archive <name> --yes --json`/,
-    'guard should name the authorized creation flow in the error');
-  assert.match(instructions, /Normal `sai-archive` creation of `archive\/YYYY-MM-DD-\{name\}\/`.*stays allowed and is not a violation/s,
-    'guard should allowlist normal sai-archive creation');
-  assert.match(instructions, /scope only and never permission to edit/,
-    'guard should state a scan exclusion is scope only, never permission');
-  assert.match(instructions, /`IMMUTABLE_HISTORY` exclusion does not authorize edits/,
-    'guard should name IMMUTABLE_HISTORY as non-permission without reusing it as permission');
-  assert.match(ARCHIVE_AUTHORIZED_CREATION.source, /archive/,
-    'the separate allowlist check should exist alongside IMMUTABLE_HISTORY');
+test('wrapper and generic-agent frontmatter values stay valid plain YAML scalars', () => {
+  const files = [
+    ...commands.flatMap(([file]) => [`commands/claude/${file}`, `commands/opencode/${file}`]),
+    'agents/claude/budget-executor.md',
+    'agents/claude/budget-explorer.md',
+    'agents/claude/budget-subagent.md',
+    'agents/opencode/budget.md',
+    'agents/opencode/executor.md',
+    'agents/opencode/explore.md',
+  ];
+  for (const relativePath of files) {
+    const source = fs.readFileSync(path.join(repoRoot, relativePath), 'utf8').replaceAll('\r\n', '\n');
+    const frontmatter = source.match(/^---\n([\s\S]*?)\n---\n/);
+    assert.ok(frontmatter, `${relativePath} should open with a YAML frontmatter block`);
+    for (const line of frontmatter[1].split('\n')) {
+      const value = line.match(/^[\w-]+:\s(.*)$/);
+      if (!value || /^["']/.test(value[1])) continue;
+      assert.doesNotMatch(value[1], /:\s|\s#/,
+        `${relativePath}: an unquoted value containing ": " or " #" breaks YAML parsing — ${line}`);
+    }
+  }
 });
 
-test('specs-write guard requires an active change and directs to the proposal flow', () => {
-  const instructions = read('sai/commands/archive/instructions.md');
+test('opencode wrappers carry no argument-hint, which opencode commands do not support', () => {
+  for (const [file] of commands) {
+    const source = fs.readFileSync(path.join(repoRoot, 'commands', 'opencode', file), 'utf8');
+    assert.doesNotMatch(source, /^argument-hint:/m, `commands/opencode/${file} should carry no argument-hint`);
+  }
+});
 
-  assert.match(instructions, /Direct writes to `openspec\/specs\/` without an active change are blocked/,
-    'guard should block direct specs writes without an active change');
-  assert.match(instructions, /No active change: direct writes to `openspec\/specs\/` are blocked\. Run `\/sai-1-spec` to create a change and use the proposal flow/,
-    'guard should direct to the proposal flow with the active-change error');
-  assert.match(instructions, /Legitimate specs writes via the proposal flow.*stay allowed and are not a violation/s,
-    'guard should allowlist legitimate specs writes via the proposal flow');
+test('worker-matrix agent descriptions stay valid plain YAML scalars and name their dispatching coordinator', () => {
+  const manifest = JSON.parse(fs.readFileSync(path.join(repoRoot, 'sai', 'install-manifest.json'), 'utf8'));
+  const entries = [];
+  (function walk(node) {
+    if (Array.isArray(node)) return node.forEach(walk);
+    if (node && typeof node === 'object') {
+      if (node.workerName && node.claudeAgent) entries.push(node);
+      Object.values(node).forEach(walk);
+    }
+  })(manifest);
+  assert.ok(entries.length > 0, 'the worker matrix should list workers');
+  for (const entry of entries) {
+    for (const agent of [entry.claudeAgent, entry.opencodeAgent]) {
+      assert.doesNotMatch(agent.description, /:\s|\s#/,
+        `${entry.workerName}: an unquoted description containing ": " or " #" breaks YAML parsing`);
+      assert.match(agent.description, /dispatched only by (?:its|their) coordinators?\./,
+        `${entry.workerName}: the description should say only its coordinator dispatches it`);
+    }
+    assert.equal(entry.claudeAgent.description, entry.opencodeAgent.description,
+      `${entry.workerName}: both harnesses should carry the same description`);
+  }
 });

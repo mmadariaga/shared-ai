@@ -5,13 +5,13 @@ TBD - created by archiving change consolidate-sai-1-spec-flow. Update Purpose af
 
 ## Requirements
 
-### Requirement: Independent visual plans and pointer maps
+### Requirement: Independent visual plans and step machines
 
-The shared command runner SHALL treat a visual `progress_plan` and a `step_pointer_map` as independent declarations, and a routing-only map SHALL NOT create a task list or milestone stamp.
+The shared command runner SHALL treat a visual `progress_plan` and a `step_machine` as independent declarations, and a routing-only step machine SHALL NOT create a task list or milestone stamp.
 
 #### Scenario: Explore suppresses visual progress rendering
 
-- **WHEN** a supervised adapter declares the sai-1 pointer map without a visual progress plan
+- **WHEN** a supervised adapter declares the sai-1 step machine without a visual progress plan
 - **THEN** the runner SHALL route active-step pointers without rendering a second spec task list or milestone stamps.
 
 ### Requirement: Deterministic active-step continuation

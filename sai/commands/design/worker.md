@@ -81,14 +81,7 @@ pass and change resolution completes, per
 - Each progress event's `changed_files` lists every path written since the preceding result.
 - The run always closes with exactly one terminal lifecycle status.
 
-The selected plan gates the overview lifecycle: when `--overview-lang` is absent,
-the worker returns the unopted terminal after the feedback gate, emits
-no `overview` progress event, performs no generation-trigger continuation, and
-does not synthesize English or write overview state/failure metadata. An
-existing overview may remain non-current on this unopted path; retention of the existing overview is permitted, but the worker never claims its state is current. When the token is present
-with a valid selected language, the worker carries that `overview_language` into
-the generation continuation; only that opted-in route may emit `overview`
-progress or carry overview-generation failure metadata.
+The selected plan gates overview generation. Without `--overview-lang`, the worker performs no generation at `Continue`, emits no `overview` progress event, and does not synthesize English or create failure metadata for a skipped attempt. If this invocation modifies sources for an existing current overview, mark it stale immediately before the first effective source write under **Stale-before-first-write**; do not claim it remains current. A valid selected language is carried into the opted-in generation continuation; only that route generates, emits `overview` progress, or records generation failures.
 
 ## Active Step Execution
 
@@ -162,10 +155,9 @@ The worker owns the change's overview lifecycle for `change-overview.md` per `sp
 - It preserves structural/source values, writes only that file, and returns the five-field result envelope.
 - A later unflagged invocation leaves the language unresolved rather than supplying or synthesizing `English`, and never reads a prior invocation's value.
 - **First materialization opt-in gate** — at the feedback gate's `Continue` processing, dispatch the generation subagent only when the raw `--overview-lang` token is present and its selected language is valid.
-- The absent-token route is a no-generation terminal: it does not set `overview.state`, clear or write overview failure metadata, dispatch or continue into generation, emit `overview` progress, or synthesize English.
-- The absent-token route may retain an existing stale overview without claiming current.
-- The detailed first-materialization dispatch rules below apply only to that valid opted-in route.
-- An absent `--overview-lang` token overrides those rules with the no-generation terminal above.
+- The absent-token route closes without generation at `Continue`: it does not enter `materializing`, dispatch or continue a generator, emit `overview` progress, or create/clear failure metadata solely because generation was skipped.
+- Existing overviews are retained. A source-modifying invocation still marks a previously current overview stale at the first effective source write; a no-write invocation leaves its prior state intact.
+- The detailed first-materialization dispatch rules below apply only to a valid opted-in route.
 - **Diagnostic reset and durable carrier** — the worker owns `overview.state`, `overview.failure_kind`, and `overview.failure_details` in `openspec/changes/{change-name}/.openspec.yaml`.
 - At the conservative source-write transition (the `Stale-before-first-write` boundary), clear both diagnostic keys before any post-materialization source write.
 - Immediately before every first-materialization or regeneration dispatch, clear both keys again so an older attempt cannot be reused.
@@ -197,7 +189,7 @@ The worker owns the change's overview lifecycle for `change-overview.md` per `sp
 - **Exactly one regeneration per effective transaction** — after all requested edits complete and a successful `Continue` closes the feedback gate, regenerate exactly once through `materializing` → dispatch → `current`.
 - A generator-run failure atomically leaves the generator-owned stale record, persists its exact `failure_kind` and non-empty `failure_details`, reports the overview path and `.openspec.yaml`, and sets `overview.state: stale`.
 - A dispatch failure preserves the prior file, persists `dispatch-failed` and its diagnostic, reports only the state carrier in addition to the required changed-file union, and sets `stale`.
-- Process loss and malformed or empty envelopes preserve whatever file state exists, persist parent-authored `generation-error` details, report the potentially affected overview path and `.openspec.yaml`, and set `stale`.
+- Process loss and malformed or empty envelopes preserve whatever file state exists, report the potentially affected overview path and `.openspec.yaml`, and set `stale`. Persist the parent-authored diagnostic as `generation-error` for process loss or `envelope-contract-violation` for a malformed or empty envelope.
 - The parent never writes, deletes, or edits `change-overview.md` in any failure mode.
 - **Failure boundary** — whenever a generator or parent-owned overview-generation failure is mapped, present the applicable non-empty `failure_details` together with `failure_kind` to the user, identifying the source, artifact, dispatch, envelope, worker, or file location.
 - Do not report only the state or a generic failure sentence, and do not emit the design completion sentence for a failed first materialization or failed regeneration.
@@ -261,7 +253,7 @@ handles that lifecycle boundary.
 
 | lifecycle point | `overview.state` action |
 | --- | --- |
-| no opted-in generation | leave the existing state and diagnostics untouched |
+| no opted-in generation at `Continue` | keep the state reached by earlier source writes; do not create/clear diagnostics just for the skip |
 | first effective source write | set `overview.state: stale` and clear both diagnostic keys |
 | opted-in generation begins | set `overview.state: materializing` and clear both diagnostic keys |
 | verified generation or reconciliation succeeds | set `overview.state: current` and clear both diagnostic keys |

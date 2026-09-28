@@ -1,4 +1,4 @@
-# DDR 0156: Critical prohibitions are deliberately duplicated across the spec worker contract and its step files
+# DDR 0156a: Critical prohibitions are deliberately duplicated across the spec worker contract and its step files
 
 ## Status
 

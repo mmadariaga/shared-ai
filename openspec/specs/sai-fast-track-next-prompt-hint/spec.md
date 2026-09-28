@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+This capability makes completion guidance surface `--fast-track` on recommended commands that support it while keeping the hint informational only.
 
 ## Requirements
 ### Requirement: Completion next-prompt recommendations append a fast-track hint when the recommended command supports the flag
@@ -19,6 +19,11 @@ The concrete emitting locations that gain the hint under this requirement, becau
 - `sai/commands/spec/coordinator.md` completion → recommends `/sai-2-design {name}`
 - `sai/commands/implement/invocation.md` completion (printed after `sai-3-implement`) → recommends `/sai-4-apply {name}`
 - `sai/commands/backfill/coordinator.md` terminal navigation (printed after validated artifacts are written) → recommends `/sai-archive {name}`
+
+#### Scenario: Supported recommended command receives the hint
+
+- **WHEN** a completion recommends a command that belongs to the canonical fast-track set
+- **THEN** it places ` (--fast-track)` immediately after that recommended command's code span
 
 ### Requirement: Preserve the overview-enabled fast-track hint
 

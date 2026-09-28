@@ -1,7 +1,7 @@
 # commit Specification
 
 ## Purpose
-TBD - created by archiving change extract-commit-rules-shared-instruction. Update Purpose after archive.
+Defines the `/sai-commit` staged-message procedure: tool-based staged-state collection, repo-style detection, faithful message composition, and the stop and confirmation conditions.
 ## Requirements
 ### Requirement: Rules sourced from shared instruction
 
@@ -52,7 +52,7 @@ The sai-commit flow SHALL support an optional single-line chat notice reporting 
 
 ### Requirement: Faithfulness and stop conditions unchanged
 
-The migration to the tool-based model SHALL NOT alter Step 1's existing stop conditions (no staged changes in the ordinary path, only unstaged changes, mixed staged/unstaged, secret-looking staged files) nor the faithfulness rule that every claim in the message maps to a hunk in `git diff --cached`. Stop texts stay exact: with nothing staged on the ordinary path the run closes on a terminal payload whose summary is "No staged changes. Use `git add` first."; a secret-looking staged file returns a `needs_input` confirmation instead of proceeding silently. Under the `--amend` path, an empty staging area is not a stop condition, because a message-only amend is a legitimate use case; the secret-looking-file confirmation still applies, and the faithfulness rule (every message claim maps to actual changes) still holds.
+The migration to the tool-based model SHALL NOT alter Step 1's stop and confirmation conditions (no staged changes on the ordinary path, no commit to amend, an already-pushed amend target that requires a secondary confirmation, secret-looking staged files) nor the faithfulness rule that every claim in the message maps to a hunk in `git diff --cached`. Stop texts stay exact: with nothing staged on the ordinary path the run closes on a terminal payload whose summary is "No staged changes. Use `git add` first."; a secret-looking staged file returns a `needs_input` confirmation instead of proceeding silently. Under the `--amend` path, an empty staging area is not a stop condition, because a message-only amend is a legitimate use case; the secret-looking-file confirmation still applies, and the faithfulness rule (every message claim maps to actual changes) still holds.
 
 #### Scenario: No staged changes still stops
 - **WHEN** there are no staged changes

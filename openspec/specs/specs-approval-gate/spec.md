@@ -1,3 +1,7 @@
+## Purpose
+
+This capability defines the handoff from sai-1-spec to sai-2-design and records specs approval when design starts.
+
 ## Requirements
 
 ### Requirement: sai-1-spec stops after specs and prints a hand-off message

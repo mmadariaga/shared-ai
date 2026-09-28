@@ -4,54 +4,32 @@ Fetch @sai/policies/verified-precondition-handback.md
 Fetch @sai/orchestration/worker-core.md and follow it exactly.
 Fetch @sai/commands/commit/instructions.md and follow those instructions exactly.
 
-## Invocation Envelope
+## Invocation
 
-The worker receives exactly one opaque string: `arguments_value`; binding
-metadata remains outside the worker request. Under strict-zero two-phase
-startup the initial dispatch carries only the ready prompt plus base
-instructions with no task content; `arguments_value` arrives only in the
-post-ready same-worker continuation after `event: ready`. Do not scan parent conversation
-history. There is no change resolution in this phase: payloads never carry
-`resolved_change_name`, and no prerequisite check runs — `sai-commit` works in
-projects without openspec.
+The worker receives one opaque string, `arguments_value`. Under strict-zero
+two-phase startup the initial dispatch carries only the ready prompt and base
+instructions; `arguments_value` arrives in the same-worker continuation after
+`event: ready`. The task comes only from that envelope and the continuations
+that follow it, never from parent conversation history. There is no change
+resolution and no prerequisite check: `sai-commit` works in projects without
+openspec, and payloads never carry `resolved_change_name`.
 
 ## Lifecycle
 
-This phase declares NO progress plan: emit no progress events and no notice.
-Every stretch opens with `event: ready` as its first nonterminal return before
-any expensive work; the task arrives only in the post-ready same-worker
-continuation. Every run closes with exactly one terminal lifecycle
-status — `completed`, `needs_input`, or pre-resolution `failed`/`cancelled` —
-in the closed worker-core shapes, each carrying a concrete English `summary`, and an ordered duplicate-free
-`changed_files`. Worker payloads carry no time field.
+The phase declares no progress plan: emit no progress events and no notice.
+Every stretch opens with `event: ready` before any expensive work. Every run
+closes with exactly one terminal status — `completed`, `needs_input`, `failed`,
+or `cancelled` — in the closed worker-core shapes, each carrying a concrete
+English `summary` and an ordered duplicate-free `changed_files`. Payloads carry
+no time field.
 
-## Technical procedure
+## Procedure
 
-Follow the staged-message procedure of `sai/commands/commit/instructions.md` Steps 1–6 (worker-owned):
+Run `instructions.md` Steps 1–6. Every question leaves as a `needs_input`
+result; the coordinator presents it. The commit itself is the coordinator's.
 
-1. **Step 1: Collect** — resolve the tool path per `@sai/policies/tool-resolution.md`, substituting `commit.js` for `<name>` (first existing candidate per harness, copied verbatim; if none exists, name the tried candidates and stop with no prose fallback), then call `node <tool-path> collect --json --cwd <repo>` and read the JSON output. This is read-only and does not violate the mutation prohibition.
-2. **Step 2-5: Draft** — classify the change, infer scope, compose message, verify faithfulness.
-3. **Step 6: Present** — show files, message, and ask for authorization via `needs_input`.
+## Git
 
-Do **not** perform Step 7 (Execute Commit). That belongs exclusively to the coordinator after an authorized answer.
-
-Preserve the instruction's stop texts exactly:
-- With nothing staged (collect returns exit code 1), return a terminal payload whose summary is **"No staged changes. Use `git add` first."**
-
-## Authorization ask
-
-After composing and presenting-ready content, return `needs_input` asking
-**"Run `git commit` on the staged changes above?"** with ordered options `yes (Recommended)` / `no` / `Allow on this session` per the concise-format rule in `@sai/policies/question-context.md`. Keep the picker question to that one short line — decision plus minimal identifier, no Totals and no option explanations inside the question. Render the staged file inventory with Totals plus the proposed subject and body as ordinary text above the picker, unaltered and in fixed order (inventory then message); the short question plus those visible blocks together carry the essential state context. The secret-file confirmation and the already-pushed amend warning carry their full context in preceding plain text per the same rule. Use identical short wording on Claude Code and opencode with no harness fork. The ask is a returned lifecycle result, never an inline picker call from this session.
-
-When the coordinator forwards the selected answer value, process it without
-re-presenting the prompt and without executing anything: on `yes` or
-`Allow on this session`, return `completed` whose summary restates the exact
-authorized message for coordinator execution; on `no`, return `completed` whose summary states that the message is ready to copy from above and that nothing was committed.
-
-## Absolute mutation prohibition
-
-NEVER execute git mutations. NEVER run `git add`, `git commit`, `git stash`,
-or any state-changing git command. The read-only inspection surface
-(`git status --short`, `git diff --cached*`, `git log`) stays unchanged.
-Commit execution belongs exclusively to the coordinator after an authorized
-answer.
+Run only read-only git and the read-only `commit.js collect`. NEVER run
+`git add`, `git commit`, `git stash`, `commit.js apply`, or any other
+state-changing command.

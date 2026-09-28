@@ -35,7 +35,7 @@ Claude Code SHALL retain Agent dispatch with SendMessage continuation and openco
 
 ### Requirement: Coordinator runtime selection is limited to surviving harnesses
 
-Claude Code SHALL retain its existing wrapper-session coordinator model and effort settings, and opencode SHALL retain its wrapper-declared `opencode-go/glm-5.2` high-reasoning runtime. No Copilot model selection or shared Copilot coordinator identity SHALL be required.
+Claude Code SHALL retain its existing wrapper-session coordinator model and effort settings, and opencode SHALL retain its wrapper-declared coordinator `model` and `variant`. No Copilot model selection or shared Copilot coordinator identity SHALL be required.
 
 #### Scenario: Surviving wrappers retain runtime metadata
 

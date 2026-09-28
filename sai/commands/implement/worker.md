@@ -4,10 +4,11 @@ Fetch @sai/policies/verified-precondition-handback.md
 Fetch @sai/orchestration/worker-core.md and follow it exactly.
 Fetch @sai/policies/bounded-dispatch-retry.md and follow it for every delegated subagent dispatch.
 Fetch @sai/commands/implement/steps/common.md and keep it in force for the entire run.
+Fetch @sai/policies/repository-artifact-scope.md and plan within it: no Step
+edits published `openspec/specs/**` or an existing ADR/DDR record in place.
 
 Perform the complete technical `/sai-3-implement` phase. The `InvocationEnvelope`
-contains exactly one request field, `arguments_value`; the retired wrapper-echo field has been removed, and
-`arguments_value` has sole precedence. Write only the artifacts authorized by the
+contains exactly one request field, `arguments_value`, which has sole precedence. Write only the artifacts authorized by the
 active step and return lifecycle metadata only. The technical generation rules
 are not restated here:
 `steps/common.md` and the coordinator-selected step file are the authoritative
@@ -38,8 +39,9 @@ changes ask `Which change?`; this is the 0/1/N zero/one/multiple protocol. Do no
 scan parent conversation history.
 
 After resolution, check the CLI, OpenSpec directory and schema, then
-`proposal.md`, `design.md`, and `tasks.md`, in that order. Make no file write
-when a check fails. If the CLI is absent return `openspec CLI not found. Install it first: https://github.com/Fission-AI/OpenSpec`;
+`proposal.md`, `design.md`, and `tasks.md`, in that order, and note whether
+`implementation.md` exists (first run versus re-run). Make no file write
+when a check fails. If the CLI is absent return ``openspec CLI not found. Install it first: https://github.com/Fission-AI/OpenSpec — To verify by hand, run: `openspec --version` ``;
 if OpenSpec is not initialized return `OpenSpec not initialized in this project. Run: openspec init`;
 and if the schema is wrong return ``openspec/config.yaml does not declare `schema: sai-workflow`. The sai commands require this schema. Add `schema: sai-workflow` to the top of openspec/config.yaml.``
 
@@ -51,7 +53,7 @@ active step file and are not duplicated in this worker contract.
 
 ## Fast-track state
 
-The coordinator declares `fast_track_active` alongside the envelope as invocation-scoped session state (never an envelope key, never written to any file). Honor it only in the fast-track branches defined in `steps/plan-generation.md` and `steps/validation.md`; without it behavior is unchanged. Never parse `--fast-track` from `arguments_value` — the coordinator already stripped it — never emit the activation banner, and never write `fast_track_active` to any file, `.openspec.yaml`, or configuration. `change-overview.md` is regenerated through the design overview lifecycle, never directly corrected here.
+The coordinator declares `fast_track_active` alongside the envelope as invocation-scoped session state (never an envelope key, never written to any file). It delivers the explicit boolean in the post-ready task continuation and again in replacement reconstruction. Keep it across progress, input, and recovery continuations. Honor it only for the other worker-owned fast-track branches in `steps/plan-generation.md` and `steps/validation.md`; bounded lookup authorization is coordinator-owned and never inferred from this boolean. Without it behavior is unchanged. Never parse `--fast-track` from `arguments_value` — the coordinator already stripped it — never emit the activation banner, and never write `fast_track_active` to any file, `.openspec.yaml`, or configuration. `change-overview.md` is regenerated through the design overview lifecycle, never directly corrected here.
 
 When a fast-track auto-correction applies, record it in the terminal `summary` (corrected `sai-2` paths plus the single preserving rationale) and ensure `implementation.md` carries the fast-track correction note required by `steps/plan-generation.md`; the note is the audit trail and never carries the state value itself.
 
@@ -77,7 +79,7 @@ runner's recovery policy, never by inventing a replacement inside the worker.
 This phase declares a progress plan with exactly these canonical step ids, in
 order:
 
- - `prereqs-resolution` — "Check prerequisites"
+- `prereqs-resolution` — "Check prerequisites"
 - `collapse-implemented-steps` — "Collapse implemented steps"
 - `artifact-analysis` — "Analyze artifacts and validate decisions"
 - `documentation-review` — "Review required documentation"
@@ -93,11 +95,12 @@ inside this session marks nothing. The startup act (prerequisite checks +
 resolution) reports as one batch carrying `prereqs-resolution` and is the
 Startup Handshake — return it before dispatching any `budget-subagent` or
 `budget-explorer`, writing `implementation.md`, or beginning artifact analysis. Report ids in plan order; `changed_files`
-lists every path written since the preceding result. On a first run the
-collapse step is skipped entirely; the skipped `collapse-implemented-steps` id
-folds into the next completed batch in plan order with no separate `skipped`
-field. On a re-run, `collapse-implemented-steps` completes as its own batch.
-The completed Step 5 write reports `plan-generation`; only after the
+lists every path written since the preceding result. On a first run (no
+`implementation.md`), the startup batch reports `prereqs-resolution` and
+`collapse-implemented-steps` together, with no separate `skipped` field, so the
+first pointer targets `artifact-analysis`. On a re-run,
+`collapse-implemented-steps` completes as its own batch.
+The completed plan-generation write reports `plan-generation`; only after the
 pre-delivery durable-artifact verification reports `validation` does planning
 complete. A failed verification does not emit `validation`; return `failed`
 with a concise blocking summary instead. Never emit a progress event before

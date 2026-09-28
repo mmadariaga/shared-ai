@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+This capability keeps the installer CLI entry point as a behavior-preserving dispatcher over the install-flow module.
+
+## Requirements
 
 ### Requirement: thin-dispatcher
 `bin/install.js` SHALL be reduced to a dispatcher that reads `process.argv[2]` and routes to the appropriate flow module. It MUST NOT contain any install logic itself.
@@ -32,7 +36,3 @@ The refactor MUST be a pure extraction. Any test or invocation that worked again
 #### Scenario: install parity
 - **WHEN** user runs `npx shared-ai` (no args) after the refactor
 - **THEN** behavior is identical to `npx shared-ai` before the refactor
-
-## MODIFIED Requirements
-
-## REMOVED Requirements

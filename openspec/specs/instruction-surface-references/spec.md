@@ -26,12 +26,7 @@ The active design step-owned instruction at `sai/commands/design/steps/design.md
 
 ### Requirement: apply-gate-surfaces-reference-policy
 
-`sai/commands/apply/instructions.md` SHALL reference the question-context policy at its two fixed decision surfaces: the Human Verification gate presentation and the GREEN-conflict halt presentation. Both prompts SHALL comply with the anatomy while preserving the gate's existing mechanics (checkbox-keyed gate, `Human Verification` wording, and the halt semantics).
-
-#### Scenario: Human Verification gate complies
-
-- **WHEN** the apply coordinator presents a Step's Human Verification checks to the user
-- **THEN** the presentation references the question-context policy and states what is being confirmed, why it matters, and the checks under review, preserving the checkbox-keyed gate mechanics
+`sai/commands/apply/steps/routing-split-flow.md` SHALL reference the question-context policy at apply's fixed human decision surface: the GREEN-conflict halt presentation. The prompt SHALL comply with the anatomy while preserving the halt semantics. (The per-Step Human Verification gate no longer exists; see ADR 0186.)
 
 #### Scenario: GREEN-conflict halt complies
 
@@ -49,9 +44,9 @@ The active design step-owned instruction at `sai/commands/design/steps/design.md
 
 ### Requirement: fixed-gate-pinned-semantics-preserved
 
-Adding the policy references SHALL NOT alter the gates' pinned semantics: option labels, option ordering, invalid-input handling, gate keying (checkbox count for Human Verification), and the exact existing wording that downstream tests assert (for example `Human Verification`).
+Adding the policy references SHALL NOT alter the gates' pinned semantics: option labels, option ordering, invalid-input handling, and the exact existing wording that downstream tests assert.
 
 #### Scenario: asserted strings survive
 
 - **WHEN** the instruction surfaces are edited to reference the policy
-- **THEN** the `Human Verification` wording asserted by `test/apply-coordinator-verification.test.js` remains present and the gates' option semantics are unchanged
+- **THEN** the wording asserted by the surfaces' contract tests remains present and the gates' option semantics are unchanged

@@ -1,3 +1,7 @@
+## Purpose
+
+This capability defines setup's optional, non-blocking CodeGraph CLI offer and per-project index initialization.
+
 ## Requirements
 
 ### Requirement: Per-project index bootstrap via ensureCodegraphIndex

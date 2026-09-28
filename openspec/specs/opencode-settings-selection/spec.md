@@ -44,31 +44,48 @@ The variant screen SHALL offer exactly one no-variant option plus the discovered
 - **THEN** the internal sentinel for the no-variant option is distinct from every discovered variant identifier, so no variant value can be mistaken for the sentinel
 
 ### Requirement: In-memory shared settings shape
-The OpenCode settings selector SHALL return nullable shared settings carrying exactly the canonical opencode tunable keys: `model` with the selected model's full `provider/model-id` identity, and, when a variant other than the no-variant sentinel was selected, `variant` with the selected variant identifier. The settings SHALL NOT carry a separate provider key, SHALL NOT write any file, and SHALL NOT modify or create any agent file; when the user cancels or discovery fails, the selector SHALL return no settings (`null`). The selector SHALL NOT construct overrides: the final per-agent persistent materialization, carrying the selected agent identity and the conditional `variant` key, SHALL be performed exclusively by the per-agent local-override operation defined in `agent-customization-menu` and governed by `project-local-agent-overrides`.
+
+The OpenCode settings selector SHALL return either nullable shared settings or a failed result. Shared settings SHALL carry exactly the canonical opencode tunable keys: `model` with the selected model's full `provider/model-id` identity, and, when a variant other than the no-variant sentinel was selected, `variant` with the selected variant identifier. The settings SHALL NOT carry a separate provider key, SHALL NOT write any file, and SHALL NOT modify or create any agent file. When the user cancels at a provider, model, or variant screen the selector SHALL return `CANCELLED` with no settings configured. When catalog or variant-list discovery fails the selector SHALL return status `failed` with a diagnostic and SHALL configure no agent on that path, except that a valid variant list with no entry matching the selected model or with no variants SHALL degrade to model-only shared settings. The selector SHALL NOT construct overrides: the final per-agent persistent materialization, carrying the selected agent identity and the conditional `variant` key, SHALL be performed exclusively by the per-agent local-override operation defined in `agent-customization-menu` and governed by `project-local-agent-overrides`.
 
 #### Scenario: model value carries the full provider/model-id identity
+
 - **WHEN** the user selects model `glm-5.2` under provider `opencode-go`
 - **THEN** the returned settings' `model` value is exactly `opencode-go/glm-5.2`, the fully qualified identity the opencode agent frontmatter requires
 
 #### Scenario: no separate provider key is included
+
 - **WHEN** the user completes an OpenCode customization run for a model under provider `opencode-go`
 - **THEN** the returned settings carry the `model` key with the full `opencode-go/...` identity and no separate `provider` key
 
 #### Scenario: settings carry model only when variant is default
+
 - **WHEN** the user selects a model and chooses the no-variant option
 - **THEN** the returned settings carry `model` and no `variant` key
 
 #### Scenario: settings carry model and variant when a variant is chosen
+
 - **WHEN** the user selects a model and then chooses a named variant
 - **THEN** the returned settings carry both the `model` key and the `variant` key with the chosen values
 
 #### Scenario: the final materialization is built by the per-agent local-override operation
+
 - **WHEN** the selector returns shared settings for a confirmed subset
 - **THEN** the per-agent local-override operation SHALL materialize each selected agent with its identity, `model`, and conditional `variant` according to the project-local override capability
 
 #### Scenario: selection completes without filesystem changes
+
 - **WHEN** the selector returns the shared settings for a confirmed subset
 - **THEN** no file is created, modified, or deleted and agent bodies and frontmatter are unchanged
+
+#### Scenario: Discovery failure returns a failed diagnostic without settings
+
+- **WHEN** model catalog discovery throws, exits non-zero, or returns malformed or empty output
+- **THEN** the selector SHALL return status `failed` with a diagnostic naming the failed operation and SHALL configure no agent
+
+#### Scenario: Null screen selection returns CANCELLED without settings
+
+- **WHEN** the provider, model, or variant screen returns a null selection
+- **THEN** the selector SHALL return `CANCELLED` and SHALL configure no agent
 
 ### Requirement: Select-once and apply-to-all for the confirmed subset
 The OpenCode settings selector SHALL run exactly once for the whole confirmed agent subset: the provider, model, and optional variant screens SHALL be presented once per customization run, and the resulting shared settings SHALL be applied to every selected agent through the per-agent local-override operation. An empty confirmed subset SHALL NOT invoke the selector.
@@ -86,13 +103,29 @@ The OpenCode settings selector SHALL run exactly once for the whole confirmed ag
 - **THEN** the OpenCode settings selector is not invoked and customization completes without configuring any agent
 
 ### Requirement: Cancellation and failure abort without settings or overrides
-The OpenCode customization SHALL cancel without settings only on user cancellation, empty selection, or model-catalog discovery failure. Variant-discovery failure against the current `opencode api model.list` query SHALL NOT cancel the run; it SHALL degrade to model-only shared settings for the confirmed subset and proceed to the per-target local-override operation. The run SHALL complete normally without hard-exiting the process, and SHALL NOT fall back to placeholder options.
+
+The OpenCode customization SHALL cancel without settings only on user cancellation, empty selection, or an explicit `CANCELLED` screen outcome. Model-catalog discovery failure SHALL NOT cancel silently and SHALL NOT fall back to placeholder options; it SHALL return status `failed` with a diagnostic naming the failed operation and SHALL configure no agent, which the post-setup menu SHALL surface as a reported failure rather than a normal cancellation. A null provider, model, or variant-screen selection SHALL return `CANCELLED` with no agent configured. Variant-list query failure against the current `opencode api model.list` query SHALL return status `failed` with a diagnostic, except that a valid list with no entry matching the selected model or with no variants SHALL degrade to model-only shared settings for the confirmed subset and proceed to the per-target local-override operation. The run SHALL complete normally without hard-exiting the process, and SHALL NOT fall back to placeholder options.
+
 #### Scenario: cancel at the provider screen aborts the run
+
 - **WHEN** the user presses `q` or Ctrl-C at the provider screen
 - **THEN** customization is cancelled with no agent configured and the flow completes normally
+
 #### Scenario: cancel at the variant screen aborts the run
+
 - **WHEN** the user presses `q` or Ctrl-C at the variant screen
 - **THEN** customization is cancelled with no agent configured and the flow completes normally
+
 #### Scenario: discovery failure produces no invalid settings or override
-- **WHEN** model catalog discovery fails or model-list variant discovery fails or exposes no variants during the dependent flow
-- **THEN** catalog failure SHALL cancel with no placeholder fallback and no settings or override produced, while variant failure SHALL degrade to model-only settings and continue to override materialization
+
+- **WHEN** model catalog discovery fails or model-list variant discovery fails during the dependent flow
+- **THEN** catalog failure SHALL return status `failed` with a diagnostic and no settings or override produced and the menu SHALL surface it as a reported failure rather than a normal cancellation, while a valid variant list with no matching entry or no variants SHALL degrade to model-only settings and continue to override materialization
+
+### Requirement: Catalog discovery failure reports a failed diagnostic
+
+The OpenCode settings selector SHALL return a failed result with an actionable diagnostic when model catalog discovery throws, exits non-zero, yields unparseable output, or yields an empty catalog. It SHALL present no further settings screens on that path and SHALL configure no agent.
+
+#### Scenario: Empty or invalid catalog returns failure without screens
+
+- **WHEN** the catalog command succeeds technically but returns an empty or malformed catalog
+- **THEN** the selector SHALL return status `failed` with a diagnostic identifying the empty or invalid catalog and SHALL configure no agent

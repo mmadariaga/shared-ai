@@ -24,7 +24,7 @@ When the file does not exist, every reader skips its consumption step silently â
 
 ## File structure
 
-The file contains exactly four content sections, in this order. No fifth section is introduced and no section is renamed. A section with no entries keeps its heading and is left empty, so the file's shape is stable for a reader matching on headings.
+The file contains exactly four content sections, in this order. No fifth section is introduced and no section is renamed. Sections without an observed entry keep their headings and remain empty.
 
 ```markdown
 # SAI Learnings â€” {Project Name}

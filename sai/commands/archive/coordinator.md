@@ -2,22 +2,12 @@
 
   Fetch @sai/policies/verified-precondition-handback.md
   Fetch @skills/safe-operations/SKILL.md and use it
-  Fetch @skills/openspec-archive-change/SKILL.md
-  The coordinator runs `openspec archive <name> --yes --json` as the sole
-  sync + move primitive on the ordinary route. The CLI's deterministic
-  pre-write validation is the scenario-preservation guarantee; the CLI's
-  JSON result is the completion record. The upstream skill's manual sync
-  and move steps are not used.
+  Fetch @sai/commands/archive/retirement-declaration.md
 
   ## Prerequisite checks
 
-  `sai-archive` REQUIRES the openspec project — unlike `sai-commit`, there is no
-  exemption. Perform the full prerequisite checks by fetching
-  @sai/policies/prereqs.md and applying them exactly:
-  1. The `openspec` binary is in PATH.
-  2. The `openspec/` directory exists.
-  3. `openspec/config.yaml` declares `schema: sai-workflow`.
-  On a failed check, halt with the check's own message and stop.
+  `sai-archive` requires an openspec project. Fetch @sai/policies/prereqs.md
+  and apply it exactly; on a failed check, print that check's message and stop.
 
   ## Fast-track parse
 
@@ -37,273 +27,149 @@
 
   ## Change resolution
 
-  Resolve the OpenSpec change name before dispatching the worker: fetch
+  Resolve the change name before dispatching: fetch
   @sai/policies/change-picker.md and follow it exactly against the cleaned
-  request. On the picker's stop paths (no active changes, declined
-  confirmation), print its exact stop text and stop without dispatching. The
-  resolved name becomes the effective request for the remainder of the run.
+  request. On its stop paths (no active changes, declined confirmation), print
+  its exact stop text and stop without dispatching. The resolved name is the
+  effective request from here on.
 
   ## Archive phase adapter
 
-  You are the user-facing archive coordinator. The worker owns every read-only
-  procedure of the technical phase: artifact classification, checkbox-state
-  scanning, delta-sync diffing against main specs, target-name collision
-  checking, and the authoring of the unchecked-items pre-mutation gate
-  question. On the ordinary route, you own lifecycle routing, gate
-  presentation, and ALL mutating execution: the conditional
-  `retire_capabilities: true` declaration in the change's own
-  `.openspec.yaml`, the CLI archive invocation
-  (`openspec archive <name> --yes --json`) as the sole sync + move primitive,
-  and every git operation of the post-archive commit gate. The explicit
-  Direct Build (unattended) route is the only exception: you validate the worker's prepared
-  mutation order and authorize it, then the same archive worker performs the
-  CLI archive invocation, exact-path staging, and local commit continuation.
-  Never perform the worker's read-only analysis on its behalf; never let an
-  execution continuation act before validation and authorization.
+  You are the user-facing archive coordinator. The worker owns the read-only
+  pre-flight (`@sai/commands/archive/instructions.md`) and the unchecked-items
+  question. On the ordinary route you own gate presentation and every
+  mutation: the retirement declaration, the CLI archive
+  `openspec archive <name> --yes --json` (the sole sync and move primitive,
+  whose pre-write validation guarantees scenario preservation and whose JSON
+  result is the completion record), and the post-archive commit gate. On the
+  Direct Build (unattended) route you validate and authorize the worker's
+  prepared order and the same worker executes it. Leave the pre-flight to the
+  worker, and send an execution continuation only after validation and
+  authorization.
 
   Declare the minimal phase-adapter field set:
-  - `original_envelope` — the opaque single-string fast-track-cleaned request
-    forwarded to the dispatch (the boot's `arguments_value` after the parse
-    above; the stripped token survives only in `fast_track_active`).
+  - `original_envelope` — the fast-track-cleaned request, one opaque string;
+    the stripped token survives only in `fast_track_active`.
   - `dispatch_operation` — dispatch exactly one `sai-archive-worker` through
-     the active archive-worker binding
-     (`Fetch @sai/orchestration/workers/bindings/archive-worker.md`) using the
-     original envelope with the resolved change name as `arguments_value`, and
-     declare `fast_track_active` alongside the envelope as coordinator-owned
-     session state (never an additional envelope key). The worker uses that
-     signal for the documented fast-track auto-proceed branches. The
-     Direct Build (unattended) composition instead sends the same worker an initial
-     `--direct-build-prepare` marker and retains `direct_build_mode` outside the opaque
-     envelope.
+    the active archive-worker binding
+    (`Fetch @sai/orchestration/workers/bindings/archive-worker.md`) with the
+    resolved change name as `arguments_value`, declaring `fast_track_active`
+    beside it as session state, never as an envelope key. The Direct Build
+    (unattended) composition instead sends an initial `--direct-build-prepare`
+    marker and keeps `direct_build_mode` outside the envelope.
   - `continuation_operation` — continue the same worker through the binding's
     continuation mechanism, forwarding the selected answer value.
   - `allowed_nonterminal_extensions` — none; `extension_handlers` empty. This
     adapter declares NO `progress_plan`: no progress event exists in this
     lifecycle, no panel plan renders, and no acknowledgement literal is defined.
-  - `replacement_reconstruction_fields` — the complete original envelope, the
-     opaque input history (including forwarded gate answers), the resolved
-     change name, `fast_track_active`, the Direct Build (unattended) mode, the validated closed
-     execution order, the execution state, and the ordered
-     duplicate-free changed-files union; a replacement worker reconstructs only
-     from these and cannot replay an executed order.
-  - `terminal_navigation` — on a run whose archive move executed: print the
-    worker-authored summary verbatim, print exactly `Archive done.`, stop.
+  - `replacement_reconstruction_fields` — the original envelope, the opaque
+    input history, the resolved change name, `fast_track_active`, the Direct
+    Build mode, the validated closed execution order, the execution state, and
+    the ordered duplicate-free changed-files union. A replacement worker
+    reconstructs only from these and never replays an executed order.
+  - `terminal_navigation` — when the archive move executed, print the
+    worker-authored summary verbatim, then exactly `Archive done.`, and stop.
     Every other closure prints the worker-authored summary verbatim and stops
     without the completion literal and without any mutation.
   - NO `recovery_policy` is declared: this adapter runs a minimal lifecycle
     without bounded recovery. Do not fetch `@sai/policies/bounded-recovery.md`,
     keep no recovery ledger, and perform no recovery continuations.
 
-  Initialize one invocation-scoped ordered, duplicate-free changed-files union
-  and an opaque input history; add the worker-reported paths in first-seen
-  order. Validate every returned result against the shared runner's
-  closed-payload rules before acting on it.
+  Keep one invocation-scoped ordered, duplicate-free changed-files union and an
+  opaque input history; add worker-reported paths in first-seen order. Validate
+  every worker result against the shared runner's closed-payload rules before
+  acting on it.
 
   ## No-commit guard
 
-  Fetch @sai/policies/no-commit-guard.md and follow it for the
-  `sai-archive-worker` dispatch. Run the guard's `snapshot` step immediately
-  before each dispatch and each same-worker continuation, holding the
-  returned SHA as invocation-scoped `guard_base`, and its `verify` step
-  immediately after every returned result, before acting on that result. On a
-  `violation` verdict, remediate exactly as the policy prescribes — evidence
-  first, `git reset <guard_base>` (mixed), one pinned incident line per
-  `@sai/policies/autonomy-audit-log.md`, then continue the route. The
-  coordinator's own CLI archive, staging, and post-archive commit operations
-  always run between windows and never inside one. The one `allow_commit`
-  carrier in the system is the Direct Build (unattended) execute continuation:
-  run that window's verify with `--allow-commit`, because its validated
-  closed execution order contains the one pre-authorized local commit.
+  Fetch @sai/policies/no-commit-guard.md and follow its § Window pairing for
+  every `sai-archive-worker` stretch: `snapshot` opens a window, holding the returned SHA as
+  invocation-scoped `guard_base`, and `verify` closes it before each boundary. On a `violation` verdict,
+  remediate exactly as the policy prescribes, then continue the route. Your own
+  CLI archive, staging, and commit operations run between windows, never inside
+  one. The Direct Build (unattended) execute continuation is the one
+  `allow_commit` carrier in the system: it always opens its own window per the
+  policy's `allow_commit` isolation, and that window's verify runs with
+  `--allow-commit`, because its validated order contains the one pre-authorized
+  local commit.
 
   ## Needs-input routing
 
-  On a worker `needs_input` result — the unchecked-items gate — present the
-  exact question and ordered options through the native option-picker per the
-  "Closed-choice prompts" rule in `@sai/policies/remember.md`, append only
-  `{question, options, answer_value}` to the opaque input history, and forward
-  the exact answer value to the same worker through the binding's continuation
-  mechanism. Present any worker-authored payload content (the combined
-  delta-sync summary, the unchecked-item list) alongside the ask, unaltered.
+  On the worker's unchecked-items `needs_input`, present the exact question and
+  ordered options through the native option-picker per "Closed-choice prompts"
+  in `@sai/policies/remember.md`, with the worker's payload content (the
+  delta-sync summary, the unchecked-item list) beside it unaltered. Append
+  `{question, options, answer_value}` to the opaque input history and forward
+  the exact answer to the same worker.
 
-  ## Coordinator-owned execution (ordinary route)
+  ## Ordinary route execution
 
-   After the gates resolve through forwarded answers, execute the archive and
-   commit in this order (initialise `archive_content_fix_attempted` to false;
-   it bounds the single classified content-fix below):
+  After the worker's confirming `completed` result, present its summary, then
+  run in order (`archive_content_fix_attempted` starts false):
 
-   - **Retirement declaration** — when the worker's summary named one or more
-     retired capabilities (a capability-emptying delta detected in the
-     read-only pre-flight), write the single key `retire_capabilities: true`
-     into `openspec/changes/<name>/.openspec.yaml` before the CLI archive
-     below, under the conditions of
-     `@sai/commands/archive/instructions.md`. Apply that instruction's
-     declaration preconditions first, so the declaration is issued only when it
-     can succeed:
-     - **Author veto** — when `retire_capabilities` is already present with the
-       parsed value `false`, refuse to declare: write nothing, do NOT run the
-       CLI archive below, and report that the author vetoed the retirement,
-       naming both ways forward (remove the `retire_capabilities: false` entry,
-       or reshape the delta so it does not empty the capability). Never proceed
-       under the veto: the CLI cannot tell `false` from an absent key, so the
-       archive would fail with `archive_spec_validation_failed` on every rerun.
-     - **Unhonoured value** — when `retire_capabilities` is already present and
-       its parsed value is not a boolean (a string such as `"yes"` or `"no"`,
-       `null`, a number), refuse to declare. Name the file, the key, and its
-       current value, and state the way forward: set `retire_capabilities` to
-       `true` to declare the retirement, to `false` to veto it, or remove the
-       key. Never overwrite it: archive never guesses which boolean an
-       unhonoured value meant, and guessing `true` would delete a published
-       spec on a guess — unattended under `fast_track_active` and Direct Build.
-     - **Unaccounted content** — when the worker reported unaccounted content
-       (any `##` section other than `## Purpose` above the requirements) in an
-       emptied capability's published spec, refuse to declare, naming the
-       capability and each offending heading, and state that the content must
-       be moved out of the spec before `sai-archive` is rerun.
-     - **Metadata precondition** — declare only into an
-       `openspec/changes/<name>/.openspec.yaml` that already exists, parses as
-       valid YAML, and carries `schema:`. A missing, unparseable, or
-       schema-less file is a refusal naming the file and the missing key. NEVER
-       create `.openspec.yaml` and NEVER author a `schema:` value.
-     - **All or nothing** — when several capabilities are emptied and any one
-       is blocked, refuse the whole declaration; never declare partially.
-     Every refusal here is a stop, not a question: present it, add no gate and
-     no prompt, and stop without the CLI archive below, identically on the
-     ordinary route, under `fast_track_active`, and on the Direct Build
-     (unattended) route.
-     When every precondition passes, write it as a parse-verified
-     replace-in-place: skip the write when the parsed value of
-     `retire_capabilities` is already the boolean `true`, insert the single key
-     once when it is absent, replace an existing entry's value in place rather
-     than adding a line whenever a present key is written at all, and never
-     append a second
-     `retire_capabilities` entry — a duplicate key makes the file invalid YAML
-     for every CLI surface. Judge the skip, the veto, and the unhonoured value
-     on the parsed YAML
-     value, never on the literal text of the line. Preserve every
-     other key and the file's existing formatting; write no other key and no
-     approval key. Re-parse the file after writing: if it no longer parses, or
-     `retire_capabilities` does not read back as the boolean `true`, report
-     that and do NOT run the CLI archive below. This is the one stop archive
-     itself caused — the file parsed before archive wrote to it — so say so and
-     name the way forward: archive does not revert the write, and the file must
-     be restored before `sai-archive` is rerun, with
-     `git checkout HEAD -- openspec/changes/<name>/.openspec.yaml` when the
-     file is tracked, or by hand when it is not. Until it is restored the
-     change is unreadable to `openspec status`, so a rerun fails at the
-     pre-flight rather than at the declaration. Add the file to the
-     changed-files union when it was
-     written. When the worker named no retired capability, do not touch
-     `.openspec.yaml` at all. Ask nothing: this declaration introduces no gate
-     and no question on any route. If the CLI archive below fails, leave the
-     written key in place — never revert it.
-   - **CLI archive** — run `openspec archive <name> --yes --json` as the sole
-     sync + move primitive. The CLI validates scenario preservation before
-     writing and couples delta-spec synchronization with the archive directory
-     move in one deterministic operation. Parse the JSON result: on success,
-     the sync and move are complete. Obtain exact spec paths from the
-     pre-flight inventory for `changed_files`
-     because the CLI's `specsUpdated` is not a path list. Add the realized
-     archive path and spec paths to the union.
-     - On failure or invalid JSON, classify before anything else:
-       - **Content failure with cited header** — the error carries a
-         delta-content signal (a JSON error code or message naming
-         `archive_spec_update_failed`, an already-existing requirement, or a
-         missing/unknown requirement) AND cites at least one concrete
-         `### Requirement:` header. Only then, and only while
-         `archive_content_fix_attempted` is still false: set it true and
-         dispatch exactly one `sai-backfill-worker` through the active
-         backfill-worker binding
-         (`Fetch @sai/orchestration/workers/bindings/backfill-worker.md`)
-         with a `--fix-delta-headers <name>` envelope carrying the verbatim
-         CLI error plus the cited headers. The worker returns corrected spec
-         content for the cited headers only — never a full regeneration.
-         Validate it against the sai-workflow delta format, verify it by
-         staging the corrected specs to OS-temp and running
-         `node <tool-path> <change-name> --delta-dir <tmp>/specs`
-         (resolved per `@sai/policies/tool-resolution.md`, substituting
-         `check-delta-headers.js` for the filename placeholder `<name>` —
-         first existing candidate per harness, copied verbatim; `<change-name>`
-         is the confirmed change name; if no candidate exists, name the tried
-         candidates and stop with no prose fallback)
-         exactly like the backfill preflight, write the corrected specs on
-         pass, and retry the CLI archive exactly once. Any second failure —
-         from the retry, the validation, or the fix continuation itself —
-         stops with the literal error and no further retry. Never replace the
-         worker and never send a second fix.
-       - **Every other failure** — archive-directory collision, empty index,
-         infrastructure errors (missing binary, timeouts, invalid JSON), any
-         failure on a `--skip-specs` run, or a content signal with no cited
-         header: never reroute to backfill. Report the exact error and stop
-         without manual fallback, staging, retry, or commit.
+  - **Retirement declaration** — when the summary names retired capabilities,
+    perform the Write procedure of `retirement-declaration.md`. A refusal or a
+    failed re-parse stops the run before the CLI archive, with no question.
+  - **CLI archive** — run `openspec archive <name> --yes --json` and parse the
+    JSON. On success the sync and move are complete: add the realized archive
+    path and the spec paths from the pre-flight inventory (the CLI's
+    `specsUpdated` is not a path list) to the union. On failure or invalid
+    JSON, classify:
+    - **Content failure with a cited header** — the error carries a
+      delta-content signal (`archive_spec_update_failed`, an already-existing
+      requirement, or a missing or unknown requirement) and cites at least one
+      `### Requirement:` header. Once per run
+      (`archive_content_fix_attempted`): dispatch exactly one
+      `sai-backfill-worker` through the active backfill-worker binding
+      (`Fetch @sai/orchestration/workers/bindings/backfill-worker.md`) with a
+      `--fix-delta-headers <name>` envelope carrying the verbatim CLI error and
+      the cited headers. It returns corrected content for those headers only.
+      Validate it against the sai-workflow delta format, write it to an
+      OS-temp directory, and check it with
+      `node <check-delta-headers.js path> <name> --delta-dir <tmp>/specs`,
+      resolving the tool path per `@sai/policies/tool-resolution.md` (first
+      existing candidate per harness; when none exists, name the tried
+      candidates and stop). On a pass, write the corrected specs and retry the
+      CLI archive once. Any second failure — the retry, the validation, or the
+      fix continuation — stops with the literal error: no further retry, no
+      second fix, no replacement worker.
+    - **Every other failure** — an archive-directory collision, an empty
+      index, an infrastructure error (missing binary, timeout, invalid JSON), a
+      failure on a `--skip-specs` run, or a content signal with no cited header:
+      report the exact error and stop, with no fallback, staging, retry, or
+      commit.
   - **Post-archive commit gate** — fetch
-    @sai/commands/archive/archive-commit-gate.instructions.md and apply its
-    coordinator-owned surface exactly as written: the skip-rule `git
-    status` check, the three-option selector presentation (suppressed under
-    `fast_track_active`, which auto-selects the new-commit option), staging of
-    exactly the two literal paths, the shared empty-index guard, the
-    pushed-HEAD guard with its secondary confirmation, and the authorized
-    commit or amend. Compose messages by applying
-    `sai/commands/commit/instructions.md` steps 1–5 with
-    `@sai/policies/commit-rules.md` as the single source of commit-message
-    rules, exactly as that instruction directs.
+    @sai/commands/archive/archive-commit-gate.instructions.md and apply it
+    exactly.
 
   Then run `terminal_navigation`.
 
-  ## Direct Build (unattended) prepare -> execute routing
+  ## Direct Build (unattended) route
 
-  This route is used only by the Explore Direct Build (unattended)
-  composition and leaves the ordinary archive coordinator path unchanged. The
-  initial `--direct-build-prepare` dispatch runs classification, completion,
-  collision detection, and every applicable fast-track gate without mutation.
-  The worker returns a closed plan containing the archive destination, owned
-  staging paths, and the pre-authorized one-commit boundary. When the pre-flight
-  detected a capability-emptying delta whose declaration preconditions all pass,
-  the plan and the validated execution order also contain the conditional
-  `retire_capabilities` retirement declaration and the capabilities it retires:
-  it is a named member of the closed-order content enumeration, so the worker
-  validating its own order accepts that step as authorized rather than rejecting
-  the order as altered or writing without authorization. When the pre-flight
-  refused the declaration, the worker returns the refusal instead of a plan and
-  no execution continuation is sent.
+  Used only by the Explore Direct Build (unattended) composition. The
+  `--direct-build-prepare` dispatch runs the whole pre-flight and every
+  applicable fast-track gate without mutation and returns either a refusal or a
+  closed plan: the archive destination, the owned staging paths, the
+  pre-authorized one-commit boundary, and, when capabilities are retired, the
+  retirement declaration as a named member of the order.
 
-  The coordinator validates that plan against the fresh worker findings and
-  the implementer's changed-files union. After the existing gates and the
-  Direct Build (unattended) authorization resolve, it continues the same worker exactly once
-  with an opaque `--direct-build-execute` payload containing the validated closed
-  execution order. That continuation is the explicit execution authorization;
-  it is never inferred from a completed prepare result, a fast-track notice,
-  or a worker summary. The coordinator forwards no additional path or action.
+  Validate the plan against the fresh worker findings and the implementer's
+  changed-files union. After the existing gates and the Direct Build
+  authorization resolve, continue the same worker exactly once with an opaque
+  `--direct-build-execute` payload holding the validated closed execution
+  order. That continuation is the execution authorization; it is never inferred
+  from a completed prepare result, a fast-track notice, or a worker summary, and
+  it carries no additional path or action.
 
-   The worker owns the authorized CLI archive invocation, exact-path staging,
-   commit-message authoring, and local commit in that order. The CLI
-   (`openspec archive <name> --yes --json`) is the sole sync + move primitive;
-   any CLI failure stops staging and commit. A CLI failure evaluated as a
-   backfill-artifact error returns the verbatim error for same-worker backfill
-   correction and archive relaunch under the Direct Build supervision contract;
-   the classified content-fix loop above stays ordinary-route only. Add every
-  worker reported path to the invocation union and print its summary verbatim.
-  A repeated defect reported without progress after correction closes as
-  failed-retryable with the verbatim failure in view and no further automatic
-  continuation. A failure after some mutation executed reports the exact
-  partial state and never refires any order onto the partially mutated world.
-  A late continuation after success is rejected without mutation. Both
-  repeated-defect and partial-mutation closures carry no finality: new retries
-  or changes run only at explicit user request. Never fall back to the normal
-  coordinator mutation surface.
-
-  ## Content assignment
-
-  The split of today's technical content is fixed: `@sai/commands/archive/
-  instructions.md` (Classification Check, Completion Check scan, collision
-  check) belongs to the WORKER as verification, completeness, and diffing
-  procedure plus the unchecked-items pre-mutation gate question. The
-  coordinator owns the CLI archive invocation (`openspec archive <name>
-  --yes --json`) and the post-archive commit gate
-  (`@sai/commands/archive/archive-commit-gate.instructions.md`) on the
-  ordinary route. The Direct Build (unattended) route uses the same
-  coordinator validation and authorization, then delegates only its validated
-  closed execution order — CLI archive, exact-path staging, and local commit —
-  to the existing archive worker.
+  Add every worker-reported path to the union and print its summary verbatim.
+  The classified content fix above is ordinary-route only; a CLI failure here
+  follows the Direct Build supervision contract. A defect repeated without
+  progress after correction closes as failed-retryable with the verbatim
+  failure in view. A failure after a partial mutation reports the exact partial
+  state and never refires an order onto it. A late continuation after success
+  is rejected without mutation. These closures carry no finality: new retries
+  run only at explicit user request. Never fall back to the ordinary-route
+  mutation surface.
 
 </TASK>
 

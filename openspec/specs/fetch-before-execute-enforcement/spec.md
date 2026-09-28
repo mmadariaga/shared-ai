@@ -2,25 +2,25 @@
 
 ## Purpose
 
-TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+Make the `sai-commands` skill run every `/sai-*` invocation through its command file before any task work.
 
 ## Requirements
 ### Requirement: LLM MUST fetch command file before executing any sai-* task
 
-When a `/sai-*` command is invoked, the LLM SHALL resolve it by reading the corresponding `@commands/sai-<name>.md` file and follow the instructions in that file exactly. The LLM SHALL NOT skip to implementation or interpretation.
+When a `/sai-*` command is invoked, the LLM SHALL follow its command file exactly, from its first directive, before acting on the task: the content the harness already expanded into context, or else the `@commands/sai-<name>.md` file it fetches.
 
 #### Scenario: /sai-1-spec invoked
 - **WHEN** the user invokes `/sai-1-spec`
-- **THEN** the LLM fetches `@commands/sai-1-spec.md` and follows its instructions exactly
+- **THEN** the LLM follows `commands/sai-1-spec.md` exactly, fetching `@commands/sai-1-spec.md` when the harness did not expand it
 
 #### Scenario: /sai-4-apply invoked
 - **WHEN** the user invokes `/sai-4-apply`
-- **THEN** the LLM fetches `@commands/sai-4-apply.md` and follows its instructions exactly
+- **THEN** the LLM follows `commands/sai-4-apply.md` exactly, fetching `@commands/sai-4-apply.md` when the harness did not expand it
 
 ### Requirement: Resolution steps are explicit and ordered
 
-The skill SHALL provide numbered resolution steps: (1) identify command name from input, (2) fetch corresponding file from `@commands/sai-<name>.md`, (3) follow instructions exactly, (4) do NOT skip to implementation or interpretation.
+The skill SHALL provide numbered resolution steps: (1) take the command name from the invocation, (2) follow the harness-expanded command content, or else fetch `@commands/sai-<name>.md`, (3) follow the file exactly, from its first directive, before acting on the task itself.
 
 #### Scenario: step-by-step resolution followed
 - **WHEN** the LLM processes any `/sai-*` command
-- **THEN** it follows all four resolution steps in order
+- **THEN** it follows the three resolution steps in order

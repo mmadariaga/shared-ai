@@ -26,20 +26,20 @@ The change-picker SHALL use the 0/1/N active-change picker only when `arguments_
 
 ### Requirement: Consumer scope excludes sai-status
 
-The shared `change-picker.md` instruction SHALL serve exactly the change-consuming `sai-*` commands that need only single-change resolution — `sai-2-design`, `sai-3-implement`, `sai-4-apply`, `sai-5-review`, `sai-6-security`, `sai-7-performance`, `sai-8-accessibility`, `sai-archive`, and `sai-pr` (9 consumers). `sai-status` SHALL NOT be a consumer of `change-picker.md`; it resolves change names via the dedicated `status-picker` capability instead. The invocation-envelope precedence and the 0/1/N fallback SHALL remain behaviorally identical for those 9 consumers, and SHALL be decided by `sai/tools/change-picker.js` rather than re-derived in the instruction's prose.
+The shared `change-picker.md` instruction SHALL serve the commands whose main session resolves the change name before any dispatch — today `sai-4-apply`, `sai-archive`, and `sai-pr`, each through its own fetch. Routed phase workers resolve inside the worker and return picker questions as `needs_input`. `sai-status` SHALL NOT be a consumer of `change-picker.md`; it resolves change names via the dedicated `status-picker` capability instead. The policy SHALL NOT enumerate its consumers: the fetch lines are the source of truth. The invocation-envelope precedence and the 0/1/N fallback SHALL be decided by `sai/tools/change-picker.js` rather than re-derived in the instruction's prose.
 
-#### Scenario: consumer list enumerates 9 commands without sai-status
-- **WHEN** the consumer list in `sai/policies/change-picker.md` is read
-- **THEN** it enumerates the 9 change-consuming commands and does not include `sai-status`
+#### Scenario: the policy names no consumer list
+- **WHEN** `sai/policies/change-picker.md` is read
+- **THEN** it describes itself as serving the commands that fetch it, names `sai-status` as excluded, and enumerates no consumer list
 
-#### Scenario: resolution logic unchanged for the 9 consumers
-- **WHEN** the resolution the 9 consumers obtain from `change-picker.md` is compared before and after the move to `sai/tools/change-picker.js`
+#### Scenario: resolution logic unchanged for the consumers
+- **WHEN** the resolution the consumers obtain from `change-picker.md` is compared before and after the move to `sai/tools/change-picker.js`
 - **THEN** the supplied-name precedence, the 0/1/N branches, the prompts, and the retry and decline semantics are identical, and only the location of the resolution differs
 
-### Requirement: sai-1-spec is a conditional consumer
-`sai-1-spec` SHALL fetch `sai/policies/change-picker.md` solely when its trimmed `arguments_value` is empty; a supplied name still selects an existing change to build on, and the picker SHALL never invent a new change. `sai-1-spec` sits outside the twelve-command consumer membership.
+### Requirement: sai-1-spec is not a consumer
+`sai-1-spec` SHALL NOT fetch `sai/policies/change-picker.md`: it resolves names only through the crystallized Ready to Propose block or an existing change directory, and an empty or name-only request stops before change resolution. The picker SHALL never invent a new change.
 
-#### Scenario:
+#### Scenario: empty sai-1-spec request
 - **WHEN** `/sai-1-spec` is invoked with an empty arguments_value
-- **THEN** the worker fetches the shared change-picker and applies its 0/1/N resolution, while a supplied name bypasses the picker entirely
+- **THEN** the spec worker stops with its block-required message and never fetches the shared change-picker
 

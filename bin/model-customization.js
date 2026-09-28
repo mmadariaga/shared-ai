@@ -11,11 +11,13 @@ const {
   promptChecklist: installFlowPromptChecklist,
   prepareLineInput,
   BACK,
+  INPUT_CLOSED,
   CHECKLIST_SEPARATOR,
 } = require('./install-flow.js');
 
 const MENU_OPTIONS = Object.freeze(['Customize models', 'Reset to default models', 'Save preset', 'Load preset', 'Exit']);
 const HARNESS_OPTIONS = Object.freeze(['OpenCode', 'Claude Code']);
+const CANCELLED = Symbol('CANCELLED');
 const SCOPE_OPTIONS = Object.freeze(['All', 'Agents', 'Orchestrators', 'Workers', 'Utilities']);
 const MODEL_CHECKLIST_LEGEND = 'Up/Down move · Space toggle · Enter confirm · ←/Esc back · q/Ctrl-C cancel';
 const MODEL_TABLE_INDENT = '      ';
@@ -119,7 +121,7 @@ const COMMAND_WORKER_ORDER = Object.freeze({
   'sai-2-design': Object.freeze(['sai-2-design-worker']),
   'sai-3-implement': Object.freeze(['sai-3-implementation-worker']),
   'sai-4-apply': Object.freeze(['sai-4-red-worker', 'sai-4-green-worker']),
-  'sai-5-review': Object.freeze(['sai-5-review-worker']),
+  'sai-5-review': Object.freeze(['sai-5-review-worker', 'sai-review-fix-worker']),
   'sai-6-security': Object.freeze(['sai-6-security-worker']),
   'sai-7-performance': Object.freeze(['sai-7-performance-worker']),
   'sai-8-accessibility': Object.freeze(['sai-8-accessibility-worker']),
@@ -250,9 +252,100 @@ function splitFrontmatter(text) {
   return { lines, endIndex, lineEnding, trailingLineEnding };
 }
 
-function patchFrontmatter(text, tunableKeys, settings) {
+function patchFrontmatter(text, tunableKeys, settings, { separateVariant = false } = {}) {
   const split = splitFrontmatter(text);
   if (split === null) return null;
+
+  // OpenCode commands keep their combined model#variant frontmatter. Agents
+  // use separate model and variant fields; both accept legacy combined input.
+  if (tunableKeys.includes('variant') && separateVariant) {
+    const rawModel = settings.model === undefined ? undefined : String(settings.model);
+    const hashIndex = rawModel === undefined ? -1 : rawModel.indexOf('#');
+    const model = hashIndex === -1 ? rawModel : rawModel.slice(0, hashIndex);
+    const variant = settings.variant !== undefined && settings.variant !== ''
+      ? String(settings.variant)
+      : hashIndex === -1 ? undefined : rawModel.slice(hashIndex + 1) || undefined;
+    const kept = [];
+    let wroteModel = false;
+    for (const line of split.lines.slice(1, split.endIndex)) {
+      const match = TOP_LEVEL_SCALAR.exec(line);
+      if (match && match[1] === 'variant') continue;
+      if (match && match[1] === 'model') {
+        if (wroteModel) continue;
+        kept.push(`model: ${model === undefined ? match[2].trim().split('#')[0] : model}`);
+        if (variant) kept.push(`variant: ${variant}`);
+        wroteModel = true;
+      } else {
+        kept.push(line);
+      }
+    }
+    if (!wroteModel && model !== undefined) {
+      kept.push(`model: ${model}`);
+      if (variant) kept.push(`variant: ${variant}`);
+    }
+    return [split.lines[0], ...kept, ...split.lines.slice(split.endIndex)]
+      .join(split.lineEnding) + (split.trailingLineEnding ? split.lineEnding : '');
+  }
+  if (tunableKeys.includes('variant')) {
+    const selectedModelRaw = settings['model'] !== undefined ? String(settings['model']) : undefined;
+    const selectedVariantRaw = settings['variant'] !== undefined ? String(settings['variant']) : undefined;
+    let desiredModelValue;
+    if (selectedModelRaw !== undefined) {
+      if (selectedModelRaw.includes('#')) {
+        desiredModelValue = selectedModelRaw;
+      } else if (selectedVariantRaw !== undefined && selectedVariantRaw !== '') {
+        desiredModelValue = `${selectedModelRaw}#${selectedVariantRaw}`;
+      } else {
+        desiredModelValue = selectedModelRaw;
+      }
+    } else {
+      let origModel;
+      let origVariant;
+      for (const line of split.lines.slice(1, split.endIndex)) {
+        const m = TOP_LEVEL_SCALAR.exec(line);
+        if (!m) continue;
+        if (m[1] === 'model' && origModel === undefined) origModel = m[2].trim();
+        else if (m[1] === 'variant' && origVariant === undefined) origVariant = m[2].trim();
+      }
+      if (origModel !== undefined) {
+        if (origModel.includes('#')) desiredModelValue = origModel;
+        else if (origVariant) desiredModelValue = `${origModel}#${origVariant}`;
+        else desiredModelValue = origModel;
+      }
+    }
+    const seen = new Set();
+    const patchedFrontmatter = [];
+    for (const line of split.lines.slice(1, split.endIndex)) {
+      const match = TOP_LEVEL_SCALAR.exec(line);
+      if (!match) {
+        patchedFrontmatter.push(line);
+        continue;
+      }
+      const key = match[1];
+      if (key === 'variant') continue;
+      if (key !== 'model') {
+        patchedFrontmatter.push(line);
+        continue;
+      }
+      if (desiredModelValue === undefined) {
+        patchedFrontmatter.push(line);
+        continue;
+      }
+      if (seen.has('model')) continue;
+      patchedFrontmatter.push(`model: ${desiredModelValue}`);
+      seen.add('model');
+    }
+    if (desiredModelValue !== undefined && !seen.has('model')) {
+      patchedFrontmatter.push(`model: ${desiredModelValue}`);
+    }
+    const lines = [
+      split.lines[0],
+      ...patchedFrontmatter,
+      split.lines[split.endIndex],
+      ...split.lines.slice(split.endIndex + 1),
+    ];
+    return lines.join(split.lineEnding) + (split.trailingLineEnding ? split.lineEnding : '');
+  }
 
   const selected = new Map(
     tunableKeys
@@ -362,7 +455,9 @@ function materializeLocalOverride({
     );
   }
 
-  const patchedText = patchFrontmatter(currentText, tunableKeys, settings);
+  const patchedText = patchFrontmatter(currentText, tunableKeys, settings, {
+    separateVariant: harness === 'opencode' && familyDirectory === 'agents',
+  });
   if (patchedText === null) {
     return materializationFailure(agentName, `Target ${agentName} has no valid frontmatter block.`);
   }
@@ -410,8 +505,23 @@ function readFrontmatterSettings(filePath, harness) {
       if (match && ['model', 'effort', 'variant'].includes(match[1])) values[match[1]] = match[2].trim();
     }
     if (!values.model) return null;
-    const tuning = values[harness === 'claude' ? 'effort' : 'variant'];
-    return `${harness === 'claude' ? `anthropic/${values.model}` : values.model}${tuning ? ` (${tuning})` : ''}`;
+    if (harness === 'claude') {
+      const tuning = values['effort'];
+      return `anthropic/${values.model}${tuning ? ` (${tuning})` : ''}`;
+    }
+    // OpenCode agents use separate fields; commands use a combined model value.
+    // Read both shapes to show the effective setting of older local overrides.
+    let baseModel = values.model;
+    let variant;
+    const hashIndex = baseModel.indexOf('#');
+    if (hashIndex !== -1) {
+      variant = baseModel.slice(hashIndex + 1).trim();
+      baseModel = baseModel.slice(0, hashIndex).trim();
+      if (variant === '') variant = undefined;
+    } else if (values.variant) {
+      variant = values.variant;
+    }
+    return `${baseModel}${variant ? ` (${variant})` : ''}`;
   } catch {
     return null;
   }
@@ -633,6 +743,7 @@ async function selectClaudeSettings(subsetLabel, promptChoice, settingsCatalog) 
     entries.map(entry => entry.display)
   );
   if (selectedDisplay === BACK) return BACK;
+  if (selectedDisplay === null) return CANCELLED;
   const selected = entries.find(entry => entry.display === selectedDisplay);
   if (selected === undefined) return null;
   return selected.effort === undefined
@@ -682,12 +793,6 @@ function defaultRunCommand(executable, args, {
   }
   if (result.error) throw result.error;
   return { stdout: result.stdout, stderr: result.stderr, status: result.status };
-}
-
-function reportCommandFailure(action, outcome) {
-  const detail = typeof outcome.stderr === 'string' ? outcome.stderr.trim() : '';
-  const suffix = detail === '' ? `exit status ${outcome.status}` : detail;
-  console.error(`Unable to ${action}: ${suffix}`);
 }
 
 function parseModelCatalog(stdout) {
@@ -763,21 +868,20 @@ async function opencodeSelectSettings(subsetLabel, promptChoice, runCommand) {
   try {
     catalogOutcome = runCommand('opencode', ['models']);
   } catch (error) {
-    console.error(`Unable to query OpenCode models: ${error.message}`);
-    return null;
+    return { status: 'failed', diagnostic: `Unable to query OpenCode models: ${error.message}` };
   }
   if (catalogOutcome.status !== 0) {
-    reportCommandFailure('query OpenCode models', catalogOutcome);
-    return null;
+    const detail = typeof catalogOutcome.stderr === 'string' ? catalogOutcome.stderr.trim() : '';
+    return { status: 'failed', diagnostic: `Unable to query OpenCode models: ${detail || `exit status ${catalogOutcome.status}`}` };
   }
 
   let catalog;
   try {
     catalog = parseModelCatalog(catalogOutcome.stdout);
-  } catch {
-    return null;
+  } catch (error) {
+    return { status: 'failed', diagnostic: `Invalid OpenCode model catalog: ${error.message}` };
   }
-  if (catalog.length === 0) return null;
+  if (catalog.length === 0) return { status: 'failed', diagnostic: 'OpenCode model catalog is empty.' };
 
   const providers = [];
   for (const entry of catalog) {
@@ -799,6 +903,7 @@ async function opencodeSelectSettings(subsetLabel, promptChoice, runCommand) {
     if (screen === 'provider') {
       const chosen = await promptChoice(`Provider for ${subsetLabel}:`, providers);
       if (chosen === BACK) return BACK;
+      if (chosen === null) return CANCELLED;
       if (!providers.includes(chosen)) return null;
       provider = chosen;
       screen = 'model';
@@ -812,6 +917,7 @@ async function opencodeSelectSettings(subsetLabel, promptChoice, runCommand) {
         screen = 'provider';
         continue;
       }
+      if (chosen === null) return CANCELLED;
       if (!models.includes(chosen)) return null;
       model = chosen;
       screen = 'variant';
@@ -821,26 +927,21 @@ async function opencodeSelectSettings(subsetLabel, promptChoice, runCommand) {
     const identity = `${provider}/${model}`;
 
     if (cachedAvailable === null) {
-      let apiOutcome = null;
-      let apiFailed = false;
+      let apiOutcome;
       try {
         apiOutcome = runCommand('opencode', ['api', 'model.list']);
       } catch (error) {
-        console.error(`Unable to query OpenCode model variants: ${error.message}`);
-        apiFailed = true;
+        return { status: 'failed', diagnostic: `Unable to query OpenCode model variants: ${error.message}` };
       }
-      if (apiFailed) {
-        cachedAvailable = false;
-      } else if (apiOutcome.status !== 0) {
-        reportCommandFailure('query OpenCode model variants', apiOutcome);
-        cachedAvailable = false;
-      } else {
-        try {
-          cachedModelList = parseApiModelList(apiOutcome.stdout);
-          cachedAvailable = true;
-        } catch {
-          cachedAvailable = false;
-        }
+      if (apiOutcome.status !== 0) {
+        const detail = typeof apiOutcome.stderr === 'string' ? apiOutcome.stderr.trim() : '';
+        return { status: 'failed', diagnostic: `Unable to query OpenCode model variants: ${detail || `exit status ${apiOutcome.status}`}` };
+      }
+      try {
+        cachedModelList = parseApiModelList(apiOutcome.stdout);
+        cachedAvailable = true;
+      } catch (error) {
+        return { status: 'failed', diagnostic: `Invalid OpenCode model variant list: ${error.message}` };
       }
     }
 
@@ -866,6 +967,7 @@ async function opencodeSelectSettings(subsetLabel, promptChoice, runCommand) {
       screen = 'model';
       continue;
     }
+    if (selectedDisplay === null) return CANCELLED;
     const selected = variantOptions.find(option => option.display === selectedDisplay);
     if (selected === undefined || selected.value === NO_VARIANT) {
       return selected === undefined ? null : { model: identity };
@@ -1077,6 +1179,20 @@ function effectiveRawSetting(targetEntry, projectPath, globalAgentRoot, globalCo
         }
       }
       if (!values.model) return null;
+      if (harnessKey === 'opencode') {
+        // Split the canonical single-line `model: <id>#<variant>` back into the
+        // logical `{model, variant}` pair so preset JSON keeps the separate form.
+        // Legacy separated `variant:` lines are accepted for migration.
+        const hashIndex = values.model.indexOf('#');
+        if (hashIndex !== -1) {
+          const base = values.model.slice(0, hashIndex).trim();
+          const hashVariant = values.model.slice(hashIndex + 1).trim();
+          if (!base) return null;
+          const out = { model: base };
+          if (hashVariant !== '') out.variant = hashVariant;
+          return out;
+        }
+      }
       return values;
     } catch {
       return null;
@@ -1106,7 +1222,7 @@ function skippedOutcome(reason, diagnostics = []) {
   return { status: 'skipped', reason, skippedAgents: [], diagnostics };
 }
 
-async function runPostSetupMenu({
+async function runPostSetupMenuInternal({
   projectPath = process.cwd(),
   packageRoot = DEFAULT_PACKAGE_ROOT,
   claudeGlobalAgentRoot = DEFAULT_CLAUDE_GLOBAL_AGENT_ROOT,
@@ -1116,8 +1232,8 @@ async function runPostSetupMenu({
   claudePresetDir,
   opencodePresetDir,
   isTTY = process.stdin.isTTY,
-  promptChoice = promptSelect,
-  promptChecklist = installFlowPromptChecklist,
+  promptChoice: selectChoice = promptSelect,
+  promptChecklist: selectChecklist = installFlowPromptChecklist,
   promptInput = defaultPromptInput,
 } = {}) {
   const effectiveOpencodeAgentRoot = opencodeGlobalAgentRoot !== undefined ? opencodeGlobalAgentRoot : defaultOpencodeGlobalAgentRoot();
@@ -1129,6 +1245,18 @@ async function runPostSetupMenu({
     ? opencodePresetDir
     : path.join(path.dirname(effectiveOpencodeAgentRoot), 'sai', 'presets');
   if (!isTTY) return skippedOutcome('non-tty');
+  const promptChoice = async (...args) => {
+    const choice = selectChoice === promptSelect
+      ? await promptSelect(args[0], args[1], args[2], args[3], true)
+      : await selectChoice(...args);
+    if (choice === INPUT_CLOSED) throw new Error('Terminal input closed while waiting for a menu selection.');
+    return choice;
+  };
+  const promptChecklist = async (...args) => {
+    const outcome = await selectChecklist(...args);
+    if (outcome && outcome.status === 'input-closed') throw new Error('Terminal input closed while waiting for a menu selection.');
+    return outcome;
+  };
 
   for (;;) {
     let screen = 'menu';
@@ -1699,8 +1827,12 @@ async function runPostSetupMenu({
         screen = 'targets';
         continue;
       }
+      if (settings && settings.status === 'failed') {
+        return failedCustomization(settings.diagnostic);
+      }
+      if (settings === CANCELLED) return skippedOutcome('cancelled');
       if (!settings || typeof settings.model !== 'string' || settings.model === '') {
-        return skippedOutcome('settings-unavailable');
+        return failedCustomization('No valid model setting was returned for the selected targets.');
       }
       break;
     }
@@ -1781,6 +1913,19 @@ async function runPostSetupMenu({
     if (failedAgents.length > 0) {
       return { status: 'persistence-failed', failedAgents, diagnostics };
     }
+  }
+}
+
+function failedCustomization(diagnostic) {
+  console.error(`Post-setup customization: ${diagnostic}`);
+  return { status: 'failed', diagnostics: [diagnostic] };
+}
+
+async function runPostSetupMenu(options) {
+  try {
+    return await runPostSetupMenuInternal(options);
+  } catch (error) {
+    return failedCustomization(error && error.message ? error.message : String(error));
   }
 }
 

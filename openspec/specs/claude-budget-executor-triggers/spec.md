@@ -1,33 +1,36 @@
-## ADDED Requirements
+# claude-budget-executor-triggers Specification
+
+## Purpose
+
+Define the `TRIGGER when:` phrases that auto-load the Claude Code budget-executor skill and the one-sentence summary that precedes them.
+
+## Requirements
 
 ### Requirement: Trigger phrases in description frontmatter
 
-`skills/claude/budget-executor/SKILL.md` frontmatter `description` field SHALL be extended with a `TRIGGER when:` block listing all phrases that cause the skill to auto-load. The existing one-sentence summary MUST be preserved verbatim before the trigger block.
+The `skills/claude/budget-executor/SKILL.md` frontmatter `description` field SHALL carry a one-sentence summary followed by a `TRIGGER when:` block listing every phrase that auto-loads the skill.
 
-Trigger phrases to include:
-- "use executor"
-- "spawn executor"
-- "run command subagent"
-- "delegate execution"
-- "execute in subagent"
-- "run cheap executor"
-- "use general subagent"
-- "spawn haiku executor"
+Trigger phrases (exact strings, case-insensitive match is sufficient for harness discovery):
+- "budget executor"
+- "cheap executor"
+- "budget mode"
+- "cheap mode"
+- "low-cost mode"
+- "low cost mode"
+- "economy mode"
 
 The `description` field format SHALL be:
 
     description: >
-      Binds "executor subagent" to concrete Claude Code subagent spawn parameters — subagent_type: General, model: haiku, no tool-call cap. Enforces execute-only, minimal-output, structured-failure-report discipline.
-      TRIGGER when: "use executor", "spawn executor", "run command subagent", "delegate execution", "execute in subagent", "run cheap executor", "use general subagent", "spawn haiku executor".
+      Binds "executor subagent" to Claude Code subagent dispatch routed through the budget-executor agent file. Enforces execute-only, minimal-output, structured-failure-report discipline. Claude Code only — NOT compatible with opencode.
+      TRIGGER when: "budget executor", "cheap executor", "budget mode", "cheap mode", "low-cost mode", "low cost mode", "economy mode"
 
-No other field in the SKILL.md SHALL be modified.
-
-#### Scenario: User says "spawn executor for this build"
+#### Scenario: User asks for budget mode
 
 - **WHEN** the user types a phrase matching any trigger in the description
 - **THEN** the harness auto-loads `skills/claude/budget-executor/SKILL.md` and applies its binding rules
 
-#### Scenario: Existing behavior preserved
+#### Scenario: Summary names the dispatch source
 
-- **WHEN** the SKILL.md is loaded (triggered or not)
-- **THEN** execute-only discipline, failure report format, and Claude Code binding (General+haiku) are unchanged
+- **WHEN** the SKILL.md description is read
+- **THEN** it names the budget-executor agent file as the dispatch route and names no subagent type or model

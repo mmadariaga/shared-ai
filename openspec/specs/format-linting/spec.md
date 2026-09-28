@@ -2,7 +2,9 @@
 
 ## Purpose
 TBD - created by archiving change deterministic-format-linter. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: Deterministic format validation with selectable sub-checks
 
 The repository SHALL provide a single runnable validator at `sai/tools/lint.js` that checks conformance of files and text to the artifact-format policies defined in `sai/policies/*.md`. The validator MUST support selectable sub-checks, each validating one policy's format rules deterministically without inference. Each check SHALL examine files, accept text input, or both as appropriate to the policy, and report findings using the same exit-code and output contract as `sai/tools/check-delta-headers.js`: exit 0 when conformant, exit 1 when findings are reported line-by-line on stdout, exit 2 on usage or I/O error.
@@ -56,3 +58,11 @@ Each sub-check SHALL be read-only. Invocation of any check SHALL NOT modify the 
 - **THEN** `sai/policies/todo-structure.md` deliberately has no check because it defines coordinator-owned rendering behavior and state semantics rather than statically validatable file-format rules
 - **AND** the policy file carries a cross-reference note explaining this exclusion
 
+### Requirement: Ready-to-propose check accepts the optional Request Additional Notes field
+
+The `lint.js ready-to-propose` check SHALL accept a `Ready to Propose` block both with and without an optional `**Request Additional Notes**` field between `**Implementation Details**` and `**Overview language**`. The field SHALL NOT break the required-section order check.
+
+#### Scenario: Block with the notes field passes
+
+- **WHEN** the ready-to-propose check runs on a block whose `**Request Additional Notes**` field, holding paragraph and bullet content, sits between `**Implementation Details**` and `**Overview language**`
+- **THEN** the check exits 0 and reports that the check passed

@@ -1,5 +1,5 @@
 ---
-description: Apply the granular implementation plan mechanically — reads openspec/changes/{name}/implementation.md and executes step-by-step with a cheap model. Uses openspec CLI for status context.
+description: Apply a change's implementation.md step by step — budget-tier workers write each step's failing test, then the code, with a commit gate after every step.
 argument-hint: "[change-name] [--fast-track]"
 model: opus
 effort: medium

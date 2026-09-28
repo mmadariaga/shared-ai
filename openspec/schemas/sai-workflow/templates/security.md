@@ -9,7 +9,7 @@
 **Date:** <!-- YYYY-MM-DD -->
 
 ## Not Applicable
-<!-- Explain whether the security audit applies to this change. -->
+<!-- Keep only when the security audit does not apply to this change, with its justification; delete this heading otherwise. -->
 
 ## Executive Summary
 <!-- Summarize {the security posture} and overall audit outcome. -->

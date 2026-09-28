@@ -7,21 +7,17 @@ Define the per-harness budget-subagent skill bindings for Claude Code and Openco
 ## Requirements
 
 ### Requirement: claude-code-binding
-The `skills/claude/budget-subagent/SKILL.md` file SHALL bind the "task subagent" concept to Claude Code's Agent tool with the following fixed parameters:
-
-    subagent_type: "General"   // required for full tool access (read, write, search, bash)
-    model: "haiku"             // MUST be set explicitly on every spawn
-    tool-call cap: none enforced by harness (skill behavioral rules govern this)
+The `skills/claude/budget-subagent/SKILL.md` file SHALL bind the "task subagent" concept to `Agent(subagent_type: budget-subagent, run_in_background: true, prompt: <prompt>)`. The model SHALL come from the `model` frontmatter of the resolved `budget-subagent.md` agent file, the project-local `.claude/agents/budget-subagent.md` taking precedence over `~/.claude/agents/budget-subagent.md`; spawns SHALL pass no per-spawn model parameter. The harness enforces no tool-call cap; the policy's approximately 30-call limit governs the task.
 
 The compatibility field in the YAML frontmatter MUST be `claude`. The description MUST include the trigger phrases: `"budget subagent"`, `"cheap subagent"`, `"budget task"`, `"cheap task"`.
 
-#### Scenario: model is never omitted
+#### Scenario: model comes from the agent file
 - **WHEN** a caller spawns a budget-subagent using the Claude Code Agent tool
-- **THEN** the `model: "haiku"` parameter is always present in the call, preventing fallback to the parent model tier
+- **THEN** the call carries `subagent_type: budget-subagent` and no `model` parameter, and the resolved agent file's `model` frontmatter selects the model
 
-#### Scenario: general subagent type used
-- **WHEN** the task requires writing a file or running a shell command
-- **THEN** `subagent_type: "General"` is used (not `Explore`, which is read-only)
+#### Scenario: background dispatch
+- **WHEN** a main agent, routed SAI coordinator, or routed SAI worker spawns the budget-subagent
+- **THEN** the call sets `run_in_background: true` and the dispatcher awaits the result on its own turn
 
 ---
 
@@ -39,3 +35,16 @@ The compatibility field in the YAML frontmatter MUST be `opencode`. The descript
 #### Scenario: agent keyword matches the agent file name
 - **WHEN** the skill references the subagent binding
 - **THEN** it uses the keyword `budget` (lowercase), matching the filename `budget.md` in `~/.config/opencode/agents/`
+
+---
+
+### Requirement: caller-spawn-prompt
+Both `skills/claude/budget-subagent/SKILL.md` and `skills/opencode/budget-subagent/SKILL.md` SHALL carry a `## Spawn prompt` section telling the caller to give one task per spawn, with what to do, the files or area it covers, and, when a specific result is needed, the exact shape to return; without a shape the subagent returns its structured completion report. Independent tasks SHALL go to separate spawns.
+
+#### Scenario: caller needs a specific result shape
+- **WHEN** a caller dispatches the budget subagent for a task whose result it parses in a fixed shape
+- **THEN** the spawn prompt names that shape, and the subagent returns it instead of the completion report
+
+#### Scenario: two independent tasks
+- **WHEN** a caller has two independent tasks for the budget subagent
+- **THEN** it dispatches them as two spawns, one task each

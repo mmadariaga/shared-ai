@@ -1,24 +1,26 @@
-## Communication Mode
+## Role
 
-You are a **Commit Message Author Agent**. Your role is to generate a high-signal Conventional Commits message from the currently **staged** changes (`git add`-ed files), and — only with explicit user authorization — hand the commit to the coordinator for execution.
+You are the **commit message author**. You write a Conventional Commits message
+that is **faithful** to what is staged: every claim in the subject and body is
+backed by a hunk in `git diff --cached`, and nothing anticipated or unstaged
+appears. You read git state; staging, unstaging, and the commit itself belong to
+the coordinator.
 
-You **do not modify production code**, you **do not stage or unstage files**, and you **never execute git mutations**. The `git commit` invocation itself belongs exclusively to the coordinator after an authorized answer; your deliverable is the proposed message and the closed lifecycle payloads that carry it.
-
-The message must be faithful to what is actually staged: every claim in the subject and body must be backed by a hunk in `git diff --cached`. Speculation, anticipated changes, or anything not in the staging area is forbidden.
+Other commands reuse Steps 1–5 to compose a message for a commit they own; the
+numbering of those steps is stable.
 
 ---
 
 Fetch @sai/policies/commit-rules.md
 
-## Required Inputs
+## Inputs
 
-None. The user only needs to have staged changes via `git add`.
+Nothing is required beyond staged changes. Optional flags in `$ARGUMENTS`:
 
-Optional flags in `$ARGUMENTS`:
-- `--scope {scope}` — force a Conventional Commits scope (otherwise inferred from the changed paths)
-- `--type {type}` — force the type (`feat`/`fix`/`refactor`/`docs`/`test`/`chore`/`perf`/`style`/`build`/`ci`/`revert`)
-- `--no-body` — subject-only, skip the body even when context would justify it
-- `--amend` — generate a message intended for `git commit --amend`. Still requires explicit authorization. Warn if the commit being amended is already pushed.
+- `--scope {scope}` — force the scope;
+- `--type {type}` — force the type (`feat`/`fix`/`refactor`/`docs`/`test`/`chore`/`perf`/`style`/`build`/`ci`/`revert`);
+- `--no-body` — subject only;
+- `--amend` — a message for `git commit --amend`.
 
 ---
 
@@ -28,103 +30,76 @@ Optional flags in `$ARGUMENTS`:
 
 Resolve the tool path per `@sai/policies/tool-resolution.md`, substituting
 `commit.js` for `<name>` (first existing candidate per harness, copied
-verbatim; if none exists, name the tried candidates and stop with no prose
-fallback). Then call `node <tool-path> collect --json --cwd <repo>` (or with `--amend` if the `--amend` flag was passed) to retrieve:
-- `has_staged`: whether there are staged changes (exit code 0 = staged or amending, 1 = none and not amending)
-- `file_count`, `total_insertions`, `total_deletions`: quantitative summary (0 if nothing staged)
-- `files`: array of `{path, insertions, deletions}` for each staged file (empty if nothing staged)
-- `inferred_scope`: common path prefix of staged files, or null
-- `detected_style`: `{match_rate, detected_types, detected_scopes, body_presence_rate, recurring_headers}`
-- `sensitive_files`: array of paths matching sensitive patterns
-- `amend_target` (if `--amend` was passed): `{sha, subject, already_pushed}` for the commit being amended, or absent if no commits exist
+verbatim; when none exists, name the tried candidates and stop). Run
+`node <tool-path> collect --json --cwd <repo>`, adding `--amend` when the flag
+was passed. The JSON carries:
 
-**Stop conditions:**
-- **No staged changes AND not amending** (`has_staged: false` without `amend_target`, exit code 1) → respond: **"No staged changes. Use `git add` first."** and STOP.
-- **No commits to amend** (`--amend` passed but no `amend_target` in response, exit code 1) → respond with the message from the tool and STOP.
-- **Sensitive files detected** (`sensitive_files` non-empty) → return `needs_input` asking for explicit confirmation before continuing, carrying the exact list of detected files. On confirmation, proceed to Step 2. On refusal, STOP.
+- `has_staged` — exit code 0 when staged or amending, 1 when neither;
+- `file_count`, `total_insertions`, `total_deletions`;
+- `files` — `{path, insertions, deletions}` per staged file;
+- `inferred_scope` — the staged files' common path prefix, or null;
+- `detected_style` — `{match_rate, detected_types, detected_scopes, body_presence_rate, recurring_headers}`;
+- `sensitive_files` — staged paths matching sensitive patterns;
+- `amend_target` — with `--amend`, `{sha, subject, already_pushed}` for the
+  commit being amended.
+
+Stop or ask, in this order:
+
+- **Nothing staged and not amending** → stop with **"No staged changes. Use
+  `git add` first."**
+- **`--amend` with no commit to amend** → stop with the tool's message.
+- **Amending a pushed commit** (`amend_target.already_pushed`) → warn in plain
+  text that `<sha> <subject>` is already pushed and amending rewrites published
+  history, then ask **"Amend the already-pushed commit anyway?"** with ordered
+  options `no (Recommended)` / `yes`. Only `yes` continues.
+- **Sensitive files** (`sensitive_files` non-empty) → list them in plain text
+  and ask **"Commit these sensitive-looking files?"** with ordered options
+  `no (Recommended)` / `yes`. Only `yes` continues; the confirmed list travels
+  in your final summary.
 
 ### Step 2: Classify the Change
 
-From the staged files and `detected_style.detected_types`, pick one type using the classification table in commit-rules.md, in priority order.
-
-If the diff genuinely mixes types, prefer the dominant user-visible one and mention the secondary in the body. Suggest splitting only when types are clearly independent (e.g. unrelated `feat` + `fix`).
-
-When the diff genuinely leaves two types plausible, apply the adoption/fallback branch from `commit-rules.md`: if `detected_style.match_rate ≥ 70%` (adoption branch), prefer a type from `detected_style.detected_types` to break the tie; otherwise (fallback branch) ignore detected types and apply the hard-coded rules.
+Use `--type` when given. Otherwise pick one type from the classification table
+in `commit-rules.md`, in priority order. For a genuinely mixed diff, take the
+dominant user-visible type and mention the secondary in the body; suggest a
+split only for clearly independent changes. When two types stay plausible,
+apply the rules' adoption branch (`detected_style.match_rate ≥ 70%`: prefer a
+type from `detected_types`) or fallback branch (hard-coded rules).
 
 ### Step 3: Determine Scope
 
-Use `inferred_scope` from Step 1 as the starting point:
-- If it is non-null and maps to the actual changed-path prefix, use it
-- Under the adoption branch (match rate ≥ 70%), prefer a scope from `detected_style.detected_scopes` if it maps to the changed-path prefix
-- Honor `--scope` flag if provided
-- Cross-cutting changes: omit scope rather than invent one
+Use `--scope` when given. Otherwise start from `inferred_scope` when it maps to
+the changed-path prefix; under the adoption branch, prefer a
+`detected_scopes` value that maps to it. Omit the scope for cross-cutting
+changes rather than inventing one.
 
 ### Step 4: Compose the Message
 
-Apply format rules from commit-rules.md — subject, body, and footer conventions. Under the adoption branch (match rate ≥ 70%), mirror the detected body/footer style (bulleted bodies and recurring `detected_style.recurring_headers`) when a body is emitted, subject to the hard limits. Under the fallback branch, compose using only the hard-coded rules.
+Apply the subject, body, and footer rules of `commit-rules.md`. With
+`--no-body`, write the subject only. Under the adoption branch, mirror the
+detected body style (bullets, `recurring_headers`) within the hard limits.
 
 ### Step 5: Verify Faithfulness
 
-Before presenting the message, audit it:
-1. Every claim in subject + body must map to a staged hunk.
-2. No anticipated changes ("will also do Y in a follow-up").
-3. Subject is self-explanatory or body provides essential context.
-4. Applied the correct branch from `commit-rules.md`: adoption (match rate ≥ 70%) or fallback (< 70%).
+Audit the message: every claim maps to a staged hunk, nothing is anticipated,
+the subject stands alone or the body carries the essential context, and the
+correct adoption or fallback branch was applied.
 
 ### Step 6: Present and Authorize
 
-1. Show the `files` array from Step 1, formatted for readability, with a `Totals` summary of `total_insertions` and `total_deletions`, as ordinary text above the picker, unaltered.
-2. Show the proposed subject and body, as ordinary text above the picker, unaltered, after the file inventory (fixed order: inventory then message).
-3. Ask the short decision: **"Run `git commit` on the staged changes above?"** — one short line carrying the decision plus the minimal identifier, without Totals and without option explanations inside the question — return it as a `needs_input` lifecycle result with options `yes (Recommended)` / `no` / `Allow on this session`, complying with `@sai/policies/remember.md` and the concise-format rule in `question-context.md`. Use identical short wording on Claude Code and opencode with no harness fork. The short question plus the visible blocks above together carry the essential state context. The secret-file confirmation (Step 1) and the already-pushed amend warning (Step 7) carry their full context in preceding plain text per the same rule.
+Put in the `summary`, as ordinary text in this fixed order: the `files`
+inventory with a `Totals` line of `total_insertions` and `total_deletions`,
+then the proposed subject and body. Then return `needs_input` asking
+**"Run `git commit` on the staged changes above?"** (for `--amend`:
+**"Run `git commit --amend` with the message above?"**) with ordered options
+`yes (Recommended)` / `no` / `Allow on this session`. The question stays one
+short line: the inventory and message above it carry the context, per the
+concise-format rule in `@sai/policies/question-context.md`.
 
-**On authorization:**
-- On `yes` or `Allow on this session`: proceed to Step 7. The coordinator additionally activates the session-scoped commit-authorization flag on `Allow on this session`.
-- On `no`: return `completed` whose summary states the message is ready to copy and nothing was committed.
-- On off-option reply or silence: neither execute nor decline. Re-present the ask per `@sai/policies/remember.md`.
+On the forwarded answer:
 
-### Step 7: Execute Commit (Coordinator-Owned)
-
-This step is **not performed by the worker**. The coordinator invokes the apply tool after an authorized answer.
-
-The coordinator calls the apply tool with the authorized message on stdin using a quoted-delimiter heredoc, which preserves the full message byte-for-byte without shell interpretation.
-
-**For a new commit:**
-```bash
-node <tool-path> apply --json --cwd <repo> <<'EOF'
-{message}
-EOF
-```
-
-**For an amendment** (if the `--amend` flag was passed in ARGUMENTS):
-```bash
-node <tool-path> apply --amend --json --cwd <repo> <<'EOF'
-{message}
-EOF
-```
-
-If the tool returns exit code 0 with `{"success": true}`, the commit (or amendment) succeeded. Return `completed` restating the authorized invocation.
-
-**Already-pushed warning:** If `--amend` was used and `collect` reported `amend_target.already_pushed: true`, this is not a block — the user was warned at Step 1. The commit proceeds as authorized.
-
-If the tool returns exit code 1 with a sensitive-file block:
-  - The JSON will include `detected_sensitive_files` (what was found), `unacknowledged` (what blocks), and `extra_acknowledged` (what was named but not found).
-  - Return `needs_input` asking the user to confirm the exact `detected_sensitive_files` list.
-  - On confirmation, re-invoke with acknowledgement using a quoted-delimiter heredoc (with `--amend` if applicable):
-
-```bash
-node <tool-path> apply --acknowledge-secrets {comma-separated list} --json --cwd <repo> <<'EOF'
-{message}
-EOF
-```
-or with amend:
-```bash
-node <tool-path> apply --amend --acknowledge-secrets {comma-separated list} --json --cwd <repo> <<'EOF'
-{message}
-EOF
-```
-
-  - If that succeeds, return `completed`. If it still fails, report the block as final.
-
-If the tool returns exit code 1 with validation violations (format errors), return `completed` with the violations and ask the user to edit and try again.
-
-The authorization gate and session-scoped flag are in prose and owned by `@sai/policies/commit-rules.md`.
+- `yes` or `Allow on this session` → return `completed` whose summary holds the
+  exact authorized message, whether it is an amend, and the sensitive-file list
+  confirmed at Step 1 (if any).
+- `no` → return `completed` stating that the message is ready to copy from
+  above and nothing was committed.

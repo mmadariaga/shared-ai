@@ -110,19 +110,9 @@ function matrixEntry(phase) {
     workerName,
     workerContract: PHASE_CONTRACT_PATH[phase],
     bindingStem: phase,
-    dispatchPrimitive: 'task',
-    initialDispatch: `dispatch ${workerName}`,
-    continuationLiteral: `continue ${workerName}`,
-    replacementFields: ['model'],
-    helperPermissions: ['read'],
-    progressDeclaration: `${phase} milestones`,
     claudeAgent: { name: workerName, model: 'claude-model', keyword: `claude-${phase}` },
     opencodeAgent: { name: workerName, model: 'opencode-model', keyword: `opencode-${phase}` },
   };
-  if (phase === 'design') {
-    base.overviewGeneration = true;
-    base.noticeContinuation = true;
-  }
   return base;
 }
 
@@ -132,12 +122,6 @@ function applyMatrixEntry(workerName, role) {
     workerName,
     workerContract: `sai/commands/apply/${role}-worker.md`,
     bindingStem: role,
-    dispatchPrimitive: 'task',
-    initialDispatch: `dispatch ${workerName}`,
-    continuationLiteral: `continue ${workerName}`,
-    replacementFields: ['model'],
-    helperPermissions: ['read'],
-    progressDeclaration: 'apply milestones',
     claudeAgent: { name: workerName, model: 'claude-apply-model', keyword: `claude-apply-${role}` },
     opencodeAgent: { name: workerName, model: 'opencode-apply-model', keyword: `opencode-apply-${role}` },
   };
@@ -153,12 +137,6 @@ function fullMatrixEntries() {
       workerName: 'sai-direct-build-worker',
       workerContract: 'sai/commands/explore/direct-build-worker.md',
       bindingStem: 'direct-build',
-      dispatchPrimitive: 'task',
-      initialDispatch: 'dispatch sai-direct-build-worker',
-      continuationLiteral: 'continue sai-direct-build-worker',
-      replacementFields: ['model'],
-      helperPermissions: ['read'],
-      progressDeclaration: 'direct-build milestones',
       claudeAgent: { name: 'sai-direct-build-worker', model: 'claude-model', keyword: 'claude-direct-build' },
       opencodeAgent: { name: 'sai-direct-build-worker', model: 'opencode-model', keyword: 'opencode-direct-build' },
     },
@@ -167,12 +145,6 @@ function fullMatrixEntries() {
       workerName: 'sai-review-fix-worker',
       workerContract: 'sai/commands/meta-review/review-fix-worker.md',
       bindingStem: 'review-fix',
-      dispatchPrimitive: 'task',
-      initialDispatch: 'dispatch sai-review-fix-worker',
-      continuationLiteral: 'continue sai-review-fix-worker',
-      replacementFields: ['model'],
-      helperPermissions: ['read'],
-      progressDeclaration: 'review-fix milestones',
       claudeAgent: { name: 'sai-review-fix-worker', model: 'claude-model', keyword: 'claude-review-fix' },
       opencodeAgent: { name: 'sai-review-fix-worker', model: 'opencode-model', keyword: 'opencode-review-fix' },
     },
@@ -390,7 +362,7 @@ function workerContractFor(workerName) {
   return `Fetch @${PHASE_CONTRACT_PATH[phase]} and follow it exactly.`;
 }
 
-test('design-only options are isolated to the design binding in both harnesses', () => {
+test('design-only options stay out of every other binding in both harnesses', () => {
   for (const [harness, install] of [['claude', installClaude], ['opencode', installOpencode]]) {
     const base = fs.mkdtempSync(path.join(os.tmpdir(), `sai-matrix-design-${harness}-`));
     try {
@@ -398,10 +370,7 @@ test('design-only options are isolated to the design binding in both harnesses',
       const bindingsDir = path.join(base, 'sai', 'orchestration', 'workers', 'bindings');
       for (const phase of PHASE_ORDER) {
         const text = fs.readFileSync(path.join(bindingsDir, workerBindingName(phase)), 'utf8');
-        if (phase === 'design') {
-          assert.match(text, /overview/i, `${harness} design binding should carry the overview-generation option`);
-          assert.match(text, /continue_after_notice/i, `${harness} design binding should carry the notice continuation option`);
-        } else {
+        if (phase !== 'design') {
           assert.doesNotMatch(text, /overview/i,
             `${harness} ${phase} binding must not carry the design-only overview option`);
           assert.doesNotMatch(text, /continue_after_notice/i,

@@ -21,9 +21,14 @@ The routed accessibility worker SHALL own envelope parsing, prerequisites, chang
 - **THEN** its initial surface references only its contract plus `sai/commands/accessibility/steps/common.md`, with every other step path first arriving inside a coordinator `Active step:` pointer line
 - **AND** the audit policy remains single-sourced across the carved step files
 
+#### Scenario: Monolith is retired
+
+- **WHEN** the step-gated accessibility delivery is in force
+- **THEN** neither `sai/commands/accessibility/instructions.md` nor `sai/commands/accessibility/invocation.md` exists, and the install manifest carries a retirement for each installed copy
+
 ### Requirement: Worker preserves accessibility prerequisites, argument parsing, and scope behavior
 
-Before analysis, the worker SHALL enforce the existing OpenSpec CLI, `openspec/` directory, `schema: sai-workflow`, and required `proposal.md` prerequisites. It SHALL preserve the existing argument contract: one required change-name positional, optional `--full` or `--path {dir}` scope flag, optional `--runtime` flag, and optional trailing parent-branch value. It SHALL also preserve change selection behavior and parent-branch detection order. It SHALL default to static review, skip the audit with the existing one-line outcome when the selected diff contains no UI files, and write no report when the proposal prerequisite is missing.
+Before analysis, the worker SHALL enforce the existing OpenSpec CLI, `openspec/` directory, `schema: sai-workflow`, and required `proposal.md` prerequisites. It SHALL preserve the existing argument contract: one required change-name positional, optional `--full` or `--path {dir}` scope flag, optional `--runtime` flag, and optional trailing parent-branch value. It SHALL also preserve change selection behavior and parent-branch detection order. It SHALL default to static review, replace the audit with a Not Applicable report when the selected scope contains no UI files, and write no report when the proposal prerequisite is missing.
 
 #### Scenario: Proposal prerequisite is missing
 - **WHEN** the selected change has no `openspec/changes/{change-name}/proposal.md`
@@ -32,7 +37,7 @@ Before analysis, the worker SHALL enforce the existing OpenSpec CLI, `openspec/`
 
 #### Scenario: Scope contains no UI files
 - **WHEN** the selected diff contains no `.tsx`, `.jsx`, `.astro`, `.html`, `.vue`, `.svelte`, `.css`, or component-bearing markdown files
-- **THEN** the worker records the existing one-line skipped-audit outcome
+- **THEN** the worker writes `accessibility.md` with only its header and a justified `## Not Applicable` section and returns `completed`
 - **AND** it does not create accessibility findings
 
 #### Scenario: Runtime flag is absent
@@ -96,20 +101,20 @@ When `--runtime` is present, the worker SHALL require that the user has started 
 
 ### Requirement: Worker writes and verifies only the accessibility artifact
 
-The worker SHALL write and verify only `openspec/changes/{change-name}/accessibility.md`, using the existing accessibility report template. It SHALL never modify production code, components, styles, configuration, or runtime state. The completed report SHALL contain severity counts, findings each with a severity-prefixed identifier, a closing `Summary:` tally line whose counts match the report's findings, top three Critical/High findings when present, clean-category statements, exact evidence, a runtime-tools-used statement, and a re-test checklist. The completed lifecycle result SHALL carry the canonical change name, report path, worker-authored summary, and `changed_files` containing only `accessibility.md`.
+The worker SHALL write and verify only `openspec/changes/{change-name}/accessibility.md`, using the existing accessibility report template. It SHALL never modify production code, components, styles, configuration, or runtime state. The completed report SHALL contain severity counts, a severity-prefixed identifier on every finding when there are any, a closing `Summary:` tally line whose counts match the report's findings, top three Critical/High findings when present, clean-category statements, exact evidence, a runtime-tools-used statement, and a re-test checklist. The completed lifecycle result SHALL carry the canonical change name, report path, worker-authored summary, and `changed_files` containing only `accessibility.md`.
 
 #### Scenario: Accessibility report completes
 - **WHEN** static review and any authorized runtime checks pass self-critique and report verification
 - **THEN** `accessibility.md` exists, is non-empty, and contains only evidence-backed findings or explicit clean outcomes in the selected scope
 - **AND** the worker returns `completed` with `accessibility.md` as its only changed file
 
-### Requirement: Accessibility lifecycle results carry emission time
+### Requirement: Accessibility lifecycle results carry no time field
 
-The accessibility worker SHALL emit worker-authored `emitted_on` through progress and terminal lifecycle results while retaining static review, runtime authorization, and report-only write boundaries.
+The accessibility worker SHALL return progress and terminal lifecycle results with no time field, while retaining static review, runtime authorization, and report-only write boundaries; the validator's `validated_at` sidecar is the only observed time.
 
 #### Scenario: Accessibility reports a milestone
 - **WHEN** an accessibility milestone completes
-- **THEN** its lifecycle payload includes `emitted_on` and the changed paths for that result.
+- **THEN** its lifecycle payload carries the changed paths for that result and no time field.
 
 #### Scenario: Report generation would modify production files
 - **WHEN** a proposed audit action would modify production code, components, styles, configuration, or runtime state

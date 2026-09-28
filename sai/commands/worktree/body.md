@@ -5,8 +5,8 @@
   Fetch @skills/safe-operations/SKILL.md and use it
 
   ## Load instructions (in order)
-  Also fetch @sai/commands/worktree/instructions.md and follow those instructions exactly.
-  Also fetch @sai/policies/remember.md
+  Fetch @sai/commands/worktree/instructions.md and follow those instructions exactly.
+  Fetch @sai/policies/remember.md
 
   ## Run
   **User's request:** boot-provided `arguments_value`

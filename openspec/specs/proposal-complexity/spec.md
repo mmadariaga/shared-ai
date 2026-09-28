@@ -1,3 +1,7 @@
+## Purpose
+
+Give every `proposal.md` a vendor-neutral `**Complexity**` token (`low`, `medium`, `high`) derived by a static, reproducible rubric from the finished spec-phase artifacts.
+
 ## Requirements
 
 ### Requirement: proposal.md carries a Complexity line
@@ -28,7 +32,7 @@ The `<complexity>` token SHALL be one of the following three values, and only th
 
 The vocabulary is identical to the `complexity` token in `tasks.md`, so that a single token-to-model mapping table serves both artifacts. No token outside this set SHALL be emitted, and no new tier SHALL be introduced by this change.
 
-`high` is the ceiling. When a change is genuinely larger than `high` — multi-repo coordination, or work that plainly warrants splitting — the emitting agent SHALL still emit `high` and SHALL NOT invent a fourth tier. The overflow SHALL be recorded as an Open Question in `design.md` during `/sai-2-design` so a future change can decide whether a further tier or a split-the-change rule is warranted.
+`high` is the ceiling. When a change is genuinely larger than `high` — multi-repo coordination, or work that plainly warrants splitting — the emitting agent SHALL still emit `high` and SHALL NOT invent a fourth tier.
 
 #### Scenario: A token outside the vocabulary is rejected
 
@@ -41,7 +45,6 @@ The vocabulary is identical to the `complexity` token in `tasks.md`, so that a s
 - **WHEN** the rubric indicates the change is larger than the `high` tier describes
 - **THEN** the emitted token is `high`
 - **THEN** no fourth tier is invented
-- **THEN** the overflow is recorded as an Open Question in `design.md` for a future change to resolve
 
 #### Scenario: Vocabulary matches tasks.md
 
@@ -107,6 +110,8 @@ The rubric that derives `<complexity>` SHALL be encoded in `sai/commands/spec/st
 Because the Impact section is prose, the file-count signal SHALL be resolved by counting distinct literal paths rather than by interpreting narrative breadth, so that two agents reading the same Impact block reach the same count.
 
 This spec defines the vocabulary, the signals, and the precedence rule. The numeric thresholds that map signal values to tiers live in the rubric section named above; a reader needs both to reproduce a token.
+
+The thresholds are calibrated on a survey of 140 archived changes: median requirements count 5, maximum 37. The `high` cut at more than 10 requirements sits at twice the median and tags roughly 18% of a 40-change sample `high`, keeping all three tiers populated. Reproduce this distribution before re-tuning any cut.
 
 Tier selection SHALL use escalation precedence: the highest tier whose signals match wins. A second agent given the same proposal and the same rubric SHALL produce the same token.
 

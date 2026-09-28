@@ -2,26 +2,26 @@
 
 ## Purpose
 
-TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+Bundle the three budget subagent bindings into one skill that cards fetch before delegating cheap work and that a session-wide cost-discipline mode triggers.
 
 ## Requirements
 ### Requirement: budget-skill-loads-all-bindings
-The `skills/universal/budget/SKILL.md` file SHALL load all active budget subagent bindings. After this change, the load list MUST include `budget-subagent` alongside `budget-explorer`, `budget-executor`, and `token-efficient-languages`.
+The `skills/universal/budget/SKILL.md` file SHALL load exactly the three budget subagent bindings, in this order:
 
-Updated load list (full replacement of the existing `Load and use the skills below:` block):
+    Fetch @skills/budget-explorer/SKILL.md
+    Fetch @skills/budget-executor/SKILL.md
+    Fetch @skills/budget-subagent/SKILL.md
 
-    Load and use the skills below:
-      Fetch @skills/budget-explorer/SKILL.md
-      Fetch @skills/budget-executor/SKILL.md
-      Fetch @skills/budget-subagent/SKILL.md
-      Fetch @skills/token-efficient-languages/SKILL.md
+It SHALL NOT load `token-efficient-languages`: on SAI surfaces every card that fetches the bundle also fetches `sai/policies/remember.md`, whose Language section carries the same contract, and outside SAI `token-efficient-languages` triggers on the same cost-mode phrases by itself. The frontmatter SHALL declare `compatibility: opencode, claude`, and the `description` SHALL name the three bindings.
 
-The `description` field in the YAML frontmatter MUST be updated to reference four skills (explorer + executor + subagent + token-efficient-languages).
+#### Scenario: budget skill activates all subagent bindings
+- **WHEN** a card fetches or a user triggers the `budget` skill
+- **THEN** `budget-explorer`, `budget-executor`, and `budget-subagent` are loaded
 
-#### Scenario: budget skill activates subagent binding
-- **WHEN** a user invokes the `budget` skill
-- **THEN** `budget-subagent` is loaded in addition to `budget-explorer`, `budget-executor`, and `token-efficient-languages`
+#### Scenario: language contract is not loaded twice
+- **WHEN** a SAI card fetches both `@skills/budget/SKILL.md` and `@sai/policies/remember.md`
+- **THEN** the language contract reaches the session once, from `remember.md`
 
 #### Scenario: description stays accurate
 - **WHEN** the `budget/SKILL.md` description is read (e.g., in the skills list)
-- **THEN** it mentions four skills, not three, and includes `budget-subagent`
+- **THEN** it names the three bindings and no language skill

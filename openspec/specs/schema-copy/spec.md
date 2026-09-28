@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+This capability requires setup to copy the bundled SAI workflow schema into the selected project's OpenSpec schema directory.
+
+## Requirements
 
 ### Requirement: template-copy
 As the final setup step, `bin/setup.js` SHALL copy all files from `{package}/openspec/schemas/sai-workflow/` to `{project}/openspec/schemas/sai-workflow/`, always overwriting existing files.
@@ -27,7 +31,3 @@ Only files directly inside `{package}/openspec/schemas/sai-workflow/` SHALL be c
 #### Scenario: scope boundary
 - **WHEN** copy completes
 - **THEN** no files outside `{project}/openspec/schemas/sai-workflow/` have been created or modified by this step
-
-## MODIFIED Requirements
-
-## REMOVED Requirements

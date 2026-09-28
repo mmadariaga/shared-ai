@@ -6,12 +6,12 @@ TBD
 ## Requirements
 ### Requirement: Canonical worker matrix contents
 
-The canonical worker matrix SHALL define exactly fourteen entries: the eleven canonical phase identities (spec, design, implementation, review, security, performance, accessibility, commit, archive, backfill, merge), followed by the RED then GREEN apply identities and one Direct Build implementer identity. The Direct Build identity SHALL be `sai-direct-build-worker`, use binding stem `direct-build`, and use contract `sai/commands/explore/direct-build-worker.md`. The former auto-fast implement and hands roles are retired; no hands worker or autofast identity SHALL remain active. Materializing the matrix SHALL project exactly one binding and one managed agent per worker per harness, including `orchestration/workers/bindings/merge-worker.md` and the `sai-merge-worker` managed agent.
+The canonical worker matrix SHALL define exactly fifteen entries: the eleven canonical phase identities (spec, design, implementation, review, security, performance, accessibility, commit, archive, backfill, merge), followed by the RED then GREEN apply identities, one Direct Build implementer identity, and one `/sai-review` fix identity. The Direct Build identity SHALL be `sai-direct-build-worker`, use binding stem `direct-build`, and use contract `sai/commands/explore/direct-build-worker.md`. The review-fix identity SHALL be `sai-review-fix-worker`, use binding stem `review-fix`, and use contract `sai/commands/meta-review/review-fix-worker.md`. The former auto-fast implement and hands roles are retired; no hands worker or autofast identity SHALL remain active. Materializing the matrix SHALL project exactly one binding and one managed agent per worker per harness, including `orchestration/workers/bindings/merge-worker.md` and the `sai-merge-worker` managed agent.
 
-#### Scenario: Manifest expansion yields the fourteen-worker roster
+#### Scenario: Manifest expansion yields the fifteen-worker roster
 
 - **WHEN** the install manifest expands for either harness
-- **THEN** exactly fourteen active worker bindings and fourteen managed agents materialize, with the merge phase bound to `sai-merge-worker` and the Direct Build phase bound to `sai-direct-build-worker`.
+- **THEN** exactly fifteen active worker bindings and fifteen managed agents materialize, with the merge phase bound to `sai-merge-worker` and the Direct Build phase bound to `sai-direct-build-worker`.
 
 ### Requirement: Materialized worker behavior preserves canonical lifecycle contracts
 
@@ -30,7 +30,7 @@ Each materialized worker agent SHALL preserve its harness-specific frontmatter i
 #### Scenario: Worker continuation and replacement remain bounded
 
 - **WHEN** a worker result requests continuation or a coordinator reconstructs a replacement worker
-- **THEN** the binding uses the phase's exact continuation literal, preserves only the allowed reconstruction fields, and never starts more than the existing bounded worker/replacement lifecycle permits.
+- **THEN** the binding continues the captured handle with the runner's continuation payload, reuses its single dispatch call for the replacement, and defers the bounded worker/replacement lifecycle to `sai/orchestration/command-runner.md`.
 
 ### Requirement: Projection lifecycle integrity covers matrix replacement and retirements
 
@@ -48,11 +48,11 @@ The manifest and expansion layer SHALL represent the parameterized templates as 
 
 ### Requirement: Canonical tests enforce cross-harness matrix parity
 
-The test suite SHALL verify every routed phase and both apply workers across both harnesses, including parameter substitution, exact worker-contract Fetch targets, frontmatter and tuning preservation, phase-flag isolation, absence of unresolved placeholders, and install/doctor/uninstall retirement integrity. The tests SHALL verify the fourteen-entry roster, the Direct Build phase, `sai-direct-build-worker`, the retired hands role, and the absence of active auto-fast identities. The tests SHALL retain the established thin-agent Fetch-wrapper behavior precedent rather than accepting duplicated worker contract bodies.
+The test suite SHALL verify every routed phase and both apply workers across both harnesses, including parameter substitution, exact worker-contract Fetch targets, frontmatter and tuning preservation, phase-flag isolation, absence of unresolved placeholders, and install/doctor/uninstall retirement integrity. The tests SHALL verify the fifteen-entry roster, the Direct Build phase, `sai-direct-build-worker`, the review-fix phase, `sai-review-fix-worker`, the retired hands role, and the absence of active auto-fast identities. The tests SHALL retain the established thin-agent Fetch-wrapper behavior precedent rather than accepting duplicated worker contract bodies.
 
 #### Scenario: Matrix regression is detected before installation
 
-- **WHEN** a phase parameter, continuation literal, model, or Fetch target is missing, duplicated, or assigned to the wrong phase or worker
+- **WHEN** a phase parameter, model, or Fetch target is missing, duplicated, or assigned to the wrong phase or worker
 - **THEN** the canonical matrix tests fail with the phase, worker, and harness identified.
 
 #### Scenario: Historical files remain covered

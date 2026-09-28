@@ -16,8 +16,8 @@ by describing them as "shared rather than command-owned".
 
 Each of the three is consumed by exactly one command. The overview-generation
 instruction is executed only by the `/sai-2-design` worker. Both index templates are read
-only by `sai/commands/implement/instructions.md`, in the Step 3 index-maintenance cold
-build. The change-overview card's own `(shared contract)` header means shared across
+only by `sai/commands/implement/steps/decision-record-index.md`, in the index-maintenance
+cold build. The change-overview card's own `(shared contract)` header means shared across
 harnesses and runs — the property every card in `sai/commands/` already has — not shared
 across commands. The carve-out therefore rested on a misreading of that header rather
 than on a layout property the three files actually have.

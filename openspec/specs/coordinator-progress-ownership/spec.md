@@ -176,7 +176,7 @@ The coordinator's progress behavior SHALL be limited to rendering the declared p
 
 ### Requirement: Completed-step stamps use marking payloads
 
-The coordinator SHALL source each completed-step milestone stamp from the `emitted_on` of the progress or terminal result that marks the step, while retaining the invocation-scoped marked set and changed-file union.
+The coordinator SHALL source each completed-step milestone stamp from the `validated_at` of the verdict on the progress or terminal result that marks the step, while retaining the invocation-scoped marked set and changed-file union.
 
 #### Scenario: A result marks a step
 - **WHEN** a progress event or successful reconciliation marks a step completed

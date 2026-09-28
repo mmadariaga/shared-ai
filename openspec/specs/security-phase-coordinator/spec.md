@@ -2,7 +2,9 @@
 
 ## Purpose
 TBD - created by syncing change sai-6-security-coordinator-worker-split. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: Routed security entrypoints use a terminal-only coordinator
 
 The Claude Code and opencode `/sai-6-security` entrypoints SHALL invoke a security coordinator and their matching harness-specific security-worker binding. The coordinator SHALL own lifecycle routing and terminal presentation only. GitHub Copilot SHALL remain on its existing inline security path without requiring a routed worker or binding.
@@ -28,19 +30,17 @@ The security coordinator SHALL reuse `sai/orchestration/command-runner.md` uncha
 
 ### Requirement: Coordinator performs no technical security I/O
 
-The security coordinator SHALL NOT run prerequisite checks, resolve a change, read or write change artifacts, inspect git, load or scope a diff, perform SAST or SCA, execute dependency-audit commands, delegate research, or make security findings. All such operations SHALL belong exclusively to the security worker. The single clean-route exception is the no-commit guard: the security coordinator SHALL run the guard's `snapshot` and `verify` tool invocations (`sai/tools/no-commit-guard.js`) immediately before each dispatch and same-worker continuation and immediately after every returned result, before acting on it, and those two tool invocations per window are the coordinator's only git observations on the artifact-blind clean route. No other rule of this requirement changes.
+The security coordinator SHALL NOT run prerequisite checks, resolve a change, read or write change artifacts, inspect git, load or scope a diff, perform SAST or SCA, execute dependency-audit commands, delegate research, or make security findings. All such operations SHALL belong exclusively to the security worker. The single clean-route exception is the no-commit guard: the security coordinator SHALL run the guard's `snapshot` and `verify` tool invocations (`sai/tools/no-commit-guard.js`) at each guard window's opening and immediately before each boundary the no-commit-guard policy lists (human turn, coordinator git mutation, run close), acting on a progress event or notice with no guard call, and those two tool invocations per window are the coordinator's only git observations on the artifact-blind clean route. No other rule of this requirement changes.
 
 #### Scenario: Technical audit work is requested
 
 - **WHEN** security analysis requires repository, artifact, git, diff, SAST, SCA, or audit-tool information
-- **THEN** the coordinator delegates the work to the security worker
-- **AND** it performs no equivalent technical operation itself
+- **THEN** the coordinator delegates the work to the security worker and performs no equivalent technical operation itself
 
 #### Scenario: the guard's two tool invocations are the only clean-route git access
 
-- **WHEN** the security coordinator snapshots before a dispatch and verifies after the returned result
-- **THEN** those two no-commit-guard tool invocations are its only git observations on the clean route
-- **AND** no diff scoping, SCA, or audit-command execution is performed by the coordinator itself
+- **WHEN** the security coordinator snapshots at a window opening and verifies before a boundary
+- **THEN** those two no-commit-guard tool invocations are its only git observations on the clean route, and no diff scoping, SCA, or audit-command execution is performed by the coordinator itself
 
 ### Requirement: Security lifecycle results preserve the terminal boundary
 
@@ -68,7 +68,7 @@ The coordinator SHALL validate every worker result before acting on it. A termin
 
 ### Requirement: Security progress uses payload-derived stamps
 
-The security coordinator SHALL validate `emitted_on`-bearing lifecycle results and render completed-step stamps from worker payloads without moving security analysis or artifact writes into the coordinator. While its declared `step_machine: security-standalone@1` is in force, every progress-event continuation SHALL be exactly two lines — today's protocol continuation line followed by the deterministic `Active step:` pointer line derived from that machine's `STAGE_FILES` mapping — continuations that are not progress-event continuations SHALL carry no pointer line, and the declared `replacement_reconstruction_fields` SHALL include the departing worker's `active_step_id`.
+The security coordinator SHALL validate lifecycle results and render each completed-step stamp from the `validated_at` of the verdict that marked it without moving security analysis or artifact writes into the coordinator. While its declared `step_machine: security-standalone@1` is in force, every progress-event continuation SHALL be exactly two lines — the protocol continuation line followed by the deterministic `Active step:` pointer line derived from that machine's `STAGE_FILES` mapping — continuations that are not progress-event continuations SHALL carry no pointer line, and the declared `replacement_reconstruction_fields` SHALL include the departing worker's `active_step_id`.
 
 #### Scenario: Security progress returns
 
@@ -80,4 +80,3 @@ The security coordinator SHALL validate `emitted_on`-bearing lifecycle results a
 - **WHEN** a departing security worker is replaced mid-run during one recovery
 - **THEN** the reconstruction fields include that worker's `active_step_id`
 - **AND** the replacement's first continuation carries the correct pointer line for that active step
-

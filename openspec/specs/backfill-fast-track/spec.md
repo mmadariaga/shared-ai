@@ -8,10 +8,10 @@ TBD — created by archive sync of change unattended-backfill. Describe: sai-bac
 
 ### Requirement: sai-backfill is the fifth fast-track opt-in command
 
-`sai-backfill` SHALL accept the positional token `--fast-track`, parsed by its worker card from `arguments_value` alongside the diff-source tokens into worker-derived `fast_track_active` session state, emitting no banner. The opt-out set SHALL be exactly: generated reconciliation questions are not asked and remaining `stated-but-unevidenced` items stay non-normative for that run; the spec-conflict decision auto-proceeds after the conflict report is carried verbatim; and a crystallized-block `**Change name**` is accepted directly without the yes/no confirmation.
+`sai-backfill` SHALL accept the positional token `--fast-track`, parsed by its worker card from `arguments_value` alongside the diff-source tokens into worker-derived `fast_track_active` session state, emitting no banner. The opt-out set SHALL be exactly: generated reconciliation questions are not asked and remaining `stated-but-unevidenced` items stay non-normative for that run; the spec-conflict decision auto-proceeds after the conflict report is carried verbatim; and a crystallized-block `Change name` plain literal (bold-insensitive, case-sensitive exact spacing, anywhere) is accepted directly without the yes/no confirmation. Minimal detection SHALL only gate block-attempt; name auto-accept SHALL require resolved diff-source plus `--fast-track`.
 
 #### Scenario: Complete envelope yields zero needs_input results
-- **WHEN** `/sai-backfill <name> --fast-track` runs with a detected crystallized block, a diff-source token, and every consumed field derivable
+- **WHEN** `/sai-backfill --fast-track --staged` runs with a detected crystallized block carrying every mandatory consulted plain literal and every consumed field derivable
 - **THEN** no reconciliation question, conflict decision, or name confirmation is presented and the run closes with zero needs_input results
 
 #### Scenario: Safe operations and hard stops remain in force

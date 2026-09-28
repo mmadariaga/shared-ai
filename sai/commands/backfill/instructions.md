@@ -1,10 +1,7 @@
 > **Routed ownership.** This instruction is the technical procedure of the
 > `sai-backfill-worker` (`sai/commands/backfill/worker.md` fetches and follows
 > it). The ordinary route is read-only inspection, interviewing,
-> reconciliation, delegated scanning, and draft composition. The explicit
-> Direct Build (unattended) route additionally has a later worker-owned execution continuation
-> for the already validated draft set; it never changes the analysis or draft
-> composition below. Transport mapping: where this file says **print**,
+> reconciliation, delegated scanning, and draft composition. Transport mapping: where this file says **print**,
 > **display**, or **surface**, the
 > worker carries the exact text in its returned payload `summary` and the
 > coordinator presents it verbatim; where it says **ask** or **offer**, the
@@ -17,10 +14,8 @@
 > ordinary route, schema validation against
 > `openspec/schemas/sai-workflow/schema.yaml` and every final write into
 > `openspec/changes/{name}/` execute coordinator-side per
-> `sai/commands/backfill/coordinator.md`. On the Direct Build (unattended) route, the
-> coordinator validates first and then sends the worker's explicit
-> `--direct-build-execute` continuation; only that continuation may perform the
-> exact validated writes described in `backfill/worker.md`.
+> `sai/commands/backfill/coordinator.md`. The Direct Build (unattended) execute
+> and correction continuations are defined in `backfill/worker.md`.
 
 ## Communication Mode
 
@@ -33,7 +28,7 @@ You are a Post-Hoc Backfill Agent. Your only task is to reconstruct `proposal.md
 ## STOP Conditions
 
 Before any other step, check:
-- If `$ARGUMENTS` is empty AND no name can be derived from conversation context: return a terminal payload whose summary is exactly `Change name required. Run: /sai-backfill <name>` and stop.
+- If `$ARGUMENTS` is empty: return a terminal payload whose summary is exactly `Change name required. Run: /sai-backfill <name>` and stop.
 
 ## Envelope Tokens
 
@@ -74,15 +69,15 @@ The diff source MUST be selected before any question is asked, before any spec i
 
 ### Crystallized-block intake
 
-When the request body contains the `## Ready to Propose` heading together with its byte-exact pinned labels (`**Change name**:`, `**What**:`, `**Why**:`, `**Capabilities in scope**:`, `**Alternatives Considered**:`, `**Trade-offs Accepted**:`, `**Key constraints**:`, `**Edge Cases**:`, `**Implementation Details**:` among them), treat the block as supplied structured intent and SKIP the intent-capture choice entirely — the block replaces it. Detection is binary via the pinned labels; text without them falls through intact to the generic flow below with no partial parsing.
+When the request body contains the nine mandatory consulted plain literals (`Change name`, `What`, `Why`, `Capabilities in scope`, `Alternatives Considered`, `Trade-offs Accepted`, `Key constraints`, `Edge Cases`, `Implementation Details`) as substrings, treat the block as supplied structured intent and SKIP the intent-capture choice entirely — the block replaces it. Detection is bold-insensitive: strip `**` before searching, then match each plain literal case-sensitive with the exact written spacing, anywhere with no line-start anchor. The `## Ready to Propose` heading is not required; when present it is ignored and forms no part of the gate. No validation of extra colons, position, order, or content beyond the literal itself. A literal present but empty or with `- None` still counts as present. A literal inside ordinary prose counts the same as a label — false positives accepted as the cost of minimalism. A paste from a rendered view with lost bold, extra spaces outside the literal, or collapsed line breaks still detects while the literals appear; casing or spacing variants different from the literal do not match. Extras are ignored and `Request Additional Notes` is never required nor counted. Text without the quorum falls through intact to the generic flow below with no partial parsing.
 
-Every consumed block field resolves through the same three steps, identically with and without `fast_track_active`:
+Every consumed block field resolves by existence alone, identically with and without `fast_track_active`:
 
-1. Use the labeled value when the pinned label is present and carries content (a `- None` bullet counts as no content).
+1. When its plain literal exists, skip that slot's question by existence — carry the labeled value when it carries content; when it is empty or `- None`, still skip with no content fallback and no ask.
 2. Otherwise mine the answer from the surrounding pasted prose, even when the paste is off-format.
 3. Otherwise restore that question's ordinary ask channel in Phase 3.
 
-Map the resolved fields onto the in-memory intent records: `**Why**` answers Question 1 and `**Trade-offs Accepted**` (with `**Key constraints**` non-goals) answers Question 2; `**Capabilities in scope**`, `**Key constraints**`, `**Edge Cases**`, `**Implementation Details**`, and `**Decisions & Rationale**` items become intent items; `**Alternatives Considered**` entries become rejected-alternative context. Carry the `Diff loaded. Proceeding to interview.` confirmation as usual, then proceed directly into Intent Reconciliation with those records — a usable record set takes the usable-intent path everywhere below, including the four-key `prior_intent` form.
+Map the resolved fields onto the in-memory intent records: `Why` (bold-insensitive) answers Question 1 and `Trade-offs Accepted` (with `Key constraints` non-goals, both required to skip Question 2) answers Question 2; `Capabilities in scope`, `Key constraints`, `Edge Cases`, `Implementation Details`, and `Decisions & Rationale` items when present become intent items; `Alternatives Considered` entries become rejected-alternative context. Carry the `Diff loaded. Proceeding to interview.` confirmation as usual, then proceed directly into Intent Reconciliation with those records — a usable record set takes the usable-intent path everywhere below, including the four-key `prior_intent` form.
 
 ### Optional intent-capture choice
 
@@ -134,7 +129,7 @@ Ask the following two questions **one at a time, sequentially**. After each ques
 
 **Delivery (fixed and adaptive interview questions alike).** Every question in this phase is open-ended free text, not a closed set — the "Closed-choice prompts" rule in `remember.md` does NOT apply to its presentation. Return each question string **exactly once** as a `needs_input` result with empty `options`; the coordinator then renders it as ordinary conversation text and ends the turn there. The coordinator does NOT route it through the harness option-picker / question tool (`AskUserQuestion` on Claude Code, `question` on opencode), and neither side echoes, restates, or re-prints the question in the same turn — a question rendered both as text and through a tool reaches the user duplicated.
 
-When a crystallized block was detected, resolve each fixed question through the Phase 2 three-step chain BEFORE asking it: Question 1 from the resolved `**Why**` value, Question 2 from the resolved trade-offs/non-goals value, falling back to mined prose, then to the ask. A question whose answer resolved from the block or the mined prose is never asked — carry that value as its fixed answer; a question with no derivable answer is asked exactly as written. This resolution is identical with and without `fast_track_active`.
+When a crystallized block was detected, resolve each fixed question by existence BEFORE asking it: Question 1 skips when the `Why` plain literal exists, Question 2 skips when `Trade-offs Accepted` plus `Key constraints` both exist, carrying the labeled value when it carries content and still skipping when empty or `- None` with no content fallback. Otherwise fall back to mined prose, then to the ask. A question whose literal exists or whose answer resolved from mined prose is never asked — carry that value as its fixed answer; a question with no derivable answer is asked exactly as written. This resolution is identical with and without `fast_track_active`. Minimal detection only gates block-attempt; reconciliation, conflict auto-continue, and name auto-accept keep their token rules.
 
 **Question 1:** "What problem does this solve?"
 
@@ -226,8 +221,8 @@ Do NOT write any file until this phase completes.
 ## Phase 5: Change Name Confirmation
 
 Derive the change name using this priority order:
-1. If the request body carries an explicit kebab-case identifier, use it as the name; a block-supplied `**Change name**` present at the same time is ignored.
-2. Otherwise, when a crystallized block supplied a `**Change name**`: with `fast_track_active` false, state the proposed name in ordinary chat per the concise-format rule in `@sai/policies/question-context.md` and propose it as a `needs_input` result: "Use `{proposed-name}` as the change name?" with options `yes` / `no`; with `fast_track_active` true, accept it directly with no ask.
+1. If the request body carries an explicit kebab-case identifier, use it as the name; a block-supplied `Change name` plain literal (bold-insensitive) present at the same time is ignored.
+2. Otherwise, when a crystallized block supplied a `Change name` plain literal (bold-insensitive, case-sensitive exact spacing, anywhere): with `fast_track_active` false, state the proposed name in ordinary chat per the concise-format rule in `@sai/policies/question-context.md` and propose it as a `needs_input` result: "Use `{proposed-name}` as the change name?" with options `yes` / `no`; with `fast_track_active` true, accept it directly with no ask. Minimal detection only gates block-attempt; name auto-accept requires resolved diff-source plus `--fast-track`.
 3. If no name exists yet but one can be clearly inferred from the diff file paths or interview answers, state the inference in ordinary chat per the same rule and propose it as a `needs_input` result: "Use `{proposed-name}` as the change name?" with options `yes` / `no`.
 4. If no name can be derived: return a terminal payload whose summary is exactly `Change name required. Run: /sai-backfill <name>` and stop.
 
@@ -276,6 +271,8 @@ Then follow the standard proposal structure. Derive all content from the selecte
 
 The proposal MUST contain these headings in this order: `## Why`, `## What Changes`, `## Capabilities`, `### New Capabilities`, `### Modified Capabilities`, and `## Impact`. Fill `Why` from the first fixed answer and the diff. Fill `What Changes` with the implemented file and behavior changes, including evidenced scope drift only as implemented behavior. List each diff-backed new or modified capability under the corresponding capability subsection. Under `## Impact`, list concrete new and modified files and end with `Out of scope: design.md, tasks.md, implementation.md — not generated by /sai-backfill`. Do not leave instructional text, template markers, or unresolved placeholders in the written proposal.
 
+When a detected crystallized block carries `**Request Additional Notes**` with content, copy that content byte-for-byte (no rewriting, summarizing, translating, or merging) into a `## Request Additional Notes` section placed after `## Impact` and before any `## Additional Notes` section. The field is non-normative: it feeds no intent record, fixed answer, or requirement. When the block has no such field, or no block was detected, omit the section.
+
 ### 6c. Draft capability specs
 
 For each distinct capability evidenced in the diff, compose the draft of `openspec/changes/{name}/specs/{capability}/spec.md`.
@@ -298,8 +295,6 @@ against `openspec/schemas/sai-workflow/schema.yaml` and executes the final
 writes into `openspec/changes/{name}/`; the worker run closes once the drafts
 are handed over.
 
-On the Direct Build (unattended) route, the prepare stretch still closes after the draft
-handoff, but the same worker may be resumed with
-`--direct-build-execute` after coordinator validation and authorization. That
-continuation writes only the exact validated draft set and then closes; it does
-not invoke another SAI command or invoke archive. After execution, the same worker accepts correction feedback carrying the verbatim archive failure plus the named sections to recompose, rewrites only those draft files, and then closes; a repeated execute carrying the same closed order after success is rejected without mutation. A partial-mutation failure never refires an order onto the partially mutated state. Repeated-defect and partial-mutation closures carry no finality: new retries or changes run only at explicit user request.
+On the Direct Build (unattended) route, the prepare stretch closes the same way;
+the execute and correction continuations that may follow are defined in
+`backfill/worker.md`.

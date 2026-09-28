@@ -7,20 +7,20 @@ TBD - created by archiving change worker-owned-autofast-mutations. Update Purpos
 
 ### Requirement: Identify the direct build selector route
 
-The direct code-first selector route SHALL be named Build (unattended) with identity `build-unattended`. It SHALL preserve its existing worker order, per-slice authorization, bounded review behavior, and local commit boundary.
+The direct code-first selector route SHALL be named Direct Build (unattended) with identity `direct-build-unattended`. It SHALL preserve its existing worker order, per-slice authorization, bounded review behavior, and local commit boundary.
 
 #### Scenario: direct route is selected
 
-- **WHEN** Build (unattended) is selected
-- **THEN** the existing direct code-first flow starts under `build-unattended` without changing its execution order.
+- **WHEN** Direct Build (unattended) is selected
+- **THEN** the existing direct code-first flow starts under `direct-build-unattended` without changing its execution order.
 
-### Requirement: Existing workers own Auto-fast execution
+### Requirement: Existing workers own Direct Build execution
 
-The Auto-fast selector SHALL route preparation and execution through the existing implementer, backfill, and archive workers rather than a dedicated hands worker.
+The Direct Build selector SHALL route preparation and execution through the existing implementer, backfill, and archive workers rather than a dedicated hands worker.
 
 #### Scenario:
 
-- **WHEN** the user selects Auto-fast implementation
+- **WHEN** the user selects Direct Build implementation
 - **THEN** the selector SHALL activate backfill preparation and execution before archive preparation and execution
 
 ### Requirement: Coordinator authorization remains explicit

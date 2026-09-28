@@ -1,32 +1,28 @@
 # Review Step — Resolve Mutation Analysis
 
-Active step: resolve-mutation-analysis. Resolve the Pass 12 activation gate; when it admits the pass, execute the deterministic mutation protocol below. Report the `resolve-mutation-analysis` progress event per the worker contract — completed whether the mutation path runs or is legitimately skipped.
+Active step: resolve-mutation-analysis. Pass 12 measures test *sensitivity*: whether the suite would fail if the diffed production code regressed. The step is done when exactly one Pass 12 outcome is recorded — a note below or a parsed engine report — whether the mutation path ran or was legitimately skipped; then report the `resolve-mutation-analysis` progress event per the worker contract.
 
-### Mutation Analysis (Pass 12)
+"Record" below means keep the outcome for the report; the close step renders it into `review.md`. Every note below is exact text, and each one means no mutation findings.
 
-Pass 12 runs after passes 1–11. Unlike them it **writes to the working tree** and **runs the test suite**, so it is specified here as a standalone protocol rather than as a read-only Step 2 bullet. It measures test *sensitivity*: whether the suite would actually fail if the diffed production code regressed.
+## Activation gate
 
-#### Activation Gate
-
-Run pass 12 only when BOTH conditions hold:
+Run Pass 12 only when BOTH hold:
 
 1. The diff against the parent branch contains **testable production code** (not docs or config only).
 2. The repository contains **at least one test file**.
 
-If either condition is false, emit exactly `Mutation Analysis (Pass 12): skipped — {no testable production code in diff | repository has no test files}. No mutation findings.` using the applicable reason, emit no mutation findings, and do not mutate any production file.
+When either fails, record `Mutation Analysis (Pass 12): skipped — {no testable production code in diff | repository has no test files}. No mutation findings.` with the applicable reason, and mutate nothing.
 
-If the activation gate admits the pass but the diff-scoped production-code set contains no eligible mutation targets, emit exactly `Mutation Analysis (Pass 12): skipped — no eligible mutation targets. No mutation findings.` and continue without treating the empty target set as a positive result.
+## Mutation scope
 
-#### Mutation Scope
+The eligible targets are exactly the production-code files changed in the diff against the parent branch; nothing outside the diff is ever mutated. When the gate admits the pass but no file is eligible, record `Mutation Analysis (Pass 12): skipped — no eligible mutation targets. No mutation findings.`
 
-The set of files eligible for mutation is **exactly the production-code files changed in the diff against the parent branch**. Never mutate a file outside that diff.
+## Deterministic engine
 
-#### Deterministic Mutation Tool
+A supported engine counts as available only when its package is declared as a project dependency:
 
-Inspect the project's manifest files to detect whether a supported deterministic mutation tool is declared as a project dependency:
-
-| Manifest | Tool |
-|----------|------|
+| Manifest | Engine |
+|----------|--------|
 | `package.json` | Stryker (`@stryker-mutator/core` or a runner package) |
 | `pom.xml` / `build.gradle` | PIT (`org.pitest` / the PIT plugin) |
 | `pyproject.toml` / `requirements.txt` | mutmut |
@@ -34,10 +30,26 @@ Inspect the project's manifest files to detect whether a supported deterministic
 | `Cargo.toml` | cargo-mutants |
 | `CMakeLists.txt` | mull |
 
-A tool counts as available **only when its package is declared as a project dependency**. If a tool is detected, run that tool with its checked-in project configuration, pass the exact eligible diff files through the engine's mutation-scope option (`--mutate` for Stryker), and parse its report. This is the only mutation path; mutation results must come from the tool's real execution and never from inference. If no supported tool is declared in any manifest, report `Mutation Analysis (Pass 12): unavailable — no deterministic mutation tool declared. No mutation findings.` and continue the review without mutating files or simulating results. If the declared tool cannot execute or its result cannot be parsed, report the concrete failure and emit no mutation findings.
+When none is declared, record `Mutation Analysis (Pass 12): unavailable — no deterministic mutation tool declared. No mutation findings.`
 
-#### Deterministic Execution and Outcomes
+Otherwise run the declared engine with its checked-in project configuration and its configured test command, passing exactly the eligible files through the engine's mutation-scope option (`--mutate` for Stryker). The engine owns the baseline, mutation application, timeouts, reverts, and result collection; every mutation result comes from its real execution. When the run cannot produce results, record the matching note:
 
-Run the declared tool's configured test command and let the engine own baseline execution, mutation application, timeout, revert, and result collection. Restrict the engine to the eligible diff files; never apply a hand-authored or inferred mutation. Parse the engine's report and hand its surviving or impediment outcomes to Step 4. If execution fails, the baseline is failing, or the report is unavailable, record that deterministic limitation and emit no mutation findings. Never replace a missing tool result with model-generated evidence.
+- baseline fails — `Mutation Analysis (Pass 12): unavailable — deterministic baseline failed. No mutation findings.`
+- the engine cannot execute — `Mutation Analysis (Pass 12): unavailable — deterministic tool execution failed. No mutation findings.`
+- the report is absent or cannot be parsed — `Mutation Analysis (Pass 12): unavailable — deterministic report could not be parsed. No mutation findings.`
 
-Preserve the engine-native status for every mutation. For Stryker, `Killed` is internal with no finding; `Survived`, `Timeout`, and `NoCoverage` become High mutation findings; `CompileError`, `RuntimeError`, and `Ignored` are engine impediments with no inferred finding or severity. An unknown status makes the report unparseable and therefore unavailable. The aggregate native-status counts must reconcile to the total mutations reported by the engine.
+## Outcome mapping
+
+Map each engine-native status onto the canonical statuses by meaning, and keep the native status beside it in the report:
+
+| Canonical | Meaning | Examples | Report as |
+|-----------|---------|----------|-----------|
+| `Killed` | a test failed on the mutant | Stryker `Killed`, PIT `KILLED`, cargo-mutants `caught` | internal, no finding |
+| `Survived` | every test passed on the mutant | PIT `SURVIVED`, cargo-mutants `missed` | High mutation finding |
+| `Timeout` | the test run exceeded its bound | PIT `TIMED_OUT`, cargo-mutants `timeout` | High mutation finding |
+| `NoCoverage` | no test reached the mutant | PIT `NO_COVERAGE` | High mutation finding |
+| `CompileError` | the mutant did not build | PIT `NON_VIABLE`, cargo-mutants `unviable` | engine impediment, no finding |
+| `RuntimeError` | the engine failed on that mutant | PIT `MEMORY_ERROR`, `RUN_ERROR` | engine impediment, no finding |
+| `Ignored` | the engine skipped the mutant | Stryker `Ignored` | engine impediment, no finding |
+
+A status whose meaning matches no row makes the report unparseable: record the parse note above. The canonical counts must reconcile to the engine's reported mutation total.

@@ -27,7 +27,7 @@ TBD - this spec was authored as a change delta and never merged into the main tr
 
 #### Scenario: check runs after prereqs pass and before first research
 - **WHEN** prereqs pass in a `sai-explore` session
-- **THEN** the agent runs no script probe before Load behaviors and prints no literal, delegating instead
+- **THEN** the agent runs no script probe before the `## Behaviors` loads and prints no literal, delegating instead
 
 ### Requirement: Read-only detection via tool presence and Glob
 The main session SHALL NOT determine research-tooling state via any filesystem probe, caller-supplied `--mcp-present` flag, or Glob; detection SHALL live only in the explorer in its own session.

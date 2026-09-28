@@ -4,15 +4,6 @@
 
 Defines the canonical question-context policy (`sai/policies/question-context.md`) — the five-element anatomy of every user-facing decision prompt in the pipeline, its single-source ownership, its installation across harnesses, and the rule that compliance is satisfied at the surface that authors the prompt.
 ## Requirements
-### Requirement: Register the fixed crystallization-close selector exemption
-
-The question-context policy SHALL identify sai-explore's crystallization-close selector as the `Plan - Unattended` / `Build - Unattended` / `Manual` selector and SHALL preserve its narrow exemption from the general decision-prompt anatomy.
-
-#### Scenario: Policy names the current selector contract
-
-- **WHEN** a consumer resolves the crystallization-close selector exemption
-- **THEN** it finds the three fixed English titles and the selector remains governed by its command-owned presentation contract.
-
 ### Requirement: question-context-policy-file
 
 The canonical policy SHALL live at `sai/policies/question-context.md` and SHALL define the five-element anatomy of every user-facing decision prompt, each element normative with SHALL language:
@@ -25,7 +16,7 @@ The canonical policy SHALL live at `sai/policies/question-context.md` and SHALL 
 
 The options element SHALL apply only to decision prompts. An informational message (the design-only notice) SHALL instead carry the informational-notice subset: what is being reported, why it matters, the essential state context, and plain wording — with no options element required.
 
-The pinned change-selection prompts — `Use change '{name}'?` and `Which change?` — SHALL remain exempt from the full anatomy: they SHALL stay as pinned terse prompts with their ordered options and invalid-input semantics unchanged, and the anatomy SHALL apply to every other user-facing decision prompt.
+The anatomy SHALL apply to every user-facing decision prompt, with no exemptions. A pinned prompt such as `Use change '{name}'?` or `Which change?` SHALL keep its exact wording, ordered options, and invalid-input semantics as the picker's summary question, and SHALL carry the remaining anatomy in the preceding plain text of the concise format.
 
 The question-context policy SHALL reference the broader public-chat communication policy at `sai/policies/public-chat.md` for readability and context rules rather than duplicating them. Option-picker mechanics SHALL remain owned by `sai/policies/remember.md`.
 
@@ -50,11 +41,11 @@ The question-context policy SHALL reference the broader public-chat communicatio
 - **THEN** it carries what is being reported, why it matters, the essential state context, and plain wording
 - **AND** no options element is required, because the notice is informational, not a decision prompt
 
-#### Scenario: pinned change-selection prompts stay exempt
+#### Scenario: pinned change-selection prompts keep their wording
 
 - **WHEN** `Use change '{name}'?` or `Which change?` is emitted
-- **THEN** it remains the pinned terse prompt with its ordered options and invalid-input semantics unchanged
-- **AND** the full anatomy applies to every other user-facing decision prompt
+- **THEN** it remains the pinned summary question with its ordered options and invalid-input semantics unchanged
+- **AND** the preceding plain text carries the rest of the anatomy
 
 #### Scenario: glossary documents the contract term
 
@@ -101,24 +92,17 @@ Compliance with the question-context anatomy SHALL remain authored at the source
 
 #### Scenario: Merge question stays exact beside its summary
 
-- **WHEN** the merge coordinator renders `¿Qué rama quieres mergear?` with date-bearing branch options
+- **WHEN** the merge coordinator renders `¿Sobre qué rama quieres operar?` with date-bearing branch options
 - **THEN** it preserves the exact question and option values while presenting branch timestamps and merge rationale in the adjacent summary
 
-### Requirement: Contextual merge questions provide complete decision context
+### Requirement: Merge strategy confirmation provides complete decision context
 
-A semantic merge decision prompt SHALL name the conflict, explain why the choice matters, describe each complete behavioral option in plain language, include affected state and contracts, and distinguish the decision from a text-fragment choice. The question source SHALL comply with the canonical question-context policy.
+The merge strategy confirmation SHALL be preceded by a worker-authored strategy that names each semantic conflict, explains why the choice matters, describes each complete behavioral alternative in plain language by branch rather than by `ours` / `theirs`, and includes affected state and contracts. The question source SHALL comply with the canonical question-context policy.
 
-#### Scenario: Contextual question supports an informed choice
+#### Scenario: Strategy confirmation supports an informed choice
 
-- **WHEN** the worker asks the user to choose an outcome for a semantic merge conflict
-- **THEN** the prompt and adjacent worker-authored context identify the affected behavior, alternatives, trade-offs, and current decision state in plain language
-
-### Requirement: Centralized pinned-anatomy exemption registry
-`sai/policies/question-context.md` SHALL host the centralized registry of prompts exempt from the full five-element anatomy — the change-picker prompts, the status-picker prompts, the artifact-feedback-gate texts, the crystallization-close selector as `Plan - Unattended` / `Build - Unattended` / `Manual`, and the plain-text sí/no review invitation — each keeping its own defining contract as the single source of its exact wording, options, and invalid-input semantics. Consuming surfaces SHALL reference the registry and SHALL NOT add, remove, or reinterpret an exemption elsewhere, and registered exemptions SHALL remain byte-stable.
-
-#### Scenario:
-- **WHEN** a command surface pins a terse prompt outside the full anatomy
-- **THEN** the exemption is registered once in question-context.md and every consuming surface references that registry instead of declaring its own carve-out
+- **WHEN** the worker asks the user to confirm the global resolution strategy
+- **THEN** the adjacent worker-authored strategy identifies the affected behavior, alternatives, trade-offs, and current decision state in plain language
 
 ### Requirement: Conflict-language question carries complete context
 

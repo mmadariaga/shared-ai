@@ -7,11 +7,11 @@ TBD
 
 ### Requirement: Progress renders SHALL stamp newly completed steps from the worker event
 
-A state-changing progress render MUST stamp each newly completed step with the `emitted_on` value from the progress event, read as `HH:mm`. The coordinator MUST NOT obtain a replacement timestamp from a wall clock.
+A state-changing progress render MUST stamp each newly completed step with the `validated_at` of that progress event's verdict, read as `HH:mm`. The coordinator MUST NOT obtain a replacement timestamp from a wall clock.
 
 #### Scenario: A progress event newly completes steps
 - **WHEN** a state-changing progress event marks one or more steps that render as `completed`
-- **THEN** each newly completed step receives one stamp derived from that event's `emitted_on` value
+- **THEN** each newly completed step receives one stamp derived from that event's `validated_at` value
 
 #### Scenario: A progress event is a no-op
 - **WHEN** a progress event marks no previously unmarked declared step

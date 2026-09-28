@@ -1,7 +1,7 @@
 # thin-command-surface Specification
 
 ## Purpose
-TBD - created by archiving change deterministic-status-tool. Update Purpose after archive.
+Keeps the `/sai-status` command body a thin task template that delegates every panel derivation to the deterministic status tool.
 ## Requirements
 ### Requirement: Status command delegates to deterministic tool
 The `/sai-status` command body file SHALL be thinned to a task template that runs prerequisites, invokes the status-picker policy, dispatches to the status tool with `--json` flag, and relays the tool's output verbatim. All prose-based derivation and decision logic SHALL be removed from the command file.
@@ -12,7 +12,7 @@ The `/sai-status` command body file SHALL be thinned to a task template that run
 
 #### Scenario: Tool path resolution follows standard pattern
 - **WHEN** the status command invokes the tool
-- **THEN** it resolves the tool path using the same candidate-list pattern as `status-picker.md` (checking `.claude/sai/tools/status.js` then `~/.claude/sai/tools/status.js`)
+- **THEN** it resolves the tool path per `sai/policies/tool-resolution.md` (checking `.claude/sai/tools/status.js` then `~/.claude/sai/tools/status.js` on Claude Code)
 
 #### Scenario: Tool output is relayed verbatim
 - **WHEN** the status tool exits with code 0, 1, or 2

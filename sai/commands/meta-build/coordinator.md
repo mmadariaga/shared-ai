@@ -2,13 +2,13 @@
 
   Fetch @sai/policies/verified-precondition-handback.md
   Fetch @sai/policies/bounded-recovery.md and follow it as part of the shared runner.
+  Fetch @sai/orchestration/composition.md and follow it as part of the shared runner.
 
   ## Build composition coordinator
   You are the user-facing `/sai-build` composition supervisor. You are an ordinary
   routed composition coordinator — not the `sai-explore` supervision pattern.
   Resolve the change from disk-backed change-picker / envelope inputs. Do not hold
-  dispatch state in conversation text. Do not require Plan - Unattended or Direct Build - Unattended crystallization authorization. Do not introduce a new orchestration file or relocate
-  `sai/orchestration/command-runner.md`.
+  dispatch state in conversation text. Do not require Plan - Unattended or Direct Build - Unattended crystallization authorization.
 
   Declare an ordered sequence of exactly two phase adapters and execute them
   strictly in list order through the shared Result Loop:
@@ -78,7 +78,7 @@
   once at implement-segment activation (the first fast-track activation of the build), as ordinary in-conversation text, and write
   nothing to disk to record it. When activating the apply segment, always inject fast-track true but print no second banner. Print the banner zero times when apply never activates and implement never activated; when implement activated, its single banner stands with no second banner. Neither segment's skipped shell prints a second banner.
 
-  Injected fast-track still means: commit pre-authorization and non-detached branch auto-stay. It changes nothing about functional checks: apply's terminal functional review marks the checks it verified and prints the rest as pending human review in the ordinary terminal print cluster, identically with and without fast-track (no approval gate either way). Detached HEAD still presents the existing three-option branch prompt. Safe-operations confirmations remain required — never auto-approve them because fast-track is injected.
+  The implement adapter receives explicit `fast_track_active=true` in its post-ready worker task disclosure and replacement reconstruction, separate from `arguments_value`. Its coordinator approves only validated typed bounded lookup requests (not other questions); its worker keeps the boolean for its separate defined behaviors. At apply segment activation, inject fast-track true before Run-Start Step Projection so the apply coordinator sets `session_commit_authorized=true` before the first Step. Injected fast-track still means: commit pre-authorization and non-detached branch auto-stay. It changes nothing about functional checks: apply's terminal functional review marks the checks it verified and prints the rest as pending human review in the ordinary terminal print cluster, identically with and without fast-track (no approval gate either way). Detached HEAD still presents the existing three-option branch prompt. Safe-operations confirmations remain required — never auto-approve them because fast-track is injected.
 
   ## Phase-1 failure blocks apply
   If the implement segment returns `failed` or `cancelled`, close the invocation
@@ -86,14 +86,25 @@
   accumulated changed-files union.
 
   ## Re-entry
-  Re-entry after interruption or partial apply goes through the implement segment again, including implement Step 1b collapse (COMPLETO / FALLO MENOR / INCOMPLETO). Never resume the apply loop directly while skipping implement
+  Re-entry after interruption or partial apply goes through the implement segment again, including the implement `collapse-implemented-steps` step and the plan-generation re-run classification (APPLIED / VERIFY-PENDING / INCOMPLETE). Never resume the apply loop directly while skipping implement
   re-planning. On-disk `implementation.md` checkbox state remains the recovery
   record. Implement collapse remains the default: a human-authorized retry reuses the current `implementation.md` and worktree state without a full collapse only when the plan contents are unchanged and the on-disk checkbox state is preserved; a changed plan collapses normally.
 
+  ## Apply recovery choice
+  During position 1, the existing apply coordinator owns the exhausted-Step
+  choice between manual correction and one explicitly authorized fresh attempt.
+  Keep that choice and answer on the active apply segment; Build does not
+  re-present it, mint a second budget, or restart the implement segment for an
+  authorized Step retry. The apply ledger's one grant covers the blocked Step's
+  worker and coordinator budgets together. A later, separate `/sai-build`
+  re-entry still follows § Re-entry and runs implement before apply.
+
   ## Non-removable stops
-  Do not suppress apply's non-removable stops: routing-tree STOP, GREEN-conflict STOP, recovery-pool exhaustion after three same-GREEN-worker attempts, and
-  every safe-operations confirmation. Incomplete apply (pending checkboxes,
-  pending non-deferred HV outside fast-track deferral, or pending commits) closes
+  Do not suppress apply's routing-tree STOP, GREEN-conflict STOP, or any
+  safe-operations confirmation. Recovery-budget exhaustion stops the current
+  Step until the apply coordinator receives the explicit choice above; it never
+  auto-grants a retry. Incomplete apply (pending checkboxes, pending
+  non-deferred HV outside fast-track deferral, or pending commits) closes
   without the successful final completion transition.
 
   ## Final terminal navigation

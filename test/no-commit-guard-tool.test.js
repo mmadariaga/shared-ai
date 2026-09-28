@@ -228,18 +228,16 @@ test('the SHA pattern accepts full and short hex SHAs only', () => {
   assert.ok(!SHA_RE.test('0123456789abcdef0123456789abcdef0123456789'));
 });
 
-test('the guard policy is single-sourced, harness-complete, and remediation-owned', () => {
+test('the guard policy is single-sourced, resolves its tool through tool-resolution, and owns remediation', () => {
   const policy = fs.readFileSync(POLICY, 'utf8');
   assert.match(policy, /node <tool-path> snapshot --json --cwd <project-root>/);
   assert.match(policy, /node <tool-path> verify --base <guard_base> \[--allow-commit\] --json --cwd <project-root>/);
-  assert.ok(policy.includes('.claude/sai/tools/no-commit-guard.js'));
-  assert.ok(policy.includes('~/.claude/sai/tools/no-commit-guard.js'));
-  assert.ok(policy.includes('.opencode/sai/tools/no-commit-guard.js'));
-  assert.ok(policy.includes('~/.config/opencode/sai/tools/no-commit-guard.js'));
+  assert.match(policy, /Fetch\s+@sai\/policies\/tool-resolution\.md/,
+    'the guard resolves its tool through the single tool-resolution source');
   for (const verdict of ['clean', 'violation', 'allowed', 'n/a']) {
     assert.ok(policy.includes(`**\`${verdict}\`**`), `the policy must handle the ${verdict} verdict`);
   }
-  assert.match(policy, /@sai\/policies\/autonomy-audit-log\.md/);
+  assert.doesNotMatch(policy, /@sai\/policies\/autonomy-audit-log\.md/);
   assert.match(policy, /git reset <guard_base>/);
   assert.ok(policy.includes('never\n     `--hard`') || policy.includes('--hard'), 'the policy must forbid --hard');
   assert.match(policy, /fast_track_active/);
@@ -248,14 +246,34 @@ test('the guard policy is single-sourced, harness-complete, and remediation-owne
   assert.match(policy, /batch close/);
 });
 
-test('the incident line is pinned in the audit-log policy, not restated in cards', () => {
+test('the guard policy bounds windows by a closed boundary list and isolates allow_commit', () => {
+  const policy = fs.readFileSync(POLICY, 'utf8').replace(/\s+/g, ' ');
+  for (const text of [
+    'A **window** is the stretch between a guard `snapshot` and its `verify`.',
+    'The closed list of boundaries is:',
+    '1. **Human turn**',
+    '2. **Coordinator git mutation**',
+    '3. **Run close**',
+    'Nothing else is a boundary. A progress event, a `notice`',
+    "inherits the running window's `guard_base` and takes no new snapshot",
+    '**`allow_commit` isolation**',
+    'always opens its own window and is never merged with a preceding one',
+    'names every worker dispatched inside the window, in dispatch order and joined with ` + `',
+  ]) {
+    assert.ok(policy.includes(text), `the guard policy must state: ${text}`);
+  }
+});
+
+test('the incident line is pinned in the guard policy, not restated in cards', () => {
+  const guard = fs.readFileSync(POLICY, 'utf8');
   const audit = fs.readFileSync(AUDIT_POLICY, 'utf8');
-  assert.match(audit, /## Incident line \(no-commit guard\)/);
+  assert.doesNotMatch(audit, /Incident line/);
+  assert.match(guard, /## Incident line/);
   assert.match(
-    audit,
+    guard,
     /> NO-COMMIT GUARD: unauthorized commit\(s\) detected after <worker label> dispatch — reset to <base> \(mixed\); commits preserved unstaged; evidence:/,
   );
-  assert.match(audit, /evidence: none reported/);
+  assert.match(guard, /evidence: none reported/);
 });
 
 test('every coordinator card that dispatches a routed worker carries the guard policy', () => {
@@ -279,6 +297,7 @@ test('every coordinator card that dispatches a routed worker carries the guard p
     assert.ok(body.includes('@sai/policies/no-commit-guard.md'), `${card} must fetch the guard policy`);
     assert.ok(body.includes('guard_base'), `${card} must hold guard_base`);
     assert.ok(body.includes('snapshot') && body.includes('verify'), `${card} must pair snapshot and verify`);
+    assert.ok(!body.includes('autonomy-audit-log'), `${card} must not restate the guard's incident line`);
   }
   // Composition coordinators that never dispatch directly carry no guard.
   for (const card of ['sai/commands/meta-build/coordinator.md']) {

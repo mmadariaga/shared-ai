@@ -33,8 +33,8 @@ test('worker-core keeps closed payloads timeless with no time field', () => {
   }
 });
 
-test('worker-core fixes validated_at as validator-observed ISO-8601 sidecar', () => {
-  const core = artifact('sai/orchestration/worker-core.md');
+test('the runner fixes validated_at as validator-observed ISO-8601 sidecar', () => {
+  const core = `${artifact('sai/orchestration/worker-core.md')}\n${artifact('sai/orchestration/command-runner.md')}`;
 
   assert.match(core, /validator-observed/i,
     'validated_at should be validator-observed');
@@ -50,8 +50,8 @@ test('worker-core fixes validated_at as validator-observed ISO-8601 sidecar', ()
     'unknown fields should be ignored');
 });
 
-test('worker-core owns the clock in the validator with reception-time semantics', () => {
-  const core = artifact('sai/orchestration/worker-core.md');
+test('the validator owns the clock with reception-time semantics', () => {
+  const core = `${artifact('sai/orchestration/worker-core.md')}\n${artifact('sai/orchestration/command-runner.md')}`;
 
   assert.match(core, /reception time substitutes emission time|transport delta/i,
     'reception-time semantics should be recorded');
@@ -61,11 +61,11 @@ test('worker-core owns the clock in the validator with reception-time semantics'
     'the worker should never read a clock');
 });
 
-test('worker-core makes validated_at validator-owned and forbids coordinator rewriting', () => {
-  const core = artifact('sai/orchestration/worker-core.md');
+test('validated_at is validator-owned and the coordinator never rewrites it', () => {
+  const core = `${artifact('sai/orchestration/worker-core.md')}\n${artifact('sai/orchestration/command-runner.md')}`;
 
-  assert.match(core, /## Validator-Observed Time/,
-    'worker-core should define the sidecar in its own section');
+  assert.match(artifact('sai/orchestration/worker-core.md'), /command-runner\.md` § Validation/,
+    'worker-core should point to the runner-owned sidecar definition');
   assert.match(core, /validator.*own|owns the only clock/i,
     'the clock should be validator-owned');
   assert.match(core, /verbatim[\s\S]{0,160}(?:invent|re-derive|reformat)/i,
@@ -74,10 +74,10 @@ test('worker-core makes validated_at validator-owned and forbids coordinator rew
     'reconstruction should not carry observation time');
 });
 
-test('worker-core names validated_at as the sole source of the Milestone Stamp', () => {
-  const core = artifact('sai/orchestration/worker-core.md');
+test('validated_at is the sole source of the Milestone Stamp', () => {
+  const core = `${artifact('sai/orchestration/worker-core.md')}\n${artifact('sai/orchestration/command-runner.md')}`;
 
-  assert.match(core, /validated_at` is the sole source of the Milestone Stamp/i,
+  assert.match(core, /sole source of the\s+Milestone Stamp/i,
     'the stamp should be sourced from the verdict value');
   assert.match(core, /never reads a clock/i,
     'the coordinator should read no clock');

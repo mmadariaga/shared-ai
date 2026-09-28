@@ -1,3 +1,7 @@
+## Purpose
+
+This specification requires unanswered fixed backfill interview questions to be delivered one at a time, with a free-text response between questions.
+
 ## Requirements
 
 ### Requirement: Interview questions asked sequentially

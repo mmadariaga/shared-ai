@@ -27,6 +27,8 @@ function readExploreContract() {
   const exploreSources = [
     'sai/commands/explore/instructions.md',
     'sai/commands/explore/steps/common.md',
+    'sai/commands/explore/steps/review-edge-cases.md',
+    'sai/commands/explore/steps/implementation-details.md',
     'sai/commands/explore/steps/artifact-review-language-gate.md',
     'sai/commands/explore/steps/slicing-assessment.md',
     'sai/commands/explore/steps/crystallization-protocol.md',
@@ -60,7 +62,7 @@ test('shared runner renders only after a progress event changes the marked set',
 
   assert.match(runner, /record(?:s|ing) whether the\s+event[\s\S]{0,120}previously unmarked declared id/i);
   assert.match(runner, /visual `progress_plan` exists[\s\S]{0,180}changed its marked set/);
-  assert.match(runner, /routing-only event performs no render and stamps\nnothing/);
+  assert.match(runner, /routing-only event performs\s+no render and stamps\s+nothing/);
   assert.doesNotMatch(runner, /changed no marked state performs no render or wall-clock/);
   assert.match(runner, /changed_files[\s\S]{0,180}progress-event render act/);
   assert.match(runner, /render act[\s\S]{0,320}continue_after_progress/);
@@ -105,7 +107,6 @@ test('routed matrix bindings reference the matching harness panel mechanics', ()
       );
       assert.match(binding.text, /todo-structure\.md/);
       assert.match(binding.text, /worker never emits panel tool calls/);
-      assert.match(binding.text, /When no `progress_plan` is declared, no plan-based list is rendered/);
     }
 
     const applyBindings = bindings.filter(item => item.phase === 'apply');

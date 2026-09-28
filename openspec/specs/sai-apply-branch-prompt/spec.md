@@ -1,20 +1,24 @@
+## Purpose
+
+Let the generated plan choose and create its working branch with a closed, localized prompt at apply time.
+
 ## Requirements
 
 ### Requirement: Plan template Prerequisites section SHALL use a 3-option branch-selection prompt
-The `## Prerequisites` block inside `<plan_template>` in `sai/commands/implement/instructions.md` SHALL be replaced with a branch-selection prompt that presents exactly three options to the user. The hardcoded instruction "Ensure branch is not master or main" SHALL be removed. No branch name is prohibited — the user has complete opt-out.
+The `## Prerequisites` block in `sai/commands/implement/implementation-plan.template.md` SHALL be replaced with a branch-selection prompt that presents exactly three options to the user. The hardcoded instruction "Ensure branch is not master or main" SHALL be removed. No branch name is prohibited — the user has complete opt-out.
 
 #### Scenario: plan template contains 3-option prompt
-- **WHEN** `sai/commands/implement/instructions.md` is read and the `<plan_template>` section is inspected
+- **WHEN** `sai/commands/implement/implementation-plan.template.md` is read
 - **THEN** the `## Prerequisites` block contains a 3-option branch-selection prompt
 - **THEN** the `## Prerequisites` block does NOT contain the text "Ensure branch is not master or main"
 
 #### Scenario: old 2-option rule is absent
-- **WHEN** `sai/commands/implement/instructions.md` is read
-- **THEN** the `<plan_template>` section does NOT contain the original two-item numbered list (feature-name + custom branch name) as the sole branch-selection mechanism
-- **THEN** the `<plan_template>` section does NOT contain any instruction that prohibits or warns against selecting `main`, `master`, or any other specific branch name
+- **WHEN** `sai/commands/implement/implementation-plan.template.md` is read
+- **THEN** the template's `## Prerequisites` section does NOT contain the original two-item numbered list (feature-name + custom branch name) as the sole branch-selection mechanism
+- **THEN** the template's `## Prerequisites` section does NOT contain any instruction that prohibits or warns against selecting `main`, `master`, or any other specific branch name
 
 ### Requirement: Prompt SHALL detect current git branch before presenting options
-The branch-selection prompt in `<plan_template>` SHALL instruct the agent to detect the current git branch via `git rev-parse --abbrev-ref HEAD` (or equivalent) BEFORE presenting the three options. The detected branch name is substituted into option 2's label. If the command returns empty (detached HEAD), option 2 SHALL display the literal text `detached HEAD`.
+The branch-selection prompt in the implementation plan template SHALL instruct the agent to detect the current git branch via `git rev-parse --abbrev-ref HEAD` (or equivalent) BEFORE presenting the three options. The detected branch name is substituted into option 2's label. If the command returns empty (detached HEAD), option 2 SHALL display the literal text `detached HEAD`.
 
 #### Scenario: current branch is main — stay option IS presented
 - **WHEN** the agent generates an `implementation.md` and the current git branch is `main`
@@ -36,15 +40,15 @@ The branch-selection prompt in `<plan_template>` SHALL instruct the agent to det
 - **THEN** the user can select this option without warning
 
 ### Requirement: Option labels SHALL follow the user's input language
-All option labels within the branch-selection prompt in `<plan_template>` SHALL be written in the same language the user writes in when invoking `/sai-3-implement`, with English as the fallback when the user's input language is unclear. The surrounding plan text (headings, instructions, verification checklists) SHALL remain in English.
+All option labels within the branch-selection prompt in the implementation plan template SHALL be written in the same language the user writes in when invoking `/sai-3-implement`, with English as the fallback when the user's input language is unclear. The surrounding plan text (headings, instructions, verification checklists) SHALL remain in English.
 
 #### Scenario: user writes in Spanish — labels in Spanish
-- **WHEN** the user invokes `/sai-3-implement` writing in Spanish and an `implementation.md` is generated from the updated `<plan_template>`
+- **WHEN** the user invokes `/sai-3-implement` writing in Spanish and an `implementation.md` is generated from the implementation plan template
 - **THEN** the branch-selection option labels are in Spanish
 - **THEN** all other plan text outside the option labels remains in English
 
 #### Scenario: user writes in English — labels in English
-- **WHEN** the user invokes `/sai-3-implement` writing in English and an `implementation.md` is generated from the updated `<plan_template>`
+- **WHEN** the user invokes `/sai-3-implement` writing in English and an `implementation.md` is generated from the implementation plan template
 - **THEN** the branch-selection option labels are in English
 - **THEN** all other plan text outside the option labels remains in English
 
@@ -99,20 +103,19 @@ If the selected branch does not exist in the repository, the Prerequisites secti
 - **WHEN** the user selects the stay option and the current branch exists
 - **THEN** no branch creation instruction is included in the Prerequisites section
 
-### Requirement: Edit scope limited to plan_template Prerequisites
-Only the `## Prerequisites` section inside `<plan_template>` in `sai/commands/implement/instructions.md` SHALL be modified. No other section of `implement.md`, no other instruction file, and no existing `implementation.md` artifact SHALL be changed.
+### Requirement: Branch prompt lives only in the template Prerequisites
+The branch-selection prompt SHALL live only in the `## Prerequisites` section of `sai/commands/implement/implementation-plan.template.md`. No other instruction file SHALL restate it, and no existing `implementation.md` artifact SHALL be rewritten to add it.
 
-#### Scenario: only Prerequisites section modified
-- **WHEN** the change is applied to `sai/commands/implement/instructions.md`
-- **THEN** the only diff is within the `## Prerequisites` block inside `<plan_template>`
-- **THEN** all other sections of `implement.md` remain byte-identical
+#### Scenario: single home for the branch prompt
+- **WHEN** the implementation plan template and the implement step library are read
+- **THEN** the branch-selection prompt appears only in the template's `## Prerequisites` block
 
 #### Scenario: existing implementation.md files untouched
 - **WHEN** the change is applied
 - **THEN** no existing `openspec/changes/*/implementation.md` file is modified or regenerated
 
 ### Requirement: Default branch SHALL be detected dynamically
-The `## Prerequisites` block inside `<plan_template>` in `sai/commands/implement/instructions.md` SHALL instruct the agent to resolve the repository's default branch dynamically rather than assuming `main`. Resolution SHALL prefer the remote head (for example `git symbolic-ref --quiet refs/remotes/origin/HEAD`, taking the trailing segment), falling back to whichever of `main` or `master` exists locally. The resolved name is referred to below as the default branch.
+The `## Prerequisites` block in `sai/commands/implement/implementation-plan.template.md` SHALL instruct the agent to resolve the repository's default branch dynamically rather than assuming `main`. Resolution SHALL prefer the remote head (for example `git symbolic-ref --quiet refs/remotes/origin/HEAD`, taking the trailing segment), falling back to whichever of `main` or `master` exists locally. The resolved name is referred to below as the default branch.
 
 #### Scenario: repository default branch is main
 - **WHEN** the agent generates an `implementation.md` in a repository whose default branch is `main`
@@ -124,7 +127,7 @@ The `## Prerequisites` block inside `<plan_template>` in `sai/commands/implement
 - **THEN** no text in the Prerequisites block hardcodes `main` as the base
 
 ### Requirement: New branch SHALL prompt for its base
-When the user selects a branch that does NOT already exist in the repository — option 1 (suggested `{feature-name}`) or option 3 (manually entered name) — the `<plan_template>` Prerequisites block SHALL instruct the agent to present a 2-option closed choice asking which branch the new branch is based on, before creating it. The two options, in this order, are:
+When the user selects a branch that does NOT already exist in the repository — option 1 (suggested `{feature-name}`) or option 3 (manually entered name) — the implementation plan template's Prerequisites block SHALL instruct the agent to present a 2-option closed choice asking which branch the new branch is based on, before creating it. The two options, in this order, are:
 1. Base on the default branch (the dynamically resolved `main`/`master`) — the default option.
 2. Base on the current branch (`{current-branch}`); when the current state is detached HEAD, option 2's label SHALL show the literal text `detached HEAD`, mirroring option 2 of the three-option branch-selection prompt.
 
@@ -152,7 +155,7 @@ This requirement applies except where the base prompt is skipped per the skip-co
 - **THEN** the Prerequisites section instructs the agent to create the new branch from the current detached commit
 
 ### Requirement: Base prompt SHALL be skipped when there is no meaningful choice
-The `<plan_template>` Prerequisites block SHALL NOT present the base prompt when any of these hold:
+The implementation plan template's Prerequisites block SHALL NOT present the base prompt when any of these hold:
 1. The user selects option 2 (stay on the current branch) — no branch is created.
 2. The selected target branch already exists in the repository — no branch is created.
 3. The current branch already equals the resolved default branch — basing on current and basing on default are identical.

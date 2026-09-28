@@ -285,17 +285,14 @@ test('the worktree instructions drive the tool instead of re-deriving its checks
     'utf8',
   );
   assert.match(instructions, /node <tool-path> <sub-command> \[arguments\] --json --cwd <invoking-directory>/);
-  // The tool path is copied from a listed literal, never composed from a root string.
-  for (const candidate of [
-    '`.claude/sai/tools/worktree.js`',
-    '`~/.claude/sai/tools/worktree.js`',
-    '`.opencode/sai/tools/worktree.js`',
-    '`~/.config/opencode/sai/tools/worktree.js`',
-  ]) {
-    assert.ok(instructions.includes(candidate), `instructions must list ${candidate} verbatim`);
+  // The tool path comes from the single tool-resolution policy, never composed from a root string.
+  assert.match(instructions, /`@sai\/policies\/tool-resolution\.md` § `sai\/tools\/\*\.js`\s+copies, substituting `worktree\.js` for `<name>`/);
+  assert.match(instructions, /never composed from a root string/);
+  const resolution = fs.readFileSync(path.join(REPO_ROOT, 'sai', 'policies', 'tool-resolution.md'), 'utf8');
+  for (const candidate of ['`.claude/sai/tools/<name>`', '`~/.claude/sai/tools/<name>`', '`.opencode/sai/tools/<name>`', '`~/.config/opencode/sai/tools/<name>`']) {
+    assert.ok(resolution.includes(candidate), `tool-resolution must list ${candidate} verbatim`);
   }
-  assert.ok(!instructions.includes('~/.opencode/'), 'the opencode user-global root is ~/.config/opencode/');
-  assert.match(instructions, /opencode debug paths/);
+  assert.match(resolution, /opencode debug paths/);
   // The Create flow announces the indexing pass before running it, and only there.
   const createStep = instructions.slice(instructions.indexOf('### Step 3'), instructions.indexOf('### Step 4'));
   const deleteStep = instructions.slice(instructions.indexOf('### Step 4'));
@@ -303,14 +300,14 @@ test('the worktree instructions drive the tool instead of re-deriving its checks
   const pass = createStep.indexOf('run `index <path>`');
   assert.ok(announcement >= 0, 'Step 3 must print the pre-announcement');
   assert.ok(pass > announcement, 'the pre-announcement must precede the indexing pass');
-  assert.match(createStep, /single one-line result notice/);
+  assert.match(createStep, /single one-line result\s+notice/);
   assert.ok(!deleteStep.includes('indexAnnouncement'), 'the Delete flow never announces indexing');
   assert.ok(!deleteStep.includes('index <path>'), 'the Delete flow never runs the indexing pass');
   assert.match(instructions, /verbatim/);
   for (const sub of ['inventory', 'create', 'remove', 'delete-branch']) {
     assert.ok(instructions.includes(`\`${sub}`), `instructions must name the ${sub} sub-command`);
   }
-  assert.match(instructions, /exit 1[\s\S]{0,200}Nothing was mutated/);
+  assert.match(instructions, /exit 1\*\* — the tool refused and nothing was mutated/);
   assert.match(instructions, /verbatim/);
   assert.match(instructions, /`Create`, `Delete`, `Exit`/);
   // The prose no longer restates the checks the tool owns.

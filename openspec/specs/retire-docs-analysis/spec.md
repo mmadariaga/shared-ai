@@ -1,7 +1,7 @@
 # retire-docs-analysis Specification
 
 ## Purpose
-TBD placeholder — purpose to be written when the change completes.
+Defines `/sai-retire-docs`: bounded discovery of active ADR/DDR records, evidence-ledger dispositions, and per-candidate confirmed archival of records and retired-only capability specs.
 
 ## Requirements
 
@@ -34,9 +34,19 @@ The utility SHALL assign exactly one disposition to every active candidate: supp
 
 ### Requirement: Confirmation-gated reversible archival
 
-The utility SHALL remain read-only through analysis and SHALL propose archival only for superseded, orphaned, or premise-missing candidates. It SHALL request confirmation separately for each proposal and SHALL perform an exact-path reversible rename only after collision checks, source-byte checks, a final reread, and reference-safety checks pass.
+The utility SHALL remain read-only through analysis and SHALL propose archival only for superseded, orphaned, or premise-missing candidates. A related capability spec SHALL be its own candidate when it is retired-only, meaning every requirement has a confirmed active canonical home elsewhere. The utility SHALL request confirmation separately for each proposal and SHALL act only after collision checks, source-byte checks, a final reread, and reference-safety checks pass. A confirmed action SHALL be one exact-path rename into the family archive (`docs/adr/archive/`, `docs/ddr/archive/`, or `openspec/specs/_archived/<capability>/`) plus, for a decision record, the matching family-index update: its active entries removed, one entry added under the historical heading with the `./archive/<basename>` link, and other links inside that index repointed. An active reference to the candidate outside its own family index SHALL block the move.
 
 #### Scenario: Confirmed archival passes final safeguards
 
-- **WHEN** a user confirms an eligible candidate and its source, destination, bytes, and references pass final checks
-- **THEN** the utility SHALL rename the candidate to the exact family archive path without overwriting or repairing unrelated files
+- **WHEN** a user confirms an eligible record and its source, destination, bytes, and references pass final checks
+- **THEN** the utility SHALL rename the record to the exact family archive path and move its index entry to the historical section, touching no other file
+
+#### Scenario: An outside reference blocks the move
+
+- **WHEN** another active record, spec, or card still links to a confirmed candidate
+- **THEN** the utility SHALL report the reference and keep the candidate in place
+
+#### Scenario: A retired-only capability spec is proposed on its own
+
+- **WHEN** every requirement of a related capability spec has a confirmed active canonical home elsewhere
+- **THEN** the utility SHALL propose moving it to `openspec/specs/_archived/<capability>/` behind its own confirmation

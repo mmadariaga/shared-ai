@@ -8,7 +8,7 @@ Each opencode budget skill SHALL document the cost and context-hygiene rationale
 
 ### Requirement: Cost model section in budget-explorer SKILL.md
 
-The `skills/opencode/budget-explorer/SKILL.md` file SHALL include a `## Cost model` section positioned after the `## Model resolution` section and before the `## Output contract` section.
+The `skills/opencode/budget-explorer/SKILL.md` file SHALL include a `## Cost model` section positioned after the `## Model resolution` section and before the `## Tool-call ceiling` section.
 
 The section SHALL explain:
 - **Why delegate**: The cost efficiency and context-hygiene benefits of delegating research tasks to subagents
@@ -33,9 +33,9 @@ The section SHALL explain:
 The `skills/opencode/budget-executor/SKILL.md` file SHALL include a `## Cost model` section positioned after the `## OpenCode Binding` section.
 
 The section SHALL explain:
-- **Why delegate**: The cost efficiency and context preservation benefits of delegating execution tasks to subagents
-- **Model resolution**: How the opencode harness resolves the model for this skill via the `model` frontmatter of the executor agent file (`~/.config/opencode/agents/executor.md`), seeded by the installer under the `tunable-seed` lifecycle
-- **Execution overhead**: How delegation reduces main agent context pollution when running long-running or resource-intensive operations
+- **Why delegate**: The cost efficiency of delegating execution tasks to subagents
+- **Cost lever**: that the `model` frontmatter described in the skill's `## Model resolution` section is the only lever on the cost of delegation, citing that section instead of restating the resolution
+- **Context hygiene**: How the clean-context subagent keeps long-running or verbose command output out of the caller's context
 
 #### Scenario: Agent loads opencode budget-executor and understands delegation
 
@@ -51,7 +51,7 @@ The `skills/opencode/budget-subagent/SKILL.md` file SHALL include a `## Cost mod
 
 The section SHALL explain:
 - **Why delegate**: The cost efficiency and context-hygiene benefits of delegating general tasks to subagents, particularly for scoped work that benefits from fresh context
-- **Model resolution**: How the opencode harness resolves the model for this skill via the `model` frontmatter of the budget agent file (`~/.config/opencode/agents/budget.md`), seeded by the installer under the `tunable-seed` lifecycle
+- **Cost lever**: that the `model` frontmatter of the budget agent file named in the `## OpenCode Binding` section is the only lever on the cost of delegation, citing the binding instead of restating the resolution
 - **Scope boundaries**: How clear task boundaries enable effective subagent delegation and cost control
 
 #### Scenario: Agent loads opencode budget-subagent and understands cost model

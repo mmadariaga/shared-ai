@@ -137,18 +137,18 @@ test('the skills check aggregates every missing skill into one failed result', (
 
     fs.writeFileSync(path.join(root, '.claude', 'skills', 'openspec-explore', 'SKILL.md'), 'x\n');
     const partial = checkSkills(root, 'claude');
-    assert.deepEqual(partial.missing_skills, ['openspec-propose', 'openspec-archive-change']);
+    assert.deepEqual(partial.missing_skills, ['openspec-propose']);
 
     // Copies in the other harness's root do not satisfy the check (E3).
     fs.mkdirSync(path.join(root, '.opencode', 'skills', 'openspec-propose'), { recursive: true });
     fs.writeFileSync(path.join(root, '.opencode', 'skills', 'openspec-propose', 'SKILL.md'), 'x\n');
-    assert.deepEqual(checkSkills(root, 'claude').missing_skills, ['openspec-propose', 'openspec-archive-change']);
+    assert.deepEqual(checkSkills(root, 'claude').missing_skills, ['openspec-propose']);
 
     // The opencode root resolves to .opencode/skills.
     assert.equal(checkSkills(root, 'opencode').root, path.join(root, '.opencode', 'skills'));
 
     // All present passes with an empty missing list.
-    for (const name of ['openspec-propose', 'openspec-archive-change']) {
+    for (const name of ['openspec-propose']) {
       fs.mkdirSync(path.join(root, '.claude', 'skills', name), { recursive: true });
       fs.writeFileSync(path.join(root, '.claude', 'skills', name, 'SKILL.md'), 'x\n');
     }
@@ -174,14 +174,14 @@ test('a project whose first three checks pass halts on the skills check with the
     assert.equal(result.status, 1);
     assert.equal(result.payload.failed_check, 'skills');
     assert.equal(result.payload.reason, 'openspec-skill-missing');
-    assert.ok(Array.isArray(result.payload.missing_skills) && result.payload.missing_skills.length === 3);
+    assert.ok(Array.isArray(result.payload.missing_skills) && result.payload.missing_skills.length === REQUIRED_SKILLS.length);
     assert.match(result.payload.message, /\.claude[\\/]+skills/);
   } finally {
     cleanup(root);
   }
 });
 
-test('a project with all three skills installed passes with the harness flag', () => {
+test('a project with every required skill installed passes with the harness flag', () => {
   const root = makeProject();
   try {
     makeOpenSpecProject(root);

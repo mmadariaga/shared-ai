@@ -17,6 +17,8 @@ const explore = () => {
   const exploreSources = [
     'sai/commands/explore/instructions.md',
     'sai/commands/explore/steps/common.md',
+    'sai/commands/explore/steps/review-edge-cases.md',
+    'sai/commands/explore/steps/implementation-details.md',
     'sai/commands/explore/steps/artifact-review-language-gate.md',
     'sai/commands/explore/steps/slicing-assessment.md',
     'sai/commands/explore/steps/crystallization-protocol.md',
@@ -33,24 +35,6 @@ const opencodeBinding = () => readArtifact('sai/adapters/opencode/idea-list-rend
 const claudeBinding = () => readArtifact('sai/adapters/claude/idea-list-render.md');
 const opencodePanel = () => readArtifact('sai/adapters/opencode/panel-render.md');
 const claudePanel = () => readArtifact('sai/adapters/claude/panel-render.md');
-
-const MATURITY_TRACE_FIXTURES = [
-  {
-    response: 'review-edge-cases',
-    askMode: 'ask_mode: false',
-    events: ['text-question-emitted', 'selector-presented', 'selector-option-received', 'edge-case-writing-prompt-emitted'],
-  },
-  {
-    response: 'keep-iterating',
-    askMode: 'ask_mode: true',
-    events: ['text-question-emitted', 'selector-presented', 'selector-option-received'],
-  },
-  {
-    response: 'maturity-selector free text',
-    askMode: 'ask_mode: true',
-    events: ['text-question-emitted', 'selector-presented', 'selector-free-text-received'],
-  },
-];
 
 test('the explore instructions render the four stage labels in order', () => {
   const source = explore();
@@ -119,20 +103,22 @@ test('both bindings carry the idea-list marker in their pinned machine-readable 
   assert.match(claude, /`description` field, with value `sai-idea-list:<change-name>`/);
 });
 
-test('both render bindings retain the shared idea-list surface policy', () => {
+test('both render bindings point to the explore steps as the single source of surface policy', () => {
   const opencode = opencodeBinding();
   const claude = claudeBinding();
 
   const sharedFragments = [
+    'sai-explore-stage:<stage-id>',
     'sai-idea-list:<change-name>',
-    'pending | in_progress | completed',
-    'active review item',
-    'coordinator session',
+    'sai/commands/explore/steps/common.md',
+    'sai/commands/explore/steps/idea-list.md',
   ];
   for (const fragment of sharedFragments) {
     assert.ok(opencode.includes(fragment), `opencode binding should carry: ${fragment}`);
     assert.ok(claude.includes(fragment), `Claude binding should carry: ${fragment}`);
   }
+  assert.match(opencode, /`priority` field, with value `sai-explore-stage:<stage-id>`/);
+  assert.match(claude, /`description` field, with value `sai-explore-stage:<stage-id>`/);
 });
 
 test('the chat-start clear removes exactly entries bearing either marker prefix', () => {
@@ -180,34 +166,6 @@ test('maturity selector responses preserve staged ask mode and review-entry gate
   assert.match(source, /performs no automatic progression/);
   assert.match(source, /advances only on a later explicit `next-step` request or equivalent natural-language advancement/);
 
-  assert.match(source, /Contract tests may observe the harness-neutral trace vocabulary[\s\S]{0,320}crystallization-requested/);
-  for (const fixture of MATURITY_TRACE_FIXTURES) {
-    assert.match(source, new RegExp(fixture.response.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')),
-      `${fixture.response} should be represented by the maturity selector contract`);
-    assert.match(source, new RegExp(fixture.askMode.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')),
-      `${fixture.response} should preserve its ask mode`);
-    let previous = -1;
-    for (const event of fixture.events) {
-      const position = source.indexOf(event);
-      assert.ok(position > previous, `${fixture.response} trace should keep ${event} in order`);
-      previous = position;
-    }
-  }
-  for (const event of [
-    'text-question-emitted',
-    'selector-presented',
-    'selector-option-received',
-    'selector-free-text-received',
-    'edge-case-writing-prompt-emitted',
-    'explicit-advancement-received',
-    'stage-advanced',
-    'material-reset',
-    'crystallization-requested',
-  ]) {
-    assert.match(source, new RegExp(`\\b${event}\\b`), `trace vocabulary should include ${event}`);
-  }
-  assert.match(source, /stage: string, ask_mode: true\|false, emitted_prompt: string\|null/);
-  assert.match(source, /This vocabulary is test observation only and is not a production response field/);
 });
 
 test('material changes reset every pending selector and staged state before classification', () => {
@@ -231,8 +189,6 @@ test('selector flows keep overview opt-out and renderer ownership unchanged', ()
   assert.match(source, /literal `\*\*Overview language\*\*: None`/);
   assert.match(source, /dispatches no overview generation/);
   assert.match(source, /panel ownership, and stage-machine-owned state rules remain authoritative/);
-  assert.match(source, /selector semantics are not duplicated in wrappers, panel renderers, installation projections, or `remember\.md`/);
-  assert.match(source, /Claude Code and opencode consume this shared contract/);
   for (const renderer of [opencodeBinding(), claudeBinding(), opencodePanel(), claudePanel()]) {
     assert.doesNotMatch(renderer, /NativeStageSelectorCapability|keep-iterating|discuss-ideas-feedback|selector-presented|selector-option-received|selector-free-text-received/);
   }

@@ -7,19 +7,19 @@ TBD - created by syncing change relocate-generic-opencode-agents. Update Purpose
 
 ### Requirement: Generic opencode agents ship as managed agent files
 
-The repository SHALL ship `agents/opencode/explore.md`, `agents/opencode/executor.md`, and `agents/opencode/budget.md`. Each file SHALL declare in its YAML frontmatter exactly the agent name implied by its filename, `mode: subagent`, the placeholder low-cost model `opencode-go/deepseek-v4-flash`, and the existing description naming the agent's role. The three agent names SHALL be preserved exactly as `explore`, `executor`, and `budget` because the routed opencode worker bindings and the worker agent frontmatter (`permission.task`) authorize the `budget` and `explore` task targets by name. After the frontmatter, each shipped source file SHALL begin with `Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.` followed by only its matching canonical SAI policy Fetch directive: `explore.md` SHALL fetch `@sai/policies/explore-agent.md`, `executor.md` SHALL fetch `@sai/policies/executor-agent.md`, and `budget.md` SHALL fetch `@sai/policies/budget-agent.md`. A user-owned project-local materialization MAY append project-specific instructions after that policy Fetch line without changing the managed frontmatter or Fetch targets.
+The repository SHALL ship `agents/opencode/explore.md`, `agents/opencode/executor.md`, and `agents/opencode/budget.md`. Each file's filename is its agent name: opencode takes the name from the filename, so the frontmatter carries no `name` field. Each file SHALL declare `mode: subagent`, a shipped low-cost `model` seed, and a role description that front-loads the agent's role for automatic subagent selection. The source frontmatter is the sole authority for the shipped seed values. The three filenames SHALL be preserved exactly as `explore.md`, `executor.md`, and `budget.md` because the routed opencode worker bindings and the worker agent frontmatter (`permission.task`) authorize the `budget` and `explore` task targets by name. After the frontmatter, each shipped source file SHALL begin with `Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.` followed by only its matching canonical SAI policy Fetch directive: `explore.md` SHALL fetch `@sai/policies/explore-agent.md`, `executor.md` SHALL fetch `@sai/policies/executor-agent.md`, and `budget.md` SHALL fetch `@sai/policies/budget-agent.md`. A user-owned project-local materialization MAY append project-specific instructions after that policy Fetch line without changing the managed frontmatter or Fetch targets.
 
 #### Scenario: three generic agent files retain the required frontmatter
 
 - **WHEN** `agents/opencode/` is read after this change is applied
 - **THEN** it contains `explore.md`, `executor.md`, and `budget.md`
-- **AND** each file's frontmatter retains its pre-change description, `mode: subagent`, and `model: opencode-go/deepseek-v4-flash`
+- **AND** each file's frontmatter declares a role description, `mode: subagent`, and a `model` seed, and no `name` field
 - **AND** each file's filename-implied agent name remains unchanged
 
 #### Scenario: agent names and task targets are preserved
 
 - **WHEN** the routed opencode bindings authorize the `budget` and `explore` task targets by name and the executor binding targets `executor`
-- **THEN** the shipped agent files carry those exact names
+- **THEN** the shipped agent filenames carry those exact names
 - **AND** no task-target reference breaks because of the wrapper conversion
 
 #### Scenario: shipped generic agent bodies are thin canonical wrappers

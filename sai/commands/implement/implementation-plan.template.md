@@ -1,9 +1,12 @@
-
 # {FEATURE_NAME}
 
 ## Goal
 
 {One sentence describing exactly what this implementation accomplishes}
+
+## Verification commands
+
+**Full-suite command:** `{full-suite-command}` — the complete repository test suite; `/sai-4-apply` runs it once, after the last Step commit.
 
 ## Prerequisites
 
@@ -34,6 +37,7 @@
 
 - **Rule:** RED may only contain the failing test + minimal stubs/imports. Do NOT paste the full implementation here. If a stub is needed to compile, make it return the wrong value so the test still fails with an assertion error.
 - **Retirements:** When this step replaces obsolete guard tests, list each retired test file ONLY inside this RED block — one entry per file with its exact repository-relative path marked `retired`. A step without a RED block never carries retirements. Each retirement adds one Verification Checklist item asserting the retired file's absence; the coordinator runs it after the RED dispatch returns and before GREEN may be dispatched.
+- **Step test command:** `{step-test-command}` — selects only this Step's tests, with explicit paths, selectors, and arguments.
 
 - [ ] Create a minimal stub at `{file}` so the test can compile:
 
@@ -43,15 +47,11 @@
 
 - [ ] Write the test into `{test-file}`:
 
-When `interfaces.md` exists for this change, list the step's scenarios at a high level only — concrete expected-value assertions are single-sourced in `interfaces.md` and are not restated here.
-
-When `interfaces.md` is absent, sai-4-apply will expand the scenario descriptions into full test assertions during RED.
-
 - {Scenario A description}
 - {Scenario B description}
 
-- [ ] Verify RED: run `{test-command}` — expected: **assertion failure** (exit ≠ 0 AND failure attributable to behaviour under test, NOT a setup/import/compilation error).
-- [ ] **GATE — DO NOT PROCEED to GREEN until RED is verified.** If the test passes, or the failure is not an assertion failure, STOP and report to the user per the RED → GREEN handling rules in the implementation instructions. Do not paste the GREEN code below.
+- [ ] Verify RED: run `{step-test-command}` — expected: **assertion failure** (exit ≠ 0 AND failure attributable to behaviour under test, NOT a setup/import/compilation error).
+- [ ] **GATE — DO NOT PROCEED to GREEN until RED is verified.** If the test passes, or the failure is not an assertion failure, STOP and report to the user. Do not paste the GREEN code below.
 
 ##### GREEN phase (only after RED is verified)
 
@@ -61,13 +61,13 @@ When `interfaces.md` is absent, sai-4-apply will expand the scenario description
 {COMPLETE, TESTED CODE - NO PLACEHOLDERS - NO "TODO" COMMENTS}
 ```
 
-- [ ] Verify GREEN: run `{test-command}` — expected: PASS
+- [ ] Verify GREEN: run `{step-test-command}` — expected: PASS
 
 ##### Step 1 Verification Checklist
 
 **Automated (agent runs before stopping):**
-- [ ] RED verified — `{test-command}` fails as expected
-- [ ] GREEN verified — `{test-command}` passes
+- [ ] RED verified — `{step-test-command}` failed by assertion during RED
+- [ ] GREEN verified — `{step-test-command}` passes
 - [ ] `{command}` — {expected result}
 
 **Functional (verify by exercising the behavior in the browser):**
@@ -79,9 +79,9 @@ When `interfaces.md` is absent, sai-4-apply will expand the scenario description
 
 **STOP & COMMIT:** Stage and commit after Automated checks pass. The Functional checks above are re-exercised by the terminal functional review at the end of the run; any it cannot verify is reported as pending human review.
 
-#### Step 2: {Action — creates component not yet integrated into any page}
+#### Step 2: {Action — non-testable scaffolding for a component not yet integrated into any page}
 
-*(Non-testable step — standard format, no RED/GREEN needed because component is not yet rendered)*
+*(Non-testable step — no testable logic, so the standard format without RED/GREEN. Its Functional checks are deferred because the component is not yet rendered.)*
 
 - [ ] {Specific Instruction 1}
 - [ ] Copy and paste code below into `{file}`:
@@ -150,4 +150,3 @@ When `interfaces.md` is absent, sai-4-apply will expand the scenario description
 **sai-4-apply:** Run all Automated checks above and confirm they pass before stopping.
 
 **STOP & COMMIT:** Stage and commit after Automated checks pass. The Functional checks above (including all deferred ones) are re-exercised by the terminal functional review at the end of the run; any it cannot verify is reported as pending human review.
-

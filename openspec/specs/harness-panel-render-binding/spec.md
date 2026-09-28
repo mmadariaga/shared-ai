@@ -38,7 +38,7 @@ Each supported harness SHALL expose its native panel mechanics through a reusabl
 
 ### Requirement: Panel mechanics SHALL remain declared rather than runtime-detected
 
-Each supported harness panel-render binding SHALL declare native task-panel availability and SHALL keep panel emission owned by the coordinator surface rather than a worker subagent. The merge binding SHALL retain exclusive ownership through terminal cleanup and SHALL NOT promise restoration of displaced foreign entries.
+Each supported harness panel-render binding SHALL declare native task-panel availability and SHALL keep panel emission owned by the coordinator surface rather than a worker subagent. The merge adaptive TODO contract (`sai/policies/todo-structure.md` § Panel ownership) SHALL retain exclusive ownership through terminal cleanup and SHALL NOT promise restoration of displaced foreign entries; the panel bindings supply only the native mechanics and do not restate that ownership rule.
 
 #### Scenario: A supported harness consumes the binding
 - **WHEN** a coordinator surface renders its panel-backed list

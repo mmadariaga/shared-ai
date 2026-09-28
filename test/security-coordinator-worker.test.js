@@ -111,7 +111,7 @@ test('security worker contract enumerates the five ids and pins the batch semant
   assert.match(worker, /manifest[\s\S]{0,240}(?:changed|skip|not applicable)/i);
   assert.match(worker, /resolve-sca/);
   assert.match(worker, /empty diff[\s\S]{0,240}(?:no-change|completed)/i);
-  assert.match(worker, /no Milestone Stamp/i);
+  assert.doesNotMatch(worker, /no Milestone Stamp/i, 'audit plans carry stamps per todo-structure; the worker states nothing about them');
   assert.match(worker, /never[\s\S]{0,160}(?:before resolution|in place of a terminal|needs_input)/i);
 });
 
@@ -142,8 +142,8 @@ test('security coordinator and policy render the plan coordinator-only with thre
   assert.doesNotMatch(coordinator, /Get-Date/,
     'the coordinator should carry no PowerShell wall-clock command');
 
-  assert.match(worker, /no Milestone Stamp/i,
-    'the worker contract should state audit plans carry no Milestone Stamp');
+  assert.doesNotMatch(worker, /no Milestone Stamp/i,
+    'the worker never renders stamps, so its contract states nothing about them');
   assert.match(coordinator, /todo-structure\.md/,
     'the coordinator should reference the neutral todo-structure policy');
 });
@@ -186,7 +186,7 @@ test('step-gated: progress continuations carry exactly two lines with the determ
     'stage-machine.md should have a Step machines section');
   assert.match(stageMachine, /the two-line continuation/i,
     'stage-machine.md should document the two-line continuation');
-  assert.match(stageMachine, /Active step: none.*complete remaining work/,
+  assert.match(stageMachine, /`Active step: none` line/,
     'stage-machine.md should specify the terminal pointer line');
 });
 
@@ -231,9 +231,20 @@ test('step-gated: the security worker loads steps/common.md at dispatch and exec
     'a legitimately skipped gated stage still advances the pointer past it');
 });
 
-test('step-gated: the carved step library exists beside the untouched monolith', () => {
-  assert.ok(fs.existsSync(path.join(repoRoot, 'sai/commands/security/instructions.md')),
-    'the original instructions.md stays in place untouched');
+test('step-gated: the step library is the only security instruction surface', () => {
+  for (const retired of ['instructions.md', 'invocation.md']) {
+    assert.equal(fs.existsSync(path.join(repoRoot, 'sai/commands/security', retired)), false,
+      `the monolithic security ${retired} is retired`);
+  }
+  const manifest = JSON.parse(artifact('sai/install-manifest.json'));
+  for (const [id, destination] of [
+    ['retired-sai-6-security-instructions', 'commands/security/instructions.md'],
+    ['retired-sai-6-security-invocation', 'commands/security/invocation.md'],
+  ]) {
+    const retirement = manifest.retirements.find(record => record.id === id);
+    assert.ok(retirement, `the manifest should retire installed copies of ${destination}`);
+    assert.equal(retirement.destination.path, destination);
+  }
   assert.ok(fs.existsSync(path.join(repoRoot, 'sai/commands/security/steps/common.md')),
     'steps/common.md should exist');
   for (const [id, relativePath] of Object.entries(SECURITY_STEP_MAP)) {

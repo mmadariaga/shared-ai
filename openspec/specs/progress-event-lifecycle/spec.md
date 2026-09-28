@@ -11,7 +11,6 @@ Define the nonterminal progress event: its shape, its additive non-terminal role
 A routed worker for a phase whose adapter declares a progress plan SHALL return an additive non-terminal progress event with the following shape whenever one or more newly completed plan steps are available:
 
     event: "progress"
-    emitted_on: string
     step_ids: string[]
     changed_files: string[]
 

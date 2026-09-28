@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+This capability keeps `interfaces.md` synchronized with implementation steps, including pruning and audit-derived interface contracts and assertions.
+
+## Requirements
 
 ### Requirement: `interfaces.md` pruning is symmetric with `implementation.md` pruning by integer key
 

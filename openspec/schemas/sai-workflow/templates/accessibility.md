@@ -10,7 +10,7 @@
 **Date:** <!-- YYYY-MM-DD -->
 
 ## Not Applicable
-<!-- Explain whether the accessibility audit applies to this change. -->
+<!-- Keep only when the accessibility audit does not apply to this change, with its justification; delete this heading otherwise. -->
 
 ## Executive Summary
 <!-- Summarize {the inclusive-design posture} and overall audit outcome. -->

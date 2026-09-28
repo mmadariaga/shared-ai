@@ -1,9 +1,9 @@
 # Spec Step — Specs
 
-Active step: specs. Write the capability delta specs, then report the `specs` progress event per the worker contract.
+Active step: specs. Write the capability delta specs, then return the `specs`
+progress event.
 
-Rules originating here: none. Rules referenced from elsewhere: Complexity Derivation Rubric from validation.md applies after specs are written.
-
-Write `openspec/changes/{name}/specs/**/*.md` per the `openspec-propose` skill already loaded in this session — one capability delta spec per capability, each with its requirements and scenarios in the skill's format. Generate ONLY spec files in this step; never write `design.md` or `tasks.md`. The phase-wide write boundary is the `SpecWriteSurface` in `@sai/policies/spec-phase-contract.md`.
-
-Append every newly resolved domain term to the project-root `GLOSSARY.md` immediately (do not batch): bootstrap the glossary if absent, insert the term alphabetically with its `*Avoid*` aliases, and conform to the `<glossary_format>` block pre-loaded in context. This is the single permitted write outside `openspec/changes/{name}/`.
+For each capability under `proposal.md`'s `## Capabilities`, write one delta
+spec from `openspec instructions specs --change "<name>" --json`, as the
+openspec-propose skill's step 6a describes. Every requirement carries at least
+one scenario. The step is done when every listed capability has its delta spec.

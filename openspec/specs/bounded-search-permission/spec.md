@@ -32,12 +32,12 @@ Area-to-file resolution SHALL be delegated to budget-explorer ONLY, and the work
 
 ### Requirement: Limited full reads and denial fallback
 
-Later full reads SHALL stay limited to the approved returned files with no new file opened outside that approval, and a denied item SHALL keep the current Questions block plus stop behavior with no guessing and no broad search while approved items proceed on their citations.
+Later full reads SHALL stay limited to the approved returned files with no new file opened outside that approval, and a denied item SHALL become a `needs_input` question about that convention with no guessing and no broad search while approved items proceed on their citations.
 
 #### Scenario: Denied item keeps stop behavior
 
 - **WHEN** a batch item is denied
-- **THEN** that item keeps the Questions block plus stop with no guessing and no broad search
+- **THEN** that item becomes a `needs_input` question about that convention with no guessing and no broad search
 
 ### Requirement: Fast-track auto-approval within the same bounds
 

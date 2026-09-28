@@ -111,7 +111,8 @@ test('utility without a local override persists from the global commands directo
       `${name}: utility destination stays under .opencode/commands`
     );
     const written = fs.readFileSync(result.destination, 'utf8');
-    assert.match(written, /model: opencode-go\/glm-5\.2\nvariant: high/);
+    assert.match(written, /model: opencode-go\/glm-5\.2#high/);
+    assert.doesNotMatch(written, /^variant:/m);
     assert.match(written, new RegExp(`Utility body of ${name}`), `${name}: source body is preserved`);
   }
 });
@@ -170,7 +171,8 @@ test('utility with an existing local override keeps patching the local file', ()
     if (harness === 'claude') {
       assert.match(written, /model: sonnet\neffort: medium/);
     } else {
-      assert.match(written, /model: opencode-go\/glm-5\.2\nvariant: high/);
+      assert.match(written, /model: opencode-go\/glm-5\.2#high/);
+      assert.doesNotMatch(written, /^variant:/m);
     }
   }
 });
@@ -286,6 +288,37 @@ test('worker, agent, and command families keep their existing source roots', () 
   }
 });
 
+test('OpenCode agent customization reads combined legacy models and writes separate optional variants', () => {
+  const fixture = makeFixture();
+  const name = 'explore';
+  const source = opencodeAgentSource(name).replace('model: opencode-go/old-model\nvariant: old',
+    'model: opencode-go/old-model#old\nvariant: stale');
+  fs.writeFileSync(path.join(fixture.globalAgentRoot, `${name}.md`), source);
+  const adapter = createOpencodeAdapter({
+    projectPath: fixture.projectPath,
+    globalAgentRoot: fixture.globalAgentRoot,
+    globalCommandRoot: fixture.globalCommandRoot,
+  });
+  const target = { family: 'agent', name };
+  assert.equal(adapter.effectiveSetting(target), 'opencode-go/old-model (old)');
+  const first = adapter.createLocalOverride(target, { model: 'opencode-go/new-model#high' });
+  assert.equal(first.status, 'persisted');
+  let written = fs.readFileSync(first.destination, 'utf8');
+  assert.match(written, /^model: opencode-go\/new-model\nvariant: high$/m);
+  assert.equal((written.match(/^variant:/gm) || []).length, 1);
+  assert.doesNotMatch(written, /^model:.*#/m);
+  assert.match(written, /# Agent body of explore/);
+
+  const second = adapter.createLocalOverride(target, { model: 'opencode-go/another-model' });
+  assert.equal(second.status, 'persisted');
+  written = fs.readFileSync(second.destination, 'utf8');
+  assert.match(written, /^model: opencode-go\/another-model$/m);
+  assert.doesNotMatch(written, /^variant:/m);
+  assert.equal(adapter.effectiveSetting(target), 'opencode-go/another-model');
+  assert.equal(fs.readFileSync(path.join(fixture.globalAgentRoot, `${name}.md`), 'utf8'), source,
+    'user-requested customization never rewrites the installed source');
+});
+
 test('adapter createLocalOverride persists a utility without a local override from the global commands directory', () => {
   const name = 'sai-retire-docs';
   const opencodeFixture = makeFixture();
@@ -304,7 +337,8 @@ test('adapter createLocalOverride persists a utility without a local override fr
     opencodeResult.destination,
     path.join(opencodeFixture.projectPath, '.opencode', 'commands', `${name}.md`)
   );
-  assert.match(fs.readFileSync(opencodeResult.destination, 'utf8'), /model: opencode-go\/glm-5\.2\nvariant: high/);
+  assert.match(fs.readFileSync(opencodeResult.destination, 'utf8'), /model: opencode-go\/glm-5\.2#high/);
+  assert.doesNotMatch(fs.readFileSync(opencodeResult.destination, 'utf8'), /^variant:/m);
 
   const claudeFixture = makeFixture();
   fs.writeFileSync(path.join(claudeFixture.globalCommandRoot, `${name}.md`), claudeCommandSource(name));

@@ -1,7 +1,6 @@
 ---
-description: Granular implementation plan through the canonical coordinator contract and a routed worker.
-model: opencode-go/muse-spark-1.3-contributor
-variant: xhigh
+description: Plan a change's implementation into implementation.md — ordered RED→GREEN steps sized for a cheap model to apply. Stops before /sai-4-apply.
+model: opencode-go/muse-spark-1.3-contributor#xhigh
 subtask: false
 ---
 Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.

@@ -68,16 +68,16 @@ The `sai-archive` Classification Check SHALL evaluate `interfaces` independently
 - **THEN** the listed AUDIT ids MUST NOT include `interfaces`
 - **THEN** the archive flow MUST proceed
 
-### Requirement: Upstream skill is invoked only when CORE is complete
+### Requirement: CLI archive runs only when CORE is complete
 
-The `sai-archive` command SHALL run its classification check before archive mutation. When all required CORE artifacts are complete, AUDIT-only gaps SHALL remain informational and the command SHALL proceed through the unchecked-items gate before the coordinator runs exactly `openspec archive <name> --yes --json`. The upstream skill's manual synchronization and archive-move procedures SHALL NOT be used.
+The `sai-archive` command SHALL run its classification check before archive mutation. When all required CORE artifacts are complete, AUDIT-only gaps SHALL remain informational and the command SHALL proceed through the unchecked-items gate before the coordinator runs exactly `openspec archive <name> --yes --json`. No OpenSpec skill is loaded and no manual synchronization or move is performed.
 
 #### Scenario: Classification precedes CLI archive
 
 - **WHEN** all CORE artifacts are complete and the archive flow reaches mutation
-- **THEN** classification and applicable gates complete first and the coordinator invokes the CLI archive primitive instead of manual upstream sync or move steps
+- **THEN** classification and applicable gates complete first and the coordinator invokes the CLI archive primitive and no manual sync or move step
 
-#### Scenario: Classification check runs before the upstream skill
+#### Scenario: Classification check runs before the CLI archive
 
 - **WHEN** the `sai-archive` command reaches the artifact-completion phase
 - **THEN** the classification logic runs first and control passes to the CLI archive flow only after the CORE/AUDIT decision is known
@@ -106,21 +106,15 @@ The completion check SHALL remain a soft confirmation gate. When unchecked imple
 - **WHEN** the user answers `no`, stays silent, or gives any answer other than `yes`
 - **THEN** the command does not invoke the CLI archive primitive and reports that archiving was not performed
 
-### Requirement: No new flags, no upstream modifications, no schema modifications
+### Requirement: No new flags and no upstream modifications
 
-The new behavior SHALL be implemented entirely inside `sai/commands/archive/instructions.md`. The change SHALL NOT introduce any new CLI flag, environment variable, or argument to `sai-archive`. The change SHALL NOT modify the upstream `openspec-archive-change` skill files (`.claude/skills/openspec-archive-change/SKILL.md`, `.opencode/skills/openspec-archive-change/SKILL.md`). The change SHALL NOT modify the `sai-workflow` schema (`openspec/schemas/sai-workflow/schema.yaml`). The change SHALL NOT modify the `commands/{claude,opencode}/sai-archive.md` wrapper files (they only fetch and SHALL keep their current content).
-
-#### Scenario: Diff is scoped to sai/commands/archive/instructions.md
-
-- **WHEN** the implementation of this change is complete
-- **THEN** `git diff` against the parent commit MUST show changes only inside `sai/commands/archive/instructions.md`
-- **THEN** `git diff` MUST show no changes to `.claude/skills/openspec-archive-change/`, `.opencode/skills/openspec-archive-change/`, `openspec/schemas/sai-workflow/`, or `commands/{claude,opencode}/sai-archive.md`
+The AUDIT soft-warning behavior SHALL live in the archive pre-flight (`sai/commands/archive/instructions.md`) and SHALL NOT introduce any new CLI flag, environment variable, or argument to `sai-archive`. It SHALL NOT modify OpenSpec-generated skill files or the `sai-workflow` schema (`openspec/schemas/sai-workflow/schema.yaml`).
 
 #### Scenario: Non-interactive archive run with AUDIT-only gaps
 
 - **WHEN** the `sai-archive` command runs in a non-interactive context (no `AskUserQuestion` available) for a change with all five CORE artifacts present and at least one AUDIT artifact missing
 - **THEN** the command MUST emit the AUDIT soft warning to stdout
-- **THEN** the command MUST perform the archive move (`mv openspec/changes/<name> openspec/changes/archive/YYYY-MM-DD-<name>`)
+- **THEN** the command MUST run `openspec archive <name> --yes --json`, which moves the change to `openspec/changes/archive/YYYY-MM-DD-<name>`
 - **THEN** the command MUST NOT halt or error
 
 ### Requirement: AUDIT soft-warning message format

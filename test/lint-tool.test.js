@@ -316,6 +316,51 @@ test('lint.js ready-to-propose: valid block passes', () => {
   }
 });
 
+test('lint.js ready-to-propose: block with Request Additional Notes passes', () => {
+  const tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), 'lint-'));
+  try {
+    const testFile = path.join(tmpdir, 'proposal.md');
+    const block = `## Ready to Propose
+
+**Change name**: example-change
+**What**: This is what we're doing.
+**Why**: This is why we're doing it.
+**Capabilities in scope**:
+- capability-one: description
+**Research Leads**:
+- None
+**Decisions & Rationale**:
+- None
+**Alternatives Considered**:
+- None
+**Trade-offs Accepted**:
+- None
+**Model / Re-framings**:
+- None
+**Key constraints**:
+- Constraint one.
+**Terms**:
+- None
+**Edge Cases**:
+- E1: edge case one.
+**Implementation Details**:
+- I1: implementation detail one.
+**Request Additional Notes**:
+The user prefers short examples; see the earlier discussion about naming.
+- A bullet note is also allowed.
+**Overview language**: None
+
+---
+`;
+    fs.writeFileSync(testFile, block);
+    const result = tool(['ready-to-propose', 'proposal.md'], tmpdir);
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /check passed/);
+  } finally {
+    fs.rmSync(tmpdir, { recursive: true });
+  }
+});
+
 test('lint.js ready-to-propose: missing block heading fails', () => {
   const tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), 'lint-'));
   try {
@@ -355,6 +400,30 @@ Summary: High=1 Medium=1 Low=0
     const result = tool(['artifact-review', 'review.md'], tmpdir);
     assert.equal(result.status, 0);
     assert.match(result.stdout, /check passed/);
+  } finally {
+    fs.rmSync(tmpdir, { recursive: true });
+  }
+});
+
+test('lint.js artifact-review: accepts CRLF and CR line endings', () => {
+  const tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), 'lint-'));
+  try {
+    const testFile = path.join(tmpdir, 'review.md');
+    const review = `- Identifier: H1
+- Severity: High
+- Artifact location: proposal.md
+- Issue: Missing critical detail.
+- Recommended correction: Add the missing section.
+
+Summary: High=1 Medium=0 Low=0
+`;
+
+    for (const lineEnding of ['\r\n', '\r']) {
+      fs.writeFileSync(testFile, review.replace(/\n/g, lineEnding));
+      const result = tool(['artifact-review', 'review.md'], tmpdir);
+      assert.equal(result.status, 0, `line ending ${JSON.stringify(lineEnding)} should pass`);
+      assert.match(result.stdout, /check passed/);
+    }
   } finally {
     fs.rmSync(tmpdir, { recursive: true });
   }
@@ -418,6 +487,45 @@ Summary: High=1 Medium=0 Low=0
     const result = tool(['artifact-review', 'review.md'], tmpdir);
     assert.equal(result.status, 1);
     assert.match(result.stdout, /INVALID_IDENTIFIER_FORMAT/);
+  } finally {
+    fs.rmSync(tmpdir, { recursive: true });
+  }
+});
+
+test('lint.js artifact-review: a block without the canonical field labels fails the tally check', () => {
+  const tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), 'lint-'));
+  try {
+    const testFile = path.join(tmpdir, 'review.md');
+    const review = `### H1 — High
+- **Artifact location**: proposal.md
+- **Issue**: Missing critical detail.
+- **Recommended correction**: Add the missing section.
+
+Summary: High=1 Medium=0 Low=0
+`;
+    fs.writeFileSync(testFile, review);
+    const result = tool(['artifact-review', 'review.md'], tmpdir);
+    assert.equal(result.status, 1);
+    assert.match(result.stdout, /SUMMARY_TALLY_MISMATCH/);
+  } finally {
+    fs.rmSync(tmpdir, { recursive: true });
+  }
+});
+
+test('lint.js artifact-review: a block without a Summary line fails', () => {
+  const tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), 'lint-'));
+  try {
+    const testFile = path.join(tmpdir, 'review.md');
+    const review = `- Identifier: L1
+- Severity: Low
+- Artifact location: proposal.md
+- Issue: Wording.
+- Recommended correction: Tighten the wording.
+`;
+    fs.writeFileSync(testFile, review);
+    const result = tool(['artifact-review', 'review.md'], tmpdir);
+    assert.equal(result.status, 1);
+    assert.match(result.stdout, /MISSING_SUMMARY/);
   } finally {
     fs.rmSync(tmpdir, { recursive: true });
   }

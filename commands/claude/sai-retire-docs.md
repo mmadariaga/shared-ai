@@ -1,5 +1,5 @@
 ---
-description: Analyze active ADRs, DDRs, and related specifications for bounded, confirmation-gated archival. No OpenSpec prerequisite.
+description: Find ADRs, DDRs, and the specs that retire with them that may be obsolete, back each with evidence, and archive the ones you confirm. No OpenSpec prerequisite.
 model: opus
 effort: medium
 allowed-tools: Read, Glob, Grep, Bash, Edit, Write, AskUserQuestion, Skill

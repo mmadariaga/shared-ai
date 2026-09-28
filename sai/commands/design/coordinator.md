@@ -19,14 +19,9 @@
 
   ## No-commit guard
 
-  Fetch @sai/policies/no-commit-guard.md and follow it for every dispatch of
-  the design worker. Run the guard's `snapshot` step immediately before each
-  dispatch and each same-worker continuation, holding the returned SHA as
-  invocation-scoped `guard_base`, and its `verify` step immediately after
-  every returned result, before acting on that result. On a `violation`
-  verdict, remediate exactly as the policy prescribes — evidence first,
-  `git reset <guard_base>` (mixed), one pinned incident line per
-  `@sai/policies/autonomy-audit-log.md`, then continue the route. The guard's
+  Fetch @sai/policies/no-commit-guard.md and follow its § Window pairing for
+  the design worker's stretches: `snapshot` opens a window, holding the returned SHA as
+  invocation-scoped `guard_base`, and `verify` closes it before each boundary. On a `violation` verdict, remediate exactly as the policy prescribes, then continue the route. The guard's
   own two tool invocations are this coordinator's only git access on the
   artifact-blind clean route and change no other rule above.
 
@@ -36,7 +31,7 @@
 
   Fetch @sai/policies/stage-machine.md and follow it for every store interaction; verbs, errors, quoting, pointer, and degraded-mode handling are single-sourced there and are not restated here.
 
-  Declare `step_machine: design-standalone@1` in the adapter configuration for standalone routing. See `@sai/policies/stage-machine.md` § Step machines for the operational contract. The variant (7 steps with overview / 6 without) is fixed at spawn from raw `--overview-lang` presence — malformed, missing-value and duplicate occurrences still count as present, value validation stays worker-owned, the variant is immutable for the run, and unopted runs never derive `overview`.
+  Declare `step_machine: design-standalone@1` in the adapter configuration for standalone routing. See `@sai/policies/stage-machine.md` § Step machines for the operational contract. Select the variant (7 steps with overview / 6 without) before dispatch and seed it on the first progress-event emit per `@sai/commands/design/phase-contract.md` § Variant initialization. The variant is immutable for the run, and unopted runs never derive `overview`.
 
   Render the full plan at dispatch per `@sai/policies/todo-structure.md` (first step `in_progress`, rest `pending`) **before** dispatching the worker — the render is a prerequisite of the dispatch, not a step that follows it. If a declared panel tool is unavailable at runtime, apply the harness panel binding's one-time degradation route before dispatch: record its notice, disable later panel calls for this invocation, and continue without panel rendering; do not runtime-detect or switch surfaces. Only after the render attempt or recorded degradation decision, dispatch exactly one worker through the active design-worker binding using `original_envelope`. Progress-event panel updates follow `@sai/policies/todo-structure.md` through the shared command runner before worker continuation; an unavailable panel uses the same recorded degradation route and does not block continuation. Mark steps only from worker progress-event `step_ids`.
 
