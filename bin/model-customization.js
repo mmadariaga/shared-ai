@@ -1392,6 +1392,10 @@ async function runPostSetupMenuInternal({
           continue;
         }
         const presetNameWidth = Math.max(...presetSelectable.map(entry => entry.name.length));
+        if (/^\[sai-default\]-/i.test(path.basename(resolved.path))) {
+          console.error('The prefix "[sai-default]-" is reserved for SAI defaults, which are replaced on every installation. Enter another name for your personal preset.');
+          continue;
+        }
         const presetHeader = allTableHeader(presetNameWidth);
         const presetLabels = presetAllEntries.map((entry) => {
           if (entry.separator) return '';

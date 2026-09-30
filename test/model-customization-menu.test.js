@@ -1270,6 +1270,93 @@ test('save and load preset previews show context before difficulty on both harne
   }
 });
 
+test('loading reserved default and legacy unprefixed presets remains supported on both harnesses', async () => {
+  for (const [harness, factoryName] of [['OpenCode', 'createOpencodeAdapter'], ['Claude Code', 'createClaudeAdapter']]) {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-load-default-'));
+    const ops = { select: [], create: [] };
+    const restore = patchFactory(factoryName, () => makeFakeAdapter(['sai-2-design-worker'], ops));
+    try {
+      for (const name of ['[sai-default]-distributed', 'legacy']) {
+        const text = JSON.stringify({ 'worker:sai-2-design-worker': { model: 'test/model' } });
+        const file = path.join(root, `${name}.json`);
+        fs.writeFileSync(file, text);
+        const answers = ['Load preset', harness, name, 'No', 'Exit'];
+        await runPostSetupMenu({
+          projectPath: root,
+          isTTY: true,
+          claudePresetDir: root,
+          opencodePresetDir: root,
+          promptChoice: async (question, options) => {
+            assert.ok(answers.length > 0);
+            const answer = answers.shift();
+            assert.ok(options.includes(answer), `${question} supports ${answer}`);
+            if (answer === 'No') assert.match(question, /Apply preset .* to current project\?/);
+            return answer;
+          },
+        });
+        assert.deepEqual(answers, []);
+        assert.equal(fs.readFileSync(file, 'utf8'), text);
+      }
+      assert.deepEqual(ops.create, [], 'declining application does not write project overrides');
+    } finally {
+      restore();
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  }
+});
+
+test('reserved default preset names retry without leaving the selected harness', async () => {
+  for (const [harness, factoryName] of [['OpenCode', 'createOpencodeAdapter'], ['Claude Code', 'createClaudeAdapter']]) {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-reserved-preset-'));
+    const restore = patchFactory(factoryName, () => makeFakeAdapter(['sai-2-design-worker'], { select: [], create: [] }));
+    const originalError = console.error;
+    const errors = [];
+    console.error = (...args) => errors.push(args.join(' '));
+    try {
+      const existing = path.join(root, '[sai-default]-existing.json');
+      fs.writeFileSync(existing, 'edited default');
+      const names = [
+        '[sai-default]-existing',
+        '[SAI-DEFAULT]-new',
+        './[sai-default]-relative',
+        'nested/../[SaI-DeFaUlT]-normalized',
+        path.join(root, '[sai-default]-absolute'),
+        'nested/[sai-default]-nested',
+        'personal',
+      ];
+      const answers = ['Save preset', harness, 'Yes', 'Yes', 'Exit'];
+      // Personal presets retain the usual overwrite confirmation.
+      fs.writeFileSync(path.join(root, 'personal.json'), 'old personal');
+      const prompts = [];
+      await runPostSetupMenu({
+        projectPath: root,
+        isTTY: true,
+        claudePresetDir: root,
+        opencodePresetDir: root,
+        promptInput: async () => names.shift(),
+        promptChoice: async (question) => {
+          prompts.push(question);
+          assert.ok(answers.length > 0, 'no extra harness selection or confirmation');
+          return answers.shift();
+        },
+      });
+      assert.deepEqual(names, []);
+      assert.deepEqual(answers, []);
+      assert.equal(prompts.filter(question => question === 'Choose a harness:').length, 1);
+      assert.ok(prompts.some(question => /already exists\. Overwrite\?/.test(question)));
+      assert.equal(errors.length, 6);
+      for (const error of errors) assert.match(error, /reserved for SAI defaults.*replaced on every installation.*Enter another name/);
+      assert.equal(fs.readFileSync(existing, 'utf8'), 'edited default');
+      assert.deepEqual(fs.readdirSync(root).sort(), ['[sai-default]-existing.json', 'personal.json']);
+      assert.doesNotThrow(() => JSON.parse(fs.readFileSync(path.join(root, 'personal.json'), 'utf8')));
+    } finally {
+      console.error = originalError;
+      restore();
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  }
+});
+
 test('an adapter without effectiveSetting renders unavailable as plain column text with no ANSI wrapper', async () => {
   const ops = { select: [], create: [] };
   const adapter = makeFakeAdapter(['sai-worker'], ops);
