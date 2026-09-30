@@ -223,3 +223,11 @@ The single-change `Ready to Propose` block emitted by `sai-explore` SHALL includ
 
 - **WHEN** all agreed capabilities map to bookkeeping artifacts only
 - **THEN** the `**Capabilities in scope**` section emits exactly `- None`
+
+### Requirement: Comparison outcomes SHALL reuse existing decision-facet handoff sections
+
+At crystallization, explore SHALL carry the chosen approach and its rationale into `Decisions & Rationale`, rejected alternatives into `Alternatives Considered`, and accepted trade-offs into `Trade-offs Accepted`. It SHALL preserve the existing Ready to Propose block format and SHALL NOT add a comparison-specific section or change the existing section labels.
+
+#### Scenario: A resolved comparison reaches crystallization
+- **WHEN** explore crystallizes an idea after the user has chosen an approach through comparison
+- **THEN** the existing decision-facet sections record the chosen approach and rationale, rejected alternatives, and accepted trade-offs without changing the block format

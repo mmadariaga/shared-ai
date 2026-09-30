@@ -315,3 +315,23 @@ The automatic advancement out of the POC lane into `Review edge cases` SHALL be 
 
 - **WHEN** the user materially changes the explored idea while the POC lane is the current stage
 - **THEN** the ordinary material-change reset applies exactly as it does at any other stage
+
+### Requirement: Approach selection SHALL remain separate from stage advancement
+
+Approach comparison SHALL remain conversation-only discovery within Explore change and SHALL reuse `explore-idea@1` unchanged. The recommendation, alternatives, pending questions, and chosen approach SHALL remain in conversation without any new stage, persistent state, event, panel entry, or instruction file. Selecting an approach SHALL NOT advance the stage. Unsolicited advancement signals SHALL retain the existing recognition rules and SHALL NOT imply acceptance of a recommendation. Comparison SHALL add no progression gate or advancement exception, replace no technical experiment, and authorize no implementation or route.
+
+#### Scenario: Selection leaves the stage unchanged
+- **WHEN** the user chooses an approach without separately expressing recognized advancement intent
+- **THEN** the choice remains in conversation and Explore change stays the current stage without a selection event or new machine state
+
+#### Scenario: Unsolicited advancement retains recognition
+- **WHEN** the user sends an unsolicited advancement signal during comparison
+- **THEN** the existing advancement recognition rules apply without treating that signal as acceptance of the recommendation or adding a comparison progression gate
+
+#### Scenario: Conversational token use does not become advancement
+- **WHEN** the user merely mentions, quotes, negates, defers, or discusses next-step rather than expressing recognized advancement intent
+- **THEN** the existing recognition rules leave the stage unchanged without inferring selection or advancement
+
+#### Scenario: Comparison adds no execution authority
+- **WHEN** approaches are compared or the user selects an approach
+- **THEN** comparison neither replaces technical experiments nor authorizes implementation or a route and introduces no additional stage, persistent state, event, panel entry, or instruction file
