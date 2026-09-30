@@ -44,7 +44,6 @@ The spec adapter's canonical `progress_plan` is exactly this ordered list:
 - `proposal` — "Write proposal.md"
 - `specs` — "Write specs/**"
 - `validation` — "Validate artifacts and derive the decision summary"
-- `review` — "Review artifacts"
 
 The plan is a rendering declaration, not worker instruction content.
 

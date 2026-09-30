@@ -2,16 +2,18 @@
 
 ## Purpose
 TBD - created by archiving change design-standalone-state-machine. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: Design standalone variant selection
-The machine SHALL select the opted-in seven-step plan when the canonical boolean spawn flag `withOverview` is true and the unopted six-step plan otherwise, defaulting to unopted when absent. A pristine session SHALL adopt the flag from the first signal carrying a boolean and SHALL ignore every later signal flag. Non-boolean flag values SHALL never adopt.
+The machine SHALL select the opted-in six-step plan when the canonical boolean spawn flag `withOverview` is true and the unopted five-step plan otherwise, defaulting to unopted when absent. A pristine session SHALL adopt the flag from the first signal carrying a boolean and SHALL ignore every later signal flag. Non-boolean flag values SHALL never adopt.
 
 #### Scenario: Pristine adoption with later immutability
 - **WHEN** a pristine session receives withOverview true and a later signal carries withOverview false
 - **THEN** the run stays opted-in and unopted runs never derive overview
 
 ### Requirement: Design happy-path progression to done
-The machine SHALL walk `prereqs-resolution` then `research`, `design`, `tasks`, `interfaces`, `review`, and `overview` when opted-in, omitting `overview` when unopted. The terminal `done` stage SHALL map to follow none with the all-complete hint, and the coordinator SHALL emit the exact `Active step: none` literal when every variant step is marked.
+The machine SHALL walk `prereqs-resolution` then `research`, `design`, `tasks`, `interfaces`, and `overview` when opted-in, omitting `overview` when unopted, with no `review` step in either variant. The terminal `done` stage SHALL map to follow none with the all-complete hint, and the coordinator SHALL emit the exact `Active step: none` literal when every variant step is marked.
 
 #### Scenario: Opted-in walk ends with none literal
 - **WHEN** the caller marks each variant step in plan order through the sidecar
@@ -44,4 +46,3 @@ At run-close (completed, failed, or cancelled), the coordinator SHALL invoke `re
 
 - **WHEN** the sai-state store fails (unreachable, corrupt session file, version mismatch, unknown machine)
 - **THEN** the coordinator stops, displays the error context, and waits for user instructions; it does not continue degraded and does not route through Bounded Recovery
-

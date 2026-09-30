@@ -2,10 +2,12 @@
 
 ## Purpose
 Define the coordinator-owned step-pointer convention: the declared step machine's `STAGE_FILES` as the routing source, the exactly-two-line progress continuation carrying one `Active step:` pointer, which continuations carry none, and how the convention applies across the routed phases.
+
 ## Requirements
+
 ### Requirement: Spec coordinator routes steps through its declared step machine
 
-The spec coordinator card SHALL declare `step_machine: spec-standalone@1` and no static `step_pointer_map`. That machine's `STAGE_FILES` mapping — fully known at dispatch, immutable for the invocation, and never carried in the dispatch envelope or any reconstruction field — covers every declared progress-plan id with its just-in-time instruction pointer: `prereqs-and-change` to none, and `research`, `proposal`, `specs`, `validation`, and `review` each to their file under `sai/commands/spec/steps/`.
+The spec coordinator card SHALL declare `step_machine: spec-standalone@1` and no static `step_pointer_map`. That machine's `STAGE_FILES` mapping — fully known at dispatch, immutable for the invocation, and never carried in the dispatch envelope or any reconstruction field — covers every declared progress-plan id with its just-in-time instruction pointer: `prereqs-and-change` to none, and `research`, `proposal`, `specs`, and `validation` each to their file under `sai/commands/spec/steps/`. The mapping SHALL contain no `review` entry.
 
 #### Scenario: the map is fully known at dispatch
 
@@ -18,8 +20,9 @@ While the declared step machine is in force, every progress-event continuation p
 
 #### Scenario: validation completion hands over review
 
-- **WHEN** the worker's progress event marks `validation` as complete
-- **THEN** the continuation payload carries the protocol continuation line followed by the pointer line naming `review` and its `sai/commands/spec/steps/review.md` path
+- **WHEN** the worker's progress event marks `validation` as complete, leaving every declared spec step marked
+- **THEN** the continuation payload carries the protocol continuation line followed by exactly `Active step: none — complete remaining work and return your terminal result.`
+- **AND** no pointer line names `review` or `sai/commands/spec/steps/review.md`
 
 #### Scenario: fully marked plan yields the exact none-line
 
@@ -63,4 +66,3 @@ The spec and design coordinators SHALL declare no `step_pointer_map`, and their 
 
 - **WHEN** the implement, review, security, performance, or accessibility coordinator activates and sends a progress-event continuation
 - **THEN** the two-line continuation format is delivered via the declared `step_machine` and the stage-machine.md policy
-

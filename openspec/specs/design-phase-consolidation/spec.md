@@ -2,7 +2,9 @@
 
 ## Purpose
 Define the consolidated design phase: `sai/commands/design/phase-contract.md` as the authoritative source for the plans, routing, write surface, and result union; coordinator/worker plan parity; coordinator-supplied step pointers; and where the file-manifest fold and resolved-change-name placeholder rules live.
+
 ## Requirements
+
 ### Requirement: phase-contract-is-canonical
 The routed design coordinator and the design planning worker SHALL reference `sai/commands/design/phase-contract.md` as the authoritative and exclusive source for the `DesignProgressPlan`, the `design-standalone@1` step-machine routing declaration, `DesignWriteSurface`, and `DesignResultUnion` declarations. Neither the coordinator card nor the worker card SHALL carry an inline redeclaration or restatement of those declarations.
 
@@ -17,22 +19,22 @@ The routed design coordinator and the design planning worker SHALL reference `sa
 - **AND** `sai/commands/design/worker.md` carries no inline enumeration of the plans, the step-machine routing declaration, the write surface, or the result union
 
 ### Requirement: coordinator-and-worker-plan-parity
-The coordinator and the worker SHALL resolve to the same progress-plan variant for a given invocation, selected from raw `--overview-lang` token presence: a present token selects the opted-in seven-step plan, an absent token selects the unopted six-step plan. Because both read the same canonical declaration, parity holds by construction rather than by duplicated enumeration.
+The coordinator and the worker SHALL resolve to the same progress-plan variant for a given invocation, selected from raw `--overview-lang` token presence: a present token selects the opted-in six-step plan, an absent token selects the unopted five-step plan. Neither plan contains a `review` step. Because both read the same canonical declaration, parity holds by construction rather than by duplicated enumeration.
 
 #### Scenario: Present token selects the seven-step plan
 - **WHEN** an invocation envelope contains an `--overview-lang` token in any form
-- **THEN** both surfaces resolve the plan whose ordered step ids are `prereqs-resolution`, `research`, `design`, `tasks`, `interfaces`, `review`, `overview`
+- **THEN** both surfaces resolve the six-step plan whose ordered step ids are `prereqs-resolution`, `research`, `design`, `tasks`, `interfaces`, `overview`
 
 #### Scenario: Absent token selects the six-step plan
 - **WHEN** an invocation envelope contains no `--overview-lang` token
-- **THEN** both surfaces resolve the plan whose ordered step ids are `prereqs-resolution`, `research`, `design`, `tasks`, `interfaces`, `review`
+- **THEN** both surfaces resolve the five-step plan whose ordered step ids are `prereqs-resolution`, `research`, `design`, `tasks`, `interfaces`
 - **AND** the `overview` step is omitted with no replacement step in its position
 
 ### Requirement: step-machine-stage-files-are-fully-known
 The phase contract SHALL declare routing through the `design-standalone@1` step machine and no static `DesignStepPointerMap`. That machine's `STAGE_FILES` mapping covers the union of both plan variants' step ids, is fully known at dispatch, and is immutable for the invocation. Pointer derivation SHALL consult only the step ids of the active plan, so an unopted activation never derives the `overview` entry.
 
 #### Scenario: Unopted activation never derives the overview pointer
-- **WHEN** the unopted plan is active and every one of its six steps has been marked
+- **WHEN** the unopted plan is active and every one of its five steps has been marked
 - **THEN** the continuation carries exactly `Active step: none — complete remaining work and return your terminal result.`
 - **AND** no pointer line naming `overview` is emitted at any point in that invocation
 
@@ -68,4 +70,3 @@ Step instruction files under `sai/commands/design/steps/` SHALL denote the resol
 - **WHEN** the worker resolves a change from an envelope such as `{name} --fast-track --supervised`
 - **THEN** the artifact path derives from the resolved change name alone
 - **AND** no flag token appears in any path segment
-

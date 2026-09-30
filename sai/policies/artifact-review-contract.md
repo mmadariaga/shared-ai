@@ -4,7 +4,7 @@ The single source of the artifact review finding format: severity, finding shape
 
 ## Scope
 
-**Artifact review** is a read-only review of OpenSpec change artifacts: `proposal.md` and `specs/**` for sai-1; `design.md`, `tasks.md`, and `interfaces.md` for sai-2. Two surfaces form findings under this contract: the manual `sai-explore` post-crystallization Review Engine and the supervised in-session Explore Review Engine rounds. The spec-proposal and design workers are consumers of the resulting external findings block: they parse and apply it under this contract and form no findings of their own.
+**Artifact review** is a read-only review of OpenSpec change artifacts: `proposal.md` and `specs/**` for sai-1; `design.md`, `tasks.md`, and `interfaces.md` for sai-2. Two surfaces form findings under this contract: the manual `sai-explore` post-crystallization Review Engine and the supervised in-session Explore Review Engine rounds.
 
 The audit commands `sai-5-review`, `sai-6-security`, `sai-7-performance`, and `sai-8-accessibility` keep their own severity vocabularies and identifier schemes and never emit this contract's `Summary:` tally.
 
@@ -37,8 +37,6 @@ Render each field as one list line with exactly these labels, one blank line bet
 
 Summary: High=1 Medium=0 Low=0
 ```
-
-The format validator (`validate-findings.js`, located per `sai/policies/tool-resolution.md`) parses exactly these labels.
 
 ## Identifier scheme
 

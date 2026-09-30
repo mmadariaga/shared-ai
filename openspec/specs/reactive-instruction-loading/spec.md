@@ -7,7 +7,7 @@ TBD - created by archiving change spec-standalone-state-machine. Update Purpose 
 
 ### Requirement: Per-state follow mapping
 
-The machine SHALL map `prereqs-and-change` to `follow: none` with a no-fetch hint, each of `research`, `proposal`, `specs`, `validation`, `review` to its step file under the spec steps directory, and `done` to `follow: none` with an all-complete hint. Next SHALL stay pointer-only with no state or snapshot fields.
+The machine SHALL map `prereqs-and-change` to `follow: none` with a no-fetch hint, each of `research`, `proposal`, `specs`, and `validation` to its step file under the spec steps directory, and `done` to `follow: none` with an all-complete hint. Next SHALL stay pointer-only with no state or snapshot fields.
 
 #### Scenario: Startup and done carry follow none
 
@@ -20,8 +20,8 @@ Standalone runs SHALL consult the sidecar per progress event and wrap next follo
 
 #### Scenario: Happy-path walk ends with the none literal
 
-- **WHEN** the caller marks the six steps in order through the sidecar
-- **THEN** each step points at its successor file and marking review returns done with follow none
+- **WHEN** the caller marks the five steps in order through the sidecar
+- **THEN** each step points at its successor file and marking validation returns done with follow none
 
 ### Requirement: No-whitelist follow-load with stop-on-failure
 
@@ -56,7 +56,7 @@ Every standalone run SHALL open a fresh sidecar session and SHALL never reuse pr
 - **THEN** the state and pointer stay unchanged with no rejection
 
 ### Requirement: Design per-state follow targets
-The machine SHALL map `prereqs-resolution` to follow none with a no-fetch hint, each of `research`, `design`, `tasks`, `interfaces`, `review`, and `overview` to its step file under `sai/commands/design/steps/`, and `done` to follow none with the all-complete hint. Next SHALL stay pointer-only with no state or snapshot fields, and the hint SHALL carry loaded-set skip wording so an already-loaded follow path is not re-fetched.
+The machine SHALL map `prereqs-resolution` to follow none with a no-fetch hint, each of `research`, `design`, `tasks`, `interfaces`, and `overview` to its step file under `sai/commands/design/steps/`, and `done` to follow none with the all-complete hint. Next SHALL stay pointer-only with no state or snapshot fields, and the hint SHALL carry loaded-set skip wording so an already-loaded follow path is not re-fetched.
 
 #### Scenario: Research pointer carries skip hint
 - **WHEN** the caller completes prereqs-resolution on an opted-in run

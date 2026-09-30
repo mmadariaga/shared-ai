@@ -158,33 +158,19 @@ test('todo-structure policy fixes the rendered stamp form and the freeze behavio
     'unsuccessful and input results should freeze the stamps');
 });
 
-// ---- Step 1 (spec-design-review-progress-step): evidence-only review policy ----
-// Reconciling a completed phase marks every unmarked non-review step completed,
-// except the evidence-marked review of the spec and design plans.
+// ---- Step 1: run-closing reconciliation (remove-dead-review-steps) ----
+// Reconciling a completed phase marks every unmarked step completed; the
+// former evidence-marked review carve-out of the spec and design plans is gone.
 
-test('step 1 reconcile marks every unmarked non-review step completed and leaves an unmarked review step unchanged', () => {
+test('step 1 reconcile marks every unmarked step completed with no review carve-out', () => {
   const source = policy();
 
   assert.match(source, /reconcile/i);
-  assert.match(source, /unmarked|unchecked/i);
-  assert.match(source, /review[\s\S]{0,160}(?:unchanged|not (?:marked|checked|touched))|(?:never|not)[\s\S]{0,120}(?:marks?|checks?)[\s\S]{0,80}review/i);
-  assert.match(source, /(?:spec and design|spec[\s\S]{0,80}design)[\s\S]{0,200}review|review[\s\S]{0,200}(?:spec and design|spec[\s\S]{0,80}design)/i);
-});
-
-test('step 1 reconciliation never marks review without a worker progress event carrying review evidence', () => {
-  const source = policy();
-
-  assert.match(source, /evidence/i);
-  assert.match(source, /worker progress event|progress event/i);
-  assert.match(source, /never[\s\S]{0,200}(?:marks?|checks?)[\s\S]{0,80}review|review[\s\S]{0,200}(?:is )?(?:never|not)[\s\S]{0,120}(?:marked|checked)/i);
-});
-
-test('step 1 an evidence-marked review stays completed through later edits and High findings', () => {
-  const source = policy();
-
-  assert.match(source, /high findings?/i);
-  assert.match(source, /later edits?|subsequent edits?|further edits?/i);
-  assert.match(source, /remains (?:completed|marked|checked)|(?:never|does not)[\s\S]{0,120}(?:revert|unmark|uncheck|regress)/i);
+  assert.match(source, /On a successful trigger, render every unmarked step `completed`\./);
+  assert.doesNotMatch(source, /evidence-marked/i,
+    'the evidence-marked review carve-out should be gone');
+  assert.doesNotMatch(source, /review carve-out|evidence carve-out/i,
+    'no review reconciliation carve-out should remain');
 });
 
 test('step 1 reconcile preserves the rendered list exactly on failed, cancelled, or needs-input results', () => {
@@ -194,15 +180,6 @@ test('step 1 reconcile preserves the rendered list exactly on failed, cancelled,
   assert.match(source, /failed|cancelled|canceled/i);
   assert.match(source, /preserv(?:e|ed|ing)[\s\S]{0,160}(?:exactly|as[- ]is|unchanged)/i);
   assert.match(source, /last rendered|as rendered|previous(?:ly)? rendered/i);
-});
-
-test('step 1 the review carve-out covers only the spec and design plans; a review step in a third plan completes normally', () => {
-  const source = policy();
-
-  assert.match(source, /carve[- ]out|carved[- ]out|exception/i);
-  assert.match(source, /(?:scoped|limited|restricted|confined)[\s\S]{0,120}(?:spec and design|two (?:plans|surfaces)|spec[\s\S]{0,80}design)/i);
-  assert.match(source, /(?:any|other|third|remaining) plan/i);
-  assert.match(source, /reconcil(?:es|ed)[\s\S]{0,160}completed|completed[\s\S]{0,160}normally/i);
 });
 
 test('step 7 todo policy keeps Explore-only manual review, supervised Review Engine surfaces, and worker consumption without worker-owned loop semantics', () => {
@@ -226,15 +203,13 @@ test('step 7 todo policy keeps Explore-only manual review, supervised Review Eng
     'manual review must be an Explore-only, user-triggered surface');
   assert.match(combined, /supervis(?:ed|ion)[\s\S]{0,320}Review Engine|Review Engine[\s\S]{0,320}supervis(?:ed|ion)/i,
     'supervised review must use the Review Engine surface');
-  assert.match(combined, /workers?[\s\S]{0,220}(?:consume|consumers?|receive|apply)[\s\S]{0,220}(?:external )?(?:findings?|review evidence)/i,
-    'phase workers should consume external review findings rather than own review');
+  assert.doesNotMatch(source, /spec-proposal and design workers are consumers/i,
+    'the finding contract should name no spec or design worker consumer');
 
   assert.match(source, /artifact review/i);
   assert.match(source, /(?:spec|design)[\s\S]{0,120}(?:artifact )?review|(?:artifact )?review[\s\S]{0,120}(?:spec|design)/i);
   assert.match(source, /five[- ]field|five fields/i);
   assert.match(source, /base tally|Summary:/i);
-  assert.match(todo, /evidence/i,
-    'the todo policy should retain the evidence-marked review carve-out');
-  assert.match(todo, /(?:spec and design|spec[\s\S]{0,100}design)[\s\S]{0,260}review|review[\s\S]{0,260}(?:spec and design|spec[\s\S]{0,100}design)/i,
-    'the evidence carve-out should remain scoped to the planning review steps');
+  assert.doesNotMatch(todo, /evidence-marked/i,
+    'the todo policy should no longer carry the evidence-marked review carve-out');
 });

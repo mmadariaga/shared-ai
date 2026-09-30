@@ -51,7 +51,7 @@ The progress emit SHALL accept `--with-overview true|false` only on `design-stan
 
 #### Scenario: First emit seeds the design variant
 - **WHEN** the design coordinator's first progress emit after reset passes `--with-overview true` with `step_ids: []`
-- **THEN** the machine adopts the opted-in seven-step plan
+- **THEN** the machine adopts the opted-in six-step plan
 
 #### Scenario: Option on another machine is a usage error
 - **WHEN** `--with-overview true` is passed to a progress emit on `spec-standalone@1`

@@ -8,7 +8,7 @@ const path = require('path');
 const machine = require('../sai-state/machines/design-standalone.js');
 const registry = require('../sai-state/registry.js');
 
-test('design-standalone@1 is registered with the seven/six-step tables as-is', () => {
+test('design-standalone@1 is registered with the six/five-step tables as-is', () => {
   assert.equal(machine.machineId, 'design-standalone@1');
   assert.ok(registry.has('design-standalone@1'), 'design-standalone@1 must be registered');
   assert.ok(registry.has('explore-idea@1'), 'explore-idea@1 must stay registered');
@@ -20,7 +20,6 @@ test('design-standalone@1 is registered with the seven/six-step tables as-is', (
     'design',
     'tasks',
     'interfaces',
-    'review',
     'overview',
   ]);
   assert.deepEqual(machine.UNOPTED_STEPS, [
@@ -29,16 +28,15 @@ test('design-standalone@1 is registered with the seven/six-step tables as-is', (
     'design',
     'tasks',
     'interfaces',
-    'review',
   ]);
   assert.equal(machine.STAGE_FILES['prereqs-resolution'], 'none');
   assert.equal(machine.STAGE_FILES.research, 'sai/commands/design/steps/research.md');
   assert.equal(machine.STAGE_FILES.design, 'sai/commands/design/steps/design.md');
   assert.equal(machine.STAGE_FILES.tasks, 'sai/commands/design/steps/tasks.md');
   assert.equal(machine.STAGE_FILES.interfaces, 'sai/commands/design/steps/interfaces.md');
-  assert.equal(machine.STAGE_FILES.review, 'sai/commands/design/steps/review.md');
+  assert.equal(machine.STAGE_FILES.review, undefined, 'review is not a design step');
   assert.equal(machine.STAGE_FILES.overview, 'sai/commands/design/steps/overview.md');
-  for (const step of ['research', 'design', 'tasks', 'interfaces', 'review', 'overview']) {
+  for (const step of ['research', 'design', 'tasks', 'interfaces', 'overview']) {
     const full = path.join(__dirname, '..', machine.STAGE_FILES[step]);
     assert.ok(fs.existsSync(full), `${machine.STAGE_FILES[step]} must exist`);
   }
@@ -55,7 +53,7 @@ test('E4 initial state carries follow none and projects the prereqs pointer (def
   assert.equal(projected.snapshot.machineId, 'design-standalone@1');
 });
 
-test('opted-in happy-path walks the seven steps to done with byte-identical follow targets', () => {
+test('opted-in happy-path walks the six steps to done with byte-identical follow targets', () => {
   let state = machine.initialState;
   const seen = [];
   // Spawn flag arrives on the pristine first signal; the first delivered
@@ -68,13 +66,12 @@ test('opted-in happy-path walks the seven steps to done with byte-identical foll
   state = r.state;
   seen.push(r.next.follow);
 
-  const order = ['research', 'design', 'tasks', 'interfaces', 'review'];
+  const order = ['research', 'design', 'tasks', 'interfaces'];
   const expected = {
     research: 'sai/commands/design/steps/design.md',
     design: 'sai/commands/design/steps/tasks.md',
     tasks: 'sai/commands/design/steps/interfaces.md',
-    interfaces: 'sai/commands/design/steps/review.md',
-    review: 'sai/commands/design/steps/overview.md',
+    interfaces: 'sai/commands/design/steps/overview.md',
   };
   for (const step of order) {
     const out = machine.transition(state, { step_ids: [step] });
@@ -85,7 +82,7 @@ test('opted-in happy-path walks the seven steps to done with byte-identical foll
     state = out.state;
     seen.push(out.next.follow);
   }
-  // Marking overview completes all seven and returns done with follow none.
+  // Marking overview completes all six and returns done with follow none.
   const done = machine.transition(state, { step_ids: ['overview'] });
   assert.equal(done.state.stage, 'done');
   assert.deepEqual(done.state.done, [
@@ -94,7 +91,6 @@ test('opted-in happy-path walks the seven steps to done with byte-identical foll
     'design',
     'tasks',
     'interfaces',
-    'review',
     'overview',
   ]);
   assert.equal(done.next.follow, 'none');
@@ -102,18 +98,18 @@ test('opted-in happy-path walks the seven steps to done with byte-identical foll
   assert.ok(!('state' in done.next) && !('snapshot' in done.next), 'wire stays minimal');
 });
 
-test('unopted happy-path walks the six steps to done and never derives overview', () => {
+test('unopted happy-path walks the five steps to done and never derives overview', () => {
   // Absent flag defaults to unopted.
   let state = machine.transition(machine.initialState, { step_ids: ['prereqs-resolution'] }).state;
   assert.equal(state.withOverview, false);
-  for (const step of ['research', 'design', 'tasks', 'interfaces']) {
+  for (const step of ['research', 'design', 'tasks']) {
     const out = machine.transition(state, { step_ids: [step] });
     state = out.state;
     assert.equal(state.withOverview, false);
   }
-  assert.equal(state.stage, 'review');
-  assert.equal(machine.project(state).next.follow, 'sai/commands/design/steps/review.md');
-  const done = machine.transition(state, { step_ids: ['review'] });
+  assert.equal(state.stage, 'interfaces');
+  assert.equal(machine.project(state).next.follow, 'sai/commands/design/steps/interfaces.md');
+  const done = machine.transition(state, { step_ids: ['interfaces'] });
   assert.equal(done.state.stage, 'done');
   assert.deepEqual(done.state.done, [
     'prereqs-resolution',
@@ -121,7 +117,6 @@ test('unopted happy-path walks the six steps to done and never derives overview'
     'design',
     'tasks',
     'interfaces',
-    'review',
   ]);
   assert.equal(done.next.follow, 'none');
   assert.match(done.next.hint, /all steps complete/);
@@ -169,9 +164,9 @@ test('E6 replacement re-resolves the active step from the surviving session', ()
   const reproj = machine.project(JSON.parse(JSON.stringify(state)));
   assert.equal(reproj.next.follow, 'sai/commands/design/steps/design.md');
   assert.match(reproj.next.hint, /design.*skip if already loaded/);
-  // Unopted replacement after review points at done, never overview.
+  // Unopted replacement after interfaces points at done, never overview.
   let unopted = machine.transition(machine.initialState, { step_ids: ['prereqs-resolution'] }).state;
-  for (const step of ['research', 'design', 'tasks', 'interfaces', 'review']) {
+  for (const step of ['research', 'design', 'tasks', 'interfaces']) {
     unopted = machine.transition(unopted, { step_ids: [step] }).state;
   }
   assert.equal(unopted.stage, 'done');

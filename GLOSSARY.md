@@ -13,7 +13,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Architecture Snapshot**: "The concise `design.md` subsection under **Target State** that inventories planned public surfaces in external-first and internal-public boundary blocks, with project-root-relative paths and portable ASCII relationships or execution flows for design review; projected into `change-overview.md`."
 *Avoid*: architecture summary, architecture diagram, interface overview
 
-**Artifact Review**: "A read-only review of a change's OpenSpec artifacts — `proposal.md` and `specs/**` for sai-1, `design.md`, `tasks.md`, and `interfaces.md` for sai-2 — that produces structured findings with `High` / `Medium` / `Low` severities only through the manual `sai-explore` post-crystallization **Review Engine** or the supervised pipeline's in-session **Explore Review Engine** rounds; spec-proposal and design workers consume the resulting external findings and are not review surfaces."
+**Artifact Review**: "A read-only review of a change's OpenSpec artifacts — `proposal.md` and `specs/**` for sai-1, `design.md`, `tasks.md`, and `interfaces.md` for sai-2 — that produces structured findings with `High` / `Medium` / `Low` severities only through the manual `sai-explore` post-crystallization **Review Engine** or the supervised pipeline's in-session **Explore Review Engine** rounds; spec-proposal and design workers apply the resulting findings as feedback and are not review surfaces."
 *Avoid*: artifact audit, artifact check, doc review, artifact review loop
 
 **Attempts Per Phase**: "Field 9 of the `/sai-4-apply` worker report contract — a list of `{phase, attempts, first_failure, note}` entries, one per verification phase the dispatch actually ran, where `attempts` counts command runs regardless of outcome and `first_failure` draws on a closed vocabulary, and whose absence can never block the workflow."
@@ -269,9 +269,6 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Review Reference Set**: "Retired term. The former worker-owned reviewer context is no longer a live concept; the manual and supervised **Explore Review Engine** surfaces consume their resolved artifact context without creating a worker-owned review surface."
 *Avoid*: reviewer context, background files, input set, supporting docs
 
-**Review Step**: "The final-position **Progress Step** of the sai-1 **Progress Plan** and the sixth of the sai-2 one, marked only by a valid external Explore **Review Engine** findings block whose base-form `Summary: High=0 Medium=<count> Low=<count>` has `High=0`, and exempt from run-closing reconciliation — so it is the one step a closed run can leave not rendered `completed`."
-*Avoid*: review gate, review task, review checkpoint, feedback step
-
 **Review-Loop Token**: "The literal, English-invariant string `review-loop` that a user types in a `sai-explore` turn to enter the post-crystallization review loop directly, skipping the plain-text global sí/no invitation."
 *Avoid*: review keyword, review trigger, `/review-loop`, revisar, review command
 
@@ -386,7 +383,6 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - An **Artifact Review** is performed only by the manual `sai-explore` post-crystallization **Review Engine** or a supervised **Supervised Review Round** through the in-session **Explore Review Engine**; workers consume its external findings and never form a second review surface.
 - A **Diagnosis Round** uses the **Review Engine** after a non-clean supervised worker closure, forwards its findings once as worker correction feedback, and never marks or clears **Artifact Review** evidence.
 - A **Supervised Review Round** passes the **Explore Review Engine**'s external findings to the phase worker, which applies them without forming findings or emitting another review format.
-- A **Review Step** is the one **Progress Step** that run-closing reconciliation never marks, so it is marked only by a valid external Explore findings block whose base-form `Summary` reports `High=0`, carried in an ordinary **Progress Event**.
 - A **Step Projection** belongs to one `/sai-4-apply` run and mirrors the on-disk checkbox state of one `implementation.md`; unlike the per-dispatch apply **Progress Plan** it is never marked from worker progress events, even though apply now routes Step execution through the managed RED and GREEN workers.
 - An **Idea Progress List** belongs to one `sai-explore` chat and is grown and marked only from in-session evidence; the session never writes it to a file, and it is never derived from repository state.
 - A **Native Task Panel** is a single-slot resource with exactly one declared owner at a time.

@@ -2,14 +2,16 @@
 
 ## Purpose
 TBD - created by archiving change design-step-gated-instructions. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: Design step instruction library for /sai-2-design
 
-The design worker's instruction mass SHALL be split into exactly seven step files under `sai/commands/design/steps/` — `common.md` plus `research.md`, `design.md`, `tasks.md`, `interfaces.md`, `review.md`, and `overview.md` — carved so cuts follow progress-plan step ids rather than physical file order, with interleaved sections attached to the milestone they serve. Each progress-plan step SHALL have one dedicated instruction file delivered just-in-time.
+The design worker's instruction mass SHALL be split into exactly six step files under `sai/commands/design/steps/` — `common.md` plus `research.md`, `design.md`, `tasks.md`, `interfaces.md`, and `overview.md` — carved so cuts follow progress-plan step ids rather than physical file order, with interleaved sections attached to the milestone they serve. Each progress-plan step SHALL have one dedicated instruction file delivered just-in-time. The library SHALL contain no `review.md`.
 
 #### Scenario: each step has exactly one instruction file
 
-- **WHEN** the coordinator delivers a step pointer for `research`, `design`, `tasks`, `interfaces`, or `review`
+- **WHEN** the coordinator delivers a step pointer for `research`, `design`, `tasks`, `interfaces`, or `overview`
 - **THEN** loading that step's file alone provides the complete instruction stretch for that step, with run-long boundaries supplied by `common.md`
 
 ### Requirement: common.md is the always-active step surface for design

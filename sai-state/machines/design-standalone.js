@@ -12,15 +12,15 @@
 // as a routing-only declaration and declares no visual `progress_plan`; no
 // shared sessions or state. Shared `command-runner` contract untouched.
 //
-// Stage table (I2) replicates the seven design steps from
+// Stage table (I2) replicates the six design steps from
 // `sai/commands/design/phase-contract.md` as-is, happy-path only, no
 // wait/failure states:
-//   prereqs-resolution (follow: none) + six step files; terminal done maps
+//   prereqs-resolution (follow: none) + five step files; terminal done maps
 //   to the exact `Active step: none` literal (E4).
 //
 // Variant (I3, E2, E9): two variants via a single canonical boolean spawn
-// flag `withOverview` — true selects the opted-in 7-step plan (with
-// overview), false (default) selects the unopted 6-step plan (without).
+// flag `withOverview` — true selects the opted-in 6-step plan (with
+// overview), false (default) selects the unopted 5-step plan (without).
 // The coordinator derives the flag from raw `--overview-lang` token presence
 // (malformed/duplicate still counts as present; value validation stays
 // worker-owned) and passes only the boolean here. The variant is immutable
@@ -60,7 +60,6 @@ const OPTED_IN_STEPS = Object.freeze([
   'design',
   'tasks',
   'interfaces',
-  'review',
   'overview',
 ]);
 
@@ -70,7 +69,6 @@ const UNOPTED_STEPS = Object.freeze([
   'design',
   'tasks',
   'interfaces',
-  'review',
 ]);
 
 const DONE_STAGE = 'done';
@@ -81,7 +79,6 @@ const STAGE_FILES = Object.freeze({
   design: 'sai/commands/design/steps/design.md',
   tasks: 'sai/commands/design/steps/tasks.md',
   interfaces: 'sai/commands/design/steps/interfaces.md',
-  review: 'sai/commands/design/steps/review.md',
   overview: 'sai/commands/design/steps/overview.md',
   done: 'none',
 });

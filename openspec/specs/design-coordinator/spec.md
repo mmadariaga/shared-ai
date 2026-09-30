@@ -224,7 +224,7 @@ The routed design worker SHALL use the phase-specific identifier `sai-2-design-w
 
 ### Requirement: design-reconciles-only-at-the-post-gate-terminal
 
-For an invocation with explicit `--overview-lang`, the design coordinator's reconciliation trigger SHALL be the successful overview-generation terminal that follows the feedback gate's `Continue`; the worker's pre-gate `completed` SHALL leave the `overview` step unmarked. For an invocation without the flag, the selected plan SHALL contain no `overview` step, `Continue` SHALL use the no-generation terminal route, and that successful terminal SHALL reconcile every eligible unmarked step except an unmarked evidence-marked `review`, if one exists. Exactly one of the generation route or no-generation route SHALL execute per invocation, selected solely by flag presence, and the design completion sentence SHALL be emitted at most once. A failed or cancelled route SHALL leave the selected list exactly as last rendered. The coordinator SHALL never infer the route from worker summary text or artifact contents.
+For an invocation with explicit `--overview-lang`, the design coordinator's reconciliation trigger SHALL be the successful overview-generation terminal that follows the feedback gate's `Continue`; the worker's pre-gate `completed` SHALL leave the `overview` step unmarked. For an invocation without the flag, the selected plan SHALL contain no `overview` step, `Continue` SHALL use the no-generation terminal route, and that successful terminal SHALL reconcile every unmarked step. Exactly one of the generation route or no-generation route SHALL execute per invocation, selected solely by flag presence, and the design completion sentence SHALL be emitted at most once. A failed or cancelled route SHALL leave the selected list exactly as last rendered. The coordinator SHALL never infer the route from worker summary text or artifact contents.
 
 #### Scenario: The opted-in pre-gate result leaves overview pending
 
@@ -246,13 +246,13 @@ For an invocation with explicit `--overview-lang`, the design coordinator's reco
 #### Scenario: Opted-in generation reconciles at success
 
 - **WHEN** the gate proceeds through `Continue` and the opted-in overview-generation continuation returns `status: completed`
-- **THEN** that terminal reconciles every eligible unmarked step to `completed` except `review`
+- **THEN** that terminal reconciles every unmarked step to `completed`
 
 #### Scenario: Unopted-in Continue closes without overview
 
 - **WHEN** the gate proceeds through `Continue` for an invocation without `--overview-lang`
 - **THEN** no overview-generation continuation is dispatched
-- **AND** the six-step plan is reconciled at the no-generation completion terminal, leaving an unmarked evidence-marked `review` incomplete only if one exists
+- **AND** the five-step plan is reconciled at the no-generation completion terminal, rendering every unmarked step `completed`
 - **AND** no `overview` progress event is emitted
 
 #### Scenario: Failed opted-in generation freezes the list
@@ -262,22 +262,21 @@ For an invocation with explicit `--overview-lang`, the design coordinator's reco
 
 ### Requirement: design-adapter-declares-progress-plan
 
-The design phase adapter and the design worker contract SHALL declare one of two static, ordered progress plans selected solely by explicit `--overview-lang` token presence in the active invocation. The opted-in plan SHALL contain exactly these seven steps:
+The design phase adapter and the design worker contract SHALL declare one of two static, ordered progress plans selected solely by explicit `--overview-lang` token presence in the active invocation. The opted-in plan SHALL contain exactly these six steps:
 
 - `prereqs-resolution` — "Check prerequisites"
 - `research` — "Research and resolve open questions"
 - `design` — "Write design.md"
 - `tasks` — "Write tasks.md"
 - `interfaces` — "Write interfaces.md"
-- `review` — "Review artifacts"
 - `overview` — "Generate change-overview.md"
 
-The unopted-in plan SHALL contain exactly the first six steps in the same order and labels and SHALL contain no `overview` or replacement `skipped` step. Both declarations SHALL compare equal for the selected variant. The plan is static and fully known before worker dispatch; it is not carried in the envelope, emitted as a lifecycle field, or inferred from a worker result. The plan SHALL NOT contain a standalone `specs-approval` step. While the declared `design-standalone@1` step machine is in force, every progress-event continuation payload SHALL additionally carry the deterministic `Active step:` pointer line derived from that machine, and artifact-feedback and `continue_after_recovery` continuations SHALL carry no pointer line so the worker's active step persists across them.
+The unopted-in plan SHALL contain exactly the first five steps in the same order and labels and SHALL contain no `overview` or replacement `skipped` step. Neither plan SHALL contain a `review` step. Both declarations SHALL compare equal for the selected variant. The plan is static and fully known before worker dispatch; it is not carried in the envelope, emitted as a lifecycle field, or inferred from a worker result. The plan SHALL NOT contain a standalone `specs-approval` step. While the declared `design-standalone@1` step machine is in force, every progress-event continuation payload SHALL additionally carry the deterministic `Active step:` pointer line derived from that machine, and artifact-feedback and `continue_after_recovery` continuations SHALL carry no pointer line so the worker's active step persists across them.
 
 #### Scenario: Opted-in design plan is declared
 
 - **WHEN** `/sai-2-design` starts with `--overview-lang spanish`
-- **THEN** the coordinator and worker declare the seven canonical steps in order
+- **THEN** the coordinator and worker declare the six canonical steps in order
 - **AND** the final step is `overview: "Generate change-overview.md"`
 
 #### Scenario: design plan is declared
@@ -310,8 +309,8 @@ The unopted-in plan SHALL contain exactly the first six steps in the same order 
 #### Scenario: Unopted-in design plan omits overview
 
 - **WHEN** `/sai-2-design` starts without `--overview-lang`
-- **THEN** the coordinator and worker declare exactly six canonical steps through `review`
-- **AND** neither declaration contains an `overview` or `skipped` step
+- **THEN** the coordinator and worker declare exactly five canonical steps through `interfaces`
+- **AND** neither declaration contains an `overview`, `review`, or `skipped` step
 
 #### Scenario: Worker and coordinator variants mirror
 
@@ -342,12 +341,12 @@ After design artifacts and the feedback gate are complete, an opted-in invocatio
 
 ### Requirement: Design coordinator routes both plans' superset through its declared step machine
 
-The design coordinator card SHALL declare `step_machine: design-standalone@1` and SHALL NOT declare a static `step_pointer_map`. The machine registered in `sai-state/machines/design-standalone.js` SHALL own the step cursor and the `STAGE_FILES` mapping — immutable for the invocation and never carried in the dispatch envelope or any reconstruction field — from every declared step id in both plans' superset to its just-in-time instruction pointer: `prereqs-resolution` to none and `research`, `design`, `tasks`, `interfaces`, `review`, and `overview` each to their file under `sai/commands/design/steps/`. Base-plan activations SHALL NOT derive the inert `overview` pointer entry; pointer derivation SHALL consult only steps declared in the active plan. Replacement reconstruction SHALL require the departing worker's `active_step_id`, and the replacement's first continuation SHALL carry the correct pointer line for that active step.
+The design coordinator card SHALL declare `step_machine: design-standalone@1` and SHALL NOT declare a static `step_pointer_map`. The machine registered in `sai-state/machines/design-standalone.js` SHALL own the step cursor and the `STAGE_FILES` mapping — immutable for the invocation and never carried in the dispatch envelope or any reconstruction field — from every declared step id in both plans' superset to its just-in-time instruction pointer: `prereqs-resolution` to none and `research`, `design`, `tasks`, `interfaces`, and `overview` each to their file under `sai/commands/design/steps/`. The mapping SHALL contain no `review` entry. Base-plan activations SHALL NOT derive the inert `overview` pointer entry; pointer derivation SHALL consult only steps declared in the active plan. Replacement reconstruction SHALL require the departing worker's `active_step_id`, and the replacement's first continuation SHALL carry the correct pointer line for that active step.
 
 #### Scenario: base-plan activation never derives the inert entry
 
-- **WHEN** the unopted six-step plan is active and pointer derivation runs after a progress event
-- **THEN** derivation consults only the six declared base-plan steps and never emits an `Active step:` line naming `overview`
+- **WHEN** the unopted five-step plan is active and pointer derivation runs after a progress event
+- **THEN** derivation consults only the five declared base-plan steps and never emits an `Active step:` line naming `overview`
 
 #### Scenario: replacement resumes at the departed worker's active step
 

@@ -3,7 +3,9 @@
 ## Purpose
 
 Define the coordinator's ownership of the invocation-scoped progress plan: plan state, marking rules, survival across continuation and replacement, changed-file union integration, deterministic rendering, and terminal reconciliation.
+
 ## Requirements
+
 ### Requirement: plan-held-invocation-scoped
 
 The coordinator SHALL hold the authoritative progress plan in invocation-scoped state, initialized at invocation start from the phase adapter's declaration, and SHALL keep the marked set (the step ids reported by progress events) alongside it.
@@ -97,13 +99,9 @@ Exactly one of the two `/sai-2-design` triggers SHALL apply per invocation. A co
 
 A terminal `completed` that the coordinator answers by presenting the artifact feedback gate SHALL NOT itself trigger reconciliation, because the same worker may still be continued from that gate. A coordinator SHALL NOT reconcile before its phase's trigger.
 
-At the trigger, the coordinator SHALL reconcile the rendered list with the outcome: for a successful outcome, every unmarked step SHALL render `completed` **except** an evidence-marked step, which SHALL be left exactly as last rendered; for a `failed` or `cancelled` outcome, the whole list SHALL remain exactly as last rendered, with no further marks and no clearing. A `needs_input` result SHALL leave the list exactly as last rendered: it is a terminal lifecycle status but never a reconciliation trigger — the run pauses for user input and resumes. Reconciliation is a rendering action, not progress marking, and applies only when the plan meets the minimum-threshold rule of `sai/policies/todo-structure.md`.
+At the trigger, the coordinator SHALL reconcile the rendered list with the outcome: for a successful outcome, every unmarked step SHALL render `completed`; for a `failed` or `cancelled` outcome, the whole list SHALL remain exactly as last rendered, with no further marks and no clearing. A `needs_input` result SHALL leave the list exactly as last rendered: it is a terminal lifecycle status but never a reconciliation trigger — the run pauses for user input and resumes. Reconciliation is a rendering action, not progress marking, and applies only when the plan meets the minimum-threshold rule of `sai/policies/todo-structure.md`.
 
-An **evidence-marked step** is a step so designated by `review-step-evidence-marking`, which today designates exactly the `review` step of the spec plan (`spec-progress-plan`) and of the design plan (`design-coordinator`). The carve-out SHALL be scoped by that designation and never by a bare step id, so a step merely named `review` in some other declared plan SHALL NOT inherit it. No other declared plan uses that id today — not `implement-progress-plan`, not the four audit plans, and not the apply step projection — so the designation currently covers exactly those two steps.
-
-"Left exactly as last rendered" SHALL be the single freeze formulation for an evidence-marked step: the coordinator SHALL NOT re-derive that step's state at the trigger, and its rendered state SHALL remain whatever the last render produced.
-
-The carve-out exists because an evidence-marked step asserts evidence: rendering `review` `completed` without a review pass reporting `High=0` would assert evidence that does not exist. The carve-out SHALL apply only to reconciliation; it SHALL NOT change the state vocabulary, the deterministic state derivation, the minimum-threshold rule, or the emission-ownership invariant.
+No declared plan has an evidence-marked step: reconciliation SHALL carve out no step by id or designation. Reconciliation SHALL NOT change the state vocabulary, the deterministic state derivation, the minimum-threshold rule, or the emission-ownership invariant.
 
 #### Scenario: a pre-gate completed does not reconcile
 
@@ -137,24 +135,24 @@ The carve-out exists because an evidence-marked step asserts evidence: rendering
 #### Scenario: successful close shows all steps completed except an unmarked evidence-marked step
 
 - **WHEN** the reconciliation trigger fires on a successful outcome with unmarked steps remaining
-- **THEN** the coordinator SHALL render every unmarked step `completed` except the evidence-marked `review` step
-- **AND** the unmarked `review` step SHALL remain exactly as last rendered
+- **THEN** the coordinator SHALL render every unmarked step `completed`
+- **AND** no step SHALL be left unmarked by an evidence-marked carve-out, because no declared plan has an evidence-marked step
 
 #### Scenario: sai-2 reconciles at the generation terminal
 - **WHEN** an opted-in design generation continuation returns its terminal result
 - **THEN** that terminal is the reconciliation trigger
 
 #### Scenario: an already-marked review step is unaffected
-- **WHEN** the trigger fires and `review` was already marked by a progress event
-- **THEN** `review` continues to render `completed`
+- **WHEN** the trigger fires on a successful outcome for the spec or design plan
+- **THEN** the plan contains no `review` step to mark or leave unmarked
+- **AND** every already-marked step continues to render `completed`
 
 #### Scenario: two unmarked steps at close
-- **WHEN** the trigger fires on a successful outcome with both a regular step and `review` unmarked
-- **THEN** the regular step renders `completed`
-- **AND** `review` remains exactly as last rendered
+- **WHEN** the trigger fires on a successful outcome with two steps still unmarked
+- **THEN** both steps render `completed`
 
 #### Scenario: a review step in another plan does not inherit the carve-out
-- **WHEN** a declared plan other than the spec or design plan contains a step whose id is `review`
+- **WHEN** a declared plan contains a step whose id is `review`
 - **THEN** that step is reconciled to `completed` like any other step
 
 #### Scenario: failed run freezes the list

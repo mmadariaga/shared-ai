@@ -892,62 +892,25 @@ test('Step 1 rejects malformed language input before dispatch', () => {
 
 // â”€â”€â”€ Step 2: spec-design-review-progress-step (external findings and worker correction) â”€
 
-test('Step 2: external findings stay within reviewed artifacts and worker corrections retain specific discard reasons', () => {
-  const worker = spec('sai/commands/spec/worker.md');
-  const coordinator = spec('sai/commands/spec/coordinator.md');
-  const reviewStep = spec('sai/commands/spec/steps/review.md');
-  const source = `${worker}\n${coordinator}\n${reviewStep}`;
-
-  assert.match(source, /external[\s-]+(?:artifact[- ]review )?findings?/i,
-    'the correction path should consume external findings');
-  assert.match(reviewStep, /apply the valid ones to\s+`proposal\.md` or `specs\/\*\*` only/,
-    'external findings should be corrected only within the reviewed artifacts');
-  assert.match(reviewStep, /After accepted edits, re-run verification and recompute the decision\s+summary/,
-    'accepted external corrections should trigger worker verification and summary recomputation');
-  assert.match(reviewStep, /report every discarded one with its\s+specific reason/,
-    'a discarded finding should carry a specific rejection reason');
-  assert.match(coordinator, /Report (?:worker-authored|external-finding) discards/i,
-    'the coordinator should surface discarded findings');
-  assert.match(worker, /the worker dispatches no reviewer of its own/,
-    'the phase worker should not dispatch or own the reviewer');
-});
-
-test('Step 2: accepted external corrections re-verify and recompute the decision summary without re-emitting earlier progress ids', () => {
-  const reviewStep = spec('sai/commands/spec/steps/review.md');
-
-  assert.match(reviewStep, /After accepted edits, re-run verification and recompute the decision\s+summary/,
-    'accepted edits should re-verify the artifacts and recompute the decision summary');
-  assert.match(reviewStep, /the `proposal`, `specs`, and `validation` progress ids stay closed/,
-    'earlier progress ids should not be re-emitted');
-});
-
-test('Step 2: validation precedes external findings and external evidence is the only review-progress source', () => {
+test('Step 2: the spec phase has no external findings review step and ends at validation', () => {
   const worker = spec('sai/commands/spec/worker.md');
   const coordinator = spec('sai/commands/spec/coordinator.md');
   const contract = spec('sai/policies/spec-phase-contract.md');
 
+  assert.equal(fs.existsSync(path.join(repoRoot, 'sai/commands/spec/steps/review.md')), false,
+    'the dead spec review step file should be retired');
+  assert.doesNotMatch(worker, /### External findings consumption/,
+    'the dead external findings consumption section should be gone');
   assert.doesNotMatch(worker, /run the automatic review loop/,
     'validation must not enter a worker-owned automatic review loop');
   assert.match(worker, /artifact validation plus decision-summary derivation returns `validation`/,
     'validation should be reported as a progress event');
-  assert.match(worker, /external[\s-]+(?:artifact[- ]review )?findings?/i,
-    'external findings should follow validation');
-  assert.match(worker, /valid[\s\S]{0,220}(?:external|base[- ]form)[\s\S]{0,220}(?:High=0|Summary)|(?:High=0|Summary)[\s\S]{0,220}(?:valid|external|base[- ]form)/i,
-    'only valid external evidence may produce review progress');
-  assert.match(contract, /`validation`[\s\S]{0,120}`review`/,
-    'the canonical plan should order validation before review');
-});
-
-test('Step 2: external findings, not worker inference, drive review evidence and corrections', () => {
-  const worker = spec('sai/commands/spec/worker.md');
-
-  const reviewStep = spec('sai/commands/spec/steps/review.md');
-  assert.match(worker, /external[\s-]+(?:artifact[- ]review )?findings?/i,
-    'the worker should consume external findings');
-  assert.match(reviewStep, /apply the valid ones to\s+`proposal\.md` or `specs\/\*\*` only/,
-    'the external correction scope should remain explicit');
-  assert.match(reviewStep, /missing, malformed, or different summary line\s+never counts as `High=0`/,
-    'a worker must not infer review evidence from absent or malformed input');
+  assert.doesNotMatch(contract, /`review` — "Review artifacts"/,
+    'the canonical plan should end at validation');
+  assert.match(coordinator, /Report worker-authored discards/i,
+    'the coordinator should keep surfacing feedback discards');
+  assert.match(worker, /the worker dispatches no reviewer of its own/,
+    'the phase worker should not dispatch or own the reviewer');
   assert.doesNotMatch(worker, /The reviewer evaluates reviewed-set consistency/,
     'the retired worker-owned reviewer axes must be absent');
 });
@@ -982,7 +945,7 @@ test('Step 3: design workers have no automatic reviewer loop under supervision a
 
   assert.match(worker, /\bsupervised\b/i,
     'the design worker contract should cover supervised invocation');
-  assert.match(worker, /does not create the findings, dispatch an artifact reviewer, or own the review operation/i,
+  assert.match(worker, /SHALL NOT dispatch or own an artifact reviewer/,
     'the design worker must not retain a worker-owned automatic reviewer');
   assert.doesNotMatch(worker, /coexists with and never replaces the supervised pipeline's (?:independent convergence loop|supervised review rounds|in[- ]session review rounds)/i,
     'supervision must not retain a second design-worker review layer');
@@ -1071,7 +1034,7 @@ test('supervised review rounds use the sole in-session Review Engine convergence
   assert.match(source, /spec[\s\S]{0,160}design[\s\S]{0,160}(?:pair|chain|phase pairing|same phase)/i);
   assert.match(source, /in[- ]session/i);
   assert.match(source, /(?:sole|only)[\s\S]{0,160}(?:automatic )?(?:convergence|review)|(?:automatic )?(?:convergence|review)[\s\S]{0,160}(?:sole|only)/i);
-  assert.match(source, /does not create the findings, dispatch an artifact reviewer, or own the review operation|workers? (?:are )?consumers? of the resulting external findings block|not additional review surfaces/i,
+  assert.match(source, /Two surfaces form findings under this contract|not additional review surfaces/i,
     'the Review Engine should be the only reviewer surface');
   assert.doesNotMatch(source, /IndependentReviewResult|IndependentReviewFinding/);
 });
@@ -1103,22 +1066,20 @@ test('Step 7: spec and design workers retain no automatic review loop for any su
   ];
 
   for (const worker of phases) {
-    assert.match(worker, /(?:the worker dispatches no reviewer of its own|does not create the findings, dispatch an artifact reviewer, or own the review operation)/i,
+    assert.match(worker, /(?:the worker dispatches no reviewer of its own|SHALL NOT dispatch or own an artifact reviewer)/,
       'neither phase worker may retain an automatic reviewer for any supervised value');
-    assert.match(worker, /external[\s-]+(?:artifact[- ]review )?findings?/i,
-      'both workers should consume external findings instead');
   }
 });
 
-test('external convergence is not inferred from non-supervised worker state', () => {
+test('non-supervised worker state carries no worker-owned review convergence', () => {
   for (const worker of [
-    `${spec('sai/commands/spec/worker.md')}\n${spec('sai/commands/spec/steps/review.md')}`,
+    spec('sai/commands/spec/worker.md'),
     spec('sai/commands/design/worker.md'),
   ]) {
-    assert.match(worker, /never counts as `High=0`|never infer it from a finding list, omitted or malformed counts, prose/i,
-      'review progress must require external evidence regardless of supervision');
     assert.doesNotMatch(worker, /A completed pass with `High=0` converges|worker-owned review pass/i,
       'the retired non-supervised worker loop must not return');
+    assert.doesNotMatch(worker, /progress event carrying only `review`/,
+      'no worker progress rule should mark a review step');
   }
 });
 

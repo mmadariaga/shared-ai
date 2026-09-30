@@ -58,8 +58,8 @@ output-contract format. Your side of it:
 ## Verification
 
 Verification is the checklist below, which includes Rule #1 and Rule #2. The
-validation step runs it, and so does every accepted edit from review findings,
-artifact feedback, or a recovery correction. Correct every failure before the
+validation step runs it, and so does every accepted edit from artifact
+feedback or a recovery correction. Correct every failure before the
 step completes.
 
 - `proposal.md` exists and is non-empty.

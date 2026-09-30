@@ -24,7 +24,7 @@
   - `dispatch_operation` and `continuation_operation` — the active spec-worker binding's dispatch and same-worker continuation.
   - `allowed_nonterminal_extensions` — only the `progress` shape from the phase contract; `extension_handlers` is empty. There is no design notice state. Validate the four closed lifecycle statuses, that progress event, and the `validation_report` extension on `completed`, without inventing fields.
   - `replacement_reconstruction_fields` — the original envelope, opaque input history, pending feedback, resolved change name, changed-file union, feedback iteration, and the departing worker's `active_step_id`.
-  - `progress_plan` — the canonical six-step `progress_plan` from the phase contract, rendered per `@sai/policies/todo-structure.md`.
+  - `progress_plan` — the canonical five-step `progress_plan` from the phase contract, rendered per `@sai/policies/todo-structure.md`.
   - `step_machine: spec-standalone@1`
   - `recovery_policy: true`
   - `terminal_navigation` — § 5.
@@ -64,7 +64,7 @@
 
   ### 5. Finish and stop
 
-  The gate's `Finish step` proceed selection is the spec phase's reconciliation trigger. Reconcile against the last terminal `completed`: every eligible unmarked step renders `completed`, while an unmarked evidence-marked `review` step is left exactly as last rendered (the carve-out is the evidence-marked designation from `@sai/policies/todo-structure.md`, never the bare `review` id). `failed`, `cancelled`, and `needs_input` leave the list exactly as last rendered.
+  The gate's `Finish step` proceed selection is the spec phase's reconciliation trigger. Reconcile against the last terminal `completed`: every unmarked step renders `completed`. `failed`, `cancelled`, and `needs_input` leave the list exactly as last rendered.
 
   Then print the MANDATORY STOP text exactly once: `Spec proposal done in openspec/changes/{name}/. Review it and run \`/sai-2-design {name}\` (--fast-track --overview-lang Lang) **in a new chat** when ready.`
 
