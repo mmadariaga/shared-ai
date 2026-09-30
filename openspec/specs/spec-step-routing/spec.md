@@ -2,15 +2,17 @@
 
 ## Purpose
 TBD - created by archiving change spec-standalone-state-machine. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: Six-step stage table as-is
 
-The machine SHALL replicate the six steps from the canonical spec phase contract as-is in canonical order `prereqs-and-change`, `research`, `proposal`, `specs`, `validation`, `review`, happy-path only with no wait or failure states. The terminal stage SHALL be `done`.
+The machine SHALL replicate the five steps from the canonical spec phase contract as-is in canonical order `prereqs-and-change`, `research`, `proposal`, `specs`, `validation`, happy-path only with no wait or failure states and no `review` stage. The terminal stage SHALL be `done`.
 
 #### Scenario: Table order matches the canonical plan
 
 - **WHEN** the caller inspects STEPS on the sidecar machine
-- **THEN** the list is exactly the six canonical steps in order with DONE_STAGE as done
+- **THEN** the list is exactly the five canonical steps in order with DONE_STAGE as done
 
 ### Requirement: Stateful sidecar identity and initial state
 
@@ -47,4 +49,3 @@ The registry SHALL register `spec-standalone@1` alongside `explore-idea@1` and `
 
 - **WHEN** the caller checks registry membership after startup
 - **THEN** spec-standalone, explore-idea, and explore-slice machines are all present
-

@@ -46,7 +46,6 @@ by raw `--overview-lang` token presence. Both are exactly:
 - `design` — "Write design.md"
 - `tasks` — "Write tasks.md"
 - `interfaces` — "Write interfaces.md"
-- `review` — "Review artifacts"
 - `overview` — "Generate change-overview.md"
 
 **Unopted plan (`--overview-lang` absent):**
@@ -56,7 +55,6 @@ by raw `--overview-lang` token presence. Both are exactly:
 - `design` — "Write design.md"
 - `tasks` — "Write tasks.md"
 - `interfaces` — "Write interfaces.md"
-- `review` — "Review artifacts"
 
 ### Step-machine routing
 

@@ -108,7 +108,7 @@ Every artifact review SHALL close with a `Summary:` line tallying its severity c
 
 ### Requirement: Findings render in the validator's line layout
 
-Every finding SHALL render as five list lines labelled exactly `- Identifier: `, `- Severity: `, `- Artifact location: `, `- Issue: `, and `- Recommended correction: `, in that order, with the `Summary:` line last. The artifact-review format validator (`sai/tools/lint.js artifact-review`, reached through `sai/tools/validate-findings.js`) SHALL reject a block with no `Summary:` line and a block whose `Summary:` counts differ from the severities of the findings it parses under those labels.
+Every finding SHALL render as five list lines labelled exactly `- Identifier: `, `- Severity: `, `- Artifact location: `, `- Issue: `, and `- Recommended correction: `, in that order, with the `Summary:` line last. The artifact-review format validator (`sai/tools/lint.js artifact-review`) SHALL reject a block with no `Summary:` line and a block whose `Summary:` counts differ from the severities of the findings it parses under those labels.
 
 #### Scenario: a canonically rendered block validates
 

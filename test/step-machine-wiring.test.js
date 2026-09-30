@@ -140,7 +140,6 @@ test('step machines own STAGE_FILES with no static pointer tables (source-driven
     proposal: 'sai/commands/spec/steps/proposal.md',
     specs: 'sai/commands/spec/steps/specs.md',
     validation: 'sai/commands/spec/steps/validation.md',
-    review: 'sai/commands/spec/steps/review.md',
   };
   const expectedDesignStageFiles = {
     'prereqs-resolution': 'none',
@@ -148,7 +147,6 @@ test('step machines own STAGE_FILES with no static pointer tables (source-driven
     design: 'sai/commands/design/steps/design.md',
     tasks: 'sai/commands/design/steps/tasks.md',
     interfaces: 'sai/commands/design/steps/interfaces.md',
-    review: 'sai/commands/design/steps/review.md',
     overview: 'sai/commands/design/steps/overview.md',
   };
 

@@ -31,7 +31,6 @@ Report the canonical `progress_plan` ids from `@sai/policies/spec-phase-contract
 - `proposal` — the completed `proposal.md` write returns `proposal`.
 - `specs` — the completed `specs/**` write returns `specs`.
 - `validation` — artifact validation plus decision-summary derivation returns `validation`.
-- `review` — the review step returns `review` under the conditions it states.
 
 Progress events are returned lifecycle results, never text in the worker session, and never replace the one terminal lifecycle status. The coordinator alone renders progress, routes pointers, stamps milestones, unions `changed_files`, and validates results.
 
@@ -47,9 +46,7 @@ For coordinator-forwarded artifact feedback, process the supplied feedback text 
 
 Return lifecycle metadata and the phase contract's `validation_report` extension only; `changed_files` is ordered and duplicate-free.
 
-### External findings consumption
-
-The phase reviews only an externally supplied `sai-explore` findings block, handled by the review step; the worker dispatches no reviewer of its own.
+Artifact review stays outside this phase: the worker dispatches no reviewer of its own.
 
 ### Post-resolution failure classification and recovery
 
@@ -60,4 +57,4 @@ After change resolution, every `status: failed` result is worker-authored and cl
 - A contradiction with the spec-only write surface, including an attempted write to a forbidden artifact, is `blocking-contradiction`; set `unrecoverable: true` only when the evidence shows that continuing is unsafe.
 - The remaining worker-core classes keep their generic meanings and require concrete non-raw evidence.
 
-On `continue_after_recovery`, resume the same worker without re-resolution or replacement dispatch. Make only the authorized correction named by the coordinator's ordered diagnosis — `Reported`, `Evidence`, `Cause`, `Correction`, and `Verification` — and persist no diagnosis, attempt count, or other recovery metadata. Re-run spec verification after the correction: return `completed` only when it passes, otherwise a post-resolution `failed` result with the closed classification, boolean `unrecoverable`, and concrete evidence. Recovery never emits a recovery progress id or progress event and leaves the canonical plan, external-findings handling, feedback flow, validation report, and ordinary terminal rules unchanged.
+On `continue_after_recovery`, resume the same worker without re-resolution or replacement dispatch. Make only the authorized correction named by the coordinator's ordered diagnosis — `Reported`, `Evidence`, `Cause`, `Correction`, and `Verification` — and persist no diagnosis, attempt count, or other recovery metadata. Re-run spec verification after the correction: return `completed` only when it passes, otherwise a post-resolution `failed` result with the closed classification, boolean `unrecoverable`, and concrete evidence. Recovery never emits a recovery progress id or progress event and leaves the canonical plan, feedback flow, validation report, and ordinary terminal rules unchanged.

@@ -3344,6 +3344,56 @@
       "managedHashes": [
         "3a05ab1a067bf80195726d7d3004343a8b63828b830dacd07ba68702922869cd"
       ]
+    },
+    {
+      "id": "retired-validate-findings-tool",
+      "destination": {
+        "class": "sai",
+        "path": "tools/validate-findings.js"
+      },
+      "harnesses": [
+        "claude",
+        "opencode"
+      ],
+      "managedHashes": [
+        "26a971ab8f8792668b0084b2a9f8a93050d5525cc701e4a5ba8edddcb631fa5c",
+        "b56f197f2f4261eda2e1e2dece058b790f9bd2bd097033f5b2c037603e92a86c"
+      ]
+    },
+    {
+      "id": "retired-spec-review-step",
+      "destination": {
+        "class": "sai",
+        "path": "commands/spec/steps/review.md"
+      },
+      "harnesses": [
+        "claude",
+        "opencode"
+      ],
+      "managedHashes": [
+        "24c9d4bb3b8d709946b8d9664c8f836a71f62820146e208efb65851154b870a0",
+        "3683a6de46441459364f65f9f1e40730efda02c1942eb3dcd673cd8ce072bf39",
+        "454341355f13b7d4f1ffd89c970119f9edf9597a60ab69435bd5cf5a209a02b2",
+        "7c58ebf7962eb1ddd33bec1f35173fdb4ce45451a93cf135264bdc4d49ff396c",
+        "8aa21578e4943bc62284b3ac90f21c423b9e4f9010b17e98a8cc03c34b3d0447"
+      ]
+    },
+    {
+      "id": "retired-design-review-step",
+      "destination": {
+        "class": "sai",
+        "path": "commands/design/steps/review.md"
+      },
+      "harnesses": [
+        "claude",
+        "opencode"
+      ],
+      "managedHashes": [
+        "2b349cf9ce6f66f79e109adb18c35eb88ea1b192523689b63e4f83a1994374ed",
+        "4e08d6c3a775ac95e44603fc3b339e5891045ff3b2986d9a3e81709f57ae87e0",
+        "9f04518e6667eb787eb6a455ba0d018c32109abe81429c361e4fa759a84f4aa0",
+        "b14d6f77b72dead10578eb1eebbefc01c5315baa77da3aa19322ca69a1052411"
+      ]
     }
   ]
 }

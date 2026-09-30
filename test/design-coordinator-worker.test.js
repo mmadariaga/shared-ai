@@ -48,8 +48,8 @@ function removeTempDir(dir) {
 
 // ─── Step 3: spec-design-review-progress-step — interface stubs ────────────
 // The Step 3 interface stubs expose the required contract symbols (the
-// opted-in seven-step and unopted six-step design progress plans, the design
-// review-pass input sets, and the retired step ids) as pure data with no
+// opted-in six-step and unopted five-step design progress plans and the
+// retired step ids) as pure data with no
 // production logic. The assertions below compare the production instruction
 // surface against these stubs, so a RED run fails until the GREEN body lands
 // the contract.
@@ -60,7 +60,6 @@ const OPTED_IN_DESIGN_PROGRESS_PLAN = [
   ['design', 'Write design.md'],
   ['tasks', 'Write tasks.md'],
   ['interfaces', 'Write interfaces.md'],
-  ['review', 'Review artifacts'],
   ['overview', 'Generate change-overview.md'],
 ];
 const UNOPTED_DESIGN_PROGRESS_PLAN = OPTED_IN_DESIGN_PROGRESS_PLAN.slice(0, -1);
@@ -69,7 +68,7 @@ const OPTED_IN_DESIGN_PROGRESS_PLAN_LINES = OPTED_IN_DESIGN_PROGRESS_PLAN
 const UNOPTED_DESIGN_PROGRESS_PLAN_LINES = UNOPTED_DESIGN_PROGRESS_PLAN
   .map(([id, label]) => `${id}: "${label}"`);
 const DESIGN_PROGRESS_PLAN_IDS = OPTED_IN_DESIGN_PROGRESS_PLAN.map(([id]) => id);
-const RETIRED_DESIGN_PLAN_IDS = ['specs-approval', 'artifacts'];
+const RETIRED_DESIGN_PLAN_IDS = ['specs-approval', 'artifacts', 'review'];
 
 function declaredStepLines(source) {
   const known = new Set([...DESIGN_PROGRESS_PLAN_IDS, ...RETIRED_DESIGN_PLAN_IDS]);
@@ -112,11 +111,11 @@ function assertPlanVariants(source, owner) {
   const lines = declaredStepLines(source);
   assert.ok(
     countPlanOccurrences(lines, OPTED_IN_DESIGN_PROGRESS_PLAN_LINES) >= 1,
-    `${owner} should declare the opted-in seven-step plan`,
+    `${owner} should declare the opted-in six-step plan`,
   );
   assert.ok(
     countPlanOccurrences(lines, UNOPTED_DESIGN_PROGRESS_PLAN_LINES) >= 2,
-    `${owner} should declare the unopted six-step plan separately from the opted-in prefix`,
+    `${owner} should declare the unopted five-step plan separately from the opted-in prefix`,
   );
 }
 
@@ -1137,7 +1136,7 @@ test('the lifecycle obliges planned workers to emit progress and keeps payload v
 
 // ─── Step 4: command-progress-plan-protocol (design coordinator.md) ─────────
 
-test('Step 3: the design canonical phase-contract declares the opted-in seven-step and unopted six-step progress plans', () => {
+test('Step 3: the design canonical phase-contract declares the opted-in six-step and unopted five-step progress plans', () => {
   const phaseContract = artifact('sai/commands/design/phase-contract.md');
 
   assertPlanVariants(phaseContract, 'the phase contract');
@@ -1352,7 +1351,7 @@ test('Step 5: the startup act is one batch and emits one event carrying every st
   );
 });
 
-test('Step 3: the startup act selects the six- or seven-step plan from overview-language flag presence', () => {
+test('Step 3: the startup act selects the five- or six-step plan from overview-language flag presence', () => {
   const worker = artifact('sai/commands/design/worker.md');
 
   assert.match(worker, /startup act|startup[- ]act/i,
@@ -1664,44 +1663,23 @@ test('Step 3: research, design, tasks, and interfaces writes emit separate order
   }
 });
 
-test('Step 3: external findings cover exactly the three design artifacts without a worker reviewer dispatch', () => {
+test('Step 3: the design phase has no external findings review step and no worker reviewer dispatch', () => {
   const worker = artifact('sai/commands/design/worker.md');
   const coordinator = artifact('sai/commands/design/coordinator.md');
   const source = `${worker}\n${coordinator}`;
 
-  assert.match(source, /external[\s-]+(?:artifact[- ]review )?findings?/i,
-    'design review evidence should be supplied externally');
-  for (const artifactName of ['design\.md', 'tasks\.md', 'interfaces\.md']) {
-    assert.match(source, new RegExp(`external[\\s\\S]{0,500}${artifactName}|${artifactName}[\\s\\S]{0,500}external`, 'i'),
-      `${artifactName} should be part of the external findings surface`);
-  }
-  assert.match(source, /findings?[\s\S]{0,220}(?:only|limited|restricted)[\s\S]{0,180}(?:design\.md|tasks\.md|interfaces\.md)|(?:design\.md|tasks\.md|interfaces\.md)[\s\S]{0,220}(?:only|limited|restricted)[\s\S]{0,180}findings?/i,
-    'external findings should be restricted to the three design artifacts');
-  assert.match(worker, /does not create the findings, dispatch an artifact reviewer, or own the review operation/i,
+  assert.doesNotMatch(worker, /### External findings consumption/,
+    'the dead external findings consumption section should be gone');
+  assert.equal(fs.existsSync(path.join(__dirname, '..', 'sai/commands/design/steps/review.md')), false,
+    'the dead design review step file should be retired');
+  assert.doesNotMatch(source, /evidence-marked/,
+    'the evidence-marked review carve-out should be gone');
+  assert.doesNotMatch(worker, /emits exactly one progress event carrying only `review`/,
+    'no progress rule should mark a review step');
+  assert.match(worker, /SHALL NOT dispatch or own an artifact reviewer/,
     'the design worker must not dispatch or own a reviewer');
   assert.doesNotMatch(worker, /reviewer[\s\S]{0,160}(?:receive|given|gets?|read)/i,
     'the worker must not contain the retired reviewer isolation section');
-});
-
-test('Step 3: a valid external design Summary marks review once, rejects missing or malformed evidence, and stays monotonic', () => {
-  const worker = artifact('sai/commands/design/worker.md');
-  const coordinator = artifact('sai/commands/design/coordinator.md');
-  const source = `${worker}\n${coordinator}`;
-
-  assert.match(source, /base[- ]form[\s\S]{0,220}Summary:|Summary:[\s\S]{0,220}base[- ]form/i,
-    'design review evidence should use the canonical base-form Summary');
-  assert.match(source, /Summary:\s*High=<count>\s*Medium=<count>\s*Low=<count>/i,
-    'the design findings contract should preserve the base-form tally');
-  assert.match(source, /High=0[\s\S]{0,300}(?:emit|report|mark)[\s\S]{0,180}`?review`?|(?:emit|report|mark)[\s\S]{0,180}`?review`?[\s\S]{0,300}High=0/i,
-    'a valid external High=0 Summary should mark the review step');
-  assert.match(source, /missing or malformed base-form `?Summary:?[`"']?[\s\S]{0,220}(?:not review completion|does not mark|no `?review`?)/i,
-    'missing or malformed Summary evidence must not mark review');
-  assert.match(source, /High>0/,
-    'High findings should be handled as a distinct non-converged outcome');
-  assert.match(source, /High>0[\s\S]{0,120}emits no `?review`?|(?:emits no `?review`?)[\s\S]{0,120}High>0/i,
-    'High findings should be processed without a new review mark');
-  assert.match(source, /monotonic|once[\s\S]{0,180}(?:marked|completed)[\s\S]{0,180}(?:remain|never)[\s\S]{0,120}(?:marked|unmark|clear)/i,
-    'review marks should be monotonic');
 });
 
 test('Step 3: after interfaces the design worker proceeds without an automatic reviewer', () => {
@@ -1709,8 +1687,10 @@ test('Step 3: after interfaces the design worker proceeds without an automatic r
 
   assert.match(worker, /interfaces\.md[\s\S]{0,500}(?:overview|next|proceed|complete)|(?:overview|next|proceed|complete)[\s\S]{0,500}interfaces\.md/i,
     'the post-interfaces path should proceed to the next design outcome');
-  assert.match(worker, /does not create the findings, dispatch an artifact reviewer, or own the review operation/i,
+  assert.match(worker, /SHALL NOT dispatch or own an artifact reviewer/,
     'the worker must not start an automatic reviewer after interfaces');
+  assert.match(worker, /After the artifacts are verified and the `interfaces` progress event has been emitted, return the pre-gate terminal\./,
+    'interfaces closes the pre-gate plan');
 });
 
 test('Step 3: pre-gate completion reconciles only the unopted terminal path and preserves the opted-in overview continuation', () => {
@@ -1729,16 +1709,16 @@ test('Step 3: pre-gate completion reconciles only the unopted terminal path and 
   assert.match(
     coordinator,
     /(?:(?:absent|without|missing|unopted)[\s\S]{0,260}`?--overview-lang`?|`?--overview-lang`?[\s\S]{0,260}(?:absent|without|missing|unopted))[\s\S]{0,420}(?:reconcil|mark)[\s\S]{0,180}(?:eligible|unmarked|all)/i,
-    'the unopted pre-gate terminal should reconcile its complete six-step plan'
+    'the unopted pre-gate terminal should reconcile its complete five-step plan'
   );
   assert.match(
     coordinator,
     /(?:pre-?gate|before the gate)[\s\S]{0,320}(?:present|absent|unopted|opted[- ]in)[\s\S]{0,320}(?:reconcil|unmarked)/i,
-    'pre-gate completion must use the selected plan rather than one fixed seven-step policy'
+    'pre-gate completion must use the selected plan rather than one fixed six-step policy'
   );
 });
 
-test('Step 3: a post-gate successful overview terminal reconciles every eligible unmarked step except review', () => {
+test('Step 3: a post-gate successful overview terminal reconciles every unmarked step', () => {
   const coordinator = artifact('sai/commands/design/coordinator.md');
 
   assert.match(
@@ -1750,8 +1730,11 @@ test('Step 3: a post-gate successful overview terminal reconciles every eligible
     'the coordinator should own the terminal reconciliation');
   assert.match(
     coordinator,
-    /(?:(?:present|provided|opted[- ]in)[\s\S]{0,260}`?--overview-lang`?|`?--overview-lang`?[\s\S]{0,260}(?:present|provided|opted[- ]in))[\s\S]{0,360}reconcil[\s\S]{0,300}(?:eligible[\s\S]{0,120}unmarked|unmarked)[\s\S]{0,160}except[\s\S]{0,80}`?review`?/i,
-    'reconciliation should cover every eligible unmarked step except review'
+    /(?:(?:present|provided|opted[- ]in)[\s\S]{0,260}`?--overview-lang`?|`?--overview-lang`?[\s\S]{0,260}(?:present|provided|opted[- ]in))[\s\S]{0,360}reconcil[\s\S]{0,300}unmarked/i,
+    'reconciliation should cover every unmarked step'
+  );
+  assert.doesNotMatch(coordinator, /except[\s\S]{0,80}`review`/,
+    'no review step is excluded from reconciliation'
   );
 });
 
@@ -1827,9 +1810,7 @@ test('Step 3: design worker leaves mode-dependent gate ownership to the coordina
   const worker = artifact('sai/commands/design/worker.md');
   const coordinator = artifact('sai/commands/design/coordinator.md');
 
-  assert.match(worker, /External findings consumption|findings MUST be supplied by an external `?sai-explore`?/i,
-    'the design worker should consume external findings rather than own review mode');
-  assert.match(worker, /does not create the findings, dispatch an artifact reviewer, or own the review operation/i,
+  assert.match(worker, /SHALL NOT dispatch or own an artifact reviewer/,
     'the design worker should not own a reviewer or review mode');
   assert.doesNotMatch(worker, /coexists? with and never replaces the supervised pipeline/i,
     'the retired worker-owned review coexistence wording should be absent');

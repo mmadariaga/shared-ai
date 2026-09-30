@@ -57,9 +57,6 @@ takes one — never substitute one for the other.
 - `check-delta-headers.js`: `node <tool-path> <change-name> [--json]
   [--root <dir>] [--delta-dir <dir>] [--specs-dir <dir>]`; it takes no
   `--cwd`.
-- `validate-findings.js`: `node <tool-path> [<file>] [--cwd <project-root>]`
-  with the findings block on stdin when no file is given; exit 0 valid, 1
-  violations, 2 unreadable or empty block or tool error.
 - `worker-report-validator.js`: `node <tool-path> validate --kind <kind>`
   with the payload on stdin (plus `--json --cwd` where the tool accepts
   them).

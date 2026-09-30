@@ -27,14 +27,13 @@ function countLiteral(source, value) {
   return source.split(value).length - 1;
 }
 
-// The canonical six-step spec progress plan owned by the phase contract.
+// The canonical five-step spec progress plan owned by the phase contract.
 const SPEC_PLAN_STEPS = [
   ['prereqs-and-change', 'Check prerequisites'],
   ['research', 'Research the change request'],
   ['proposal', 'Write proposal.md'],
   ['specs', 'Write specs/**'],
   ['validation', 'Validate artifacts and derive the decision summary'],
-  ['review', 'Review artifacts'],
 ];
 const SPEC_PLAN_IDS = SPEC_PLAN_STEPS.map(([id]) => id);
 
@@ -195,7 +194,10 @@ test('spec transport keeps arguments_value as the only request source across dis
   assert.match(worker, /--supervised|supervised/i,
     'supervision must remain part of the arguments request grammar');
   /*
-  assert.match(coordinator, /coordinator alone renders|coordinator[- ]owned[\n ]+progress|progress[\n ]+events?[\n ]+.*coordinator/i,
+  assert.match(coordinator, /coordinator alone renders|coordinator[- ]owned[
+\n ]+progress|progress[
+\n ]+events?[
+\n ]+.*coordinator/i,
     'progress rendering must remain coordinator-owned');
 
   */
@@ -349,13 +351,13 @@ test('sai-1 feedback gate advertises and accepts direct free-text replies', () =
 
 // ─── Step 5: progress-plan-spec-and-implement (spec coordinator/worker) ───────
 
-test('Step 5: the canonical spec phase contract declares the six-step plan in order with its labels', () => {
+test('Step 5: the canonical spec phase contract declares the five-step plan in order with its labels', () => {
   const contract = artifact(SPEC_COORDINATOR_ARTIFACTS.phaseContract);
   const coordinator = artifact(SPEC_COORDINATOR_ARTIFACTS.coordinator);
 
   assert.deepEqual(planList(contract), SPEC_PLAN_STEPS,
-    'the phase contract should declare exactly the six ordered id/label pairs');
-  assert.match(coordinator, /canonical six-step `progress_plan`[\s\S]{0,120}from/);
+    'the phase contract should declare exactly the five ordered id/label pairs');
+  assert.match(coordinator, /canonical five-step `progress_plan`[\s\S]{0,120}from/);
   assert.doesNotMatch(contract, /specs-approval/,
     'the canonical spec plan should not declare a specs-approval step');
 });
@@ -395,21 +397,22 @@ test('Step 5: structured research is an unconditional boundary before proposal g
   assert.match(researchSpec, /handoff request[\s\S]{0,260}same boundary/i);
 });
 
-test('Step 5: spec progress remains nonterminal, feedback-safe, and validation precedes external findings', () => {
+test('Step 5: spec progress remains nonterminal, feedback-safe, and validation closes the plan', () => {
   const worker = artifact(SPEC_COORDINATOR_ARTIFACTS.worker);
 
   assert.match(worker, /Progress events are returned lifecycle results/);
   assert.match(
     worker,
-    /research`[\s\S]{0,500}proposal`[\s\S]{0,500}specs`[\s\S]{0,500}validation`[\s\S]{0,500}review`/,
-    'proposal, specs, validation, and review batches should follow research in plan order',
+    /research`[\s\S]{0,500}proposal`[\s\S]{0,500}specs`[\s\S]{0,500}validation`/,
+    'proposal, specs, and validation batches should follow research in plan order',
   );
-  const reviewStep = artifact('sai/commands/spec/steps/review.md');
-  assert.match(reviewStep, /After accepted edits, re-run verification and recompute the decision\s+summary/);
-  assert.match(reviewStep, /the `proposal`, `specs`, and `validation` progress ids stay closed/);
+  assert.doesNotMatch(worker, /`review` — /,
+    'the worker should report no review progress id');
+  assert.doesNotMatch(worker, /### External findings consumption/,
+    'the dead external findings consumption section should be gone');
+  assert.equal(fs.existsSync(path.join(__dirname, '..', 'sai/commands/spec/steps/review.md')), false,
+    'the dead spec review step file should be retired');
   assert.match(worker, /feedback text[\s\S]{0,220}(?:MUST NOT|must not)[\s\S]{0,160}(?:emit|re-present|duplicate)/i);
-  assert.match(worker, /validation[\s\S]{0,500}review|review[\s\S]{0,500}validation/i);
-  assert.match(worker, /external[\s-]+(?:artifact[- ]review )?findings?/i);
   assert.match(worker, /one terminal lifecycle status/i);
 });
 
@@ -437,12 +440,13 @@ test('Step 2: the spec coordinator references the canonical plan and step machin
   const contract = artifact(SPEC_COORDINATOR_ARTIFACTS.phaseContract);
   const coordinator = artifact(SPEC_COORDINATOR_ARTIFACTS.coordinator);
 
-  assert.match(coordinator, /canonical six-step `progress_plan`/);
+  assert.match(coordinator, /canonical five-step `progress_plan`/);
   assert.match(coordinator, /step_machine: spec-standalone@1/);
   assert.match(coordinator, /Fetch @sai\/policies\/stage-machine\.md/);
   assert.doesNotMatch(coordinator, /step_pointer_map/,
     'the static step_pointer_map should not be declared');
-  assert.match(contract, /`prereqs-and-change`[\s\S]{0,300}`proposal`[\s\S]{0,300}`specs`[\s\S]{0,300}`validation`[\s\S]{0,300}`review`/);
+  assert.match(contract, /`prereqs-and-change`[\s\S]{0,300}`proposal`[\s\S]{0,300}`specs`[\s\S]{0,300}`validation`/);
+  assert.doesNotMatch(contract, /`review`/, 'the spec plan should declare no review step');
   for (const id of SPEC_PLAN_IDS) assert.match(contract, new RegExp(`\`${id}\``));
   assert.doesNotMatch(contract, /prereqs-resolution|proposal-and-specs|verification-summary/);
   assert.doesNotMatch(contract, /### `SpecStepPointerMap`/,
@@ -498,30 +502,16 @@ test('Step 2: the spec worker emits one progress event per act carrying the cano
     'the retired dual plan-plus-map phrasing should not remain');
 });
 
-test('Step 2: external findings alone may mark spec review from a valid base-form High=0 Summary', () => {
+test('Step 2: the spec worker owns no reviewer and the coordinator has no review carve-out', () => {
   const worker = artifact(SPEC_COORDINATOR_ARTIFACTS.worker);
   const coordinator = artifact(SPEC_COORDINATOR_ARTIFACTS.coordinator);
-  const reviewStep = artifact('sai/commands/spec/steps/review.md');
-  const source = `${worker}\n${coordinator}\n${reviewStep}`;
 
-  assert.match(source, /external[\s-]+(?:artifact[- ]review )?findings?/i,
-    'the phase should consume findings produced outside the planning worker');
-  assert.match(source, /base[- ]form[\s\S]{0,220}Summary:|Summary:[\s\S]{0,220}base[- ]form/i,
-    'review evidence should use the canonical base-form Summary');
-  assert.match(reviewStep, /`review` progress event only when `review` is unmarked[\s\S]{0,200}explicit `High=0`/,
-    'a valid High=0 Summary may mark review only while it is unmarked');
-  assert.match(reviewStep, /missing, malformed, or different summary line\s+never counts as `High=0`/,
-    'review progress must not be inferred from prose or absent/malformed evidence');
-  assert.doesNotMatch(source, /High>0[\s\S]{0,260}(?:emit|report|mark)[\s\S]{0,120}`?review`?/i,
-    'High findings must be processed without a new review mark');
-  assert.match(source, /monotonic|once[\s\S]{0,180}(?:marked|completed)[\s\S]{0,180}(?:remain|never)[\s\S]{0,120}(?:marked|unmark|clear)/i,
-    'review marks are monotonic');
   assert.match(worker, /the worker dispatches no reviewer of its own/,
     'the planning worker must not dispatch or own a reviewer');
   assert.doesNotMatch(worker, /worker-owned[\s-]+(?:planning[- ]artifact )?review (?:section|pass|loop)/i,
     'the worker must not own an automatic review section or loop');
-  assert.match(coordinator, /an unmarked evidence-marked `review` step is left exactly as last rendered/,
-    'an unmarked review step stays unmarked through reconciliation');
+  assert.doesNotMatch(`${worker}\n${coordinator}`, /evidence-marked/,
+    'the evidence-marked review carve-out should be gone');
 });
 
 // ─── Step 7: suppress-worker-review-under-supervision (spec grammar) ────────
@@ -554,33 +544,26 @@ test('Step 7: marker-only supervised input fails before resolution and the marke
     'only leading bare markers are parsed as flags');
 });
 
-test('Step 7: supervised spec invocation has no worker review counters and accepts only external review evidence', () => {
+test('Step 7: supervised spec invocation has no worker review counters', () => {
   const worker = artifact(SPEC_COORDINATOR_ARTIFACTS.worker);
 
-  const reviewStep = artifact('sai/commands/spec/steps/review.md');
   assert.match(worker, /the worker dispatches no reviewer of its own/,
     'the worker contract should explicitly reject a worker-owned reviewer');
-  assert.match(worker, /external[\s-]+(?:artifact[- ]review )?findings?/i,
-    'supervised execution should consume external findings');
-  assert.match(reviewStep, /Summary:\s*High=<count>\s*Medium=<count>\s*Low=<count>/i,
-    'supervised execution should use the canonical findings Summary');
   assert.doesNotMatch(worker, /user-requested[\s-]+review pass[\s\S]{0,220}(?:emit|report|mark)/i,
     'the retired worker-owned user-requested review pass must not be a worker contract');
 });
 
-test('Step 2: the spec coordinator skips reconciliation for pre-gate completion and reconciles at Finish-step close except unmarked review', () => {
+test('Step 2: the spec coordinator skips reconciliation for pre-gate completion and reconciles every unmarked step at Finish-step close', () => {
   const coordinator = artifact(SPEC_COORDINATOR_ARTIFACTS.coordinator);
 
   assert.match(coordinator, /pre-gate and does not reconcile/,
     'a pre-gate completed result should trigger no reconciliation');
   assert.match(coordinator, /`Finish step` proceed selection is the spec phase's reconciliation trigger/,
     'reconciliation should apply at the Finish step close');
-  assert.match(coordinator, /every eligible unmarked step renders `completed`/,
-    'every eligible unmarked step should render completed');
-  assert.match(coordinator, /an unmarked evidence-marked `review` step is left exactly as last rendered/,
-    'an unmarked review step should be excluded from reconciliation');
-  assert.match(coordinator, /never the bare `review` id/,
-    'the carve-out is the evidence-marked designation, never the bare review id');
+  assert.match(coordinator, /every unmarked step renders `completed`\./,
+    'every unmarked step should render completed');
+  assert.doesNotMatch(coordinator, /evidence-marked/,
+    'no review step is excluded from reconciliation');
   assert.match(coordinator, /`failed`, `cancelled`, and `needs_input` leave the list exactly as last rendered/,
     'failed, cancelled, and needs_input should leave the list as last rendered');
 });
@@ -643,7 +626,6 @@ test('Duplication collapse: spec step files contain no normative block in two fi
     'sai/commands/spec/steps/proposal.md',
     'sai/commands/spec/steps/specs.md',
     'sai/commands/spec/steps/validation.md',
-    'sai/commands/spec/steps/review.md',
   ];
 
   const blockPatterns = [

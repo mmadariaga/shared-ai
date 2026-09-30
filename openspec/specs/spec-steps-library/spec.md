@@ -2,14 +2,16 @@
 
 ## Purpose
 Split the `sai-1-spec` worker's instruction mass into one step file per progress-plan step, delivered just-in-time by coordinator pointers, with run-long rules in an always-active `common.md`.
+
 ## Requirements
+
 ### Requirement: Six-file step instruction library for sai-1-spec
 
-The sai-1-spec worker's instruction mass SHALL be split into exactly six step files under `sai/commands/spec/steps/` — `common.md` plus `research.md`, `proposal.md`, `specs.md`, `validation.md`, and `review.md` — carved from the former monolithic sources so that each progress-plan step has one dedicated instruction file delivered just-in-time. The distribution SHALL follow the implemented boundaries: `common.md` carries the author role and the `SpecWriteSurface` reference, the question policy, the immediate root `GLOSSARY.md` write rule, the glossary-format, remember, and budget-skill fetches, the step-delivery meta-rule, the full main-agent cost discipline, and verification — the artifact checklist, Rule #1 proposal-to-spec self-consistency, and Rule #2 source-grounding of spec-pinned literals — because validation, review findings, artifact feedback, and recovery corrections all re-run it; `research.md` carries the structured research guide, the approximately 80% confidence boundary, and the Ready-to-Propose handoff consumption rules; `proposal.md` carries the openspec-propose skill fetch, the subset of that skill's mechanics the step uses, the phase overrides of the rest of the skill, and the `proposal.md` write, and SHALL NOT contain the Complexity Derivation Rubric; `specs.md` carries the delta-spec writes; `validation.md` carries the verification run, the cited-path gate, the Complexity Derivation Rubric S1–S5, and the `## Completion` decision-summary and validation-report contract; `review.md` carries the externally-supplied-findings consumption contract and its no-findings fast path.
+The sai-1-spec worker's instruction mass SHALL be split into exactly five step files under `sai/commands/spec/steps/` — `common.md` plus `research.md`, `proposal.md`, `specs.md`, and `validation.md` — carved from the former monolithic sources so that each progress-plan step has one dedicated instruction file delivered just-in-time. The library SHALL contain no `review.md`. The distribution SHALL follow the implemented boundaries: `common.md` carries the author role and the `SpecWriteSurface` reference, the question policy, the immediate root `GLOSSARY.md` write rule, the glossary-format, remember, and budget-skill fetches, the step-delivery meta-rule, the full main-agent cost discipline, and verification — the artifact checklist, Rule #1 proposal-to-spec self-consistency, and Rule #2 source-grounding of spec-pinned literals — because validation, artifact feedback, and recovery corrections all re-run it; `research.md` carries the structured research guide, the approximately 80% confidence boundary, and the Ready-to-Propose handoff consumption rules; `proposal.md` carries the openspec-propose skill fetch, the subset of that skill's mechanics the step uses, the phase overrides of the rest of the skill, and the `proposal.md` write, and SHALL NOT contain the Complexity Derivation Rubric; `specs.md` carries the delta-spec writes; `validation.md` carries the verification run, the cited-path gate, the Complexity Derivation Rubric S1–S5, and the `## Completion` decision-summary and validation-report contract.
 
 #### Scenario: each step has exactly one instruction file
 
-- **WHEN** the coordinator delivers a step pointer for `research`, `proposal`, `specs`, `validation`, or `review`
+- **WHEN** the coordinator delivers a step pointer for `research`, `proposal`, `specs`, or `validation`
 - **THEN** loading that step's file alone provides the complete instruction stretch for that step, with run-long boundaries supplied by `common.md`
 
 #### Scenario: complexity rubric lives outside the proposal step
@@ -30,4 +32,3 @@ The sai-1-spec worker's instruction mass SHALL be split into exactly six step fi
 
 - **WHEN** the worker needs the next instruction stretch before any continuation has arrived
 - **THEN** it cannot obtain a step-file path anywhere in its initial surface, making prefetch impossible by design
-

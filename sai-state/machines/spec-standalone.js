@@ -13,7 +13,6 @@ const machine = createLinearStepMachine({
     'proposal',
     'specs',
     'validation',
-    'review',
   ],
   stageFiles: {
     'prereqs-and-change': 'none',
@@ -21,7 +20,6 @@ const machine = createLinearStepMachine({
     proposal: 'sai/commands/spec/steps/proposal.md',
     specs: 'sai/commands/spec/steps/specs.md',
     validation: 'sai/commands/spec/steps/validation.md',
-    review: 'sai/commands/spec/steps/review.md',
   },
 });
 

@@ -52,7 +52,7 @@ The startup act is one batch: it parses fast-track, runs prerequisites, resolves
 
 Fetch @sai/commands/design/phase-contract.md and use its canonical `DesignProgressPlan` variants and its canonical step-machine routing. This worker does not redeclare them, add a third plan, or alter them after startup.
 
-Select the immutable progress plan exactly once before the startup event, using raw token presence only: a present `--overview-lang` token selects the opted-in seven-step plan, and an absent token selects the unopted six-step plan. Malformed, missing-value, and duplicate occurrences remain present for this selection; this worker alone validates them before resolution, and no other surface halts them first.
+Select the immutable progress plan exactly once before the startup event, using raw token presence only: a present `--overview-lang` token selects the opted-in six-step plan, and an absent token selects the unopted five-step plan. Malformed, missing-value, and duplicate occurrences remain present for this selection; this worker alone validates them before resolution, and no other surface halts them first.
 
 Immediately before the first effective source-artifact write, set the overview lifecycle state to stale; this is the stale-before-first-write boundary.
 
@@ -69,14 +69,10 @@ pass and change resolution completes, per
 - Writing `design.md` reports `design`.
 - Writing `tasks.md` reports `tasks`.
 - Writing and verifying `interfaces.md` reports `interfaces`.
-- A valid externally supplied `sai-explore` findings block whose explicit base-form `Summary: High=0 Medium=<count> Low=<count>` explicitly reports `High=0` while `review` remains unmarked emits exactly one progress event carrying only `review`.
 - Successful overview materialization or regeneration that commits `overview.state: current` reports `overview`.
 - Report ids in plan order and list every path written since the preceding result.
 - Progress marks are monotonic.
 - Never emit before resolution or in place of the one terminal lifecycle status.
-- On a feedback turn, ordinary feedback, an absent or malformed base-form `Summary:`, or `High>0` emits no `review`.
-- `Medium`/`Low` findings do not block an explicit `High=0`.
-- Only a valid externally supplied `sai-explore` findings block with that base-form result emits exactly one `review` event while it remains unmarked.
 - Emit one progress event per completed batch; the research, design, tasks, and interfaces writes are separate ordered progress batches with only newly changed paths.
 - Each progress event's `changed_files` lists every path written since the preceding result.
 - The run always closes with exactly one terminal lifecycle status.
@@ -112,29 +108,7 @@ text; MUST NOT emit, re-present, or duplicate the feedback-text prompt.
 - The terminal `summary` includes the current Architecture Snapshot on the initial iteration and after a later normalized Target State change, and omits it after identical regeneration or non-Target-State-only changes.
 - Do not add a snapshot payload field or top-level artifact; generation, comparison, and summary composition are worker-owned.
 
-### External findings consumption
-
-- This section is the sole normative source for review evidence.
-- Progress reporting and `steps/review.md` reference its result.
-- Neither surface defines a second Summary parser or review-completion rule.
-
-- For `design.md`, `tasks.md`, and `interfaces.md`, findings MUST be supplied by an external `sai-explore` run.
-- Process those findings under the shared `@sai/policies/artifact-review-contract.md` and `@sai/policies/artifact-feedback-gate.md` contracts.
-- The worker consumes the supplied block; it does not create the findings, dispatch an artifact reviewer, or own the review operation.
-
-- Require the shared contract's base-form `Summary: High=<count> Medium=<count> Low=<count>` in the supplied findings block.
-- Require an explicit `High=0` before treating the block as review evidence.
-- Accept `High=0` only when that base-form summary reports `High=0` explicitly; never infer it from a finding list, omitted or malformed counts, prose, `Medium`/`Low` values, or any other field.
-- A missing or malformed base-form `Summary:` or an explicit `High>0` is not review completion.
-- `Medium`/`Low` findings do not block an explicit `High=0`.
-- While `review` is unmarked, a valid external `sai-explore` block with the explicit base-form `High=0` result emits exactly one progress event carrying only `review`.
-- Later feedback or findings never clear or reopen that mark.
-
-- Process only findings targeting `design.md`, `tasks.md`, or `interfaces.md`; only those three artifacts may be edited.
-- Apply the shared contract and gate to every finding without coercion.
-- Discard each invalid or inapplicable finding with a specific reason, including missing or malformed required fields or severity, a target outside the three editable artifacts, a reference-artifact target, an unsupported or illegitimate correction, a duplicate or no-op correction, or a contradiction with the current artifacts.
-- Apply accepted corrections only within the three editable artifacts.
-- After an accepted correction, re-run design-artifact verification and recompute the decision summary from current artifacts without reopening or re-emitting the `design`, `tasks`, or `interfaces` progress steps.
+### Reviewer ownership
 
 - The worker SHALL NOT dispatch or own an artifact reviewer, an automatic review loop, review counters, retry outcomes, or user-requested reviewer passes.
 - It owns no reviewer, findings-generation, counter, retry, or user-requested-review lifecycle.
@@ -244,8 +218,8 @@ handles that lifecycle boundary.
 
 | input form | worker action |
 | --- | --- |
-| no `--overview-lang` token | keep `overview_language: unresolved`; use the six-step plan and no-generation terminal |
-| one `--overview-lang <language>` token | consume one non-empty value, validate it, and use the seven-step plan |
+| no `--overview-lang` token | keep `overview_language: unresolved`; use the five-step plan and no-generation terminal |
+| one `--overview-lang <language>` token | consume one non-empty value, validate it, and use the six-step plan |
 | missing value, option in value position, malformed occurrence, or duplicate | return a pre-resolution validation failure; do not resolve or dispatch |
 | `--fast-track` or `--supervised` in either supported order | parse independently and strip only that marker |
 
@@ -319,8 +293,7 @@ or persist diagnosis metadata in artifacts. A failed recovery returns the
 existing post-resolution failed envelope with concrete evidence and suppresses
 the success completion sentence at the existing design failure boundary.
 
-Outside recovery, preserve the canonical progress plan, external-findings and
-feedback behavior, overview lifecycle, and ordinary replacement fallback
-unchanged. Replacement dispatch remains coordinator-owned and is not a
+Outside recovery, preserve the canonical progress plan, feedback behavior,
+overview lifecycle, and ordinary replacement fallback unchanged. Replacement dispatch remains coordinator-owned and is not a
 recovery repair path; no recovery rule widens the worker's authorized files or
 changes the existing terminal rules.

@@ -3,7 +3,9 @@
 ## Purpose
 
 TBD — placeholder purpose. Define the worker-owned automated artifact review loop for the spec and design planning phases.
+
 ## Requirements
+
 ### Requirement: Attribute planning-artifact review to Plan
 
 Selector-dispatched planning-artifact review SHALL be described as Plan (unattended) review and SHALL retain its existing review engine, round, feedback, and convergence behavior.
@@ -103,15 +105,15 @@ A malformed envelope that the worker cannot parse under its declared grammar SHA
 
 ### Requirement: worker-owned-review-pass
 
-The spec-proposal worker SHALL own an automated artifact review of the artifacts its phase just wrote, subject to `supervised-marker-suppresses-automatic-loop`. The design review path SHALL instead consume externally supplied findings through the canonical feedback and artifact-review contracts and SHALL support a no-findings completion branch without creating a duplicate automatic reviewer loop. The design worker SHALL first validate the format of any externally supplied findings block through the deterministic validator, returning `needs_input` with exact violations if the format is malformed; the coordinator retries correction under the existing bounded-retry mechanism. A **review pass** on the spec path is one complete unit: exactly one reviewer run plus the worker's processing of every finding that run returns. Per-finding processing SHALL NOT increment the pass count.
+The spec-proposal worker SHALL own an automated artifact review of the artifacts its phase just wrote, subject to `supervised-marker-suppresses-automatic-loop`. The design worker SHALL NOT dispatch a reviewer and SHALL NOT consume an externally supplied findings block: it has no review step, no external-findings consumption section, and no findings-format validation, and findings reach design artifacts only as artifact feedback. A **review pass** on the spec path is one complete unit: exactly one reviewer run plus the worker's processing of every finding that run returns. Per-finding processing SHALL NOT increment the pass count.
 
-The spec pass's **reviewed set** — the artifacts it judges and the only artifacts its findings may target — SHALL be `proposal.md` and every `specs/**/*.md` of the resolved change. The design review's externally supplied findings may target only `design.md`, `tasks.md`, and `interfaces.md` of the resolved change. A spec reviewer additionally receives a read-only **reference set** as defined by `reviewer-isolation-and-read-only-input`.
+The spec pass's **reviewed set** — the artifacts it judges and the only artifacts its findings may target — SHALL be `proposal.md` and every `specs/**/*.md` of the resolved change. A spec reviewer additionally receives a read-only **reference set** as defined by `reviewer-isolation-and-read-only-input`.
 
-When the supervision marker is absent, the spec worker's first automatic pass SHALL run only after its pre-completion verification and decision-summary derivation have finished, and before it returns its terminal `completed` payload. The design worker SHALL not dispatch an automatic reviewer; its review step completes only from a valid externally supplied findings block under the worker card's external-findings contract. The design review remains before the coordinator's feedback gate and before overview generation.
+When the supervision marker is absent, the spec worker's first automatic pass SHALL run only after its pre-completion verification and decision-summary derivation have finished, and before it returns its terminal `completed` payload. The design worker SHALL verify `design.md`, `tasks.md`, and `interfaces.md` and derive its decision summary without consuming review evidence.
 
-Concretely: when not suppressed, the spec worker SHALL run its first pass only after `proposal.md` is non-empty, at least one non-empty `specs/**/*.md` exists, and artifact verification, the self-consistency and source-grounding checks, and decision-summary derivation are complete — that is, after the `validation` progress event. The design worker SHALL verify `design.md`, `tasks.md`, and `interfaces.md`, derive its decision summary, and then consume any externally supplied review evidence without dispatching reviewer machinery.
+Concretely: when not suppressed, the spec worker SHALL run its first pass only after `proposal.md` is non-empty, at least one non-empty `specs/**/*.md` exists, and artifact verification, the self-consistency and source-grounding checks, and decision-summary derivation are complete — that is, after the `validation` progress event.
 
-When the supervision marker is present, the spec automatic first pass SHALL NOT run; the spec phase still completes its verification and decision-summary derivation and proceeds to the ordinary pre-gate terminal without automatic reviewer dispatch. The design path remains external-findings-only in either mode.
+When the supervision marker is present, the spec automatic first pass SHALL NOT run; the spec phase still completes its verification and decision-summary derivation and proceeds to the ordinary pre-gate terminal without automatic reviewer dispatch. The design path runs no review in either mode.
 
 Every completed spec pass SHALL close with the base-form severity tally single-sourced in `sai/policies/artifact-review-contract.md`.
 
@@ -124,18 +126,18 @@ Every completed spec pass SHALL close with the base-form severity tally single-s
 
 - **WHEN** the spec worker runs its first automatic review pass
 - **THEN** artifact verification, the self-consistency and source-grounding checks, and decision-summary derivation SHALL already be complete
-- **AND** the `validation` progress event SHALL already have been emitted, so any `review` event necessarily follows it
+- **AND** the `validation` progress event SHALL already have been emitted
 
 #### Scenario: external design findings complete the review path
 
-- **WHEN** valid external design-review evidence is supplied for `design.md`, `tasks.md`, or `interfaces.md`
-- **THEN** the design worker SHALL process it through the canonical feedback and artifact-review contracts
+- **WHEN** the design worker completes `design.md`, `tasks.md`, and `interfaces.md`
+- **THEN** it SHALL consume no externally supplied findings block and SHALL have no review step to complete
 - **AND** it SHALL dispatch no automatic reviewer or duplicate review loop
 
 #### Scenario: external design review reports no findings
 
-- **WHEN** valid external design-review evidence reports no findings
-- **THEN** the design review SHALL complete through the no-findings branch without dispatching reviewer machinery
+- **WHEN** the design phase closes without any review evidence
+- **THEN** it SHALL complete through its ordinary pre-gate terminal, with no no-findings review branch and no reviewer machinery
 
 #### Scenario: per-finding processing does not count as a pass
 
@@ -146,19 +148,22 @@ Every completed spec pass SHALL close with the base-form severity tally single-s
 
 - **WHEN** the spec worker finishes pre-completion verification under a `--supervised` invocation
 - **THEN** it SHALL NOT run an automatic review pass before returning `completed`
-- **AND** the `review` step SHALL remain unmarked by the automatic path
 
 #### Scenario: external-no-findings-completes-review
 
-- **WHEN** valid external design-review evidence reports no findings
-- **THEN** the design review completes through the no-findings branch without dispatching reviewer machinery
+- **WHEN** the design worker receives no external review evidence
+- **THEN** it SHALL report no review progress and SHALL close through its ordinary pre-gate terminal without reviewer machinery
 
 #### Scenario: design findings format is validated before processing
 
-- **WHEN** an externally supplied design-review findings block is received
-- **THEN** the design worker SHALL validate its format through the deterministic validator
-- **AND** if format violations are found, return `needs_input` with the violations for correction
-- **AND** if the block validates successfully, process it under the canonical feedback and artifact-review contracts
+- **WHEN** text resembling a findings block reaches the design worker
+- **THEN** the design worker SHALL NOT validate it through a findings-format validator, SHALL NOT process it as review evidence, and SHALL NOT report review progress from it
+- **AND** any such content reaches design artifacts only through the artifact feedback path
+
+#### Scenario: design worker consumes no external findings block
+
+- **WHEN** the design worker finishes verifying `design.md`, `tasks.md`, and `interfaces.md`
+- **THEN** it returns its ordinary pre-gate terminal without validating, consuming, or reporting progress from any externally supplied findings block
 
 ### Requirement: reviewer-isolation-and-read-only-input
 
@@ -607,4 +612,3 @@ With the worker-owned automatic layer absent under supervision, a failed or canc
 - **WHEN** the phase worker returns `failed` or `cancelled` during a supervised in-session round while the automatic worker-owned loop is suppressed
 - **THEN** the run SHALL stop under that terminal
 - **AND** no automatic worker-owned reviewer dispatch SHALL absorb the failure or fabricate convergence
-
