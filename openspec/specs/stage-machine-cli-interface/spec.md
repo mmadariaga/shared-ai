@@ -9,7 +9,7 @@ TBD - created by archiving change replace-state-sidecar-with-cli. Update Purpose
 The stage machine store SHALL provide four CLI verbs via the `sai-state` script:
 1. `spawn --key <stable-key>` initializes or locates a session, deriving a deterministic UUIDv4 from the stable key, and returns `{id}` on success.
 2. `emit <id> <machineId> -` applies a transition. It accepts the session id and target machine id as arguments and reads the JSON event object from stdin, and it returns the minimal wire outcome. In progress mode, `emit <id> <machineId> --progress [--with-overview true|false] -`, it instead reads a worker progress payload from stdin. It validates the payload, derives the event `{"step_ids": [...]}` from a valid payload, and returns the verdict as `validation` alongside the minimal wire outcome.
-3. `reset <id> <machineId>` clears only that machine's state to its initialState with an atomic write, leaves other machines untouched, and returns `{reset: <machineId>}` on success.
+3. `reset <id> <machineId>` clears only that machine's state to its initialState with an atomic write, leaves other machines untouched, and returns `{reset: <machineId>}` on success. When the machine exposes a first filed step (the first step whose `follow` is a file), the success response additionally carries `stage` and `next: {follow, hint}` for that step; a machine without one, or whose lookup fails or yields a malformed pointer, returns only `{reset: <machineId>}`.
 4. `close <id>` terminates a session by deleting the session file and returns `{closed: id}` on success.
 Each verb writes minimal JSON to stdout on success and writes error text to stderr on failure. Exit code 0 indicates success; exit code 1 or 2 indicates failure.
 
@@ -24,6 +24,7 @@ Each verb writes minimal JSON to stdout on success and writes error text to stde
 #### Scenario: CLI reset clears one machine and returns confirmation
 - **WHEN** the caller invokes `sai-state reset <id> <machineId>` with a registered machine id
 - **THEN** that machine's state is reset to its initialState with an atomic write, other machines in the session remain untouched, and the process outputs `{reset: <machineId>}` with exit code 0
+- **AND** for each of the seven step machines the output also carries `stage` and `next` naming that machine's first filed step
 
 #### Scenario: CLI reset with missing arguments returns usage error
 - **WHEN** the caller invokes `sai-state reset` with missing id or machineId
@@ -104,7 +105,7 @@ Each CLI verb SHALL return minimal JSON without state serialization:
 - `emit` success: `{stage, next: {follow, hint}, rejected?, warnings?}`
 - `emit` failure: `{error: <name>, reason?, next: {follow, hint}}`, where `reason` is present only as `EVENT_UNPARSEABLE` on a delivery failure
 - `emit --progress`: `{validation}` on an invalid verdict; on a valid verdict, `{validation, …}` followed by the `emit` success or failure fields above, unchanged
-- `reset` success: `{reset: <machineId>}`
+- `reset` success: `{reset: <machineId>}`, or `{reset: <machineId>, stage, next: {follow, hint}}` on a machine that exposes a first filed step
 - `reset` failure: `{error: <name>}`
 - `close`: `{closed: id}`
 
@@ -117,8 +118,9 @@ The machine's internal state remains in the session file; no snapshot or state o
 
 #### Scenario: Reset response carries only machine id
 
-- **WHEN** `reset` completes successfully
+- **WHEN** `reset` completes successfully on a machine that exposes no first filed step
 - **THEN** the stdout JSON contains only `{reset: <machineId>}` without `state`, `snapshot`, or other internal fields
+- **AND** on a step machine it contains only `{reset, stage, next}`, still without `state`, `snapshot`, or other internal fields
 
 ### Requirement: Session file version and idempotency
 Each session file SHALL carry a `stateVersion` field matching the CLI tool's version. The per-machine ledger (entry.lastEventId, entry.lastOutcome) SHALL be persisted for observability, but the implementation SHALL NOT enforce idempotent replay: `bin/sai-state.js` persists with a fixed empty eventId and does not compare incoming eventIds, so re-emitting the same `eventId` MUST NOT be specified as returning the identical prior outcome without re-applying the transition.

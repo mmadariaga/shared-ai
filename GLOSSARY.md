@@ -118,6 +118,9 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Failure Details**: "The non-empty English diagnostic attached to an overview-generation failure, naming what went wrong, where it occurred, and the durable carrier that preserves it when the failure is parent-authored."
 *Avoid*: contradiction details, failure note, diagnostic text
 
+**First Filed Step**: "The first step of a linear step machine whose `follow` is a file — the second step in every current machine — whose **Next Pointer** `sai-state reset` returns and the coordinator sends as the first line of the post-ready task disclosure."
+*Avoid*: first step, first real step, startup step
+
 **File Change Type**: "One of the four tokens (`A`, `M`, `D`, `R`) that prefixes each `**Files Affected**` entry of a `tasks.md` step, declaring what happens to the file in the step's commit — created, modified, deleted, or moved/renamed (an `R` entry carries the source path and the destination path in the form `R <source> -> <destination>`)."
 *Avoid*: change type, change-kind, file verb, action letter
 

@@ -24,7 +24,7 @@ A prerequisite failure ends the run before any review analysis, mutation, or dur
 
 Report the coordinator's five-step plan as progress events, each id once, in plan order, per `@sai/orchestration/worker-core.md` § Nonterminal Result Transport:
 
-- `resolve-change` — the startup act (the three steps above) passes. This is the Startup Handshake: return it before dispatching any `budget-explorer`, computing the diff, or beginning a review pass.
+- `resolve-change` — the startup act (the three steps above) passes. It must pass before dispatching any `budget-explorer`, computing the diff, or beginning a review pass, and it reports together with `establish-diff-scope` in the first progress event, per `@sai/orchestration/worker-core.md` § Step-machine task disclosure.
 - `establish-diff-scope` — the diff scope is established. An empty diff reports it before returning `cancelled`.
 - `resolve-review-analysis` — passes 1–11 are done.
 - `resolve-mutation-analysis` — the Pass 12 activation gate is resolved, whether the mutation path runs or is legitimately skipped.
@@ -34,7 +34,7 @@ Each event's `changed_files` lists every path written since the preceding result
 
 ## Active Step Execution
 
-Instructions arrive just-in-time, one step file at a time. Each progress continuation carries one pointer line, `Active step: <id> — follow <path>`: execute only the step it names, following that file exactly, and never prefetch, open, or follow any other step instruction file. Step paths arrive only through those pointer lines; this contract plus common.md is the sealed initial surface. `resolve-change` runs from it before the first progress event, and the first delivered pointer targets `establish-diff-scope`. A gated stage resolved by legitimate skip still reports its milestone, and the next delivered pointer advances past it without that step file executing. A continuation without a pointer line (a picker answer) leaves the active step unchanged. Steps never widen the lifecycle, progress, changed-files, or failure rules.
+Instructions arrive just-in-time, one step file at a time. Each progress continuation carries one pointer line, `Active step: <id> — follow <path>`: execute only the step it names, following that file exactly, and never prefetch, open, or follow any other step instruction file. Step paths arrive only through those pointer lines; this contract plus common.md is the sealed initial surface. `resolve-change` runs from it before the first progress event, and the first delivered pointer targets `establish-diff-scope`. That pointer arrives as the first line of the task-disclosure continuation, before `arguments_value`. A gated stage resolved by legitimate skip still reports its milestone, and the next delivered pointer advances past it without that step file executing. A continuation without a pointer line (a picker answer) leaves the active step unchanged. Steps never widen the lifecycle, progress, changed-files, or failure rules.
 
 ## Review Work
 

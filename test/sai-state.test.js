@@ -643,3 +643,106 @@ test('stdin emit: non-delivery failures return their error without reason', () =
     cleanup([id]);
   }
 });
+
+// ─── First filed step pointer on reset (step-pointer-with-task) ─────────────
+
+const FIRST_FILED = [
+  ['spec-standalone@1', 'prereqs-and-change', 'research', 'proposal', 'sai/commands/spec/steps/research.md'],
+  ['design-standalone@1', 'prereqs-resolution', 'research', 'design', 'sai/commands/design/steps/research.md'],
+  ['implement-standalone@1', 'prereqs-resolution', 'collapse-implemented-steps', 'artifact-analysis', 'sai/commands/implement/steps/collapse-implemented-steps.md'],
+  ['review-standalone@1', 'resolve-change', 'establish-diff-scope', 'resolve-review-analysis', 'sai/commands/review/steps/establish-diff-scope.md'],
+  ['security-standalone@1', 'resolve-security-scope', 'discover-module-map', 'resolve-sast-analysis', 'sai/commands/security/steps/discover-module-map.md'],
+  ['performance-standalone@1', 'resolve-performance-scope', 'map-stack-hot-paths', 'audit-performance-tiers', 'sai/commands/performance/steps/map-stack-hot-paths.md'],
+  ['accessibility-standalone@1', 'resolve-accessibility-scope', 'map-ui-framework', 'resolve-static-audit', 'sai/commands/accessibility/steps/map-ui-framework.md'],
+];
+
+function progressPayload(stepIds) {
+  return JSON.stringify({ event: 'progress', step_ids: stepIds, changed_files: [] });
+}
+
+test('CLI: reset returns the first filed step pointer for all seven step machines', () => {
+  const id = JSON.parse(invokeCommand('spawn', '--key', 'test-reset-first-filed').stdout).id;
+  try {
+    for (const [machineId, , second, , follow] of FIRST_FILED) {
+      const reset = invokeCommand('reset', id, machineId);
+      assert.equal(reset.exitCode, 0, `${machineId} reset should succeed`);
+      const json = JSON.parse(reset.stdout);
+      assert.equal(json.reset, machineId);
+      assert.equal(json.stage, second, `${machineId} reset should name the first filed step`);
+      assert.equal(json.next.follow, follow, `${machineId} reset should point at the first filed step file`);
+      assert.equal(typeof json.next.hint, 'string');
+      assert.notEqual(json.next.follow, 'none', 'the reset pointer is never the fileless first step');
+    }
+  } finally {
+    cleanup([id]);
+  }
+});
+
+test('CLI: reset on a non-step machine keeps the plain {reset} response', () => {
+  const id = JSON.parse(invokeCommand('spawn', '--key', 'test-reset-non-step').stdout).id;
+  try {
+    for (const machineId of ['explore-idea@1', 'explore-slice@1', 'apply-standalone@1', 'recovery-ledger@1']) {
+      const json = JSON.parse(invokeCommand('reset', id, machineId).stdout);
+      assert.deepEqual(json, { reset: machineId }, `${machineId} reset should stay unchanged`);
+    }
+  } finally {
+    cleanup([id]);
+  }
+});
+
+test('CLI: the first progress emit carrying both ids advances past the first filed step', () => {
+  const id = JSON.parse(invokeCommand('spawn', '--key', 'test-first-emit-both-ids').stdout).id;
+  try {
+    for (const [machineId, first, second, third] of FIRST_FILED) {
+      invokeCommand('reset', id, machineId);
+      const out = runCli(['emit', id, machineId, '--progress', '-'], progressPayload([first, second]));
+      assert.equal(out.exitCode, 0, `${machineId} combined first emit should succeed: ${out.stdout}`);
+      const json = JSON.parse(out.stdout);
+      assert.equal(json.validation.ok, true);
+      assert.equal(json.stage, third, `${machineId} should advance to the third step`);
+    }
+  } finally {
+    cleanup([id]);
+  }
+});
+
+test('CLI: a first progress emit with only the first id returns the reset pointer again, with no error (E5)', () => {
+  const id = JSON.parse(invokeCommand('spawn', '--key', 'test-first-emit-first-only').stdout).id;
+  try {
+    for (const [machineId, first] of FIRST_FILED) {
+      const resetJson = JSON.parse(invokeCommand('reset', id, machineId).stdout);
+      const out = runCli(['emit', id, machineId, '--progress', '-'], progressPayload([first]));
+      assert.equal(out.exitCode, 0, `${machineId} first-only emit should not error`);
+      const json = JSON.parse(out.stdout);
+      assert.equal(json.error, undefined);
+      assert.equal(json.rejected, undefined);
+      assert.equal(json.stage, resetJson.stage, `${machineId} should stay on the first filed step`);
+      assert.deepEqual(json.next, resetJson.next, `${machineId} should return the same pointer`);
+    }
+  } finally {
+    cleanup([id]);
+  }
+});
+
+test('CLI: design combined first emit seeds --with-overview and a retry reset seeds it again (E7)', () => {
+  const id = JSON.parse(invokeCommand('spawn', '--key', 'test-design-first-emit-variant').stdout).id;
+  const machineId = 'design-standalone@1';
+  const allOpted = ['prereqs-resolution', 'research', 'design', 'tasks', 'interfaces'];
+  try {
+    invokeCommand('reset', id, machineId);
+    let out = runCli(['emit', id, machineId, '--progress', '--with-overview', 'true', '-'], progressPayload(['prereqs-resolution', 'research']));
+    assert.equal(JSON.parse(out.stdout).stage, 'design');
+    out = runCli(['emit', id, machineId, '--progress', '-'], progressPayload(allOpted.slice(2)));
+    assert.equal(JSON.parse(out.stdout).stage, 'overview', 'the opted-in variant should be seeded by the combined first emit');
+
+    // A design-phase retry starts from a reset machine and seeds the variant again.
+    const reset = JSON.parse(invokeCommand('reset', id, machineId).stdout);
+    assert.equal(reset.stage, 'research');
+    out = runCli(['emit', id, machineId, '--progress', '--with-overview', 'false', '-'], progressPayload(['prereqs-resolution', 'research']));
+    assert.equal(JSON.parse(out.stdout).stage, 'design');
+    out = runCli(['emit', id, machineId, '--progress', '-'], progressPayload(allOpted.slice(2)));
+    assert.equal(JSON.parse(out.stdout).stage, 'done', 'the retry should adopt its own unopted variant');
+  } finally {
+    cleanup([id]);
+  }
+});

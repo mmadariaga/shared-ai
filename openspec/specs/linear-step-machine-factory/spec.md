@@ -2,17 +2,19 @@
 
 ## Purpose
 TBD - created by archiving change extract-step-machine-routing. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: Linear step machine factory function
 
-A factory function `createLinearStepMachine({ machineId, steps, stageFiles })` SHALL be exported from `sai-state/machines/linear-steps.js` and create a stateful stage machine object with the standard machine interface: properties `machineId`, `initialState`, `STEPS`, `STAGE_FILES`, `DONE_STAGE`, and methods `transition` and `project`.
+A factory function `createLinearStepMachine({ machineId, steps, stageFiles })` SHALL be exported from `sai-state/machines/linear-steps.js` and create a stateful stage machine object with the standard machine interface: properties `machineId`, `initialState`, `STEPS`, `STAGE_FILES`, `DONE_STAGE`, and methods `transition`, `project`, and `firstFiled`.
 
 **Scope:** Factory implementation for data modules spec-standalone, implement-standalone, review-standalone, and future linear machines.
 
 #### Scenario: Factory creates machine with required interface
 
 - **WHEN** `createLinearStepMachine({ machineId: 'spec-standalone@1', steps: ['prereqs-and-change', 'research', ...], stageFiles: {...} })` is invoked
-- **THEN** it returns an object with `machineId` property set to 'spec-standalone@1', `initialState` object, `STEPS` array, `STAGE_FILES` object, `DONE_STAGE` string constant, and `transition` and `project` methods
+- **THEN** it returns an object with `machineId` property set to 'spec-standalone@1', `initialState` object, `STEPS` array, `STAGE_FILES` object, `DONE_STAGE` string constant, and `transition`, `project`, and `firstFiled` methods
 
 ### Requirement: Factory-created initial state
 
@@ -104,3 +106,11 @@ Marks in the done list MUST be monotonic: only appended, never reopened, never r
 - **WHEN** a state transitions through multiple progress events
 - **THEN** the done list only grows; no step is ever removed from the done list
 
+### Requirement: Factory-created first filed step lookup
+
+The factory-created machine's `firstFiled()` SHALL return `{stage, next: {follow, hint}}` for the first step, in `STEPS` order, whose `stageFiles` entry is a file path rather than `none`, with `hint` in the same form as a projected step pointer. When no step has a file, it SHALL return the done stage and its pointer. It SHALL read no session state and change no state.
+
+#### Scenario: first filed step is the second step
+
+- **WHEN** `firstFiled()` is called on a machine whose first step maps to `none` and whose second step maps to a file
+- **THEN** it returns that second step as `stage` and its file as `next.follow`, and the machine's step list is unchanged

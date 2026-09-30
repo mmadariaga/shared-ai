@@ -38,7 +38,7 @@
   - `plan-generation` — "Write implementation.md"
   - `validation` — "Validate implementation.md and the audit append"
 
-  Declare the step machine that governs step routing: `step_machine: implement-standalone@1`. See `@sai/policies/stage-machine.md` § Step machines for the operational contract.
+  Declare the step machine that governs step routing: `step_machine: implement-standalone@1`. See `@sai/policies/stage-machine.md` § Step machines for the operational contract. Send the first filed step's pointer (`collapse-implemented-steps`), which the segment-start `reset` returns, as the first line of the post-ready task disclosure, per `@sai/orchestration/command-runner.md` § Step-gated pointer delivery. Before the first progress event, the worker's `active_step_id` is that step.
 
   Render the full plan at dispatch per `@sai/policies/todo-structure.md` (first step
   `in_progress`, rest `pending`) **before** dispatching the worker — the render

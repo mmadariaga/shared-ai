@@ -1,6 +1,6 @@
 # Security Step — Common (always active)
 
-This file is fetched at worker dispatch and stays in force for the entire run. It carries the boundaries that outlive any single step: input paths, scope, communication mode, severity taxonomy, hard rules, and standing reminders. Step delivery follows the worker contract's Active Step Execution; `resolve-security-scope` has no step file of its own and runs from the worker contract plus this file.
+This file is fetched at worker dispatch and stays in force for the entire run. It carries the boundaries that outlive any single step: input paths, scope, communication mode, severity taxonomy, hard rules, and standing reminders. Step delivery follows the worker contract's Active Step Execution; `resolve-security-scope` has no step file of its own and runs from the worker contract plus this file. The first pointer arrives as the first line of the task-disclosure continuation, before the task: run `resolve-security-scope` inline, then follow that pointer, and report `resolve-security-scope` and `discover-module-map` together in the first progress event, per `@sai/orchestration/worker-core.md` § Step-machine task disclosure.
 
 Fetch @skills/budget/SKILL.md and use it
 Fetch @sai/policies/remember.md

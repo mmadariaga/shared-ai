@@ -73,10 +73,17 @@ with the worker's progress payload on stdin, and the tool derives the event
 `{"step_ids":[...],"withOverview":true}`; an unopted run passes
 `--with-overview false`. This is coordinator-owned machine initialization, not a worker payload
 or an argument to `spawn`. Later progress emits omit `--with-overview`: the
-variant is immutable once progress starts. A replacement worker uses the surviving machine
-state; a new segment or retry initializes it again after reset.
+variant is immutable once progress starts. Because the task disclosure already
+carries the `research` pointer (`@sai/orchestration/command-runner.md`
+§ Step-gated pointer delivery), that first emit normally carries
+`prereqs-resolution` and `research` together; the variant does not change which
+pointer the disclosure carries, since `research` is the first filed step in both
+variants. A replacement worker uses the surviving machine
+state; a new segment or design-phase retry starts from a reset machine and
+seeds the variant again on its first emit.
 
-Progress-plan rendering and step-pointer routing are separate operations. When
+Progress-plan rendering and step-pointer routing are separate operations. The
+post-ready task disclosure opens with the `research` pointer line. When
 the machine is consulted, a progress continuation carries the protocol continuation
 line followed by the pointer for the first unmarked step in the active plan;
 after all declared steps in the active plan are marked, it carries the exact

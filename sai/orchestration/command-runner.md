@@ -24,7 +24,9 @@ batching that breaks withholding:
    arrives, continue the same worker on the retained handle with the task
    (`arguments_value` and derivatives) as a sequential same-worker
    continuation. The task travels only in this continuation and in the opaque
-   continuation history, never in the dispatch.
+   continuation history, never in the dispatch. When the adapter declares a
+   `step_machine`, this continuation opens with the first filed step's pointer
+   line (§ Step-gated pointer delivery).
 4. **Process results.** Validate every returned result before acting on it
    (§ Validation), handle it by kind (§ Result kinds), and keep continuing the
    same worker until a run-closing result.
@@ -188,14 +190,33 @@ line reads `Active step: <id> — follow <path>`. With every step complete, it
 reads exactly
 `Active step: none — complete remaining work and return your terminal result.`
 
-The pointer travels only in this continuation payload: the materialized binding
-literal is untouched, and no dispatch envelope or reconstruction field carries
-step paths. Continuations that are not progress continuations — feedback turns,
-notices, and `continue_after_recovery` — carry no pointer line, so the worker's
-active step file persists across them in its continuous session. When the
-declaring adapter also requires replacement reconstruction, that reconstruction
-state additionally includes the worker's `active_step_id`, and the replacement's
-first continuation carries the pointer line for that step. The coordinator
+**First pointer with the task.** Every step machine's first step is fileless
+(`follow: none`): it runs from the worker contract plus its `common.md`. Its
+progress event would only relay the second step's pointer, so that pointer
+travels with the task instead. The segment-start `reset` returns `stage` and
+`next` for the machine's first filed step (the first step whose `follow` is a
+file). The coordinator retains them and, when `event: ready` arrives, sends the
+task-disclosure continuation (§ Dispatch and task disclosure) with the pointer
+line `Active step: <stage> — follow <next.follow>` as its first line, then the
+task exactly as the adapter defines it. The worker runs the fileless first step
+inline, follows the disclosed pointer, and reports both ids in one progress
+event. If that event reports only the first id, the machine returns the same
+pointer again, with no error, and the coordinator sends it as usual. A
+resolution or prerequisite failure in the first step returns its terminal
+status before any research and emits no progress event. This rule is the same
+for every phase that declares a `step_machine`, with no per-phase exception.
+
+The pointer travels only in the task-disclosure and progress continuations: the
+materialized binding literal is untouched, and no dispatch envelope or
+reconstruction field carries step paths. Continuations that are not progress
+continuations — feedback turns, notices, and `continue_after_recovery` — carry
+no pointer line, so the worker's active step file persists across them in its
+continuous session. When the declaring adapter also requires replacement
+reconstruction, that reconstruction state additionally includes the worker's
+`active_step_id`, and the replacement's first continuation carries the pointer
+line for that step. The `active_step_id` is the `stage` of the latest progress
+emit; before the first progress event it is the first filed step from the
+`reset` response, never the fileless first step and never a `none` pointer. The coordinator
 renders the progress mark, when a visual `progress_plan` exists, before sending
 the two-line continuation. Without a `step_machine`, a progress continuation is
 exactly `continue_after_progress`.

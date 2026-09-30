@@ -45,7 +45,7 @@
 
   ### 2. Dispatch exactly one worker
 
-  Dispatch exactly one worker per the runner's § Dispatch and task disclosure: the original envelope travels in the first continuation after `event: ready`.
+  Dispatch exactly one worker per the runner's § Dispatch and task disclosure: the original envelope travels in the first continuation after `event: ready`. Send the first filed step's pointer (`research`), which the segment-start `reset` returns, as the first line of the post-ready task disclosure, per `@sai/orchestration/command-runner.md` § Step-gated pointer delivery. Before the first progress event, the worker's `active_step_id` is that step.
 
   ### 3. Run the Result Loop
 

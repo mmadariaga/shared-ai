@@ -158,6 +158,20 @@ function nextFor(stage) {
   return { follow, hint: 'fetch the ' + stage + ' step — skip if already loaded' };
 }
 
+// The first filed step is the first step whose follow is a file. It is
+// `research` in both variants, so the answer never depends on the variant,
+// which is seeded only on the first progress emit. The `reset` verb returns it
+// so the coordinator can deliver that pointer with the task disclosure.
+function firstFiled() {
+  for (const step of UNOPTED_STEPS) {
+    const file = STAGE_FILES[step];
+    if (typeof file === 'string' && file !== 'none') {
+      return { stage: step, next: nextFor(step) };
+    }
+  }
+  return { stage: DONE_STAGE, next: nextFor(DONE_STAGE) };
+}
+
 function outcome(current, rejected) {
   const state = {
     stage: current.stage,
@@ -247,6 +261,7 @@ module.exports = {
   initialState,
   transition,
   project,
+  firstFiled,
   OPTED_IN_STEPS,
   UNOPTED_STEPS,
   STAGE_FILES,

@@ -251,3 +251,66 @@ test('accessibility-standalone@1 machine is properly registered', () => {
   assert.equal(typeof machine.transition, 'function', 'must have transition function');
   assert.equal(typeof machine.project, 'function', 'must have project function');
 });
+
+// ─── First pointer with the task disclosure (step-pointer-with-task) ────────
+
+function readRepo(relativePath) {
+  return fs.readFileSync(path.join(__dirname, '..', relativePath), 'utf8');
+}
+
+test('the first-pointer rule is stated once, phase-neutral, in the three shared surfaces', () => {
+  const runner = readRepo('sai/orchestration/command-runner.md');
+  const stageMachine = readRepo('sai/policies/stage-machine.md');
+  const workerCore = readRepo('sai/orchestration/worker-core.md');
+
+  assert.match(runner, /\*\*First pointer with the task\.\*\*/);
+  assert.match(runner, /first line[\s\S]{0,120}task-disclosure continuation|task-disclosure continuation[\s\S]{0,200}first line/);
+  assert.match(runner, /reports both ids in one progress\s+event/);
+  assert.match(runner, /no per-phase exception/);
+  assert.match(stageMachine, /\{stage, next: \{follow, hint\}\}` for its first filed step/);
+  assert.match(stageMachine, /phase-neutral/);
+  assert.match(workerCore, /## Step-machine task disclosure/);
+  assert.match(workerCore, /carries both ids in plan order/);
+  assert.match(workerCore, /Do not follow the pointer and emit no progress\s+event/,
+    'a resolution failure returns before research with no progress event (E6)');
+});
+
+test('replacement before the first progress event reconstructs with the first filed step as active (E8)', () => {
+  const runner = readRepo('sai/orchestration/command-runner.md');
+  const stageMachine = readRepo('sai/policies/stage-machine.md');
+  assert.match(runner, /before the first progress event it is the first filed step from the\s+`reset` response, never the fileless first step and never a `none` pointer/);
+  assert.match(stageMachine, /Before the first progress event, that active step is the first filed step/);
+});
+
+test('every step-machine coordinator sends the first filed pointer with the task disclosure', () => {
+  const coordinators = discoverStepMachineCoordinators().filter((c) => c.machineId !== 'apply-standalone@1');
+  assert.equal(coordinators.length, 7, 'seven step-machine coordinators should be discovered');
+  for (const { name, machineId, content } of coordinators) {
+    const mod = registry.get(machineId);
+    const second = mod.firstFiled().stage;
+    assert.match(content, new RegExp("first filed step's pointer \\(`" + second + '`\\)'),
+      `${name} coordinator should name its first filed step ${second}`);
+    assert.match(content, /post-ready task disclosure/, `${name} coordinator should send it in the task disclosure`);
+    assert.match(content, /Before the first progress event, the worker's `active_step_id` is that step/,
+      `${name} coordinator should set active_step_id for early replacement`);
+  }
+});
+
+test('every step-machine worker and common.md adopt the task-disclosure pointer rule', () => {
+  for (const name of ['spec', 'design', 'implement', 'review', 'security', 'performance', 'accessibility']) {
+    const worker = readRepo(`sai/commands/${name}/worker.md`);
+    const common = readRepo(`sai/commands/${name}/steps/common.md`);
+    assert.match(worker, /§ Step-machine task disclosure/, `${name} worker should reference the shared rule`);
+    assert.match(common, /first line of the task-disclosure continuation/, `${name} common.md should carry the step-delivery rule`);
+    assert.match(common, /in the first progress event/, `${name} common.md should report both ids together`);
+    assert.doesNotMatch(worker, /is the Startup Handshake/, `${name} worker should no longer return the first step alone`);
+  }
+});
+
+test('chained and supervised surfaces deliver the first pointer in their own task disclosure (E9)', () => {
+  const build = readRepo('sai/commands/meta-build/coordinator.md');
+  const pipeline = readRepo('sai/commands/explore/steps/pipeline-plan-unattended.md');
+  assert.match(build, /post-ready task disclosure opens with the `collapse-implemented-steps` pointer line/);
+  assert.match(pipeline, /reset <id> spec-standalone@1` returns/);
+  assert.match(pipeline, /reset <id> design-standalone@1` returns[\s\S]{0,300}--with-overview`, including on a design-phase retry/);
+});

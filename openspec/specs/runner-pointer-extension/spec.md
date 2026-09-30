@@ -2,7 +2,9 @@
 
 ## Purpose
 TBD - created by archiving change spec-step-gated-instructions. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: Opt-in step_machine pointer routing
 
 The shared command runner SHALL route just-in-time step pointers only through an optional static `step_machine` adapter field alongside `progress_plan` and `recovery_policy` — fully known at dispatch and immutable for the active adapter segment — and SHALL NOT require it: an adapter that declares no `step_machine` sends a progress continuation of exactly `continue_after_progress`, leaving every other phase observationally identical. The runner SHALL admit no static `step_pointer_map` adapter field.
@@ -19,7 +21,7 @@ The shared command runner SHALL route just-in-time step pointers only through an
 
 ### Requirement: Pointer delivery in the runner
 
-The pointer line SHALL be taken from the declared step machine's `next.follow` per `@sai/policies/stage-machine.md` § Step machines; when the machine reports no remaining step, the second line reads exactly `Active step: none — complete remaining work and return your terminal result.` The pointer SHALL travel only in the continuation payload — the materialized binding literal is untouched, and no dispatch envelope or reconstruction field carries step paths. When the declaring adapter also requires replacement reconstruction, that reconstruction state SHALL additionally include the worker's `active_step_id`, and the replacement's first continuation SHALL carry the pointer line for that step.
+The pointer line SHALL be taken from the declared step machine's `next.follow` per `@sai/policies/stage-machine.md` § Step machines; when the machine reports no remaining step, the second line reads exactly `Active step: none — complete remaining work and return your terminal result.` The first filed step's pointer, returned by the segment-start `reset`, SHALL open the post-ready task-disclosure continuation as its first line, before the task. The pointer SHALL travel only in the task-disclosure and progress continuation payloads: the materialized binding literal is untouched, and no dispatch envelope or reconstruction field carries step paths. When the declaring adapter also requires replacement reconstruction, that reconstruction state SHALL additionally include the worker's `active_step_id`, and the replacement's first continuation SHALL carry the pointer line for that step. That id is the `stage` of the latest progress emit, or the first filed step before any progress event.
 
 #### Scenario: binding literal stays byte-for-byte
 
@@ -30,3 +32,4 @@ The pointer line SHALL be taken from the declared step machine's `next.follow` p
 
 - **WHEN** a replacement worker is reconstructed for an adapter whose step machine is declared
 - **THEN** the reconstruction state includes the departing worker's `active_step_id`, and the replacement's first continuation carries the pointer line for that step
+- **AND** before any progress event that step is the first filed step, never the fileless first step or a `none` pointer

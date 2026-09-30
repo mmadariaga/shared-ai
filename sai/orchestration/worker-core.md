@@ -233,6 +233,29 @@ on a missing ready, and replacement reconstruction from the opaque
 continuation history) lives in `@sai/orchestration/command-runner.md`
 § Dispatch and task disclosure.
 
+## Step-machine task disclosure
+
+When your phase routes through a step machine, the task-disclosure
+continuation opens with one pointer line, `Active step: <id> — follow <path>`,
+naming the first filed step. The task is everything after that line; parse it
+exactly as your contract's invocation envelope defines. The same rule holds for
+every step-machine phase, with no per-phase exception:
+
+1. Run the fileless first step (the startup act) inline from your contract plus
+   its `common.md`. It must pass before any subagent dispatch, research, or
+   artifact write.
+2. When it fails (prerequisites, change resolution, or scope resolution),
+   return its terminal status. Do not follow the pointer and emit no progress
+   event.
+3. When it ends the run early with a terminal outcome of its own (for example
+   a no-UI accessibility scope), report only the ids it completed, then
+   return that outcome without following the pointer.
+4. Otherwise follow the disclosed pointer, complete that step, and return one
+   progress event that carries both ids in plan order.
+
+The coordinator side lives in `@sai/orchestration/command-runner.md`
+§ Step-gated pointer delivery.
+
 ## Phase-Defined Report Extension
 
 A phase adapter MAY declare an ordered report extension carried inside the

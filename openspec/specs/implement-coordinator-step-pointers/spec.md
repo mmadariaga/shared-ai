@@ -3,7 +3,9 @@
 ## Purpose
 
 TBD - created by archiving change implement-step-gated-instructions. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: Progress-event continuations are exactly two lines
 
 Progress-event continuation payloads the coordinator sends SHALL be exactly two lines: the protocol continuation line, then one pointer line `Active step: <id> — follow <path>` derived from the step machine's project output. With every declared step marked, the second line SHALL read exactly `Active step: none — complete remaining work and return your terminal result.`
@@ -31,12 +33,13 @@ Needs_input continuations and recovery continuations SHALL carry no pointer line
 
 ### Requirement: Replacement reconstruction carries active_step_id
 
-Replacement reconstruction SHALL include the departing worker's `active_step_id`, and the replacement's first continuation SHALL carry the correct pointer line for that step. The replacement worker re-resolves the active step from the surviving session and the machine re-projects the pointer for the active step's continuation.
+Replacement reconstruction SHALL include the departing worker's `active_step_id`, and the replacement's first continuation SHALL carry the correct pointer line for that step. The replacement worker re-resolves the active step from the surviving session and the machine re-projects the pointer for the active step's continuation. Before the first progress event, `active_step_id` SHALL be `collapse-implemented-steps`, the first filed step returned by the segment-start `reset`.
 
 #### Scenario: Replacement resumes the active step
 
 - **WHEN** the coordinator reconstructs a replacement implementation worker
 - **THEN** the reconstruction fields include the departing worker's `active_step_id` and the replacement's first continuation carries the pointer line for that step
+- **AND** a replacement reconstructed before the first progress event receives the `collapse-implemented-steps` pointer line
 
 ### Requirement: Coordinator owns active-step pointer delivery
 
@@ -46,4 +49,3 @@ The implementation coordinator SHALL own progress rendering and delivery of the 
 
 - **WHEN** the coordinator emits a continuation for the next implementation step
 - **THEN** the continuation carries the coordinator-selected active-step pointer and the worker executes that step.
-
