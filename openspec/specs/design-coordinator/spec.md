@@ -325,12 +325,13 @@ The unopted-in plan SHALL contain exactly the first five steps in the same order
 
 ### Requirement: Continue uses a conditional design terminal route
 
-After design artifacts and the feedback gate are complete, an opted-in invocation SHALL trigger the existing same-worker overview-generation route with the explicitly selected language and existing generator contract. An unopted-in invocation SHALL close through the existing design completion sentence after source-artifact verification without dispatching the generator, writing overview lifecycle metadata, or offering a new navigation choice. Exactly one of these mutually exclusive routes SHALL execute per invocation, selected solely by the presence of `--overview-lang`, and the design completion sentence SHALL be emitted at most once. Both routes SHALL stop after design and SHALL not dispatch implementation planning.
+After design artifacts and the feedback gate are complete, an opted-in invocation SHALL trigger the existing same-worker overview-generation route with the explicitly selected language and existing generator contract. The generation-trigger continuation SHALL explicitly name `@sai/commands/design/steps/overview.md` as the step file to load, because it carries no `Active step:` pointer. An unopted-in invocation SHALL close through the existing design completion sentence after source-artifact verification without dispatching the generator, writing overview lifecycle metadata, or offering a new navigation choice. Exactly one of these mutually exclusive routes SHALL execute per invocation, selected solely by the presence of `--overview-lang`, and the design completion sentence SHALL be emitted at most once. Both routes SHALL stop after design and SHALL not dispatch implementation planning.
 
 #### Scenario: Opted-in Continue carries generation scope
 
 - **WHEN** `Continue` is selected for a design invocation with `--overview-lang spanish`
 - **THEN** the same worker receives the existing generation-trigger continuation with the resolved change name, generation scope, and `spanish`
+- **AND** the continuation names `@sai/commands/design/steps/overview.md` as the step file to load
 - **AND** the existing overview terminal behavior is preserved
 
 #### Scenario: Unopted-in Continue is terminal without generation

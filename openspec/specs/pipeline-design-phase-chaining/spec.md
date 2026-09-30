@@ -3,6 +3,7 @@
 ## Purpose
 
 TBD - created by archiving change extend-pipeline-supervision-to-sai-2. Update Purpose after archive.
+
 ## Requirements
 
 ### Requirement: Chain design only from Plan
@@ -13,6 +14,7 @@ The existing sai-1-to-sai-2 phase transition SHALL belong to Plan (unattended), 
 
 - **WHEN** supervised sai-1 converges under Plan
 - **THEN** the existing design worker is chained without dispatching implementation.
+
 ### Requirement: Chain design under Auto
 
 The existing chained design worker SHALL run under the same Auto invocation, with review, escalation, failure, retry, and no-later-phase rules unchanged.
@@ -161,12 +163,12 @@ A design worker `needs_input` question raised during the chained design phase SH
 
 ### Requirement: Chained design phase ends with supervised completion and chains no later phase
 
-When the chained design phase reaches convergence or cap exhaustion, explore SHALL apply the shared artifact feedback gate with `mode = supervised`. If the invocation explicitly supplied `--overview-lang <language>`, the gate SHALL execute the Continue next-action (overview generation) exactly once; if the flag is absent, it SHALL execute the no-generation design terminal exactly once. These routes are mutually exclusive and exactly one SHALL execute per invocation, selected solely by the active design envelope's flag presence. Explore SHALL then emit design-phase supervised completion at most once, emit the design completion sentence at most once, suppress the standalone `/sai-2-design` navigation sentence for this supervised run, emit exactly one `Next step: run /sai-build {name}.` handoff, emit no `sai-3 was not run.` text, and dispatch no later phase. A failed or cancelled design worker SHALL end the supervised run under its lifecycle result without auto-proceeding either route, leave the change retryable, and keep the existing autonomy reporting behavior.
+When the chained design phase reaches convergence or cap exhaustion, explore SHALL apply the shared artifact feedback gate with `mode = supervised`. If the invocation explicitly supplied `--overview-lang <language>`, the gate SHALL execute the Continue next-action (overview generation) exactly once, as a same-worker generation-trigger continuation that explicitly names `@sai/commands/design/steps/overview.md` and that is the sole overview generation of the invocation, because the supervised adapter seeds the unopted machine variant and delivers no `overview` pointer earlier; if the flag is absent, it SHALL execute the no-generation design terminal exactly once. These routes are mutually exclusive and exactly one SHALL execute per invocation, selected solely by the active design envelope's flag presence. Explore SHALL then emit design-phase supervised completion at most once, emit the design completion sentence at most once, suppress the standalone `/sai-2-design` navigation sentence for this supervised run, emit exactly one `Next step: run /sai-build {name}.` handoff, emit no `sai-3 was not run.` text, and dispatch no later phase. A failed or cancelled design worker SHALL end the supervised run under its lifecycle result without auto-proceeding either route, leave the change retryable, and keep the existing autonomy reporting behavior.
 
 #### Scenario: Chained opted-in design converges
 
 - **WHEN** an opted-in chained design phase converges after its review rounds and feedback handling
-- **THEN** overview generation runs once with the explicit language, explore emits design-phase supervised completion, does not relay the standalone `/sai-2-design` navigation sentence, emits exactly one `Next step: run /sai-build {name}.` handoff, and does not emit `sai-3 was not run.`
+- **THEN** overview generation runs once with the explicit language through a generation-trigger continuation naming `@sai/commands/design/steps/overview.md`, explore emits design-phase supervised completion, does not relay the standalone `/sai-2-design` navigation sentence, emits exactly one `Next step: run /sai-build {name}.` handoff, and does not emit `sai-3 was not run.`
 
 #### Scenario: Chained unopted-in design converges
 

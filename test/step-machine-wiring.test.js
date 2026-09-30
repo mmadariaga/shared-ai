@@ -312,5 +312,13 @@ test('chained and supervised surfaces deliver the first pointer in their own tas
   const pipeline = readRepo('sai/commands/explore/steps/pipeline-plan-unattended.md');
   assert.match(build, /post-ready task disclosure opens with the `collapse-implemented-steps` pointer line/);
   assert.match(pipeline, /reset <id> spec-standalone@1` returns/);
-  assert.match(pipeline, /reset <id> design-standalone@1` returns[\s\S]{0,300}--with-overview`, including on a design-phase retry/);
+  assert.match(pipeline, /reset <id> design-standalone@1` returns[\s\S]{0,300}--with-overview false` in every supervised run, including on a design-phase retry/);
+});
+
+test('supervised design adapter seeds the unopted variant and names the overview step in the generation trigger', () => {
+  const pipeline = readRepo('sai/commands/explore/steps/pipeline-plan-unattended.md');
+  const contract = readRepo('sai/commands/design/phase-contract.md');
+  assert.match(pipeline, /`--with-overview false` in every supervised run[\s\S]{0,400}regardless of `overview_language`/);
+  assert.match(pipeline, /generation-trigger payload[\s\S]{0,600}naming `@sai\/commands\/design\/steps\/overview\.md`/);
+  assert.match(contract, /supervised route[\s\S]{0,200}always passes `--with-overview false`/);
 });
