@@ -71,7 +71,7 @@ ids). For an opted-in run, that call is
 `sai-state emit <id> design-standalone@1 --progress --with-overview true -`
 with the worker's progress payload on stdin, and the tool derives the event
 `{"step_ids":[...],"withOverview":true}`; an unopted run passes
-`--with-overview false`. This is coordinator-owned machine initialization, not a worker payload
+`--with-overview false`. The supervised route (Explore Plan (unattended)) is the one exception: its adapter always passes `--with-overview false`, even when `--overview-lang` is present, because its sole overview generation is Explore's final generation-trigger continuation, which names `steps/overview.md` explicitly instead of delivering the `overview` pointer. This is coordinator-owned machine initialization, not a worker payload
 or an argument to `spawn`. Later progress emits omit `--with-overview`: the
 variant is immutable once progress starts. Because the task disclosure already
 carries the `research` pointer (`@sai/orchestration/command-runner.md`

@@ -76,7 +76,7 @@ A coordinator that reconstructs a replacement worker before any progress event h
 
 ### Requirement: Design discloses research in both variants and seeds the variant on the combined emit
 
-The `design-standalone@1` machine SHALL name `research` as its first filed step in both the opted-in and the unopted variant, so the disclosed pointer never depends on the variant. The design coordinator's first progress emit, which normally carries `prereqs-resolution` and `research` together, SHALL carry `--with-overview true|false`. A design-phase retry SHALL start from a reset machine and seed the variant again on its first emit. The `--overview-lang` to boolean mapping SHALL stay unchanged.
+The `design-standalone@1` machine SHALL name `research` as its first filed step in both the opted-in and the unopted variant, so the disclosed pointer never depends on the variant. The design coordinator's first progress emit, which normally carries `prereqs-resolution` and `research` together, SHALL carry `--with-overview true|false`. A design-phase retry SHALL start from a reset machine and seed the variant again on its first emit. The `--overview-lang` to boolean mapping SHALL stay unchanged for standalone design. The supervised Explore Plan (unattended) design adapter SHALL always seed `--with-overview false`, including on a retry and regardless of `overview_language`.
 
 #### Scenario: combined first emit seeds the variant
 
@@ -87,6 +87,11 @@ The `design-standalone@1` machine SHALL name `research` as its first filed step 
 
 - **WHEN** a design-phase retry resets `design-standalone@1` and its first progress emit passes `--with-overview false`
 - **THEN** the machine adopts the unopted plan for the retry
+
+#### Scenario: supervised adapter seeds the unopted variant
+
+- **WHEN** the supervised Explore Plan (unattended) adapter emits the first design progress event with a selected `overview_language`
+- **THEN** the emit passes `--with-overview false` and the machine adopts the unopted plan
 
 ### Requirement: Chained and supervised surfaces disclose the first pointer
 
