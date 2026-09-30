@@ -1,5 +1,7 @@
 # Capability Retirement Declaration
 
+Fetch @sai/policies/command-execution.md and follow it for command execution.
+
 A **capability-emptying delta** is a delta spec whose `## REMOVED Requirements`
 names every requirement currently published in
 `openspec/specs/<capability>/spec.md`, with no `## ADDED Requirements` for that
@@ -59,9 +61,10 @@ never a question, on every route.
 ## Write
 
 Whoever runs the CLI archive writes the declaration: the coordinator on the
-ordinary route, the archive worker (through Bash) in the Direct Build execute
-continuation. With no capability-emptying delta, `.openspec.yaml` is not
-touched.
+ordinary route, the archive worker in the Direct Build execute continuation.
+Use the active supported shell and command-execution tool under
+`@sai/policies/command-execution.md`; do not require Bash. With no
+capability-emptying delta, `.openspec.yaml` is not touched.
 
 1. Re-check the preconditions against the current files.
 2. Judge on the parsed YAML value, never on the line's text: a parsed `true`

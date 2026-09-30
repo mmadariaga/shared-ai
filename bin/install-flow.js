@@ -802,6 +802,7 @@ async function runNavigator({
   preventEmptyConfirm = false,
   displayOptions,
   header,
+  toggleAll = false,
 }) {
   if (!input.isTTY) {
     return { status: 'non-interactive' };
@@ -889,6 +890,17 @@ async function runNavigator({
         finish({ status: 'back' });
         return;
       }
+      if (toggleAll && mode === 'multi' && key.ctrl === true
+          && typeof key.name === 'string' && key.name.toLowerCase() === 'a') {
+        const firstSelectable = options.findIndex(option => !isChecklistSeparator(option));
+        if (firstSelectable < 0) return;
+        const nextSelection = !selected[firstSelectable];
+        options.forEach((option, index) => {
+          if (!isChecklistSeparator(option)) selected[index] = nextSelection;
+        });
+        render();
+        return;
+      }
       if (key.name === 'up') {
         let prev = cursor - 1;
         while (prev >= 0 && isChecklistSeparator(options[prev])) prev -= 1;
@@ -934,6 +946,7 @@ function promptChecklist(items, defaultSelected, input, footer, navigatorOptions
     preventEmptyConfirm: navigatorOptions?.preventEmptyConfirm === true,
     displayOptions: navigatorOptions?.displayOptions,
     header: navigatorOptions?.header,
+    toggleAll: navigatorOptions?.toggleAll === true,
   });
 }
 

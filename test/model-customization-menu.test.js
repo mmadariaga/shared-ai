@@ -200,7 +200,7 @@ const COMBINED_BOTH_FULL = [
   'utility:sai-worktree',
 ];
 
-const CHECKLIST_LEGEND = 'Up/Down move \u00b7 Space toggle \u00b7 Enter confirm \u00b7 \u2190/Esc back \u00b7 q/Ctrl-C cancel';
+const CHECKLIST_LEGEND = 'Up/Down move \u00b7 Space toggle \u00b7 Ctrl+A toggle all \u00b7 Enter confirm \u00b7 \u2190/Esc back \u00b7 q/Ctrl-C cancel';
 const SELECT_LEGEND = 'Up/Down move \u00b7 Space/Enter confirm \u00b7 \u2190/Esc back \u00b7 q/Ctrl-C cancel';
 const SCRATCH_ROOT = path.join(REPO_ROOT, '.tmp', 'customize-command-models', 'scratch-repos');
 
@@ -864,11 +864,73 @@ test('checklist receives the canonical legend string as its footer argument', as
     assert.equal(checklistCalls.length, 1, 'the checklist should be invoked exactly once');
     assert.ok(checklistCalls[0].includes(CHECKLIST_LEGEND),
       'the checklist should be invoked with the canonical legend as its footer argument');
+    assert.equal(checklistCalls[0][4].toggleAll, true,
+      'the customization target checklist explicitly enables Ctrl+A');
     assert.equal(result.status, 'skipped');
     assert.equal(result.reason, 'cancelled');
   } finally {
     restoreOpencode();
     restoreClaude();
+  }
+});
+
+test('model target checklists enable Ctrl+A and advertise it for both harnesses', async () => {
+  for (const [harness, factoryName] of [['OpenCode', 'createOpencodeAdapter'], ['Claude Code', 'createClaudeAdapter']]) {
+    const adapter = makeFakeAdapter(['sai-custom-worker'], { select: [], create: [] });
+    const restore = patchFactory(factoryName, () => adapter);
+    const checklistCalls = [];
+    try {
+      const answers = ['Customize models', harness, 'Workers'];
+      const result = await runPostSetupMenu({
+        projectPath: REPO_ROOT,
+        isTTY: true,
+        promptChoice: async () => answers.shift() ?? '<model>',
+        promptChecklist: async (...args) => {
+          checklistCalls.push(args);
+          return { status: 'cancelled' };
+        },
+      });
+
+      assert.equal(result.reason, 'cancelled', `${harness}: customization stops on checklist cancellation`);
+      assert.equal(checklistCalls.length, 1, `${harness}: customization opens one target checklist`);
+      assert.equal(checklistCalls[0][4].toggleAll, true,
+        `${harness}: the customization target checklist explicitly enables Ctrl+A`);
+      assert.ok(checklistCalls[0][3].includes('Ctrl+A toggle all'),
+        `${harness}: the customization checklist legend advertises Ctrl+A`);
+    } finally {
+      restore();
+    }
+  }
+
+  for (const [harness, factoryName] of [['OpenCode', 'createOpencodeAdapter'], ['Claude Code', 'createClaudeAdapter']]) {
+    const adapter = makeFakeAdapter(['sai-reset-worker'], { select: [], create: [] });
+    adapter.localOverrideExists = () => true;
+    const restore = patchFactory(factoryName, () => adapter);
+    const checklistCalls = [];
+    try {
+      const answers = ['Reset to default models', harness];
+      const result = await runPostSetupMenu({
+        projectPath: REPO_ROOT,
+        isTTY: true,
+        promptChoice: async () => answers.shift() ?? '<model>',
+        promptChecklist: async (...args) => {
+          checklistCalls.push(args);
+          return { status: 'cancelled' };
+        },
+      });
+
+      assert.equal(result.reason, 'cancelled', `${harness}: reset stops on checklist cancellation`);
+      assert.equal(checklistCalls.length, 1, `${harness}: reset opens one target checklist`);
+      assert.equal(checklistCalls[0][4].toggleAll, true,
+        `${harness}: the reset target checklist explicitly enables Ctrl+A`);
+      assert.ok(checklistCalls[0][3].includes('Ctrl+A toggle all'),
+        `${harness}: the reset checklist legend advertises Ctrl+A`);
+      assert.match(checklistCalls[0][4].header[0], /CONTEXT  DIFFICULTY  SETTING$/);
+      assert.ok(checklistCalls[0][4].displayOptions.some(label => /Unknown  Unknown   /.test(label)),
+        `${harness}: reset rows use the same context and difficulty columns`);
+    } finally {
+      restore();
+    }
   }
 });
 
@@ -1053,7 +1115,7 @@ test('review-fix worker follows the review worker in All and stays alphabetical 
   }
 });
 
-test('injected checklist seam renders the task-complexity column in both harnesses while returning stable identities', async () => {
+test('injected checklist seam renders context before difficulty in both harnesses while returning stable identities', async () => {
   for (const [harness, factoryName] of [['OpenCode', 'createOpencodeAdapter'], ['Claude Code', 'createClaudeAdapter']]) {
     const ops = { select: [], create: [] };
     const restore = patchFactory(factoryName, () => makeFakeAdapter(
@@ -1079,22 +1141,72 @@ test('injected checklist seam renders the task-complexity column in both harness
       ],
         'selection defaults use stable values without the blank separator, not display labels');
       assert.deepEqual(checklistCalls[0][4].header, [
-        '      TYPE          TARGET      TASK COMPLEXITY  SETTING',
-        `      ${'─'.repeat(12)}  ${'─'.repeat(10)}  ${'─'.repeat(15)}  ${'─'.repeat(7)}`,
+        '      TYPE          TARGET      CONTEXT  DIFFICULTY  SETTING',
+        `      ${'─'.repeat(12)}  ${'─'.repeat(10)}  ${'─'.repeat(7)}  ${'─'.repeat(10)}  ${'─'.repeat(7)}`,
       ],
         'the header columns start under the six-char option prefix and reuse the row widths with left-aligned TYPE');
       assert.deepEqual(checklistCalls[0][4].displayOptions, [
-        `ORCHESTRATOR  sai-build   ↑↑${' '.repeat(13)}  opencode-go/test-model (high)`,
+        `ORCHESTRATOR  sai-build   Large    ↑↑↑${' '.repeat(7)}  opencode-go/test-model (high)`,
         '',
-        `WORKER        sai-worker  ↑${' '.repeat(14)}  opencode-go/test-model (high)`,
+        `WORKER        sai-worker  Unknown  Unknown${' '.repeat(3)}  opencode-go/test-model (high)`,
         '',
-        `UTILITY       sai-pr      ↑${' '.repeat(14)}  opencode-go/test-model (high)`,
+        `UTILITY       sai-pr      Medium   ↑${' '.repeat(9)}  opencode-go/test-model (high)`,
       ],
-        'display labels are left-aligned type/target/complexity/setting columns with a blank separator row and no ANSI wrappers');
+        'display labels are left-aligned type/target/context/difficulty/setting columns with a blank separator row and no ANSI wrappers');
       assert.deepEqual(ops.select, ['command:sai-build, worker:sai-worker, utility:sai-pr'],
         'the injected seam returns stable identities independently of labels');
     } finally {
       restore();
+    }
+  }
+});
+
+test('save and load preset previews show context before difficulty on both harnesses', async () => {
+  for (const [harness, factoryName] of [['OpenCode', 'createOpencodeAdapter'], ['Claude Code', 'createClaudeAdapter']]) {
+    for (const action of ['Save preset', 'Load preset']) {
+      const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-context-preview-'));
+      const ops = { select: [], create: [] };
+      const restore = patchFactory(factoryName, () => makeFakeAdapter(
+        ['sai-2-design-worker'], ops, undefined, ['sai-status']
+      ));
+      const logged = [];
+      const originalLog = console.log;
+      console.log = (...args) => logged.push(args.map(String).join(' '));
+      try {
+        const preset = {
+          'worker:sai-2-design-worker': { model: 'test/model' },
+          'utility:sai-status': { model: 'test/model' },
+        };
+        const presetText = JSON.stringify(preset);
+        const presetPath = path.join(root, 'context-test.json');
+        if (action === 'Load preset') fs.writeFileSync(presetPath, presetText);
+        const answers = action === 'Save preset'
+          ? [action, harness, 'No', 'Exit']
+          : [action, harness, 'context-test', 'No', 'Exit'];
+        const result = await runPostSetupMenu({
+          projectPath: root,
+          isTTY: true,
+          claudePresetDir: root,
+          opencodePresetDir: root,
+          promptInput: async () => 'context-test',
+          promptChoice: async () => answers.shift(),
+          promptChecklist: async () => assert.fail('preset previews do not open a checklist'),
+        });
+        assert.equal(result.reason, 'cancelled');
+        assert.ok(logged.some(line => /CONTEXT  DIFFICULTY  SETTING$/.test(line)), `${harness}: ${action} header`);
+        assert.ok(logged.some(line => /sai-2-design-worker\s+Large\s+↑↑↑\s+/.test(line)), `${harness}: ${action} worker row`);
+        assert.ok(logged.some(line => /sai-status\s+Small\s+↑\s+/.test(line)), `${harness}: ${action} utility row`);
+        assert.deepEqual(ops.create, [], 'declining a preview writes no overrides');
+        if (action === 'Load preset') {
+          assert.equal(fs.readFileSync(presetPath, 'utf8'), presetText, 'display metadata does not alter preset contents');
+        } else {
+          assert.equal(fs.existsSync(presetPath), false, 'declining save writes no preset');
+        }
+      } finally {
+        console.log = originalLog;
+        restore();
+        fs.rmSync(root, { recursive: true, force: true });
+      }
     }
   }
 });
@@ -1115,7 +1227,7 @@ test('an adapter without effectiveSetting renders unavailable as plain column te
     });
     assert.equal(result.reason, 'cancelled');
     assert.deepEqual(checklistCalls[0][4].displayOptions, [
-      `WORKER        sai-worker  ↑${' '.repeat(14)}  unavailable`,
+      `WORKER        sai-worker  Unknown  Unknown${' '.repeat(3)}  unavailable`,
     ],
       'the unavailable setting renders as ordinary text in the setting column');
     for (const label of checklistCalls[0][4].displayOptions) {

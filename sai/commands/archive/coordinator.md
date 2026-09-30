@@ -3,6 +3,7 @@
   Fetch @sai/policies/verified-precondition-handback.md
   Fetch @skills/safe-operations/SKILL.md and use it
   Fetch @sai/commands/archive/retirement-declaration.md
+  Fetch @sai/policies/command-execution.md and follow it exactly.
 
   ## Prerequisite checks
 

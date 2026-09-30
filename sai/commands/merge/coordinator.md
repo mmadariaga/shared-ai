@@ -3,6 +3,7 @@
   Fetch @sai/policies/verified-precondition-handback.md
   Fetch @skills/safe-operations/SKILL.md and use it
   Fetch @sai/policies/commit-rules.md and follow it at the commit gate.
+  Fetch @sai/policies/command-execution.md and follow it exactly.
   Fetch @sai/policies/remember.md
   Fetch @sai/policies/question-context.md
   Fetch @sai/commands/merge/lifecycle.md and use it as the merge lifecycle
@@ -313,9 +314,11 @@
   - **Authorization.** On the worker's authorization `needs_input`, build
     `compact_authorization_summary` and present it with the exact question
     and options. On `yes`:
-    - merge in progress, or a finished rebase with a staged repair —
-      `git commit -m "$(cat <<'EOF' ... EOF)"` with its informative message per
-      **Informative messages** (`merge_base..source_sha`); show the resulting SHA and subject;
+    - merge in progress, or a finished rebase with a staged repair — pass the
+      informative message defined by **Informative messages**
+      (`merge_base..source_sha`) literally on standard input to
+      `git commit -F -`, using `@sai/policies/command-execution.md`; show the
+      resulting SHA and subject;
     - rebase stopped — `GIT_EDITOR=true git rebase --continue`, then report
       the new outcome to the worker: a new conflicted commit re-enters
       § Conflict hand-off as `strategy-analysis`; a finished rebase goes to the

@@ -1,0 +1,68 @@
+> **⚠ POST-HOC RECORD** — This proposal was backfilled after implementation against a user-supplied statement of intent. It describes a decision already made, not one being proposed.
+
+## Why
+
+The staged Explore flow could reach route selection in the same assistant turn as proposal-block inventory recording. The implementation now records the complete ordered block set, ends that turn without selecting a route, and accepts route selection only from a later explicit reply.
+
+## What Changes
+
+The crystallization close records the ordered `Ready to Propose` inventory after all blocks are visible, clears the stage TODO, and ends with `next.follow: none`. It does not load the route selector, emit a route intent, create route entries, or dispatch work in that turn.
+
+The `explore-slice@1` machine now distinguishes pre-inventory `idle` from post-inventory `waiting`, requires a later `route-choice` activation, rejects premature route intents, preserves first-pending ordering, and resets completion state when a new crystallization replaces the inventory.
+
+The later route-choice contract accepts exactly one clear `Plan - Unattended`, `Direct Build - Unattended`, or `Manual` reply. Ambiguous replies request clarification and start no route. Plan timing, Direct Build continuation behavior, POC exclusion, inline proposal refusal, route localization, persistence merging, and both supported harnesses retain their staged behavior.
+
+## Capabilities
+
+### New Capabilities
+
+- `explore-route-choice`: Interpret one explicit route choice from a later user reply after the complete crystallization inventory is visible.
+
+### Modified Capabilities
+
+- `explore-crystallization-block`: End the block-emission turn after ordered inventory recording and before route selection.
+- `crystallization-close`: Move route selection out of the shared same-turn close.
+- `explore-pipeline-selector`: Defer route interpretation and preserve explicit dispatch gates.
+- `explore-slice-machine`: Add the waiting state, route-choice activation, inventory versioning, and replacement completion reset.
+- `concurrent-store-safety`: Preserve the new inventory's completion state instead of unioning stale completion names.
+- `route-owned-todo`: Keep route-owned entries absent until later route-choice resolution.
+- `explore-crystallization-language-gate`: Localize the later route guide while retaining fixed route literals and the separate continuation picker.
+- `explore-pipeline-supervision`: Start Plan and Direct Build supervision only after the later route reply.
+- `explore-crystallization-handoff`: End the Explore handoff turn before route selection.
+- `deferred-selector`: Replace same-turn picker presentation with later-turn text choice.
+
+## Impact
+
+- `README.md`
+- `bin/sai-state.js`
+- `sai-state/machines/explore-slice.js`
+- `sai/commands/explore/instructions.md`
+- `sai/commands/explore/steps/crystallization-language-gates.md`
+- `sai/commands/explore/steps/crystallization-protocol.md`
+- `sai/commands/explore/steps/pipeline-direct-build.md`
+- `sai/commands/explore/steps/pipeline-plan-unattended.md`
+- `sai/commands/explore/steps/poc-lane.md`
+- `sai/commands/explore/steps/route-selector.md`
+- `sai/commands/explore/steps/slice.md`
+- `sai/policies/ready-to-propose-format.md`
+- `sai/policies/stage-machine.md`
+- `test/explore-contract-preservation.test.js`
+- `test/explore-pipeline-selector.test.js`
+- `test/explore-pre-crystallization-stages.test.js`
+- `test/explore-slice-machine.test.js`
+- `test/sai-state.test.js`
+- `openspec/changes/defer-explore-route-until-visible-crystallization/.openspec.yaml`
+- `openspec/changes/defer-explore-route-until-visible-crystallization/proposal.md`
+- `openspec/changes/defer-explore-route-until-visible-crystallization/specs/explore-route-choice/spec.md`
+- `openspec/changes/defer-explore-route-until-visible-crystallization/specs/explore-crystallization-block/spec.md`
+- `openspec/changes/defer-explore-route-until-visible-crystallization/specs/crystallization-close/spec.md`
+- `openspec/changes/defer-explore-route-until-visible-crystallization/specs/explore-pipeline-selector/spec.md`
+- `openspec/changes/defer-explore-route-until-visible-crystallization/specs/explore-slice-machine/spec.md`
+- `openspec/changes/defer-explore-route-until-visible-crystallization/specs/concurrent-store-safety/spec.md`
+- `openspec/changes/defer-explore-route-until-visible-crystallization/specs/route-owned-todo/spec.md`
+- `openspec/changes/defer-explore-route-until-visible-crystallization/specs/explore-crystallization-language-gate/spec.md`
+- `openspec/changes/defer-explore-route-until-visible-crystallization/specs/explore-pipeline-supervision/spec.md`
+- `openspec/changes/defer-explore-route-until-visible-crystallization/specs/explore-crystallization-handoff/spec.md`
+- `openspec/changes/defer-explore-route-until-visible-crystallization/specs/deferred-selector/spec.md`
+
+Out of scope: design.md, tasks.md, implementation.md — not generated by /sai-backfill

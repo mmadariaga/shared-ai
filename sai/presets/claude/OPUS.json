@@ -4,7 +4,7 @@
   },
   "agent:budget-explorer": {
     "model": "sonnet",
-    "effort": "low"
+    "effort": "medium"
   },
   "agent:budget-subagent": {
     "model": "sonnet",
@@ -19,16 +19,16 @@
     "effort": "medium"
   },
   "command:sai-1-spec": {
-    "model": "opus",
-    "effort": "medium"
+    "model": "sonnet",
+    "effort": "high"
   },
   "worker:sai-1-spec-proposal-worker": {
-    "model": "opus",
-    "effort": "medium"
+    "model": "sonnet",
+    "effort": "high"
   },
   "command:sai-2-design": {
-    "model": "opus",
-    "effort": "medium"
+    "model": "sonnet",
+    "effort": "high"
   },
   "worker:sai-2-design-worker": {
     "model": "opus",
@@ -39,8 +39,8 @@
     "effort": "medium"
   },
   "command:sai-3-implement": {
-    "model": "opus",
-    "effort": "medium"
+    "model": "sonnet",
+    "effort": "high"
   },
   "worker:sai-3-implementation-worker": {
     "model": "opus",
@@ -55,7 +55,7 @@
     "effort": "medium"
   },
   "worker:sai-4-green-worker": {
-    "model": "opus",
+    "model": "sonnet",
     "effort": "medium"
   },
   "command:sai-review": {
@@ -63,48 +63,52 @@
     "effort": "medium"
   },
   "command:sai-5-review": {
-    "model": "opus",
-    "effort": "medium"
+    "model": "sonnet",
+    "effort": "high"
   },
   "worker:sai-5-review-worker": {
     "model": "opus",
     "effort": "medium"
   },
-  "command:sai-6-security": {
-    "model": "opus",
+  "worker:sai-review-fix-worker": {
+    "model": "sonnet",
     "effort": "medium"
+  },
+  "command:sai-6-security": {
+    "model": "sonnet",
+    "effort": "high"
   },
   "worker:sai-6-security-worker": {
     "model": "opus",
-    "effort": "xhigh"
+    "effort": "medium"
   },
   "command:sai-7-performance": {
-    "model": "opus",
-    "effort": "medium"
+    "model": "sonnet",
+    "effort": "high"
   },
   "worker:sai-7-performance-worker": {
     "model": "opus",
     "effort": "medium"
   },
   "command:sai-8-accessibility": {
-    "model": "opus",
-    "effort": "medium"
+    "model": "sonnet",
+    "effort": "high"
   },
   "worker:sai-8-accessibility-worker": {
     "model": "opus",
     "effort": "medium"
   },
   "command:sai-backfill": {
-    "model": "opus",
-    "effort": "medium"
+    "model": "sonnet",
+    "effort": "high"
   },
   "worker:sai-backfill-worker": {
     "model": "opus",
     "effort": "medium"
   },
   "command:sai-archive": {
-    "model": "opus",
-    "effort": "medium"
+    "model": "sonnet",
+    "effort": "high"
   },
   "worker:sai-archive-worker": {
     "model": "sonnet",
@@ -120,14 +124,10 @@
   },
   "command:sai-commit": {
     "model": "sonnet",
-    "effort": "medium"
+    "effort": "high"
   },
   "worker:sai-commit-worker": {
     "model": "sonnet",
-    "effort": "medium"
-  },
-  "worker:sai-review-fix-worker": {
-    "model": "opus",
     "effort": "medium"
   },
   "utility:sai-pr": {

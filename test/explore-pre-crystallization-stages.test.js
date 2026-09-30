@@ -78,7 +78,7 @@ test('gate 9 is opt-in at supervised Plan activation, puts do-not-create first, 
 
   const selector = supervised.slice(selectorStart);
   assert.match(selector, /(?:None\s*(?:—|-)\s*do[- ]not[- ]create|do[- ]not[- ]create[\s\S]{0,120}None)/i);
-  assert.match(selector, /after \*\*Deterministic selection\*\* confirms a dispatchable change/i);
+  assert.match(selector, /after the native route picker returns a clear \*\*Plan \(unattended\)\*\* selection for a dispatchable change/i);
   assert.match(selector, /before setting `active_change` or dispatching the first spec worker/i);
   assert.doesNotMatch(source, /emitted first and carrying the `Recommended` marker/);
   assert.doesNotMatch(source, /emitted second, carrying no marker/);
@@ -181,9 +181,9 @@ test('material changes reset every pending selector and staged state before clas
 test('selector flows keep overview opt-out and renderer ownership unchanged', () => {
   const source = explore();
 
-  assert.match(source, /Selectors never select or infer an `Overview language`/);
-  assert.match(source, /except for the crystallization-close selector's displayed \*\*Plan \(unattended\)\*\* option/);
-  assert.match(source, /only selector branch that may resolve gate 9/);
+  assert.match(source, /The route choice itself never selects or infers an `Overview language`/);
+  assert.match(source, /deferred crystallization route choice's explicit \*\*Plan \(unattended\)\*\* branch is the only route path that may resolve gate 9/);
+  assert.match(source, /only route path that may resolve gate 9/);
   assert.match(source, /\*\*Manual\*\* and \*\*Direct Build \(unattended\)\*\* MUST NOT resolve or dispatch/);
   assert.match(source, /separately supported explicit `--overview-lang <language>` remains a distinct opt-in and suppresses gate 9/);
   assert.match(source, /literal `\*\*Overview language\*\*: None`/);
@@ -203,6 +203,6 @@ test('direct-looking imperative inputs mature as ideas without early implementat
   assert.match(source, /never triggers a handoff to `\/sai-4-apply` or `\/sai-build`/);
   assert.match(source, /never advises exiting Explore/);
   assert.match(source, /`Explore change`, `Review edge cases`, `Implementation details`, and `Crystallize`.*remain mandatory/);
-  assert.match(source, /crystallization-close route selector.*sole route-selection and delegated-write gate/);
+  assert.match(source, /never dispatches implementation before the crystallization-close route picker receives an explicit user answer/i);
   assert.match(source, /explicit artifact-review deliverable keeps its existing review path/);
 });

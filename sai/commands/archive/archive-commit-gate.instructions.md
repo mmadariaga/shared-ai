@@ -1,5 +1,7 @@
 # Archive Commit Gate
 
+Fetch @sai/policies/command-execution.md and follow it exactly.
+
 The coordinator-owned post-archive commit gate of `/sai-archive`, applied on
 the ordinary route after `openspec archive <name> --yes --json` succeeded.
 Its governing spec is `openspec/specs/sai-archive-commit-gate/spec.md`.
@@ -58,12 +60,13 @@ no further git mutation. Exit 1 continues with the selected action.
 4. Add the retired-capability body lines of
    `sai/commands/archive/retirement-declaration.md` § Disclosure when this run
    retired capabilities.
-5. Commit with the composed message.
+5. Commit with the composed message passed literally on standard input to
+   `git commit -F -` under `@sai/policies/command-execution.md`.
 
 ## Amend the latest commit
 
 1. Before any staging, check whether `HEAD` is pushed: run
-   `git log @{push}..HEAD --oneline`. When `@{push}` does not resolve (no
+   `git log '@{push}..HEAD' --oneline`. When `@{push}` does not resolve (no
    upstream), or the output is non-empty, `HEAD` is unpushed. When the output
    is empty, `HEAD` is pushed: print an explicit warning and ask a secondary
    confirmation. A decline ends the gate with nothing staged and nothing

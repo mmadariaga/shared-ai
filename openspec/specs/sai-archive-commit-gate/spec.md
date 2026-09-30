@@ -66,46 +66,51 @@ When the CLI archive completes and `git status` shows no changes, `/sai-archive`
 
 ### Requirement: The new-commit message reuses commit.md steps 1–5 and commit-rules.md without duplicating commit rules
 
-For the new-commit option, the agent SHALL compose the commit message by applying `sai/commands/commit/instructions.md` steps 1–5 — inspect staged state, classify the change, determine scope, compose the message, and verify faithfulness — with `sai/policies/commit-rules.md` as the single source of commit-message rules (type classification, subject format, body and footer conventions, repo-style detection rubric, and hard rules). The archive instruction SHALL reference these two files and SHALL NOT restate or duplicate their rule content. The picker selection of the new-commit option SHALL be the per-invocation commit authorization: after selection, the agent SHALL stage the archive paths, compose the message from the staged diff, and commit without presenting any further authorization prompt. Steps 1–5 and the commit SHALL run only when the shared empty-index guard passes: when the archive-path staging leaves the index with no staged changes, the agent SHALL NOT apply steps 1–5 and SHALL NOT commit, per the empty-index guard requirement.
+For the new-commit option, the agent SHALL compose the commit message by applying `sai/commands/commit/instructions.md` steps 1–5 with `sai/policies/commit-rules.md` as the single source of message rules. After the shared empty-index guard passes, it SHALL pass the complete composed message literally on standard input to `git commit -F -` under `@sai/policies/command-execution.md`, without requiring Bash heredoc syntax or a `git commit -m` argument. The picker selection remains the per-invocation authorization, and no additional authorization question is presented.
 
 #### Scenario: Message is composed from the staged diff per commit.md steps 1–5
 
-- **WHEN** the user selects the new-commit option and the archive-path staging leaves a non-empty staged diff
-- **THEN** the agent runs commit.md step 1's staged-state inspection, then classifies the change, determines the scope, composes the message, and verifies faithfulness per steps 2–5, and commits with the composed message
+- **WHEN** the user selects the new-commit option and archive-path staging leaves a non-empty staged diff
+- **THEN** the agent inspects staged state, classifies the change, determines scope, verifies faithfulness, and commits with the composed message
 
 #### Scenario: Commit rules are referenced, not duplicated
 
-- **WHEN** the archive instruction describes the new-commit message composition
-- **THEN** it names `sai/commands/commit/instructions.md` steps 1–5 and `sai/policies/commit-rules.md` as the rule sources and contains no restated classification, subject-format, body, or footer rules
+- **WHEN** the archive instruction describes new-commit message composition
+- **THEN** it names commit instructions steps 1–5 and commit-rules as the sources and does not restate their message rules
 
 #### Scenario: The picker selection is the per-invocation authorization
 
-- **WHEN** the user selects the new-commit option and the archive-path staging leaves a non-empty staged diff
-- **THEN** the agent stages and commits without asking a second authorization question, because the picker selection already authorized the commit
+- **WHEN** the user selects the new-commit option and archive-path staging leaves a non-empty staged diff
+- **THEN** the agent stages and commits without asking a second authorization question
+
+#### Scenario: The new-commit message is delivered literally
+
+- **WHEN** the authorized archive message contains multiline, Unicode, or shell-sensitive characters
+- **THEN** the available Bash or PowerShell 7 transport passes it unchanged to `git commit -F -`
 
 ### Requirement: The amend path applies the pushed-HEAD guard per commit-rules
 
-For the amend option, the agent SHALL run the pushed-HEAD check BEFORE any staging: it SHALL determine whether HEAD is already pushed, per the `--amend` detection idiom in `sai/commands/commit/instructions.md` (`git log @{push}..HEAD --oneline` — empty output with HEAD matching the push target means pushed). When HEAD has no configured upstream, so `@{push}` does not resolve, the agent SHALL treat HEAD as unpushed and proceed without a secondary confirmation. When HEAD is already pushed, the agent SHALL warn explicitly and SHALL NOT amend without a secondary confirmation, per the commit-rules hard rule that a pushed commit is never amended without explicit warning plus secondary confirmation. On decline of the secondary confirmation, the agent SHALL NOT amend, SHALL NOT create any commit, and SHALL leave the index exactly as it was when the gate was reached — because the check runs before staging, no `git add` has occurred. The amend command SHALL run only when the shared empty-index guard passes: after staging the archive paths, the agent SHALL NOT run `git commit --amend` when the index contains no staged changes, per the empty-index guard requirement.
+For the amend option, the agent SHALL run the pushed-HEAD check before staging with `git log '@{push}..HEAD' --oneline` as one quoted Git argument. When `@{push}` does not resolve, it SHALL treat HEAD as unpushed; when the output is empty with HEAD matching the push target, it SHALL warn and require secondary confirmation before amending. On decline, it SHALL leave the index unchanged. After the check, it SHALL stage only archive paths, run the shared empty-index guard, and run `git commit --amend --no-edit` only when staged changes remain.
 
 #### Scenario: Unpushed HEAD amends without extra confirmation
 
-- **WHEN** the user selects the amend option, HEAD is not already pushed, and the archive-path staging leaves a non-empty staged diff
-- **THEN** the agent stages the archive paths and runs `git commit --amend --no-edit` without additional confirmation
+- **WHEN** the user selects amend, HEAD is not already pushed, and staging leaves a non-empty staged diff
+- **THEN** the agent stages archive paths and runs the amend without secondary confirmation
 
 #### Scenario: No configured upstream treats HEAD as unpushed
 
-- **WHEN** the user selects the amend option, HEAD has no configured upstream so `@{push}` does not resolve, and the archive-path staging leaves a non-empty staged diff
-- **THEN** the agent treats HEAD as unpushed and proceeds to stage the archive paths and run `git commit --amend --no-edit` without a secondary confirmation
+- **WHEN** the user selects amend, HEAD has no configured upstream so `@{push}` does not resolve, and staging leaves a non-empty staged diff
+- **THEN** the agent treats HEAD as unpushed and runs the amend without secondary confirmation
 
 #### Scenario: Pushed HEAD warns and requires secondary confirmation
 
-- **WHEN** the user selects the amend option and HEAD is already pushed
-- **THEN** the agent prints an explicit warning and asks a secondary confirmation before amending, and the amend runs only on explicit confirmation
+- **WHEN** the user selects amend and HEAD is already pushed
+- **THEN** the agent prints a warning and asks for secondary confirmation before amending
 
 #### Scenario: Declined secondary confirmation aborts the amend with the index untouched
 
-- **WHEN** the pushed-HEAD guard fires and the user declines the secondary confirmation
-- **THEN** the agent does not amend, does not create any commit, and leaves the index exactly as it was when the gate was reached, because the guard check ran before any `git add`
+- **WHEN** the pushed-HEAD guard fires and the user declines secondary confirmation
+- **THEN** the agent performs no amend or commit and leaves the index as it was at the gate
 
 ### Requirement: Fast-track auto-selects the new-commit option
 

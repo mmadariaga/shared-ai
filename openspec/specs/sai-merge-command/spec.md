@@ -88,12 +88,12 @@ The worker SHALL map git stages to branches by method: for `merge`, stage 2 (`--
 
 ### Requirement: Coordinator-only mutation surface
 
-The system SHALL confine state-changing git operations to the coordinator, including branch refresh with `git fetch --prune origin`, the launch, the squash commit, `git checkout --ours/--theirs`, `git mv`, staging, `git rebase --continue`, and commits. The worker SHALL run only read-only git commands and SHALL write only resolution content, and SHALL never run fetch or exact-ref validation for branch selection.
+The system SHALL confine state-changing Git operations to the coordinator, including branch refresh with `git fetch --prune origin`, the launch and squash, `git checkout --ours/--theirs`, collision replacements and `git mv`, staging, `git rebase --continue`, and commits. The worker SHALL run only read-only Git commands and SHALL write only resolution content, and SHALL never run fetch or exact-ref validation for branch selection. For an authorized merge finalization or staged repair commit, the coordinator SHALL pass the complete informative message literally on standard input to `git commit -F -` under `sai/policies/command-execution.md`, using Bash or PowerShell 7 without `git commit -m`, a Bash-only heredoc, or the `/sai-commit` `commit.js` path.
 
 #### Scenario: Worker never executes git mutations
 
 - **WHEN** the worker analyzes conflicts, proposes resolutions, scans collisions, or verifies the suite
-- **THEN** it performs read-only inspection, writes authorized content to conflicted regions within scope, returns payloads, and leaves all git state changes to the coordinator
+- **THEN** it performs read-only inspection, writes authorized content to conflicted regions within scope, returns payloads, and leaves all Git state changes to the coordinator
 
 #### Scenario: Coordinator reviews materialized content before staging
 
@@ -102,8 +102,13 @@ The system SHALL confine state-changing git operations to the coordinator, inclu
 
 #### Scenario: Worker never validates branch entries
 
-- **WHEN** a free-text branch entry requires refresh and checks
-- **THEN** the coordinator runs the fetch and exact-ref checks while the worker performs no git mutation
+- **WHEN** a free-text branch entry requires refresh and exact-ref checks
+- **THEN** the coordinator runs the fetch and exact-ref checks while the worker performs no Git mutation
+
+#### Scenario: Authorized merge commit uses literal standard-input delivery
+
+- **WHEN** the user authorizes a merge finalization or staged repair commit
+- **THEN** the coordinator sends the informative message unchanged to `git commit -F -` through the active supported shell
 
 ### Requirement: Categorized conflict analysis with declared rules
 

@@ -59,8 +59,8 @@ function schedulePresses(input, presses) {
   setImmediate(step);
 }
 
-async function runChecklist({ items, defaultSelected, input, footer, presses }) {
-  const promise = promptChecklist(items, defaultSelected, input, footer);
+async function runChecklist({ items, defaultSelected, input, footer, navigatorOptions, presses }) {
+  const promise = promptChecklist(items, defaultSelected, input, footer, navigatorOptions);
   schedulePresses(input, presses || []);
   return await promise;
 }
@@ -271,6 +271,88 @@ for (const [label, extra] of [
     assert.deepEqual(await promise, { status: 'confirmed', items: [] });
   });
 }
+
+test('Ctrl+A sets every selectable checkbox from the first checkbox in a mixed selection', { timeout: INTERACTION_TIMEOUT }, async () => {
+  const input = createFakeInput(true);
+  const items = ['first', '', 'second', 'third'];
+  const outcome = await runChecklist({
+    items,
+    defaultSelected: ['second'],
+    input,
+    navigatorOptions: { toggleAll: true },
+    presses: [
+      ['\x01', keyInfo('a', '\x01', { ctrl: true })],
+      ['\r', keyInfo('return', '\r')],
+    ],
+  });
+
+  assert.deepEqual(outcome, { status: 'confirmed', items: ['first', 'second', 'third'] },
+    'an unchecked first selectable row makes Ctrl+A check every selectable row and skip separators');
+});
+
+test('two Ctrl+A presses restore an all-checked default selection', { timeout: INTERACTION_TIMEOUT }, async () => {
+  const input = createFakeInput(true);
+  const items = ['first', '', 'second', 'third'];
+  const selectableItems = ['first', 'second', 'third'];
+  const outcome = await runChecklist({
+    items,
+    defaultSelected: selectableItems,
+    input,
+    navigatorOptions: { toggleAll: true },
+    presses: [
+      ['\x01', keyInfo('a', '\x01', { ctrl: true })],
+      ['\x01', keyInfo('a', '\x01', { ctrl: true })],
+      ['\r', keyInfo('return', '\r')],
+    ],
+  });
+
+  assert.deepEqual(outcome, { status: 'confirmed', items: selectableItems });
+});
+
+test('Ctrl+A clears a mixed selection from a checked first row and empty confirmation stays guarded', { timeout: INTERACTION_TIMEOUT }, async () => {
+  const input = createFakeInput(true);
+  const outcome = await runChecklist({
+    items: ['first', '', 'second', 'third'],
+    defaultSelected: ['first', 'third'],
+    input,
+    navigatorOptions: { toggleAll: true, preventEmptyConfirm: true },
+    presses: [
+      ['\x01', keyInfo('a', '\x01', { ctrl: true })],
+      ['\r', keyInfo('return', '\r')],
+      [' ', keyInfo('space', ' ')],
+      ['\r', keyInfo('return', '\r')],
+    ],
+  });
+
+  assert.deepEqual(outcome, { status: 'confirmed', items: ['first'] },
+    'Ctrl+A clears all rows, Enter remains blocked, and Space toggles the unchanged cursor row');
+});
+
+test('Ctrl+A stays inactive in ordinary checklists and single-choice menus', { timeout: INTERACTION_TIMEOUT }, async () => {
+  const checklistInput = createFakeInput(true);
+  const checklistOutcome = await runChecklist({
+    items: INSTALLER_ITEMS,
+    defaultSelected: ['Claude Code'],
+    input: checklistInput,
+    presses: [
+      ['\x01', keyInfo('a', '\x01', { ctrl: true })],
+      ['\r', keyInfo('return', '\r')],
+    ],
+  });
+  assert.deepEqual(checklistOutcome, { status: 'confirmed', items: ['Claude Code'] });
+
+  const selectInput = createFakeInput(true);
+  const selectOutcome = await runSelect({
+    question: 'Choose one:',
+    options: INSTALLER_ITEMS,
+    input: selectInput,
+    presses: [
+      ['\x01', keyInfo('a', '\x01', { ctrl: true })],
+      ['\r', keyInfo('return', '\r')],
+    ],
+  });
+  assert.equal(selectOutcome, 'Claude Code');
+});
 
 // --- footer (installer parity) --------------------------------------------
 

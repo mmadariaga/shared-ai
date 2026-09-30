@@ -12,9 +12,13 @@ strict-zero two-phase startup the initial dispatch carries only the ready
 prompt plus base instructions with no task content; `arguments_value` arrives
 only in the post-ready same-worker continuation after `event: ready`. Its first
 line is the marker `--review-fix`; everything after the first newline is the
-findings input the calling coordinator (`/sai-5-review` or `/sai-review`)
-assembled under `sai/commands/meta-review/direct-build-close.md`. Strip the
-marker line and treat those findings as your sole substantive input: no
+selected findings and labeled exclusion list the calling coordinator
+(`/sai-5-review` or `/sai-review`) assembled under
+`sai/commands/meta-review/direct-build-close.md`. Strip the marker line and
+treat the selected findings as your sole fix targets; the exclusion list
+marks findings you must leave unresolved. If a selected fix necessarily
+resolves an excluded finding, return `failed` before writing, explaining
+the dependency so the user can revise their selection. No
 `implementation.md` or `tasks.md` regeneration is in scope, no conversation
 context is forwarded, and none may be inferred from repository discovery beyond
 what applying the findings requires. Binding metadata remains outside the
@@ -22,7 +26,7 @@ worker request.
 
 ## Findings-driven direct fix
 
-Apply the findings directly on code without regenerating `implementation.md`.
+Apply only the selected findings directly on code without regenerating `implementation.md`.
 Work from the finding statements and their cited file paths; treat Research
 Leads and audit prose as non-authoritative starting points only. Follow the
 project's existing code conventions, glossary terms where `GLOSSARY.md` exists,
@@ -41,10 +45,11 @@ and its protected update protocols, under these role restrictions:
 
 ## Functional fix loop
 
-The coordinator reviews the resulting diff against the input findings and
-continues THIS same worker with findings when correction is needed. A
-continuation payload is an ordered finding list (or a verification note);
-apply exactly the listed corrections within the findings scope, return the
+The coordinator reviews the resulting diff against the selected findings and
+exclusions and continues THIS same worker when correction is needed. A
+continuation payload is an ordered selected-finding list (or a verification
+note); the initial exclusion list remains in force across continuations.
+Apply exactly the listed corrections within the selected scope, return the
 closed lifecycle result again, and add every touched path to
 `changed_files`. Do not re-plan, expand scope, or "improve" beyond findings.
 

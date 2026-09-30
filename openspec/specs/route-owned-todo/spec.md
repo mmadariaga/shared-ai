@@ -2,13 +2,17 @@
 
 ## Purpose
 TBD - created by archiving change explore-deferred-route-todo. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: Route-owned authoritative entries with no baseline
-The idea progress list SHALL hold only the chosen route entries with no baseline evidence items. The stage TODO SHALL clear at block emission with the recordedList emitted and the list SHALL first render only at crystallization-close choice resolution, with the panel staying empty from emission until the same-turn choice resolves. Old reviewed, research, and slice-crystallization references SHALL mark, clear, or render nothing.
+
+The idea progress list SHALL hold only the chosen route entries with no baseline evidence items. The stage TODO SHALL clear at block emission with the recordedList emitted, and the list SHALL remain logically empty from emission until a later route-choice reply resolves the route. Old reviewed, research, and slice-crystallization references SHALL mark, clear, or render nothing.
 
 #### Scenario: Panel stays empty until choice resolution
+
 - **WHEN** a crystallization turn emits its block, clears the stage TODO, and emits the recordedList
-- **THEN** no list renders until the same-turn crystallization-close choice resolves for that slice
+- **THEN** no list renders during the block-emission turn, and the route-owned list first renders only after a later explicit route choice resolves for that slice
 
 ### Requirement: Plan route creates sai-1 sai-2 Implement entries
 
@@ -36,4 +40,3 @@ A Manual choice SHALL create exactly Manual handoff, SHALL mark it completed whe
 
 - **WHEN** the deferred choice resolves to Manual for a slice
 - **THEN** the list holds only Manual handoff and completes it when the handoff emits
-

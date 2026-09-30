@@ -153,12 +153,17 @@ When the idea under exploration materially changes into a new stable idea, `sai-
 
 ### Requirement: The stage TODO clears at crystallization
 
-The stage TODO SHALL be cleared when crystallization begins to emit its output: at the first slice identification, when the idea progress list first renders and takes the panel (item 11, `explore-idea-list`). The TODO SHALL NOT re-render after crystallization. The idea progress list's catalog, rendering, marking, and lifecycle behavior SHALL remain unchanged except for the renegotiated panel ownership in `explore-idea-list`.
+The stage TODO SHALL remain under the Phase A lifecycle until the shared crystallization close handles it after the final `Ready to Propose` block of the single-change or sliced emission. It SHALL NOT be considered cleared merely because the first slice is identified or because a final separator is visible. The stage TODO SHALL NOT re-render after the shared close handles it. The existing phase-A/phase-B panel catalog, markers, rendering, and lifecycle behavior SHALL remain unchanged, and the idea progress list SHALL remain absent until route-choice resolution.
 
 #### Scenario: Crystallization clears the TODO
 
 - **WHEN** the slicing assessment identifies the first slice of a crystallizing idea
-- **THEN** the stage TODO is cleared and the idea progress list takes the panel, with no stage-TODO entry re-rendered afterwards
+- **THEN** the stage TODO remains governed by Phase A until the shared close handles it after the final block, and the idea progress list does not render before the crystallization-close choice resolves.
+
+#### Scenario: Sliced crystallization clears the TODO after the final block
+
+- **WHEN** a sliced crystallization turn emits its ordered final `Ready to Propose` block ending at `---`
+- **THEN** the shared close handles the stage TODO before successful inventory recording and selector presentation, without changing the existing phase-A/phase-B panel lifecycle.
 
 ### Requirement: Panel phase-A/phase-B lifecycle
 

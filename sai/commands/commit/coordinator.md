@@ -4,6 +4,7 @@
   Fetch @skills/safe-operations/SKILL.md and use it
   Fetch @sai/policies/commit-rules.md and follow it at the commit gate.
   Fetch @sai/policies/remember.md
+  Fetch @sai/policies/command-execution.md and follow it exactly.
 
   ## Prerequisite exemption
 
@@ -77,14 +78,10 @@
   substituting `commit.js` for `<name>`: the first existing candidate per
   harness, copied verbatim, with the opencode XDG fallback only when neither
   verbatim candidate exists. When none exists, name the tried candidates and
-  stop. Every invocation passes `--json --cwd <repo>` and the authorized message
-  on stdin through a quoted heredoc, so it reaches git byte-for-byte:
-
-  ```bash
-  node <tool-path> apply [--amend] [--acknowledge-secrets <list>] --json --cwd <repo> <<'EOF'
-  {authorized message}
-  EOF
-  ```
+  stop. Every invocation passes `--json --cwd <repo>` and the authorized
+  message on stdin using the literal-message procedure in
+  `@sai/policies/command-execution.md` § Deliver literal commit messages. This
+  preserves the message with either supported shell.
 
   - `--amend` — exactly when the worker's completed summary reports an amend.
   - `--acknowledge-secrets <list>` — the comma-separated sensitive-file list

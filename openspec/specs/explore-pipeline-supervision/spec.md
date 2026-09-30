@@ -17,34 +17,26 @@ The supervised pipeline SHALL use `Plan - Unattended` and route identity `plan-u
 
 ### Requirement: Reuse supervised lifecycle
 
-The supervised pipeline SHALL resolve gate 9 immediately after deterministic selection confirms a dispatchable change for the displayed `Plan - Unattended` route and before `active_change` is set or the first spec worker is dispatched. The displayed label SHALL map to route identity `plan-unattended`, which SHALL remain limited to `sai-1` and `sai-2`.
+The supervised pipeline SHALL resolve gate 9 immediately after the native picker returns exactly `Plan - Unattended` and route-choice activation succeeds for a dispatchable route, and before `active_change` is set or the first spec worker is dispatched. The displayed label SHALL map to route identity `plan-unattended`, which SHALL remain limited to `sai-1` and `sai-2`.
 
-A resolved overview language SHALL remain available for a retry over the same crystallized idea or slice set, including after failure or cancellation, and SHALL reset for a materially new idea without being persisted.
+A resolved overview language SHALL remain available for a retry over the same crystallized idea or slice set, and SHALL reset for a materially new idea without being persisted.
 
-On Claude Code and opencode, `sai-explore` SHALL act only as the lifecycle coordinator when Plan - Unattended selects one uncompleted change from the latest crystallized set. For a selected change whose spec phase has not yet converged or ended by cap exhaustion in this chat, it SHALL dispatch the existing `sai-1` spec-proposal worker with that change's emitted `Ready to Propose` block as the isolated request envelope and SHALL include the `--supervised` marker on that envelope per `supervised-pipeline-forwarding`; the worker SHALL retain ownership of prerequisites, research, change resolution, `proposal.md`, `specs/**`, decision summaries, consistency checks, feedback edits, and spec-phase completion, and SHALL suppress its automatic worker-owned review loop because of the marker. For a selected change whose spec phase already reached convergence or cap exhaustion in this chat — its `proposal.md` and `specs/**` were reviewed in-session and the supervised spec gate auto-proceeded — but whose chained design phase did not complete, a later Plan - Unattended selection SHALL resume at the design phase by re-dispatching the design worker over the existing reviewed spec artifacts with the same `--supervised` marker (and existing `--fast-track` / optional `--overview-lang` composition), and SHALL NOT re-dispatch the sai-1 spec-proposal worker or regenerate `proposal.md` and `specs/**`, so a design-phase retry never discards reviewed spec work and never reintroduces the isolated worker-owned reviewer by omitting the marker. A design-phase retry SHALL also run under supervised gate mode (no user-facing design gate; auto-Continue to overview generation).
-
-An uncompleted change is a tracked name whose supervised run has not reached supervised completion in this explore chat. Two independent state machines govern the run's ending: the phase's review loop has a budget of at most three rounds per phase per Plan attempt and ends by convergence or cap exhaustion under `supervised-review-rounds`, while the phase worker returns its own terminal result (`completed`, `failed`, or `cancelled`) independently of how the review rounds ended. The review-loop ending governs chaining — a spec phase that converged or exhausted its cap chains design, so the spec worker never terminates a run without design being chained — while supervised completion is decided by the design worker's terminal result alone: a design phase that ended by cap exhaustion still auto-proceeds the supervised design gate to overview generation, and the design worker's own `completed` result is what marks the change completed. A `failed` or `cancelled` spec or design worker does not reach supervised completion: the change remains uncompleted and retryable by a later Plan - Unattended selection, which resumes at the phase whose worker did not complete, regardless of the review-loop ending. Reviewer failure, reviewer cancellation, and severity-contract violation do not exist as supervised outcomes in the in-session model; with the worker-owned automatic loop suppressed, those outcomes also do not arise from an automatic worker-owned reviewer on the supervised path.
+On Claude Code and opencode, `sai-explore` SHALL act only as the lifecycle coordinator after the native picker returns exactly `Plan - Unattended` and route-choice activation succeeds; the route SHALL select only the first pending change from the latest crystallized set in crystallization order. The existing worker scopes, isolated block envelope, supervised marker, review lifecycle, design retry, and terminal behavior SHALL remain unchanged.
 
 #### Scenario: routed harness starts a tracked change whose spec phase has not converged
 
-- **WHEN** the user selects Plan - Unattended for an uncompleted latest-turn change in a Claude Code or opencode explore chat
-- **THEN** explore dispatches the existing `sai-1` spec-proposal worker for that change
-- **AND** the worker receives the emitted crystallized block rather than the surrounding explore conversation
-- **AND** the dispatch envelope carries `--supervised` so the worker suppresses its automatic isolated reviewer.
+- **WHEN** the native picker returns exactly `Plan - Unattended`, route-choice activation succeeds, and the first pending latest-turn change has not converged at spec in a Claude Code or opencode explore chat
+- **THEN** Explore dispatches the existing sai-1 spec-proposal worker for that change with the emitted crystallized block and supervised envelope
 
 #### Scenario: design-phase retry resumes at design without re-running sai-1
 
-- **WHEN** a change whose spec phase already converged or ended by cap exhaustion and whose supervised spec gate auto-proceeded had its chained design worker return `failed` or `cancelled`, and the user later selects Plan - Unattended for it
-- **THEN** explore re-dispatches the design worker over the existing reviewed spec artifacts
-- **AND** it does not re-dispatch the sai-1 spec-proposal worker or regenerate `proposal.md` and `specs/**`
-- **AND** the design-phase retry runs without presenting the design user gate and auto-Continues to overview generation on convergence or cap exhaustion.
+- **WHEN** the first pending change whose spec phase already converged or ended by cap exhaustion and whose supervised spec gate auto-proceeded had its chained design worker return `failed` or `cancelled`, and the native picker returns exactly `Plan - Unattended` with successful route-choice activation
+- **THEN** Explore re-dispatches the design worker over the existing reviewed spec artifacts, does not re-dispatch sai-1 or regenerate proposal/specs, and preserves the supervised design retry behavior
 
 #### Scenario: cap-exhausted spec phase continues into design
 
 - **WHEN** the spec phase ends by cap exhaustion with the worker returning `completed`
-- **THEN** the run continues to the chained design phase rather than stopping at the spec phase
-- **AND** the change's supervised completion follows the design worker's terminal result
-- **AND** the chained design envelope also carries `--supervised`.
+- **THEN** the run continues to the chained design phase rather than stopping at the spec phase, and the chained design envelope carries `--supervised`
 
 ### Requirement: Supervision preserves worker terminal behavior
 
@@ -405,19 +397,23 @@ Every dispatch of a Direct Build (unattended) run SHALL be guarded by the determ
 - **THEN** the archive window is closed by a normal verify first, and the continuation runs in its own window from a fresh snapshot whose verify alone carries `--allow-commit`
 
 ### Requirement: Direct Build slice-machine emits
-On a user-selected or automatically authorized Direct Build start, explore SHALL emit intent direct-build with no slice name and no pick to explore-slice; the machine starts only the first pending slice. If the response carries rejected ALREADY_RUNNING, including when Plan is already active, explore SHALL acknowledge already running and dispatch nothing. If the response carries rejected NO_PENDING_SLICE explore SHALL acknowledge missing inventory, dispatch nothing, and prompt block-first. After each high-level route item converges (Build/Implement, then Backfill, then Archive), explore SHALL emit intent complete. Completing Archive is the machine done signal. Direct Build SHALL NEVER emit next-slice. Every retryable non-clean ending SHALL emit intent fail without starting a later slice.
+
+After a valid native picker answer for `Direct Build - Unattended` activates `route-choice`, Explore SHALL emit intent `direct-build` with no slice name and no pick to `explore-slice@1`; the machine starts only the first pending slice. On an automatically authorized start after a clean Direct Build finish, Explore SHALL instead emit intent `auto-continue`, with no slice name and no pick, only when the authoritative continuation resolves to `auto_continue`. If the response carries rejected `ALREADY_RUNNING`, including when Plan is already active, Explore SHALL acknowledge already running and dispatch nothing. If it carries rejected `PARKED_IN_OTHER_MODE`, Explore SHALL acknowledge that the first pending slice resumes only in its parked mode, with no later slice bypass or dispatch. If it carries rejected `NO_PENDING_SLICE`, Explore SHALL distinguish empty from exhausted inventory, dispatch nothing, and prompt block-first when the inventory is empty. After each high-level route item converges (Build/Implement, then Backfill, then Archive), Explore SHALL emit intent `complete`. Completing Archive is the machine done signal. Direct Build SHALL never emit `next-slice`. Every retryable non-clean ending SHALL emit intent `fail` without starting a later slice.
 
 #### Scenario: Direct Build selection emits direct-build
-- **WHEN** the user selects Direct Build - Unattended and explore-slice has no active slice
-- **THEN** explore emits intent direct-build with no pick to explore-slice and starts the Build/Implement route item
+
+- **WHEN** the native picker returns `Direct Build - Unattended`, route-choice activation succeeds, and explore-slice has no active slice
+- **THEN** Explore emits intent direct-build with no pick to explore-slice and starts the Build/Implement route item
 
 #### Scenario: Already-running Direct Build dispatches nothing
+
 - **WHEN** Direct Build is selected again while explore-slice returns rejected ALREADY_RUNNING
-- **THEN** explore acknowledges already running and dispatches no worker
+- **THEN** Explore acknowledges already running and dispatches no worker
 
 #### Scenario: Empty inventory rejects Direct Build start
-- **WHEN** the user selects Direct Build Unattended while explore-slice has no pending slice
-- **THEN** explore emits direct-build intent and on rejected NO_PENDING_SLICE acknowledges missing inventory and dispatches nothing
+
+- **WHEN** the native picker returns `Direct Build - Unattended` while explore-slice has an explicitly recorded empty inventory
+- **THEN** Explore emits direct-build intent and on rejected NO_PENDING_SLICE acknowledges missing inventory, prompts block-first, and dispatches nothing
 
 ### Requirement: Direct Build archive failure correction routing
 
@@ -434,16 +430,89 @@ The supervision SHALL evaluate an archive preparation or execution failure as a 
 - **THEN** the supervision SHALL close as failed-retryable with the verbatim failure in view and no further automatic continuation
 
 ### Requirement: Plan slice-machine emits
-On a Plan (unattended) selection, explore SHALL emit intent plan with no slice name and no pick to explore-slice; the machine starts only the first pending slice. If the response carries rejected ALREADY_RUNNING, including when Direct Build is already active, explore SHALL acknowledge already running and dispatch nothing. If the response carries rejected NO_PENDING_SLICE explore SHALL acknowledge missing inventory, dispatch nothing, and prompt block-first. After spec convergence, explore SHALL emit intent complete (sai-1 to sai-2). After a clean terminal design result, explore SHALL emit intent complete (sai-2 to implement). Pipeline-plan-unattended SHALL be next.follow for all three Plan stages. Fail, cancel, STOP, or exhausted recovery SHALL leave that step pending with no skip to implement; explore SHALL emit intent fail at that ending. Implement completes only on next-slice.
+
+After a valid native picker answer for `Plan - Unattended` activates `route-choice`, Explore SHALL emit intent `plan` with no slice name and no pick to `explore-slice@1`; the machine starts only the first pending slice. If the response carries rejected `ALREADY_RUNNING`, including when Direct Build is already active, Explore SHALL acknowledge already running and dispatch nothing. If it carries rejected `PARKED_IN_OTHER_MODE`, Explore SHALL acknowledge that the first pending slice resumes only in its parked mode, with no later slice bypass or dispatch. If it carries rejected `NO_PENDING_SLICE`, Explore SHALL distinguish empty from exhausted inventory, dispatch nothing, and prompt block-first when the inventory is empty. After spec convergence, Explore SHALL emit intent `complete` (sai-1 to sai-2). After a clean terminal design result, Explore SHALL emit intent `complete` (sai-2 to implement). Pipeline-plan-unattended SHALL be `next.follow` for all three Plan stages. Fail, cancel, STOP, or exhausted recovery SHALL leave that step pending with no skip to implement; Explore SHALL emit intent `fail` at that ending. Implement completes only on `next-slice`.
 
 #### Scenario: Plan selection emits plan
-- **WHEN** the user selects Plan - Unattended and explore-slice has no active slice
-- **THEN** explore emits intent plan with no pick to explore-slice and starts the sai-1 route item
+
+- **WHEN** the native picker returns `Plan - Unattended`, route-choice activation succeeds, and explore-slice has no active slice
+- **THEN** Explore emits intent plan with no pick to explore-slice and starts the sai-1 route item
 
 #### Scenario: next-slice on Implement marks the slice done
 - **WHEN** Plan is at Implement and the user sends next-slice
-- **THEN** explore emits next-slice to explore-slice, the slice is marked done, active is cleared, and stage returns to idle
+- **THEN** Explore emits next-slice to explore-slice, the slice is marked done, active is cleared, and stage returns to waiting
 
 #### Scenario: Empty inventory rejects Plan start
-- **WHEN** the user selects Plan Unattended while explore-slice has no pending slice
-- **THEN** explore emits plan intent and on rejected NO_PENDING_SLICE acknowledges missing inventory and dispatches nothing
+
+- **WHEN** the native picker returns exactly `Plan - Unattended` and route-choice activation succeeds while explore-slice has no pending slice
+- **THEN** Explore emits plan intent and on rejected NO_PENDING_SLICE acknowledges missing inventory and dispatches nothing
+
+### Requirement: Plan - Unattended activates shared runtime recovery for pre-result interruptions
+
+The Plan - Unattended route SHALL load `sai/policies/unattended-runtime-recovery.md` for post-disclosure runtime interruptions before a worker result is accepted, while valid worker results SHALL retain the existing supervision, question, review, and phase-transition handling. Claude Code and opencode SHALL use the same policy semantics while retaining their harness-specific binding mechanics.
+
+#### Scenario: Plan runtime interruption reaches the shared rule
+
+- **WHEN** a disclosed Plan spec or design worker stretch cannot produce a result accepted by the existing lifecycle checks
+- **THEN** the route evaluates the shared unattended runtime-recovery policy before stopping or asking the user to choose a routine next action
+
+#### Scenario: Valid Plan results remain unchanged
+
+- **WHEN** a Plan worker returns a valid `needs_input`, `failed`, or `cancelled` result
+- **THEN** Plan follows its existing result handling instead of treating the result as an unaccepted runtime interruption
+
+### Requirement: Direct Build - Unattended activates the policy only for the full route
+
+The Direct Build - Unattended route SHALL load `sai/policies/unattended-runtime-recovery.md` only for the full `direct-build-unattended` flow after dispatch/startup handling, payload validation, accepted-result Bounded Recovery, and each role's one-shot execution contract. The pinned `--no-specs` POC profile SHALL remain outside this policy.
+
+#### Scenario: Full Direct Build reaches runtime recovery
+
+- **WHEN** the full Direct Build - Unattended route has a disclosed worker interruption outside its existing dispatch, validation, Bounded Recovery, and one-shot handling
+- **THEN** the route evaluates the shared runtime-recovery rule without changing its worker order
+
+#### Scenario: The POC profile remains excluded
+
+- **WHEN** the Direct Build `--no-specs` POC profile is active
+- **THEN** the route does not load or apply unattended runtime recovery
+
+### Requirement: Direct Build implementer accepts a bounded verification note
+
+During Direct Build Steps 1–2, `sai-direct-build-worker` SHALL accept the policy-authorized same-worker verification note only as one reversible correction to the already-disclosed crystallized block. The note SHALL state verified current effects, one in-scope correction, and one concrete verification check; it SHALL add no requirement, task, artifact authority, mutation authority, or review/fix-loop round.
+
+#### Scenario: Implementer applies a verification note
+
+- **WHEN** the coordinator establishes verified effects, an in-scope reversible correction, and a concrete check within the existing block
+- **THEN** the implementer applies only that correction and runs the named check before returning its ordinary closed lifecycle result
+
+#### Scenario: Verification note cannot establish safety
+
+- **WHEN** the note's effects, scope, reversibility, or check cannot be established or the correction is destructive, irreversible, or shared-system work
+- **THEN** the implementer makes no correction and returns the ordinary result with the blocker and verified state
+
+### Requirement: Direct Build mutation workers retain one-shot order boundaries
+
+Direct Build backfill and archive workers SHALL retain their role-specific validated preparation and execution contracts. Runtime recovery SHALL not create, alter, resend, or replay a backfill draft order or archive, staging, or commit operation over partial or unknown effects; a valid named backfill-artifact failure SHALL continue to use only the existing backfill correction and archive relaunch path.
+
+#### Scenario: Archive mutation is incomplete
+
+- **WHEN** an archive preparation or execution order has partial or unknown mutation state
+- **THEN** the route reports the exact state and does not refire the order through runtime recovery
+
+#### Scenario: Backfill-artifact correction remains route-owned
+
+- **WHEN** a valid archive failure is identified as a backfill-artifact error
+- **THEN** the route forwards it through the existing backfill correction and archive relaunch path rather than the generic runtime-repair note
+
+### Requirement: Unattended runtime recovery preserves route gates
+
+Runtime recovery SHALL preserve Plan's approval and review stop and Direct Build's selected-scope, validated execution-order, and one-local-commit gates. It SHALL not grant a new mutation authorization or change supervised commands.
+
+#### Scenario: Plan gate remains authoritative
+
+- **WHEN** a Plan runtime repair returns a valid result at an approval or review boundary
+- **THEN** the existing Plan gate remains the authority before the next phase transition
+
+#### Scenario: Direct Build gate remains authoritative
+
+- **WHEN** a Direct Build runtime repair returns a valid result before artifact execution or the local commit
+- **THEN** the route still requires its existing selected scope, validated order, and one-local-commit authorization state

@@ -753,7 +753,9 @@ test('copyOpencodeConfig falls back gracefully for unparseable JSONC', () => {
   assert.ok(joined.includes('Ensure experimental.subagent_depth is set to 2'),
     'fallback should name the mandatory experimental.subagent_depth setting');
   assert.ok(joined.includes(path.join('configs', 'opencode.jsonc')), 'fallback should reference the example file');
-  assert.match(joined, /See \/.*configs\/opencode\.jsonc for a reference example\./,
+  const examplePath = path.join(__dirname, '..', 'configs', 'opencode.jsonc');
+  assert.ok(path.isAbsolute(examplePath), 'example path should be absolute');
+  assert.ok(joined.includes(`See ${examplePath} for a reference example.`),
     'fallback should show the full example path');
   assert.ok(!joined.includes('external_directory'), 'fallback must not verify external_directory');
   assert.ok(!joined.includes('"agent"'), 'fallback must not print an "agent" block');
@@ -778,7 +780,9 @@ test('copyOpencodeConfig falls back gracefully for non-object root', () => {
   assert.ok(joined.includes('Ensure experimental.subagent_depth is set to 2'),
     'fallback should name the mandatory experimental.subagent_depth setting');
   assert.ok(joined.includes(path.join('configs', 'opencode.jsonc')), 'fallback should reference the example file');
-  assert.match(joined, /See \/.*configs\/opencode\.jsonc for a reference example\./,
+  const examplePath = path.join(__dirname, '..', 'configs', 'opencode.jsonc');
+  assert.ok(path.isAbsolute(examplePath), 'example path should be absolute');
+  assert.ok(joined.includes(`See ${examplePath} for a reference example.`),
     'fallback should show the full example path');
   assert.ok(!joined.includes('external_directory'), 'fallback must not verify external_directory');
   assert.ok(!joined.includes('"agent"'), 'fallback must not print an "agent" block');
@@ -1385,17 +1389,15 @@ test('Step 2 canonical opencode config sample defines no agent', () => {
   const sample = jsonc.parse(fs.readFileSync(path.join(__dirname, '..', 'configs', 'opencode.jsonc'), 'utf8'));
   assert.ok(Object.hasOwn(sample, '$schema'),
     'specs/opencode-config-install/spec.md: the sample should retain $schema');
-  assert.ok(Object.hasOwn(sample, 'subagent_depth'),
-    'specs/managed-worker-registry/spec.md: the sample should retain subagent_depth');
-  assert.ok(Object.hasOwn(sample, 'experimental'),
-    'the sample should retain experimental for v2 subagent_depth');
-  assert.equal(sample.subagent_depth, 2, 'the sample top-level subagent_depth should be 2');
-  assert.equal(sample.experimental?.subagent_depth, 2, 'the sample experimental.subagent_depth should be 2');
+  assert.equal(Object.hasOwn(sample, 'subagent_depth'), false,
+    'specs/fresh-install-writes-both/spec.md: the sample should not ship the opencode v1 top-level subagent_depth');
+  assert.equal(sample.experimental?.subagent_depth, 2,
+    'specs/managed-worker-registry/spec.md: the sample should retain experimental.subagent_depth at 2');
   assert.ok(sample.permission, 'specs/managed-worker-registry/spec.md: the sample should retain permission');
   assert.equal(Object.hasOwn(sample, 'agent'), false,
     'specs/managed-worker-registry/spec.md: the canonical opencode configuration sample defines no agent');
-  assert.deepEqual(Object.keys(sample).sort(), ['$schema', 'permission', 'subagent_depth', 'experimental'].sort(),
-    'specs/opencode-config-install/spec.md: top-level keys should be exactly $schema, subagent_depth, experimental, permission');
+  assert.deepEqual(Object.keys(sample).sort(), ['$schema', 'permission', 'experimental'].sort(),
+    'specs/opencode-config-install/spec.md: top-level keys should be exactly $schema, experimental, permission');
   assert.equal(sample.permission.external_directory[SAI_EXTERNAL_DIRECTORY], 'allow',
     'specs/managed-worker-registry/spec.md: the sample should ship the narrow external-directory rule');
   assert.equal(sample.permission.external_directory[OPENCODE_COMMANDS_EXTERNAL_DIRECTORY], 'allow',

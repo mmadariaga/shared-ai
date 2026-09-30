@@ -19,57 +19,63 @@ const MENU_OPTIONS = Object.freeze(['Customize models', 'Reset to default models
 const HARNESS_OPTIONS = Object.freeze(['OpenCode', 'Claude Code']);
 const CANCELLED = Symbol('CANCELLED');
 const SCOPE_OPTIONS = Object.freeze(['All', 'Agents', 'Orchestrators', 'Workers', 'Utilities']);
-const MODEL_CHECKLIST_LEGEND = 'Up/Down move · Space toggle · Enter confirm · ←/Esc back · q/Ctrl-C cancel';
+const MODEL_CHECKLIST_LEGEND = 'Up/Down move · Space toggle · Ctrl+A toggle all · Enter confirm · ←/Esc back · q/Ctrl-C cancel';
 const MODEL_TABLE_INDENT = '      ';
 const MODEL_TABLE_GUTTER = '  ';
 const MODEL_TABLE_TYPE_WIDTH = 12;
-const MODEL_TABLE_COMPLEXITY_HEADER = 'TASK COMPLEXITY';
-const MODEL_TABLE_COMPLEXITY_WIDTH = MODEL_TABLE_COMPLEXITY_HEADER.length;
+const MODEL_TABLE_CONTEXT_HEADER = 'CONTEXT';
+const MODEL_TABLE_CONTEXT_WIDTH = MODEL_TABLE_CONTEXT_HEADER.length;
+const MODEL_TABLE_DIFFICULTY_HEADER = 'DIFFICULTY';
+const MODEL_TABLE_DIFFICULTY_WIDTH = MODEL_TABLE_DIFFICULTY_HEADER.length;
 const COMBINED_ENTRY_DELIMITER = ' | ';
 const TARGET_PREFIXES = Object.freeze({ worker: 'worker:', agent: 'agent:', command: 'command:', utility: 'utility:' });
 const UTILITY_NAMES = Object.freeze(['sai-pr', 'sai-retire-docs', 'sai-status', 'sai-worktree']);
-const TASK_COMPLEXITY = Object.freeze({
-  'worker:sai-1-spec-proposal-worker': '↑↑',
-  'worker:sai-2-design-worker': '↑↑↑',
-  'worker:sai-3-implementation-worker': '↑↑',
-  'worker:sai-4-green-worker': '↑↑',
-  'worker:sai-4-red-worker': '↑',
-  'worker:sai-5-review-worker': '↑↑',
-  'worker:sai-6-security-worker': '↑↑↑',
-  'worker:sai-7-performance-worker': '↑↑',
-  'worker:sai-8-accessibility-worker': '↑↑',
-  'worker:sai-archive-worker': '↑',
-  'worker:sai-backfill-worker': '↑↑',
-  'worker:sai-commit-worker': '↑',
-  'worker:sai-direct-build-worker': '↑↑',
-  'worker:sai-review-fix-worker': '↑↑',
-  'worker:sai-merge-worker': '↑↑',
-  'agent:budget': '↑',
-  'agent:executor': '↑',
-  'agent:explore': '↑',
-  'agent:budget-explorer': '↑',
-  'agent:budget-executor': '↑',
-  'agent:budget-subagent': '↑',
-  'command:sai-1-spec': '↑↑',
-  'command:sai-2-design': '↑↑',
-  'command:sai-3-implement': '↑↑',
-  'command:sai-4-apply': '↑↑',
-  'command:sai-5-review': '↑↑',
-  'command:sai-6-security': '↑↑',
-  'command:sai-7-performance': '↑↑',
-  'command:sai-8-accessibility': '↑↑',
-  'command:sai-archive': '↑↑',
-  'command:sai-backfill': '↑↑',
-  'command:sai-build': '↑↑',
-  'command:sai-explore': '↑↑',
-  'command:sai-merge': '↑↑',
-  'command:sai-review': '↑↑',
-  'command:sai-commit': '↑',
-  'utility:sai-pr': '↑',
-  'utility:sai-retire-docs': '↑↑',
-  'utility:sai-status': '↑',
-  'utility:sai-worktree': '↑',
+// Display-only profile per family-qualified target. `context` estimates typical task
+// context (instructions, documents, results, history), not model context-window size;
+// fresh per-Step workers carry less than their supervisor. `difficulty` is reasoning demand.
+const TARGET_PROFILE = Object.freeze({
+  'worker:sai-1-spec-proposal-worker':   { context: 'Medium',  difficulty: '↑↑' },
+  'worker:sai-2-design-worker':          { context: 'Large',   difficulty: '↑↑↑' },
+  'worker:sai-3-implementation-worker':  { context: 'Large',   difficulty: '↑↑' },
+  'worker:sai-4-green-worker':           { context: 'Medium',  difficulty: '↑↑' },
+  'worker:sai-4-red-worker':             { context: 'Medium',  difficulty: '↑' },
+  'worker:sai-5-review-worker':          { context: 'Large',   difficulty: '↑↑' },
+  'worker:sai-6-security-worker':        { context: 'Large',   difficulty: '↑↑↑' },
+  'worker:sai-7-performance-worker':     { context: 'Large',   difficulty: '↑↑' },
+  'worker:sai-8-accessibility-worker':   { context: 'Large',   difficulty: '↑↑' },
+  'worker:sai-archive-worker':           { context: 'Medium',  difficulty: '↑' },
+  'worker:sai-backfill-worker':          { context: 'Large',   difficulty: '↑↑' },
+  'worker:sai-commit-worker':            { context: 'Small',   difficulty: '↑' },
+  'worker:sai-direct-build-worker':      { context: 'Large',   difficulty: '↑↑' },
+  'worker:sai-review-fix-worker':        { context: 'Medium',  difficulty: '↑↑' },
+  'worker:sai-merge-worker':             { context: 'Large',   difficulty: '↑↑' },
+  'agent:budget':                        { context: 'Medium',  difficulty: '↑' },
+  'agent:executor':                      { context: 'Small',   difficulty: '↑' },
+  'agent:explore':                       { context: 'Medium',  difficulty: '↑' },
+  'agent:budget-explorer':               { context: 'Medium',  difficulty: '↑' },
+  'agent:budget-executor':               { context: 'Small',   difficulty: '↑' },
+  'agent:budget-subagent':               { context: 'Medium',  difficulty: '↑' },
+  'command:sai-1-spec':                  { context: 'Medium',  difficulty: '↑↑' },
+  'command:sai-2-design':                { context: 'Medium',  difficulty: '↑↑' },
+  'command:sai-3-implement':             { context: 'Medium',  difficulty: '↑↑' },
+  'command:sai-4-apply':                 { context: 'Large',   difficulty: '↑↑↑' },
+  'command:sai-5-review':                { context: 'Medium',  difficulty: '↑↑' },
+  'command:sai-6-security':              { context: 'Medium',  difficulty: '↑' },
+  'command:sai-7-performance':           { context: 'Medium',  difficulty: '↑' },
+  'command:sai-8-accessibility':         { context: 'Medium',  difficulty: '↑' },
+  'command:sai-archive':                 { context: 'Medium',  difficulty: '↑↑' },
+  'command:sai-backfill':                { context: 'Medium',  difficulty: '↑↑' },
+  'command:sai-build':                   { context: 'Large',   difficulty: '↑↑↑' },
+  'command:sai-explore':                 { context: 'Large',   difficulty: '↑↑↑' },
+  'command:sai-merge':                   { context: 'Large',   difficulty: '↑↑↑' },
+  'command:sai-review':                  { context: 'Large',   difficulty: '↑↑' },
+  'command:sai-commit':                  { context: 'Small',   difficulty: '↑' },
+  'utility:sai-pr':                      { context: 'Medium',  difficulty: '↑' },
+  'utility:sai-retire-docs':             { context: 'Large',   difficulty: '↑↑' },
+  'utility:sai-status':                  { context: 'Small',   difficulty: '↑' },
+  'utility:sai-worktree':                { context: 'Small',   difficulty: '↑' },
 });
+const UNKNOWN_PROFILE_VALUE = 'Unknown';
 const DEFAULT_PACKAGE_ROOT = path.join(__dirname, '..');
 const DEFAULT_CLAUDE_GLOBAL_AGENT_ROOT = path.join(os.homedir(), '.claude', 'agents');
 const DEFAULT_OPENCODE_GLOBAL_AGENT_ROOT = path.join(os.homedir(), '.config', 'opencode', 'agents');
@@ -236,8 +242,12 @@ function parseTarget(value) {
   return null;
 }
 
-function taskComplexityFor(targetEntry) {
-  return TASK_COMPLEXITY[targetEntry.value] || '↑';
+function taskContextFor(targetEntry) {
+  return TARGET_PROFILE[targetEntry.value]?.context || UNKNOWN_PROFILE_VALUE;
+}
+
+function taskDifficultyFor(targetEntry) {
+  return TARGET_PROFILE[targetEntry.value]?.difficulty || UNKNOWN_PROFILE_VALUE;
 }
 
 function splitFrontmatter(text) {
@@ -1213,9 +1223,13 @@ function formatRawSetting(raw, harnessKey) {
 
 function allTableHeader(nameWidth) {
   return [
-    `${MODEL_TABLE_INDENT}${'TYPE'.padEnd(MODEL_TABLE_TYPE_WIDTH)}${MODEL_TABLE_GUTTER}${'TARGET'.padEnd(nameWidth)}${MODEL_TABLE_GUTTER}${MODEL_TABLE_COMPLEXITY_HEADER.padEnd(MODEL_TABLE_COMPLEXITY_WIDTH)}${MODEL_TABLE_GUTTER}SETTING`,
-    `${MODEL_TABLE_INDENT}${'─'.repeat(MODEL_TABLE_TYPE_WIDTH)}${MODEL_TABLE_GUTTER}${'─'.repeat(nameWidth)}${MODEL_TABLE_GUTTER}${'─'.repeat(MODEL_TABLE_COMPLEXITY_WIDTH)}${MODEL_TABLE_GUTTER}${'─'.repeat('SETTING'.length)}`,
+    `${MODEL_TABLE_INDENT}${'TYPE'.padEnd(MODEL_TABLE_TYPE_WIDTH)}${MODEL_TABLE_GUTTER}${'TARGET'.padEnd(nameWidth)}${MODEL_TABLE_GUTTER}${MODEL_TABLE_CONTEXT_HEADER}${MODEL_TABLE_GUTTER}${MODEL_TABLE_DIFFICULTY_HEADER}${MODEL_TABLE_GUTTER}SETTING`,
+    `${MODEL_TABLE_INDENT}${'─'.repeat(MODEL_TABLE_TYPE_WIDTH)}${MODEL_TABLE_GUTTER}${'─'.repeat(nameWidth)}${MODEL_TABLE_GUTTER}${'─'.repeat(MODEL_TABLE_CONTEXT_WIDTH)}${MODEL_TABLE_GUTTER}${'─'.repeat(MODEL_TABLE_DIFFICULTY_WIDTH)}${MODEL_TABLE_GUTTER}${'─'.repeat('SETTING'.length)}`,
   ];
+}
+
+function modelTableRow(entry, nameWidth, setting) {
+  return `${displayFamily(entry.family).padEnd(MODEL_TABLE_TYPE_WIDTH)}${MODEL_TABLE_GUTTER}${entry.name.padEnd(nameWidth)}${MODEL_TABLE_GUTTER}${taskContextFor(entry).padEnd(MODEL_TABLE_CONTEXT_WIDTH)}${MODEL_TABLE_GUTTER}${taskDifficultyFor(entry).padEnd(MODEL_TABLE_DIFFICULTY_WIDTH)}${MODEL_TABLE_GUTTER}${setting}`;
 }
 
 function skippedOutcome(reason, diagnostics = []) {
@@ -1382,7 +1396,7 @@ async function runPostSetupMenuInternal({
             setting = 'unavailable';
           }
           if (typeof setting !== 'string' || setting === '') setting = 'unavailable';
-          return `${displayFamily(entry.family).padEnd(MODEL_TABLE_TYPE_WIDTH)}${MODEL_TABLE_GUTTER}${entry.name.padEnd(presetNameWidth)}${MODEL_TABLE_GUTTER}${taskComplexityFor(entry).padEnd(MODEL_TABLE_COMPLEXITY_WIDTH)}${MODEL_TABLE_GUTTER}${setting}`;
+          return modelTableRow(entry, presetNameWidth, setting);
         });
         console.log(`Preset "${resolved.name}" will capture ${presetSelectable.length} models:`);
         for (const line of presetHeader) console.log(line);
@@ -1569,7 +1583,7 @@ async function runPostSetupMenuInternal({
             }
           }
           const setting = formatRawSetting(raw, harnessKey);
-          return `${displayFamily(entry.family).padEnd(MODEL_TABLE_TYPE_WIDTH)}${MODEL_TABLE_GUTTER}${entry.name.padEnd(loadNameWidth)}${MODEL_TABLE_GUTTER}${taskComplexityFor(entry).padEnd(MODEL_TABLE_COMPLEXITY_WIDTH)}${MODEL_TABLE_GUTTER}${setting}`;
+          return modelTableRow(entry, loadNameWidth, setting);
         });
         console.log(`Preset "${chosenPreset}" will apply to current project (${Object.keys(presetKnown).length} models):`);
         for (const line of loadHeader) console.log(line);
@@ -1707,10 +1721,7 @@ async function runPostSetupMenuInternal({
           continue;
         }
         const resetNameWidth = Math.max(...selectableReset.map(entry => entry.name.length));
-        const resetHeader = [
-          `${MODEL_TABLE_INDENT}${'TYPE'.padEnd(MODEL_TABLE_TYPE_WIDTH)}${MODEL_TABLE_GUTTER}${'TARGET'.padEnd(resetNameWidth)}${MODEL_TABLE_GUTTER}${MODEL_TABLE_COMPLEXITY_HEADER.padEnd(MODEL_TABLE_COMPLEXITY_WIDTH)}${MODEL_TABLE_GUTTER}SETTING`,
-          `${MODEL_TABLE_INDENT}${'─'.repeat(MODEL_TABLE_TYPE_WIDTH)}${MODEL_TABLE_GUTTER}${'─'.repeat(resetNameWidth)}${MODEL_TABLE_GUTTER}${'─'.repeat(MODEL_TABLE_COMPLEXITY_WIDTH)}${MODEL_TABLE_GUTTER}${'─'.repeat('SETTING'.length)}`,
-        ];
+        const resetHeader = allTableHeader(resetNameWidth);
         const resetLabels = resetEntries.map((entry) => {
           if (entry.separator) return '';
           let setting = 'unavailable';
@@ -1724,7 +1735,7 @@ async function runPostSetupMenuInternal({
             setting = 'unavailable';
           }
           if (typeof setting !== 'string' || setting === '') setting = 'unavailable';
-          return `${displayFamily(entry.family).padEnd(MODEL_TABLE_TYPE_WIDTH)}${MODEL_TABLE_GUTTER}${entry.name.padEnd(resetNameWidth)}${MODEL_TABLE_GUTTER}${taskComplexityFor(entry).padEnd(MODEL_TABLE_COMPLEXITY_WIDTH)}${MODEL_TABLE_GUTTER}${setting}`;
+          return modelTableRow(entry, resetNameWidth, setting);
         });
         const resetTargets = resetEntries.map(entry => entry.value);
         const resetSelection = await promptChecklist(
@@ -1732,7 +1743,7 @@ async function runPostSetupMenuInternal({
           selectableReset.map(entry => entry.value),
           undefined,
           MODEL_CHECKLIST_LEGEND,
-          { preventEmptyConfirm: true, displayOptions: resetLabels, header: resetHeader },
+          { preventEmptyConfirm: true, displayOptions: resetLabels, header: resetHeader, toggleAll: true },
         );
         if (!resetSelection || resetSelection.status === 'cancelled') return skippedOutcome('cancelled');
         if (resetSelection.status === 'non-interactive') return skippedOutcome('non-tty');
@@ -1784,16 +1795,13 @@ async function runPostSetupMenuInternal({
         }
         const selectableEntries = targetEntries.filter(entry => !entry.separator);
         const nameWidth = Math.max(...selectableEntries.map(entry => entry.name.length));
-        const header = [
-          `${MODEL_TABLE_INDENT}${'TYPE'.padEnd(MODEL_TABLE_TYPE_WIDTH)}${MODEL_TABLE_GUTTER}${'TARGET'.padEnd(nameWidth)}${MODEL_TABLE_GUTTER}${MODEL_TABLE_COMPLEXITY_HEADER.padEnd(MODEL_TABLE_COMPLEXITY_WIDTH)}${MODEL_TABLE_GUTTER}SETTING`,
-          `${MODEL_TABLE_INDENT}${'─'.repeat(MODEL_TABLE_TYPE_WIDTH)}${MODEL_TABLE_GUTTER}${'─'.repeat(nameWidth)}${MODEL_TABLE_GUTTER}${'─'.repeat(MODEL_TABLE_COMPLEXITY_WIDTH)}${MODEL_TABLE_GUTTER}${'─'.repeat('SETTING'.length)}`,
-        ];
+        const header = allTableHeader(nameWidth);
         const labels = targetEntries.map((entry) => {
           if (entry.separator) return '';
           const setting = typeof adapter.effectiveSetting === 'function'
             ? adapter.effectiveSetting(entry)
             : 'unavailable';
-          return `${displayFamily(entry.family).padEnd(MODEL_TABLE_TYPE_WIDTH)}${MODEL_TABLE_GUTTER}${entry.name.padEnd(nameWidth)}${MODEL_TABLE_GUTTER}${taskComplexityFor(entry).padEnd(MODEL_TABLE_COMPLEXITY_WIDTH)}${MODEL_TABLE_GUTTER}${setting}`;
+          return modelTableRow(entry, nameWidth, setting);
         });
 
         const selection = await promptChecklist(
@@ -1801,7 +1809,7 @@ async function runPostSetupMenuInternal({
           selectableEntries.map(entry => entry.value),
           undefined,
           MODEL_CHECKLIST_LEGEND,
-          { preventEmptyConfirm: true, displayOptions: labels, header },
+          { preventEmptyConfirm: true, displayOptions: labels, header, toggleAll: true },
         );
         if (!selection || selection.status === 'cancelled') return skippedOutcome('cancelled');
         if (selection.status === 'non-interactive') return skippedOutcome('non-tty');
@@ -1951,8 +1959,9 @@ module.exports = {
   buildVariantDisplayOptions,
   buildChecklistTargets,
   parseTarget,
-  TASK_COMPLEXITY,
-  taskComplexityFor,
+  TARGET_PROFILE,
+  taskContextFor,
+  taskDifficultyFor,
   enumerateProjectionTargets,
   effectiveSetting,
   factorySetting,

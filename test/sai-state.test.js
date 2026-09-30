@@ -328,16 +328,67 @@ test('machines: explore-slice@1 persists a parked slice across emits and resumes
 
   try {
     invokeCommand('reset', id, 'explore-slice@1');
-    emit({ recordedList: ['a', 'b'] });
+    const recorded = emit({ recordedList: ['a', 'b'] });
+    assert.equal(recorded.stage, 'waiting');
+    assert.equal(recorded.next.follow, 'sai/commands/explore/steps/route-selector.md',
+      'a successful inventory checkpoint exposes the native picker step');
+    assert.equal(emit({ intent: 'plan' }).rejected, 'ROUTE_CHOICE_REQUIRED',
+      'presenting the picker does not unlock a route');
+    assert.equal(emit({ intent: 'route-choice' }).next.follow,
+      'sai/commands/explore/steps/route-selector.md', 'a valid picker answer unlocks route processing');
     assert.equal(emit({ intent: 'plan' }).stage, 'sai-1');
     assert.equal(emit({ intent: 'complete' }).stage, 'sai-2');
     const failed = emit({ intent: 'fail' });
-    assert.equal(failed.stage, 'idle');
+    assert.equal(failed.stage, 'waiting');
     assert.ok(!('parked' in failed), 'parked cursors never travel on the wire');
-    assert.equal(emit({ intent: 'direct-build' }).rejected, 'ALREADY_RUNNING');
+    assert.equal(emit({ intent: 'plan' }).rejected, 'ROUTE_CHOICE_REQUIRED',
+      'a parked slice needs a fresh picker answer');
+    emit({ intent: 'route-choice' });
+    assert.equal(emit({ intent: 'direct-build' }).rejected, 'PARKED_IN_OTHER_MODE');
     const retry = emit({ intent: 'plan' });
     assert.ok(!('rejected' in retry));
     assert.equal(retry.stage, 'sai-2');
+  } finally {
+    cleanup([id]);
+  }
+});
+
+test('machines: re-crystallization replaces persisted Explore completion state', () => {
+  const key = 'test-explore-slice-recrystallized-inventory';
+  const spawn = invokeCommand('spawn', '--key', key);
+  const id = JSON.parse(spawn.stdout).id;
+  const emit = (event) => {
+    const result = invokeCommand('emit', id, 'explore-slice@1', JSON.stringify(event));
+    assert.equal(result.exitCode, 0, `emit ${JSON.stringify(event)} should succeed`);
+    return JSON.parse(result.stdout);
+  };
+
+  try {
+    invokeCommand('reset', id, 'explore-slice@1');
+    emit({ recordedList: ['a', 'b'] });
+    emit({ intent: 'route-choice' });
+    emit({ intent: 'plan' });
+    emit({ intent: 'complete' });
+    emit({ intent: 'complete' });
+    emit({ intent: 'next-slice' });
+
+    const before = JSON.parse(fs.readFileSync(sessionFile(id), 'utf8'))
+      .stateByMachine['explore-slice@1'].state;
+    assert.deepEqual(before.done, ['a']);
+
+    const replacement = emit({ recordedList: ['a', 'c'] });
+    assert.equal(replacement.next.follow, 'sai/commands/explore/steps/route-selector.md');
+    const replaced = JSON.parse(fs.readFileSync(sessionFile(id), 'utf8'))
+      .stateByMachine['explore-slice@1'].state;
+    assert.deepEqual(replaced.set, ['a', 'c']);
+    assert.deepEqual(replaced.done, [], 'persisted completion from the previous set must not skip reused names');
+
+    emit({ intent: 'route-choice' });
+    emit({ intent: 'plan' });
+    const restarted = JSON.parse(fs.readFileSync(sessionFile(id), 'utf8'))
+      .stateByMachine['explore-slice@1'].state;
+    assert.equal(restarted.active, 'a', 'the newest ordered set starts at its first name');
+    assert.equal(restarted.stage, 'sai-1');
   } finally {
     cleanup([id]);
   }
