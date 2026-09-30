@@ -1386,7 +1386,7 @@
       "harnesses": [
         "opencode"
       ],
-      "strategy": "copy-if-absent",
+      "strategy": "copy",
       "recursive": true,
       "include": [
         "**/*.json"
@@ -1404,7 +1404,7 @@
       "harnesses": [
         "claude"
       ],
-      "strategy": "copy-if-absent",
+      "strategy": "copy",
       "recursive": true,
       "include": [
         "**/*.json"

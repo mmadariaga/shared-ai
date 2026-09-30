@@ -283,15 +283,17 @@ These opencode defaults were chosen for good results at reasonable cost. Feel fr
 
 ### Example presets
 
-The installer includes four example presets for opencode and one for Claude Code.
+The installer includes four SAI default presets for OpenCode and one for Claude Code. Their filenames start with the reserved prefix `[sai-default]-`. Every installation replaces these distributed files, including any direct edits, but does not apply them to projects or change project model selections. Older unprefixed files, personal presets, and other files not distributed by SAI remain untouched.
+
+Save changes under a separate personal preset name to retain them. **Save preset** rejects the reserved prefix case-insensitively and asks for another name; loading SAI defaults and existing presets remains supported.
 
 | Preset | Model mix |
 |--------|-----------|
-| `Go.json` | OpenCode Go models throughout: Muse Spark for commands and helper subagents, DeepSeek Flash for most workers, and GPT Luna for the review worker. |
-| `Go+Zen.json` | OpenCode Go models: Muse Spark for commands and utilities, DeepSeek Flash for most workers, and GPT Luna for the review worker; free `opencode` models for the `budget`, `executor`, and `explore` subagents. |
-| `oAI-LUNA+Zen.json` | OpenAI Luna models for most commands and workers, with free `opencode` models for the `budget`, `executor`, and `explore` subagents. |
-| `oAI-SOL+Zen.json` | OpenAI models: GPT-6.1 Sol for the planning, build, and merge pipeline, GPT-6 Luna for the audit coordinators, commit, and utilities, and GPT-5.6 Luna for the review and audit workers; free `opencode` models for the `budget`, `executor`, and `explore` subagents. |
-| `OPUS.json` | Claude Code: Opus for the heavy workers and the explore, build, apply, review, and merge coordinators; Sonnet for the remaining coordinators, the RED/GREEN, fix, archive, and commit workers, and most utilities; Haiku for `budget-executor`. |
+| `[sai-default]-Go.json` | OpenCode Go models throughout: Muse Spark for commands and helper subagents, DeepSeek Flash for most workers, and GPT Luna for the review worker. |
+| `[sai-default]-Go+Zen.json` | OpenCode Go models: Muse Spark for commands and utilities, DeepSeek Flash for most workers, and GPT Luna for the review worker; free `opencode` models for the `budget`, `executor`, and `explore` subagents. |
+| `[sai-default]-oAI-LUNA+Zen.json` | OpenAI Luna models for most commands and workers, with free `opencode` models for the `budget`, `executor`, and `explore` subagents. |
+| `[sai-default]-oAI-SOL+Zen.json` | OpenAI models: GPT-6.1 Sol for the planning, build, and merge pipeline, GPT-6 Luna for the audit coordinators, commit, and utilities, and GPT-5.6 Luna for the review and audit workers; free `opencode` models for the `budget`, `executor`, and `explore` subagents. |
+| `[sai-default]-OPUS.json` | Claude Code: Opus for the heavy workers and the explore, build, apply, review, and merge coordinators; Sonnet for the remaining coordinators, the RED/GREEN, fix, archive, and commit workers, and most utilities; Haiku for `budget-executor`. |
 
 Load a preset with `npx github:mmadariaga/shared-ai setup` → **Customize models** → **Load preset** → **OpenCode** or **Claude Code** → preset name.
 

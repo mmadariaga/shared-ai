@@ -5,17 +5,14 @@ TBD - created by archiving change opencode-preset-examples. Update Purpose after
 
 ## Requirements
 
-### Requirement: Installer seeds opencode example presets copy-if-absent
-The installer SHALL project sai/presets/opencode/*.json into the opencode sai presets library copy-if-absent with the harness segment stripped.
-#### Scenario: Fresh install seeds missing examples
-- **WHEN** the destination preset file is absent during opencode install
-- **THEN** the installer copies the source JSON once without merge or content validation
-
 ### Requirement: Installer preserves existing destination presets
-The installer SHALL leave an existing destination preset file intact with no overwrite or merge.
+
+OpenCode preset installation SHALL preserve existing files that are not destinations of distributed SAI default projections. It SHALL NOT delete or migrate old unprefixed preset files, overwrite personal presets, or overwrite arbitrary files solely because their filenames start with `[sai-default]-`.
+
 #### Scenario: Reinstall with customized preset
-- **WHEN** the destination preset already exists, including corrupt JSON
-- **THEN** the installer performs no copy, no merge, and no validation of that destination
+
+- **WHEN** the OpenCode preset library contains legacy unprefixed files, personal presets, or reserved-prefix files not distributed by SAI
+- **THEN** installation SHALL leave those files byte-for-byte unchanged while refreshing the distributed defaults
 
 ### Requirement: Opencode preset install stays harness-isolated
 Opencode preset projection SHALL never read or write the Claude preset library.
@@ -29,29 +26,20 @@ The install manifest validation SHALL accept copy-if-absent as a known projectio
 - **WHEN** sai/install-manifest.json declares strategy copy-if-absent for the preset projection
 - **THEN** validation passes and the copy-if-absent dispatch branch handles the projection
 
-### Requirement: Doctor reports missing example presets as warnings
-Doctor SHALL report absent copy-if-absent example presets as non-fatal warnings while keeping other missing files fatal.
-#### Scenario: Example preset deleted after install
-- **WHEN** an expected example preset file is absent and its strategy is copy-if-absent
-- **THEN** doctor emits a warn presets record and does not fail the files census
-
 ### Requirement: Uninstall preserves customized example presets
 Uninstall SHALL preserve a customized example preset via the override guard and remove only pristine hash-matching files.
 #### Scenario: Uninstall with customized preset
 - **WHEN** the destination example preset differs from the installed source
 - **THEN** uninstall keeps the customized file and removes only unmodified copies
 
-### Requirement: Installer seeds Claude example preset copy-if-absent
-The installer SHALL project sai/presets/claude/*.json into the Claude sai presets library copy-if-absent with the harness segment stripped.
-#### Scenario: Fresh Claude install seeds missing example
-- **WHEN** the destination preset file is absent during Claude install
-- **THEN** the installer copies the source JSON once without merge or content validation
-
 ### Requirement: Installer preserves existing Claude destination preset
-The installer SHALL leave an existing Claude destination preset file intact with no overwrite or merge.
+
+Claude Code preset installation SHALL preserve existing files that are not destinations of distributed SAI default projections. It SHALL NOT delete or migrate old unprefixed preset files, overwrite personal presets, or overwrite arbitrary files solely because their filenames start with `[sai-default]-`.
+
 #### Scenario: Reinstall with customized Claude preset
-- **WHEN** the Claude destination preset already exists, including corrupt JSON
-- **THEN** the installer performs no copy, no merge, and no validation of that destination
+
+- **WHEN** the Claude Code preset library contains an old unprefixed OPUS.json, personal presets, or reserved-prefix files not distributed by SAI
+- **THEN** installation SHALL leave those files byte-for-byte unchanged while refreshing `[sai-default]-OPUS.json`
 
 ### Requirement: Claude preset install stays harness-isolated
 Claude preset projection SHALL never read or write the opencode preset library.
@@ -59,14 +47,36 @@ Claude preset projection SHALL never read or write the opencode preset library.
 - **WHEN** the claude-preset-examples projection executes
 - **THEN** only the Claude sai presets destination is affected and the opencode library path is untouched
 
-### Requirement: Doctor reports missing Claude example preset as warning
-Doctor SHALL report an absent Claude copy-if-absent example preset as a non-fatal warning while keeping other missing files fatal.
-#### Scenario: Claude example preset deleted after install
-- **WHEN** the expected OPUS.json file is absent and its strategy is copy-if-absent
-- **THEN** doctor emits a warn presets record and does not fail the files census
-
 ### Requirement: Uninstall preserves customized Claude example preset
 Uninstall SHALL preserve a customized Claude example preset via the override guard and remove only pristine hash-matching files.
 #### Scenario: Uninstall with customized Claude preset
 - **WHEN** the destination OPUS.json differs from the installed source
 - **THEN** uninstall keeps the customized file and removes only unmodified copies
+
+### Requirement: Installer refreshes distributed SAI default presets
+
+Every installation SHALL copy each distributed preset into the selected harness's `sai/presets` library, replacing an existing destination with the distributed version. Distributed filenames SHALL prepend the exact literal `[sai-default]-` to the previous filename. Installation SHALL NOT apply these presets to projects or change project model selections.
+
+#### Scenario: OpenCode installation refreshes all distributed defaults
+
+- **WHEN** OpenCode installation runs with absent or edited distributed default files
+- **THEN** it SHALL install the distributed contents of `[sai-default]-Go.json`, `[sai-default]-Go+Zen.json`, `[sai-default]-oAI-LUNA+Zen.json`, and `[sai-default]-oAI-SOL+Zen.json` without applying them to projects
+
+#### Scenario: Claude Code installation refreshes its distributed default
+
+- **WHEN** Claude Code installation runs with an absent or edited distributed default file
+- **THEN** it SHALL install the distributed contents of `[sai-default]-OPUS.json` without applying it to projects
+
+#### Scenario: Reinstallation replaces direct edits again
+
+- **WHEN** a user edits a distributed default after installation and runs installation again
+- **THEN** the installer SHALL replace that file with the distributed version while leaving project model selections unchanged
+
+### Requirement: Doctor reports missing SAI default presets as errors
+
+Doctor SHALL treat missing distributed default preset files projected with the `copy` strategy as fatal missing-file errors for both harnesses, rather than warning-only missing examples.
+
+#### Scenario: Distributed default is absent
+
+- **WHEN** doctor checks a Claude Code or OpenCode installation with a missing distributed default preset
+- **THEN** its file census SHALL report a fatal missing-file error for that expected preset
