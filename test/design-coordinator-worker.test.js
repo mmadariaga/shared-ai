@@ -135,7 +135,7 @@ test('Step 1 design card uses neutral root protocols and retires flat canonical 
 test('design write scope includes the opted-in overview without granting its write to the parent worker', () => {
   const common = artifact('sai/commands/design/steps/common.md');
   const contract = artifact('sai/commands/design/phase-contract.md');
-  const worker = artifact('sai/commands/design/worker.md');
+  const worker = artifact('sai/commands/design/worker.md') + '\n' + artifact('sai/commands/design/steps/overview.md');
 
   assert.match(common, /authorized write surface is `DesignWriteSurface`/);
   assert.match(contract, /openspec\/changes\/\{change-name\}\/change-overview\.md/);
@@ -358,7 +358,7 @@ test('routed design coordinator has no technical I/O and owns only lifecycle rou
 
 test('Step 2 design adapter opts into recovery through the same worker and reports bounded attempt metadata', () => {
   const coordinator = artifact('sai/commands/design/coordinator.md');
-  const worker = artifact('sai/commands/design/worker.md');
+  const worker = artifact('sai/commands/design/worker.md') + '\n' + artifact('sai/commands/design/steps/overview.md');
 
   assert.match(coordinator, /recovery_policy\s*:\s*true/,
     'the design adapter should explicitly opt into recovery');
@@ -1533,7 +1533,7 @@ test('Step 2 design worker validates a selected invocation language before resol
 });
 
 test('Step 2 carries overview_language through the worker and generation continuation', () => {
-  const worker = artifact('sai/commands/design/worker.md');
+  const worker = artifact('sai/commands/design/worker.md') + '\n' + artifact('sai/commands/design/steps/overview.md');
   const coordinator = artifact('sai/commands/design/coordinator.md');
 
   for (const source of [worker, coordinator]) {

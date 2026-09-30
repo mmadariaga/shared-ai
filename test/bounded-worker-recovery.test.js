@@ -139,7 +139,7 @@ test('design overview recovery keeps selected-language metadata and leaves an ab
 });
 
 test('overview soundness vetoes the first envelope violation before any bounded recovery attempt', () => {
-  const worker = artifact('sai/commands/design/worker.md');
+  const worker = artifact('sai/commands/design/worker.md') + '\n' + artifact('sai/commands/design/steps/overview.md');
 
   assert.match(worker, /before[\s\S]{0,300}(?:first )?return(?:ing)?[\s\S]{0,180}envelope-contract-violation[\s\S]{0,420}(?:overview|existing overview)[\s\S]{0,160}sound/i,
     'overview soundness must be verified before returning the first envelope violation');
@@ -148,7 +148,7 @@ test('overview soundness vetoes the first envelope violation before any bounded 
 });
 
 test('overview recovery re-dispatches eligible failures inside the shared attempt pool', () => {
-  const worker = artifact('sai/commands/design/worker.md');
+  const worker = artifact('sai/commands/design/worker.md') + '\n' + artifact('sai/commands/design/steps/overview.md');
 
   assert.match(worker, /validation[\s\S]{0,180}generation[\s\S]{0,180}dispatch[\s\S]{0,240}re-dispatch/i,
     'validation, generation, and dispatch failures should all permit overview re-dispatch');
@@ -159,7 +159,7 @@ test('overview recovery re-dispatches eligible failures inside the shared attemp
 });
 
 test('verified recovery commits current overview state and preserves incomplete-state accounting', () => {
-  const worker = artifact('sai/commands/design/worker.md');
+  const worker = artifact('sai/commands/design/worker.md') + '\n' + artifact('sai/commands/design/steps/overview.md');
 
   assert.match(worker, /verified recovery completion[\s\S]{0,300}overview\.state:\s*current/i,
     'verified recovery completion should commit overview.state: current');

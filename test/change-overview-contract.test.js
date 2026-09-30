@@ -295,7 +295,7 @@ test('overview generator envelope is exactly five fields and excludes recovery m
 
 test('valid generator failures propagate failure_kind while malformed envelopes remain parent-owned contract violations', () => {
   const routing = artifact('openspec/specs/change-overview-generation-routing/spec.md');
-  const worker = artifact('sai/commands/design/worker.md');
+  const worker = artifact('sai/commands/design/worker.md') + '\n' + artifact('sai/commands/design/steps/overview.md');
 
   assert.match(routing, /valid[	 ]+failed[	 ]+generator[	 ]+result[	\n ]+propagat(?:es|e)[\s\S]{0,260}failure_kind[\s\S]{0,260}failure_class/i,
     'a valid failed generator result should preserve failure_kind as outer failure_class');
@@ -314,7 +314,7 @@ test('valid generator failures propagate failure_kind while malformed envelopes 
 });
 
 test('state key transitions unmaterialized → materializing → current at first Continue', () => {
-  const worker = artifact('sai/commands/design/worker.md');
+  const worker = artifact('sai/commands/design/worker.md') + '\n' + artifact('sai/commands/design/steps/overview.md');
 
   assert.match(worker, /unmaterialized/, 'worker contract should know the unmaterialized initial state');
   assert.match(worker, /materializing/, 'worker contract should mark materializing before dispatch');
@@ -334,7 +334,7 @@ test('effective source modification marks stale before the first write', () => {
 });
 
 test('no-effective-change transaction verifies the existing overview before restoring current', () => {
-  const worker = artifact('sai/commands/design/worker.md');
+  const worker = artifact('sai/commands/design/worker.md') + '\n' + artifact('sai/commands/design/steps/overview.md');
 
   assert.match(worker, /byte-exact/, 'pre-transaction source capture should be byte-exact');
   assert.match(worker, /capture/, 'worker contract should capture sources before any write');
@@ -343,7 +343,7 @@ test('no-effective-change transaction verifies the existing overview before rest
 });
 
 test('design worker persists diagnostics for generator and parent-owned failure routes', () => {
-  const worker = artifact('sai/commands/design/worker.md');
+  const worker = artifact('sai/commands/design/worker.md') + '\n' + artifact('sai/commands/design/steps/overview.md');
 
   assert.match(worker, /overview\.failure_kind/, 'design worker should persist overview.failure_kind');
   assert.match(worker, /overview\.failure_details/, 'design worker should persist overview.failure_details');
@@ -407,7 +407,7 @@ test('installation projects the shared change-overview instruction through the r
 // ─── overview-generator-contract-transport — transport & schema-instruction assertions ──
 
 test('overview dispatch transports the contract by Fetch and names both harness bindings', () => {
-  const worker = artifact('sai/commands/design/worker.md');
+  const worker = artifact('sai/commands/design/worker.md') + '\n' + artifact('sai/commands/design/steps/overview.md');
 
   assert.match(worker, /Fetch @sai\/commands\/design\/change-overview\.md/,
     'worker.md should instruct the subagent to Fetch @sai/commands/design/change-overview.md');
@@ -420,7 +420,7 @@ test('overview dispatch transports the contract by Fetch and names both harness 
 });
 
 test('overview dispatch prompt stays minimal', () => {
-  const worker = artifact('sai/commands/design/worker.md');
+  const worker = artifact('sai/commands/design/worker.md') + '\n' + artifact('sai/commands/design/steps/overview.md');
 
   // The prompt carries the change name, overview_language, and the Fetch directive.
   const dispatchIndex = worker.indexOf('First materialization');
@@ -456,7 +456,7 @@ test('overview dispatch prompt stays minimal', () => {
 });
 
 test('overview contract-load failure route is parent-authored generation-error', () => {
-  const worker = artifact('sai/commands/design/worker.md');
+  const worker = artifact('sai/commands/design/worker.md') + '\n' + artifact('sai/commands/design/steps/overview.md');
 
   assert.match(worker, /contract-load failure|cannot load the shared contract|cannot load the shared generation contract/i,
     'worker.md should describe the contract-load failure route');
@@ -482,7 +482,7 @@ test('overview contract-load failure route is parent-authored generation-error',
 });
 
 test('overview first materialization and regeneration share the same transport', () => {
-  const worker = artifact('sai/commands/design/worker.md');
+  const worker = artifact('sai/commands/design/worker.md') + '\n' + artifact('sai/commands/design/steps/overview.md');
 
   assert.match(worker, /first materialization and regeneration use the same transport/i,
     'worker.md should state that first materialization and regeneration share the same transport');
@@ -491,7 +491,7 @@ test('overview first materialization and regeneration share the same transport',
 });
 
 test('opted-in Continue preserves the fetched single-file generator contract and English diagnostics', () => {
-  const worker = artifact('sai/commands/design/worker.md');
+  const worker = artifact('sai/commands/design/worker.md') + '\n' + artifact('sai/commands/design/steps/overview.md');
   const instruction = artifact('sai/commands/design/change-overview.md');
 
   assert.match(worker, /Fetch @sai\/commands\/design\/change-overview\.md/,
@@ -552,7 +552,7 @@ test('schema and worker transport coverage is not satisfied by template-only sec
   // The overview template carries the nine-section shape, but that shape does not
   // substitute for transport or schema-instruction coverage. This test asserts the
   // two production surfaces independently carry the coverage.
-  const worker = artifact('sai/commands/design/worker.md');
+  const worker = artifact('sai/commands/design/worker.md') + '\n' + artifact('sai/commands/design/steps/overview.md');
   const schema = artifact('openspec/schemas/sai-workflow/schema.yaml');
 
   assert.match(worker, /Fetch @sai\/commands\/design\/change-overview\.md/,
@@ -856,7 +856,7 @@ test('closure stops at crystallization and discard and preserves terminal paths'
 // ─── Step 3: spec-design-review-progress-step (overview progress evidence) ──
 
 test('Step 3: successful overview materialization or regeneration emits a progress event carrying the overview step id with both changed files', () => {
-  const worker = artifact('sai/commands/design/worker.md');
+  const worker = artifact('sai/commands/design/worker.md') + '\n' + artifact('sai/commands/design/steps/overview.md');
 
   assert.match(
     worker,
@@ -881,7 +881,7 @@ test('Step 3: successful overview materialization or regeneration emits a progre
 });
 
 test('Step 3: any overview generation failure emits no overview progress event and preserves existing diagnostics', () => {
-  const worker = artifact('sai/commands/design/worker.md');
+  const worker = artifact('sai/commands/design/worker.md') + '\n' + artifact('sai/commands/design/steps/overview.md');
 
   for (const failure of ['dispatch', 'process loss', 'malformed', 'empty envelope', 'validation', 'contradiction', 'generation']) {
     assert.match(worker, new RegExp(failure.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'),

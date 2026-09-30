@@ -5,6 +5,7 @@
 TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
 
 ## Requirements
+
 ### Requirement: sai-4-apply pre-seeds its Technical Learnings Memory at run start
 
 At the start of a `/sai-4-apply` run, before the first Step is dispatched, the coordinator SHALL read `SAI_LEARNINGS.md` from the project root and pre-seed its accumulated Technical Learnings Memory with the entries it finds.
@@ -157,14 +158,24 @@ The invariant SHALL be stated explicitly wherever the promotion filter and the t
 
 ### Requirement: Wrapper wiring fetches the format file for both consuming commands
 
-`sai/commands/design/coordinator.md` and `sai/commands/apply/invocation.md` SHALL each fetch `sai/policies/sai-learnings-format.md` in their instruction-loading block, so the format contract is in context wherever the file is read or written. The fetch SHALL mirror how `sai/policies/glossary-format.md` is already fetched by `sai/commands/design/coordinator.md`.
+`sai/commands/design/steps/tasks.md` and `sai/commands/apply/invocation.md` SHALL each fetch `sai/policies/sai-learnings-format.md`, so the format contract is in context wherever the file is read or written. The design side SHALL fetch it only at the tasks step's point of use (the `## Implementation Context` item) and only when a project-root `SAI_LEARNINGS.md` exists; it SHALL NOT fetch it at dispatch and never when the file is absent. The apply side fetches it in its instruction-loading block.
 
-These two wrapper edits SHALL be the complete set of wrapper changes. Harness parity SHALL ride the shared instruction bodies rather than being duplicated per harness, consistent with how the existing `glossary-format.md` fetch achieves parity today.
+Harness parity SHALL ride the shared instruction bodies rather than being duplicated per harness, consistent with how the existing `glossary-format.md` fetch achieves parity today.
 
 #### Scenario: sai-4-apply loads its instructions
 
 - **WHEN** `sai/commands/apply/invocation.md` runs its instruction-loading block
 - **THEN** it fetches `sai/policies/sai-learnings-format.md` alongside `sai/commands/apply/instructions.md`
+
+#### Scenario: sai-2-design tasks step with SAI_LEARNINGS.md present
+
+- **WHEN** the design worker executes the tasks step and a project-root `SAI_LEARNINGS.md` exists
+- **THEN** it fetches `sai/policies/sai-learnings-format.md` at the Implementation Context item before merging the learnings
+
+#### Scenario: sai-2-design without SAI_LEARNINGS.md
+
+- **WHEN** the design worker runs in a project with no `SAI_LEARNINGS.md`
+- **THEN** `sai/policies/sai-learnings-format.md` is never fetched
 
 #### Scenario: Parity across harnesses
 
