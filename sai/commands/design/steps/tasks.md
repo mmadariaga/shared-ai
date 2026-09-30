@@ -15,7 +15,7 @@ The presentation SHALL reference `@sai/policies/question-context.md` and comply 
 
 Do NOT proceed to `tasks.md` until every Open Question has been either answered by the codebase or resolved by the user. Incorporate all answers into `design.md` before continuing.
 
-`## Deferred` items are NOT Open Questions: they are not delegated to a `budget-explorer` subagent and do not block `tasks.md` generation — they are carried forward unresolved. Conversely, an item that is genuinely an unresolved unknown the design cannot proceed without is an Open Question and passes through this blocking gate; it is not parked in `## Deferred` to escape the gate.
+A real follow-up is not an Open Question and does not block `tasks.md` generation: it is recorded in `## Goals / Non-Goals` as a non-goal of the form "out of scope: X — revisit when Y". Conversely, a genuine unresolved unknown the design cannot proceed without is an Open Question and passes through this blocking gate.
 
 ## Generate tasks.md
 

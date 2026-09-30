@@ -8,9 +8,9 @@ This capability defines design.md's manual-verification section as the human-che
 
 ### Requirement: design.md ends with a Manual Verification section
 
-The active design step authority at `sai/commands/design/steps/design.md` SHALL require `openspec/changes/{name}/design.md` to close with a `## Manual Verification` section, listing the checks that are cheap to perform by hand and expensive to encode as automated tests.
+The active design step authority at `sai/commands/design/steps/design.md` SHALL require `openspec/changes/{name}/design.md` to close with a `## Manual Verification` section, a hard filter listing only checks that no automated test in the plan covers and that `/sai-5-review` does not already cover.
 
-The section SHALL be the closing section of `design.md`. When a change genuinely warrants no manual check, the section SHALL still be emitted with an explicit `None` and a one-line reason, so a reader can distinguish "nothing to check" from "not considered".
+The section SHALL be the closing section of `design.md`. When nothing is manual-only, the section SHALL still be emitted with an explicit `None` and a one-line reason, so a reader can distinguish "nothing to check" from "not considered".
 
 #### Scenario: Manual Verification closes design.md
 
@@ -19,7 +19,7 @@ The section SHALL be the closing section of `design.md`. When a change genuinely
 
 #### Scenario: change with no manual check
 
-- **WHEN** a change warrants no manual verification
+- **WHEN** a change has no manual-only check
 - **THEN** `## Manual Verification` is emitted with `None` and a one-line reason
 - **AND** the section is NOT omitted
 
@@ -30,10 +30,10 @@ The section SHALL be the closing section of `design.md`. When a change genuinely
 
 ### Requirement: Manual Verification covers generated-artifact drift and end-to-end smoke
 
-The section SHALL cover two classes of check, each emitted only when the change makes it applicable:
+The section SHALL cover two classes of check, each emitted only when the change makes it applicable and only when no automated test in the plan covers it:
 
 1. **Generated-artifact drift** — whether artifacts produced by a generator are still in sync with their source after the change: database migrations, test snapshots, designer- or tool-generated files, lockfiles, and any committed build output.
-2. **End-to-end smoke** — the shortest manual path through the changed behavior that confirms the pieces connect, described concretely enough to be followed without knowing the design.
+2. **End-to-end smoke across real runtimes** — the shortest manual path through the changed behavior that confirms the pieces connect, which no automated test in the plan can exercise, described concretely enough to be followed without knowing the design.
 
 Each item SHALL name what to check and what a correct result looks like. An item SHALL NOT be written as an unanchored instruction such as "verify it works".
 
@@ -45,7 +45,7 @@ Each item SHALL name what to check and what a correct result looks like. An item
 #### Scenario: end-to-end smoke path is concrete
 
 - **WHEN** an end-to-end smoke item is emitted
-- **THEN** it describes the specific path to exercise and the observable correct result
+- **THEN** it describes the specific path to exercise across real runtimes and the observable correct result
 - **AND** it is NOT written as "verify it works" or an equivalent unanchored instruction
 
 #### Scenario: inapplicable class omitted
@@ -56,13 +56,13 @@ Each item SHALL name what to check and what a correct result looks like. An item
 
 ### Requirement: Manual Verification is the middle tier, not a substitute for tests or review
 
-The active design step authority at `sai/commands/design/steps/design.md` SHALL state that `## Manual Verification` names the middle tier of a three-tier verification vocabulary: automated tests, manual checks, and downstream review. It SHALL NOT be used to record work that belongs in an automated test, nor to duplicate what `/sai-5-review` already covers.
+The active design step authority at `sai/commands/design/steps/design.md` SHALL state that `## Manual Verification` is a hard filter: it lists only checks that no automated test in the plan covers. It SHALL NOT be used to record work that belongs in an automated test, nor to duplicate what `/sai-5-review` already covers.
 
-An item SHALL qualify for `## Manual Verification` only when automating the check would cost meaningfully more than performing it by hand.
+An item SHALL qualify for `## Manual Verification` only when no automated test in the plan covers the check.
 
 #### Scenario: automatable check is not routed here
 
-- **WHEN** a check can be encoded as an ordinary automated test at reasonable cost
+- **WHEN** a check can be encoded as an ordinary automated test
 - **THEN** it belongs in the step's `**Testing Strategy**` and `interfaces.md`
 - **AND** it is NOT listed under `## Manual Verification`
 

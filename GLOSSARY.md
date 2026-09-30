@@ -79,9 +79,6 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Decision Record Family**: "One of the two record families (`adr` or `ddr`) that a qualifying design decision resolves to via the ordered routing test — a decision encoding a **Domain Invariant** is a `ddr`, otherwise it is an `adr`; a record's entry lives in exactly one index, its own family's."
 *Avoid*: record type, record class, template family, bare "family"
 
-**Deferred Decision**: "A decision a change could have made and deliberately postponed because its cost rises the longer it waits, recorded in `design.md`'s `## Deferred` section with a concrete postponement cost and a recommendation."
-*Avoid*: postponed decision, open question, non-goal, backlog item, TODO
-
 **Destination Class**: "A named key in the installer's destination-class resolution that maps a projection's `destination.class` to a base directory under the harness root — `commands`, `sai`, `skills`, `agents`, `config`, and `root` — with the class-to-path map duplicated in the install flow, uninstall flow, and doctor, where an unknown class is a runtime expansion error."
 *Avoid*: destination root, target class, install class, destination map
 

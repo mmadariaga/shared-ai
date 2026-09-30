@@ -3,7 +3,9 @@
 ## Purpose
 
 Define the target-state design artifact and its derived Architecture Snapshot and File Manifest contracts.
+
 ## Requirements
+
 ### Requirement: design.md opens with a Target State section
 
 `openspec/changes/{name}/design.md` SHALL begin with a `## Target State` section, authored and persisted by the design phase as the authoritative source for the change's finished-shape snapshot. The active design step at `sai/commands/design/steps/design.md` SHALL require that the `## Target State` section is emitted in `design.md` before the other design sections, SHALL require that its File Manifest is folded deterministically from task entries, and SHALL require that `openspec/changes/{name}/interfaces.md` begins directly with its first `## Step N` section — no `## Target State` section and no snapshot or manifest subsection SHALL be emitted in `interfaces.md`. The `change-overview.md` projection SHALL read the authoritative snapshot details from `design.md`; it SHALL render them under an adapted approval-oriented `## Target Architecture` section rather than project `## Target State`, and SHALL NOT author or synthesize source snapshot facts independently. The overview renders an adapted ## Target Architecture rather than ## Target State.
@@ -17,7 +19,7 @@ Define the target-state design artifact and its derived Architecture Snapshot an
 
 The section SHALL be written so a reader who reads only `## Target State` knows what the repository looks like when the change is complete, without reading any `## Step N` section.
 
-When a change genuinely produces no finished shape expressible under either interpretation, `## Target State` SHALL still be emitted with an explicit `None` and a one-line reason, matching the `None` provisions of `design-manual-verification` and `design-deferred-decisions`. Silent omission of the section SHALL NOT occur.
+When a change genuinely produces no finished shape expressible under either interpretation, `## Target State` SHALL still be emitted with an explicit `None` and a one-line reason, matching the `None` provision of `design-manual-verification`. Silent omission of the section SHALL NOT occur.
 
 Directly beneath `## Target State`, `design.md` SHALL emit exactly the two sibling subsections required by the `Target State subsections remain exact in design.md only` requirement of the `change-overview-artifact` capability, in order: `### Architecture Snapshot` followed by `### File Manifest`. The `### Architecture Snapshot` subsection MAY contain the nested boundary blocks defined by the Architecture Snapshot requirements; those blocks are internal structure and SHALL NOT count as additional `###` siblings. No third `###` subsection SHALL be emitted inside `## Target State`. The `### File Manifest` subsection and its `None` sentinel are defined by the `File Manifest is a deterministic net fold over Files Affected` and `File Manifest has an independent None sentinel` requirements of this capability; the persisted manifest in `design.md` is authoritative, and the overview validates it against the recomputed fold per the `change-overview-artifact` capability's `Target State remains authoritative in design.md but is not projected into the overview` requirement.
 
