@@ -33,7 +33,8 @@ The setup flow MUST present a post-setup menu only after all existing setup oper
 - **THEN** the flow MUST route to the load-preset screen without presenting scope or settings screens
 
 ### Requirement: TTY-only interaction
-The setup flow MUST determine whether interaction is available through its injectable TTY check before presenting the post-setup menu, the navigable harness picker, the customization scope screen, the target-selection checklist, the Claude Code combined model/effort frame, or any OpenCode provider, model, or variant screen. When no TTY is available, it MUST skip the menu and all customization adapters without adding menu-specific prompts, checklist renders, or output, and `runPostSetupMenu` MUST return 'skipped' so `setup.js` completes normally — the configurator MUST NOT hard-exit like the installer.
+
+The setup flow MUST determine whether interaction is available through its injectable TTY check before presenting the post-setup menu, the navigable harness picker, the customization scope screen, the target-selection checklist, either Claude Code model or effort screen, or any OpenCode provider, model, or variant screen. When no TTY is available, it MUST skip the menu and all customization adapters without adding menu-specific prompts, checklist renders, or output, and `runPostSetupMenu` MUST return 'skipped' so `setup.js` completes normally — the configurator MUST NOT hard-exit like the installer.
 
 #### Scenario: Setup runs without a TTY
 - **WHEN** the injectable TTY check reports that standard input is not interactive
@@ -127,7 +128,8 @@ The customization logic SHALL resolve each target's `CONTEXT` and `DIFFICULTY` f
 - **THEN** its row SHALL display `Unknown` under both `CONTEXT` and `DIFFICULTY` while retaining its stable selection identity and effective setting
 
 ### Requirement: Shared settings selection
-After the target-selection checklist confirms a non-empty subset and before any local override is created, the flow SHALL invoke the selected harness's settings selector exactly once for the whole confirmed subset in that customization pass. The collected settings choices — a model and an optional effort choice for Claude Code, and a discovered model with an optional variant for OpenCode — SHALL be passed to the per-target local-override operation once for every selected target. A per-target skipped result means the operation was attempted but its source was unavailable; it SHALL not be treated as a settings-selector failure or prevent later targets from being attempted. In `All` scope, the selector SHALL run once and the same settings SHALL be passed to every marked target across all selected families, with no per-family differentiation within a pass. Because the model-customization checklist rejects empty confirmation, the settings selector SHALL never be invoked for an empty selection.
+
+After the target-selection checklist confirms a non-empty subset and before any local override is created, the flow SHALL invoke the selected harness's settings selector exactly once for the whole confirmed subset in that customization pass. The collected settings choices — a model followed by an effort or explicit no-effort confirmation for Claude Code, and a discovered model with an optional variant for OpenCode — SHALL be passed to the per-target local-override operation once for every selected target. Claude Code's two screens SHALL produce one shared settings result only after both selections are complete. A per-target skipped result means the operation was attempted but its source was unavailable; it SHALL not be treated as a settings-selector failure or prevent later targets from being attempted. In `All` scope, the selector SHALL run once and the same settings SHALL be passed to every marked target across all selected families, with no per-family differentiation within a pass. Because the model-customization checklist rejects empty confirmation, the settings selector SHALL never be invoked for an empty selection.
 
 #### Scenario: Settings selector runs exactly once per customization pass
 - **WHEN** the target-selection checklist confirms a non-empty subset
@@ -139,7 +141,7 @@ After the target-selection checklist confirms a non-empty subset and before any 
 
 #### Scenario: Same settings applied to every selected target
 - **WHEN** the settings selector returns its settings choices for a confirmed subset of two or more targets
-- **THEN** every selected target's local override SHALL carry those identical settings choices, including the absence of `effort` when the chosen Claude model has no effort selector
+- **THEN** every selected target's local override SHALL carry those identical settings choices, including the absence of `effort` when the chosen Claude model has no effort values and the user confirms `Default (no effort)`
 
 #### Scenario: All scope applies one settings pass across all families
 - **WHEN** the confirmed subset in `All` scope contains targets from multiple families and the settings selector returns its choices
@@ -148,6 +150,10 @@ After the target-selection checklist confirms a non-empty subset and before any 
 #### Scenario: Empty confirmation never reaches settings
 - **WHEN** the user attempts to confirm an empty model-customization checklist
 - **THEN** the checklist SHALL remain open and the settings selector SHALL NOT be invoked
+
+#### Scenario: Both Claude screens finish before persistence
+- **WHEN** the user has selected a Claude model but has not completed its effort or no-effort confirmation
+- **THEN** the selector SHALL NOT return completed settings or create or modify a local override for the current selection
 
 ### Requirement: Stable target identities and effective model annotations
 The target checklist SHALL keep stable family-prefixed selection values separate from display labels. Each display label SHALL render an aligned five-column table row separated by two-space gutters: TYPE SHALL carry the target's uppercase display family (`WORKER`, `AGENT`, `ORCHESTRATOR`, or `UTILITY`) padded to twelve characters; TARGET SHALL carry the target's name padded to the longest displayed target name of the current scope; CONTEXT and DIFFICULTY SHALL carry their respective estimates padded to their header widths; and SETTING SHALL carry the target's effective setting as plain text with no brackets and no ANSI styling. The setting SHALL use `provider/model (effort)` formatting, with Claude Code's `effort` and OpenCode's `variant` occupying the tuning position. Project-local overrides SHALL take precedence over installed or global sources; malformed or missing frontmatter SHALL produce a safe `unavailable` setting rendered as ordinary column text without breaking selection.
@@ -166,42 +172,51 @@ The target checklist SHALL keep stable family-prefixed selection values separate
 
 ### Requirement: Claude settings selection
 
-For every Claude Code customization run with a non-empty confirmed subset, the Claude Code adapter MUST invoke exactly one navigable single-select frame whose options are derived from the adapter-owned static Claude settings catalog. An entry with an `efforts` array MUST be displayed as a concrete model and effort choice together, using the `<model> | <effort>` form; an entry without an `efforts` array MUST be displayed as the model alone. The catalog MUST be the authoritative source for the available model identifiers and each model's effort values, MUST contain at least one valid model entry, and MUST contain no placeholder values such as `<model>` or `<effort>`. The selected result MUST contain only catalog members: `{ model, effort }` for an effort-bearing entry or `{ model }` with no `effort` property for a model-only entry. If the catalog is unavailable or contains no valid model entries, or the selector returns a null or invalid setting, the post-setup menu SHALL return status `failed` with a diagnostic naming the cause and SHALL configure no target on that path. The selector MUST NOT perform Claude live model discovery, claim that end-to-end customization is fake, or perform OpenCode provider, model, or variant discovery. The collected values MUST be forwarded to the persistent local-override operation. The OpenCode adapter MUST continue to use its dependent provider-to-model-to-variant selection instead of this combined frame.
+For every Claude Code customization run with a non-empty confirmed subset, the Claude Code adapter MUST present dependent navigable single-select screens in this order: `Model for <subset>:` followed by `Effort for <subset>:`. Model options MUST be unique model identifiers derived from valid entries in the adapter-owned static Claude settings catalog. The effort screen MUST offer only effort values belonging to the selected model; for a model entry without an `efforts` array, it MUST offer exactly one display option, `Default (no effort)`. The catalog MUST be the authoritative source for the available model identifiers and each model's effort values, MUST contain at least one valid model entry, and MUST contain no placeholder values such as `<model>` or `<effort>`. The selected result MUST contain only catalog members: `{ model, effort }` for an effort-bearing entry or `{ model }` with no `effort` property for a model-only entry. `Default (no effort)` MUST NOT become an effort value, and Haiku MUST NOT return `effort: default`.
+
+Back navigation from the effort screen MUST reopen the model screen. Selecting a model after navigating back MUST derive its effort options anew without retaining another model's effort selection. Back navigation from the model screen MUST return control to target selection. Cancellation on either screen MUST return the cancellation outcome without saving the current selection.
+
+If the catalog is unavailable or contains no valid model entries, or the selector returns a null or invalid setting, the post-setup menu SHALL return status `failed` with a diagnostic naming the cause and SHALL configure no target on that path. The selector MUST NOT perform Claude live model discovery, claim that end-to-end customization is fake, or perform OpenCode provider, model, or variant discovery. The collected values MUST be forwarded to the persistent local-override operation only after both screens complete. The OpenCode adapter MUST continue to use its existing dependent provider-to-model-to-variant selection rather than the Claude static catalog.
 
 #### Scenario: Static Claude catalog contains the current model and effort set
-
 - **WHEN** the Claude adapter loads its built-in settings catalog
 - **THEN** the catalog SHALL contain `opus` with efforts `low`, `medium`, `high`, `xhigh`, and `max`; `sonnet` with the same five efforts; `fable` with the same five efforts; and `haiku` with no `efforts` array
 
 #### Scenario: Claude selection returns concrete model and effort
-
-- **WHEN** a non-empty Claude Code subset reaches settings selection and the user confirms an effort-bearing catalog option such as `sonnet | medium`
+- **WHEN** a non-empty Claude Code subset reaches settings selection and the user confirms `sonnet` on the model screen followed by `medium` on the effort screen
 - **THEN** the selector SHALL return exactly the concrete catalog values `{ model: 'sonnet', effort: 'medium' }`
 
 #### Scenario: Claude selection returns a model without effort
-
-- **WHEN** a non-empty Claude Code subset reaches settings selection and the user confirms the `haiku` catalog entry, whose entry has no `efforts` array
-- **THEN** the frame SHALL display `haiku` alone, and the selector SHALL return exactly `{ model: 'haiku' }` without a top-level `effort` property
+- **WHEN** a non-empty Claude Code subset reaches settings selection and the user confirms `haiku` on the model screen followed by its only effort-screen option, `Default (no effort)`
+- **THEN** the selector SHALL return exactly `{ model: 'haiku' }` without a top-level `effort` property or an `effort: default` value
 
 #### Scenario: Claude selection does not use placeholders
-
-- **WHEN** the Claude Code settings frame is rendered
-- **THEN** no selectable option SHALL use `<model>` or `<effort>` placeholder values, and a model-only option SHALL NOT fabricate an effort label
+- **WHEN** either Claude Code settings screen is rendered
+- **THEN** no selectable option SHALL use `<model>` or `<effort>` placeholder values, and `Default (no effort)` SHALL represent absence of effort rather than a fabricated effort value
 
 #### Scenario: Claude selection is bounded by per-model catalog entries
-
 - **WHEN** the Claude adapter-owned catalog contains model entries with model-specific effort arrays or no effort array
-- **THEN** every displayed and returned Claude setting SHALL be derived from one catalog entry, with no effort accepted for a model-only entry and no effort borrowed from another model
+- **THEN** every displayed model and concrete effort and every returned Claude setting SHALL be derived from the selected catalog entry, with no effort accepted for a model-only entry and no effort borrowed from another model
 
 #### Scenario: Missing Claude settings catalog produces no settings
-
 - **WHEN** the Claude settings catalog is unavailable or contains no valid model entries
 - **THEN** the menu SHALL return status `failed` with a diagnostic naming the unavailable catalog and customization SHALL configure no target on that path
 
 #### Scenario: OpenCode does not use the Claude frame
-
 - **WHEN** OpenCode customization reaches settings selection
-- **THEN** the flow SHALL use the dependent provider, model, and optional variant screens and SHALL not present the Claude combined frame or use the Claude static catalog
+- **THEN** the flow SHALL use the dependent provider, model, and optional variant screens and SHALL not present the Claude model and effort screens or use the Claude static catalog
+
+#### Scenario: Back from effort reopens model selection
+- **WHEN** the user presses left-arrow or Esc on the Claude effort screen
+- **THEN** the selector SHALL reopen model selection without persisting settings, and a subsequent model choice SHALL determine a fresh set of effort options
+
+#### Scenario: Back from model returns to target selection
+- **WHEN** the user presses left-arrow or Esc on the Claude model screen
+- **THEN** the selector SHALL return `BACK` to its caller without persisting settings so target selection can reopen
+
+#### Scenario: Invalid screen choices produce no settings
+- **WHEN** either Claude screen returns a choice absent from its displayed catalog-derived options
+- **THEN** the selector SHALL return no usable settings and SHALL NOT configure any target
 
 ### Requirement: Cyclic post-setup customization passes
 
@@ -313,26 +328,22 @@ The navigator SHALL expose an opt-in guard for multi-select confirmation with no
 
 ### Requirement: Visible selection-screen back affordance
 
-Every model-customization harness, scope, target, and settings selection screen SHALL render a key legend that announces left-arrow/Esc back navigation and q/Ctrl-C cancellation. Single-select screens SHALL use the default legend `Up/Down move · Space/Enter confirm · ←/Esc back · q/Ctrl-C cancel`; the multi-select target screen SHALL use the legend `Up/Down move · Space toggle · Ctrl+A toggle all · Enter confirm · ←/Esc back · q/Ctrl-C cancel`. The post-setup menu SHALL call through the `promptSelect` path with an explicit no-footer override and SHALL not announce back navigation because back at that first screen only redraws the menu. `promptSelect` SHALL unconditionally forward the default single-select legend to `runNavigator` whenever no footer override is supplied. The eleven production `promptChoice` invocations are the post-setup menu, harness selector, scope selector, save confirm, save overwrite, load selector, load confirm, Claude settings selector, and OpenCode provider, model, and variant selectors; `promptChoice` SHALL default to `promptSelect` at the Claude adapter, OpenCode adapter, and post-setup menu binding sites. The installer first screen uses `promptChecklist`, not `promptSelect`, and SHALL retain its existing footer behavior.
+Every model-customization harness, scope, target, and settings selection screen SHALL render a key legend that announces left-arrow/Esc back navigation and q/Ctrl-C cancellation. Single-select screens SHALL use the default legend `Up/Down move · Space/Enter confirm · ←/Esc back · q/Ctrl-C cancel`; the multi-select target screen SHALL use the legend `Up/Down move · Space toggle · Ctrl+A toggle all · Enter confirm · ←/Esc back · q/Ctrl-C cancel`. The post-setup menu SHALL call through the `promptSelect` path with an explicit no-footer override and SHALL not announce back navigation because back at that first screen only redraws the menu. `promptSelect` SHALL unconditionally forward the default single-select legend to `runNavigator` whenever no footer override is supplied. The twelve production `promptChoice` invocations are the post-setup menu, harness selector, scope selector, save confirm, save overwrite, load selector, load confirm, Claude model selector, Claude effort selector, and OpenCode provider, model, and variant selectors; `promptChoice` SHALL default to `promptSelect` at the Claude adapter, OpenCode adapter, and post-setup menu binding sites. The installer first screen uses `promptChecklist`, not `promptSelect`, and SHALL retain its existing footer behavior.
 
 #### Scenario: Single-select screens announce back
-
-- **WHEN** the harness, scope, Claude settings, or any OpenCode provider, model, or variant screen is rendered
+- **WHEN** the harness, scope, Claude model, Claude effort, or any OpenCode provider, model, or variant screen is rendered
 - **THEN** its footer SHALL announce left-arrow/Esc back, q/Ctrl-C cancellation, and Space confirmation
 
 #### Scenario: The checklist announces back and toggle behavior
-
 - **WHEN** the model-customization target checklist is rendered
 - **THEN** its footer SHALL announce left-arrow/Esc back, q/Ctrl-C cancellation, Space toggling, and Ctrl+A toggle-all behavior without changing its existing multi-select legend semantics
 
 #### Scenario: The first menu does not announce back
-
 - **WHEN** the post-setup customization menu is rendered
 - **THEN** its footer SHALL not claim that left-arrow/Esc leaves the menu
 
 #### Scenario: Eleven selectors retain legends and bindings
-
-- **WHEN** the post-setup, harness, scope, save, load, Claude, and OpenCode selector screens render
+- **WHEN** the post-setup, harness, scope, save, load, Claude model and effort, and OpenCode selector screens render across the twelve production choice invocations
 - **THEN** each single-select screen SHALL announce back navigation while the menu retains its no-footer override and default bindings
 
 ### Requirement: Persistent local override
@@ -412,23 +423,24 @@ The empty-enumeration notice SHALL read `No customization targets are available 
 - **THEN** the system SHALL present the sai-merge block, then the sai-commit orchestrator-plus-worker block, then the separator with utilities sai-pr, sai-retire-docs, sai-status, and sai-worktree
 
 ### Requirement: Navigable cancellation aborts customization
-When the user presses `q` or Ctrl-C at any navigable surface — the post-setup menu, the harness picker, the customization scope screen, the target-selection checklist, the Claude Code combined model/effort frame, or any OpenCode provider, model, or variant screen — the flow SHALL cancel the entire customization run: no target SHALL be configured, no further navigable surface SHALL be presented, and the flow SHALL complete normally without hard-exiting the process (the configurator's non-exit contract, in contrast to the installer's caller-owned exit policy).
+
+When the user presses `q` or Ctrl-C at any navigable surface — the post-setup menu, the harness picker, the customization scope screen, the target-selection checklist, either Claude Code model or effort screen, or any OpenCode provider, model, or variant screen — the flow SHALL cancel the current customization run without configuring any target from its current uncompleted selection or presenting any further navigable surface. It SHALL complete normally without hard-exiting the process (the configurator's non-exit contract, in contrast to the installer's caller-owned exit policy). Overrides written by earlier successful passes SHALL remain unchanged.
 
 #### Scenario: Cancel from the post-setup menu
 - **WHEN** the user presses `q` or Ctrl-C at the post-setup menu
-- **THEN** customization SHALL be cancelled with no target configured and the flow SHALL complete normally
+- **THEN** customization SHALL be cancelled with no target configured from the current selection and the flow SHALL complete normally while preserving earlier successful passes
 
 #### Scenario: Cancel from the harness picker
 - **WHEN** the user presses `q` or Ctrl-C at the harness picker
-- **THEN** customization SHALL be cancelled with no target configured and the flow SHALL complete normally
+- **THEN** customization SHALL be cancelled with no target configured from the current selection and the flow SHALL complete normally while preserving earlier successful passes
 
 #### Scenario: Cancel from the scope screen or target-selection checklist
 - **WHEN** the user presses `q` or Ctrl-C at the customization scope screen or at the target-selection checklist
-- **THEN** customization SHALL be cancelled with no target configured and the flow SHALL complete normally
+- **THEN** customization SHALL be cancelled with no target configured from the current selection and the flow SHALL complete normally while preserving earlier successful passes
 
 #### Scenario: Cancel during settings selection
-- **WHEN** the user presses `q` or Ctrl-C at the Claude Code combined model/effort frame or at any OpenCode provider, model, or variant screen, or the settings selector returns no selection
-- **THEN** customization SHALL be cancelled — no target SHALL be configured — and the flow SHALL complete normally
+- **WHEN** the user presses `q` or Ctrl-C at either Claude Code model or effort screen or at any OpenCode provider, model, or variant screen, or the settings selector returns no selection
+- **THEN** customization SHALL be cancelled with no target configured from the current selection, no additional screen presented, and the flow SHALL complete normally while preserving earlier successful passes
 
 ### Requirement: Capability rename and archival
 The `agent-customization-menu` capability SHALL be retired: its main spec SHALL move from `openspec/specs/agent-customization-menu/spec.md` to `openspec/specs/_archived/agent-customization-menu/spec.md` with its historical content preserved, and `model-customization-menu` SHALL be the active capability home for the restated requirements. The active spec tree SHALL NOT retain a capability named `agent-customization-menu`, and no content under `openspec/specs/_archived/` other than this move SHALL be created, modified, or removed. Descriptive references to the retired name inside other active specs SHALL remain unchanged and do not constitute a retained capability.

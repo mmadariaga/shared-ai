@@ -460,7 +460,7 @@ test('back at the provider screen hands control back to the caller as BACK', { t
     'the first screen of the chain should propagate back to the menu, not resolve settings');
 });
 
-test('back at the Claude combined settings screen propagates BACK to the caller', { timeout: INTERACTION_TIMEOUT }, async () => {
+test('back at the Claude model screen propagates BACK to the caller', { timeout: INTERACTION_TIMEOUT }, async () => {
   const adapter = modelCustomization.createClaudeAdapter({
     promptChoice: async () => BACK,
   });
