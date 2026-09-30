@@ -15,7 +15,7 @@ candidate below that exists**, copied **verbatim**, exactly as written.
 
 Substitute the concrete file name (for example `prereqs.js`,
 `change-picker.js`, `commit.js`, `check-delta-headers.js`,
-`worker-report-validator.js`, `pr.js`) for `<name>` below.
+`worker-report-validator.js`, `pr.js`, `file-manifest.js`) for `<name>` below.
 
 On **Claude Code**, in this order:
 
@@ -54,6 +54,8 @@ takes one — never substitute one for the other.
   <project-root>` plus the sub-command's required flags (`pr.js collect` also
   takes `--change`; `pr.js apply` takes `--cwd` plus `--parent` where needed
   and no `--json`, since `--json` and `--change` are `collect`-only).
+- `file-manifest.js`: `node <tool-path> <fold|verify> <change-name> --json
+  --cwd <project-root>`.
 - `check-delta-headers.js`: `node <tool-path> <change-name> [--json]
   [--root <dir>] [--delta-dir <dir>] [--specs-dir <dir>]`; it takes no
   `--cwd`.

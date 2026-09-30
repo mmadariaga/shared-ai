@@ -51,12 +51,13 @@ Every step pointer SHALL reach the design planning worker as a coordinator conti
 - **AND** the worker opens only the step file that pointer names
 
 ### Requirement: file-manifest-algorithm-lives-with-its-input
-The deterministic net-fold algorithm that produces the `### File Manifest` subsection SHALL be specified in `sai/commands/design/steps/tasks.md`, where its input — the per-step `**Files Affected**` entries — is authored. `sai/commands/design/steps/design.md` SHALL state that the section exists and where it is authored, and SHALL NOT restate the algorithm.
+
+The deterministic net-fold algorithm that produces the `### File Manifest` subsection SHALL be implemented by `sai/tools/file-manifest.js` and invoked from `sai/commands/design/steps/tasks.md`, where its input — the per-step `**Files Affected**` entries — is authored; the normative fold rules remain those of the `design-target-state` capability. `sai/commands/design/steps/tasks.md` SHALL NOT restate the fold transition table in prose. `sai/commands/design/steps/design.md` SHALL state that the section exists and that the tasks step produces it through the tool, and SHALL NOT plan, author, or restate the algorithm.
 
 #### Scenario: The fold is specified where its input exists
+
 - **WHEN** a design run reaches the tasks step
-- **THEN** the fold algorithm is available in that step's instruction file
-- **AND** `sai/commands/design/steps/design.md` carries a reference to it rather than a second copy
+- **THEN** that step's instruction file directs running `file-manifest.js fold` on the written `tasks.md`, and `sai/commands/design/steps/design.md` carries a reference to it rather than a second copy
 
 ### Requirement: placeholder-resolution-uses-resolved-change-name
 Step instruction files under `sai/commands/design/steps/` SHALL denote the resolved change identifier with the placeholder `{resolved_change_name}` and SHALL NOT use `$ARGUMENTS`, which on a flag-bearing envelope interpolates the raw argument string into artifact paths.
