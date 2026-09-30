@@ -5,10 +5,9 @@
   Fetch @sai/commands/archive/retirement-declaration.md
   Fetch @sai/policies/command-execution.md and follow it exactly.
 
-  ## Prerequisite checks
+  ## Artifact paths
 
-  `sai-archive` requires an openspec project. Fetch @sai/policies/prereqs.md
-  and apply it exactly; on a failed check, print that check's message and stop.
+  Fetch @sai/policies/prereqs-paths.md
 
   ## Fast-track parse
 

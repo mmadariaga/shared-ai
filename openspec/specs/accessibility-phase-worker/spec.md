@@ -28,7 +28,7 @@ The routed accessibility worker SHALL own envelope parsing, prerequisites, chang
 
 ### Requirement: Worker preserves accessibility prerequisites, argument parsing, and scope behavior
 
-Before analysis, the worker SHALL enforce the existing OpenSpec CLI, `openspec/` directory, `schema: sai-workflow`, and required `proposal.md` prerequisites. It SHALL preserve the existing argument contract: one required change-name positional, optional `--full` or `--path {dir}` scope flag, optional `--runtime` flag, and optional trailing parent-branch value. It SHALL also preserve change selection behavior and parent-branch detection order. It SHALL default to static review, replace the audit with a Not Applicable report when the selected scope contains no UI files, and write no report when the proposal prerequisite is missing.
+Before analysis, the worker SHALL enforce the required `proposal.md` and SHALL NOT run or restate the OpenSpec CLI, `openspec/` directory, or `schema: sai-workflow` prerequisite checks. It SHALL preserve the existing argument contract: one required change-name positional, optional `--full` or `--path {dir}` scope flag, optional `--runtime` flag, and optional trailing parent-branch value. It SHALL also preserve change selection behavior and parent-branch detection order. It SHALL default to static review, replace the audit with a Not Applicable report when the selected scope contains no UI files, and write no report when the proposal prerequisite is missing.
 
 #### Scenario: Proposal prerequisite is missing
 - **WHEN** the selected change has no `openspec/changes/{change-name}/proposal.md`
@@ -43,7 +43,6 @@ Before analysis, the worker SHALL enforce the existing OpenSpec CLI, `openspec/`
 #### Scenario: Runtime flag is absent
 - **WHEN** the invocation does not include `--runtime`
 - **THEN** the worker performs static review only
-- **AND** it executes no browser or scanner command
 
 ### Requirement: Static accessibility review preserves WCAG policy and research delegation
 

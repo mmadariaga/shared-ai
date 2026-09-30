@@ -24,11 +24,11 @@ The composition SHALL resolve the target OpenSpec change name exactly once at in
 
 ### Requirement: Prerequisites run once at composition start
 
-The composition SHALL run the three OpenSpec prerequisite checks (`openspec` binary in PATH, `openspec/` directory exists, `openspec/config.yaml` declares `schema: sai-workflow`) exactly once before any segment dispatch. Every segment SHALL inherit the satisfied prerequisites and never repeat them.
+The `/sai-review` composition coordinator SHALL run no OpenSpec prerequisite check and SHALL NOT fetch `@sai/policies/prereqs.md`; that check belongs to `/sai-explore` alone. It SHALL fetch `@sai/policies/prereqs-paths.md` for the artifact path table, and no segment SHALL run a prerequisite check.
 
 #### Scenario: Segments inherit satisfied prerequisites
 - **WHEN** the review segment completes and an audit segment activates
-- **THEN** the audit segment SHALL NOT repeat the prerequisite checks performed at composition start
+- **THEN** neither the composition start nor the audit segment runs a prerequisite check
 
 ### Requirement: No intermediate approval gate and review-first re-entry
 

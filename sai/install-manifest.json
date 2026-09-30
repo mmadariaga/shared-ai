@@ -2245,6 +2245,20 @@
       ]
     },
     {
+      "id": "retired-policies-prereqs",
+      "destination": {
+        "class": "sai",
+        "path": "policies/prereqs.md"
+      },
+      "harnesses": [
+        "claude",
+        "opencode"
+      ],
+      "managedHashes": [
+        "48edfba1fb7c857c378ef88f197355c780256e60a8f8fce9249c0a12b014863a"
+      ]
+    },
+    {
       "id": "retired-instructions-prereqs",
       "destination": {
         "class": "sai",

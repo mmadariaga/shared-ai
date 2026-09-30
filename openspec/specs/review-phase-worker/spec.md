@@ -30,7 +30,7 @@ The routed review worker SHALL load its technical workflow step-gated. The worke
 
 ### Requirement: Prerequisite failures stop technical work
 
-Before review analysis, the worker SHALL enforce the existing OpenSpec CLI, `openspec/` directory, `schema: sai-workflow`, and required `proposal.md` prerequisites. A failed prerequisite SHALL return the existing actionable failure and SHALL not write `review.md`, mutate production files, or dispatch nested review subagents. For a missing proposal, the failure summary SHALL be exactly `openspec/changes/{change-name}/proposal.md not found. Ensure the change name is correct and that /sai-1-spec has been run for this change.`.
+Before review analysis, the worker SHALL enforce the required `proposal.md` and SHALL NOT run or restate the OpenSpec CLI, `openspec/` directory, or `schema: sai-workflow` prerequisite checks. A missing proposal SHALL return the existing actionable failure and SHALL not write `review.md`, mutate production files, or dispatch nested review subagents. For a missing proposal, the failure summary SHALL be exactly `openspec/changes/{change-name}/proposal.md not found. Ensure the change name is correct and that /sai-1-spec has been run for this change.`.
 
 #### Scenario: Required proposal is missing
 - **WHEN** `openspec/changes/{change-name}/proposal.md` cannot be found

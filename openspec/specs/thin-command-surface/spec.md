@@ -2,7 +2,9 @@
 
 ## Purpose
 Keeps the `/sai-status` command body a thin task template that delegates every panel derivation to the deterministic status tool.
+
 ## Requirements
+
 ### Requirement: Status command delegates to deterministic tool
 The `/sai-status` command body file SHALL be thinned to a task template that runs prerequisites, invokes the status-picker policy, dispatches to the status tool with `--json` flag, and relays the tool's output verbatim. All prose-based derivation and decision logic SHALL be removed from the command file.
 
@@ -19,15 +21,16 @@ The `/sai-status` command body file SHALL be thinned to a task template that run
 - **THEN** the command relays the tool's JSON or plain-text output verbatim to the user without re-deriving, reformatting, or filtering
 
 ### Requirement: Command file is reduced to a task template
-The status command file SHALL contain only the following elements: prerequisite checks, status-picker policy invocation, tool dispatch instructions, and output relay. No other logic.
+
+The status command file SHALL contain only the following elements: the artifact-path-table fetch, status-picker policy invocation, tool dispatch instructions, and output relay. No other logic, and no prerequisite check.
 
 #### Scenario: File structure is lean
 - **WHEN** counting lines in `sai/commands/status/body.md`
-- **THEN** the file is reduced from 70 lines (with prose Steps A–E) to approximately 48 lines (prerequisites, policy, tool invocation, relay)
+- **THEN** the file stays a short template of path table, policy, tool invocation, and relay, with no prose Steps A–E
 
 #### Scenario: Prerequisites remain in place
 - **WHEN** the status command is invoked
-- **THEN** it first runs the prerequisite checks from `sai/policies/prereqs.md` to ensure the project is ready
+- **THEN** it fetches `sai/policies/prereqs-paths.md` for artifact paths and runs no prerequisite check
 
 #### Scenario: Bulk mode dispatch follows status-picker signal
 - **WHEN** `status-picker.md` emits the `> BULK-MODE ACTIVE` signal
@@ -54,4 +57,3 @@ The user-facing contract (input/output) of the `/sai-status` command SHALL remai
 #### Scenario: Bulk mode remains user-accessible
 - **WHEN** a user invokes the status command with the "See all" option from status-picker
 - **THEN** they receive the same bulk-changes table format as before (header, legend, one row per change)
-

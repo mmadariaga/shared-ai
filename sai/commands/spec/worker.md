@@ -20,7 +20,7 @@ The worker receives exactly one opaque string, `arguments_value`, and reads noth
 
 ## Prerequisites and Resolution
 
-Check the OpenSpec CLI, `openspec/`, and `schema: sai-workflow` per `@sai/policies/prereqs-check.md`. On a failure, return the check policy's exact STOP-and-print literal and write nothing. Then resolve the change per § Invocation Envelope. Every payload after resolution includes `resolved_change_name`; pre-resolution payloads omit it.
+Resolve the change per § Invocation Envelope. Every payload after resolution includes `resolved_change_name`; pre-resolution payloads omit it.
 
 ## Progress Reporting
 

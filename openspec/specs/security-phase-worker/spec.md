@@ -28,7 +28,7 @@ The routed security worker SHALL own envelope parsing, prerequisite checks, chan
 
 ### Requirement: Worker preserves security prerequisites, argument parsing, and diff scope
 
-Before analysis, the worker SHALL enforce the existing OpenSpec CLI, `openspec/` directory, `schema: sai-workflow`, and required `proposal.md` prerequisites. It SHALL preserve the existing change-name and optional `--full` or `--path` scope arguments, zero/one/multiple-change selection behavior, missing-proposal failure text, and parent-branch detection order of user input, remote default, verified `master`, then verified `main`. It SHALL state the selected parent branch, inspect only the selected scope, use the existing file list/stat/diff workflow, and apply the 500-LOC full-diff cutover.
+Before analysis, the worker SHALL enforce the required `proposal.md` and SHALL NOT run or restate the OpenSpec CLI, `openspec/` directory, or `schema: sai-workflow` prerequisite checks. It SHALL preserve the existing change-name and optional `--full` or `--path` scope arguments, zero/one/multiple-change selection behavior, missing-proposal failure text, and parent-branch detection order of user input, remote default, verified `master`, then verified `main`. It SHALL state the selected parent branch, inspect only the selected scope, use the existing file list/stat/diff workflow, and apply the 500-LOC full-diff cutover.
 
 #### Scenario: Proposal prerequisite is missing
 - **WHEN** `openspec/changes/{change-name}/proposal.md` is absent

@@ -33,12 +33,11 @@
   non-empty `arguments_value`, then the zero/one/multiple picker when it is
   empty). Retain the resolved name as supervisor-owned invocation state.
   Neither segment re-enters a harness boot adapter or command wrapper. After a
-  successful phase 1, the apply segment does not re-run change-picker or
-  prerequisite checks that implement already satisfied for `implementation.md`
-  existence.
+  successful phase 1, the apply segment does not re-run change-picker for a
+  name implement already resolved.
 
   Build does not add a separate design-approval or artifact-preflight gate beyond
-  the prerequisites and artifact checks the implement segment already owns. An
+  the artifact checks the implement segment already owns. An
   unapproved or incomplete design fails or blocks inside implement the same way
   direct `/sai-3-implement` would.
 

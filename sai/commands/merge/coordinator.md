@@ -15,12 +15,11 @@
   harness is opencode, and use that harness-native task-list binding for the
   merge TODO.
 
-  ## Prerequisite exemption
+  ## OpenSpec independence
 
-  `sai-merge` operates on git state only and is the documented exemption from
-  the openspec prerequisites: it never fetches `@sai/policies/prereqs.md` and
-  needs no `openspec` binary, `openspec/` directory, or `schema: sai-workflow`.
-  Without `openspec/`, the worker classifies spec paths as code.
+  `sai-merge` operates on git state only and needs no `openspec` binary,
+  `openspec/` directory, or `schema: sai-workflow`. Without `openspec/`, the
+  worker classifies spec paths as code.
 
   ## Fast-track parse
 
