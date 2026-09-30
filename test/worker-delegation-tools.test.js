@@ -12,7 +12,7 @@ const REPO_ROOT = path.join(__dirname, '..');
 
 // A delegating load is a Fetch line naming one of the budget skills; a prose
 // mention of budget-explorer without Fetch does not count.
-const BUDGET_FETCH = /\bFetch\b.*@skills\/budget(?:-explorer|-executor|-subagent)?\/SKILL\.md/;
+const BUDGET_FETCH = /\bFetch\b.*@skills\/budget(?:-ro|-explorer|-executor|-subagent)?\/SKILL\.md/;
 const SAI_FETCH = /\bFetch\b[^@\n]*@(sai\/[^\s`'")]+)/g;
 
 function readSource(relativePath) {

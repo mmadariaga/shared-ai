@@ -4,7 +4,7 @@ Loaded at dispatch and in force for the whole run.
 
 Fetch @sai/policies/glossary-format.md
 Fetch @sai/policies/remember.md
-Fetch @skills/budget/SKILL.md
+Fetch @skills/budget-ro/SKILL.md
 
 ## Role
 

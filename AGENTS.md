@@ -74,6 +74,7 @@ The openspec-dependent `sai-*` commands halt with a clear error if either is mis
 | `skills/` | Universal skills installed globally (not project-local). Resolved via `~/.claude/skills/` or `~/.config/opencode/skills/`. Wrappers fetch only the harness `fetch` skill; budget / safe-operations load on cards, and sai-commands triggers from its description. |
 | `skills/universal/sai-commands/SKILL.md` | SAI command resolver — makes a `/sai-*` invocation that arrives as text run through its installed command file (`commands/sai-*.md`, which is the registry) before any task work. |
 | `skills/universal/safe-operations/SKILL.md` | Safe operations skill — enforces reversibility and impact awareness, requires user confirmation before destructive/hard-to-reverse/shared-system operations. Loaded by 10 sai-* commands; load sites in ### Safe Operations. |
+| `skills/universal/budget-ro/SKILL.md` | Budget read-only skill — loads the explorer binding and `token-efficient-languages` only; fetched by `steps/common.md` of spec/review/security/performance/accessibility. |
 | `skills/universal/budget/SKILL.md` | Loads the explorer + executor + subagent bindings together (the language contract comes from `remember.md`). Load sites in ### Cost Discipline. |
 | `skills/universal/` | Universal skills (no vendor). Loaded from cards, not from wrappers. |
 | `skills/claude/` | Claude Code-specific skills (subagent dispatch rules, etc.). Routed workers load neutral bindings directly from installed `sai/orchestration/workers/bindings/` paths. |
@@ -216,7 +217,7 @@ All agents MUST think and reason internally in English, regardless of the user's
 - **Generated artifacts** (`implementation.md`, `review.md`, `security.md`, `performance.md`, `accessibility.md`, commit messages, PR bodies, code): written in English unless the user explicitly requests otherwise.
 
 ### Cost Discipline (research subagents)
-Cards that spawn budget-tier helpers fetch `@skills/budget/SKILL.md` (explore `body.md`, apply `invocation.md`, backfill `worker.md`, and `steps/common.md` for spec/design/implement/review/security/performance/accessibility). Wrappers do not fetch budget skills. The main agent reasons and synthesizes. Subagents do I/O. Key rules:
+Cards that spawn budget-tier helpers fetch `@skills/budget/SKILL.md` (explore `body.md`, apply `invocation.md`, backfill `worker.md`, and `steps/common.md` for design/implement; spec/review/security/performance/accessibility fetch `@skills/budget-ro/SKILL.md`, explorer-only). Wrappers do not fetch budget skills. The main agent reasons and synthesizes. Subagents do I/O. Key rules:
 - Claude Code dispatches a single explorer tier through the matching `budget-explorer` agent file — `Agent(subagent_type: budget-explorer, run_in_background: true, prompt: <prompt>)` with no per-spawn model; the resolved `budget-explorer.md` agent file's `model` and `effort` frontmatter (user-owned) selects the model, and the tool-call ceiling is 40 per execution segment.
 - Multi-step synthesis stays with the main agent; speculative exploration ("look around") is allowed only in the explorer tier.
 - Opencode retains its own mechanism: the `explore` keyword binds the explore agent, and the model comes from the explore agent file's `model` frontmatter (`~/.config/opencode/agents/explore.md`).

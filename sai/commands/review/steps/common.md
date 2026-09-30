@@ -1,6 +1,6 @@
 # Review Step — Common (always active)
 
-Fetch @skills/budget/SKILL.md and use it
+Fetch @skills/budget-ro/SKILL.md and use it
 Fetch @sai/policies/glossary-format.md
 Fetch @sai/policies/remember.md
 

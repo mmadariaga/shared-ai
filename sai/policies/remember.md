@@ -4,11 +4,9 @@ Standing rules for every SAI command session: main session, coordinator, or work
 
 ## Language
 
-- Reason in English.
-- Write artifacts in English (`implementation.md`, reports, commit messages, PR bodies, code).
-- Reply to the user in the language of their input.
+Fetch @skills/token-efficient-languages/SKILL.md
 
-The user can override any of the three explicitly.
+The user can override any of the three rules explicitly.
 
 ## Scope
 
