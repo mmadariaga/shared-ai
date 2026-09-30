@@ -34,7 +34,15 @@ Resolve every `Fetch @<path>` or `Also fetch @<path>` directive in any instructi
 |---------|-----------|
 | `Fetch @skills/<name>/SKILL.md` | Use the `skill` tool to load skill `<name>`, e.g. `skill("budget")` |
 | `Fetch @skills/<name>/SKILL.md and follow those instructions exactly.` | Use the `skill` tool to load skill `<name>`, then follow its instructions |
-| `Fetch @<subpath>` (any other path) | Read `.opencode/<subpath>` first; if it exists, use its content; otherwise Read `~/.config/opencode/<subpath>` directly; if that read fails, stop and report: File not found: <subpath> (checked .opencode/ and ~/.config/opencode/) |
+| `Fetch @<subpath>` (any other path) | See Project-local `sai/` root probe below. |
+
+### Project-local `sai/` root probe
+
+This session probes the project-local `sai/` root exactly once, on the first `Fetch @<subpath>` directive whose path begins with `sai/`, not on the harness root itself — a project without a local SAI copy can still have `.opencode/skills/` from `openspec init`.
+
+- **Not yet probed, or probed and found present**: Read `.opencode/<subpath>` first; if it exists, use its content and, for the first `sai/`-prefixed directive, remember for the rest of this session that the project-local `sai/` root is present. If that Read finds no file, Read `~/.config/opencode/<subpath>` directly; if that read also fails, stop and report: File not found: <subpath> (checked .opencode/ and ~/.config/opencode/). For the first `sai/`-prefixed directive, a failed local Read also means: remember for the rest of this session that the project-local `sai/` root is absent.
+- **Probed and found absent**: resolve every subsequent `Fetch @<subpath>` directive, of any prefix, by reading `~/.config/opencode/<subpath>` directly, with no local Read attempt; if that read fails, stop and report: File not found: <subpath> (checked .opencode/ and ~/.config/opencode/)
+- A project-local `sai/` root created after this session's probe is not seen until the next session.
 
 ### Path scope
 

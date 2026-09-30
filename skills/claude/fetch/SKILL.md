@@ -34,7 +34,15 @@ Resolve every `Fetch @<path>` or `Also fetch @<path>` directive in any instructi
 |---------|-----------|
 | `Fetch @skills/<name>/SKILL.md` | Invoke the `Skill` tool with skill name `<name>`, e.g. `Skill("budget")` |
 | `Fetch @skills/<name>/SKILL.md and follow those instructions exactly.` | Invoke the `Skill` tool with skill name `<name>`, then follow its instructions |
-| `Fetch @<subpath>` (any other path) | Read `.claude/<subpath>` first; if it exists, use its content; otherwise Read `~/.claude/<subpath>` directly; if that read fails, stop and report: File not found: <subpath> (checked .claude/ and ~/.claude/) |
+| `Fetch @<subpath>` (any other path) | See Project-local `sai/` root probe below. |
+
+### Project-local `sai/` root probe
+
+This session probes the project-local `sai/` root exactly once, on the first `Fetch @<subpath>` directive whose path begins with `sai/`, not on the harness root itself — a project without a local SAI copy can still have `.claude/skills/` from `openspec init`.
+
+- **Not yet probed, or probed and found present**: Read `.claude/<subpath>` first; if it exists, use its content and, for the first `sai/`-prefixed directive, remember for the rest of this session that the project-local `sai/` root is present. If that Read finds no file, Read `~/.claude/<subpath>` directly; if that read also fails, stop and report: File not found: <subpath> (checked .claude/ and ~/.claude/). For the first `sai/`-prefixed directive, a failed local Read also means: remember for the rest of this session that the project-local `sai/` root is absent.
+- **Probed and found absent**: resolve every subsequent `Fetch @<subpath>` directive, of any prefix, by reading `~/.claude/<subpath>` directly, with no local Read attempt; if that read fails, stop and report: File not found: <subpath> (checked .claude/ and ~/.claude/)
+- A project-local `sai/` root created after this session's probe is not seen until the next session.
 
 ### Path scope
 
