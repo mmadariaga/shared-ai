@@ -54,6 +54,9 @@ verbs take neither `--json` nor `--cwd`. A missing argument is a usage error
   emits nothing.
 - **Reset**: `sai-state reset <id> <machineId>` clears that one machine's state
   and returns `{reset: <machineId>}`; other machines in the session keep theirs.
+  A linear step machine (§ Step machines) also returns
+  `{stage, next: {follow, hint}}` for its first filed step, the first step
+  whose `follow` is a file. Other machines return only `{reset}`.
 - **Close**: `sai-state close <id>` deletes the session file and returns
   `{closed: id}`; the same id then starts from the initial state. Close the
   session when the run closes.
@@ -162,6 +165,17 @@ happy-path sequence of step files. The machine definition (step ids, step
 files, stage table, initial state) is a data module in `sai-state/machines/`.
 
 1. **Segment start**: `spawn`, then immediately `reset <id> <machineId>`.
+   Retain the returned `stage` and `next`: they name the first filed step. The
+   first step of every step machine is fileless (`follow: none`), so its
+   progress event would only relay that pointer. Instead, send the pointer
+   line `Active step: <stage> — follow <next.follow>` as the first line of the
+   post-ready task-disclosure continuation, before the task. The worker runs
+   the fileless first step inline, follows that pointer, and reports both ids
+   in its first progress event. The first emit after reset therefore normally
+   carries two ids; when it carries only the first, the machine returns the
+   same pointer again, with no error. This rule is phase-neutral: it applies
+   to every coordinator or supervising surface that declares a `step_machine`,
+   with no per-phase exception.
 2. **Each progress event**: pipe the worker's progress payload, as received,
    into the progress emit (`sai-state emit <id> <machineId> --progress -`); it
    validates the payload and advances the machine in one call, deriving
@@ -180,6 +194,9 @@ files, stage table, initial state) is a data module in `sai-state/machines/`.
    the active step file persists across them, and the machine stays parked
    until the next progress event. A replacement worker re-resolves its
    active step from the surviving session's machine state without re-emitting.
+   Before the first progress event, that active step is the first filed step
+   from the `reset` response, so the replacement's first continuation carries
+   its pointer line, never the fileless first step's `none`.
 4. **Run close** (`completed`, `failed`, `cancelled`): `reset <id> <machineId>`
    again, so a later run in the same chat starts at step zero.
 

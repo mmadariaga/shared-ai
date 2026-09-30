@@ -791,8 +791,8 @@ test('Step 6: the retired simplification id is rejected and first-run folding us
   assert.doesNotMatch(worker, /`plan-simplification`/);
   assert.match(
     worker,
-    /startup batch reports `prereqs-resolution` and\s+`collapse-implemented-steps` together, with no separate `skipped` field/i,
-    'the first-run skip should fold the collapse id into the startup batch'
+    /startup batch reports `prereqs-resolution`\s+and `collapse-implemented-steps` together[\s\S]{0,400}first run[\s\S]{0,200}no separate `skipped` field/i,
+    'the startup batch should fold the collapse id, with no skipped field on a first run'
   );
 });
 

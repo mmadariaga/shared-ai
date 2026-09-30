@@ -40,7 +40,9 @@ question: string
 options: Array<{ label: string, value: string }>
 answer_value: string
 ```
+
 ## Requirements
+
 ### Requirement: prerequisite-failure-texts
 
 Each missing prerequisite SHALL return its pinned actionable failure text.
@@ -243,7 +245,7 @@ The design worker SHALL NOT use Proposal Complexity to select a model, effort le
 
 The design worker SHALL emit progress events, after prerequisite checks pass and change resolution completes, whenever it completes one or more steps of the progress plan whose ids are canonical in the phase contracts. The design worker contract SHALL enumerate exactly the step ids `prereqs-resolution`, `research`, `design`, `tasks`, `interfaces`, `review`, and `overview`, with labels `Check prerequisites`, `Research and resolve open questions`, `Write design.md`, `Write tasks.md`, `Write interfaces.md`, `Review artifacts`, and `Generate change-overview.md` respectively, and every event SHALL carry only ids from that enumeration, in plan order, plus the files changed since the preceding result. The worker SHALL NOT author, extend, or reorder the plan, and SHALL NOT emit a progress event before resolution or in place of a terminal payload.
 
-The worker SHALL report one batch per completed act: the startup act (fast-track parsing, prerequisite checks, change resolution, and the specs approval gate) carries `prereqs-resolution`; codebase research and Open Question resolution carry `research`; writing `design.md` carries `design`; writing `tasks.md` carries `tasks`; writing and verifying `interfaces.md` carries `interfaces`; a completed review pass reporting `High=0` carries `review` per `review-step-evidence-marking`; a successful `change-overview.md` materialization or regeneration carries `overview`.
+The worker SHALL report one batch per completed act, except that the startup act and research share the first batch. The startup act (fast-track parsing, prerequisite checks, change resolution, and the specs approval gate) completes `prereqs-resolution`. Codebase research and Open Question resolution, run from the `research` pointer disclosed with the task, complete `research`. Both SHALL be reported together in the first progress event per `@sai/orchestration/worker-core.md` § Step-machine task disclosure. Writing `design.md` carries `design`; writing `tasks.md` carries `tasks`; writing and verifying `interfaces.md` carries `interfaces`; a completed review pass reporting `High=0` carries `review` per `review-step-evidence-marking`; a successful `change-overview.md` materialization or regeneration carries `overview`.
 
 When `--fast-track` is active the specs approval gate is skipped and folds into the startup batch with no separate `skipped` field and no separate batch.
 
@@ -251,13 +253,13 @@ A feedback turn SHALL NOT emit a progress event, except that a feedback turn whi
 
 #### Scenario: startup batch carries the folded approval gate
 
-- **WHEN** the design worker completes fast-track parsing, prerequisite checks, change resolution, and the specs approval gate
-- **THEN** it SHALL emit one progress event carrying `prereqs-resolution`
+- **WHEN** the design worker completes fast-track parsing, prerequisite checks, change resolution, the specs approval gate, and the research named by the disclosed pointer
+- **THEN** it SHALL emit one progress event carrying `prereqs-resolution` and `research`
 
 #### Scenario: fast-track startup batch
 
 - **WHEN** `--fast-track` is active and the specs approval gate is skipped
-- **THEN** the startup act SHALL still report as one batch carrying `prereqs-resolution`, with no separate batch and no `skipped` field
+- **THEN** the startup act SHALL still report in the one first batch carrying `prereqs-resolution` and `research`, with no separate batch and no `skipped` field
 
 #### Scenario: one batch per artifact write
 
@@ -345,12 +347,12 @@ The classification rule SHALL preserve the design progress plan, specs-approval 
 
 ### Requirement: The design worker loads steps/common.md at dispatch and executes only the active step file
 
-The design worker contract SHALL fetch `sai/commands/design/steps/common.md` at dispatch and keep it in force for the entire run, replacing the wholesale invocation fetch with execute-only-the-active-step discipline: instruction stretches arrive one step file at a time through coordinator pointer lines, and the worker SHALL never prefetch, open, or follow any other step instruction file, making the worker contract plus `common.md` the sealed initial surface.
+The design worker contract SHALL fetch `sai/commands/design/steps/common.md` at dispatch and keep it in force for the entire run, replacing the wholesale invocation fetch with execute-only-the-active-step discipline. Instruction stretches arrive one step file at a time through coordinator pointer lines, the first of which, naming `research`, opens the task-disclosure continuation. The worker SHALL never prefetch, open, or follow any other step instruction file, making the worker contract plus `common.md` the sealed initial surface.
 
 #### Scenario: sealed initial surface prevents prefetch
 
 - **WHEN** the design worker begins a run
-- **THEN** its initial surface references only the worker contract and `steps/common.md`, and `prereqs-resolution` runs from that surface before the first progress event with the first delivered pointer targeting research
+- **THEN** its initial surface references only the worker contract and `steps/common.md`, and `prereqs-resolution` runs from that surface before the worker follows the first delivered pointer, which targets research and arrives with the task disclosure
 
 ### Requirement: Design reconstruction state includes active_step_id
 
@@ -395,4 +397,3 @@ Validation of `--overview-lang` form is worker-owned and unconditional, because 
 - **WHEN** the coordinator receives an envelope whose `--overview-lang` occurrence is malformed
 - **THEN** it selects the opted-in plan from raw token presence without inspecting the value
 - **AND** it forwards the envelope unchanged for the worker to validate
-

@@ -10,27 +10,27 @@ Define the spec-proposal worker's progress-event emission: carrying only the can
 
 The spec-proposal worker SHALL emit progress events, after prerequisite checks and change resolution complete, whenever one or more plan steps complete. Every event SHALL carry no time field, only the canonical step ids enumerated by `spec-progress-plan` (`prereqs-and-change`, `research`, `proposal`, `specs`, `validation`, `review`), in plan order, plus the files changed since the preceding result. The worker SHALL NOT author, extend, or reorder the plan, and SHALL NOT emit a progress event before resolution or in place of a terminal payload.
 
-The worker SHALL report one batch per completed act: the startup act (prerequisite checks plus change resolution) carries `prereqs-and-change`; the unconditional structured research act carries `research`; writing `proposal.md` carries `proposal`; writing the change's `specs/**/*.md` carries `specs`; artifact verification, the self-consistency and source-grounding checks, and decision-summary derivation carry `validation`; a completed review pass reporting `High=0` carries `review` per `review-step-evidence-marking`. The research batch SHALL be emitted after the startup handshake and before proposal generation, even when the `Ready to Propose` handoff supplies Research Leads. A research batch MAY carry an empty `changed_files` list because research writes no file.
+The worker SHALL report one batch per completed act, except that the startup act and research share the first batch. The startup act (prerequisite checks plus change resolution) completes `prereqs-and-change`. The unconditional structured research act, run from the `research` pointer disclosed with the task, completes `research`. Both SHALL be reported together in the first progress event per `@sai/orchestration/worker-core.md` § Step-machine task disclosure. Writing `proposal.md` carries `proposal`; writing the change's `specs/**/*.md` carries `specs`; artifact verification, the self-consistency and source-grounding checks, and decision-summary derivation carry `validation`; a completed review pass reporting `High=0` carries `review` per `review-step-evidence-marking`. The research batch SHALL be emitted before proposal generation, even when the `Ready to Propose` handoff supplies Research Leads. A research batch MAY carry an empty `changed_files` list because research writes no file.
 
 A feedback turn SHALL NOT emit a progress event, except that a feedback turn which runs a review pass reporting `High=0` while the `review` step is still unmarked SHALL emit exactly one progress event carrying `review`. No feedback turn SHALL emit a progress event carrying any other step id.
 
 #### Scenario: startup batch
 
-- **WHEN** the spec worker passes prerequisite checks and resolves the change
-- **THEN** it SHALL emit one progress event carrying `prereqs-and-change`
+- **WHEN** the spec worker passes prerequisite checks, resolves the change, and completes the research named by the disclosed pointer
+- **THEN** it SHALL emit one progress event carrying `prereqs-and-change` and `research`
 
 #### Scenario: research batch
 
 - **WHEN** the spec worker completes structured research for the resolved request
-- **THEN** it SHALL emit one progress event carrying only `research`
-- **AND** the event SHALL occur after `prereqs-and-change` and before `proposal`
+- **THEN** it SHALL emit one progress event carrying `prereqs-and-change` and `research` and no other step id
+- **AND** the event SHALL occur before `proposal`
 - **AND** structured research SHALL have reached the existing approximately 80% research-confidence threshold defined by `spec-research-consumption`, whether or not the request carries a Ready to Propose handoff
 - **AND** the event SHALL still be emitted when Research Leads are present in the handoff
 
 #### Scenario: research batch has no file writes
 
 - **WHEN** structured research completes without writing a file
-- **THEN** the `research` progress event SHALL carry `changed_files: []`
+- **THEN** the progress event carrying `research` SHALL carry `changed_files: []`
 - **AND** the existing coordinator/shared-runner progress validation SHALL accept that empty list without requiring a file write
 
 #### Scenario: proposal batch

@@ -60,6 +60,20 @@ function createLinearStepMachine({ machineId, steps, stageFiles }) {
     return { follow, hint: 'fetch the ' + stage + ' step — skip if already loaded' };
   }
 
+  // The first filed step is the first step whose follow is a file. Every
+  // current machine's first step is fileless, so this is the second step. The
+  // `reset` verb returns it so the coordinator can deliver that pointer with
+  // the task disclosure; the worker runs the fileless first step inline.
+  function firstFiled() {
+    for (const step of STEPS) {
+      const file = STAGE_FILES_MAP[step];
+      if (typeof file === 'string' && file !== 'none') {
+        return { stage: step, next: { follow: file, hint: 'fetch the ' + step + ' step — skip if already loaded' } };
+      }
+    }
+    return { stage: DONE_STAGE, next: nextFor(DONE_STAGE) };
+  }
+
   function outcome(current, rejected) {
     const state = {
       stage: current.stage,
@@ -122,7 +136,7 @@ function createLinearStepMachine({ machineId, steps, stageFiles }) {
     return outcome(current);
   }
 
-  return { machineId, initialState, transition, project, STEPS, STAGE_FILES: STAGE_FILES_MAP, DONE_STAGE };
+  return { machineId, initialState, transition, project, firstFiled, STEPS, STAGE_FILES: STAGE_FILES_MAP, DONE_STAGE };
 }
 
 module.exports = { createLinearStepMachine };

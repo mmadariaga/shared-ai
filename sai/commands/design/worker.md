@@ -63,8 +63,8 @@ pass and change resolution completes, per
 `@sai/orchestration/worker-core.md`'s Nonterminal Result Transport.
 - Return each progress event and the fast-track notice as the worker's result; the turn ends there, and the coordinator resumes the worker with `continue_after_progress` or `continue_after_notice`.
 - Composing either event as text inside this session marks nothing and prints nothing to the user.
-- The startup act is the Startup Handshake: return `prereqs-resolution` before dispatching any budget-explorer, writing `design.md`, or beginning research.
-- The startup act — fast-track parsing, prerequisites, resolution, and stamping the specs approval — reports as one batch carrying every step id that act completed and carries only `prereqs-resolution`; the gate has no standalone step or `skipped` field.
+- The startup act must pass before dispatching any budget-explorer, writing `design.md`, or beginning research.
+- The startup act — fast-track parsing, prerequisites, resolution, and stamping the specs approval — completes `prereqs-resolution`; the gate has no standalone step or `skipped` field. Per `@sai/orchestration/worker-core.md` § Step-machine task disclosure, it reports in one event together with `research`, the step the task-disclosure pointer names.
 - Codebase research and Open Question resolution report `research`.
 - Writing `design.md` reports `design`.
 - Writing `tasks.md` reports `tasks`.
@@ -81,7 +81,7 @@ The selected plan gates overview generation. Without `--overview-lang`, the work
 
 ## Active Step Execution
 
-Instruction stretches are delivered just-in-time, one step file at a time. Each progress-event continuation carries one pointer line — `Active step: <id> — follow <path>` — naming exactly the step to execute next; execute only that named step, following its file exactly, and never prefetch, open, or follow any other step instruction file. Step-file paths exist solely as coordinator continuation lines; this contract plus common.md is the sealed initial surface, and `prereqs-resolution` runs from it before the first progress event with the first delivered pointer targeting research. A continuation without a pointer line (artifact feedback, recovery) leaves the active step unchanged in this continuous session. Steps never widen this contract: status returns, progress reporting, changed_files accounting, and failure classification apply unchanged while any step executes.
+Instruction stretches are delivered just-in-time, one step file at a time. Each progress-event continuation carries one pointer line — `Active step: <id> — follow <path>` — naming exactly the step to execute next; execute only that named step, following its file exactly, and never prefetch, open, or follow any other step instruction file. Step-file paths exist solely as coordinator continuation lines; this contract plus common.md is the sealed initial surface, and `prereqs-resolution` runs from it before the first progress event with the first delivered pointer targeting research. That pointer arrives as the first line of the task-disclosure continuation, before `arguments_value`, per `@sai/orchestration/worker-core.md` § Step-machine task disclosure; the first progress event reports `prereqs-resolution` and `research` together. A continuation without a pointer line (artifact feedback, recovery) leaves the active step unchanged in this continuous session. Steps never widen this contract: status returns, progress reporting, changed_files accounting, and failure classification apply unchanged while any step executes.
 
 ## Planning
 

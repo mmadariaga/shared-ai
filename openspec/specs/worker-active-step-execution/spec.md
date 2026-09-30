@@ -21,16 +21,16 @@ The spec-proposal worker SHALL execute only the step file named by the coordinat
 
 ### Requirement: prereqs-and-change runs before any pointer
 
-The `prereqs-and-change` step SHALL have no step file of its own: it runs from the worker card plus `common.md` before the first progress event, and the first delivered pointer targets `research`.
+The `prereqs-and-change` step SHALL have no step file of its own: it runs from the worker card plus `common.md` before the worker follows any pointer, and the first delivered pointer targets `research`. That pointer SHALL arrive as the first line of the task-disclosure continuation, before `arguments_value`. The worker SHALL report `prereqs-and-change` and `research` together in its first progress event.
 
 #### Scenario: first delivered pointer targets research
 
-- **WHEN** prerequisite checks pass and change resolution completes, and the worker returns the startup progress event for `prereqs-and-change`
-- **THEN** the next continuation carries the first pointer line of the run, naming the `research` step
+- **WHEN** the spec worker receives its task-disclosure continuation after `event: ready`
+- **THEN** that continuation's first line is the first pointer line of the run, naming the `research` step, and once prerequisite checks, change resolution, and research complete, the worker's first progress event carries `prereqs-and-change` and `research`
 
 ### Requirement: The design worker executes only the coordinator-named active step
 
-The design worker SHALL execute only the step file named by the coordinator's most recent `Active step:` pointer line, following that file exactly, and SHALL never prefetch, open, or follow any other step instruction file; step-file paths exist solely as coordinator continuation lines, and a continuation without a pointer line SHALL leave the active step unchanged in the continuous session.
+The design worker SHALL execute only the step file named by the coordinator's most recent `Active step:` pointer line, following that file exactly, and SHALL never prefetch, open, or follow any other step instruction file. Step-file paths exist solely as coordinator continuation lines, and a continuation without a pointer line SHALL leave the active step unchanged in the continuous session. The first pointer, naming `research`, SHALL arrive as the first line of the task-disclosure continuation.
 
 #### Scenario: steps execute in pointer order
 
@@ -40,7 +40,7 @@ The design worker SHALL execute only the step file named by the coordinator's mo
 #### Scenario: prereqs-resolution precedes the first pointer
 
 - **WHEN** prerequisite checks pass and change resolution completes on the design worker's sealed initial surface
-- **THEN** the worker returns the startup progress event for `prereqs-resolution` and the next continuation carries the first pointer line, naming research
+- **THEN** the worker follows the `research` pointer from the task-disclosure continuation and returns one progress event carrying `prereqs-resolution` and `research`
 
 ### Requirement: The review worker executes only the coordinator-named active step
 

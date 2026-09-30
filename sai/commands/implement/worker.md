@@ -59,7 +59,7 @@ When a fast-track auto-correction applies, record it in the terminal `summary` (
 
 ## Active Step Execution
 
-Instruction stretches are delivered just-in-time, one step file at a time. Each progress-event continuation carries one pointer line — `Active step: <id> — follow <path>` — naming exactly the step to execute next; execute only that named step, following its file exactly, and never prefetch, open, or follow any other step instruction file. Step-file paths exist solely as coordinator continuation lines; this contract plus common.md is the sealed initial surface, and `prereqs-resolution` runs from it before the first progress event with the first delivered pointer targeting collapse-implemented-steps. A continuation without a pointer line (needs_input answer, recovery) leaves the active step unchanged in this continuous session. Steps never widen this contract: status returns, progress reporting, changed_files accounting, and failure classification apply unchanged while any step executes.
+Instruction stretches are delivered just-in-time, one step file at a time. Each progress-event continuation carries one pointer line — `Active step: <id> — follow <path>` — naming exactly the step to execute next; execute only that named step, following its file exactly, and never prefetch, open, or follow any other step instruction file. Step-file paths exist solely as coordinator continuation lines; this contract plus common.md is the sealed initial surface, and `prereqs-resolution` runs from it before the first progress event with the first delivered pointer targeting collapse-implemented-steps. That pointer arrives as the first line of the task-disclosure continuation, before `arguments_value` and `fast_track_active`, per `@sai/orchestration/worker-core.md` § Step-machine task disclosure. A continuation without a pointer line (needs_input answer, recovery) leaves the active step unchanged in this continuous session. Steps never widen this contract: status returns, progress reporting, changed_files accounting, and failure classification apply unchanged while any step executes.
 
 ## Recovery
 
@@ -92,14 +92,16 @@ complete, per `@sai/orchestration/worker-core.md`'s Nonterminal Result Transport
 is returned as the worker's result, the turn ends there, and the coordinator
 resumes the worker with `continue_after_progress`. Composing the event as text
 inside this session marks nothing. The startup act (prerequisite checks +
-resolution) reports as one batch carrying `prereqs-resolution` and is the
-Startup Handshake — return it before dispatching any `budget-subagent` or
-`budget-explorer`, writing `implementation.md`, or beginning artifact analysis. Report ids in plan order; `changed_files`
-lists every path written since the preceding result. On a first run (no
-`implementation.md`), the startup batch reports `prereqs-resolution` and
-`collapse-implemented-steps` together, with no separate `skipped` field, so the
-first pointer targets `artifact-analysis`. On a re-run,
-`collapse-implemented-steps` completes as its own batch.
+resolution) completes `prereqs-resolution` and must pass before dispatching any
+`budget-subagent` or `budget-explorer`, writing `implementation.md`, or
+beginning artifact analysis. Per `@sai/orchestration/worker-core.md`
+§ Step-machine task disclosure, the startup batch reports `prereqs-resolution`
+and `collapse-implemented-steps` together, so the next pointer targets
+`artifact-analysis`. Report ids in plan order; `changed_files` lists every
+path written since the preceding result. On a first run (no
+`implementation.md`), `collapse-implemented-steps` has no work: report it
+without fetching its step file and with no separate `skipped` field. On a
+re-run, follow the disclosed pointer and collapse before that event.
 The completed plan-generation write reports `plan-generation`; only after the
 pre-delivery durable-artifact verification reports `validation` does planning
 complete. A failed verification does not emit `validation`; return `failed`

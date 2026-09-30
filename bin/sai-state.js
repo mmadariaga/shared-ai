@@ -628,7 +628,22 @@ function commandReset(id, machineIdArg) {
   // Clear from in-memory cache as well
   sessions.delete(id);
 
-  const payload = withWarnings({ reset: machineIdArg }, loadWarnings);
+  // Step machines also return the pointer for their first filed step, so the
+  // coordinator can send it with the post-ready task disclosure and the worker
+  // reports the fileless first step and that step in one progress event.
+  // Additive: machines without `firstFiled` keep the `{reset}` response.
+  const response = { reset: machineIdArg };
+  if (typeof mod.firstFiled === 'function') {
+    try {
+      const first = mod.firstFiled();
+      if (first && typeof first.stage === 'string' && first.next && typeof first.next.follow === 'string' && typeof first.next.hint === 'string') {
+        response.stage = first.stage;
+        response.next = { follow: first.next.follow, hint: first.next.hint };
+      }
+    } catch (err) {}
+  }
+
+  const payload = withWarnings(response, loadWarnings);
   process.stdout.write(JSON.stringify(payload) + '\n');
   process.exitCode = 0;
 }

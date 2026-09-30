@@ -193,3 +193,18 @@ test('transition and project are pure with no input mutation', () => {
   assert.deepEqual(t2, t1);
   assert.equal(JSON.stringify(state), before);
 });
+
+test('design-standalone@1 firstFiled is research in both variants and the combined first signal seeds the variant', () => {
+  assert.equal(typeof machine.firstFiled, 'function');
+  const first = machine.firstFiled();
+  assert.equal(first.stage, 'research');
+  assert.equal(first.next.follow, 'sai/commands/design/steps/research.md');
+
+  const opted = machine.transition(machine.initialState, { step_ids: ['prereqs-resolution', 'research'], withOverview: true });
+  assert.equal(opted.state.withOverview, true, 'the combined first signal seeds the opted-in variant');
+  assert.equal(opted.state.stage, 'design');
+
+  const unopted = machine.transition(machine.initialState, { step_ids: ['prereqs-resolution', 'research'], withOverview: false });
+  assert.equal(unopted.state.withOverview, false);
+  assert.equal(unopted.state.stage, 'design');
+});

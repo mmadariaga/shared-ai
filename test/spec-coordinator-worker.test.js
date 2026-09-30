@@ -480,8 +480,8 @@ test('Step 2: the spec worker emits one progress event per act carrying the cano
 
   assert.match(worker, /Progress events are returned lifecycle results/,
     'progress events should be returned as lifecycle results');
-  assert.match(worker, /return the startup progress event for `prereqs-and-change`/,
-    'the startup act should emit one progress event carrying prereqs-and-change');
+  assert.match(worker, /startup progress event for `prereqs-and-change` and `research`/,
+    'the startup act should report prereqs-and-change together with research in one progress event');
   assert.match(worker, /completed `proposal\.md` write returns `proposal`/,
     'the proposal act should emit one progress event carrying proposal');
   assert.match(worker, /completed `specs\/\*\*` write returns `specs`/,

@@ -50,7 +50,7 @@ Artifact-feedback continuations, `continue_after_recovery` continuations, and pi
 
 ### Requirement: The step-pointer convention covers every routed phase
 
-The spec and design coordinators SHALL declare no `step_pointer_map`, and their step ids SHALL be routed by their declared `step_machine` (`spec-standalone@1`, `design-standalone@1`). The implement, review, security, performance, and accessibility coordinators SHALL deliver the same two-line continuation through their declared `step_machine` per `@sai/policies/stage-machine.md` § Step machines. Adapters without a step machine SHALL send a progress continuation of exactly `continue_after_progress`.
+The spec and design coordinators SHALL declare no `step_pointer_map`, and their step ids SHALL be routed by their declared `step_machine` (`spec-standalone@1`, `design-standalone@1`). The implement, review, security, performance, and accessibility coordinators SHALL deliver the same two-line continuation through their declared `step_machine` per `@sai/policies/stage-machine.md` § Step machines. Every coordinator that declares a `step_machine` SHALL also open the post-ready task disclosure with the first filed step's pointer line returned by the segment-start `reset`, per `@sai/orchestration/command-runner.md` § Step-gated pointer delivery. Adapters without a step machine SHALL send a progress continuation of exactly `continue_after_progress`.
 
 #### Scenario: undeclared phases remain byte-for-byte unchanged
 
@@ -66,3 +66,4 @@ The spec and design coordinators SHALL declare no `step_pointer_map`, and their 
 
 - **WHEN** the implement, review, security, performance, or accessibility coordinator activates and sends a progress-event continuation
 - **THEN** the two-line continuation format is delivered via the declared `step_machine` and the stage-machine.md policy
+- **AND** its earlier post-ready task disclosure opened with the first filed step's pointer line

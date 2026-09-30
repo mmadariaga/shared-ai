@@ -26,8 +26,8 @@ Check the OpenSpec CLI, `openspec/`, and `schema: sai-workflow` per `@sai/polici
 
 Report the canonical `progress_plan` ids from `@sai/policies/spec-phase-contract.md` as progress events, and follow the coordinator-provided step-machine pointer for routing. Progress step ids are reported in canonical plan order, each once and only when newly complete — marks are monotonic, and an earlier id is never reopened or re-reported:
 
-- `prereqs-and-change` — once prerequisite checks pass and change resolution completes, return the startup progress event for `prereqs-and-change` before dispatching any subagent, reading beyond resolution, writing an artifact, or beginning research.
-- `research` — the research batch returns `research`.
+- `prereqs-and-change` — the startup act: prerequisite checks pass and change resolution completes before dispatching any subagent, reading beyond resolution, writing an artifact, or beginning research. It reports together with `research` in the startup progress event for `prereqs-and-change` and `research`, per `@sai/orchestration/worker-core.md` § Step-machine task disclosure.
+- `research` — the research batch returns `research`, in the same event as `prereqs-and-change`.
 - `proposal` — the completed `proposal.md` write returns `proposal`.
 - `specs` — the completed `specs/**` write returns `specs`.
 - `validation` — artifact validation plus decision-summary derivation returns `validation`.
@@ -36,7 +36,7 @@ Progress events are returned lifecycle results, never text in the worker session
 
 ## Active Step Execution
 
-Instructions arrive just-in-time, one step file at a time, per the step delivery rule in `steps/common.md`: execute only the file named by the most recent `Active step:` pointer. This contract plus `common.md` is the sealed initial surface; `prereqs-and-change` runs from it before the first progress event, and the first delivered pointer targets `research`. Steps never widen the lifecycle, changed-files, result, or failure rules.
+Instructions arrive just-in-time, one step file at a time, per the step delivery rule in `steps/common.md`: execute only the file named by the most recent `Active step:` pointer. This contract plus `common.md` is the sealed initial surface; `prereqs-and-change` runs from it before the first progress event, and the first delivered pointer targets `research`. That pointer arrives as the first line of the task-disclosure continuation, before `arguments_value`, per `@sai/orchestration/worker-core.md` § Step-machine task disclosure. Steps never widen the lifecycle, changed-files, result, or failure rules.
 
 ## Spec Work
 

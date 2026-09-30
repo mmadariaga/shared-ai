@@ -29,6 +29,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0166b — Dual-channel exclusivity is per cause surface](./0166b-per-cause-surface-dual-channel-exclusivity.md) — **Amends** 0165
 - [0171c — Single-string invocation envelope across active SAI surfaces](./0171c-single-string-invocation-envelope.md) — Supersedes 0166, **Reframes** 0159b, Refs 0136, Refs ddr:0114
 - [0172c — Step-gated instruction delivery hands each spec step its instructions just-in-time](./0172c-step-gated-instruction-delivery.md) — Refs ddr:0109c, Refs ddr:0110, Refs ddr:0114
+- [0189 — The first step pointer travels with the task disclosure](./0189-first-step-pointer-travels-with-the-task.md) — **Amends** 0172c, Refs 0188
 ### `/sai-2-design`
 
 - [0015 — Decision summary precedes the completion sentinel](./0015-decision-summary-precedes-completion-sentinel.md) — **Amends** ddr:0014
@@ -255,6 +256,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0180 — Liveness, pipe EOF, parent poll, tombstone, no TTL](./0180-liveness-pipe-eof-parent-poll-tombstone-no-ttl.md) — Superseded by 0182
 - [0181 — Explore-stage, first hosted machine scope](./0181-explore-stage-first-hosted-machine-scope.md)
 - [0182 — CLI-based state machine with single-writer invariant](./0182-cli-state-machine-single-writer-invariant.md) — Supersedes 0176, 0177, 0180
+- [0189 — The first step pointer travels with the task disclosure](./0189-first-step-pointer-travels-with-the-task.md) — **Amends** 0172c, Refs 0188
 
 ### `npx shared-ai` (install / setup / uninstall / doctor)
 
@@ -622,6 +624,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 | [0185](./0185-remove-hang-rationale-from-sibling-dispatch.md) | amends | [0172d](./0172d-sibling-worker-dispatch-for-the-fast-lane.md) |
 | [0186](./0186-gate-order-without-per-step-human-gate.md) | supersedes | [0019](./0019-coordinator-gate-ordering-after-subagent-report.md) |
 | [0187](./0187-composition-rules-live-in-their-own-orchestration-file.md) | supersedes | [0147a](./0147a-three-rule-composition-delta-in-command-runner.md) |
+| [0189](./0189-first-step-pointer-travels-with-the-task.md) | amends | [0172c](./0172c-step-gated-instruction-delivery.md) |
 | [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0033](./archive/0033-echo-line-format-and-placement.md) |
 | [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0034](./archive/0034-resolution-precedence-wrapper-echo-first.md) |
 | [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0035](./archive/0035-harness-specific-adapter-carve-out.md) |

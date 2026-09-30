@@ -34,7 +34,7 @@ The coordinator names the active step with one pointer line,
 only the file that line names: every step path arrives that way, so open no
 other step file. A continuation without a pointer line (artifact feedback,
 recovery) keeps the current step. Each step ends by returning its progress
-event per the worker contract.
+event per the worker contract. The first pointer arrives as the first line of the task-disclosure continuation, before the task: run `prereqs-and-change` inline, then follow that pointer, and report `prereqs-and-change` and `research` together in the first progress event, per `@sai/orchestration/worker-core.md` § Step-machine task disclosure.
 
 ## Cost discipline
 

@@ -21,7 +21,7 @@ per non-fileless plan step (`map-stack-hot-paths`,
 
 ### Requirement: Performance Coordinator Pointer Continuations
 
-The performance coordinator SHALL send every progress-event continuation as exactly two lines whose second line is the deterministic `Active step:` pointer derived from the step machine per `@sai/policies/stage-machine.md` § Step machines. The coordinator SHALL deliver the terminal `Active step: none` line once the plan is fully marked, and SHALL carry no pointer line on continuations that are not progress-event continuations; replacement reconstruction fields SHALL include `active_step_id`.
+The performance coordinator SHALL send every progress-event continuation as exactly two lines whose second line is the deterministic `Active step:` pointer derived from the step machine per `@sai/policies/stage-machine.md` § Step machines. The coordinator SHALL deliver the terminal `Active step: none` line once the plan is fully marked. It SHALL open the post-ready task disclosure with the `map-stack-hot-paths` pointer returned by the segment-start `reset`, per `@sai/orchestration/command-runner.md` § Step-gated pointer delivery. It SHALL carry no pointer line on any other continuation that is not a progress-event continuation. Replacement reconstruction fields SHALL include `active_step_id`, which is `map-stack-hot-paths` before the first progress event.
 
 #### Scenario: All-marked plan delivers the terminal pointer
 
@@ -35,11 +35,7 @@ The performance coordinator SHALL send every progress-event continuation as exac
 
 ### Requirement: Performance Worker Active Step Execution
 
-The performance worker SHALL load `steps/common.md` at dispatch as part of
-its sealed initial surface, run the fileless `resolve-performance-scope`
-from that surface before the first pointer, and execute ONLY the step
-named by the most recent `Active step:` pointer line — never prefetching,
-opening, or following any other step instruction file.
+The performance worker SHALL load `steps/common.md` at dispatch as part of its sealed initial surface. It SHALL run the fileless `resolve-performance-scope` from that surface before following the first pointer, which arrives as the first line of the task-disclosure continuation before `arguments_value`. It SHALL execute ONLY the step named by the most recent `Active step:` pointer line, never prefetching, opening, or following any other step instruction file. It SHALL report `resolve-performance-scope` and `map-stack-hot-paths` together in its first progress event.
 
 #### Scenario: Worker ignores unnamed step files
 

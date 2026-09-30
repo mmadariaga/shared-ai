@@ -125,6 +125,29 @@ for (const { name, machine } of machines) {
     assert.equal(JSON.stringify(state), before, 'transition must not mutate');
   });
 
+  test(`${name} firstFiled names the second step and keeps step ids unchanged (E4)`, () => {
+    assert.equal(typeof machine.firstFiled, 'function', 'firstFiled must be a function');
+    assert.equal(machine.STAGE_FILES[machine.STEPS[0]], 'none', 'the first step stays fileless');
+    const first = machine.firstFiled();
+    assert.equal(first.stage, machine.STEPS[1], 'the first filed step is the second step');
+    assert.equal(first.next.follow, machine.STAGE_FILES[machine.STEPS[1]]);
+    assert.notEqual(first.next.follow, 'none');
+    assert.equal(machine.initialState.stage, machine.STEPS[0], 'firstFiled never changes the initial stage');
+  });
+
+  test(`${name} first event reporting only the first id returns the firstFiled pointer (E5)`, () => {
+    const out = machine.transition(machine.initialState, { step_ids: [machine.STEPS[0]] });
+    assert.equal(out.rejected, undefined);
+    assert.equal(out.state.stage, machine.firstFiled().stage);
+    assert.deepEqual(out.next, machine.firstFiled().next);
+  });
+
+  test(`${name} first event reporting the first two ids advances to the third step`, () => {
+    const out = machine.transition(machine.initialState, { step_ids: machine.STEPS.slice(0, 2) });
+    assert.deepEqual(out.state.done, machine.STEPS.slice(0, 2));
+    assert.equal(out.state.stage, machine.STEPS[2] || machine.DONE_STAGE);
+  });
+
   test(`${name} marks are monotonic`, () => {
     let state = machine.initialState;
     for (const stepId of machine.STEPS.slice(0, -1)) {
