@@ -59,15 +59,65 @@ test('target identity parsing is independent of display labels', () => {
   assert.equal(customization.parseTarget('sai-status'), null);
 });
 
-test('task complexity is keyed by complete family-qualified target identity', () => {
-  assert.equal(customization.TASK_COMPLEXITY['worker:sai-2-design-worker'], '↑↑↑');
-  assert.equal(customization.TASK_COMPLEXITY['agent:budget'], '↑');
-  assert.equal(customization.TASK_COMPLEXITY['command:sai-2-design'], '↑↑');
-  assert.equal(customization.TASK_COMPLEXITY['utility:sai-retire-docs'], '↑↑');
-  assert.equal(customization.TASK_COMPLEXITY.budget, undefined);
-  assert.equal(customization.TASK_COMPLEXITY['command:budget'], undefined);
-  assert.equal(customization.taskComplexityFor({ value: 'agent:budget' }), '↑');
-  assert.equal(customization.taskComplexityFor({ value: 'command:sai-2-design' }), '↑↑');
+test('target profiles carry a context estimate and a difficulty per family-qualified identity', () => {
+  assert.ok(Object.isFrozen(customization.TARGET_PROFILE));
+  for (const [value, { context, difficulty }] of Object.entries(customization.TARGET_PROFILE)) {
+    assert.ok(['Small', 'Medium', 'Large'].includes(context), value);
+    assert.ok(['↑', '↑↑', '↑↑↑'].includes(difficulty), value);
+    assert.equal(customization.taskContextFor({ value }), context);
+    assert.equal(customization.taskDifficultyFor({ value }), difficulty);
+  }
+  for (const value of ['command:budget', 'worker:future-worker']) {
+    assert.equal(customization.taskContextFor({ value }), 'Unknown', value);
+    assert.equal(customization.taskDifficultyFor({ value }), 'Unknown', value);
+  }
+  assert.equal(customization.taskContextFor({ value: 'agent:budget' }), 'Medium');
+  assert.equal(customization.taskContextFor({ value: 'agent:executor' }), 'Small');
+  assert.equal(customization.taskContextFor({ value: 'agent:budget-executor' }), 'Small');
+  assert.equal(customization.taskContextFor({ value: 'agent:explore' }),
+    customization.taskContextFor({ value: 'agent:budget-explorer' }));
+  assert.equal(customization.taskContextFor({ value: 'agent:budget' }),
+    customization.taskContextFor({ value: 'agent:budget-subagent' }));
+});
+
+test('context estimates distinguish fresh Step workers from cumulative orchestration', () => {
+  assert.equal(customization.taskContextFor({ value: 'command:sai-4-apply' }), 'Large');
+  assert.equal(customization.taskContextFor({ value: 'worker:sai-4-red-worker' }), 'Medium');
+  assert.equal(customization.taskContextFor({ value: 'worker:sai-4-green-worker' }), 'Medium');
+  assert.equal(customization.taskContextFor({ value: 'command:sai-6-security' }), 'Medium');
+  assert.equal(customization.taskContextFor({ value: 'worker:sai-6-security-worker' }), 'Large');
+  assert.equal(customization.taskContextFor({ value: 'utility:sai-status' }), 'Small');
+});
+
+test('difficulty is keyed by complete family-qualified target identity', () => {
+  assert.equal(customization.taskDifficultyFor({ value: 'worker:sai-2-design-worker' }), '↑↑↑');
+  assert.equal(customization.taskDifficultyFor({ value: 'agent:budget' }), '↑');
+  assert.equal(customization.taskDifficultyFor({ value: 'command:sai-2-design' }), '↑↑');
+  assert.equal(customization.taskDifficultyFor({ value: 'utility:sai-retire-docs' }), '↑↑');
+  assert.equal(customization.TARGET_PROFILE.budget, undefined);
+});
+
+test('orchestrator difficulty reflects coordinator reasoning rather than worker analysis', () => {
+  const expected = {
+    'sai-explore': '↑↑↑',
+    'sai-1-spec': '↑↑',
+    'sai-2-design': '↑↑',
+    'sai-build': '↑↑↑',
+    'sai-3-implement': '↑↑',
+    'sai-4-apply': '↑↑↑',
+    'sai-review': '↑↑',
+    'sai-5-review': '↑↑',
+    'sai-6-security': '↑',
+    'sai-7-performance': '↑',
+    'sai-8-accessibility': '↑',
+    'sai-backfill': '↑↑',
+    'sai-archive': '↑↑',
+    'sai-merge': '↑↑↑',
+    'sai-commit': '↑',
+  };
+  for (const [name, difficulty] of Object.entries(expected)) {
+    assert.equal(customization.taskDifficultyFor({ value: `command:${name}` }), difficulty, name);
+  }
 });
 
 test('effective model annotation prefers project-local frontmatter for both harnesses', () => {

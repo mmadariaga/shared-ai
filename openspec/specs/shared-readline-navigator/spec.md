@@ -89,3 +89,18 @@ The shared navigator engine SHALL settle a pending menu when terminal input ends
 
 - **WHEN** a caller enables closed-input distinction and terminal input closes while a single-select menu is pending
 - **THEN** the menu SHALL resolve with the `INPUT_CLOSED` sentinel and SHALL NOT resolve with an option string, null cancellation, or `BACK`
+
+### Requirement: Opt-in bulk toggle for the multi-select navigator
+The shared raw-readline navigator SHALL accept an opt-in `toggleAll` setting for multi-select checklists. When enabled, `Ctrl+A` SHALL use the first non-separator option's checkbox state as the reference, set every non-separator checkbox to the opposite state, leave separators unchanged, preserve the cursor, redraw the frame, and return without confirming. `promptChecklist` SHALL forward this option, while navigators without the option and single-select menus SHALL retain their existing behavior.
+
+#### Scenario: Enabled bulk toggle uses the first non-separator option
+- **WHEN** a multi-select checklist with separators receives `Ctrl+A` while `toggleAll` is enabled
+- **THEN** all selectable rows SHALL receive the state opposite the first selectable row, separators SHALL remain untouched, and the cursor SHALL remain in place
+
+#### Scenario: Bulk toggle does not confirm the checklist
+- **WHEN** `Ctrl+A` changes a checklist selection
+- **THEN** the navigator SHALL redraw the checklist and SHALL wait for a later confirmation key
+
+#### Scenario: Disabled and single-select navigators ignore bulk toggle
+- **WHEN** a checklist without `toggleAll` or a single-select menu receives `Ctrl+A`
+- **THEN** the navigator SHALL not apply toggle-all behavior or alter the selected result

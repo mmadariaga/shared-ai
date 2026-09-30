@@ -143,15 +143,7 @@ async function main(options = {}) {
 
   const projectPath = resolvePath(argv);
   const rl = createReadline();
-
-  if (!getPathArg(argv)) {
-    const answer = await prompt(rl, `Configure SAI workflow at ${projectPath}? (Y/n) `);
-    if (answer.trim().toLowerCase() === 'n') {
-      rl.close();
-      console.log('Aborted.');
-      return 'aborted';
-    }
-  }
+  console.log(`Configuring SAI workflow at ${projectPath}`);
 
   if (!(await offerOpenspecInstall())) {
     rl.close();

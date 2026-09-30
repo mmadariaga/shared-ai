@@ -6,17 +6,17 @@ Define the language-selection gate used when `sai-explore` crystallizes a handof
 
 ### Requirement: Localize selector question and descriptions while retaining English titles
 
-The crystallization language gate SHALL render the selector question and all option descriptions in the user's language. The option titles MUST remain exactly `Plan - Unattended`, `Direct Build - Unattended`, and `Manual`. The literals `review-loop`, `/sai-1-spec`, and `/sai-2-design` SHALL remain verbatim English. The retired `/sai-1-spec <change-name>` literal SHALL NOT appear in the preserved-English list, because the name-only creation path is retired by `spec-require-block-input`.
+The crystallization language gate SHALL render the native route-picker context, question, and option descriptions in the user's language. The fixed route names MUST remain exactly `Plan - Unattended`, `Direct Build - Unattended`, and `Manual`. The literals `review-loop`, `/sai-1-spec`, and `/sai-2-design` SHALL remain verbatim English. The separate Direct Build continuation question remains a native picker with localized surrounding text and stable `yes` and `no` values. A typed route name outside the native picker SHALL not select a route.
 
 #### Scenario: Localized selector presentation preserves stable literals
 
-- **WHEN** a crystallization close is rendered for a user-selected language
-- **THEN** the question and descriptions use that language while the fixed option titles, route identities, and command literals remain unchanged.
+- **WHEN** the native route picker is rendered for a user-selected language
+- **THEN** the context, question, and descriptions use that language while the fixed route names, route identities, and command literals remain unchanged
 
 #### Scenario: Preserved-English list carries exactly three literals
 
 - **WHEN** the preserved-English literal list is read
-- **THEN** it SHALL name exactly `review-loop`, `/sai-1-spec`, and `/sai-2-design`, and SHALL NOT name a name-suffixed form
+- **THEN** it SHALL name exactly `review-loop`, `/sai-1-spec`, and `/sai-2-design`, and SHALL not name a name-suffixed form
 
 ### Requirement: Scope limited to sai-explore crystallization
 
@@ -91,14 +91,12 @@ The gate SHALL present exactly two options. The question prompt and the non-Engl
 
 ### Requirement: Translation scoping — prose translated, scaffolding English
 
-When a non-English language is chosen, the chosen language SHALL govern the block's **free-text prose** and the path-specific next-step handoff prose emitted before the selector: the `What`, `Why`, capability descriptions, `Decisions & Rationale`, `Alternatives`, `Trade-offs`, `Model / Re-framings`, `Key constraints`, slice headers, and the handoff's surrounding sentences. The following **scaffolding** SHALL remain in English regardless of the chosen language: the bold field labels — including the `**Implementation Details**` section label and the `**Overview language**` reminder line added by the staged pre-crystallization flow — the kebab-case Change name value, the command literals `/sai-1-spec` and `/sai-2-design`, and the standing-path literal `review-loop`. The handoff's surrounding prose, including the instruction to open a new chat, SHALL be rendered in the chosen language. The gate SHALL NOT alter any OpenSpec artifact file's format or content. Agreed `E1`…`En` and `I1`…`In` statements SHALL additionally render in the chosen language at emission, preserving identifiers and order, while `- None` markers SHALL stay as-is with no translation.
+When a non-English language is chosen, the chosen language SHALL govern the block's free-text prose, the native route-picker context, question, option descriptions, and post-Manual handoff prose. The bold field labels, kebab-case Change name value, command literals `/sai-1-spec` and `/sai-2-design`, standing-path literal `review-loop`, and fixed route names SHALL remain English scaffolding. The gate SHALL not alter any OpenSpec artifact file's format or content. Agreed E/I statements SHALL continue to render in the chosen language with identifiers and order preserved, while `- None` markers remain unchanged.
 
 #### Scenario: mixed-language block on a non-English choice
 
-- **WHEN** the user selects a non-English language at the gate and the crystallization close emits its path-specific next-step handoff
-- **THEN** the block's free-text prose and the pre-selector next-step guidance are rendered in that language
-- **AND** the bold field labels — including `**Implementation Details**` and the `**Overview language**` line — the kebab-case Change name value, `/sai-1-spec`, `/sai-2-design`, and `review-loop` remain in English
-- **AND** the surrounding instruction to open a new chat is localized rather than treated as English scaffolding
+- **WHEN** the user selects a non-English language at the gate and the crystallization flow emits its block and native route picker
+- **THEN** the block free-text prose, picker context, option descriptions, and post-Manual handoff are rendered in that language while the English scaffolding and route names remain unchanged
 
 #### Scenario: no artifact file is altered
 
@@ -108,7 +106,7 @@ When a non-English language is chosen, the chosen language SHALL govern the bloc
 #### Scenario: agreed E and I lists follow the chosen language
 
 - **WHEN** a Ready to Propose block is emitted in the chosen language with agreed E/I statements
-- **THEN** every E1-En and I1-In statement is rendered in that language with identifiers and order preserved while scaffolding and - None markers stay in English
+- **THEN** every E1-En and I1-In statement is rendered in that language with identifiers and order preserved while scaffolding and `- None` markers stay in English
 
 ### Requirement: Gate persistence tracks the crystallized idea
 
@@ -150,21 +148,21 @@ When crystallization is sliced into multiple `Ready to Propose` blocks, the gate
 
 ### Requirement: Localize selector controls
 
-The selector question and `Auto`/`Manual` labels SHALL follow crystallization language selection, while `review-loop`, `/sai-1-spec`, and `/sai-2-design` MUST remain English.
+The native route picker context, question, and option descriptions SHALL follow the crystallization language selection, while `review-loop`, `/sai-1-spec`, and `/sai-2-design` MUST remain English. The fixed route labels SHALL remain English. The separate Direct Build continuation picker remains native and localized under its own question contract.
 
 #### Scenario: non-English crystallization reaches selector presentation
 
-- **WHEN** a non-English crystallization reaches selector presentation
-- **THEN** selector prose is localized and required command literals remain unchanged
+- **WHEN** a non-English crystallization reaches native route-picker presentation
+- **THEN** picker context and descriptions are localized and required command literals and fixed route labels remain unchanged
 
 ### Requirement: Fast-track English emission translates agreed E and I lists
 
-English fast-track crystallization SHALL apply the same E/I translation with no language question and SHALL NOT skip or auto-select the crystallization-close selector.
+English fast-track crystallization SHALL apply the same E/I translation with no language question and SHALL not select or suppress the native route choice. The native picker SHALL still require a later explicit answer before route activation.
 
 #### Scenario: fast-track English block translates E and I without asking
 
 - **WHEN** a crystallize request runs under fast-track in English with E/I agreed in another language
-- **THEN** the emitted block renders those E/I statements in English with identifiers and order preserved and still presents the close selector for an explicit choice
+- **THEN** the emitted block renders those E/I statements in English with identifiers and order preserved and leaves route choice pending until a later valid picker answer
 
 ### Requirement: Request Additional Notes label stays English scaffolding
 

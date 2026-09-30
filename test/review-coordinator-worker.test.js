@@ -113,6 +113,31 @@ test('review coordinator renders at dispatch and reconciles at run-closing resul
   assert.match(coordinator, /continue_after_progress[\s\S]{0,160}protocol[- ]?only/i);
 });
 
+test('Direct Build discloses findings and resolves exclusions before the fix worker in both review routes', () => {
+  const close = artifact('sai/commands/meta-review/direct-build-close.md');
+  const selection = artifact('sai/commands/meta-review/findings-selection.md');
+  const fixWorker = artifact('sai/commands/meta-review/review-fix-worker.md');
+  const standalone = artifact('sai/commands/review/coordinator.md');
+  const composition = artifact('sai/commands/meta-review/coordinator.md');
+
+  assert.match(standalone, /Fetch @sai\/commands\/meta-review\/direct-build-close\.md/);
+  assert.match(composition, /Fetch @sai\/commands\/meta-review\/direct-build-close\.md/);
+  assert.match(close, /After `direct-label`, before\s+the fix loop: Fetch @sai\/commands\/meta-review\/findings-selection\.md/);
+  assert.match(close, /no selected findings[\s\S]*`decline-close` without a dispatch/);
+  assert.match(selection, /show[\s\S]*every found issue/i);
+  assert.match(selection, /source-qualified id[\s\S]*severity[\s\S]*title[\s\S]*problem\/impact[\s\S]*location/);
+  assert.match(selection, /`review:C1` or\s+`security:C1`/);
+  assert.match(selection, /Fix all findings \(Recommended\)[\s\S]*Specify findings to exclude[\s\S]*free-text response/);
+  assert.match(selection, /`Other` on Claude Code[\s\S]*`Type your own answer` on opencode/);
+  assert.match(selection, /without a second question/);
+  assert.match(selection, /empty, unknown, ambiguous, or unqualified id[\s\S]*dispatch nothing/);
+  assert.match(selection, /every eligible finding is\s+excluded[\s\S]*no fix or commit/);
+  assert.match(close, /full \*\*selected\*\* findings input[\s\S]*labeled exclusion list/);
+  assert.match(close, /against the selected findings[\s\S]*exclusions/);
+  assert.match(fixWorker, /selected findings as your sole fix targets/);
+  assert.match(fixWorker, /initial exclusion list remains in force across continuations/);
+});
+
 test('review worker contract enumerates the five ids and pins the batch semantics', () => {
   const worker = artifact('sai/commands/review/worker.md');
 

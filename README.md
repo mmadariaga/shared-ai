@@ -97,7 +97,7 @@ When a change is too large to implement and review safely as one unit, `/sai-exp
 
 ### Choose your implementation strategy
 
-When `/sai-explore` finishes crystallizing an idea it presents three routes. Nothing is dispatched until you pick one — this selector is the gate that authorizes delegated writes.
+After `/sai-explore` displays every `Ready to Propose` block for a crystallized idea, it closes the turn with a picker offering three routes. Nothing is dispatched before you answer it; your choice authorizes delegated writes.
 
 | Option | What happens |
 |--------|--------------|
@@ -117,6 +117,8 @@ If the idea was sliced, the selector reappears after each slice completes — a 
 | `/sai-archive` | Sync specs and archive the completed change | Archived change and optional local commit |
 
 The core planning, build, and review phases are also exposed as eight numbered commands — full reference in [docs/sequential-pipeline.md](docs/sequential-pipeline.md). Review audit triage lives in [docs/review-triage.md](docs/review-triage.md).
+
+Claude Code and opencode route these core phases through a coordinator and a managed worker. In the spec phase, the worker creates only the proposal and capability specs (plus permitted glossary updates); later phases own design and implementation artifacts.
 
 ## Utility commands
 
@@ -181,6 +183,8 @@ Project terms live in `GLOSSARY.md`. Planning reuses them in names, and review c
 
 Install the commands once for Claude Code, opencode, or both; then run setup in each project you want to use. A read-only `doctor` command checks the installation, and `uninstall` removes managed files.
 
+The installer projects both harnesses from `sai/install-manifest.json`, including the shared `sai/policies/` and shared Orchestration Core files plus each harness's routed worker bindings; `doctor` and `uninstall` use the same projection.
+
 ### npx installer
 
 ```bash
@@ -208,6 +212,13 @@ If something looks off after install or setup, run a read-only health check — 
 
 `npx github:mmadariaga/shared-ai setup` ends with an interactive **Customize models** menu. Choose models for individual commands and agents, or save and load presets, without editing configuration files by hand. On opencode you can select any available model; Claude Code supports Anthropic models.
 
+The menu's model tables show two estimates per target to guide your choice, on both Claude Code and opencode:
+
+- `CONTEXT` — how much the task typically accumulates (instructions, documents, results, history): `Small` for isolated tasks, `Medium` for several documents or continuations, `Large` for substantial accumulated state. It describes the task, not the model's context window.
+- `DIFFICULTY` — reasoning demand, from `↑` to `↑↑↑`.
+
+Targets without an estimate show `Unknown`.
+
 ### Per project installation / override
 
 Per-project commands and agents are still possible: a file placed in a supported harness's project-local folder at the repo root overrides the user-global file of the same name. Globals act as a base; project-local files override them by filename.
@@ -224,50 +235,50 @@ The **Customize models** menu in `setup` creates project-local model overrides f
 These opencode defaults were chosen for good results at reasonable cost. Feel free to use the setup model menu to replace them with models you know work better for your projects.
 
 ```
-      TYPE          TARGET                       TASK COMPLEXITY  SETTING
-      ────────────  ───────────────────────────  ───────────────  ─────────────────────────────────────────────────
-> [x] AGENT         budget                       ↑                opencode/muse-spark-1.3-contributor-free (xhigh)
-  [x] AGENT         executor                     ↑                opencode/muse-spark-1.3-contributor-free (xhigh)
-  [x] AGENT         explore                      ↑                opencode/muse-spark-1.3-contributor-free (xhigh)
+      TYPE          TARGET                       CONTEXT  DIFFICULTY  SETTING
+      ────────────  ───────────────────────────  ───────  ──────────  ─────────────────────────────────────────────────
+> [x] AGENT         budget                       Medium   ↑           opencode/muse-spark-1.3-contributor-free (xhigh)
+  [x] AGENT         executor                     Small    ↑           opencode/muse-spark-1.3-contributor-free (xhigh)
+  [x] AGENT         explore                      Medium   ↑           opencode/muse-spark-1.3-contributor-free (xhigh)
 
-  [x] ORCHESTRATOR  sai-explore                  ↑↑               opencode-go/muse-spark-1.3-contributor (xhigh)
-  [x] WORKER        sai-direct-build-worker      ↑↑               opencode-go/deepseek-v4.1-flash (max)
-  [x] ORCHESTRATOR  sai-1-spec                   ↑↑               opencode-go/muse-spark-1.3-contributor (xhigh)
-  [x] WORKER        sai-1-spec-proposal-worker   ↑↑               opencode-go/deepseek-v4.1-flash (max)
-  [x] ORCHESTRATOR  sai-2-design                 ↑↑               opencode-go/muse-spark-1.3-contributor (xhigh)
-  [x] WORKER        sai-2-design-worker          ↑↑↑              opencode-go/deepseek-v4.1-flash (max)
+  [x] ORCHESTRATOR  sai-explore                  Large    ↑↑↑         opencode-go/muse-spark-1.3-contributor (xhigh)
+  [x] WORKER        sai-direct-build-worker      Large    ↑↑          opencode-go/deepseek-v4.1-flash (max)
+  [x] ORCHESTRATOR  sai-1-spec                   Medium   ↑↑          opencode-go/muse-spark-1.3-contributor (xhigh)
+  [x] WORKER        sai-1-spec-proposal-worker   Medium   ↑↑          opencode-go/deepseek-v4.1-flash (max)
+  [x] ORCHESTRATOR  sai-2-design                 Medium   ↑↑          opencode-go/muse-spark-1.3-contributor (xhigh)
+  [x] WORKER        sai-2-design-worker          Large    ↑↑↑         opencode-go/deepseek-v4.1-flash (max)
 
-  [x] ORCHESTRATOR  sai-build                    ↑↑               opencode-go/muse-spark-1.3-contributor (xhigh)
-  [x] ORCHESTRATOR  sai-3-implement              ↑↑               opencode-go/muse-spark-1.3-contributor (xhigh)
-  [x] WORKER        sai-3-implementation-worker  ↑↑               opencode-go/deepseek-v4.1-flash (max)
-  [x] ORCHESTRATOR  sai-4-apply                  ↑↑               opencode-go/muse-spark-1.3-contributor (xhigh)
-  [x] WORKER        sai-4-red-worker             ↑                opencode-go/deepseek-v4.1-flash (max)
-  [x] WORKER        sai-4-green-worker           ↑↑               opencode-go/deepseek-v4.1-flash (max)
+  [x] ORCHESTRATOR  sai-build                    Large    ↑↑↑         opencode-go/muse-spark-1.3-contributor (xhigh)
+  [x] ORCHESTRATOR  sai-3-implement              Medium   ↑↑          opencode-go/muse-spark-1.3-contributor (xhigh)
+  [x] WORKER        sai-3-implementation-worker  Large    ↑↑          opencode-go/deepseek-v4.1-flash (max)
+  [x] ORCHESTRATOR  sai-4-apply                  Large    ↑↑↑         opencode-go/muse-spark-1.3-contributor (xhigh)
+  [x] WORKER        sai-4-red-worker             Medium   ↑           opencode-go/deepseek-v4.1-flash (max)
+  [x] WORKER        sai-4-green-worker           Medium   ↑↑          opencode-go/deepseek-v4.1-flash (max)
 
-  [x] ORCHESTRATOR  sai-review                   ↑↑               opencode-go/muse-spark-1.3-contributor (xhigh)
-  [x] ORCHESTRATOR  sai-5-review                 ↑↑               opencode-go/muse-spark-1.3-contributor (xhigh)
-  [x] WORKER        sai-5-review-worker          ↑↑               opencode-go/gpt-5.6-luna (max)
-  [x] WORKER        sai-review-fix-worker        ↑↑               opencode-go/deepseek-v4.1-flash (max)
-  [x] ORCHESTRATOR  sai-6-security               ↑↑               opencode-go/muse-spark-1.3-contributor (xhigh)
-  [x] WORKER        sai-6-security-worker        ↑↑↑              opencode-go/deepseek-v4.1-flash (max)
-  [x] ORCHESTRATOR  sai-7-performance            ↑↑               opencode-go/muse-spark-1.3-contributor (xhigh)
-  [x] WORKER        sai-7-performance-worker     ↑↑               opencode-go/deepseek-v4.1-flash (max)
-  [x] ORCHESTRATOR  sai-8-accessibility          ↑↑               opencode-go/muse-spark-1.3-contributor (xhigh)
-  [x] WORKER        sai-8-accessibility-worker   ↑↑               opencode-go/deepseek-v4.1-flash (max)
+  [x] ORCHESTRATOR  sai-review                   Large    ↑↑          opencode-go/muse-spark-1.3-contributor (xhigh)
+  [x] ORCHESTRATOR  sai-5-review                 Medium   ↑↑          opencode-go/muse-spark-1.3-contributor (xhigh)
+  [x] WORKER        sai-5-review-worker          Large    ↑↑          opencode-go/gpt-5.6-luna (max)
+  [x] WORKER        sai-review-fix-worker        Medium   ↑↑          opencode-go/deepseek-v4.1-flash (max)
+  [x] ORCHESTRATOR  sai-6-security               Medium   ↑           opencode-go/muse-spark-1.3-contributor (xhigh)
+  [x] WORKER        sai-6-security-worker        Large    ↑↑↑         opencode-go/deepseek-v4.1-flash (max)
+  [x] ORCHESTRATOR  sai-7-performance            Medium   ↑           opencode-go/muse-spark-1.3-contributor (xhigh)
+  [x] WORKER        sai-7-performance-worker     Large    ↑↑          opencode-go/deepseek-v4.1-flash (max)
+  [x] ORCHESTRATOR  sai-8-accessibility          Medium   ↑           opencode-go/muse-spark-1.3-contributor (xhigh)
+  [x] WORKER        sai-8-accessibility-worker   Large    ↑↑          opencode-go/deepseek-v4.1-flash (max)
 
-  [x] ORCHESTRATOR  sai-backfill                 ↑↑               opencode-go/muse-spark-1.3-contributor (xhigh)
-  [x] WORKER        sai-backfill-worker          ↑↑               opencode-go/deepseek-v4.1-flash (max)
-  [x] ORCHESTRATOR  sai-archive                  ↑↑               opencode-go/muse-spark-1.3-contributor (xhigh)
-  [x] WORKER        sai-archive-worker           ↑                opencode-go/muse-spark-1.3-contributor (high)
-  [x] ORCHESTRATOR  sai-merge                    ↑↑               opencode-go/muse-spark-1.3-contributor (xhigh)
-  [x] WORKER        sai-merge-worker             ↑↑               opencode-go/deepseek-v4.1-flash (max)
-  [x] ORCHESTRATOR  sai-commit                   ↑                opencode-go/muse-spark-1.3-contributor (xhigh)
-  [x] WORKER        sai-commit-worker            ↑                opencode-go/muse-spark-1.3-contributor (xhigh)
-  [x] ORCHESTRATOR  sai-pr                       ↑                opencode-go/muse-spark-1.3-contributor (xhigh)
+  [x] ORCHESTRATOR  sai-backfill                 Medium   ↑↑          opencode-go/muse-spark-1.3-contributor (xhigh)
+  [x] WORKER        sai-backfill-worker          Large    ↑↑          opencode-go/deepseek-v4.1-flash (max)
+  [x] ORCHESTRATOR  sai-archive                  Medium   ↑↑          opencode-go/muse-spark-1.3-contributor (xhigh)
+  [x] WORKER        sai-archive-worker           Medium   ↑           opencode-go/muse-spark-1.3-contributor (high)
+  [x] ORCHESTRATOR  sai-merge                    Large    ↑↑↑         opencode-go/muse-spark-1.3-contributor (xhigh)
+  [x] WORKER        sai-merge-worker             Large    ↑↑          opencode-go/deepseek-v4.1-flash (max)
+  [x] ORCHESTRATOR  sai-commit                   Small    ↑           opencode-go/muse-spark-1.3-contributor (xhigh)
+  [x] WORKER        sai-commit-worker            Small    ↑           opencode-go/muse-spark-1.3-contributor (xhigh)
 
-  [x] UTILITY       sai-worktree                 ↑                opencode-go/muse-spark-1.3-contributor (xhigh)
-  [x] UTILITY       sai-status                   ↑                opencode-go/muse-spark-1.3-contributor (xhigh)
-  [x] UTILITY       sai-retire-docs              ↑↑               opencode-go/muse-spark-1.3-contributor (xhigh)
+  [x] UTILITY       sai-pr                       Medium   ↑           opencode-go/muse-spark-1.3-contributor (xhigh)
+  [x] UTILITY       sai-retire-docs              Large    ↑↑          opencode-go/muse-spark-1.3-contributor (xhigh)
+  [x] UTILITY       sai-status                   Small    ↑           opencode-go/muse-spark-1.3-contributor (xhigh)
+  [x] UTILITY       sai-worktree                 Small    ↑           opencode-go/muse-spark-1.3-contributor (xhigh)
 ```
 
 ### Example presets
@@ -277,10 +288,10 @@ The installer includes four example presets for opencode and one for Claude Code
 | Preset | Model mix |
 |--------|-----------|
 | `Go.json` | OpenCode Go models throughout: Muse Spark for commands and helper subagents, DeepSeek Flash for most workers, and GPT Luna for the review worker. |
-| `Go+Zen.json` | Same as `Go.json`, with free `opencode` models for the `budget`, `executor`, and `explore` subagents. |
+| `Go+Zen.json` | OpenCode Go models: Muse Spark for commands and utilities, DeepSeek Flash for most workers, and GPT Luna for the review worker; free `opencode` models for the `budget`, `executor`, and `explore` subagents. |
 | `oAI-LUNA+Zen.json` | OpenAI Luna models for most commands and workers, with free `opencode` models for the `budget`, `executor`, and `explore` subagents. |
-| `oAI-SOL+Zen.json` | Same as `oAI-LUNA+Zen.json`, with GPT-6 Sol for `/sai-explore`. |
-| `OPUS.json` | Claude Code: Opus for most commands and workers, Sonnet for selected roles, and Haiku/Sonnet for the budget subagents. |
+| `oAI-SOL+Zen.json` | OpenAI models: GPT-6.1 Sol for the planning, build, and merge pipeline, GPT-6 Luna for the audit coordinators, commit, and utilities, and GPT-5.6 Luna for the review and audit workers; free `opencode` models for the `budget`, `executor`, and `explore` subagents. |
+| `OPUS.json` | Claude Code: Opus for the heavy workers and the explore, build, apply, review, and merge coordinators; Sonnet for the remaining coordinators, the RED/GREEN, fix, archive, and commit workers, and most utilities; Haiku for `budget-executor`. |
 
 Load a preset with `npx github:mmadariaga/shared-ai setup` → **Customize models** → **Load preset** → **OpenCode** or **Claude Code** → preset name.
 
@@ -290,8 +301,8 @@ This chart may help you identify which models to test. The intelligence axis is 
 
 The x-axis (cost) is usually more reliable, but again, do your own tests. Note that costs can vary depending on the provider — the same model may be priced differently across API providers, subscriptions, and regions.
 
-![Intelligence vs Cost (Sep 2026)](Intelligence-vs-Cost-(23-Sep-'26).png)
-[+ Info](https://artificialanalysis.ai/?models=glm-5-3-flash%2Cgpt-6-luna-xhigh%2Cgpt-6-astra-xhigh%2Cgrok-4-7-high%2Cclaude-opus-5-5%2Cgpt-6-sol-high%2Cgpt-6-luna%2Cgrok-4-5%2Cmuse-spark-1-3%2Cqwen3-8-flash-next%2Cqwen3-8-27b%2Cgpt-6-sol%2Cgrok-4-6%2Cglm-5-3%2Cmuse-spark-1-3-xhigh%2Cgpt-6-sol-xhigh%2Cdeepseek-v4-1-flash%2Cclaude-opus-5-5-xhigh%2Cgpt-6-astra-high%2Cgpt-6-astra-medium%2Cclaude-opus-5-5-medium%2Cclaude-opus-5-5-high%2Ckimi-k3&cost=intelligence-vs-cost-per-task&total-cost=intelligence-vs-total-cost&coding-agents=execution-time&intelligence=agentic-index&intelligence-efficiency=cost-per-task)
+![Intelligence vs Cost (Sep 2026)](Intelligence-vs-Cost-(29-Sep-'26).png)
+[+ Info](https://artificialanalysis.ai/?models=claude-sonnet-5-5-medium%2Cgpt-6-1-sol-xhigh%2Cmimo-v2-6-flash%2Cglm-5-3-flash%2Cgpt-6-luna-xhigh%2Cmimo-v2-6-pro%2Cclaude-sonnet-5-5-high%2Cclaude-opus-5-5%2Cgpt-6-1-sol-high%2Cgpt-6-luna%2Cqwen3-8-flash-next%2Cgpt-6-1-sol-medium%2Cqwen3-8-27b%2Cgpt-6-1-sol%2Cgrok-4-6%2Cglm-5-3%2Cmuse-spark-1-3-xhigh%2Cdeepseek-v4-1-flash%2Cclaude-opus-5-5-xhigh%2Cgpt-6-1-sol-low%2Cclaude-opus-5-5-medium%2Cclaude-opus-5-5-high%2Ckimi-k3%2Cgrok-4-7&coding-agents=execution-time&intelligence=agentic-index&intelligence-efficiency=cost-per-task&total-cost=intelligence-vs-total-cost&cost=intelligence-vs-cost-per-task)
 
 Other rankings that can help you choose:
 

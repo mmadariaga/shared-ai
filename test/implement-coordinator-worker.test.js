@@ -151,7 +151,7 @@ test('Claude and opencode worker bindings own dispatch and continuation mechanic
 test('opencode config sample defines no agent and ships the SAI permission rule', () => {
   const config = jsonc.parse(artifact('configs/opencode.jsonc'));
 
-  assert.equal(config.subagent_depth, 2);
+  assert.equal(Object.hasOwn(config, 'subagent_depth'), false, 'the v1 top-level key is not shipped');
   assert.equal(config.experimental?.subagent_depth, 2, 'sample should ship experimental.subagent_depth for v2 runtimes');
   assert.ok(Object.hasOwn(config, '$schema'), 'sample config should retain $schema');
   assert.ok(config.permission, 'sample config should retain permission');

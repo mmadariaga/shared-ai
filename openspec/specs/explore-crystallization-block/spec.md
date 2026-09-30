@@ -3,13 +3,17 @@
 ## Purpose
 
 Define the crystallized handoff format and closing behavior for `sai-explore`.
+
 ## Requirements
+
 ### Requirement: Close crystallization with the three named routes
-The shared crystallization close SHALL emit the Ready to Propose block or blocks plus the recordedList plus exactly one selector with Plan - Unattended, Direct Build - Unattended, and Manual in fixed order as the final close emission, with no path-specific handoff and no keep-window-open recommendation before selection, and SHALL never end the turn after the block without that selector. No route SHALL be selected automatically.
+
+The shared crystallization close SHALL emit every `Ready to Propose` block and the ordered `recordedList`, handle the stage TODO, and complete the inventory checkpoint only after the ordered event succeeds in `waiting`. After that successful checkpoint, it SHALL follow the returned pointer. When the pointer names the route selector and no slice is active, the selector SHALL present the native three-option picker in the same assistant turn. The close SHALL not emit `route-choice`, select a route, or dispatch work until a valid picker answer arrives in a later turn. No route SHALL be selected automatically.
 
 #### Scenario: shared close remains final
-- **WHEN** a crystallization block or slice is emitted same-turn
-- **THEN** the three-option selector with recordedList is the final close emission and no route is selected automatically
+
+- **WHEN** a crystallization block or slice is emitted in the same turn and ordered inventory recording succeeds
+- **THEN** the selector picker may be presented after the checkpoint, but route processing and dispatch remain locked until a later explicit picker answer
 
 ### Requirement: Three mandatory decision-facet sections in the single-change Ready to Propose block
 
@@ -67,49 +71,57 @@ The companion `explore-handoff-edge-cases` capability governs the same `**Edge C
 - **THEN** its `**Edge Cases**` section contains exactly `- None`
 
 ### Requirement: Close crystallization with selector
-`sai-explore` SHALL define one authoritative crystallization-turn close in the explore instructions. Single-change and sliced-feature items SHALL reference that definition rather than restating its emission sequence. Inline proposal refusal SHALL stay outside the shared close. The shared close SHALL emit, in order and exactly once per crystallization turn, only the Ready to Propose blocks ending at separators plus the recordedList plus one harness-native three-option selector, with no path-specific handoff and no keep-window-open recommendation before selection. Selecting Manual or an unmapped answer SHALL emit once the closing path handoff plus the keep-window-open recommendation with no second selector in that turn. Selecting Plan - Unattended or Direct Build - Unattended SHALL never emit handoff or recommendation.
+
+`sai-explore` SHALL define one authoritative crystallization-turn close in `sai/commands/explore/steps/crystallization-protocol.md`. Single-change and sliced-feature items SHALL reference that definition rather than restating its emission sequence. Inline proposal refusal SHALL stay outside the shared close. The shared close SHALL handle the final block or blocks, stage-TODO panel handling, and ordered `recordedList` recording. After a successful inventory result, it SHALL follow the actual `next.follow`; when no slice is active, that pointer SHALL load `route-selector.md`, which presents the native picker after the checkpoint. A later valid picker answer SHALL control whether Manual emits its handoff and recommendation; Plan and Direct Build SHALL not emit that handoff.
 
 #### Scenario: single-change handoff uses the shared close
-- **WHEN** sai-explore emits the single-change Ready to Propose block same-turn
-- **THEN** the single-change item uses the shared close with block plus recordedList plus selector only and no handoff before selection
+
+- **WHEN** `sai-explore` emits the single-change `Ready to Propose` block in the same turn
+- **THEN** item 5 invokes the protocol-owned shared close, handles the panel and ordered inventory, and presents the route picker only after successful recording without starting a route
 
 #### Scenario: sliced output closes once after the final slice
-- **WHEN** sai-explore emits one Ready to Propose block per slice same-turn
-- **THEN** item 6 uses the shared close only after the final slice block with recordedList plus selector following the last block directly and no intermediate handoff
+
+- **WHEN** `sai-explore` emits one `Ready to Propose` block per slice in the same turn
+- **THEN** item 6 invokes the protocol-owned shared close only after the final slice block, records the ordered inventory once, and presents the picker only after that checkpoint succeeds
 
 #### Scenario: inline proposal refusal uses the shared close
-- **WHEN** the user asks to create a proposal or run `/sai-1-spec` inline and the paste-ready block(s) are emitted
-- **THEN** item 7 stays outside the shared close with its immediate copy-start-new-chat handoff and no selector and no in-session dispatch
+
+- **WHEN** the user asks to create a proposal or run `/sai-1-spec` inline and the paste-ready blocks are emitted
+- **THEN** item 7 stays outside the shared close with its immediate copy-start-new-chat handoff and no selector or in-session dispatch
 
 #### Scenario: Manual refers to the existing recommendation once and moves the handoff after the selector
-- **WHEN** the user selects `Manual` or gives an unmapped answer to the same-turn selector
-- **THEN** no worker is dispatched and the closing path handoff plus recommendation emits once with no second selector
+
+- **WHEN** the user explicitly selects `Manual` in the native picker
+- **THEN** no worker is dispatched and the closing-path handoff plus recommendation emits once with no second route choice
 
 #### Scenario: the close does not alter the handoff payload
-- **WHEN** the shared close is emitted in any single-change or sliced crystallization path same-turn
-- **THEN** the existing `Ready to Propose` block field labels and `---` separator remain unchanged with handoff outside the block and `review-loop` as standing user-triggered path
+
+- **WHEN** the shared close is emitted in any single-change or sliced crystallization path in the same turn
+- **THEN** the existing `Ready to Propose` block labels and `---` separator remain unchanged, the route picker remains outside the block, and `review-loop` remains a standing user-triggered path
 
 #### Scenario: recommendation language and review separation remain unchanged
-- **WHEN** the crystallization turn uses a non-English conversation language
-- **THEN** the post-`Manual` recommendation remains plain conversational text in the user language with `/sai-1-spec`, `/sai-2-design`, and `review-loop` verbatim English
+
+- **WHEN** a native picker answer resolves to Manual in a non-English conversation
+- **THEN** the post-Manual recommendation remains plain conversational text in the user language with `/sai-1-spec`, `/sai-2-design`, and `review-loop` verbatim in English
 
 #### Scenario: recommendation does not alter the block or the item-8 gate
-- **WHEN** the post-`Manual` closing recommendation is emitted
+
+- **WHEN** the post-Manual closing recommendation is emitted
 - **THEN** the `Ready to Propose` block scaffolding and item-8 language-gate invariants stay unchanged with both literal tokens verbatim
 
 ### Requirement: Sole edit target is sai/commands/explore/instructions.md
 
-The change SHALL modify `sai/commands/explore/instructions.md` only. No new files are created; no other shared instruction, command, skill, schema, OpenSpec template, or `sai-*` wrapper is modified. `/sai-1-spec` itself is unchanged because it reads the user's message in the new chat, which carries the block content directly. None of the three `sai-1-spec` wrappers under `commands/claude/`, `commands/opencode/`, or `commands/copilot/` is modified. No harness-specific configuration (opencode.jsonc, Copilot agent definitions, Claude Code skills) is touched.
+The implementation change SHALL modify the existing Explore protocol, selector, machine, store integration, policy, README, and test files required by the staged deferred-choice behavior. It SHALL not modify the `sai-1-spec` wrappers or introduce a separate wrapper route. The existing phase-A/phase-B panel lifecycle remains owned by its current step files and harness bindings.
 
 #### Scenario: no new files are created
 
-- **WHEN** the change is applied
-- **THEN** no new file appears in the repository and the only modified file is `sai/commands/explore/instructions.md`
+- **WHEN** the implementation change is applied
+- **THEN** no separate route wrapper or ad-hoc implementation helper appears, and the staged behavior remains in the shared Explore contracts, machine/store integration, and associated tests
 
 #### Scenario: /sai-1-spec and its wrappers are not modified
 
-- **WHEN** the change is applied
-- **THEN** the active files under `sai/commands/spec/steps/` and the three `sai-1-spec` wrappers under `commands/claude/`, `commands/opencode/`, and `commands/copilot/` are unchanged
+- **WHEN** the implementation change is applied
+- **THEN** the active files under `sai/commands/spec/steps/` and the `sai-1-spec` wrappers under supported harnesses remain unchanged
 
 ### Requirement: Single-change handoffs expose dedicated research leads
 
@@ -211,4 +223,3 @@ The single-change `Ready to Propose` block emitted by `sai-explore` SHALL includ
 
 - **WHEN** all agreed capabilities map to bookkeeping artifacts only
 - **THEN** the `**Capabilities in scope**` section emits exactly `- None`
-

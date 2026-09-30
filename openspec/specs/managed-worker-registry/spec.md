@@ -101,12 +101,12 @@ Tunable-seed projection SHALL install the bytes of the manifest row's declared `
 - **AND** the installer SHALL NOT create a `.<basename>.owner.json` file
 
 ### Requirement: The canonical opencode configuration sample defines no agent
-The canonical sample `configs/opencode.jsonc` SHALL NOT define any agent key — neither the seven managed opencode worker agent keys nor the three helper-agent keys (`explore`, `executor`, `budget`). It SHALL retain `$schema`, `subagent_depth`, and `permission` (including the `~/.config/opencode/sai/**` external-directory allow rule). The fresh-install configuration therefore carries no agent registration at all; all agents register through the projected markdown agent files — the seven workers and the three generic agents.
+The canonical sample `configs/opencode.jsonc` SHALL NOT define any agent key — neither the seven managed opencode worker agent keys nor the three helper-agent keys (`explore`, `executor`, `budget`). It SHALL retain `$schema`, `experimental.subagent_depth`, and `permission` (including the `~/.config/opencode/sai/**` external-directory allow rule). The fresh-install configuration therefore carries no agent registration at all; all agents register through the projected markdown agent files — the seven workers and the three generic agents.
 
 #### Scenario: The sample config contains no agent keys
 - **WHEN** `configs/opencode.jsonc` is read after the change
 - **THEN** none of `sai-1-spec-proposal-worker`, `sai-2-design-worker`, `sai-3-implementation-worker`, `sai-5-review-worker`, `sai-6-security-worker`, `sai-7-performance-worker`, `sai-8-accessibility-worker`, `explore`, `executor`, or `budget` appears under any `agent` key
-- **AND** `$schema`, `subagent_depth`, and `permission` remain present
+- **AND** `$schema`, `experimental.subagent_depth`, and `permission` remain present
 
 #### Scenario: Fresh-install merge does not add agent keys
 - **WHEN** the installer copies `configs/opencode.jsonc` to a fresh destination and applies the configuration merge

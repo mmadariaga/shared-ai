@@ -2,7 +2,9 @@
 
 ## Purpose
 TBD - created by archiving change commit-deterministic-extraction. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: apply subcommand validates and executes commits
 
 The `sai/tools/commit.js apply` subcommand SHALL read a commit message from stdin, validate it against commit-message rules, block on detected sensitive files, and execute `git commit` with the validated message.
@@ -29,13 +31,20 @@ The `sai/tools/commit.js apply` subcommand SHALL read a commit message from stdi
 
 ### Requirement: apply reads message from stdin
 
-The commit message SHALL be passed to `apply` over stdin using a heredoc, never through a temporary file or command-line argument.
+The commit message SHALL be passed to `sai/tools/commit.js apply` over standard input using the literal-message procedure in `sai/policies/command-execution.md`, never through a temporary file, command-line argument, command string, or mandatory Bash heredoc. The procedure SHALL support Bash and PowerShell 7, preserve multiline and shell-sensitive content byte-for-byte including the final-LF state, and keep validation, sensitive-file handling, and commit authorization unchanged.
 
 #### Scenario: apply consumes stdin message
-- **WHEN** `node sai/tools/commit.js apply --json --cwd <repo> <<'EOF' {message} EOF` is called
-- **THEN** the message is read from stdin, validated, and used for the commit
+
+- **WHEN** `node sai/tools/commit.js apply --json --cwd <repo>` receives a valid message on standard input through a supported shell's literal-message transport
+- **THEN** apply reads the message from standard input, validates it, and uses it for the commit
+
+#### Scenario: apply consumes a PowerShell 7-transported stdin message
+
+- **WHEN** `node sai/tools/commit.js apply --json --cwd <repo>` receives a valid message through the supported PowerShell 7 literal-message transport
+- **THEN** apply reads the message from standard input without pipeline-added line endings, validates it, and uses it for the commit
 
 #### Scenario: stdin message is not written to a temporary file
+
 - **WHEN** apply executes
 - **THEN** no temporary message file is created and no orphaned file exists on failure
 
@@ -86,4 +95,3 @@ The `apply` subcommand SHALL accept `--amend` to amend the previous commit's mes
 #### Scenario: apply --amend validation and sensitive-file blocking unchanged
 - **WHEN** `node sai/tools/commit.js apply --amend` validates a message or detects sensitive files
 - **THEN** validation rules, sensitive-file detection, blocking, and exact-match `--acknowledge-secrets` behave identically to the non-amend path
-

@@ -225,11 +225,12 @@ function canonicalizeMergedState(mod, mergedState) {
 }
 
 // Re-reads the session file just before writing, keeps sibling machines by max
-// `rev`, and unions the target `done[]` in canonical order. The read-then-write
-// is not atomic (no lockfile, no CAS retry): the residual window is accepted
-// because callers serialize store operations per session id and the union keeps
-// survivors harmless for monotonic step sets. One file per session, never one
-// per machine.
+// `rev`, and unions the target `done[]` in canonical order unless its machine
+// declares that this transition replaces a versioned inventory. The
+// read-then-write is not atomic (no lockfile, no CAS retry): the residual window
+// is accepted because callers serialize store operations per session id and
+// the union keeps survivors harmless for monotonic step sets. One file per
+// session, never one per machine.
 function persistMachineOutcome(id, record, machineId, nextState, eventId, wire) {
   let freshRecord = null;
   try { freshRecord = readSessionRecord(id).record; } catch (err) { freshRecord = null; }
@@ -246,6 +247,11 @@ function persistMachineOutcome(id, record, machineId, nextState, eventId, wire) 
   const staleEntry = (staleMap[machineId] && typeof staleMap[machineId] === 'object' && !Array.isArray(staleMap[machineId])) ? staleMap[machineId] : {};
   const freshEntry = (freshMap[machineId] && typeof freshMap[machineId] === 'object' && !Array.isArray(freshMap[machineId])) ? freshMap[machineId] : {};
   const newRev = Math.max(entryRev(staleEntry), entryRev(freshEntry)) + 1;
+  const resetDone = !!(
+    mod
+    && typeof mod.shouldResetDone === 'function'
+    && mod.shouldResetDone(nextState, [staleEntry.state, freshEntry.state])
+  );
 
   let mergedState = nextState;
   const nextHasDone = !!(nextState && Array.isArray(nextState.done));
@@ -255,7 +261,9 @@ function persistMachineOutcome(id, record, machineId, nextState, eventId, wire) 
     const nextDone = nextHasDone ? nextState.done : [];
     const freshDone = freshHasDone ? freshEntry.state.done : [];
     const staleDone = staleHasDone ? staleEntry.state.done : [];
-    const united = unionDoneInCanonicalOrder(mod, nextDone, freshDone, staleDone);
+    const united = resetDone
+      ? nextDone.slice()
+      : unionDoneInCanonicalOrder(mod, nextDone, freshDone, staleDone);
     mergedState = Object.assign({}, nextState);
     mergedState.done = united;
     mergedState = canonicalizeMergedState(mod, mergedState);

@@ -1,5 +1,7 @@
 # Direct Build Close
 
+Fetch @sai/policies/command-execution.md and follow it exactly.
+
 A findings-driven close: fix the remaining findings, then land the fix
 in one local commit. The calling coordinator supplies `input` (the findings
 files), `direct-label`, `decline-label`, and `decline-close` (the text that
@@ -18,7 +20,10 @@ before that selection.
    findings and run `decline-close`.
 3. Otherwise present exactly two options through the native picker:
    `direct-label` and `decline-label`. `decline-label`, or a dismissed picker,
-   dispatches nothing and runs `decline-close`.
+   dispatches nothing and runs `decline-close`. After `direct-label`, before
+   the fix loop: Fetch @sai/commands/meta-review/findings-selection.md and
+   follow it. Its selected findings and exclusions determine the fix scope; if
+   it returns no selected findings, run `decline-close` without a dispatch.
 
 ## Fix loop
 
@@ -30,17 +35,35 @@ close with no commit.
 
 1. Fetch @sai/orchestration/workers/bindings/review-fix-worker.md and use it.
    Dispatch `sai-review-fix-worker` with one `arguments_value`: the marker line
-   `--review-fix`, a newline, then the findings input.
-2. Read the resulting diff read-only and check it against the input findings.
-   While findings remain, continue THE SAME fix worker with exactly the ordered
-   finding list. The loop is capped at three rounds: a third completed round
-   that still carries findings is non-convergence — stage nothing, commit
-   nothing, and append the manual-route note after the caller's close.
+   `--review-fix`, a newline, then the full **selected** findings input and a
+   clearly labeled exclusion list with source-qualified ids and titles. Never
+   forward an excluded finding as a requested fix. When no findings were
+   excluded, label the exclusion list `none`.
+2. Read the resulting diff read-only and check it against the selected findings
+   **and** the exclusions. While selected findings remain or an unauthorized
+   change needs correction, continue THE SAME fix worker with exactly the
+   ordered outstanding selected findings or verification note; keep the
+   exclusion list in force on every continuation. Outstanding work is only
+   ever selected findings. The loop is capped at three rounds: a third
+   completed round that still carries findings is non-convergence — stage
+   nothing, commit nothing, and append the manual-route note after the caller's
+   close.
+3. **Scope conflict** — the one path for a selected fix that reaches an
+   excluded finding. Stage nothing and commit nothing in every case:
+   - The worker returns `failed` before writing and names an excluded-finding
+     dependency: show that dependency and return to `findings-selection.md` for
+     one revised selection, then restart this fix loop with a fresh dispatch.
+     A second conflict in the same close runs `decline-close`.
+   - The diff fixes an excluded finding or cannot separate it from a selected
+     fix: report the conflict and the written paths, then run `decline-close`;
+     a revised selection needs a new review run.
+   - Any other `failed` result: explain the failure and run `decline-close`.
 
 ## Commit
 
 On convergence, between guard windows: stage only the fix worker's changed-files
-union with path-scoped `git add`, author the message
-from the staged state under `@sai/policies/commit-rules.md`, and create one
-local commit with a HEREDOC message. That single commit is the close's whole
-git write: no push, no amend, no retry, no other path staged.
+union with path-scoped `git add`, author the message from the staged state under
+`@sai/policies/commit-rules.md`, and create one local commit with
+`git commit -F -`, passing the complete message literally on standard input
+under `@sai/policies/command-execution.md`. That single commit is the close's
+whole git write: no push, no amend, no retry, no other path staged.

@@ -41,7 +41,7 @@ test('contract preservation: all reachable step files exist and are mentioned', 
   }
 });
 
-test('contract preservation: selector uses fixed English titles with localized descriptions', () => {
+test('contract preservation: route names stay English while route guidance is localized', () => {
   const selector = fs.readFileSync(path.join(stepsDir, 'route-selector.md'), 'utf8');
   const languageGate = fs.readFileSync(
     path.join(stepsDir, 'crystallization-language-gates.md'),
@@ -51,7 +51,6 @@ test('contract preservation: selector uses fixed English titles with localized d
   assert.match(selector, /\*\*Plan - Unattended\*\*/);
   assert.match(selector, /\*\*Direct Build - Unattended\*\*/);
   assert.match(selector, /\*\*Manual\*\*/);
-  assert.match(selector, /question text and each option description[\s\S]{0,200}fixed option titles remain exactly `Plan - Unattended`, `Direct Build - Unattended`, and `Manual`/i);
-  assert.match(languageGate, /question text and all three option descriptions render in the user's language[\s\S]{0,140}option titles remain the fixed English literals `Plan - Unattended`, `Direct Build - Unattended`, and `Manual`/i);
+  assert.match(selector, /The route explanation renders in the user's language[\s\S]{0,180}fixed route names remain exactly `Plan - Unattended`, `Direct Build - Unattended`, and `Manual`/i);
+  assert.match(languageGate, /post-block route guide, later-turn clarification, and post-Manual handoff prose follow the selected crystallization language[\s\S]{0,220}route names remain the fixed English literals `Plan - Unattended`, `Direct Build - Unattended`, and `Manual`/i);
 });
-

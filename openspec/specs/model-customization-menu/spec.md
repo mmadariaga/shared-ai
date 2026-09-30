@@ -97,25 +97,34 @@ The model-customization menu SHALL derive target families from the canonical wor
 - **WHEN** the menu enumerates targets for either harness
 - **THEN** sai-commit SHALL appear as command:sai-commit in the command family and sai-commit-worker SHALL remain a routed worker, with utility:sai-commit absent
 
-### Requirement: Checklist rows expose task complexity
-The model-customization checklist SHALL render columns in the order `TYPE`, `TARGET`, `TASK COMPLEXITY`, and `SETTING` for every target in both OpenCode and Claude Code flows. Headers, separators, and rows SHALL remain aligned, and existing setting text SHALL remain unchanged. `worker:sai-4-green-worker` SHALL display a double up-arrow.
-#### Scenario: Display complexity in both harnesses
+### Requirement: Checklist rows expose context and difficulty
+The model-customization checklist and the reset and save/load preset previews SHALL render columns in the order `TYPE`, `TARGET`, `CONTEXT`, `DIFFICULTY`, and `SETTING` for every target in both OpenCode and Claude Code flows, with headers, separators, and rows aligned and setting text preserved.
+#### Scenario: Display context and difficulty in both harnesses
 
 - **WHEN** a user opens a customization checklist in either supported harness
-- **THEN** each target row displays an arrow-based complexity value between its target name and setting text while preserving the existing selection identity
-#### Scenario: Green worker shows raised complexity with aligned columns
-- **WHEN** a user opens a customization checklist in either harness
-- **THEN** the worker:sai-4-green-worker row SHALL show a double up-arrow between its target name and setting text with alignment and setting text preserved
+- **THEN** each target row displays a context estimate followed by an arrow-based difficulty value between its target name and setting text while preserving the existing selection identity
+#### Scenario: Previews share the checklist column order
+- **WHEN** a user opens a reset checklist or a save/load preset preview in either harness
+- **THEN** its header and rows SHALL show `CONTEXT` before `DIFFICULTY` with the same widths as the customization checklist
 
-### Requirement: Complexity uses family-qualified target identities
-The customization logic SHALL resolve task complexity by complete family-qualified identity, including the `worker:`, `agent:`, `command:`, or `utility:` prefix. Configured values MUST be one of `↑`, `↑↑`, or `↑↑↑`; an unmapped identity SHALL resolve to `↑`. Stable selection values, family grouping, alphabetical ordering, and settings rendering SHALL remain unchanged. `command:sai-commit` SHALL resolve to a single up-arrow and `worker:sai-4-green-worker` SHALL resolve to a double up-arrow, with `utility:sai-commit` absent.
+### Requirement: Target profiles use family-qualified identities
+The customization logic SHALL resolve each target's `CONTEXT` and `DIFFICULTY` from one shared static profile mapping keyed by complete family-qualified identity, including the `worker:`, `agent:`, `command:`, or `utility:` prefix, for both supported harnesses. Configured context values MUST be `Small`, `Medium`, or `Large`; configured difficulty values MUST be `↑`, `↑↑`, or `↑↑↑`. An unmapped identity SHALL display `Unknown` in both columns so that a missing entry never reads as a small or easy task. `CONTEXT` estimates the typical task context — instructions, documents, results, and accumulated continuations: `Small` for isolated tasks with few inputs and little history, `Medium` for several documents or continuations, and `Large` for substantial documents, results, and accumulated state. It describes the task, independent of the selected model's context-window capacity and of live token counts. `DIFFICULTY` estimates the task's reasoning demand. Profiles are display-only: selection identities, family grouping, ordering, effective settings, and preset file contents SHALL be independent of them. `command:sai-commit` SHALL resolve to a single up-arrow and `worker:sai-4-green-worker` SHALL resolve to a double up-arrow, with `utility:sai-commit` absent.
 #### Scenario: Prevent bare-name taxonomy collisions
 
-- **WHEN** complexity is resolved for targets with family-qualified identities such as `agent:budget` and `command:sai-2-design`
-- **THEN** each lookup uses its complete identity rather than a bare target name, and the resulting display value remains one of the permitted arrow levels
-#### Scenario: Family-qualified lookup reflects promotion and bump
-- **WHEN** complexity is resolved for command:sai-commit and worker:sai-4-green-worker
-- **THEN** each lookup SHALL use its complete identity and return the promoted single-arrow and raised double-arrow values within the permitted set
+- **WHEN** a profile is resolved for targets with family-qualified identities such as `agent:budget` and `command:sai-2-design`
+- **THEN** each lookup uses its complete identity rather than a bare target name, and the resulting display values remain within the permitted sets
+#### Scenario: Commit coordinator and green worker difficulty
+- **WHEN** difficulty is resolved for command:sai-commit and worker:sai-4-green-worker
+- **THEN** each lookup SHALL use its complete identity and return a single up-arrow and a double up-arrow respectively
+#### Scenario: Low-difficulty coordinator still shows medium context
+- **WHEN** the checklist displays `command:sai-6-security`
+- **THEN** it SHALL show `Medium` under `CONTEXT` and a single arrow under `DIFFICULTY`
+#### Scenario: Fresh Step workers carry less context than their supervisor
+- **WHEN** the checklist displays `command:sai-4-apply` and its RED and GREEN workers
+- **THEN** the coordinator SHALL show `Large` and each worker SHALL show `Medium` under `CONTEXT`
+#### Scenario: Unmapped target shows Unknown
+- **WHEN** a target has no profile entry
+- **THEN** its row SHALL display `Unknown` under both `CONTEXT` and `DIFFICULTY` while retaining its stable selection identity and effective setting
 
 ### Requirement: Shared settings selection
 After the target-selection checklist confirms a non-empty subset and before any local override is created, the flow SHALL invoke the selected harness's settings selector exactly once for the whole confirmed subset in that customization pass. The collected settings choices — a model and an optional effort choice for Claude Code, and a discovered model with an optional variant for OpenCode — SHALL be passed to the per-target local-override operation once for every selected target. A per-target skipped result means the operation was attempted but its source was unavailable; it SHALL not be treated as a settings-selector failure or prevent later targets from being attempted. In `All` scope, the selector SHALL run once and the same settings SHALL be passed to every marked target across all selected families, with no per-family differentiation within a pass. Because the model-customization checklist rejects empty confirmation, the settings selector SHALL never be invoked for an empty selection.
@@ -141,11 +150,11 @@ After the target-selection checklist confirms a non-empty subset and before any 
 - **THEN** the checklist SHALL remain open and the settings selector SHALL NOT be invoked
 
 ### Requirement: Stable target identities and effective model annotations
-The target checklist SHALL keep stable family-prefixed selection values separate from display labels. Each display label SHALL render an aligned three-column table row separated by two-space gutters: the TYPE column SHALL carry the target's uppercase family (`WORKER`, `AGENT`, `COMMAND`, or `UTILITY`) padded to seven characters, the TARGET column SHALL carry the target's name padded to the longest displayed target name of the current scope, and the SETTING column SHALL carry the target's effective setting as plain text with no brackets and no ANSI styling. The setting SHALL use `provider/model (effort)` formatting, with Claude Code's `effort` and OpenCode's `variant` occupying the tuning position. Project-local overrides SHALL take precedence over installed or global sources; malformed or missing frontmatter SHALL produce a safe `unavailable` setting rendered as ordinary column text without breaking selection.
+The target checklist SHALL keep stable family-prefixed selection values separate from display labels. Each display label SHALL render an aligned five-column table row separated by two-space gutters: TYPE SHALL carry the target's uppercase display family (`WORKER`, `AGENT`, `ORCHESTRATOR`, or `UTILITY`) padded to twelve characters; TARGET SHALL carry the target's name padded to the longest displayed target name of the current scope; CONTEXT and DIFFICULTY SHALL carry their respective estimates padded to their header widths; and SETTING SHALL carry the target's effective setting as plain text with no brackets and no ANSI styling. The setting SHALL use `provider/model (effort)` formatting, with Claude Code's `effort` and OpenCode's `variant` occupying the tuning position. Project-local overrides SHALL take precedence over installed or global sources; malformed or missing frontmatter SHALL produce a safe `unavailable` setting rendered as ordinary column text without breaking selection.
 
 #### Scenario: Checklist displays stable identities and current settings
 - **WHEN** a target checklist is rendered for either supported harness
-- **THEN** each row SHALL display aligned TYPE, TARGET, and SETTING columns while the confirmed selection value remains the stable family-prefixed identity
+- **THEN** each row SHALL display aligned TYPE, TARGET, CONTEXT, DIFFICULTY, and SETTING columns while the confirmed selection value remains the stable family-prefixed identity
 
 #### Scenario: Local settings override installed settings
 - **WHEN** a project-local target override exists with valid tunable frontmatter
@@ -304,7 +313,7 @@ The navigator SHALL expose an opt-in guard for multi-select confirmation with no
 
 ### Requirement: Visible selection-screen back affordance
 
-Every model-customization harness, scope, target, and settings selection screen SHALL render a key legend that announces left-arrow/Esc back navigation and q/Ctrl-C cancellation. Single-select screens SHALL use the default legend `Up/Down move · Space/Enter confirm · ←/Esc back · q/Ctrl-C cancel`; the multi-select target screen SHALL retain the existing `Up/Down move · Space toggle · Enter confirm · ←/Esc back · q/Ctrl-C cancel` legend. The post-setup menu SHALL call through the `promptSelect` path with an explicit no-footer override and SHALL not announce back navigation because back at that first screen only redraws the menu. `promptSelect` SHALL unconditionally forward the default single-select legend to `runNavigator` whenever no footer override is supplied. The eleven production `promptChoice` invocations are the post-setup menu, harness selector, scope selector, save confirm, save overwrite, load selector, load confirm, Claude settings selector, and OpenCode provider, model, and variant selectors; `promptChoice` SHALL default to `promptSelect` at the Claude adapter, OpenCode adapter, and post-setup menu binding sites. The installer first screen uses `promptChecklist`, not `promptSelect`, and SHALL retain its existing footer behavior.
+Every model-customization harness, scope, target, and settings selection screen SHALL render a key legend that announces left-arrow/Esc back navigation and q/Ctrl-C cancellation. Single-select screens SHALL use the default legend `Up/Down move · Space/Enter confirm · ←/Esc back · q/Ctrl-C cancel`; the multi-select target screen SHALL use the legend `Up/Down move · Space toggle · Ctrl+A toggle all · Enter confirm · ←/Esc back · q/Ctrl-C cancel`. The post-setup menu SHALL call through the `promptSelect` path with an explicit no-footer override and SHALL not announce back navigation because back at that first screen only redraws the menu. `promptSelect` SHALL unconditionally forward the default single-select legend to `runNavigator` whenever no footer override is supplied. The eleven production `promptChoice` invocations are the post-setup menu, harness selector, scope selector, save confirm, save overwrite, load selector, load confirm, Claude settings selector, and OpenCode provider, model, and variant selectors; `promptChoice` SHALL default to `promptSelect` at the Claude adapter, OpenCode adapter, and post-setup menu binding sites. The installer first screen uses `promptChecklist`, not `promptSelect`, and SHALL retain its existing footer behavior.
 
 #### Scenario: Single-select screens announce back
 
@@ -314,7 +323,7 @@ Every model-customization harness, scope, target, and settings selection screen 
 #### Scenario: The checklist announces back and toggle behavior
 
 - **WHEN** the model-customization target checklist is rendered
-- **THEN** its footer SHALL announce left-arrow/Esc back, q/Ctrl-C cancellation, and Space toggling without changing its existing multi-select legend semantics
+- **THEN** its footer SHALL announce left-arrow/Esc back, q/Ctrl-C cancellation, Space toggling, and Ctrl+A toggle-all behavior without changing its existing multi-select legend semantics
 
 #### Scenario: The first menu does not announce back
 
@@ -370,10 +379,10 @@ For every traversed target, the selected harness adapter MUST invoke a local-ove
 - **THEN** the operation SHALL report a persistence failure with a diagnostic for that target and SHALL continue processing the remaining targets
 
 ### Requirement: Navigable target-selection checklist
-The empty-enumeration notice SHALL read `No customization targets are available for the selected scope.` After scope selection and before per-target configuration, the flow SHALL present a navigable multi-select checklist listing every target of the chosen family — or every family in `All` scope — derived from the canonical manifest projections and Worker Matrix metadata in `sai/install-manifest.json` for the chosen harness, with every target selected by default when at least one target exists. The command family SHALL enumerate only active `sai-*` wrappers and SHALL NOT produce a `command:budget` target after the standalone wrapper is removed; independently derived worker and agent families MAY still contain budget targets. Up/down arrows SHALL move the `>` cursor, space SHALL toggle the highlighted target's selection, and Enter SHALL confirm the selection only when at least one target is marked. Rows SHALL retain stable family-prefixed identities (`worker:`, `agent:`, `command:`, or `utility:`) as their confirmed selection values while their display labels render as aligned TYPE/TARGET/SETTING table columns under a two-line English header; display labels SHALL remain separate from the confirmed stable values. The header SHALL render between the question and the option rows starting under the six-character option prefix, carrying TYPE/TARGET/SETTING titles above a U+2500 dash separator row sized to the same widths as the row columns, and its lines SHALL be non-selectable decoration excluded from cursor movement and toggling while included in redraw bookkeeping. In single-family scopes the checklist SHALL keep alphabetical target order with no separators. In All scope the checklist SHALL use the logical pipeline order with phase separators instead of family-alphabetical command blocks: alphabetical agents first, then the phased middle block in four fixed phases, then alphabetical utilities after a blank. Stepping back from the target checklist MUST re-open the scope screen. The flow SHALL run per-target configuration exactly for the selected targets in checklist order, and SHALL preserve that order for diagnostics. If the adapter enumerates no targets, it SHALL print the empty-enumeration notice before building any header or labels and return to the scope screen without opening a zero-row checklist. Phase 4 SHALL order `sai-backfill`, `sai-archive`, `sai-merge`, and `sai-commit`, with the `sai-commit` orchestrator block ordered directly after the `sai-merge` block and before the utilities separator as ORCHESTRATOR `sai-commit` followed by WORKER `sai-commit-worker`. `COMMAND_WORKER_ORDER` SHALL pair `sai-commit` with `sai-commit-worker`.
+The empty-enumeration notice SHALL read `No customization targets are available for the selected scope.` After scope selection and before per-target configuration, the flow SHALL present a navigable multi-select checklist listing every target of the chosen family — or every family in `All` scope — derived from the canonical manifest projections and Worker Matrix metadata in `sai/install-manifest.json` for the chosen harness, with every target selected by default when at least one target exists. The command family SHALL enumerate only active `sai-*` wrappers and SHALL NOT produce a `command:budget` target after the standalone wrapper is removed; independently derived worker and agent families MAY still contain budget targets. Up/down arrows SHALL move the `>` cursor, space SHALL toggle the highlighted target's selection, and Enter SHALL confirm the selection only when at least one target is marked. Rows SHALL retain stable family-prefixed identities (`worker:`, `agent:`, `command:`, or `utility:`) as their confirmed selection values while their display labels render as aligned checklist table columns under a two-line English header; display labels SHALL remain separate from the confirmed stable values. The header SHALL render between the question and the option rows starting under the six-character option prefix, carrying the column titles above a U+2500 dash separator row sized to the same widths as the row columns, and its lines SHALL be non-selectable decoration excluded from cursor movement and toggling while included in redraw bookkeeping. In single-family scopes the checklist SHALL keep alphabetical target order with no separators. In All scope the checklist SHALL use the logical pipeline order with phase separators instead of family-alphabetical command blocks: alphabetical agents first, then the phased middle block in four fixed phases, then alphabetical utilities after a blank. Stepping back from the target checklist MUST re-open the scope screen. The flow SHALL run per-target configuration exactly for the selected targets in checklist order, and SHALL preserve that order for diagnostics. If the adapter enumerates no targets, it SHALL print the empty-enumeration notice before building any header or labels and return to the scope screen without opening a zero-row checklist. Phase 4 SHALL order `sai-backfill`, `sai-archive`, `sai-merge`, and `sai-commit`, with the `sai-commit` orchestrator block ordered directly after the `sai-merge` block and before the utilities separator as ORCHESTRATOR `sai-commit` followed by WORKER `sai-commit-worker`. `COMMAND_WORKER_ORDER` SHALL pair `sai-commit` with `sai-commit-worker`.
 #### Scenario: Target checklist renders its table header above the options
 - **WHEN** the model-customization target checklist is rendered with available targets
-- **THEN** a two-line TYPE/TARGET/SETTING header SHALL appear between the question and the first option row, indented over the option prefix, with dash separators matching the row column widths
+- **THEN** a two-line TYPE/TARGET/CONTEXT/DIFFICULTY/SETTING header SHALL appear between the question and the first option row, indented over the option prefix, with dash separators matching the row column widths
 #### Scenario: Checklist defaults to all targets selected
 - **WHEN** the user enters the target-selection checklist for a harness and scope
 - **THEN** every target of that scope SHALL be pre-selected when at least one target exists
@@ -485,3 +494,18 @@ The post-setup menu SHALL treat closed terminal input as a failure, not as a vol
 
 - **WHEN** terminal input closes while a post-setup menu selection is pending
 - **THEN** the menu SHALL return status `failed` with a terminal-input-closed diagnostic and SHALL log that diagnostic
+
+### Requirement: Bulk toggle model target checklists
+The model-customization flow SHALL expose `Ctrl+A` on both the active customization target checklist and the reset target checklist for OpenCode and Claude Code. The first selectable checkbox SHALL be the reference; pressing `Ctrl+A` SHALL set every selectable checkbox to the opposite of that reference state, leave separator rows unchanged, keep the cursor position, redraw the checklist, and not confirm it. The visible legend SHALL include `Ctrl+A toggle all`.
+
+#### Scenario: Mixed customization selection uses the first checkbox
+- **WHEN** the user presses `Ctrl+A` in a model-customization target checklist whose first selectable checkbox is unchecked and whose other selectable rows have a mixed selection
+- **THEN** every selectable target SHALL become checked, separator rows SHALL remain unchanged, and the checklist SHALL remain open
+
+#### Scenario: A checked first checkbox clears reset targets
+- **WHEN** the user presses `Ctrl+A` in a reset-target checklist whose first selectable checkbox is checked
+- **THEN** every selectable target SHALL become unchecked and Enter SHALL remain blocked by the empty-selection guard until a target is selected
+
+#### Scenario: Bulk toggle remains limited to model target checklists
+- **WHEN** the user presses `Ctrl+A` in an ordinary installer checklist or a single-choice menu
+- **THEN** the navigator SHALL not apply toggle-all behavior or change the selected result

@@ -42,11 +42,23 @@ test('both harness wrappers use the same coordinator and implementation binding'
   }
 });
 
-test('build specification is aligned by a delta without editing the published specification', () => {
-  const delta = read('openspec/changes/coordinator-owned-fast-track-gates/specs/sai-build-command/spec.md');
-  assert.match(delta, /## MODIFIED Requirements/);
-  assert.match(delta, /implement activation/);
-  assert.match(delta, /## ADDED Requirements/);
-  assert.match(delta, /lookup authorization/);
-  assert.match(delta, /before the first Step/);
+test('published build specification preserves coordinator-owned fast-track grants', () => {
+  const spec = read('openspec/specs/sai-build-command/spec.md');
+  const requirement = title => {
+    const heading = `### Requirement: ${title}\n`;
+    const start = spec.indexOf(heading);
+    assert.notEqual(start, -1, `published specification should contain ${title}`);
+    const next = spec.indexOf('\n### Requirement:', start + heading.length);
+    return spec.slice(start + heading.length, next === -1 ? spec.length : next);
+  };
+  const activation = requirement('Apply fast-track is injected and composition-owned');
+  assert.match(activation, /print `> FAST-TRACK MODE ACTIVE` exactly once at implement activation, not at apply activation/);
+  const lookup = requirement('Implementation coordinator decides bounded lookup authorization');
+  assert.match(lookup, /typed validated bounded-project-lookup request with 1–5 functional areas/);
+  assert.match(lookup, /The coordinator SHALL approve each valid item/);
+  assert.match(lookup, /ordinary standalone implementation SHALL present each item for a decision/);
+  assert.match(lookup, /project-root, read-only, citation \(at most three per area\), and line \(at most 20 per citation\) limits/);
+  assert.match(lookup, /Ordered decisions and original limits SHALL survive worker continuation and replacement without new approval or broader search/);
+  const commit = requirement('Apply commit grant is active before the first Step');
+  assert.match(commit, /At apply segment entry the apply coordinator SHALL set `session_commit_authorized` from injected fast-track state before Step projection or dispatch/);
 });

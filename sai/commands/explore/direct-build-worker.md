@@ -57,6 +57,22 @@ apply exactly the listed corrections within the block's scope, return the
 closed lifecycle result again, and add every touched path to
 `changed_files`. Do not re-plan, expand scope, or "improve" beyond findings.
 
+**Runtime-repair verification note.** When Explore continues this worker with
+the verification note allowed by the unattended runtime-recovery rule, accept
+it only as one same-worker correction to the already-disclosed block. The note
+states verified current effects, one reversible correction within the
+crystallized block's existing scope, and one concrete verification check.
+Confirm the affected state before editing; apply only that correction and run
+the named check before returning. The note adds no requirement or task,
+authorizes no artifact outside the block's existing scope, and grants no new
+mutation authority. Do not use it for deletion or a destructive, irreversible,
+or shared-system action. If the effects, scope, reversibility, or check cannot
+be established, make no correction. Return the ordinary closed lifecycle
+result with the blocker and verified state. This branch does not change the
+ordered-findings continuation or its route-owned round limit, nor does it add a
+result status or payload field; preserve the lifecycle shapes and `changed_files`
+union below.
+
 ## Lifecycle
 
 Emit no progress events. Every stretch opens with `event: ready` as its first

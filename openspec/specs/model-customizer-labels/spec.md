@@ -12,15 +12,15 @@ The checklist SHALL render the command family TYPE as ORCHESTRATOR in every row 
 
 ### Requirement: TYPE column width is twelve
 
-The header and every row SHALL size the TYPE column to twelve characters with left-aligned content, the TYPE title and every TYPE cell padded to width twelve, with TARGET, TASK COMPLEXITY, and SETTING alignment unchanged and existing setting text unchanged.
+The header and every row SHALL size the TYPE column to twelve characters with left-aligned content, the TYPE title and every TYPE cell padded to width twelve, with the remaining columns aligned to it and setting text preserved.
 
 #### Scenario: Checklist renders its header and rows
 
 - **WHEN** the checklist header and rows are rendered
-- **THEN** TYPE, TARGET, TASK COMPLEXITY, and SETTING columns stay aligned at the widened TYPE width without changing setting text
+- **THEN** all checklist columns stay aligned at the twelve-character TYPE width with setting text preserved
 
 #### Scenario: Left-aligned TYPE at width twelve
 
 - **WHEN** the checklist header and rows are rendered
-- **THEN** TYPE, TARGET, TASK COMPLEXITY, and SETTING columns stay aligned at width twelve with TYPE left-aligned and setting text preserved
+- **THEN** all checklist columns stay aligned at width twelve with TYPE left-aligned and setting text preserved
 

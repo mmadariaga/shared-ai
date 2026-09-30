@@ -93,14 +93,15 @@ authoritative and surface the regression against the presentation hint.
 ## Event delivery
 
 The event travels on stdin, never as an argument. The canonical example's
-emit line is the full invocation, identical in bash, Windows PowerShell 5.1,
-and PowerShell 7 on both Claude Code and opencode: the JSON in single quotes
+emit line is the full invocation, identical in Bash and PowerShell 7 (the
+shells `@sai/policies/command-execution.md` supports) on both Claude Code and
+opencode: the JSON in single quotes
 with plain double quotes, echoed and piped to `emit <id> <machineId> -`.
 Nothing is escaped.
 
 The store strips a leading BOM and surrounding whitespace or line breaks
-before parsing. Windows PowerShell 5.1 turns non-ASCII characters into `?` on
-the pipe and the store accepts them as received, so events carry identifiers,
+before parsing. A shell pipe may re-encode non-ASCII characters and the store
+accepts them as received, so events carry identifiers,
 never free text: a `recordedList` holds only list ids (`"E1"`, `"E2"`, …,
 `"I1"`, …, or the Step ids), because the machine reads only whether the list
 is recorded or empty. `explore-slice@1` is the one exception: its
@@ -130,6 +131,10 @@ load, skip the fetch and follow the already-loaded instructions; the store
 does not track the loaded-set. Never parse `next.hint` to decide whether to
 fetch. Consume the returned `stage` as the current stage; the response always
 wins over any disposable presentation hint held for panel rendering.
+
+The literal `none` is a no-file sentinel, not a path: do not fetch it. The
+owning command defines the no-follow behavior; a `none` pointer does not by
+itself authorize a route, dispatch, or turn close.
 
 A follow-load failure or an emit error stops the run, after § Corrective
 retry for a delivery failure:

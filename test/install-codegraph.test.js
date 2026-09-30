@@ -183,9 +183,18 @@ test('ensureCodegraphIndex uses plain codegraph init form', () => {
       probe: () => true,
       indexExists: () => false,
     });
-    assert.ok(spawnSyncCalls.some(c => c[0] === 'codegraph' && Array.isArray(c[1]) && c[1][0] === 'init'), 'should spawn codegraph init');
-    assert.ok(spawnSyncCalls.some(c => c[2]?.cwd === '/some/project'), 'should pass cwd as projectPath');
-    assert.ok(!spawnSyncCalls.some(c => Array.isArray(c[1]) && c[1].includes('-i')), 'should not use -i flag');
+    assert.equal(spawnSyncCalls.length, 1, 'should spawn codegraph init exactly once');
+    const call = spawnSyncCalls[0];
+    if (process.platform === 'win32') {
+      assert.equal(call.length, 2, 'Windows should use the shell command and options');
+      assert.equal(call[0], 'codegraph init');
+      assert.deepEqual(call[1], { cwd: '/some/project', stdio: 'inherit', shell: true });
+    } else {
+      assert.equal(call.length, 3, 'POSIX should use the executable, arguments, and options');
+      assert.equal(call[0], 'codegraph');
+      assert.deepEqual(call[1], ['init']);
+      assert.deepEqual(call[2], { cwd: '/some/project', stdio: 'inherit' });
+    }
   } finally {
     childProcess.spawnSync = origSpawnSync;
   }
@@ -309,6 +318,42 @@ test('setup runs without an injected workflow: resolves success with unchanged c
   }
 });
 
+test('setup without a path configures the current directory without initial confirmation', async (t) => {
+  const restoreSpawn = stubSpawnSync();
+  const projectDir = makeProjectDir();
+  const cap = captureConsole();
+  t.mock.method(process, 'cwd', () => projectDir);
+  try {
+    for (const argv of [
+      ['node', 'bin/setup.js'],
+      ['node', 'bin/install', 'setup'],
+    ]) {
+      const rl = fakeReadline();
+      rl.question = () => assert.fail('configured projects must not prompt for setup confirmation');
+      let menuPath = null;
+      const outcome = await main({
+        argv,
+        createReadline: () => rl,
+        postSetupMenu: async ({ projectPath }) => {
+          menuPath = projectPath;
+          return { status: 'skipped' };
+        },
+      });
+      assert.equal(outcome, 'success');
+      assert.equal(menuPath, projectDir);
+      assert.equal(rl.closeCount, 1);
+      assert.ok(fs.existsSync(path.join(projectDir, 'openspec', 'schemas', 'sai-workflow', 'schema.yaml')));
+      assert.ok(cap.logs.includes(`Configuring SAI workflow at ${projectDir}`));
+      assert.ok(cap.logs.includes(`SAI workflow configured at ${projectDir}.`));
+    }
+  } finally {
+    cap.restore();
+    restoreSpawn();
+    t.mock.restoreAll();
+    fs.rmSync(projectDir, { recursive: true, force: true });
+  }
+});
+
 test('setup with a required-step failure before copy: resolves required-failure, workflow never invoked', async () => {
   const restoreSpawn = stubSpawnSync();
   const projectDir = makeProjectDir({ withConfig: false }); // openspec/ present, config.yaml missing
@@ -404,14 +449,21 @@ test('requiring bin/setup.js performs no side effects and exports only main and 
   }
 });
 
-test('setup CLI maps an interactive decline to exit 0 (aborted)', () => {
-  const res = childProcess.spawnSync(process.execPath, [path.join(__dirname, '..', 'bin', 'setup.js')], {
-    input: 'n\n',
-    encoding: 'utf8',
-    cwd: path.join(__dirname, '..'),
-  });
-  assert.equal(res.status, 0, 'decline must exit 0');
-  assert.ok(res.stdout.includes('Aborted.'), 'Aborted. printed');
+test('setup CLI announces the target path and lets the user decline openspec init', () => {
+  const dir = makeProjectDir({ withOpenspec: false });
+  try {
+    const res = childProcess.spawnSync(process.execPath, [path.join(__dirname, '..', 'bin', 'setup.js')], {
+      input: 'n\n',
+      encoding: 'utf8',
+      cwd: dir,
+    });
+    assert.equal(res.status, 0, 'decline must exit 0');
+    assert.ok(res.stdout.includes("Run 'openspec init'?"), 'openspec initialization still requires confirmation');
+    assert.ok(res.stdout.includes('Aborted.'), 'Aborted. printed');
+    assert.ok(res.stdout.startsWith('Configuring SAI workflow at '), 'the target path is announced before any prompt');
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test('setup CLI maps a required-step failure to exit 1 (required-failure)', () => {

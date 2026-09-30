@@ -4,6 +4,7 @@ Fetch @sai/policies/verified-precondition-handback.md
 Fetch @sai/orchestration/worker-core.md and follow it exactly.
 Fetch @sai/commands/archive/instructions.md and follow those instructions exactly.
 Fetch @sai/commands/archive/retirement-declaration.md
+Fetch @sai/policies/command-execution.md and follow it exactly.
 Fetch @skills/safe-operations/SKILL.md and use it for every Direct Build (unattended) mutation.
 Fetch @sai/policies/commit-rules.md and follow it for the Direct Build (unattended) commit.
 
@@ -77,8 +78,10 @@ diff records its deletion. Reject a missing non-deletion path, a reordered,
 foreign, already-executed, or otherwise altered order with a closed `failed`
 result, executing nothing.
 
-Every mutation runs through the Bash tool; this worker has no Write or Edit
-tool, and without Bash it returns `failed` rather than simulating a write.
+Every mutation runs through the active command-execution tool using Bash or
+PowerShell 7; this worker has no Write or Edit tool. If no supported
+command-execution tool is available, return `failed` before the first mutation
+rather than simulating a write.
 Execute exactly this order:
 
 0. **Retirement declaration** — only when the plan recorded
@@ -104,9 +107,10 @@ Execute exactly this order:
 3. **Commit** — when the index holds staged changes (`git diff --cached --quiet`
    exits 1), author the message from the staged state under the commit rules,
    add the retired-capability body lines of `retirement-declaration.md`
-   § Disclosure, and create one local commit in HEREDOC form under the
-   already-consumed Direct Build authorization. When the index is empty (every
-   approved path was ignored), report
+   § Disclosure, and create one local commit by passing the complete message to
+   `git commit -F -` on standard input under the already-consumed Direct Build
+   authorization, using `@sai/policies/command-execution.md`.
+   When the index is empty (every approved path was ignored), report
    `[sai-archive] no commit: staging left the index empty` and create nothing.
    Never amend, push, or ask for a second commit.
 
