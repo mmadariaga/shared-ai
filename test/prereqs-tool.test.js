@@ -135,20 +135,16 @@ test('the skills check aggregates every missing skill into one failed result', (
     fs.mkdirSync(path.join(root, '.claude', 'skills', 'openspec-explore'), { recursive: true });
     assert.deepEqual(checkSkills(root, 'claude').missing_skills, [...REQUIRED_SKILLS]);
 
-    fs.writeFileSync(path.join(root, '.claude', 'skills', 'openspec-explore', 'SKILL.md'), 'x\n');
-    const partial = checkSkills(root, 'claude');
-    assert.deepEqual(partial.missing_skills, ['openspec-propose']);
-
     // Copies in the other harness's root do not satisfy the check (E3).
-    fs.mkdirSync(path.join(root, '.opencode', 'skills', 'openspec-propose'), { recursive: true });
-    fs.writeFileSync(path.join(root, '.opencode', 'skills', 'openspec-propose', 'SKILL.md'), 'x\n');
-    assert.deepEqual(checkSkills(root, 'claude').missing_skills, ['openspec-propose']);
+    fs.mkdirSync(path.join(root, '.opencode', 'skills', 'openspec-explore'), { recursive: true });
+    fs.writeFileSync(path.join(root, '.opencode', 'skills', 'openspec-explore', 'SKILL.md'), 'x\n');
+    assert.deepEqual(checkSkills(root, 'claude').missing_skills, ['openspec-explore']);
 
     // The opencode root resolves to .opencode/skills.
     assert.equal(checkSkills(root, 'opencode').root, path.join(root, '.opencode', 'skills'));
 
     // All present passes with an empty missing list.
-    for (const name of ['openspec-propose']) {
+    for (const name of ['openspec-explore']) {
       fs.mkdirSync(path.join(root, '.claude', 'skills', name), { recursive: true });
       fs.writeFileSync(path.join(root, '.claude', 'skills', name, 'SKILL.md'), 'x\n');
     }

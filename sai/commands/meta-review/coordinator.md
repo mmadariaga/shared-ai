@@ -46,7 +46,7 @@
   1. `openspec` binary in PATH
   2. `openspec/` directory exists
   3. `openspec/config.yaml` declares `schema: sai-workflow`
-  4. the two OpenSpec skills are installed at the active harness's
+  4. the OpenSpec skill is installed at the active harness's
      project-local skills root (selected by the mandatory
      `--require-openspec-skills opencode|claude` flag on the check tool)
 
