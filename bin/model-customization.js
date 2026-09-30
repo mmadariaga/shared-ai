@@ -748,17 +748,25 @@ function isClaudeSettingsPair(settingsCatalog, settings) {
 async function selectClaudeSettings(subsetLabel, promptChoice, settingsCatalog) {
   const entries = buildClaudeSettingsEntries(settingsCatalog);
   if (entries.length === 0) return null;
-  const selectedDisplay = await promptChoice(
-    `Model and effort for ${subsetLabel}:`,
-    entries.map(entry => entry.display)
-  );
-  if (selectedDisplay === BACK) return BACK;
-  if (selectedDisplay === null) return CANCELLED;
-  const selected = entries.find(entry => entry.display === selectedDisplay);
-  if (selected === undefined) return null;
-  return selected.effort === undefined
-    ? { model: selected.model }
-    : { model: selected.model, effort: selected.effort };
+  const models = [...new Set(entries.map(entry => entry.model))];
+  for (;;) {
+    const model = await promptChoice(`Model for ${subsetLabel}:`, models);
+    if (model === BACK) return BACK;
+    if (model === null) return CANCELLED;
+    if (!models.includes(model)) return null;
+
+    const modelEntries = entries.filter(entry => entry.model === model);
+    const efforts = modelEntries.map(entry => entry.effort === undefined
+      ? 'Default (no effort)' : entry.effort);
+    const effort = await promptChoice(`Effort for ${subsetLabel}:`, efforts);
+    if (effort === BACK) continue;
+    if (effort === null) return CANCELLED;
+    const selected = modelEntries[efforts.indexOf(effort)];
+    if (selected === undefined) return null;
+    return selected.effort === undefined
+      ? { model: selected.model }
+      : { model: selected.model, effort: selected.effort };
+  }
 }
 
 function buildVariantDisplayOptions(variants) {
@@ -1384,6 +1392,10 @@ async function runPostSetupMenuInternal({
           continue;
         }
         const presetNameWidth = Math.max(...presetSelectable.map(entry => entry.name.length));
+        if (/^\[sai-default\]-/i.test(path.basename(resolved.path))) {
+          console.error('The prefix "[sai-default]-" is reserved for SAI defaults, which are replaced on every installation. Enter another name for your personal preset.');
+          continue;
+        }
         const presetHeader = allTableHeader(presetNameWidth);
         const presetLabels = presetAllEntries.map((entry) => {
           if (entry.separator) return '';

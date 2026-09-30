@@ -6,7 +6,8 @@ _TBD: purpose not yet written._
 ## Requirements
 
 ### Requirement: Dependent provider-to-model-to-variant selection
-For an OpenCode customization run with a non-empty confirmed agent subset, the OpenCode settings selector SHALL present exactly two mandatory dependent navigable single-select screens in this order: provider, then model scoped to the selected provider. The selector SHALL present one conditional variant screen after the model screen, only when the selected model exposes variants. The provider screen SHALL be offered only for the OpenCode harness; the Claude Code harness SHALL keep its own placeholder model/effort selection and SHALL NOT present a provider screen.
+
+For an OpenCode customization run with a non-empty confirmed agent subset, the OpenCode settings selector SHALL present exactly two mandatory dependent navigable single-select screens in this order: provider, then model scoped to the selected provider. The selector SHALL present one conditional variant screen after the model screen, only when the selected model exposes variants. The provider screen SHALL be offered only for the OpenCode harness; the Claude Code harness SHALL use its own static-catalog model screen followed by an effort screen, including explicit `Default (no effort)` confirmation for model-only entries, and SHALL NOT present a provider screen. Claude Code's navigation change SHALL NOT alter OpenCode's provider, model, or variant selection behavior.
 
 #### Scenario: full dependent flow resolves provider, model, and variant
 - **WHEN** the user runs OpenCode customization and the selected model exposes variants
@@ -14,7 +15,7 @@ For an OpenCode customization run with a non-empty confirmed agent subset, the O
 
 #### Scenario: provider screen is OpenCode-specific
 - **WHEN** the user runs Claude Code customization
-- **THEN** no provider screen is presented and the Claude placeholder model/effort selection is used unchanged
+- **THEN** no provider screen is presented and Claude's static-catalog model screen is followed by its model-specific effort or explicit no-effort confirmation screen
 
 #### Scenario: variant screen is skipped for a model without variants
 - **WHEN** the selected model exposes no variants

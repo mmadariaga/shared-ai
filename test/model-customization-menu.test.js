@@ -556,44 +556,37 @@ test('both adapters classify generic delegation agents separately from Worker Ma
   assert.equal(opencode.worker.length, 15);
 });
 
-test('Claude settings selection asks one combined frame from the real catalog and resolves the confirmed pair', async () => {
+test('Claude settings selection asks separate model and effort screens from the real catalog', async () => {
   const calls = [];
   const promptSpy = async (question, options) => {
     calls.push({ question, options });
-    return options.find(option => option.includes('sonnet') && option.includes('medium'));
+    return question.startsWith('Model') ? 'sonnet' : 'medium';
   };
   const adapter = createClaudeAdapter({ repoRoot: REPO_ROOT, promptChoice: promptSpy });
   const settings = await adapter.selectSettings('explore');
-  assert.equal(calls.length, 1, 'exactly one combined prompt should run per invocation');
-   const expectedSize = EXPORTED_CLAUDE_SETTINGS_CATALOG.models
-     .reduce((total, entry) => total + (entry.efforts ? entry.efforts.length : 1), 0);
-   assert.equal(calls[0].options.length, expectedSize,
-     'the combined frame should offer every valid real-catalog modelÃ—effort pair');
-   assert.ok(calls[0].options.some(option => option === 'haiku'),
-     'the model-only catalog entry should be displayed without an effort suffix');
-   assert.ok(calls[0].options
-     .filter(option => option !== 'haiku')
-     .every(option => typeof option === 'string' && option.includes(' | ')),
-   'effort-bearing catalog entries should combine one model and one effort in the selector frame');
+   assert.deepEqual(calls, [
+     { question: 'Model for explore:', options: EXPORTED_CLAUDE_SETTINGS_CATALOG.models.map(entry => entry.model) },
+     { question: 'Effort for explore:', options: EXPORTED_CLAUDE_SETTINGS_CATALOG.models.find(entry => entry.model === 'sonnet').efforts },
+   ]);
   assert.deepEqual(settings, { model: 'sonnet', effort: 'medium' },
     'confirming the real sonnet/medium catalog entry should resolve the pair');
 });
 
-test('claude adapter selectSettings drives one real combined frame via the prompt boundary and returns the selected pair', async () => {
+test('claude adapter selectSettings resolves the pair after two screens', async () => {
   const calls = [];
   const promptSpy = async (question, options) => {
     calls.push({ question, options });
-    return options.find(option => option.includes('sonnet') && option.includes('low'));
+    return question.startsWith('Model') ? 'sonnet' : 'low';
   };
   const adapter = createClaudeAdapter({ repoRoot: REPO_ROOT, promptChoice: promptSpy });
   const settings = await adapter.selectSettings('explore');
-  assert.equal(calls.length, 1,
-    'claude selectSettings(explore) should drive exactly one combined prompt');
+   assert.equal(calls.length, 2,
+     'claude selectSettings(explore) should drive two prompts');
   assert.deepEqual(settings, { model: 'sonnet', effort: 'low' },
     'claude selectSettings should resolve the confirmed real catalog entry to its model and effort values');
 });
 
-test('each claude agent consumes exactly one real combined frame and resolves a catalog pair', async () => {
+test('each claude agent consumes two screens and resolves a catalog pair', async () => {
   let promptIndex = 0;
   const promptSpy = async (question, options) => {
     const selected = options[promptIndex % options.length];
@@ -614,8 +607,74 @@ test('each claude agent consumes exactly one real combined frame and resolves a 
        && (entry.efforts ? entry.efforts.includes(settings.effort) : !Object.hasOwn(settings, 'effort'))),
      `claude selectSettings should resolve a valid catalog pair for agent ${i}`);
   }
-  assert.equal(promptIndex, agents.length,
-    'selectSettings should consume exactly one combined prompt per claude agent');
+   assert.equal(promptIndex, agents.length * 2,
+     'selectSettings should consume two prompts per claude agent');
+});
+
+test('Claude effort back reopens models and discards the prior model effort options', async () => {
+  const answers = ['opus', BACK, 'sonnet', BACK, 'haiku', 'Default (no effort)'];
+  const calls = [];
+  const catalog = { models: [
+    { model: 'opus', efforts: ['high', 'max'] },
+    { model: 'sonnet', efforts: ['low'] },
+    { model: 'haiku' },
+  ] };
+  const settings = await selectClaudeSettings('marked targets', async (question, options) => {
+    calls.push({ question, options });
+    return answers.shift();
+  }, catalog);
+  assert.deepEqual(settings, { model: 'haiku' });
+  assert.deepEqual(calls.map(call => call.question), [
+    'Model for marked targets:', 'Effort for marked targets:',
+    'Model for marked targets:', 'Effort for marked targets:',
+    'Model for marked targets:', 'Effort for marked targets:',
+  ]);
+  assert.deepEqual(calls.filter(call => call.question.startsWith('Effort')).map(call => call.options),
+    [['high', 'max'], ['low'], ['Default (no effort)']]);
+});
+
+test('Claude model back returns to targets and invalid choices never produce settings', async () => {
+  assert.equal(await selectClaudeSettings('targets', async () => BACK, EXPORTED_CLAUDE_SETTINGS_CATALOG), BACK);
+  for (const answers of [['unknown'], ['sonnet', 'default'], ['haiku', 'default'], ['haiku', 'high']]) {
+    assert.equal(await selectClaudeSettings('targets', async () => answers.shift(), EXPORTED_CLAUDE_SETTINGS_CATALOG), null);
+  }
+});
+
+test('Claude selection and cancellation on either screen leave previous configurations untouched', async () => {
+  const fixture = makePersistenceFixture();
+  try {
+    writeGlobalAgent(fixture, 'claude', PERSIST_CLAUDE_AGENT, claudeAgentSource());
+    const adapter = createClaudeAdapter({
+      projectPath: fixture.projectPath,
+      globalAgentRoot: fixture.claudeGlobalRoot,
+    });
+    assert.equal(adapter.createLocalOverride(PERSIST_CLAUDE_AGENT, { model: 'opus', effort: 'high' }).status, 'persisted');
+    const before = snapshotTree(fixture.projectPath);
+    for (const answers of [[null], ['sonnet', null], ['haiku', null]]) {
+      const result = await selectClaudeSettings('targets', async () => {
+        assert.deepEqual(snapshotTree(fixture.projectPath), before);
+        return answers.shift();
+      }, EXPORTED_CLAUDE_SETTINGS_CATALOG);
+      assert.equal(typeof result, 'symbol');
+      assert.equal(result.description, 'CANCELLED');
+      assert.deepEqual(snapshotTree(fixture.projectPath), before);
+    }
+    const answers = ['haiku', 'Default (no effort)'];
+    const settings = await selectClaudeSettings('targets', async () => {
+      assert.deepEqual(snapshotTree(fixture.projectPath), before);
+      return answers.shift();
+    }, EXPORTED_CLAUDE_SETTINGS_CATALOG);
+    assert.deepEqual(snapshotTree(fixture.projectPath), before);
+    writeGlobalAgent(fixture, 'claude', PERSIST_CLAUDE_AGENT_2, claudeAgentSource(PERSIST_CLAUDE_AGENT_2));
+    for (const name of [PERSIST_CLAUDE_AGENT, PERSIST_CLAUDE_AGENT_2]) {
+      assert.equal(adapter.createLocalOverride(name, settings).status, 'persisted');
+      const text = fs.readFileSync(path.join(fixture.projectPath, '.claude', 'agents', `${name}.md`), 'utf8');
+      assert.match(text, /^model: haiku$/m);
+      assert.doesNotMatch(text, /^effort:/m);
+    }
+  } finally {
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
 });
 
 test('opencode createLocalOverride persists a selected variant through the adapter contract', () => {
@@ -952,8 +1011,8 @@ test('production prompt bindings retain the expected shared-selector surface and
   const defaultPromptSelectBindings = customizationSource.match(/\bpromptChoice\s*=\s*promptSelect\b/g) || [];
   const noFooterOverrides = customizationSource.match(/\bpromptChoice\s*\([^)]*\bnull\b[^)]*\)/g) || [];
 
-  assert.equal(promptChoiceInvocations.length, 11,
-    'the model-customization flow should have exactly eleven promptChoice invocations (menu, harness, scope, save confirm, save overwrite, load selector, load confirm, claude combined, opencode provider/model/variant)');
+  assert.equal(promptChoiceInvocations.length, 12,
+    'the model-customization flow has twelve promptChoice invocations, including Claude model/effort and OpenCode provider/model/variant');
   assert.equal(defaultPromptSelectBindings.length, 2,
     'the two adapter selectors retain default promptSelect bindings; the menu wraps its selector to detect input closure');
   assert.match(customizationSource, /promptChoice: selectChoice = promptSelect/);
@@ -1207,6 +1266,93 @@ test('save and load preset previews show context before difficulty on both harne
         restore();
         fs.rmSync(root, { recursive: true, force: true });
       }
+    }
+  }
+});
+
+test('loading reserved default and legacy unprefixed presets remains supported on both harnesses', async () => {
+  for (const [harness, factoryName] of [['OpenCode', 'createOpencodeAdapter'], ['Claude Code', 'createClaudeAdapter']]) {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-load-default-'));
+    const ops = { select: [], create: [] };
+    const restore = patchFactory(factoryName, () => makeFakeAdapter(['sai-2-design-worker'], ops));
+    try {
+      for (const name of ['[sai-default]-distributed', 'legacy']) {
+        const text = JSON.stringify({ 'worker:sai-2-design-worker': { model: 'test/model' } });
+        const file = path.join(root, `${name}.json`);
+        fs.writeFileSync(file, text);
+        const answers = ['Load preset', harness, name, 'No', 'Exit'];
+        await runPostSetupMenu({
+          projectPath: root,
+          isTTY: true,
+          claudePresetDir: root,
+          opencodePresetDir: root,
+          promptChoice: async (question, options) => {
+            assert.ok(answers.length > 0);
+            const answer = answers.shift();
+            assert.ok(options.includes(answer), `${question} supports ${answer}`);
+            if (answer === 'No') assert.match(question, /Apply preset .* to current project\?/);
+            return answer;
+          },
+        });
+        assert.deepEqual(answers, []);
+        assert.equal(fs.readFileSync(file, 'utf8'), text);
+      }
+      assert.deepEqual(ops.create, [], 'declining application does not write project overrides');
+    } finally {
+      restore();
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  }
+});
+
+test('reserved default preset names retry without leaving the selected harness', async () => {
+  for (const [harness, factoryName] of [['OpenCode', 'createOpencodeAdapter'], ['Claude Code', 'createClaudeAdapter']]) {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-reserved-preset-'));
+    const restore = patchFactory(factoryName, () => makeFakeAdapter(['sai-2-design-worker'], { select: [], create: [] }));
+    const originalError = console.error;
+    const errors = [];
+    console.error = (...args) => errors.push(args.join(' '));
+    try {
+      const existing = path.join(root, '[sai-default]-existing.json');
+      fs.writeFileSync(existing, 'edited default');
+      const names = [
+        '[sai-default]-existing',
+        '[SAI-DEFAULT]-new',
+        './[sai-default]-relative',
+        'nested/../[SaI-DeFaUlT]-normalized',
+        path.join(root, '[sai-default]-absolute'),
+        'nested/[sai-default]-nested',
+        'personal',
+      ];
+      const answers = ['Save preset', harness, 'Yes', 'Yes', 'Exit'];
+      // Personal presets retain the usual overwrite confirmation.
+      fs.writeFileSync(path.join(root, 'personal.json'), 'old personal');
+      const prompts = [];
+      await runPostSetupMenu({
+        projectPath: root,
+        isTTY: true,
+        claudePresetDir: root,
+        opencodePresetDir: root,
+        promptInput: async () => names.shift(),
+        promptChoice: async (question) => {
+          prompts.push(question);
+          assert.ok(answers.length > 0, 'no extra harness selection or confirmation');
+          return answers.shift();
+        },
+      });
+      assert.deepEqual(names, []);
+      assert.deepEqual(answers, []);
+      assert.equal(prompts.filter(question => question === 'Choose a harness:').length, 1);
+      assert.ok(prompts.some(question => /already exists\. Overwrite\?/.test(question)));
+      assert.equal(errors.length, 6);
+      for (const error of errors) assert.match(error, /reserved for SAI defaults.*replaced on every installation.*Enter another name/);
+      assert.equal(fs.readFileSync(existing, 'utf8'), 'edited default');
+      assert.deepEqual(fs.readdirSync(root).sort(), ['[sai-default]-existing.json', 'personal.json']);
+      assert.doesNotThrow(() => JSON.parse(fs.readFileSync(path.join(root, 'personal.json'), 'utf8')));
+    } finally {
+      console.error = originalError;
+      restore();
+      fs.rmSync(root, { recursive: true, force: true });
     }
   }
 });
@@ -2966,9 +3112,11 @@ test('Step 1 materialize selected harness overrides: Claude selection honors the
     });
     const settings = await adapter.selectSettings(PERSIST_CLAUDE_AGENT);
     const labels = frames.flat().map(option => String(option)).join('\n');
-    for (const value of ['opus', 'sonnet', 'low', 'medium', 'high', 'xhigh']) {
+    for (const value of ['opus', 'sonnet', 'low', 'medium']) {
       assert.match(labels, new RegExp(value), `the Claude settings frame displays ${value}`);
     }
+    assert.deepEqual(frames, [['opus', 'sonnet'], ['low', 'medium']],
+      'only the selected model efforts are offered');
     assert.deepEqual(settings, { model: 'sonnet', effort: 'medium' });
     const result = adapter.createLocalOverride(PERSIST_CLAUDE_AGENT, settings);
     assert.equal(result.status, 'persisted');
@@ -3267,21 +3415,20 @@ test('Step 2 Claude selection returns concrete effort and model-only settings wi
     'selected Claude agents',
     async (question, options) => {
       effortOptions.push(options);
-      assert.ok(options.includes('sonnet | medium'));
-      assert.ok(options.includes('haiku'));
+      assert.ok(options.includes(question.startsWith('Model') ? 'sonnet' : 'medium'));
       assert.ok(options.every(option => !/[<>](?:model|effort)[>]/.test(option)));
-      return 'sonnet | medium';
+      return question.startsWith('Model') ? 'sonnet' : 'medium';
     },
     EXPORTED_CLAUDE_SETTINGS_CATALOG
   );
   assert.deepEqual(effortSettings, { model: 'sonnet', effort: 'medium' });
-  assert.equal(effortOptions.length, 1, 'one Claude settings selection frame is presented');
+   assert.equal(effortOptions.length, 2, 'two Claude settings screens are presented');
 
   const modelOnlySettings = await selectSettings(
     'selected Claude agents',
     async (question, options) => {
-      assert.ok(options.includes('haiku'));
-      return 'haiku';
+      assert.ok(options.includes(question.startsWith('Model') ? 'haiku' : 'Default (no effort)'));
+      return question.startsWith('Model') ? 'haiku' : 'Default (no effort)';
     },
     EXPORTED_CLAUDE_SETTINGS_CATALOG
   );

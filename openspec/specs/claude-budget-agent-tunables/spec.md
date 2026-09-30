@@ -2,7 +2,9 @@
 
 ## Purpose
 Ship the three Claude budget generic agents as managed sources whose `model` and `effort` are user-owned tunables, with the Claude budget skills dispatching through them.
+
 ## Requirements
+
 ### Requirement: Managed Claude generic agent sources
 
 The repository SHALL provide managed Claude generic agent sources at `agents/claude/budget-explorer.md`, `agents/claude/budget-executor.md`, and `agents/claude/budget-subagent.md`, mirroring the three opencode roles. Each file SHALL declare a `name` matching its basename, a role description that front-loads the agent's role for automatic subagent selection and matches the corresponding opencode agent's description, and a tunable `model` frontmatter line; `effort` is tunable when declared. The source files' frontmatter is the sole authority for shipped seed values. The `budget-explorer` source SHALL additionally declare a capability that reproduces the read-only profile — no file-writing tools; read, search, and web research tools, the codegraph MCP tool, a `Bash` tool the explore policy restricts to research commands, plus `Skill` to execute its fetch bootstrap — so the harness enforces the explorer's read-only guarantee instead of prose. The body of each source SHALL begin with `Fetch @skills/fetch/SKILL.md` followed by exactly one established Fetch directive targeting the corresponding neutral behavior policy: `budget-explorer.md` SHALL fetch `@sai/policies/explore-agent.md`, `budget-executor.md` SHALL fetch `@sai/policies/executor-agent.md`, and `budget-subagent.md` SHALL fetch `@sai/policies/budget-agent.md`. The bodies SHALL NOT contain hardcoded model tiers, per-spawn model parameters, or harness-specific registration.
@@ -115,14 +117,16 @@ The Claude budget-explorer skill SHALL declare a single tool-call ceiling of 40 
 
 ### Requirement: Claude haiku-target customization materializes model-only overrides
 
-When a Claude customization run confirms a target whose selected model is `haiku`, the per-target local-override operation SHALL materialize the project-local override with the `model: haiku` line and without any `effort` line: an `effort` line the destination frontmatter holds SHALL be dropped, and no `effort` line SHALL be invented. The menu SHALL NOT offer effort choices for `haiku`, because the catalog entry carries no efforts array. The user-global managed source file SHALL keep its own seeded tunables untouched, as declared in its agent source frontmatter.
+When a Claude customization run confirms a target whose selected model is `haiku`, the per-target local-override operation SHALL materialize the project-local override with the `model: haiku` line and without any `effort` line: an `effort` line the destination frontmatter holds SHALL be dropped, and no `effort` line SHALL be invented. After Haiku is selected on the model screen, the menu SHALL present an effort screen containing exactly `Default (no effort)`. This display option SHALL confirm the absence of effort and SHALL NOT offer or produce a concrete effort value, including `default`, because the catalog entry carries no efforts array. The user-global managed source file SHALL keep its own seeded tunables untouched, as declared in its agent source frontmatter.
 
 #### Scenario: haiku override drops the destination effort line
-
 - **WHEN** the local-override operation materializes a haiku target whose base frontmatter holds an `effort` line
 - **THEN** the resulting override frontmatter contains the `model: haiku` line and no `effort` line
 
 #### Scenario: user-global seed stays untouched
-
 - **WHEN** the menu customizes a haiku target
 - **THEN** the user-global managed source file's `model` line and any declared `effort` line remain unchanged
+
+#### Scenario: Haiku confirms explicit absence of effort
+- **WHEN** the user selects `haiku` on the Claude model screen
+- **THEN** the effort screen SHALL offer only `Default (no effort)`, and confirming it SHALL return `{ model: 'haiku' }` with no `effort` property
