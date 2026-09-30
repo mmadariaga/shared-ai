@@ -1,3 +1,6 @@
+## Purpose
+<!-- New capabilities only: one or two sentences (50+ characters) on what the capability is for. Omit this section for deltas of existing capabilities. -->
+
 ## ADDED Requirements
 
 ### Requirement: <!-- requirement name -->

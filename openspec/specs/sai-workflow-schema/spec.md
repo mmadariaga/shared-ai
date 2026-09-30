@@ -99,18 +99,18 @@ The project's `openspec/config.yaml` SHALL declare `schema: sai-workflow` so tha
 - **THEN** the created change reports `schemaName: sai-workflow` in its status JSON
 
 ### Requirement: sai-workflow proposal template includes Additional Notes section
-The proposal template SHALL include an `## Additional Notes` section for non-normative information useful to designers and implementers.
+The proposal template SHALL include an `## Additional Notes` section for non-normative information useful to designers and implementers. Its comment SHALL forbid restating Why, What Changes, Capabilities, Impact, or the research documentation, and SHALL say to omit the section when nothing remains.
 
 #### Scenario: Proposal template contains Additional Notes section
 - **WHEN** a spec author opens `openspec/schemas/sai-workflow/templates/proposal.md`
-- **THEN** an `## Additional Notes` section is present at the end of the file with a comment placeholder describing its intended use
+- **THEN** an `## Additional Notes` section is present at the end of the file with a comment placeholder describing its intended use, the no-restating rule, and the omit-when-empty rule
 
 ### Requirement: sai-workflow schema artifact description lists Additional Notes
-The schema artifact description for the proposal SHALL document `Additional Notes` as a valid proposal section.
+The schema artifact description for the proposal SHALL document `Additional Notes` as a valid proposal section, and SHALL state that it never restates Why, What Changes, Capabilities, Impact, or the research documentation and is omitted when nothing remains.
 
 #### Scenario: Schema documents the Additional Notes section
 - **WHEN** the `artifacts.proposal` description in `openspec/schemas/sai-workflow/schema.yaml` is read
-- **THEN** a `**Additional Notes**` bullet is present in the list of expected proposal sections
+- **THEN** a `**Additional Notes**` bullet is present in the list of expected proposal sections, followed by the no-restating and omit-when-empty rule
 
 ### Requirement: sai-workflow schema names the record-family routing in the design artifact
 
@@ -183,3 +183,14 @@ The proposal template at `openspec/schemas/sai-workflow/templates/proposal.md` S
 
 - **WHEN** the `artifacts.proposal` description in `openspec/schemas/sai-workflow/schema.yaml` is read
 - **THEN** a `**Request Additional Notes**` bullet marked optional and non-normative appears immediately before the `**Additional Notes**` bullet
+
+### Requirement: sai-workflow specs template and instruction carry the Purpose rule for new capabilities
+The `specs` template SHALL start with a `## Purpose` section whose comment limits it to new capabilities (one or two sentences of at least 50 characters on what the capability is for), and the `specs` artifact instruction in `openspec/schemas/sai-workflow/schema.yaml` SHALL require `## Purpose` at the start of a new capability's `spec.md` and forbid it in a delta spec of an existing capability.
+
+#### Scenario: Specs template opens with a Purpose section
+- **WHEN** a spec author opens `openspec/schemas/sai-workflow/templates/specs.md`
+- **THEN** the first section is `## Purpose` with a comment that restricts it to new capabilities and asks for one or two sentences of 50 or more characters
+
+#### Scenario: Schema instruction restricts Purpose to new capabilities
+- **WHEN** the `artifacts.specs` instruction in `openspec/schemas/sai-workflow/schema.yaml` is read
+- **THEN** it tells authors to start a new capability's `spec.md` with `## Purpose` and never to add `## Purpose` to a delta spec of an existing capability

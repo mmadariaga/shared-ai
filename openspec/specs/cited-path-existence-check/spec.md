@@ -6,11 +6,19 @@ TBD - created by archiving change cited-path-existence-check. Update Purpose aft
 ## Requirements
 
 ### Requirement: Cited-path checker validates designated sections with mode-specific existence semantics
-The checker SHALL extract cited paths from designated sections only (`Local files`, `Files Affected` with `A`/`M`/`D`/`R` prefixes, `Precise file locations`, `interfaces.md` test-assertion paths) and report unresolvable out-of-root paths and URLs without checking disk. In `sai-1` mode every extracted path SHALL exist; in `sai-2` mode `A` paths MAY be absent while every `M`/`D`/`R` and unprefixed evidence path SHALL exist. Separators SHALL be normalized and resolution SHALL be relative to the repository root, with `specs/` and bare `proposal.md` shorthand resolving inside the change directory. On a miss the checker SHALL suggest up to three same-basename candidates and SHALL never rewrite any artifact.
+The checker SHALL extract cited paths from designated sections only (`Local files` as a heading or as the bold inline field `**Local files**:` with inline paths or bullets below it, `Files Affected` with `A`/`M`/`D`/`R` prefixes, `Precise file locations`, `interfaces.md` test-assertion paths) and report unresolvable out-of-root paths and URLs without checking disk. A `**Local files**:` value of `None`, an empty value, or a placeholder comment SHALL NOT be treated as a path. In `sai-1` mode every extracted path SHALL exist; in `sai-2` mode `A` paths MAY be absent while every `M`/`D`/`R` and unprefixed evidence path SHALL exist. Separators SHALL be normalized and resolution SHALL be relative to the repository root, with `specs/` and bare `proposal.md` shorthand resolving inside the change directory. On a miss the checker SHALL suggest up to three same-basename candidates and SHALL never rewrite any artifact.
 
 #### Scenario: Hallucinated evidence path fails fast
-- **WHEN** `proposal.md` cites a non-existent evidence path and the checker runs in `sai-1` mode
+- **WHEN** `proposal.md` cites a non-existent evidence path, under a `Local files` heading or in the `**Local files**:` field, and the checker runs in `sai-1` mode
 - **THEN** the checker exits 1 reporting `EVIDENCE_PATH_MISSING` with a basename suggestion and no file is modified
+
+#### Scenario: Local files field is read inline and as bullets
+- **WHEN** `proposal.md` lists paths in the `**Local files**:` field, comma-separated on the same line or as bullets below it until the next heading or bold field
+- **THEN** the checker extracts each listed path and ignores any note after ` — ` or ` -- `
+
+#### Scenario: Local files field with no path cites nothing
+- **WHEN** the `**Local files**:` field is `None`, empty, or only a placeholder comment
+- **THEN** the checker extracts no path from it and reports no violation for the field
 
 ### Requirement: Rename citations enforce origin existence
 For a rename citation (`R <src> -> <dst>`) the checker SHALL require the origin to exist while the destination MAY be absent, and SHALL report `RENAME_ORIGIN_MISSING` when the origin is absent.
@@ -20,10 +28,10 @@ For a rename citation (`R <src> -> <dst>`) the checker SHALL require the origin 
 - **THEN** the checker reports the origin violation with candidates and exits 1 without writing
 
 ### Requirement: Spec validation gate blocks on missing evidence paths
-The `sai-1` validation step SHALL resolve `check-cited-paths.js` by the first existing candidate verbatim and run `node <tool> sai-1 <change-name> --cwd <project-root>` before completion. A non-zero exit SHALL block completion until every cited evidence path in `proposal.md` and `specs/**` exists.
+The `sai-1` validation step SHALL resolve `check-cited-paths.js` by the first existing candidate verbatim and run `node <tool> sai-1 <change-name> --cwd <project-root>` before completion. A non-zero exit SHALL block completion until every cited evidence path in `proposal.md` (including every path in its `**Local files**:` field) and `specs/**` exists.
 
 #### Scenario: Spec step with bad evidence path cannot complete
-- **WHEN** the `sai-1` gate reports a missing evidence path
+- **WHEN** the `sai-1` gate reports a missing evidence path, including one listed in the `**Local files**:` field
 - **THEN** the worker fixes the cited entries using suggestions only and re-runs until exit 0
 
 ### Requirement: Design interfaces gate blocks on missing planned paths

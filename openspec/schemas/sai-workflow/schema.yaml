@@ -34,6 +34,7 @@ artifacts:
       - **Proposal Research Documentation**: list of relevant files and URLs consulted during proposal research.
       - **Request Additional Notes**: optional; a verbatim, non-normative copy of the Ready to Propose block's `**Request Additional Notes**` field. Omit the section when the block carries no such field; derive no requirements from it.
       - **Additional Notes**: Any other info gathered during the spec that may be relevant.
+        Never restate Why, What Changes, Capabilities, Impact, or the research documentation; omit the section when nothing remains.
 
       The Capabilities section is critical — it is the contract between proposal and specs.
       Research existing specs before filling it in. Keep it concise (1-2 pages).
@@ -47,6 +48,10 @@ artifacts:
       Create one spec file per capability in the proposal's Capabilities section.
       - New capabilities: specs/<capability>/spec.md (kebab-case name from proposal)
       - Modified capabilities: specs/<existing-name>/spec.md
+
+      Purpose (new capabilities only):
+      - Start a new capability's spec.md with `## Purpose`: one or two sentences, at least 50 characters, stating what the capability is for.
+      - Never add `## Purpose` to a delta spec of an existing capability.
 
       Delta operations (## headers):
       - **ADDED Requirements**: new behavior
