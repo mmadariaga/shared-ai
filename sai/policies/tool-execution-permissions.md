@@ -74,11 +74,9 @@ No other `node` invocation is permitted on this wrapper.
 
 ### Status (`commands/claude/sai-status.md`)
 
-Exactly three `node` tools, each in both roots, alongside the existing scoped
+Exactly two `node` tools, each in both roots, alongside the existing scoped
 `Bash(openspec:*)`:
 
-- `node .claude/sai/tools/prereqs.js` + `node ~/.claude/sai/tools/prereqs.js`
-  (`check --json --cwd <project-root> --require-openspec-skills claude`)
 - `node .claude/sai/tools/change-picker.js` + `node
   ~/.claude/sai/tools/change-picker.js` (`resolve "<arguments_value>"
   --bulk-option --json --cwd <project-root>`)

@@ -280,7 +280,7 @@ test('installClaude copies sai/commands/*.md to dest/sai/commands/', () => {
 test('installClaude copies all standalone policies to dest/sai/policies/', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-'));
   installClaude(tmpDir);
-  for (const file of ['artifact-feedback-gate.md', 'change-picker.md', 'commit-rules.md', 'prereqs.md', 'status-picker.md']) {
+  for (const file of ['artifact-feedback-gate.md', 'change-picker.md', 'commit-rules.md', 'prereqs-paths.md', 'status-picker.md']) {
     assert.ok(fs.existsSync(path.join(tmpDir, 'sai', 'policies', file)), `${file} should be projected`);
   }
   fs.rmSync(tmpDir, { recursive: true, force: true });

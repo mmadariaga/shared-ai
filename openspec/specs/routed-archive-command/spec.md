@@ -75,12 +75,11 @@ The worker SHALL return only the unchecked-items decision as a pre-mutation `nee
 
 ### Requirement: Openspec prerequisite REQUIRED carried by the coordinator card
 
-Unlike the commit exemption, `sai-archive` SHALL require the openspec project: the archive coordinator card SHALL fetch `@sai/policies/prereqs.md` and apply the full three checks — the `openspec` binary in PATH, the `openspec/` directory present, and `openspec/config.yaml` declaring `schema: sai-workflow` — halting with the check's own message on failure, before any fast-track parsing, change resolution, or worker dispatch.
+`sai-archive` SHALL operate on an openspec project, but the archive coordinator card SHALL NOT fetch `@sai/policies/prereqs.md` or run any prerequisite check; that check belongs to `/sai-explore` alone. The coordinator SHALL fetch `@sai/policies/prereqs-paths.md` for the artifact path table before fast-track parsing, change resolution, or worker dispatch.
 
 #### Scenario: Archive halts outside openspec projects
-
-- **WHEN** `sai-archive` runs in a project where any prerequisite check fails
-- **THEN** the coordinator halts with that check's message before dispatching the worker, because no exemption exists for this command
+- **WHEN** `sai-archive` runs in a project where the openspec CLI, directory, or schema is missing
+- **THEN** the coordinator runs no prerequisite check and the failure surfaces from the OpenSpec CLI itself rather than from a coordinator-owned halt message
 
 ### Requirement: End-to-end worker registration
 

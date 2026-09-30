@@ -632,7 +632,7 @@ test('Step 2 the routed invocation parses arguments before the change picker and
 test('Step 2 Apply orders global prerequisites, fast-track parsing, change resolution, and implementation-plan validation', () => {
   const invocation = artifact(APPLY_CARDS.invocation);
   const headings = [
-    '## Prerequisite checks',
+    '## Artifact paths',
     '## Fast-track parse',
     '## Change resolution',
     '## Implementation-plan check',

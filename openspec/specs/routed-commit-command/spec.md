@@ -65,10 +65,9 @@ The authorization ask SHALL be returned by the worker as a `needs_input` lifecyc
 
 ### Requirement: Openspec prerequisite exemption carried by the routed cards
 
-The commit coordinator card SHALL restate the documented exemption: `sai-commit` operates on git state only and performs NO openspec prerequisite checks — it SHALL never fetch `@sai/policies/prereqs.md` and SHALL never require the `openspec` binary, an `openspec/` directory, or `schema: sai-workflow`. The worker binding and card correspondingly declare no change resolution and no prerequisite check, keeping `sai-commit` usable in projects without openspec.
+The commit coordinator card SHALL state an "OpenSpec independence" note: `sai-commit` operates on git state only and needs no `openspec` binary, `openspec/` directory, or `schema: sai-workflow`. Because no command other than `/sai-explore` runs a prerequisite check, the card SHALL NOT name `@sai/policies/prereqs.md` or describe itself as an exemption. The worker binding and card correspondingly declare no change resolution and no prerequisite check, keeping `sai-commit` usable in projects without openspec.
 
 #### Scenario: Commit works outside openspec projects
-
 - **WHEN** `sai-commit` runs in a project with no `openspec/` directory
 - **THEN** no prerequisite fetch or check occurs and the staged-message flow proceeds normally
 

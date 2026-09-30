@@ -1,9 +1,7 @@
 <TASK>
 
-  ## Prerequisite checks
-  Fetch @sai/policies/prereqs.md
-
-  Complete the global OpenSpec prerequisites (binary, project directory, configured schema) before any change-specific lookup.
+  ## Artifact paths
+  Fetch @sai/policies/prereqs-paths.md
 
   ## Fast-track parse
   Inspect the boot-provided `arguments_value` for the token `--fast-track`:

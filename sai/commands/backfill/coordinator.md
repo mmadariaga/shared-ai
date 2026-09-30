@@ -4,15 +4,9 @@
   Fetch @skills/safe-operations/SKILL.md and use it
   Fetch @sai/policies/remember.md
 
-  ## Prerequisite checks
+  ## Artifact paths
 
-  `sai-backfill` REQUIRES the openspec project — unlike `sai-commit`, there is
-  no exemption. Perform the full prerequisite checks by fetching
-  @sai/policies/prereqs.md and applying them exactly:
-  1. The `openspec` binary is in PATH.
-  2. The `openspec/` directory exists.
-  3. `openspec/config.yaml` declares `schema: sai-workflow`.
-  On a failed check, halt with the check's own message and stop.
+  Fetch @sai/policies/prereqs-paths.md
 
   ## Backfill phase adapter
 

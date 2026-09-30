@@ -27,8 +27,7 @@ Parse invocation-scoped options before change resolution.
 After these existing parse rules, recognize bare `--supervised` alongside `--fast-track` and `--overview-lang <language>`. It is order-independent among flags after the change name: `{name} --fast-track --supervised` and `{name} --supervised --fast-track` are both accepted, as are `{name} --overview-lang <language> --supervised` and `{name} --supervised --overview-lang <language>`. Strip `--supervised` before change-name finalization, set invocation-scoped `supervised: true` when it is present and `supervised: false` when it is absent, never persist it, and do not verify dispatcher provenance. The name-first design envelope therefore accepts either fast-track/supervision flag order without changing the resolved name.
 
 If `--fast-track` is present in the combined envelope, activate the signal, remove the token from its source value, and return the design notice carrying `message: > FAST-TRACK MODE ACTIVE` once per session unless reconstruction says `fast_track_banner_emitted: true`, or `supervised` is true. On the supervised route no coordinator is present and Explore owns the chained-segment banner, so this worker returns no notice and the invocation still yields exactly one visible activation confirmation. The notice is a returned nonterminal result, not a line printed inside this session; the coordinator prints it and resumes the worker with `continue_after_notice`.
-Then run universal prerequisite checks via `Fetch @sai/policies/prereqs.md`.
-Return `failed` with the missing-prerequisite summary when a check fails.
+Fetch @sai/policies/prereqs-paths.md
 
 When `arguments_value` is empty, run the change picker; otherwise use it directly.
 Strip any remaining `--fast-track` or `--supervised` from the resolved name and trim it.

@@ -84,12 +84,11 @@ Schema validation against `openspec/schemas/sai-workflow/schema.yaml` and every 
 
 ### Requirement: Openspec prerequisite REQUIRED carried by the coordinator card
 
-Unlike the commit exemption, `sai-backfill` SHALL require the openspec project: the backfill coordinator card SHALL fetch `@sai/policies/prereqs.md` and apply the full three checks — the `openspec` binary in PATH, the `openspec/` directory present, and `openspec/config.yaml` declaring `schema: sai-workflow` — halting with the check's own message on failure, before any worker dispatch.
+`sai-backfill` SHALL operate on an openspec project, but the backfill coordinator card SHALL NOT fetch `@sai/policies/prereqs.md` or run any prerequisite check; that check belongs to `/sai-explore` alone. The coordinator SHALL fetch `@sai/policies/prereqs-paths.md` for the artifact path table before any worker dispatch.
 
 #### Scenario: Backfill halts outside openspec projects
-
-- **WHEN** `sai-backfill` runs in a project where any prerequisite check fails
-- **THEN** the coordinator halts with that check's message before dispatching the worker, because no exemption exists for this command
+- **WHEN** `sai-backfill` runs in a project where the openspec CLI, directory, or schema is missing
+- **THEN** the coordinator runs no prerequisite check and dispatches the worker; schema validation of the drafts remains coordinator-owned
 
 ### Requirement: End-to-end worker registration
 

@@ -6,11 +6,10 @@
   Fetch @sai/policies/remember.md
   Fetch @sai/policies/command-execution.md and follow it exactly.
 
-  ## Prerequisite exemption
+  ## OpenSpec independence
 
-  `sai-commit` operates on git state only and is the documented exemption from
-  the openspec prerequisites: it never fetches `@sai/policies/prereqs.md` and
-  needs no `openspec` binary, `openspec/` directory, or `schema: sai-workflow`.
+  `sai-commit` operates on git state only and needs no `openspec` binary,
+  `openspec/` directory, or `schema: sai-workflow`.
 
   ## Commit phase adapter
 

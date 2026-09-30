@@ -15,10 +15,9 @@ The worker receives exactly one opaque string, `arguments_value`, and reads noth
    - zero changes — return `failed` with exactly: "No active changes found. Run `/sai-1-spec` to create one."
    - one change — ask `Use change '{name}'?` with ordered options `yes`, `no`; `yes` resolves it and `no` returns `cancelled`.
    - several — ask `Which change?` with the changes as options in CLI order; after invalid input ask again, with no retry cap.
-2. **Check prerequisites.** Fetch @sai/policies/prereqs.md and run its check tool. On a halt or an incomplete check, return `failed` carrying exactly what that policy prints.
-3. **Gate on `proposal.md`.** When it is missing, return `failed` with exactly `openspec/changes/{change-name}/proposal.md not found. Ensure the change name is correct and that /sai-1-spec has been run for this change.`
+2. **Gate on `proposal.md`.** When it is missing, return `failed` with exactly `openspec/changes/{change-name}/proposal.md not found. Ensure the change name is correct and that /sai-1-spec has been run for this change.`
 
-A prerequisite failure ends the run before any review analysis, mutation, or durable write. Every payload after resolution includes `resolved_change_name`; no payload carries artifact contents.
+A missing `proposal.md` ends the run before any review analysis, mutation, or durable write. Every payload after resolution includes `resolved_change_name`; no payload carries artifact contents.
 
 ## Progress Reporting
 

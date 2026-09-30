@@ -303,7 +303,7 @@ test('standalone policies have one canonical home and active fetches use it', ()
     'artifact-feedback-gate.md',
     'change-picker.md',
     'commit-rules.md',
-    'prereqs.md',
+    'prereqs-paths.md',
     'status-picker.md',
   ];
   for (const file of policies) {
@@ -960,7 +960,7 @@ test('restore-coordinator-instruction-loading Step 1: explore and status preserv
   assert.doesNotMatch(exploreTools[1], /(?:^|,\s*)(?:Edit|Write)(?:,|$)/);
 
   const status = artifact('commands/claude/sai-status.md');
-  assert.match(status, /^allowed-tools: Read, Glob, Grep, Bash\(openspec:\*\), Bash\(node \.claude\/sai\/tools\/prereqs\.js:\*\), Bash\(node ~\/\.claude\/sai\/tools\/prereqs\.js:\*\), Bash\(node \.claude\/sai\/tools\/change-picker\.js:\*\), Bash\(node ~\/\.claude\/sai\/tools\/change-picker\.js:\*\), Bash\(node \.claude\/sai\/tools\/status\.js:\*\), Bash\(node ~\/\.claude\/sai\/tools\/status\.js:\*\), AskUserQuestion, Skill$/m);
+  assert.match(status, /^allowed-tools: Read, Glob, Grep, Bash\(openspec:\*\), Bash\(node \.claude\/sai\/tools\/change-picker\.js:\*\), Bash\(node ~\/\.claude\/sai\/tools\/change-picker\.js:\*\), Bash\(node \.claude\/sai\/tools\/status\.js:\*\), Bash\(node ~\/\.claude\/sai\/tools\/status\.js:\*\), AskUserQuestion, Skill$/m);
   assert.match(status, /Fetch @sai\/adapters\/claude\/boot\.md and follow it\./);
   assert.doesNotMatch(status, /allowed-tools:[^\n]*(?:Edit|Write|Bash\s*,)/m);
   assert.doesNotMatch(status, /(?:^|,\s*)Bash\(git(?::|\s|,)/,

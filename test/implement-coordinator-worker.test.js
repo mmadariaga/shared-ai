@@ -111,9 +111,7 @@ test('implementation worker declares the lifecycle and input/output contract', (
     assert.match(worker, new RegExp(`\\b${field}\\b`));
   }
 
-  assert.match(worker, /openspec CLI not found\. Install it first: https:\/\/github\.com\/Fission-AI\/OpenSpec/);
-  assert.match(worker, /OpenSpec not initialized in this project\. Run: openspec init/);
-  assert.match(worker, /openspec\/config\.yaml does not declare `schema: sai-workflow`\. The sai commands require this schema\. Add `schema: sai-workflow` to the top of openspec\/config\.yaml\./);
+  assert.doesNotMatch(worker, /openspec CLI not found|OpenSpec not initialized|schema: sai-workflow/);
 
   assert.match(worker, /precedence/i);
   assert.match(worker, /Use change '\{name\}'\?/);
@@ -466,7 +464,7 @@ test('implementation adapter pins resolved-name and reconstruction transport', (
   assert.match(coordinator, /entries contain only the exact worker-authored `question`, ordered\s+`options`, and selected\s+`answer_value`/);
   assert.match(coordinator, /replacement must rerun[\s\S]*independently reread current change artifacts[\s\S]*audit[\s\S]*`implementation\.md`/);
   assert.match(coordinator, /Do not include artifact contents[\s\S]*binding identifiers/);
-  assert.match(worker, /openspec CLI not found\. Install it first: https:\/\/github\.com\/Fission-AI\/OpenSpec/);
+  assert.doesNotMatch(worker, /openspec CLI not found/);
   assert.doesNotMatch(worker, /OpenSpec\)/);
 });
 
@@ -632,7 +630,6 @@ test('worker owns prerequisites and picker while coordinator does not', () => {
    const coordinator = artifact('sai/commands/implement/coordinator.md');
   const worker = artifact('sai/commands/implement/worker.md');
 
-  assert.match(worker, /openspec CLI not found|OpenSpec not initialized|schema:\s*sai-workflow/i);
   assert.match(worker, /Use change '\{name\}'\?|Which change\?|0\/1\/N|zero,? one,? or multiple/i);
   assert.doesNotMatch(coordinator, /openspec CLI not found|OpenSpec not initialized|schema:\s*sai-workflow/i);
   assert.doesNotMatch(coordinator, /Use change '\{name\}'\?|Which change\?|0\/1\/N|zero,? one,? or multiple/i);

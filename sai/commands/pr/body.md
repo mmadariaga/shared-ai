@@ -1,8 +1,8 @@
 <TASK>
 
   Fetch @sai/policies/verified-precondition-handback.md
-  ## Prerequisite checks
-  Fetch @sai/policies/prereqs.md
+  ## Artifact paths
+  Fetch @sai/policies/prereqs-paths.md
 
   ## Load behaviors (in order)
   Fetch @skills/safe-operations/SKILL.md and use it

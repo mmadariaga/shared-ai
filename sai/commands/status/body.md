@@ -2,8 +2,8 @@
 
 Fetch @sai/policies/verified-precondition-handback.md
 
-## Prerequisite checks
-Fetch @sai/policies/prereqs.md
+## Artifact paths
+Fetch @sai/policies/prereqs-paths.md
 
 ## Load instructions (in order)
 Fetch @sai/policies/status-picker.md and follow it exactly.
