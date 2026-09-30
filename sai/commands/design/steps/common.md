@@ -13,10 +13,9 @@ write-scope contract.
 
 The coordinator names each active step by appending one pointer line — `Active step: <id> — follow <path>` — to a progress-event continuation. Execute only the step file that line names; never prefetch, open, or follow any other step instruction file. Step paths arrive solely through coordinator continuations; this file is the only step surface loaded at dispatch. `prereqs-resolution` has no step file of its own — it runs from the worker contract plus this file before the first progress event, and the first delivered pointer targets research. The first pointer arrives as the first line of the task-disclosure continuation, before the task: run `prereqs-resolution` inline, then follow that pointer, and report `prereqs-resolution` and `research` together in the first progress event, per `@sai/orchestration/worker-core.md` § Step-machine task disclosure. Each step ends by returning its progress event per the worker contract's Progress Reporting plan; a continuation without a pointer line (artifact feedback, recovery) leaves the active step unchanged in this continuous session.
 
-Every step in the canonical plan, `overview` included, is reached through pointer delivery from the `design-standalone@1` step machine declared in `@sai/commands/design/phase-contract.md`. Their normative bodies live in the worker card, which the step files reference; moving those bodies into the step files is known remaining work, blocked on assertions that pin them to the worker card.
+Every step in the canonical plan, `overview` included, is reached through pointer delivery from the `design-standalone@1` step machine declared in `@sai/commands/design/phase-contract.md`. The `overview` step file is the normative home of the overview lifecycle; the other step files reference the worker card for their bodies. A generation-trigger continuation that arrives without the `overview` pointer names `steps/overview.md` explicitly.
 
 Fetch @sai/policies/glossary-format.md
-Fetch @sai/policies/sai-learnings-format.md
 Fetch @sai/policies/remember.md
 
 ## Generation scope

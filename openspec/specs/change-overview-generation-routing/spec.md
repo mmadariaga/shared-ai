@@ -102,8 +102,8 @@ The generation subagent SHALL write exactly one file: `openspec/changes/{change-
 
 The repository's automated contract tests for overview-generation transport SHALL assert that the design-worker overview-generation surface transports the shared contract and names both harness bindings, and that the workflow schema's `change-overview` `instruction:` field does not carry a second normative generation contract. At minimum the tests SHALL verify:
 
-1. `sai/commands/design/worker.md` instructs the subagent to Fetch `@sai/commands/design/change-overview.md` and follow it exactly
-2. that worker surface names `Agent(subagent_type: budget-subagent)` for Claude Code and `task(subagent_type: budget)` for opencode
+1. `sai/commands/design/steps/overview.md` instructs the subagent to Fetch `@sai/commands/design/change-overview.md` and follow it exactly
+2. that overview step surface names `Agent(subagent_type: budget-subagent)` for Claude Code and `task(subagent_type: budget)` for opencode
 3. the schema `instruction:` text does not enumerate the eight forbidden top-level overview sections (`Target State`, `Requirements`, `Scenarios`, `Interfaces`, `Assertions`, `File Changes`, `Delivery Steps`, `Traceability`) as required overview content
 4. the schema `instruction:` text obeys the informative-reference-only prohibition defined under Requirement "Generation runs in a budget-routed subagent executing a shared instruction" (no second normative generation contract of any kind)
 
@@ -112,7 +112,7 @@ Assertions that inspect only the overview template for section shape SHALL NOT b
 #### Scenario: transport assertions cover worker Fetch and both bindings
 
 - **WHEN** the repository's overview-generation transport contract tests run against the design-worker overview-generation surface
-- **THEN** they fail if the worker omits the contract Fetch directive or omits either harness binding name
+- **THEN** they fail if that surface omits the contract Fetch directive or omits either harness binding name
 
 #### Scenario: schema-instruction assertions cover forbidden sections and the informative-reference prohibition
 
