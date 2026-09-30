@@ -28,7 +28,9 @@ The schema directory SHALL include a `templates/` subdirectory with a `.md` temp
 
 #### Scenario: design template is a heading-preserving live skeleton
 - **WHEN** `openspec/schemas/sai-workflow/templates/design.md` is read
-- **THEN** it retains the live design headings, including Target State, Architecture Snapshot, File Manifest, Context, Goals / Non-Goals, Decisions, Risks / Trade-offs, Migration Plan, Open Questions, Deferred, and Manual Verification, in their existing order
+- **THEN** it retains the live design headings, including Target State, Architecture Snapshot, File Manifest, Context, Goals / Non-Goals, Decisions, Risks / Trade-offs, Migration Plan, Open Questions, and Manual Verification, in their existing order
+- **AND** the template does not contain a Deferred heading
+- **AND** its Migration Plan section carries a non-normative comment marking it conditional
 - **AND** the template does not carry duplicated authoring prose for the ADR/DDR criteria or alternatives behavior
 - **AND** the template does not contain an Endpoint Map heading
 - **AND** it carries one write-time-authority pointer naming `sai/commands/design/steps/design.md` and `## Generate design.md`

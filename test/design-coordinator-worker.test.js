@@ -2083,7 +2083,6 @@ const DESIGN_TOP_LEVEL_SKELETON = [
   '## Risks / Trade-offs',
   '## Migration Plan',
   '## Open Questions',
-  '## Deferred',
   '## Manual Verification',
 ];
 

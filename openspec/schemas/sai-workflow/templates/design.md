@@ -36,18 +36,14 @@
 
 ## Migration Plan
 
-<!-- Deploy steps and rollback. -->
+<!-- Conditional: keep only for schema/data migration, deploy ordering, feature flags, or rollback; otherwise delete this section. -->
 
 ## Open Questions
 
 <!-- Outstanding unknowns. -->
 
-## Deferred
-
-<!-- Postponed decisions with cost and recommendation, or None. -->
-
 ## Manual Verification
 
-<!-- Hand-cheap checks, or None + one-line reason. -->
+<!-- Only checks no automated test in the plan covers, or None + one-line reason. -->
 
 <!-- Write-time authority: sai/commands/design/instructions.md ### Generate design.md -->
