@@ -86,7 +86,9 @@ test('spec phase contract is the canonical technical instruction source', () => 
   assert.match(artifact(SPEC_COORDINATOR_ARTIFACTS.worker), /Fetch @sai\/policies\/spec-phase-contract\.md/);
   assert.doesNotMatch(common, /Fetch @sai\/commands\/spec\/instructions\.md/,
     'the retired instructions.md file should not be fetched');
-  assert.match(proposal, /Fetch @skills\/openspec-propose\/SKILL\.md/);
+  assert.doesNotMatch(proposal, /openspec-propose/);
+  assert.match(proposal, /openspec new change/);
+  assert.match(proposal, /openspec instructions proposal/);
   assert.equal(fs.existsSync(path.join(repoRoot, 'sai/commands/spec/invocation.md')), false,
     'the retired spec invocation core must not remain in the active source tree');
   assert.equal(fs.existsSync(path.join(repoRoot, 'sai/commands/spec/instructions.md')), false,

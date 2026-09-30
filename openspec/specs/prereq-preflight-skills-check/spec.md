@@ -2,7 +2,9 @@
 
 ## Purpose
 Defines the fourth OpenSpec prerequisite check: presence of the required OpenSpec skills at the active harness's project-local skills root.
+
 ## Requirements
+
 ### Requirement: Mandatory harness selector on the check sub-command
 
 The `sai/tools/prereqs.js` `check` sub-command SHALL require a `--require-openspec-skills` flag whose value is exactly `opencode` or `claude`, and omitting the flag or passing any other value SHALL be a usage error exiting 2 — never a halt verdict and never a defaulted check run.
@@ -13,13 +15,11 @@ The `sai/tools/prereqs.js` `check` sub-command SHALL require a `--require-opensp
 
 ### Requirement: Skills presence check as the fourth preflight condition
 
-The OpenSpec prerequisite preflight SHALL include a `skills` check that runs only after the `cli`, `dir`, and `schema` checks pass, preserving first-failure-stops across checks, and SHALL verify that the two required OpenSpec skills (`openspec-explore`, `openspec-propose`) are installed at the active harness's project-local skills root — `<cwd>/.opencode/skills/` when the harness is `opencode` and `<cwd>/.claude/skills/` when it is `claude`, with no user-global or XDG fallback — where "installed" means the `<name>/SKILL.md` file exists (the file is stat'd, not the directory), and the verification is presence-only with no version, drift, or content validation.
+The OpenSpec prerequisite preflight SHALL include a `skills` check that runs only after the `cli`, `dir`, and `schema` checks pass, preserving first-failure-stops across checks. The check SHALL verify that the single required OpenSpec skill (`openspec-explore`) is installed at the active harness's project-local skills root: `<cwd>/.opencode/skills/` when the harness is `opencode` and `<cwd>/.claude/skills/` when it is `claude`, with no user-global or XDG fallback. "Installed" means the `<name>/SKILL.md` file exists (the file is stat'd, not the directory). The verification is presence-only, with no version, drift, or content validation. `openspec-propose` SHALL NOT be a required skill.
 
 #### Scenario: Project-local skill file presence decides the check
-- **WHEN** `check` runs with a valid harness value on a project whose first three checks pass and every required skill's `SKILL.md` file exists under that harness's project-local skills root
+- **WHEN** `check` runs with a valid harness value on a project whose first three checks pass and `openspec-explore/SKILL.md` exists under that harness's project-local skills root, whether or not `openspec-propose` is installed
 - **THEN** the `skills` check passes with an empty missing list and the tool reports `verdict: pass`
-- **WHEN** a required skill's directory exists but its `SKILL.md` file does not, or the skill is present only in the other harness's root or a user-global location
-- **THEN** that skill counts as missing
 
 ### Requirement: Fast-track cannot bypass or weaken the skills check
 
@@ -37,3 +37,10 @@ The `skills` check SHALL NOT be bypassable or weakenable by any fast-track signa
 - **WHEN** one of the four prereq-exempt commands runs
 - **THEN** no `sai/tools/prereqs.js` `check` invocation is required of it and the `skills` check is never evaluated for that command
 
+### Requirement: A required skill outside the active root counts as missing
+
+The `skills` check SHALL count `openspec-explore` as missing when its directory exists without a `SKILL.md` file, or when it is present only in the other harness's root or a user-global location.
+
+#### Scenario: Skill present only in the other harness's root is missing
+- **WHEN** `check --require-openspec-skills claude` runs and `openspec-explore/SKILL.md` exists only under `<cwd>/.opencode/skills/`
+- **THEN** the `skills` check reports `openspec-explore` in its missing list and the tool halts with `failed_check: skills`

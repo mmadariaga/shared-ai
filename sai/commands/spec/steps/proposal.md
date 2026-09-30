@@ -3,24 +3,26 @@
 Active step: proposal. Write `proposal.md`, then return the `proposal` progress
 event.
 
-Fetch @skills/openspec-propose/SKILL.md
+Create and instruct the proposal through the OpenSpec CLI; no OpenSpec skill
+is loaded.
 
-That skill proposes a whole change in one pass. This step uses only its
-mechanics for the proposal artifact:
-
-1. Load project context (the skill's step 2) on every run. On creation, then
-   create the change with the block's `Change name` (its step 4); a refinement
-   run skips that, because the change directory already exists.
-2. Run `openspec instructions proposal --change "<name>" --json` and write
-   `proposal.md` from its `template`, `instruction`, and `rules`, as the
-   skill's step 6a describes, grounded in your research.
-3. Stop there: `specs/**` is the next step, and `design.md` and `tasks.md`
+1. Load project context on every run: read `openspec/config.yaml` (read
+   `config.yml` only when `config.yaml` is absent) and apply its `context`
+   string as a constraint on research and planning. Never copy it into an
+   artifact. When the file is missing or unreadable, continue without context.
+2. On creation, run `openspec new change "<name>"` with the block's `Change
+   name`. A refinement run skips it, because the change directory already
+   exists.
+3. Run `openspec status --change "<name>" --json`, then
+   `openspec instructions proposal --change "<name>" --json`, and write
+   `proposal.md` to the `resolvedOutputPath` the instructions return, from its
+   `template`, `instruction`, and `rules`, grounded in your research. Apply
+   `context` and `rules` as constraints; never copy them into the file. `--store` is not supported.
+4. Stop there: `specs/**` is the next step, and `design.md` and `tasks.md`
    belong to `/sai-2-design`.
 
-Where the skill and this phase differ, this phase wins: questions go out as
-`needs_input`, the coordinator renders progress (so skip the skill's todo list
-and its `Created <artifact-id>` lines), and the step ends with the progress
-event instead of the skill's Output summary.
+Questions go out as `needs_input`, the coordinator renders progress, and the
+step ends with the progress event.
 
 When the block carries `**Request Additional Notes**`, copy its content
 byte-for-byte into the `## Request Additional Notes` section of `proposal.md`:

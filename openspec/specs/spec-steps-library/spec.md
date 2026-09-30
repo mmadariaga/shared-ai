@@ -7,7 +7,12 @@ Split the `sai-1-spec` worker's instruction mass into one step file per progress
 
 ### Requirement: Six-file step instruction library for sai-1-spec
 
-The sai-1-spec worker's instruction mass SHALL be split into exactly five step files under `sai/commands/spec/steps/` — `common.md` plus `research.md`, `proposal.md`, `specs.md`, and `validation.md` — carved from the former monolithic sources so that each progress-plan step has one dedicated instruction file delivered just-in-time. The library SHALL contain no `review.md`. The distribution SHALL follow the implemented boundaries: `common.md` carries the author role and the `SpecWriteSurface` reference, the question policy, the immediate root `GLOSSARY.md` write rule, the glossary-format, remember, and budget-skill fetches, the step-delivery meta-rule, the full main-agent cost discipline, and verification — the artifact checklist, Rule #1 proposal-to-spec self-consistency, and Rule #2 source-grounding of spec-pinned literals — because validation, artifact feedback, and recovery corrections all re-run it; `research.md` carries the structured research guide, the approximately 80% confidence boundary, and the Ready-to-Propose handoff consumption rules; `proposal.md` carries the openspec-propose skill fetch, the subset of that skill's mechanics the step uses, the phase overrides of the rest of the skill, and the `proposal.md` write, and SHALL NOT contain the Complexity Derivation Rubric; `specs.md` carries the delta-spec writes; `validation.md` carries the verification run, the cited-path gate, the Complexity Derivation Rubric S1–S5, and the `## Completion` decision-summary and validation-report contract.
+The sai-1-spec worker's instruction mass SHALL be split into exactly five step files under `sai/commands/spec/steps/`: `common.md` plus `research.md`, `proposal.md`, `specs.md`, and `validation.md`. They are carved from the former monolithic sources so that each progress-plan step has one dedicated instruction file delivered just-in-time. The library SHALL contain no `review.md`. The distribution SHALL follow the implemented boundaries:
+- `common.md` carries the author role and the `SpecWriteSurface` reference, the question policy, the immediate root `GLOSSARY.md` write rule, the glossary-format, remember, and budget-skill fetches, the step-delivery meta-rule, the full main-agent cost discipline, and verification (the artifact checklist, Rule #1 proposal-to-spec self-consistency, and Rule #2 source-grounding of spec-pinned literals), because validation, artifact feedback, and recovery corrections all re-run it.
+- `research.md` carries the structured research guide, the approximately 80% confidence boundary, and the Ready-to-Propose handoff consumption rules.
+- `proposal.md` carries the OpenSpec CLI proposal sequence (project-context load, creation-only `openspec new change`, `openspec status`, `openspec instructions proposal`), the phase overrides, and the `proposal.md` write. It SHALL load no OpenSpec skill and SHALL NOT contain the Complexity Derivation Rubric.
+- `specs.md` carries the delta-spec writes from `openspec instructions specs` output, with no OpenSpec skill reference.
+- `validation.md` carries the verification run, the cited-path gate, the Complexity Derivation Rubric S1–S5, and the `## Completion` decision-summary and validation-report contract.
 
 #### Scenario: each step has exactly one instruction file
 
@@ -17,7 +22,7 @@ The sai-1-spec worker's instruction mass SHALL be split into exactly five step f
 #### Scenario: complexity rubric lives outside the proposal step
 
 - **WHEN** the worker executes the `proposal` step file
-- **THEN** it finds the openspec-propose skill fetch and proposal-template write instructions but no Complexity Derivation Rubric, because the token is derived during the validation step from finished artifacts
+- **THEN** it finds the OpenSpec CLI proposal sequence and the proposal-template write instructions, but no OpenSpec skill fetch and no Complexity Derivation Rubric, because the token is derived during the validation step from finished artifacts
 
 ### Requirement: common.md is the always-active step surface
 
@@ -32,3 +37,19 @@ The sai-1-spec worker's instruction mass SHALL be split into exactly five step f
 
 - **WHEN** the worker needs the next instruction stretch before any continuation has arrived
 - **THEN** it cannot obtain a step-file path anywhere in its initial surface, making prefetch impossible by design
+
+### Requirement: Proposal step creates the proposal through the OpenSpec CLI
+
+The `proposal` step SHALL load project context on every run from the `context` string of `openspec/config.yaml`, reading `config.yml` only when `config.yaml` is absent. It SHALL apply that context as a constraint without copying it into an artifact, and SHALL continue without context when the file is missing or unreadable. On creation it SHALL run `openspec new change "<name>"` with the block's `Change name`. It SHALL then run `openspec status --change "<name>" --json` and `openspec instructions proposal --change "<name>" --json`, and write `proposal.md` to the returned `resolvedOutputPath` from the returned `template`, `instruction`, and `rules`, applying `context` and `rules` as constraints without copying them into the file. The step SHALL NOT support `--store`, and SHALL stop before `specs/**`, `design.md`, and `tasks.md`.
+
+#### Scenario: creation run creates the change before instructing the proposal
+- **WHEN** the `proposal` step runs for a new change from a Ready to Propose block
+- **THEN** the worker runs `openspec new change "<name>"`, then `openspec status` and `openspec instructions proposal` for that name, and writes only `proposal.md` at the returned `resolvedOutputPath`
+
+#### Scenario: refinement run skips change creation
+- **WHEN** the `proposal` step runs as a refinement of an existing change whose directory already exists
+- **THEN** the worker skips `openspec new change` and goes straight to `openspec status` and `openspec instructions proposal`
+
+#### Scenario: missing project config does not block the step
+- **WHEN** `openspec/config.yaml` and `openspec/config.yml` are both missing or unreadable
+- **THEN** the worker continues the proposal step without project context
