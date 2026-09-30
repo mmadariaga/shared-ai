@@ -35,4 +35,4 @@
 
 ## Additional Notes
 
-<!-- Non-normative facts for the designer / implementer — code that already exists, exact object shapes, and gotchas not expressible as requirements. -->
+<!-- Non-normative facts for the designer / implementer — code that already exists, exact object shapes, and gotchas not expressible as requirements. Do not restate Why, What Changes, Capabilities, Impact, or the research documentation above; omit this section when nothing remains. -->

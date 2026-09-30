@@ -12,6 +12,8 @@
  * Extraction covers designated sections only, to avoid false positives from
  * inline examples:
  *   - `### Local files` sections (proposal, design, tasks Required Documentation)
+ *   - `**Local files**:` bold fields (proposal research documentation), with
+ *     inline paths or bullets below; `None` or empty is not a path
  *   - `**Files Affected**` entries (tasks.md steps, with A/M/D/R prefix)
  *   - `### Precise file locations` sections (where present)
  *   - `interfaces.md` spec-anchor paths (`**Test assertions**` backticked paths)
@@ -167,10 +169,28 @@ function collectFromContent(content, fileLabel) {
   let inLocalFiles = false;
   let inPreciseLocations = false;
   let inFilesAffected = false;
+  let inLocalField = false;
 
   for (let i = 0; i < lines.length; i++) {
     const raw = lines[i].replace(/\r$/, '');
     const trimmed = raw.trim();
+
+    if (inLocalField) {
+      if (/^#{1,6}\s+/.test(trimmed) || /^\*\*\S/.test(trimmed)) inLocalField = false;
+      else {
+        parseLocalFieldText(raw, i + 1, out);
+        continue;
+      }
+    }
+    const fieldMatch = trimmed.match(/^\*\*Local files\*\*\s*:?\s*(.*)$/i);
+    if (fieldMatch) {
+      inLocalField = true;
+      inLocalFiles = false;
+      inPreciseLocations = false;
+      inFilesAffected = false;
+      parseLocalFieldText(fieldMatch[1], i + 1, out);
+      continue;
+    }
 
     if (/^#{1,3}\s+Local files\s*$/i.test(trimmed)) {
       inLocalFiles = true;
@@ -223,6 +243,17 @@ function collectFromContent(content, fileLabel) {
     }
   }
   return out;
+}
+
+/** Parse inline or bullet text of the `**Local files**:` field into evidence citations. */
+function parseLocalFieldText(text, lineNum, out) {
+  const stripped = text.replace(/<!--.*?-->/g, '').trim();
+  if (!stripped || /^None\b/i.test(stripped.replace(/^[-*+]\s+/, ''))) return;
+  for (const part of stripped.split(',')) {
+    const beforeNote = part.split(' — ')[0].split(' -- ')[0];
+    const cleaned = cleanToken(beforeNote);
+    if (cleaned && looksLikePath(cleaned)) out.push({ cited: cleaned, kind: 'EVIDENCE', line: lineNum });
+  }
 }
 
 /** Parse one Files Affected line into A/M/D/R citations. */
