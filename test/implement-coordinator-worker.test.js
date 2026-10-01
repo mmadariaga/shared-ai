@@ -1025,7 +1025,7 @@ test('implement maintains interfaces.md: collapse-implemented-steps prunes both 
 });
 
 test('implement maintains interfaces.md: plan-generation appends audit-step contracts', () => {
-  const planGenStep = artifact('sai/commands/implement/steps/plan-generation.md');
+  const planGenStep = artifact('sai/commands/implement/steps/rerun-preservation.md');
 
   assert.match(planGenStep, /Audit-step interface contracts/,
     'plan-generation should have an Audit-step interface contracts section');
@@ -1055,7 +1055,7 @@ test('implement maintains interfaces.md: validation ensures RED block contract i
 // ─── Step 2: audit-finding-escalation feature ──────────────────────────────
 
 test('Judgment Rubric for Audit Findings admits three outcomes: Apply, Discard, and Escalate', () => {
-  const artifactAnalysis = artifact('sai/commands/implement/steps/artifact-analysis.md');
+  const artifactAnalysis = artifact('sai/commands/implement/steps/audit-ingestion.md');
 
   // Check in artifact-analysis.md
   assert.match(artifactAnalysis, /classify the finding as \*\*Apply\*\*.*\*\*Discard\*\*.*\*\*Escalate\*\*|classify.*Apply.*Discard.*Escalate/i,
@@ -1065,7 +1065,7 @@ test('Judgment Rubric for Audit Findings admits three outcomes: Apply, Discard, 
 });
 
 test('Escalate findings are defined as contradicting existing decisions/requirements or exceeding scope', () => {
-  const artifactAnalysis = artifact('sai/commands/implement/steps/artifact-analysis.md');
+  const artifactAnalysis = artifact('sai/commands/implement/steps/audit-ingestion.md');
 
   const escalateDefinition = /Escalate.*findings are those that contradict an existing decision or requirement.*criterion 3.*or propose work.*exceeds.*scope.*criterion 5/i;
   assert.match(artifactAnalysis, escalateDefinition,
@@ -1080,7 +1080,7 @@ test('Escalate findings are defined as contradicting existing decisions/requirem
 });
 
 test('Escalation detection lives exclusively in artifact-analysis step', () => {
-  const artifactAnalysis = artifact('sai/commands/implement/steps/artifact-analysis.md');
+  const artifactAnalysis = artifact('sai/commands/implement/steps/audit-ingestion.md');
   const planGeneration = artifact('sai/commands/implement/steps/plan-generation.md');
 
   assert.match(artifactAnalysis, /Escalation Detection and Handoff/,
@@ -1095,7 +1095,7 @@ test('Escalation detection lives exclusively in artifact-analysis step', () => {
 });
 
 test('an escalation ends the run in artifact-analysis before plan-generation', () => {
-  const artifactAnalysis = artifact('sai/commands/implement/steps/artifact-analysis.md');
+  const artifactAnalysis = artifact('sai/commands/implement/steps/audit-ingestion.md');
 
   assert.match(artifactAnalysis, /Do NOT continue to `plan-generation`/,
     'artifact-analysis should stop before plan-generation');
@@ -1104,7 +1104,7 @@ test('an escalation ends the run in artifact-analysis before plan-generation', (
 });
 
 test('Escalation handoff emits Ready to Propose block with correct fields', () => {
-  const artifactAnalysis = artifact('sai/commands/implement/steps/artifact-analysis.md');
+  const artifactAnalysis = artifact('sai/commands/implement/steps/audit-ingestion.md');
 
   assert.match(artifactAnalysis, /emit a `Ready to Propose` block from `sai\/policies\/ready-to-propose-format\.md`/,
     'should specify using the shared Ready to Propose format');
@@ -1123,7 +1123,7 @@ test('Escalation handoff emits Ready to Propose block with correct fields', () =
 });
 
 test('Escalation groups findings by scope of work, emits one block per new change', () => {
-  const artifactAnalysis = artifact('sai/commands/implement/steps/artifact-analysis.md');
+  const artifactAnalysis = artifact('sai/commands/implement/steps/audit-ingestion.md');
 
   assert.match(artifactAnalysis, /Group escalated findings by the scope of work they imply/,
     'should describe grouping by scope');
@@ -1133,4 +1133,27 @@ test('Escalation groups findings by scope of work, emits one block per new chang
     'should emit one block per escalation group, not per artifact');
   assert.match(artifactAnalysis, /`summary` carrying every emitted Ready to Propose block/,
     'should confirm emitting all blocks in single terminal status');
+});
+
+test('rare implement blocks load only when their condition holds', () => {
+  const analysis = artifact('sai/commands/implement/steps/artifact-analysis.md');
+  const planGeneration = artifact('sai/commands/implement/steps/plan-generation.md');
+  assert.match(analysis, /Fetch @sai\/commands\/implement\/steps\/audit-ingestion\.md[^\n]*skip it silently/);
+  assert.match(planGeneration, /Fetch @sai\/commands\/implement\/steps\/rerun-preservation\.md[^\n]*skip it silently/);
+  assert.match(analysis, /### Validate design decisions for ADR\/DDR/);
+});
+
+test('apply branch selection lives in its own step and the plan template carries no prelude', () => {
+  const coordinator = artifact('sai/commands/apply/coordinator.md');
+  const branch = artifact('sai/commands/apply/steps/branch-selection.md');
+  const template = artifact('sai/commands/implement/implementation-plan.template.md');
+  assert.match(coordinator, /Fetch @sai\/commands\/apply\/steps\/branch-selection\.md only when the picker must be presented/);
+  assert.match(branch, /Suggest branch/);
+  assert.doesNotMatch(template, /## Prerequisites/);
+});
+
+test('first-run plan generation fetches the plan template and re-run preservation does not', () => {
+  const tpl = /Fetch @sai\/commands\/implement\/implementation-plan\.template\.md/;
+  assert.match(artifact('sai/commands/implement/steps/plan-generation.md'), tpl);
+  assert.doesNotMatch(artifact('sai/commands/implement/steps/rerun-preservation.md'), tpl);
 });

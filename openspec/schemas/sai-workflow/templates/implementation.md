@@ -3,9 +3,6 @@
 ## Goal
 <!-- State exactly what this implementation accomplishes. -->
 
-## Prerequisites
-<!-- Establish the branch and other prerequisites before implementation. -->
-
 ### Step-by-Step Instructions
 
 #### Step 1: {Action}

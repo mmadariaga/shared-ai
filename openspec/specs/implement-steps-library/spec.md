@@ -8,7 +8,7 @@ Deliver the `/sai-3-implement` worker's instructions one progress-plan step at a
 
 ### Requirement: Step instruction files exist per progress-plan id
 
-The implementation phase SHALL provide a step instruction library under `sai/commands/implement/steps/` containing one instruction file per declared progress-plan step id: `collapse-implemented-steps.md`, `artifact-analysis.md`, `documentation-review.md`, `plan-generation.md`, and `validation.md`, plus `common.md` as the always-active file and `decision-record-index.md` as a sub-file that `artifact-analysis.md` fetches only when the run creates a decision record. The `prereqs-resolution` step SHALL have no step file of its own and SHALL map to `none` in the coordinator's pointer map.
+The implementation phase SHALL provide a step instruction library under `sai/commands/implement/steps/` containing one instruction file per declared progress-plan step id: `collapse-implemented-steps.md`, `artifact-analysis.md`, `documentation-review.md`, `plan-generation.md`, and `validation.md`, plus `common.md` as the always-active file and three conditionally fetched sub-files that carry no step id of their own: `decision-record-index.md`, fetched by `artifact-analysis.md` only when the run creates a decision record; `audit-ingestion.md`, fetched by `artifact-analysis.md` only when an audit artifact exists at run start; and `rerun-preservation.md`, fetched by `plan-generation.md` only when `implementation.md` already exists at run start. The `prereqs-resolution` step SHALL have no step file of its own and SHALL map to `none` in the coordinator's pointer map.
 
 #### Scenario: Step files are named by plan id
 

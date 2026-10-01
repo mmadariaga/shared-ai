@@ -278,8 +278,8 @@ test('implementation schema scaffold preserves the conditional plan shape and ap
     'implementation scaffold must use the canonical feature-name title shape');
   assert.deepEqual(
     extractTopHeadings(scaffold),
-    ['Goal', 'Prerequisites'],
-    'implementation scaffold must expose Goal and Prerequisites as its top-level sections',
+    ['Goal'],
+    'implementation scaffold must expose Goal as its top-level section and carry no branch prelude',
   );
   for (const heading of [
     '### Step-by-Step Instructions',
@@ -314,8 +314,8 @@ test('implementation schema scaffold preserves the conditional plan shape and ap
   const authorityHeadings = extractTopHeadings(authority);
   assert.deepEqual(
     authorityHeadings.filter(heading => heading === 'Goal' || heading === 'Prerequisites'),
-    ['Goal', 'Prerequisites'],
-    'implementation authority must retain the Goal/Prerequisites correspondence',
+    ['Goal'],
+    'implementation authority must retain Goal and carry no Prerequisites prelude',
   );
   for (const heading of ['##### RED phase', '##### GREEN phase', '##### Step 1 Verification Checklist']) {
     const headingPattern = heading === '##### GREEN phase'

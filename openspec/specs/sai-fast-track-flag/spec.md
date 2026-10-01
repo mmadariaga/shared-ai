@@ -197,11 +197,11 @@ When chained segments receive composition-injected fast-track true, the supervis
 - **THEN** no composition banner is printed
 
 ### Requirement: Apply fast-track restores its two gate opt-outs
-When the apply fast-track signal is active, the coordinator SHALL pre-activate session-scoped commit authorization and SHALL auto-resolve the implementation plan's branch-selection prompt to staying on a non-empty current branch. All safe-operations, GREEN-conflict, and reporting requirements remain in force. Fast-track SHALL NOT carry a functional-check branch of its own: functional checks follow the terminal functional review path identically with and without fast-track.
+When the apply fast-track signal is active, the coordinator SHALL pre-activate session-scoped commit authorization and SHALL auto-resolve the branch-selection prompt of `sai/commands/apply/steps/branch-selection.md` to staying on a non-empty current branch, without loading that file. All safe-operations, GREEN-conflict, and reporting requirements remain in force. Fast-track SHALL NOT carry a functional-check branch of its own: functional checks follow the terminal functional review path identically with and without fast-track.
 
 #### Scenario: Fast-track stays on a current branch
 - **WHEN** the fast-track signal is active and the current branch is non-empty
-- **THEN** the coordinator skips the three-option branch prompt, creates or switches to no branch, and prints `> Fast-track: staying on current branch "{current-branch}"`
+- **THEN** the coordinator skips the three-option branch prompt without loading `branch-selection.md`, creates or switches to no branch, and prints `> Fast-track: staying on current branch "{current-branch}"`
 
 #### Scenario: Branch-base sub-prompt needs no handling because stay is a git no-op
 - **WHEN** the branch prompt is auto-resolved to "Stay on current branch" under fast-track
@@ -209,7 +209,7 @@ When the apply fast-track signal is active, the coordinator SHALL pre-activate s
 
 #### Scenario: Detached HEAD remains interactive
 - **WHEN** the fast-track signal is active and the current branch is empty because HEAD is detached
-- **THEN** the coordinator presents the original three-option branch prompt and prints no auto-stay announcement
+- **THEN** the coordinator fetches `branch-selection.md`, presents the original three-option branch prompt, and prints no auto-stay announcement
 
 #### Scenario: Auto-stay does not relax any other apply gate
 - **WHEN** `sai-4-apply {name} --fast-track` auto-stays on the current branch and later reaches a safe-operations confirmation or the commit-authorization gate
