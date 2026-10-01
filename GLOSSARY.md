@@ -16,9 +16,6 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Artifact Review**: "A read-only review of a change's OpenSpec artifacts — `proposal.md` and `specs/**` for sai-1, `design.md`, `tasks.md`, and `interfaces.md` for sai-2 — that produces structured findings with `High` / `Medium` / `Low` severities only through the manual `sai-explore` post-crystallization **Review Engine** or the supervised pipeline's in-session **Explore Review Engine** rounds; spec-proposal and design workers apply the resulting findings as feedback and are not review surfaces."
 *Avoid*: artifact audit, artifact check, doc review, artifact review loop
 
-**Attempts Per Phase**: "Field 9 of the `/sai-4-apply` worker report contract — a list of `{phase, attempts, first_failure, note}` entries, one per verification phase the dispatch actually ran, where `attempts` counts command runs regardless of outcome and `first_failure` draws on a closed vocabulary, and whose absence can never block the workflow."
-*Avoid*: retries, retry count, field 9 notes, iteration log, attempt log
-
 **Auto-Answer**: "A supervised-pipeline answer that `sai-explore` gives to a spec worker's `needs_input` question on the user's behalf, without escalating, permitted only when its confidence in the answer is clearly above the qualitative **Confidence Threshold**."
 *Avoid*: auto-reply, autonomous reply, silent answer, proxy answer
 
@@ -99,9 +96,6 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 
 **Envelope Contract Violation**: "A result that cannot be accepted under its closed lifecycle envelope because a required field is missing, a value is invalid, or an undeclared field is present."
 *Avoid*: malformed result, output-shape error, protocol typo
-
-**Execution Telemetry Appendix**: "The coordinator-authored `## Appendix: Execution Telemetry` table at the end of `implementation.md`, one row per **Attempts Per Phase** entry, whose `Step` and `dispatch` columns are supplied by the coordinator rather than reported by the worker."
-*Avoid*: telemetry log, retry appendix, metrics table, execution log
 
 **Existing Tests Broken**: "The pinned fifth `## Step N` sub-field of `tasks.md` naming the existing tests a step breaks and each one's `compile` or `runtime` failure mode, shared fixtures first, `None` when it breaks none."
 *Avoid*: Tests Affected, Broken Tests, test impact, regressions
@@ -371,9 +365,6 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - A **Backfilled Change** is produced only by `/sai-backfill`; no other `sai-*` command writes `backfilled: true`.
 - A **RED Worker** precedes a **GREEN Worker** for every **Split-Routed Step**; the two never communicate directly — only the `/sai-4-apply` coordinator relays learnings between them.
 - A **GREEN Conflict** is raised by a **GREEN Worker** and is resolved only by a human via the coordinator, never by the worker editing the test or interface.
-- An **Attempts Per Phase** entry exists for `red` exactly where the report's RED result is non-`n/a`, and for `green` exactly where the GREEN result is non-`n/a`; a **RED Worker** therefore emits one or two entries (the green-exception RED worker emits both `red` and `green`), a **GREEN Worker** one, and a GREEN-direct dispatch exactly one `green` entry (a RED-carrying Step never routes GREEN direct).
-- An **Attempts Per Phase** entry is retrospective and flows only into the **Execution Telemetry Appendix** — never back into a later dispatch prompt, which is the technical-learnings channel's job.
-- An **Execution Telemetry Appendix** is written only by the `/sai-4-apply` coordinator, in the same per-Step loop slot as the deviations appendix, so it lands in the Step's own commit.
 - A **Phase Policy** extends the **Orchestration Core** for exactly one planning phase without adding that phase's rules to the shared lifecycle contract.
 - A **Progress Plan** belongs to one routed command invocation and is declared by that phase's adapter, never by the worker.
 - A **Progress Step** belongs to one **Progress Plan** and is marked completed via exactly one **Progress Event**.

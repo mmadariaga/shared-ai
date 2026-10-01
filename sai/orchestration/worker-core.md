@@ -110,7 +110,7 @@ failures and is never a worker-authorable value.
   artifacts.
 - For an unpassable apply RED/GREEN STOP, the worker returns `status: failed`
   with `failure_class: blocking-contradiction`, a boolean `unrecoverable`, and
-  concrete non-raw evidence in `summary`. The nine-field apply extension still
+  concrete non-raw evidence in `summary`. The eight-field apply extension still
   carries `STOP reached? = yes`; the coordinator supplies the routing
   diagnosis, `Cause Locus`, and recovery eligibility.
 

@@ -40,7 +40,7 @@ The summary carries concrete, non-raw evidence: the contradiction, the affected 
 
 ## Report contract
 
-Return a compact report with exactly these nine fields, in this order, and nothing else (no raw output, file contents, tracebacks, or iteration logs):
+Return a compact report with exactly these eight fields, in this order, and nothing else (no raw output, file contents, tracebacks, or iteration logs):
 
 1. **Step executed** — the Step number `N`.
 2. **Per-item status** — done/failed for each checkbox item of the Step.
@@ -50,7 +50,6 @@ Return a compact report with exactly these nine fields, in this order, and nothi
 6. **Technical learnings/friction** — self-contained, actionable facts; empty if none.
 7. **STOP reached?** — yes/no, with the exact marker message when yes.
 8. **Files modified** — every non-scratch path you wrote, created, or removed, repo-relative, one per entry. Always present: an empty list is valid, a missing field makes the report malformed.
-9. **Attempts per phase** — `{phase, attempts, first_failure, note}` entries. Expected; a missing field 9 never makes the report malformed.
 
 ## Prohibitions
 

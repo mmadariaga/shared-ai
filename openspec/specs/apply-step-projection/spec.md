@@ -21,11 +21,11 @@ TBD — placeholder purpose for the apply step projection capability.
 - **THEN** the appended steps render as entries like any other step heading, in plan order
 
 ### Requirement: mark-on-verified-completion
-A projected entry SHALL be marked `completed` in the same batched update where the coordinator marks that Step's **Automated** checkboxes `[x]` in `implementation.md` — after the Step's Verification Checklist passes. No human-verification confirmation SHALL condition that marking, and unmarked Functional checkboxes SHALL NOT hold an entry `pending`. The two representations of the same progress SHALL stay in step within a run.
+A projected entry SHALL be marked `completed` only after `apply-step.js close` has marked that Step's **Automated** checkboxes `[x]` in `implementation.md` on the coordinator's behalf, which `close` does only after the Step's verification passed. The coordinator SHALL flip the entry to `completed` once `close` returns. No human-verification confirmation SHALL condition that marking, and unmarked Functional checkboxes SHALL NOT hold an entry `pending`. The two representations of the same progress SHALL stay in step within a run.
 
 #### Scenario: verified step marks entry and checkboxes together
-- **WHEN** the coordinator marks all of a Step's Automated checkboxes `[x]` in `implementation.md` after verification passes
-- **THEN** the corresponding projected entry is marked `completed` in the same update even though the Step's Functional checkboxes remain `- [ ]`
+- **WHEN** `apply-step.js close` has marked all of a Step's Automated checkboxes `[x]` in `implementation.md` after verification passed and the coordinator receives its result
+- **THEN** the corresponding projected entry is marked `completed` right after the close returns, even though the Step's Functional checkboxes remain `- [ ]`
 
 #### Scenario: unverified step stays unmarked
 - **WHEN** a Step's verification has not passed
