@@ -69,7 +69,7 @@ Sections follow the block order above; `**Overview language**` is the last line 
 - **Alternatives Considered**: rejected alternatives or None
 - **Trade-offs Accepted**: accepted trade-offs or None
 - **Model / Re-framings**: model re-framings or None
-- **Key constraints**: constraints or non-goals
+- **Key constraints**: constraints and non-goals of the change's own behavior and scope
 - **Terms**: agreed terms fixed before edge cases, each as `term: definition`; emits exactly `- None` when no term was agreed; conversation-only agreement, never a file write
 - **Edge Cases**: agreed `E1`…`En` behavior statements in their established order, or exactly one `- None` bullet when the agreed list is empty
 - **Implementation Details**: the in-scope agreed `I1`…`In` statements — the items this block's change needs — in their established global order with identifiers and wording preserved, or exactly one `- None` bullet when no agreed item is in scope. `wording preserved` means identifiers and order, not source language, and does not block translation under the crystallization language gate. In a non-sliced block every agreed item is in scope.
@@ -81,7 +81,7 @@ Sections follow the block order above; `**Overview language**` is the last line 
 
   A non-goal and its detail are two facts. The non-goal is a binding exclusion of this change and goes to `**Key constraints**`; its detail (how the excluded behavior should work later) is context and goes here. The pair is not duplication. Likewise, a requirement that describes future behavior outside this change goes here as future context; an obligation of this change goes to `**Edge Cases**`, `**Implementation Details**`, or `**Key constraints**`.
 
-  **Emission sweep**, run before the block is printed: the sweep is complete when every discussed-and-excluded topic whose detail goes beyond its non-goal in `**Key constraints**` has that detail in `**Request Additional Notes**`. When no content meets this criterion or the definition above, omit the field.
+  **Emission sweep**, run before the block is printed: the sweep is complete when every discussed-and-excluded topic whose detail goes beyond its non-goal in `**Key constraints**` has that detail in `**Request Additional Notes**`, and every `**Key constraints**` line constrains the change. When no content meets this criterion or the definition above, omit the field.
 
   Guardrails, each with its target:
   - carry each fact once, in the field that owns it: this field takes only context that no other field states;

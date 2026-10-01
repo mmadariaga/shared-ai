@@ -102,7 +102,7 @@ test('progress emit (E2): non-JSON stdin follows the validator semantics, not th
     assert.equal(result.exitCode, 1);
     const json = JSON.parse(result.stdout);
     assert.equal(json.validation.ok, false);
-    assert.match(json.validation.errors[0], /^invalid JSON on stdin/);
+    assert.match(json.validation.errors[0], /^invalid YAML on stdin/);
     assert.equal(json.error, undefined);
     assert.equal(json.reason, undefined);
   } finally {

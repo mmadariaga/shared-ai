@@ -47,3 +47,22 @@ Autonomy audit — <phase label>
 Auto-answered: 0   Escalated: <M>
 (no questions were auto-answered this phase)
 ```
+
+## Automatic corrections and ignored process statements
+
+Unattended lanes add entries to their terminal report in this layout, after the
+auto-answer entries when both exist:
+
+```text
+Corrections: <N>
+1. Failed: <what failed>
+   Corrected: <what was corrected>
+   Within authorization: <why it stays inside what the user authorized>
+Ignored process statements: <K>
+1. <worker input statement> — <worker that reported it>
+```
+
+Emit each count only when non-zero. The Direct Build close of `/sai-5-review`
+and `/sai-review` produces this record too. The Direct Build final-report
+exception above covers the auto-answer audit only; it does not suppress these
+entries.

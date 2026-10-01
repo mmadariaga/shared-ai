@@ -1,6 +1,7 @@
 # Direct Build Close
 
 Fetch @sai/policies/command-execution.md and follow it exactly.
+Fetch @sai/policies/unattended-runtime-recovery.md and use it in the Fix loop's failure handling.
 
 A findings-driven close: fix the remaining findings, then land the fix
 in one local commit. The calling coordinator supplies `input` (the findings
@@ -57,7 +58,15 @@ close with no commit.
    - The diff fixes an excluded finding or cannot separate it from a selected
      fix: report the conflict and the written paths, then run `decline-close`;
      a revised selection needs a new review run.
-   - Any other `failed` result: explain the failure and run `decline-close`.
+   - Any other `failed` result, or a malformed fix-worker payload: apply the
+     resilience rule of `@sai/policies/unattended-runtime-recovery.md`. On yes,
+     correct and continue within the three-round cap (no round is added). On no,
+     stop per its § Stop condition notice, stage and commit nothing, and run
+     `decline-close`.
+
+Record every automatic correction and every ignored process statement for the
+terminal report in the layout of `@sai/policies/autonomy-audit-log.md`, appended
+after the caller's close.
 
 ## Commit
 

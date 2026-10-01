@@ -361,7 +361,7 @@ test('validate with malformed JSON input', () => {
   const result = tool('{ invalid json }', ['validate', '--kind', 'terminal', '--json']);
   assert.equal(result.status, 1);
   assert.equal(result.payload.ok, false);
-  assert.ok(result.payload.errors.some((e) => e.includes('invalid JSON')));
+  assert.ok(result.payload.errors.some((e) => e.includes('invalid payload on stdin')));
   assert.ok(!('validated_at' in result.payload));
 });
 
@@ -369,7 +369,7 @@ test('validate with non-object JSON input', () => {
   const result = tool('"just a string"', ['validate', '--kind', 'terminal', '--json']);
   assert.equal(result.status, 1);
   assert.equal(result.payload.ok, false);
-  assert.ok(result.payload.errors.some((e) => e.includes('must be a JSON object')));
+  assert.ok(result.payload.errors.some((e) => e.includes('must be a mapping')));
 });
 
 test('validate with help flag', () => {
@@ -422,7 +422,7 @@ test('validate with empty stdin', () => {
   const result = tool('', ['validate', '--kind', 'terminal', '--json']);
   assert.equal(result.status, 1);
   assert.equal(result.payload.ok, false);
-  assert.ok(result.payload.errors.some((e) => e.includes('invalid JSON')));
+  assert.ok(result.payload.errors.some((e) => e.includes('empty payload')));
 });
 
 test('text output format for valid payload carries validated_at suffix', () => {
@@ -585,4 +585,28 @@ test('validate terminal payload - needs_input batch rejects empty questions arra
   const result = tool(JSON.stringify(payload), ['validate', '--kind', 'terminal', '--json']);
   assertInvalidNoSidecar(result);
   assert.ok(result.payload.errors.some((e) => e.includes('non-empty array')));
+});
+
+test('validate accepts the YAML payload shapes workers return', () => {
+  const cases = [
+    ['terminal', 'status: completed\nsummary: "Done: all \\"good\\""\nchanged_files:\n  - a.md\n  - b/c.md\nresolved_change_name: x\n'],
+    ['terminal', 'status: completed\nsummary: |\n  line one\n  line two\nchanged_files: []\nresolved_change_name: x\n'],
+    ['terminal', 'status: needs_input\nsummary: ask\nchanged_files: []\nquestion: Which?\noptions:\n  - label: A\n    value: a\n  - label: B\n    value: b\n'],
+    ['terminal', "status: needs_input\nsummary: ask\nchanged_files: []\nquestion: 'It''s?'\noptions: [{label: A, value: a}]\n"],
+    ['notice', 'event: notice\nmessage: hello # comment\nchanged_files: []\n'],
+    ['progress', 'event: progress\nstep_ids:\n  - prereqs-and-change\n  - scope\nchanged_files:\n  - x.md\n'],
+    ['progress', 'event: progress\nstep_ids: []\nchanged_files: []\n'],
+  ];
+  for (const [kind, text] of cases) {
+    assertValidSidecar(tool(text, ['validate', '--kind', kind, '--json']), kind);
+  }
+});
+
+test('validate rejects malformed YAML with a clear error and still accepts JSON', () => {
+  const bad = tool('status: completed\nsummary: ok\n  changed_files: [\n', ['validate', '--kind', 'terminal', '--json']);
+  assert.equal(bad.status, 1);
+  assert.equal(bad.payload.ok, false);
+  assert.match(bad.payload.errors[0], /^invalid YAML on stdin: line \d+:/);
+  const json = tool(JSON.stringify({ event: 'progress', step_ids: ['a'], changed_files: [] }), ['validate', '--kind', 'progress', '--json']);
+  assertValidSidecar(json, 'progress');
 });

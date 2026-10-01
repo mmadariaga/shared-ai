@@ -101,3 +101,17 @@ After the user selects Direct Build in either review close route, the close SHAL
 
 - **WHEN** the validated exclusion list excludes every eligible finding
 - **THEN** the close SHALL report that no fix or commit will run and execute `decline-close` without dispatch.
+
+### Requirement: Failed fix results follow the resilience rule
+
+The shared close at `sai/commands/meta-review/direct-build-close.md` SHALL load `sai/policies/unattended-runtime-recovery.md` and, for any failed fix-worker result not covered by its named failed outcomes, or a malformed fix-worker payload, SHALL apply the resilience rule instead of defaulting to a decline-close. On yes, it SHALL correct and continue within the existing three-round cap without adding a round. On no, it SHALL stop with the policy's stop notice, stage and commit nothing, and run `decline-close`. Dependency-conflict reselection SHALL stay unchanged.
+
+#### Scenario: A correctable fix failure
+
+- **WHEN** the fix worker returns a failed result that the rule answers yes
+- **THEN** the close corrects it and continues within the three-round cap
+
+#### Scenario: An uncorrectable fix failure
+
+- **WHEN** the fix worker returns a failed result or malformed payload that the rule answers no
+- **THEN** the close stops with the stop notice, stages and commits nothing, and runs `decline-close`

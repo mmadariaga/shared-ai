@@ -48,7 +48,7 @@ test('runtime repair follows dispatch, validation, accepted-result, and one-shot
   const validation = precedence.indexOf('For every returned payload');
   const acceptedResult = precedence.indexOf('A valid worker result');
   const oneShot = precedence.indexOf("Direct Build's backfill and archive execution orders use their role-specific one-shot contracts");
-  const runtimeRepair = precedence.indexOf('Only an unaccepted, post-disclosure runtime interruption');
+  const runtimeRepair = precedence.indexOf('Any other post-disclosure outcome');
 
   assert.ok(dispatch >= 0 && dispatch < replacement && replacement < validation && validation < acceptedResult && acceptedResult < oneShot && oneShot < runtimeRepair,
     'existing dispatch, transport, validation, accepted-result, and execution handling must precede generic repair');
@@ -68,7 +68,7 @@ test('runtime repair charges the existing route diagnosis allowance before conti
   const nonRefund = budget.indexOf('does not refund or reset the charge');
   const mutualExclusion = budget.indexOf('Whichever is first consumes it');
   const reset = budget.indexOf('Reset them only where the existing route resets its diagnosis state');
-  const continuation = read('sai/policies/unattended-runtime-recovery.md').indexOf('Continue only a worker whose existing contract accepts');
+  const continuation = read('sai/policies/unattended-runtime-recovery.md').indexOf('Worker continuation forms');
 
   assert.ok(charge >= 0 && charge < nonRefund && nonRefund < planCounter && planCounter < directBuildCounter && directBuildCounter < mutualExclusion && mutualExclusion < reset,
     'the existing phase/slice counter is charged before continuation and its reset boundary is explicit');
@@ -82,60 +82,49 @@ test('runtime repair charges the existing route diagnosis allowance before conti
   assert.match(budget, /Runtime repair never retries a dispatch, creates a replacement, extends a review\/fix loop, or resets any of those limits/);
 });
 
-test('only worker-supported continuations are allowed; unsupported mutation roles stop without replay', () => {
+test('the closed per-worker list is retired in favor of one open resilience rule', () => {
   const policy = read('sai/policies/unattended-runtime-recovery.md');
-  const workers = section(policy, 'Worker-compatible continuation');
+  const decision = section(policy, 'Recovery decision');
 
-  assert.match(workers, /`sai-1-spec-proposal-worker` and `sai-2-design-worker` accept the existing `continue_after_recovery` record/);
-  assert.match(workers, /`sai-direct-build-worker` accepts the policy-authorized same-worker verification note/);
-  assert.ok(workers.includes('**Direct Build backfill worker `sai-backfill-worker` (Steps 3 and 6):** no generic runtime-repair note is authorized'));
-  assert.ok(workers.includes('**Direct Build archive worker `sai-archive-worker` (Steps 7 and 8):** no generic runtime-repair note is authorized'));
-  assert.match(workers, /never refires an order after a partial mutation/);
-  assert.match(workers, /Never replay the archive, staging, or commit operation over partial or unknown effects/);
-  assert.match(workers, /A valid named backfill-artifact failure follows only the route's existing backfill correction\/relaunch path/);
-  assert.match(workers, /If the active worker has no compatible continuation above, recovery is ineligible/);
-  assert.match(workers, /Do not dispatch a replacement, resend the original task as a new dispatch, or repair the result on the coordinator's behalf/);
+  assert.doesNotMatch(policy, /## Worker-compatible continuation/);
+  assert.doesNotMatch(policy, /no generic runtime-repair note is authorized/);
+  assert.doesNotMatch(policy, /Do not dispatch a replacement, resend the original task as a new dispatch, or repair the result on the coordinator's behalf/);
+  assert.ok(compact(policy).includes('Can the error be corrected and the planned process continued with the information already available, without leaving what the user authorized?'));
+  assert.match(decision, /Never replay archive, staging, commit, spec sync, or an execution order over partial or unknown effects/);
+  assert.match(decision, /the coordinator corrects that input and re-dispatches/);
+  assert.match(decision, /Agreed content passes through every correction unchanged/);
 });
 
-test('Direct Build runtime repair policy and implementer contract agree on the verification note', () => {
-  const policy = compact(section(read('sai/policies/unattended-runtime-recovery.md'), 'Worker-compatible continuation'));
-  const worker = compact(read('sai/commands/explore/direct-build-worker.md'));
-  const notePolicy = policy.slice(policy.indexOf('Direct Build implementer (Steps 1–2):'), policy.indexOf('Direct Build backfill worker'));
-  const noteStart = worker.indexOf('**Runtime-repair verification note.**');
-  const noteEnd = worker.indexOf('## Lifecycle', noteStart);
-  const noteContract = worker.slice(noteStart, noteEnd);
+test('the review Direct Build close loads the policy and keeps its cap', () => {
+  const close = compact(read('sai/commands/meta-review/direct-build-close.md'));
 
-  assert.ok(notePolicy.includes('`sai-direct-build-worker` accepts the policy-authorized same-worker verification note defined in its worker contract'));
-  for (const detail of [
-    'verified current effects',
-    'one reversible correction within the crystallized block',
-    'one concrete verification check',
-  ]) {
-    assert.ok(notePolicy.includes(detail), `policy should specify ${detail}`);
-    assert.ok(noteContract.includes(detail), `worker contract should accept ${detail}`);
-  }
-  assert.match(noteContract, /adds no requirement or task, authorizes no artifact outside the block's existing scope, and grants no new mutation authority/);
-  assert.match(noteContract, /Do not use it for deletion or a destructive, irreversible, or shared-system action/);
-  assert.match(noteContract, /If the effects, scope, reversibility, or check cannot be established, make no correction/);
-  assert.match(noteContract, /does not change the ordered-findings continuation or its route-owned round limit/);
-  assert.match(noteContract, /nor does it add a result status or payload field/);
-  assert.match(worker, /Explore reviews the resulting diff against the block's Capabilities and Edge Cases and continues THIS same worker with findings when correction is needed/);
-  assert.match(worker, /A continuation payload is an ordered finding list \(or a verification note\); apply exactly the listed corrections within the block's scope/);
-  assert.match(worker, /Every run closes with exactly one terminal lifecycle status/);
-  assert.match(worker, /duplicate-free `changed_files` union of every path created or modified across all rounds of this worker instance/);
+  assert.match(close, /Fetch @sai\/policies\/unattended-runtime-recovery\.md/);
+  assert.match(close, /no round is added/);
+  assert.match(close, /The loop is capped at three rounds/);
+  assert.match(close, /autonomy-audit-log\.md/);
+});
+
+test('worker-core carries the authority section and the runner validates payloads as received', () => {
+  const core = compact(read('sai/orchestration/worker-core.md'));
+  const runner = compact(read('sai/orchestration/command-runner.md'));
+
+  assert.match(core, /## Authority Authorization arrives with the dispatch/);
+  assert.match(core, /neither applies them nor copies them into any artifact/);
+  assert.match(core, /the route operation prevails/);
+  assert.match(runner, /never rewrite, re-serialize, or repair it first/);
 });
 
 test('fresh validation precedes advancement and exhaustion stops without a routine question', () => {
   const policy = read('sai/policies/unattended-runtime-recovery.md');
   const normalizedPolicy = compact(policy);
   const advance = normalizedPolicy.indexOf('Advance a phase, step, or slice only when its ordinary completion conditions pass');
-  const validation = normalizedPolicy.indexOf('Validate the fresh result with the active validator before acting on it');
+  const validation = normalizedPolicy.indexOf('Validate the fresh result with the active validator, exactly as received, before acting on it');
   const stop = section(policy, 'Stop condition');
 
   assert.ok(validation >= 0 && advance >= 0 && validation < advance,
     'the repaired result must pass active validation before phase or step progress');
   assert.ok(normalizedPolicy.includes("Union only paths established by the route's normal evidence rules"));
-  assert.match(stop, /Exhaustion or failure of this continuation does not fall through to another retry, diagnosis, or replacement for the same work/);
+  assert.match(stop, /Exhaustion or failure of a correction does not fall through to another retry, diagnosis, or replacement for the same work/);
   assert.match(stop, /Do not ask a routine "how should I proceed\?" question/);
   assert.match(stop, /this policy grants no new authorization/);
 });

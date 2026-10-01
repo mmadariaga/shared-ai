@@ -78,6 +78,11 @@ verdict's `ok`, `errors`, and `validated_at`. Every other result kind, and a
 progress result under an adapter without a `step_machine`, keeps the separate
 `validate --kind <kind>` call.
 
+Pass every payload to the validator exactly as received: never rewrite,
+re-serialize, or repair it first. In an unattended lane, a malformed payload is
+a failure under the resilience rule of `@sai/policies/unattended-runtime-recovery.md`,
+and the worker is asked for a fresh result.
+
 Worker payloads carry no time field in any phase; unknown fields are ignored. A
 missing required field is a malformed payload, handled through the same route as
 any other closed-shape violation.
