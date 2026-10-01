@@ -40,7 +40,7 @@
   empty). Retain the resolved name as supervisor-owned invocation state.
   Neither segment re-enters a harness boot adapter or command wrapper.
 
-  ## Prerequisites
+  ## Artifact paths
   This coordinator runs no OpenSpec prerequisite check; that check belongs to
   `/sai-explore` alone. Fetch @sai/policies/prereqs-paths.md for the artifact
   path table.

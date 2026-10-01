@@ -7,22 +7,19 @@ TBD - created by syncing change sai-6-security-coordinator-worker-split. Update 
 
 ### Requirement: Security worker owns the complete technical workflow
 
-The routed security worker SHALL own envelope parsing, prerequisite checks, change resolution, parent-branch detection, diff scoping, SAST, conditional SCA, report generation, report verification, and the lifecycle summary. The routed worker SHALL load `sai/commands/security/steps/common.md` at dispatch as part of its sealed initial surface together with its worker contract, run the fileless `resolve-security-scope` step from that surface before the first pointer, and thereafter execute ONLY the step named by the coordinator's most recent `Active step:` pointer line — never prefetching, opening, or following any other step instruction file; the wholesale `sai/commands/security/invocation.md` fetch chain SHALL NOT be part of the worker's instruction loading.
+The routed security worker SHALL own envelope parsing, change resolution, the required `proposal.md` gate, parent-branch detection, diff scoping, SAST, conditional SCA, report generation, report verification, and the lifecycle summary. OpenSpec environment prerequisite checks SHALL belong to `/sai-explore` alone and SHALL NOT be part of worker startup. The routed worker SHALL load `sai/commands/security/steps/common.md` at dispatch as part of its sealed initial surface together with its worker contract, run the fileless `resolve-security-scope` step from that surface before following the first pointer, and thereafter execute ONLY the step named by the coordinator's most recent `Active step:` pointer line — never prefetching, opening, or following any other step instruction file; the wholesale `sai/commands/security/invocation.md` fetch chain SHALL NOT be part of the worker's instruction loading.
 
 #### Scenario: Routed worker starts from an invocation envelope
-
 - **WHEN** a routed security worker receives the harness envelope
-- **THEN** it performs the complete technical security workflow from that envelope and durable repository state
+- **THEN** it performs the complete technical security workflow from that envelope and durable repository state without running OpenSpec environment prerequisite checks
 - **AND** it returns artifact paths and summary data rather than report contents in the lifecycle payload
 
 #### Scenario: Sealed initial surface replaces the wholesale invocation fetch
-
 - **WHEN** the routed security worker is dispatched
 - **THEN** its initial surface references only its contract plus `sai/commands/security/steps/common.md`, with every other step path first arriving inside a coordinator `Active step:` pointer line
 - **AND** the security policy content remains single-sourced across the carved step files
 
 #### Scenario: Monolith is retired
-
 - **WHEN** the step-gated security delivery is in force
 - **THEN** neither `sai/commands/security/instructions.md` nor `sai/commands/security/invocation.md` exists, and the install manifest carries a retirement for each installed copy
 

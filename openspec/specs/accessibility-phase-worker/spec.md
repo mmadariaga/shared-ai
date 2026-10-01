@@ -7,22 +7,19 @@ TBD
 
 ### Requirement: Accessibility worker owns the complete technical workflow
 
-The routed accessibility worker SHALL own envelope parsing, prerequisites, change resolution, parent-branch detection, scope selection, UI-file detection, static WCAG 2.2 AA review, optional runtime review, report generation, report verification, self-critique, and lifecycle summary creation. The routed worker SHALL load `sai/commands/accessibility/steps/common.md` at dispatch as part of its sealed initial surface together with its worker contract, run the fileless `resolve-accessibility-scope` step from that surface before the first pointer, and thereafter execute ONLY the step named by the coordinator's most recent `Active step:` pointer line — never prefetching, opening, or following any other step instruction file; the wholesale caller-neutral accessibility invocation core fetch chain SHALL NOT be part of the worker's instruction loading.
+The routed accessibility worker SHALL own envelope parsing, change resolution, the required `proposal.md` gate, parent-branch detection, scope selection, UI-file detection, static WCAG 2.2 AA review, optional runtime review, report generation, report verification, self-critique, and lifecycle summary creation. OpenSpec environment prerequisite checks SHALL belong to `/sai-explore` alone and SHALL NOT be part of worker startup. The routed worker SHALL load `sai/commands/accessibility/steps/common.md` at dispatch as part of its sealed initial surface together with its worker contract, run the fileless `resolve-accessibility-scope` step from that surface before following the first pointer, and thereafter execute ONLY the step named by the coordinator's most recent `Active step:` pointer line — never prefetching, opening, or following any other step instruction file; the wholesale caller-neutral accessibility invocation core fetch chain SHALL NOT be part of the worker's instruction loading.
 
 #### Scenario: Routed worker starts from an invocation envelope
-
 - **WHEN** the accessibility worker receives the harness envelope
-- **THEN** it performs the complete technical accessibility workflow from that envelope and durable repository state
+- **THEN** it performs the complete technical accessibility workflow from that envelope and durable repository state without running OpenSpec environment prerequisite checks
 - **AND** it returns artifact paths and summary metadata rather than report contents in lifecycle payloads
 
 #### Scenario: Sealed initial surface replaces the invocation-core fetch
-
 - **WHEN** the routed accessibility worker is dispatched
 - **THEN** its initial surface references only its contract plus `sai/commands/accessibility/steps/common.md`, with every other step path first arriving inside a coordinator `Active step:` pointer line
 - **AND** the audit policy remains single-sourced across the carved step files
 
 #### Scenario: Monolith is retired
-
 - **WHEN** the step-gated accessibility delivery is in force
 - **THEN** neither `sai/commands/accessibility/instructions.md` nor `sai/commands/accessibility/invocation.md` exists, and the install manifest carries a retirement for each installed copy
 

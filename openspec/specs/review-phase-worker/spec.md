@@ -7,24 +7,22 @@ TBD - created by archiving change sai-5-review-coordinator-worker-split. Update 
 
 ### Requirement: Review worker owns the complete technical workflow
 
-The review worker SHALL own envelope parsing, prerequisite checks, change resolution, parent-branch detection, diff scoping, review passes 1–11, Pass 12 mutation analysis, report generation, report verification, and the lifecycle summary. The coordinator SHALL not share ownership of these activities.
+The review worker SHALL own envelope parsing, change resolution, the required `proposal.md` gate, parent-branch detection, diff scoping, review passes 1–11, Pass 12 mutation analysis, report generation, report verification, and the lifecycle summary. The coordinator SHALL not share ownership of these activities. OpenSpec environment prerequisite checks SHALL belong to `/sai-explore` alone and SHALL NOT be part of worker startup.
 
 #### Scenario: Worker starts from an invocation envelope
 - **WHEN** a review worker receives `arguments_value`
-- **THEN** it performs the complete review workflow from that value and durable repository state
+- **THEN** it performs the complete review workflow from that value and durable repository state without running OpenSpec environment prerequisite checks
 - **AND** it returns paths and summaries rather than artifact contents through its lifecycle payload
 
 ### Requirement: Technical workflow is loaded through the review step library
 
-The routed review worker SHALL load its technical workflow step-gated. The worker contract plus `sai/commands/review/steps/common.md` SHALL form the sealed initial surface loaded at dispatch, carrying the boundaries that outlive any single step (budget skill, glossary format, and remember-policy loads, input paths, communication mode, prerequisites, collaboration style, hard rules), and all remaining instruction mass SHALL arrive just-in-time via coordinator `Active step:` pointer lines naming the files under `sai/commands/review/steps/`. The worker contract SHALL NOT restate step-file content. The former monolithic `sai/commands/review/instructions.md` and the invocation core `sai/commands/review/invocation.md` are retired: the step library is the only review instruction surface, and the install manifest retires installed copies of both.
+The routed review worker SHALL load its technical workflow step-gated. The worker contract plus `sai/commands/review/steps/common.md` SHALL form the sealed initial surface loaded at dispatch, carrying the boundaries that outlive any single step (`budget-ro` skill, glossary format, and remember-policy loads, input paths, communication mode, change resolution and proposal gate, collaboration style, hard rules), and all remaining instruction mass SHALL arrive just-in-time via coordinator `Active step:` pointer lines naming the files under `sai/commands/review/steps/`. The worker contract SHALL NOT restate step-file content. The former monolithic `sai/commands/review/instructions.md` and the invocation core `sai/commands/review/invocation.md` are retired: the step library is the only review instruction surface, and the install manifest retires installed copies of both.
 
 #### Scenario: Routed worker starts technical review
-
 - **WHEN** the routed review worker begins technical work
 - **THEN** it holds only the worker contract plus `steps/common.md` as its initial instruction surface and receives every remaining phase instruction through coordinator-named step files
 
 #### Scenario: Monolith is retired
-
 - **WHEN** the step-gated review delivery is in force
 - **THEN** neither `sai/commands/review/instructions.md` nor `sai/commands/review/invocation.md` exists, and the install manifest carries a retirement for each installed copy
 
