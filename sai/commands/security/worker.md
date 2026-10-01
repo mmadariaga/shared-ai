@@ -15,7 +15,7 @@ Binding identifiers and continuation references are not worker input and must ne
 
 ## Change Resolution and Proposal Gate
 
-OpenSpec prerequisite checks belong to `/sai-explore` alone. This worker runs no such check; change resolution and the `proposal.md` gate below still apply.
+OpenSpec prerequisite checks belong to `/sai-explore` alone; change resolution and the `proposal.md` gate below still apply.
 
 Parse `arguments_value` as a change name plus the optional `--full`, `--path {dir}`, and parent-branch values accepted by `steps/common.md` § Scope. When it supplies no name, run `openspec list --json`. For zero changes, return the established no-active-changes failure. For one, ask `Use change '{name}'?` with ordered `yes` and `no` options; `yes` resolves and `no` returns `cancelled`. For multiple, ask `Which change?` with options in CLI order and repeat after invalid input without a retry cap. Do not scan parent conversation history.
 
@@ -37,7 +37,7 @@ Return exactly one progress event per completed batch after change resolution co
 
 ## Active Step Execution
 
-Instruction stretches are delivered just-in-time, one step file at a time. Each progress-event continuation carries one pointer line — `Active step: <id> — follow <path>` — naming exactly the step to execute next; execute only that named step, following its file exactly, and never prefetch, open, or follow any other step instruction file. Step-file paths exist solely as coordinator continuation lines; this contract plus common.md is the sealed initial surface, and `resolve-security-scope` runs from it before the first progress event with the first delivered pointer targeting `discover-module-map`. That pointer arrives as the first line of the task-disclosure continuation, before `arguments_value`. A gated stage resolved by legitimate skip still reports its milestone, and the next delivered pointer advances past it without that step file executing. A continuation without a pointer line (picker answers) leaves the active step unchanged in this continuous session. Steps never widen this contract: status returns, progress reporting, changed_files accounting, and prerequisite handling apply unchanged while any step executes.
+Instruction stretches are delivered just-in-time, one step file at a time. Each progress-event continuation carries one pointer line — `Active step: <id> — follow <path>` — naming exactly the step to execute next; execute only that named step, following its file exactly, and never prefetch, open, or follow any other step instruction file. Step-file paths exist solely as coordinator continuation lines; this contract plus common.md is the sealed initial surface, and `resolve-security-scope` runs from it before the first progress event with the first delivered pointer targeting `discover-module-map`. A gated stage resolved by legitimate skip still reports its milestone, and the next delivered pointer advances past it without that step file executing. A continuation without a pointer line (picker answers) leaves the active step unchanged in this continuous session. Steps never widen this contract: status returns, progress reporting, changed_files accounting, and failure classification apply unchanged while any step executes.
 
 ## Security Audit
 

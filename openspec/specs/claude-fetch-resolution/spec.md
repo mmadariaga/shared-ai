@@ -9,7 +9,7 @@ When an instruction contains `Fetch @<subpath>` (where `<subpath>` does not star
 
 1. The probe SHALL run exactly once per session, on the first `Fetch @<subpath>` directive whose path begins with `sai/`. It checks the project-local `sai/` root through that directive's own Read of `.claude/<subpath>`, never through the harness root `.claude/` itself. A project without a local SAI copy can still have `.claude/skills/` from `openspec init`. A successful Read records the project-local `sai/` root as present. A failed Read records it as absent.
 2. While the probe has not run, or after it recorded the project-local `sai/` root as present, Claude SHALL Read `.claude/<subpath>`. If that file is not found, Claude SHALL Read `~/.claude/<subpath>` directly. If neither exists, Claude SHALL report the missing file and stop.
-3. After the probe recorded the project-local `sai/` root as absent, Claude SHALL resolve every later `Fetch @<subpath>` directive, of any prefix, by reading `~/.claude/<subpath>` directly with no project-local Read attempt. If that Read fails, Claude SHALL report the missing file and stop.
+3. After the probe recorded the project-local `sai/` root as absent, Claude SHALL resolve every later `Fetch @<subpath>` directive whose path begins with `sai/` by reading `~/.claude/<subpath>` directly with no project-local Read attempt; other prefixes keep the local-first read of item 2. If that Read fails, Claude SHALL report the missing file and stop.
 
 The probe result is session-scoped: a project-local `sai/` root created after the probe is not seen until the next session.
 

@@ -27,7 +27,7 @@ When resolving a `Fetch @<subpath>` directive, the opencode fetch skill SHALL ap
 
 While the probe has not run, or after it recorded the root as present, the skill SHALL Read `.opencode/<subpath>` first. When that read fails, it SHALL Read `~/.config/opencode/<subpath>` directly. When that read also fails, it SHALL stop and report: "File not found: <subpath> (checked .opencode/ and ~/.config/opencode/)".
 
-After the probe recorded the root as absent, the skill SHALL resolve every later `Fetch @<subpath>` directive, of any prefix, by reading `~/.config/opencode/<subpath>` directly with no project-local Read attempt. When that read fails, it SHALL stop with the same report. A project-local `sai/` root created after the probe is not seen until the next session.
+After the probe recorded the root as absent, the skill SHALL resolve every later `Fetch @<subpath>` directive whose path begins with `sai/` by reading `~/.config/opencode/<subpath>` directly with no project-local Read attempt; other prefixes keep the local-first read. When that read fails, it SHALL stop with the same report. A project-local `sai/` root created after the probe is not seen until the next session.
 
 The resolution SHALL NOT use Glob, LS, or any directory-based existence probe in any branch. The session probe is itself a Read of an exact file path. A failed Read carries the same existence signal as a probe result, and every user-global filesystem access names an exact file path under an already-permitted subtree.
 
@@ -51,7 +51,7 @@ The resolution SHALL NOT use Glob, LS, or any directory-based existence probe in
 - **AND** the resolution is complete after at most two Read attempts, one per root
 
 #### Scenario: project-local sai root found absent skips the local Read
-- **WHEN** the session probe has recorded the project-local `sai/` root as absent and a later `Fetch @<subpath>` directive of any prefix is executed
+- **WHEN** the session probe has recorded the project-local `sai/` root as absent and a later `Fetch @sai/<subpath>` directive is executed
 - **THEN** only `~/.config/opencode/<subpath>` is Read, with no Read of `.opencode/<subpath>`
 
 #### Scenario: local sai root created mid-session

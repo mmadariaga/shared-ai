@@ -55,7 +55,7 @@ function removeTempDir(dir) {
 // the contract.
 
 const OPTED_IN_DESIGN_PROGRESS_PLAN = [
-  ['prereqs-resolution', 'Check prerequisites'],
+  ['prereqs-resolution', 'Resolve change'],
   ['research', 'Research and resolve open questions'],
   ['design', 'Write design.md'],
   ['tasks', 'Write tasks.md'],

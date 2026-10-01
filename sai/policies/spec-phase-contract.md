@@ -39,7 +39,7 @@ spec-specific declarations.
 
 The spec adapter's canonical `progress_plan` is exactly this ordered list:
 
-- `prereqs-and-change` — "Check prerequisites"
+- `prereqs-and-change` — "Resolve change"
 - `research` — "Research the change request"
 - `proposal` — "Write proposal.md"
 - `specs` — "Write specs/**"

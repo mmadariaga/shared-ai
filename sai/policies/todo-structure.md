@@ -59,7 +59,7 @@ The milestone stamp is a decorative rendering action: an HH:mm annotation that d
 
 **Rendered form.** The stamp follows the step's user-facing label, separated by ` - `:
 
-    [x] Check prerequisites and resolve the change - 10:51
+    [x] Resolve change - 10:51
     [x] Collapse implemented steps - 10:54
     [~] Analyze artifacts and validate decisions
     [ ] Review required documentation

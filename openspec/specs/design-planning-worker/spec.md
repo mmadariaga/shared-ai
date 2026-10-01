@@ -243,17 +243,17 @@ The design worker SHALL NOT use Proposal Complexity to select a model, effort le
 
 ### Requirement: design-worker-progress-emission
 
-The design worker SHALL emit progress events, after prerequisite checks pass and change resolution completes, whenever it completes one or more steps of the progress plan whose ids are canonical in the phase contracts. The design worker contract SHALL enumerate exactly the step ids `prereqs-resolution`, `research`, `design`, `tasks`, `interfaces`, `review`, and `overview`, with labels `Check prerequisites`, `Research and resolve open questions`, `Write design.md`, `Write tasks.md`, `Write interfaces.md`, `Review artifacts`, and `Generate change-overview.md` respectively, and every event SHALL carry only ids from that enumeration, in plan order, plus the files changed since the preceding result. The worker SHALL NOT author, extend, or reorder the plan, and SHALL NOT emit a progress event before resolution or in place of a terminal payload.
+The design worker SHALL emit progress events, after change resolution completes, whenever it completes one or more steps of the progress plan whose ids are canonical in the phase contracts. The design worker contract SHALL enumerate exactly the step ids `prereqs-resolution`, `research`, `design`, `tasks`, `interfaces`, and `overview`, with labels `Resolve change`, `Research and resolve open questions`, `Write design.md`, `Write tasks.md`, `Write interfaces.md`, and `Generate change-overview.md` respectively, and every event SHALL carry only ids from that enumeration, in plan order, plus the files changed since the preceding result. The worker SHALL NOT author, extend, or reorder the plan, and SHALL NOT emit a progress event before resolution or in place of a terminal payload.
 
-The worker SHALL report one batch per completed act, except that the startup act and research share the first batch. The startup act (fast-track parsing, prerequisite checks, change resolution, and the specs approval gate) completes `prereqs-resolution`. Codebase research and Open Question resolution, run from the `research` pointer disclosed with the task, complete `research`. Both SHALL be reported together in the first progress event per `@sai/orchestration/worker-core.md` § Step-machine task disclosure. Writing `design.md` carries `design`; writing `tasks.md` carries `tasks`; writing and verifying `interfaces.md` carries `interfaces`; a completed review pass reporting `High=0` carries `review` per `review-step-evidence-marking`; a successful `change-overview.md` materialization or regeneration carries `overview`.
+The worker SHALL report one batch per completed act, except that the startup act and research share the first batch. The startup act (fast-track parsing, change resolution, and the specs approval gate) completes `prereqs-resolution`. Codebase research and Open Question resolution, run from the `research` pointer disclosed with the task, complete `research`. Both SHALL be reported together in the first progress event per `@sai/orchestration/worker-core.md` § Step-machine task disclosure. Writing `design.md` carries `design`; writing `tasks.md` carries `tasks`; writing and verifying `interfaces.md` carries `interfaces`; a successful `change-overview.md` materialization or regeneration carries `overview`.
 
 When `--fast-track` is active the specs approval gate is skipped and folds into the startup batch with no separate `skipped` field and no separate batch.
 
-A feedback turn SHALL NOT emit a progress event, except that a feedback turn which runs a review pass reporting `High=0` while the `review` step is still unmarked SHALL emit exactly one progress event carrying `review`. No feedback turn SHALL emit a progress event carrying any other step id. This mirrors the spec worker's carve-out and is distinct from the `overview` event, which belongs to the post-gate generation continuation rather than to a feedback turn.
+A feedback turn SHALL NOT emit a progress event. The `overview` event belongs to the post-gate generation continuation, not to a feedback turn.
 
 #### Scenario: startup batch carries the folded approval gate
 
-- **WHEN** the design worker completes fast-track parsing, prerequisite checks, change resolution, the specs approval gate, and the research named by the disclosed pointer
+- **WHEN** the design worker completes fast-track parsing, change resolution, the specs approval gate, and the research named by the disclosed pointer
 - **THEN** it SHALL emit one progress event carrying `prereqs-resolution` and `research`
 
 #### Scenario: fast-track startup batch
@@ -265,11 +265,6 @@ A feedback turn SHALL NOT emit a progress event, except that a feedback turn whi
 
 - **WHEN** the design worker writes `design.md`, then `tasks.md`, then `interfaces.md`
 - **THEN** it SHALL emit one progress event per artifact, carrying `design`, `tasks`, and `interfaces` respectively, each with `changed_files` listing every path written since the preceding result
-
-#### Scenario: review batch
-
-- **WHEN** a worker-owned review pass over `design.md`, `tasks.md`, and `interfaces.md` completes and reports `High=0`
-- **THEN** the worker SHALL emit one progress event carrying `review`
 
 #### Scenario: overview batch
 
@@ -284,14 +279,8 @@ A feedback turn SHALL NOT emit a progress event, except that a feedback turn whi
 
 #### Scenario: ordinary feedback turns emit no progress
 
-- **WHEN** the design worker processes coordinator-forwarded artifact feedback that runs no review pass
+- **WHEN** the design worker processes coordinator-forwarded artifact feedback
 - **THEN** it SHALL NOT emit a progress event, because no plan step completes during that turn
-
-#### Scenario: a user-requested review pass during a feedback turn may mark review
-
-- **WHEN** a feedback turn runs a user-requested review pass that reports `High=0` and the `review` step is not yet marked
-- **THEN** the worker SHALL emit exactly one progress event carrying `review`
-- **AND** it SHALL carry no other step id
 
 #### Scenario: progress never closes the run
 

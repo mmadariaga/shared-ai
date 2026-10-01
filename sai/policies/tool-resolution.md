@@ -61,7 +61,8 @@ takes one — never substitute one for the other.
   takes `--dispatch red|green|green-direct|green-exception` and the add-list on
   stdin; `close` takes `--guard-base <sha|n/a>`, optional `--dry-run`, and the
   add-list, a `---` line, then the commit message on stdin via a quoted
-  heredoc). It always prints one JSON object and takes no `--json`.
+  heredoc; `close --mark-only` takes only `--change` and `--step`). It always
+  prints one JSON object; `--json` is accepted and changes nothing.
 - `check-delta-headers.js`: `node <tool-path> <change-name> [--json]
   [--root <dir>] [--delta-dir <dir>] [--specs-dir <dir>]`; it takes no
   `--cwd`.

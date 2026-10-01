@@ -17,13 +17,11 @@ test('review and audits keep proposal gates without environment prerequisite sta
   for (const [phase, startup, firstFiled] of phases) {
     const worker = read(`sai/commands/${phase}/worker.md`);
     assert.match(worker, /OpenSpec prerequisite checks belong to `\/sai-explore` alone/);
-    assert.match(worker, /This worker runs no such check/);
     assert.doesNotMatch(worker, /startup act \(prerequisite checks|the three steps above/);
     assert.ok(worker.includes('openspec/changes/{change-name}/proposal.md not found. Ensure the change name is correct and that /sai-1-spec has been run for this change.'));
     assert.ok(worker.includes(`first delivered pointer targets \`${firstFiled}\``)
       || worker.includes(`first delivered pointer targeting \`${firstFiled}\``));
     assert.ok(worker.includes(`\`${startup}\``));
-    assert.match(worker, /first line of the task-disclosure continuation, before `arguments_value`/);
     assert.match(worker, /reports (?:together with|in one batch together with)/);
     const common = read(`sai/commands/${phase}/steps/common.md`);
     assert.match(common, /Fetch @skills\/budget-ro\/SKILL\.md/);

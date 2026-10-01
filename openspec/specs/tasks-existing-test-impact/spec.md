@@ -19,7 +19,7 @@ The field concerns *existing* tests only. New tests the step adds are covered by
 #### Scenario: step breaking existing tests names them
 
 - **WHEN** a step changes behavior that existing tests assert on
-- **THEN** the step's existing-tests-broken field names the affected test files or suites
+- **THEN** the step's existing-tests-broken field names each affected test file by its exact repository-relative path
 
 #### Scenario: step breaking no existing test
 
@@ -88,7 +88,7 @@ The ordering exists so the implementation phase updates the shared surface once,
 
 ### Requirement: The field is a declaration, not a restatement of test content
 
-The existing-tests-broken field SHALL name test files or suites and their failure mode. It SHALL NOT reproduce assertion values, expected outputs, or test body content — that content is excluded from `tasks.md` by the existing rule of conciseness and lives in `interfaces.md`.
+The existing-tests-broken field SHALL name each affected test file by its exact repository-relative path, never a suite name, with its failure mode; shared infrastructure entries SHALL be test-only files, never production files. It SHALL NOT reproduce assertion values, expected outputs, or test body content — that content is excluded from `tasks.md` by the existing rule of conciseness and lives in `interfaces.md`.
 
 #### Scenario: field stays at the naming altitude
 

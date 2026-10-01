@@ -41,7 +41,7 @@ by raw `--overview-lang` token presence. Both are exactly:
 
 **Opted-in plan (`--overview-lang` present):**
 
-- `prereqs-resolution` — "Check prerequisites"
+- `prereqs-resolution` — "Resolve change"
 - `research` — "Research and resolve open questions"
 - `design` — "Write design.md"
 - `tasks` — "Write tasks.md"
@@ -50,7 +50,7 @@ by raw `--overview-lang` token presence. Both are exactly:
 
 **Unopted plan (`--overview-lang` absent):**
 
-- `prereqs-resolution` — "Check prerequisites"
+- `prereqs-resolution` — "Resolve change"
 - `research` — "Research and resolve open questions"
 - `design` — "Write design.md"
 - `tasks` — "Write tasks.md"

@@ -264,7 +264,7 @@ For an invocation with explicit `--overview-lang`, the design coordinator's reco
 
 The design phase adapter and the design worker contract SHALL declare one of two static, ordered progress plans selected solely by explicit `--overview-lang` token presence in the active invocation. The opted-in plan SHALL contain exactly these six steps:
 
-- `prereqs-resolution` — "Check prerequisites"
+- `prereqs-resolution` — "Resolve change"
 - `research` — "Research and resolve open questions"
 - `design` — "Write design.md"
 - `tasks` — "Write tasks.md"
@@ -282,7 +282,7 @@ The unopted-in plan SHALL contain exactly the first five steps in the same order
 #### Scenario: design plan is declared
 - **WHEN** `/sai-2-design` starts in Claude Code or opencode
 - **THEN** the design adapter declares the canonical progress steps in order
-- **AND** the first step is labeled `Check prerequisites`
+- **AND** the first step is labeled `Resolve change`
 
 #### Scenario: worker contract mirrors the ids
 - **WHEN** the design worker contract is read
@@ -290,7 +290,7 @@ The unopted-in plan SHALL contain exactly the first five steps in the same order
 
 #### Scenario: design contract test pins the relabeled first step
 - **WHEN** the design coordinator and worker declarations are extracted
-- **THEN** the ordered pairs include `prereqs-resolution: "Check prerequisites"`
+- **THEN** the ordered pairs include `prereqs-resolution: "Resolve change"`
 
 #### Scenario: the approval gate has no step of its own
 - **WHEN** the design plan is inspected

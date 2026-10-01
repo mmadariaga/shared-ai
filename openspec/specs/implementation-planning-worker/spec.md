@@ -25,6 +25,6 @@ Under the step-gated instruction delivery experiment, the phase-policy rule home
 #### Scenario: Replacement worker reconstructs planning state
 
 - **WHEN** a replacement worker receives the original envelope, `resolved_change_name` when already known, exact `opaque_input_history`, `durable_artifact_reconstruction_instruction`, and `active_step_id`
-- **THEN** it SHALL replay only the recorded input decisions, rerun prerequisites, and independently reread current durable artifacts from disk
+- **THEN** it SHALL replay only the recorded input decisions, rerun change resolution and the artifact checks, and independently reread current durable artifacts from disk
 - **AND** it SHALL start a new empty write journal without treating the coordinator's accumulated changed-file union as its own writes
 - **AND** its first continuation SHALL carry the correct pointer line for the active step named by `active_step_id`
