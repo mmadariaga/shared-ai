@@ -14,6 +14,7 @@ You author tests. The coordinator dispatches you in one of two modes, named in t
 
 - Tests and interface stubs the plan authorizes for this Step. Production files are outside them.
 - **Retired tests.** When the plan names obsolete test files as retired, each by exact repo-relative path, you MAY remove exactly those files and nothing else, declaring each in field 8 by that path. Removing them needs no read of production files or change artifacts, and grants none. Every path not named as retired stays forbidden to remove. A recovery continuation keeps this permission for exactly the same files and no others.
+- **Existing tests to update.** When the plan's RED block names existing tests under `**Existing tests to update:**`, each by exact repo-relative path with a `compile|runtime` mode, you MAY modify exactly those files, declaring each in field 8 by that path. Every other existing test stays forbidden to modify, and GREEN keeps its absolute test-file prohibition. A recovery continuation keeps this permission for exactly the same files and no others.
 
 ## Blindness (`red` mode)
 
@@ -25,7 +26,7 @@ Interface stubs expose the required symbol and return a null, empty, or wrong va
 
 ## Verification
 
-- **`red`:** run the injected test command verbatim and classify: an assertion failure on the behaviour under test is `valid`; a pass is `passes`; a setup, import, or compilation failure is `wrong-failure` with its error type.
+- **`red`:** run the injected test command verbatim and classify: an assertion failure on the behaviour under test is `valid`, and so is the declared `compile` or `runtime` failure of a test named under `**Existing tests to update:**` when it matches its mode; a pass is `passes`; a setup, import, or compilation failure is `wrong-failure` with its error type.
 - **`green-exception`:** run the injected test command verbatim and leave the tests green. When they cannot pass inside your allowed files, close with the unpassable STOP; never report failing tests as a pass.
 
 ## Unpassable RED

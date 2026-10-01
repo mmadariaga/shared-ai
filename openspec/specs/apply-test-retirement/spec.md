@@ -2,10 +2,12 @@
 
 ## Purpose
 TBD - created by archiving change red-block-test-retirement. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: The RED dispatch removes exactly the plan-named retired test files
 
-When a Step's plan names obsolete test files as retired — each with its exact repository-relative path inside the RED block — the test-authoring dispatch (the split-flow blind RED worker or the green-exception RED worker) MAY remove exactly those named files and nothing else. Every path not named as retired remains forbidden to write, modify, or remove. The exception grants no read access: removal MUST NOT require reading production files or change artifacts.
+When a Step's plan names obsolete test files as retired — each with its exact repository-relative path inside the RED block — the test-authoring dispatch (the split-flow blind RED worker or the green-exception RED worker) MAY remove exactly those named files and nothing else. Every path not named as retired remains forbidden to remove, and every path that is neither a retired file nor a plan-named existing test to update (see `apply-red-existing-test-update`) remains forbidden to write or modify. The exception grants no read access: removal MUST NOT require reading production files or change artifacts.
 
 #### Scenario: Plan names a retired guard test
 
@@ -34,4 +36,3 @@ Retirement entries SHALL live ONLY inside RED blocks, each carrying its exact re
 
 - **WHEN** a Step replaces an obsolete guard test with a new one
 - **THEN** the plan lists the old file as retired inside the RED block and the Verification Checklist asserts its absence between RED return and GREEN dispatch
-

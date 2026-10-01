@@ -2,14 +2,16 @@
 
 ## Purpose
 TBD - created by archiving change cost-optimizations. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: The RED phase in implementation.md SHALL contain only the failing test, minimal stubs, and type-only scaffolding
 
-The RED phase MUST NOT include any logic that would make the test pass. Real implementation, algorithm, branching, or data mapping belongs exclusively in the GREEN phase. When the Step replaces obsolete guard tests, the RED phase additionally carries the retirement declarations — one entry per retired file, with its exact repository-relative path marked `retired`; a step without a RED phase never carries retirements.
+The RED phase MUST NOT include any logic that would make the test pass. Real implementation, algorithm, branching, or data mapping belongs exclusively in the GREEN phase. When the Step replaces obsolete guard tests, the RED phase additionally carries the retirement declarations — one entry per retired file, with its exact repository-relative path marked `retired`; a step without a RED phase never carries retirements. When the Step breaks pre-existing tests, the RED phase additionally carries one `**Existing tests to update:**` line listing each such file by exact repository-relative path with its `compile` or `runtime` mode, and the Step's Verify RED checkbox accepts that declared failure.
 
 #### Scenario: RED phase is authored in the implementation plan
 - **WHEN** a testable step's RED phase is written
-- **THEN** it contains: (1) the test asserting the missing behaviour, (2) minimal stubs that expose the required symbol but return null/wrong value, (3) type-only scaffolding strictly required for the test file to compile — plus, when applicable, the retirement entries naming each obsolete test file by exact repository-relative path marked `retired`
+- **THEN** it contains: (1) the test asserting the missing behaviour, (2) minimal stubs that expose the required symbol but return null/wrong value, (3) type-only scaffolding strictly required for the test file to compile — plus, when applicable, the retirement entries naming each obsolete test file by exact repository-relative path marked `retired`, and the `**Existing tests to update:**` line naming each broken existing test
 - **THEN** it does NOT contain any logic that satisfies the test assertion
 
 #### Scenario: Stub is needed to avoid compilation errors
@@ -19,6 +21,10 @@ The RED phase MUST NOT include any logic that would make the test pass. Real imp
 #### Scenario: Retiring an obsolete guard test
 - **WHEN** a step replaces an obsolete guard test with a new one
 - **THEN** the old test file is listed as retired only inside the step's RED block with its exact repository-relative path, and no retirement entry appears in any GREEN block or green-direct step
+
+#### Scenario: Step breaks a pre-existing test
+- **WHEN** a step's change breaks a pre-existing test
+- **THEN** the step's RED block lists that file under `**Existing tests to update:**` with its exact repository-relative path and `compile` or `runtime` mode
 
 ### Requirement: Tests in the implementation plan SHALL be expressed as a stub plus a bullet list of scenarios
 
@@ -42,4 +48,3 @@ The distinction between test code (allowed as lightweight stub + scenarios) and 
 #### Scenario: GREEN phase production code is authored
 - **WHEN** the GREEN phase of a step is written
 - **THEN** it contains complete, final, executable production code with no TODOs, partial implementations, or speculative paths
-
