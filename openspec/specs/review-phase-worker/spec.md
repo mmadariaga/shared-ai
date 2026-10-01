@@ -7,7 +7,7 @@ TBD - created by archiving change sai-5-review-coordinator-worker-split. Update 
 
 ### Requirement: Review worker owns the complete technical workflow
 
-The review worker SHALL own envelope parsing, change resolution, the required `proposal.md` gate, parent-branch detection, diff scoping, review passes 1–11, Pass 12 mutation analysis, report generation, report verification, and the lifecycle summary. The coordinator SHALL not share ownership of these activities. OpenSpec environment prerequisite checks SHALL belong to `/sai-explore` alone and SHALL NOT be part of worker startup.
+The review worker SHALL own envelope parsing, change resolution, the required `proposal.md` gate, parent-branch detection, diff scoping, review passes 1–11 only, report generation, report verification, and the lifecycle summary. The coordinator SHALL not share ownership of these activities. OpenSpec environment prerequisite checks SHALL belong to `/sai-explore` alone and SHALL NOT be part of worker startup. Review SHALL NOT probe mutation engines, execute mutations, or emit mutation sections, outcomes, or identifiers.
 
 #### Scenario: Worker starts from an invocation envelope
 - **WHEN** a review worker receives `arguments_value`
@@ -76,49 +76,14 @@ The worker SHALL execute passes 1–11 against the full diff and change artifact
 - **THEN** the worker records the existing triage result and corresponding audit recommendation
 - **AND** it does not run SAST, profiling, axe, Lighthouse, or a deep accessibility audit as part of review
 
-### Requirement: Pass 12 keeps its activation and mutation scope
-
-The worker SHALL run Pass 12 only when the diff contains testable production code and the repository contains at least one test file. When either condition is false, it SHALL record exactly `Mutation Analysis (Pass 12): skipped — {no testable production code in diff | repository has no test files}. No mutation findings.` using the applicable reason and emit no mutation findings. Eligible mutation targets SHALL be exactly changed production-code files in the diff.
-
-#### Scenario: Activation gate is not satisfied
-- **WHEN** the diff has no testable production code or the repository has no test file
-- **THEN** Pass 12 is skipped with exactly `Mutation Analysis (Pass 12): skipped — {no testable production code in diff | repository has no test files}. No mutation findings.` using the applicable reason
-- **AND** no production file is mutated
-
-#### Scenario: Activation gate is satisfied
-- **WHEN** both testable changed production code and at least one repository test file exist
-- **THEN** Pass 12 proceeds with only changed production-code files as mutation targets
-- **AND** no file outside the diff is selected
-
-### Requirement: Pass 12 handles empty eligible-target sets
-
-The review worker SHALL distinguish an admitted Pass 12 activation gate from an empty eligible mutation-target set and SHALL emit the exact no-eligible-target skip without inferred findings.
-
-#### Scenario: Mutation scope is empty after activation
-
-- **WHEN** the activation gate admits Pass 12 but no changed production-code file is eligible for mutation
-- **THEN** the worker records `Mutation Analysis (Pass 12): skipped — no eligible mutation targets. No mutation findings.` and continues the review.
-
-### Requirement: Pass 12 runs only the declared deterministic engine
-
-The worker SHALL run Pass 12 only through a supported mutation tool declared as a project dependency, with its checked-in configuration, scoped to the eligible diff files; the engine owns baseline, mutation application, timeout, revert, and result collection. With no declared tool, a failed baseline, a failed execution, or an unparseable report, the worker SHALL record the matching exact `unavailable` note and emit no mutation findings. It SHALL never apply a hand-authored or inferred mutation.
-
-#### Scenario: Declared mutation tooling exists
-- **WHEN** a supported mutation tool is declared in the project manifest
-- **THEN** the worker runs that tool against the eligible diff files and parses its report
-
-#### Scenario: No mutation tool is declared
-- **WHEN** Pass 12 is activated and no supported mutation tool is declared
-- **THEN** the worker records `Mutation Analysis (Pass 12): unavailable — no deterministic mutation tool declared. No mutation findings.` and mutates nothing
-
 ### Requirement: Worker writes and verifies only the review artifact
 
-The worker SHALL write `openspec/changes/{change-name}/review.md` using the existing review report template, including findings with severity-prefixed identifiers, severity roll-up, the closing `Summary:` tally line, coverage, Pass 12 outcomes, and all three audit recommendations. The completed payload's `summary` SHALL contain the complete existing `## Recommended Audits` block, including all three audit lines, as worker-authored text. Outside the explicitly bounded and reverted Pass 12 mutations, it SHALL never modify production code or any other durable artifact, and it SHALL never leave a production file persistently changed. `changed_files` SHALL contain only durable writes by the worker: `review.md`, plus any production file whose revert failed or whose revert result was unaccounted and therefore safety-classified as revert-failed-equivalent; cleanly reverted mutation targets SHALL be excluded.
+The worker SHALL write only `openspec/changes/{change-name}/review.md` using the command-owned template, including severity-prefixed finding identifiers, severity roll-up, the closing `Summary:` tally, Coverage Notes with a `Resilience:` outcome and relevant notes even without a resilience surface, and all three audit recommendations. Summary SHALL record goal coverage and scope creep in one or two lines without repeating findings; decision contradictions SHALL remain detectable by Domain Alignment and recorded as findings. The completed payload's `summary` SHALL contain the complete existing `## Recommended Audits` block, including all three audit lines. The worker SHALL NOT modify production code or any other artifact. `changed_files` SHALL contain only the report path.
 
 #### Scenario: Review report is generated
-- **WHEN** all review passes and any active mutation analysis are complete
+- **WHEN** review passes 1–11 are complete
 - **THEN** `review.md` exists, is non-empty, and contains the required review sections, identifiers, summary tally, and audit recommendations
-- **AND** the completed payload reports the canonical change name and only the durable paths defined above
+- **AND** the completed payload reports the canonical change name and only the report path
 
 #### Scenario: Worker returns completion
 - **WHEN** `review.md` is verified from disk
@@ -127,7 +92,7 @@ The worker SHALL write `openspec/changes/{change-name}/review.md` using the exis
 
 ### Requirement: Review lifecycle results carry no time field
 
-The review worker SHALL return progress and terminal lifecycle results with no time field, while retaining review passes, mutation analysis, report generation, and triage ownership; the validator's `validated_at` sidecar is the only observed time.
+The review worker SHALL return progress and terminal lifecycle results with no time field, while retaining passes 1–11, report generation, and triage ownership; the validator's `validated_at` sidecar is the only observed time.
 
 #### Scenario: Review reports a milestone
 - **WHEN** a review milestone completes
@@ -135,48 +100,45 @@ The review worker SHALL return progress and terminal lifecycle results with no t
 
 ### Requirement: Review findings use the shared audit severity vocabulary
 
-The review instruction and worker contract SHALL classify every finding with one of the shared severities `Critical`, `High`, `Medium`, or `Low`, or with the review-only `Question` category. `Critical` SHALL mean must-fix-before-merge (bugs, security holes, broken builds, contract violations, contradictions of the change artifacts); `High` SHALL mean should-fix-before-merge (significant maintainability, performance, or test-coverage issues that will hurt soon); `Medium` SHALL mean a moderate maintainability, performance, or test-coverage concern that does not threaten merge-readiness but should be addressed soon; `Low` SHALL mean nice-to-fix (naming, small refactors, low-impact polish); `Question` SHALL mean genuine uncertainty needing user input, used sparingly. The retired terms `Blocker`, `Major`, and `Minor` SHALL NOT be emitted by the review instruction, the review worker contract, or the review report. Every triage escalation in the review instruction SHALL reference the new levels: blatant security findings SHALL be raised as `Critical`, blatant performance and accessibility findings as `High` or `Critical`, and glossary deviations as `Low`.
+The review instruction and worker contract SHALL classify every finding with one of the shared severities `Critical`, `High`, `Medium`, or `Low`, or with the review-only `Question` category. `Critical` SHALL mean must-fix-before-merge (bugs, security holes, broken builds, contract violations, contradictions of the change artifacts); `High` SHALL mean should-fix-before-merge (significant maintainability, performance, or test-coverage issues that will hurt soon); `Medium` SHALL mean a moderate maintainability, performance, or test-coverage concern that does not threaten merge-readiness but should be addressed soon; `Low` SHALL mean nice-to-fix (naming, small refactors, low-impact polish); `Question` SHALL mean genuine uncertainty needing user input, used sparingly. The retired terms `Blocker`, `Major`, and `Minor` SHALL NOT be emitted by the review instruction, the review worker contract, or the review report. Every triage escalation SHALL reference the shared levels: blatant security findings SHALL be `Critical`, blatant performance and accessibility findings `High` or `Critical`, and glossary deviations `Low`. No mutation findings SHALL enter counts or verdicts.
 
 #### Scenario: Severity classification uses the shared levels
-
 - **WHEN** the review classifies a finding
 - **THEN** the finding's severity is exactly one of `Critical`, `High`, `Medium`, or `Low`, or its category is `Question`
 - **AND** none of the retired terms `Blocker`, `Major`, or `Minor` is emitted
 
 #### Scenario: Triage escalations reference the shared levels
-
 - **WHEN** the review instruction escalates a blatant security, performance, or accessibility issue during triage
 - **THEN** it names the finding `Critical` or `High` as applicable
 - **AND** it does not use the retired triage vocabulary
 
 #### Scenario: Mutation findings fold into the report by remapped severity
-
-- **WHEN** Pass 12 produced mutation findings
-- **THEN** each surviving and pre-check-failed mutation is counted as `High` and each revert-failed mutation as `Critical` in the review counts and verdict
-- **AND** their `mMUT-N` identifiers are unchanged
+- **WHEN** review renders its counts and verdict after mutation-analysis retirement
+- **THEN** only findings from passes 1–11 are counted
+- **AND** no mutation findings or mMUT identifiers appear
 
 ### Requirement: Review findings carry severity-prefixed identifiers and a closing summary tally
 
-The review instruction SHALL assign every finding a severity-prefixed identifier: the severity's initial followed by the finding's sequence within that severity in the current report (`C1`, `H1`, `M1`, `L1`, and `Q1` for Questions), with the sequence restarting at 1 for each level at the start of every review. The review report SHALL close with a `Summary:` line in the form `Summary: Critical=<count> High=<count> Medium=<count> Low=<count> Questions=<count>` whose counts match the report's findings, including mutation findings folded in at their remapped severities. The worker contract's completion verification SHALL reference the top three `Critical` findings when present, never the retired `Blocker` term.
+The review instruction SHALL assign every finding a severity-prefixed identifier: the severity's initial followed by its sequence within that severity in the current report (`C1`, `H1`, `M1`, `L1`, and `Q1`), restarting at 1 for each level per review. The report SHALL close with `Summary: Critical=<count> High=<count> Medium=<count> Low=<count> Questions=<count>` whose counts match its listed findings. Completion verification SHALL reference the top three `Critical` findings when present, never the retired `Blocker` term.
 
 #### Scenario: Every finding carries an identifier
-
 - **WHEN** the review report lists a finding
 - **THEN** the finding heading leads with its severity-prefixed identifier
 - **AND** identifiers restart at 1 per level per report
 
 #### Scenario: Report closes with the summary tally
-
 - **WHEN** the review report is complete
 - **THEN** it closes with a `Summary:` line tallying `Critical`, `High`, `Medium`, `Low`, and `Questions` counts that match the listed findings
 - **AND** the worker completion verification names the top three `Critical` findings when present
 
 ### Requirement: Review close runs a pre-save adversarial findings check
-The review close step SHALL challenge the in-memory draft before saving to discard false positives and correct severity. Mutation findings (mMUT-N) come from the deterministic engine and SHALL stay outside the adversary at their mapped severity. It SHALL skip the adversary when the draft has no finding other than mMUT-N findings, otherwise dispatch exactly one budget-explorer subagent receiving only per-finding identifier, file:line, category, and one-line problem statement without diff or raw code, scope the adversary to the current diff findings only, require per-finding keep or discard or downgrade verdict with why under 40 words and total report under 800 words, let the worker accept or reject each verdict with discards invisible and tally recomputed over kept findings at final severity, and close with worker findings on subagent failure without blocking.
+
+The review close step SHALL challenge the in-memory draft before saving to discard false positives and correct severity. It SHALL skip the adversary only when the draft has no findings; otherwise it SHALL dispatch exactly one budget-explorer receiving only per-finding identifier, file:line, category, and one-line problem statement without diff or raw code. It SHALL scope the adversary to current diff findings, keep recorded decisions settled, require per-finding keep/discard/downgrade verdicts with why under 40 words and total report under 800 words, let the worker accept or reject each verdict, keep discards invisible, and recompute the tally over kept findings at final severity. Subagent failure SHALL preserve worker findings without blocking. No mutation-specific exemption remains; all other adversarial-close behavior SHALL stay unchanged.
+
 #### Scenario: Adversarial check filters review draft
 - **WHEN** the in-memory review draft contains findings
 - **THEN** the worker runs one bounded adversary and saves only kept findings with recomputed Summary tally
 
 #### Scenario: Mutation findings bypass the adversary
-- **WHEN** the draft carries mMUT-N findings
-- **THEN** they are saved at their mapped severity without adversary review, and a draft whose only findings are mMUT-N skips the adversary
+- **WHEN** review applies the adversarial check after mutation-analysis retirement
+- **THEN** no mutation findings or exemption exist and every draft finding is eligible for the unchanged bounded check

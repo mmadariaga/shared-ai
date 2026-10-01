@@ -2,7 +2,9 @@
 
 ## Purpose
 Define the dedicated Resilience review pass over the diff's fault-tolerance surface, its exclusive ownership, severity mapping, exemption rules, and the resulting renumbering of mutation analysis to Pass 12.
+
 ## Requirements
+
 ### Requirement: Resilience review pass
 The review SHALL include a dedicated Resilience pass that reviews fault-tolerance of the diff's I/O paths: missing timeouts, unbounded retries, missing circuit-breaker, non-idempotent retry/redelivery handlers, and missing fallback or degraded path.
 #### Scenario: I/O diff with missing timeout
@@ -28,8 +30,9 @@ The pass SHALL yield no findings for docs or CSS-only diffs without I/O; fronten
 - **THEN** the pass SHALL emit no Resilience findings
 
 ### Requirement: Mutation analysis renumbered to Pass 12
-Mutation Analysis SHALL run as Pass 12 after passes 1–11, and the review report template SHALL list Resilience as a finding category with the Mutation Analysis section headed Pass 12.
-#### Scenario: Report rendered after this change
-- **WHEN** the review report includes the mutation section
-- **THEN** the section SHALL be headed Mutation Analysis (Pass 12) with Resilience available as a finding category
 
+Review SHALL end analysis at the dedicated Resilience pass 11, with no mutation pass, engine probing, result notes, section, or identifier. The template SHALL retain Resilience as a finding category with unchanged exclusive ownership and severity rules, and SHALL record the resilience outcome and relevant notes in Coverage Notes, including no surface.
+
+#### Scenario: Report rendered after this change
+- **WHEN** the review report is rendered after mutation-analysis retirement
+- **THEN** it includes no mutation section and retains Resilience findings and a `Resilience:` outcome in Coverage Notes

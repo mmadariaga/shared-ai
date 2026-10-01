@@ -15,7 +15,7 @@ From the caller's `input`, enumerate issues in artifact order (`review.md`,
 `security.md`, `performance.md`, `accessibility.md`) and report order. Show
 **every found issue** with its source-qualified id (for example `review:C1` or
 `security:C1`), severity, title, brief problem/impact, and location. Ids can
-repeat across reports; mutation findings retain their report id. Show Questions
+repeat across reports. Show Questions
 (`Q*`) and findings requiring a requirement/design change separately with the
 reason they are not eligible for Direct Build. Plan entries, metrics, notes,
 and duplicate mentions are not additional issues. Keep the full selected

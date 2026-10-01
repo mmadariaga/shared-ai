@@ -14,7 +14,7 @@ Assign each finding one severity:
 - **Low** — nice to fix: naming, small refactors, low-impact polish.
 - **Question** — genuine uncertainty that needs the user's input; reserve it for that.
 
-Resilience findings take the severity rule of pass 11 in the analysis step. Mutation findings (`mMUT-N`) keep the severity the mutation step mapped.
+Resilience findings take the severity rule of pass 11 in the analysis step.
 
 ## 2. Draft
 
@@ -22,7 +22,7 @@ Draft the report in memory from the template. Derive `{Feature Name}` from the c
 
 ## 3. Challenge the draft
 
-Mutation findings come from the engine's real execution and stay as mapped. When the draft has no other finding, go to step 4. Otherwise dispatch exactly one `budget-explorer` adversary to discard false positives and correct severity:
+When the draft has no finding, go to step 4. Otherwise dispatch exactly one `budget-explorer` adversary to discard false positives and correct severity:
 
 - **Input** — per finding only: identifier (`C1`/`H1`/`M1`/`L1`/`Q1`), `file:line`, category, and a one-line problem statement. The adversary reads the code from disk itself; send no diff, raw code, or report text.
 - **Scope** — this diff's findings only; decisions recorded in `proposal.md`, `design.md`, and `specs/**/*.md` stay settled.

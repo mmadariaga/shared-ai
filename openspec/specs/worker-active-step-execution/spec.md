@@ -44,17 +44,15 @@ The design worker SHALL execute only the step file named by the coordinator's mo
 
 ### Requirement: The review worker executes only the coordinator-named active step
 
-The review worker SHALL execute only the step file named by the coordinator's most recent `Active step:` pointer line, following that file exactly, and SHALL never prefetch, open, or follow any other step instruction file; step-file paths exist solely as coordinator continuation lines, making the worker contract plus `sai/commands/review/steps/common.md` the sealed initial surface. `resolve-change` SHALL have no step file of its own and SHALL run from that sealed surface before the first progress event, with the first delivered pointer targeting `establish-diff-scope`. A gated stage resolved by legitimate skip SHALL still report its milestone, and the next delivered pointer advances past it without that step file executing.
+The review worker SHALL execute only the step file named by the coordinator's most recent `Active step:` pointer, following it exactly, and SHALL never prefetch, open, or follow other step instructions. Worker contract plus common.md SHALL be the sealed initial surface. The fileless `resolve-change` SHALL pass before following `establish-diff-scope`, whose pointer arrives with task disclosure. The first event SHALL carry both ids; later pointers SHALL name analysis then close, with no mutation step or replacement gate. Non-pointer continuations SHALL preserve the active step. Coordinator state, replacement reconstruction, and just-in-time delivery SHALL remain unchanged.
 
 #### Scenario: review steps execute in pointer order
-
 - **WHEN** consecutive progress continuations name different review steps
-- **THEN** the review worker executes each named step exactly when its pointer arrives, without loading future step files early
+- **THEN** review executes each named step when its pointer arrives without loading future steps early
 
 #### Scenario: legitimately skipped gated stage advances the pointer
-
-- **WHEN** the Pass 11 activation gate resolves as a legitimate skip
-- **THEN** the worker reports the `resolve-mutation-analysis` milestone completed and the next delivered pointer names `close-review-outcome` without the mutation protocol executing
+- **WHEN** review completes passes 1–11 after mutation-analysis retirement
+- **THEN** it reports `resolve-review-analysis` and receives `close-review-outcome` directly without a mutation milestone or protocol
 
 ### Requirement: The security worker executes only the coordinator-named active step
 

@@ -7,21 +7,19 @@ TBD - created by backfilling change review-standalone-machine. Update Purpose af
 
 ### Requirement: Closed standalone stage table for review
 
-The machine SHALL expose exactly the five progress-plan ids in order as its closed states: `resolve-change`, `establish-diff-scope`, `resolve-review-analysis`, `resolve-mutation-analysis`, `close-review-outcome`, plus terminal `done`. The STEPS list, STAGE_FILES mapping, DONE_STAGE marker, and initialState with empty done set SHALL match the coordinator plan with no extra states.
+The machine SHALL expose exactly four progress-plan ids in order: `resolve-change`, `establish-diff-scope`, `resolve-review-analysis`, `close-review-outcome`, plus terminal `done`. STEPS, STAGE_FILES, DONE_STAGE, and initialState with an empty done set SHALL match the coordinator plan with no extra state or replacement mutation check.
 
 #### Scenario: First unmarked state drives routing
-
 - **WHEN** the stage machine holds a done set with earlier steps marked
 - **THEN** the active stage SHALL be the first unmarked id in canonical order
 
 ### Requirement: Minimal boot with just-in-time follow loads
 
-The standalone run SHALL boot from the nucleus only, worker contract plus steps/common.md, with resolve-change carrying follow none. Each of the four step files under sai/commands/review/steps/ SHALL load only when next.follow names it, and the initial dispatch SHALL bear no Active step line with the first pointer targeting establish-diff-scope.
+The standalone run SHALL boot only from worker contract plus `steps/common.md`, with `resolve-change` carrying follow none. Each of the three filed steps SHALL load only when the machine pointer names it. Initial dispatch SHALL have no task or pointer; post-ready task disclosure SHALL carry the first pointer targeting `establish-diff-scope`. The first event SHALL report resolution and scope together, followed by one analysis event and one close event on the complete path. Steps SHALL NOT merge or prefetch.
 
 #### Scenario: Step file loads at its point of use
-
 - **WHEN** the stage machine emits next.follow naming a step file
-- **THEN** the coordinator SHALL fetch that single file at that point and at no earlier point
+- **THEN** the coordinator SHALL deliver that single file pointer at that point and at no earlier point, except the first filed pointer delivered with task disclosure
 
 ### Requirement: No-whitelist follow-load with stop-on-failure
 
@@ -43,11 +41,10 @@ Every emit SHALL travel as stage plus next only, with mandatory machineId on the
 
 ### Requirement: Silent ignore of undeclared ids with authoritative re-steer
 
-Newly completed declared ids SHALL be added in canonical STEPS order with marks monotonic and never reopened. Missing, empty, or only-undeclared ids SHALL be ignored silently with no notification channel and no state change, and the coordinator SHALL re-emit the authoritative pointer which re-steers the worker.
+Newly completed declared ids SHALL be added in canonical STEPS order with marks monotonic and never reopened. Missing, empty, or only-undeclared ids SHALL be ignored silently with no notification or state change, and the coordinator SHALL re-emit the authoritative pointer. The retired mutation id SHALL be undeclared.
 
 #### Scenario: Undeclared ids leave state unchanged
-
-- **WHEN** the signal carries only ids outside the five declared states
+- **WHEN** the signal carries only ids outside the four declared states
 - **THEN** the state SHALL stay unchanged with no rejection marker
 
 ### Requirement: Terminal done maps to completion pointer

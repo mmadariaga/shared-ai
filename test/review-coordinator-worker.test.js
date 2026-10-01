@@ -2,27 +2,12 @@
 
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const childProcess = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const { loadInstallManifest, matrixRenderFor } = require('../bin/install-manifest.js');
 
 const repoRoot = path.join(__dirname, '..');
 const matrixManifest = loadInstallManifest(repoRoot);
-
-function loadDefaultMutationConfig() {
-  const configPath = require.resolve(path.join(repoRoot, 'stryker.config.js'));
-  const previousScope = process.env.SAI_MUTATION_SCOPE;
-  try {
-    delete process.env.SAI_MUTATION_SCOPE;
-    delete require.cache[configPath];
-    return require(configPath);
-  } finally {
-    if (previousScope === undefined) delete process.env.SAI_MUTATION_SCOPE;
-    else process.env.SAI_MUTATION_SCOPE = previousScope;
-    delete require.cache[configPath];
-  }
-}
 
 function artifact(relativePath) {
   const fullPath = path.join(repoRoot, relativePath);
@@ -49,22 +34,21 @@ test('Step 1 review card uses neutral root protocols and retires flat canonical 
   }
 });
 
-test('review coordinator declares the canonical five-step progress plan in order with labels', () => {
+test('review coordinator declares the canonical four-step progress plan in order with labels', () => {
   const coordinator = artifact('sai/commands/review/coordinator.md');
 
-  for (const id of ['resolve-change', 'establish-diff-scope', 'resolve-review-analysis', 'resolve-mutation-analysis', 'close-review-outcome']) {
+  for (const id of ['resolve-change', 'establish-diff-scope', 'resolve-review-analysis', 'close-review-outcome']) {
     assert.match(coordinator, new RegExp(id.replace(/-/g, '\\-')),
       `the plan should declare the ${id} step id`);
   }
   assert.match(
     coordinator,
-    /resolve-change[\s\S]{0,300}establish-diff-scope[\s\S]{0,300}resolve-review-analysis[\s\S]{0,300}resolve-mutation-analysis[\s\S]{0,300}close-review-outcome/,
-    'the five canonical step ids should be declared in order'
+    /resolve-change[\s\S]{0,300}establish-diff-scope[\s\S]{0,300}resolve-review-analysis[\s\S]{0,300}close-review-outcome/,
+    'the four canonical step ids should be declared in order'
   );
   assert.match(coordinator, /resolve-change[\s\S]{0,200}Resolve change/i);
   assert.match(coordinator, /establish-diff-scope[\s\S]{0,200}Resolve diff scope/i);
   assert.match(coordinator, /resolve-review-analysis[\s\S]{0,200}Resolve review analysis/i);
-  assert.match(coordinator, /resolve-mutation-analysis[\s\S]{0,200}Resolve mutation-analysis gate/i);
   assert.match(coordinator, /close-review-outcome[\s\S]{0,200}Close review outcome/i);
 });
 
@@ -138,17 +122,18 @@ test('Direct Build discloses findings and resolves exclusions before the fix wor
   assert.match(fixWorker, /initial exclusion list remains in force across continuations/);
 });
 
-test('review worker contract enumerates the five ids and pins the batch semantics', () => {
+test('review worker contract enumerates the four ids and pins the batch semantics', () => {
   const worker = artifact('sai/commands/review/worker.md');
 
   assert.match(
     worker,
-    /resolve-change[\s\S]{0,800}establish-diff-scope[\s\S]{0,800}resolve-review-analysis[\s\S]{0,800}resolve-mutation-analysis[\s\S]{0,800}close-review-outcome/,
-    'the review worker contract should enumerate the same five ids in the same order'
+    /resolve-change[\s\S]{0,800}establish-diff-scope[\s\S]{0,800}resolve-review-analysis[\s\S]{0,800}close-review-outcome/,
+    'the review worker contract should enumerate the same four ids in the same order'
   );
   assert.match(worker, /startup act/i);
   assert.match(worker, /resolve-change/);
-  assert.match(worker, /Pass 12[\s\S]{0,240}(?:gate|not applicable|skip)/i);
+  assert.match(worker, /complete path returns three progress events/);
+  assert.match(worker, /passes 1–11 are done/);
   assert.match(worker, /empty diff[\s\S]{0,240}(?:cancelled|establish-diff-scope)/i);
   assert.doesNotMatch(worker, /no Milestone Stamp/i, 'audit plans carry stamps per todo-structure; the worker states nothing about them');
   assert.match(worker, /never[\s\S]{0,160}(?:before resolution|in place of a terminal|needs_input)/i);
@@ -193,16 +178,46 @@ const REVIEW_PLAN_STEPS = [
   ['resolve-change', 'Resolve change'],
   ['establish-diff-scope', 'Resolve diff scope'],
   ['resolve-review-analysis', 'Resolve review analysis'],
-  ['resolve-mutation-analysis', 'Resolve mutation-analysis gate'],
   ['close-review-outcome', 'Close review outcome'],
 ];
 const REVIEW_STEP_MAP = {
   'resolve-change': null,
   'establish-diff-scope': 'sai/commands/review/steps/establish-diff-scope.md',
   'resolve-review-analysis': 'sai/commands/review/steps/resolve-review-analysis.md',
-  'resolve-mutation-analysis': 'sai/commands/review/steps/resolve-mutation-analysis.md',
   'close-review-outcome': 'sai/commands/review/steps/close-review-outcome.md',
 };
+
+test('review reaches done in three progress events while audits retain four', () => {
+  const review = require('../sai-state/machines/review-standalone.js');
+  assert.deepEqual(review.STEPS, REVIEW_PLAN_STEPS.map(([id]) => id));
+  assert.deepEqual(review.STAGE_FILES, { ...Object.fromEntries(
+    Object.entries(REVIEW_STEP_MAP).map(([id, file]) => [id, file || 'none'])), done: 'none' });
+  assert.equal(review.firstFiled().stage, 'establish-diff-scope');
+  let result = review.transition(review.initialState, {
+    step_ids: ['resolve-change', 'establish-diff-scope'],
+  });
+  assert.equal(result.next.follow, REVIEW_STEP_MAP['resolve-review-analysis']);
+  assert.equal(result.state.stage, 'resolve-review-analysis');
+  assert.deepEqual(result.state.done, ['resolve-change', 'establish-diff-scope']);
+  const ignored = review.transition(result.state, { step_ids: ['resolve-mutation-analysis'] });
+  assert.deepEqual(ignored.state, result.state);
+  result = review.transition(result.state, { step_ids: ['resolve-review-analysis'] });
+  assert.equal(result.next.follow, REVIEW_STEP_MAP['close-review-outcome']);
+  result = review.transition(result.state, { step_ids: ['close-review-outcome'] });
+  assert.equal(result.state.stage, 'done');
+  assert.equal(result.next.follow, 'none');
+  for (const phase of ['security', 'performance', 'accessibility']) {
+    const machine = require(`../sai-state/machines/${phase}-standalone.js`);
+    assert.equal(machine.STEPS.length, 5);
+    let state = machine.transition(machine.initialState, { step_ids: machine.STEPS.slice(0, 2) }).state;
+    for (const id of machine.STEPS.slice(2)) state = machine.transition(state, { step_ids: [id] }).state;
+    assert.equal(state.stage, 'done');
+    assert.deepEqual(state.done, machine.STEPS);
+  }
+  for (const harness of ['claude', 'opencode']) {
+    assert.match(matrixBinding(harness, 'review'), /sai\/commands\/review\/worker\.md/);
+  }
+});
 
 test('step-gated: the review coordinator declares step_machine and loads stage-machine.md', () => {
   const coordinator = artifact('sai/commands/review/coordinator.md');
@@ -266,8 +281,8 @@ test('step-gated: the review worker loads steps/common.md at dispatch and execut
     'the worker must execute only the coordinator-named step');
   assert.doesNotMatch(worker, /Fetch @sai\/commands\/review\/invocation\.md/,
     'the wholesale invocation fetch chain must be replaced by active-step execution');
-  assert.match(worker, /A gated stage resolved by legitimate skip still reports its milestone/,
-    'a legitimately skipped gated stage still advances the pointer past it');
+  assert.doesNotMatch(worker, /gated stage|resolve-mutation-analysis/,
+    'review has no optional mutation milestone');
 });
 
 test('step-gated: the step library is the only review instruction surface', () => {
@@ -276,6 +291,14 @@ test('step-gated: the step library is the only review instruction surface', () =
       `the monolithic review ${retired} is retired`);
   }
   const manifest = JSON.parse(artifact('sai/install-manifest.json'));
+  const mutationRetirement = manifest.retirements.find(record => record.id === 'retired-review-mutation-analysis-step');
+  assert.ok(mutationRetirement);
+  assert.equal(mutationRetirement.destination.path, 'commands/review/steps/resolve-mutation-analysis.md');
+  assert.deepEqual(mutationRetirement.harnesses, ['claude', 'opencode']);
+  assert.deepEqual(mutationRetirement.managedHashes, [
+    '1af64e9b39d573d8d794b42810f3719441f1b062d2018476f02c5c495aea5ecb',
+    'b7bbfb2ddade2a7ac59b640613d1665f98faa48fdfc3c9f5587985ec768edffa',
+  ]);
   for (const [id, destination] of [
     ['retired-sai-5-review-instructions', 'commands/review/instructions.md'],
     ['retired-sai-5-review-invocation', 'commands/review/invocation.md'],
@@ -297,89 +320,24 @@ test('step-gated: the step library is the only review instruction surface', () =
     'the worker contract should record that resolve-change runs without a step file');
 });
 
-test('mutation testing is configured as a deterministic project test workflow', () => {
-  const packageManifest = JSON.parse(artifact('package.json'));
-  const scopeBeforeDefaultLoad = process.env.SAI_MUTATION_SCOPE;
-  const strykerConfig = loadDefaultMutationConfig();
-  assert.equal(process.env.SAI_MUTATION_SCOPE, scopeBeforeDefaultLoad);
-
-  assert.equal(packageManifest.devDependencies['@stryker-mutator/core'], '8.7.1');
-  assert.equal(packageManifest.scripts['test:mutation'], 'stryker run');
-  assert.equal(packageManifest.scripts['test:mutation:smoke'], 'node mutation-smoke.js');
-  assert.equal(strykerConfig.testRunner, 'command');
-  assert.equal(strykerConfig.commandRunner.command, 'node --test');
-  assert.deepEqual(strykerConfig.mutate, ['bin/install.js']);
-  assert.deepEqual(strykerConfig.ignorePatterns, ['/.codegraph/**', '/.git/**']);
-  assert.deepEqual(strykerConfig.reporters, ['clear-text', 'json']);
-  assert.equal(strykerConfig.jsonReporter.fileName, 'reports/mutation/mutation.json');
-  assert.equal(strykerConfig.timeoutMS, 60000);
-  assert.equal(strykerConfig.concurrency, 1);
-
-  const scopedConfig = childProcess.spawnSync(
-    process.execPath,
-    ['-e', "process.stdout.write(JSON.stringify(require('./stryker.config.js').mutate))"],
-    {
-      cwd: repoRoot,
-      env: { ...process.env, SAI_MUTATION_SCOPE: 'bin/install.js,bin/setup.js' },
-      encoding: 'utf8',
-    },
-  );
-  assert.equal(scopedConfig.status, 0, scopedConfig.stderr);
-  assert.deepEqual(JSON.parse(scopedConfig.stdout), ['bin/install.js', 'bin/setup.js']);
-  assert.match(artifact('.gitignore'), /reports\/mutation\//);
-});
-
-test('mutation smoke execution is non-discovered and isolated from the baseline test suite', () => {
-  const runner = artifact('mutation-smoke.js');
-  const smokeConfig = artifact('test/fixtures/stryker-smoke.config.js');
-
-  assert.notEqual(runner, '', 'the executable smoke runner should exist outside test discovery');
-  assert.match(runner, /mkdtempSync/);
-  assert.match(runner, /SAI_MUTATION_REPORT/);
-  assert.match(runner, /SAI_MUTATION_TEMP/);
-  assert.match(runner, /repositoryTempPath/);
-  assert.match(runner, /repository-local Stryker workspace/);
-  assert.match(runner, /rmSync\(tempRoot, \{ recursive: true, force: true \}\)/);
-  assert.match(runner, /nativeStatuses/);
-  assert.match(smokeConfig, /SAI_MUTATION_REPORT/);
-  assert.match(smokeConfig, /SAI_MUTATION_TEMP/);
-  assert.match(smokeConfig, /tempDirName/);
-  assert.doesNotMatch(smokeConfig, /^\s*tempDir\s*:/m);
-  assert.equal(fs.existsSync(path.join(repoRoot, 'test', 'mutation-smoke.test.js')), false,
-    'the executable smoke runner must not be a discovered node:test file');
-});
-
-test('mutation review never simulates deterministic results through inference', () => {
-  const readme = artifact('README.md');
-  const mutationSection = readme.slice(
-    readme.indexOf('### Mutation Analysis'),
-    readme.indexOf('### ADR Proposals'),
-  );
-  const activeReviewSurfaces = [
-    'openspec/schemas/sai-workflow/templates/review.md',
-    'sai/commands/review/command-bootstrap.md',
-    'sai/commands/review/coordinator.md',
-    'sai/commands/review/review-report.template.md',
-    'sai/commands/review/steps/common.md',
-    'sai/commands/review/steps/resolve-mutation-analysis.md',
-    'sai/commands/review/steps/resolve-review-analysis.md',
-    'sai/commands/review/worker.md',
-  ];
-  const mutationSources = [
-    mutationSection,
-    ...activeReviewSurfaces.map(artifact),
-  ].join('\n');
-
-  assert.match(mutationSources, /deterministic mutation engine/i);
-  assert.doesNotMatch(mutationSources, /LLM[- ]as[- ]mutator|Tier 2|budget-subagent/i);
-  assert.doesNotMatch(mutationSources, /pre-check-failed|revert-failed/i);
-  assert.match(mutationSources, /no deterministic mutation tool declared/i);
-  assert.match(mutationSources, /deterministic baseline failed/i);
-  assert.match(mutationSources, /deterministic tool execution failed/i);
-  assert.match(mutationSources, /deterministic report could not be parsed/i);
-  assert.match(mutationSources, /no eligible mutation targets/i);
-  assert.match(mutationSources, /no mutation findings/i);
-  for (const status of ['Killed', 'Survived', 'Timeout', 'NoCoverage', 'CompileError', 'RuntimeError', 'Ignored']) {
-    assert.match(mutationSources, new RegExp(status), `deterministic ${status} status should be mapped`);
+test('review executes eleven passes, preserves alignment and resilience, and writes only its report', () => {
+  const worker = artifact('sai/commands/review/worker.md');
+  const analysis = artifact('sai/commands/review/steps/resolve-review-analysis.md');
+  const close = artifact('sai/commands/review/steps/close-review-outcome.md');
+  assert.deepEqual([...analysis.matchAll(/^(\d+)\. \*\*/gm)].map(match => Number(match[1])),
+    Array.from({ length: 11 }, (_, index) => index + 1));
+  assert.match(analysis, /contradict a recorded decision/);
+  assert.match(analysis, /Contradictions remain findings/);
+  assert.match(analysis, /single owner of retry, timeout, circuit-breaker, idempotency, and fallback defects/);
+  assert.match(analysis, /cap the finding at Question or Low/);
+  assert.match(analysis, /Critical only for cascade or outage, data loss, or duplicate side effects with concrete impact/);
+  assert.match(analysis, /Resilience:` line in Coverage Notes/);
+  assert.match(worker, /Write only `openspec\/changes\/\{change-name\}\/review\.md`/);
+  assert.match(worker, /`changed_files` holds only that report path/);
+  assert.match(close, /When the draft has no finding, go to step 4/);
+  assert.match(close, /dispatch exactly one `budget-explorer` adversary/);
+  assert.doesNotMatch(analysis + close, /mutation|mMUT|Pass 12/i);
+  for (const audit of ['security', 'performance', 'accessibility']) {
+    assert.match(analysis, new RegExp('recommend `/sai-[678]-' + audit));
   }
 });
