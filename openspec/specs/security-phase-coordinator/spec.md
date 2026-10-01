@@ -68,7 +68,7 @@ The coordinator SHALL validate every worker result before acting on it. A termin
 
 ### Requirement: Security progress uses payload-derived stamps
 
-The security coordinator SHALL validate lifecycle results and render each completed-step stamp from the `validated_at` of the verdict that marked it without moving security analysis or artifact writes into the coordinator. While its declared `step_machine: security-standalone@1` is in force, every progress-event continuation SHALL be exactly two lines — the protocol continuation line followed by the deterministic `Active step:` pointer line derived from that machine's `STAGE_FILES` mapping — continuations that are not progress-event continuations SHALL carry no pointer line, and the declared `replacement_reconstruction_fields` SHALL include the departing worker's `active_step_id`.
+The security coordinator SHALL validate lifecycle results and render each completed-step stamp from the `received_at` of the response that marked it without moving security analysis or artifact writes into the coordinator. While its declared `step_machine: security-standalone@1` is in force, every progress-event continuation SHALL be exactly two lines — the protocol continuation line followed by the deterministic `Active step:` pointer line derived from that machine's `STAGE_FILES` mapping — continuations that are not progress-event continuations SHALL carry no pointer line, and the declared `replacement_reconstruction_fields` SHALL include the departing worker's `active_step_id`.
 
 #### Scenario: Security progress returns
 

@@ -13,7 +13,7 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 const { sessionFile } = require('../bin/sai-state.js');
-const { VALIDATED_AT_PATTERN } = require('../sai/tools/worker-report-validator.js');
+const { RECEIVED_AT_PATTERN } = require('../sai/tools/worker-report-validator.js');
 
 const REPO_ROOT = path.join(__dirname, '..');
 const SAI_STATE_TOOL = path.join(REPO_ROOT, 'bin', 'sai-state.js');
@@ -56,7 +56,9 @@ test('progress emit: valid payload returns the verdict plus the ordinary emit fi
     assert.equal(json.validation.action, 'validate');
     assert.equal(json.validation.kind, 'progress');
     assert.deepEqual(json.validation.errors, []);
-    assert.match(json.validation.validated_at, VALIDATED_AT_PATTERN);
+    assert.match(json.received_at, RECEIVED_AT_PATTERN);
+    assert.equal(json.validation.validated_at, undefined);
+    assert.equal(json.validation.received_at, undefined);
     assert.equal(typeof json.stage, 'string');
     assert.equal(typeof json.next.follow, 'string');
 
@@ -85,7 +87,8 @@ test('progress emit (E1): shape-invalid payload returns validation.ok false, exi
     const result = progressEmit(id, 'spec-standalone@1', JSON.stringify({ event: 'progress', changed_files: [] }));
     assert.equal(result.exitCode, 1);
     const json = JSON.parse(result.stdout);
-    assert.deepEqual(Object.keys(json), ['validation']);
+    assert.deepEqual(Object.keys(json), ['received_at', 'validation']);
+    assert.match(json.received_at, RECEIVED_AT_PATTERN);
     assert.equal(json.validation.ok, false);
     assert.ok(json.validation.errors.includes('step_ids is missing'));
     assert.equal(json.validation.validated_at, undefined);
@@ -112,12 +115,12 @@ test('progress emit (E2): non-JSON stdin follows the validator semantics, not th
 
 const VALIDATOR_TOOL = path.join(REPO_ROOT, 'sai', 'tools', 'worker-report-validator.js');
 
-function stableVerdict(verdict) {
-  const copy = Object.assign({}, verdict);
-  if (copy.validated_at !== undefined) {
-    assert.match(copy.validated_at, VALIDATED_AT_PATTERN);
-    copy.validated_at = '<stamp>';
-  }
+// The validate CLI response is the timeless verdict plus a leading `received_at`.
+function stripReceivedAt(response) {
+  assert.equal(Object.keys(response)[0], 'received_at');
+  assert.match(response.received_at, RECEIVED_AT_PATTERN);
+  const copy = Object.assign({}, response);
+  delete copy.received_at;
   return copy;
 }
 
@@ -133,7 +136,7 @@ test('progress emit: verdict parity with `validate --kind progress --json` for B
       const fused = progressEmit(id, 'spec-standalone@1', input);
       const directVerdict = JSON.parse(direct.stdout);
       const fusedVerdict = JSON.parse(fused.stdout).validation;
-      assert.deepEqual(stableVerdict(fusedVerdict), stableVerdict(directVerdict));
+      assert.equal(JSON.stringify(fusedVerdict), JSON.stringify(stripReceivedAt(directVerdict)));
       assert.equal(fused.exitCode, direct.exitCode);
     } finally {
       cleanup(id);
@@ -148,7 +151,7 @@ test('progress emit (E3): validation runs before any session read, so a corrupt 
     const result = progressEmit(id, 'spec-standalone@1', progress(['x'], { event: 'notice' }));
     assert.equal(result.exitCode, 1);
     const json = JSON.parse(result.stdout);
-    assert.deepEqual(Object.keys(json), ['validation']);
+    assert.deepEqual(Object.keys(json), ['received_at', 'validation']);
     assert.equal(json.validation.ok, false);
     assert.equal(json.warnings, undefined, 'no session read happened');
     assert.equal(fs.readFileSync(sessionFile(id), 'utf8'), '{not valid json');
@@ -164,7 +167,9 @@ test('progress emit (E4): valid payload with SESSION_FILE_CORRUPT keeps the verd
     const result = progressEmit(id, 'spec-standalone@1', progress([]));
     const json = JSON.parse(result.stdout);
     assert.equal(json.validation.ok, true);
-    assert.match(json.validation.validated_at, VALIDATED_AT_PATTERN);
+    assert.match(json.received_at, RECEIVED_AT_PATTERN);
+    assert.equal(json.validation.validated_at, undefined);
+    assert.equal(json.validation.received_at, undefined);
     assert.ok(Array.isArray(json.warnings) && json.warnings.includes('SESSION_FILE_CORRUPT'));
   } finally {
     cleanup(id);
@@ -178,7 +183,9 @@ test('progress emit (E4): valid payload with VERSION_MISMATCH keeps the verdict 
     assert.equal(result.exitCode, 1);
     const json = JSON.parse(result.stdout);
     assert.equal(json.validation.ok, true);
-    assert.match(json.validation.validated_at, VALIDATED_AT_PATTERN);
+    assert.match(json.received_at, RECEIVED_AT_PATTERN);
+    assert.equal(json.validation.validated_at, undefined);
+    assert.equal(json.validation.received_at, undefined);
     assert.equal(json.error, 'VERSION_MISMATCH');
   } finally {
     cleanup(id);
@@ -202,7 +209,7 @@ function copyTree(src, dest) {
   fs.cpSync(src, dest, { recursive: true });
 }
 
-test('progress emit (E6): a missing validator module exits 2 naming the tried paths and never emits', () => {
+test('progress emit (E6): a missing validator module exits 2 on every verb naming the tried paths and never emits', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-progress-novalidator-'));
   try {
     fs.mkdirSync(path.join(root, 'bin'));
@@ -211,7 +218,13 @@ test('progress emit (E6): a missing validator module exits 2 naming the tried pa
     const tool = path.join(root, 'bin', 'sai-state.js');
     const id = spawnSession('progress-novalidator');
     try {
-      assert.equal(runCli(['reset', id, 'spec-standalone@1'], '', tool).exitCode, 0);
+      assert.equal(runCli(['reset', id, 'spec-standalone@1']).exitCode, 0);
+      for (const argv of [['spawn', '--key', 'k'], ['reset', id, 'spec-standalone@1'], ['close', id]]) {
+        const r = runCli(argv, '', tool);
+        assert.equal(r.exitCode, 2);
+        assert.equal(r.stdout, '');
+        assert.ok(r.stderr.includes(path.join(root, 'tools', 'worker-report-validator.js')));
+      }
       const before = readRecord(id);
       const result = runCli(['emit', id, 'spec-standalone@1', '--progress', '-'], progress(['prereqs-and-change']), tool);
       assert.equal(result.exitCode, 2);
@@ -341,6 +354,32 @@ test('progress emit (E11): emit without --progress keeps its shape and exit code
 
     const usage = runCli(['emit', id, 'spec-standalone@1'], '');
     assert.equal(usage.exitCode, 2);
+  } finally {
+    cleanup(id);
+  }
+});
+
+test('every sai-state verb writes received_at as the first stdout key and no time on stderr', () => {
+  const id = spawnSession('every-verb');
+  try {
+    const cases = [
+      runCli(['spawn', '--key', `every-verb-b-${process.pid}-${Date.now()}`]),
+      runCli(['reset', id, 'spec-standalone@1']),
+      runCli(['emit', id, 'spec-standalone@1', '-'], JSON.stringify({ step_ids: ['prereqs-and-change'] })),
+      progressEmit(id, 'spec-standalone@1', progress(['prereqs-and-change'])),
+      progressEmit(id, 'spec-standalone@1', 'not json'),
+      runCli(['reset', id, 'nope@1']),
+      runCli(['emit', id, 'spec-standalone@9', '-'], JSON.stringify({ step_ids: [] })),
+      runCli(['close', id]),
+    ];
+    for (const result of cases) {
+      const json = JSON.parse(result.stdout);
+      assert.equal(Object.keys(json)[0], 'received_at', result.stdout);
+      assert.match(json.received_at, RECEIVED_AT_PATTERN);
+      assert.doesNotMatch(result.stderr, /received_at|\d{4}-\d{2}-\d{2}T/);
+      assert.equal(json.validated_at, undefined);
+    }
+    cleanup(JSON.parse(cases[0].stdout).id);
   } finally {
     cleanup(id);
   }

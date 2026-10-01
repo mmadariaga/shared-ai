@@ -28,11 +28,11 @@ verbs take neither `--json` nor `--cwd`. A missing argument is a usage error
 (exit 2).
 
 - **Spawn**: `sai-state spawn --key <stable-key>` initializes or locates the
-  session for that key and returns `{id}`. Derive the key from the harness
+  session for that key and returns `{received_at, id}`. Derive the key from the harness
   session identifier; the same key always yields the same id.
 - **Emit**: `sai-state emit <id> <machineId> -` reads one event as JSON from
   stdin, sends it to one machine, and returns
-  `{stage, next: {follow, hint}, rejected?, warnings?}`. The `-` marker is the
+  `{received_at, stage, next: {follow, hint}, rejected?, warnings?}`. The `-` marker is the
   last argument; event JSON passed as an argument is a usage error (exit 2).
 - **Progress emit**: `sai-state emit <id> <machineId> --progress [--with-overview true|false] -`
   reads one worker progress payload
@@ -42,8 +42,9 @@ verbs take neither `--json` nor `--cwd`. A missing argument is a usage error
   registry read,
   then derives the machine event `{"step_ids": [...]}` from the valid payload
   and advances the machine. It always returns an object carrying
-  `validation: {ok, action, kind, errors, validated_at?}` — the same verdict
-  `worker-report-validator.js validate --kind progress` prints — and, only on a
+  `received_at` and `validation: {ok, action, kind, errors}` — the same
+  timeless verdict `worker-report-validator.js validate --kind progress` prints
+  without its `received_at` — and, only on a
   valid verdict, the ordinary emit fields above. An invalid verdict never
   reaches the machine; non-JSON stdin is an invalid verdict, not
   `EVENT_UNPARSEABLE`. Exit 1 covers both an invalid verdict and a machine
@@ -51,14 +52,17 @@ verbs take neither `--json` nor `--cwd`. A missing argument is a usage error
   `design-standalone@1` and adds `withOverview` to the derived event; on any
   other machine it is a usage error (exit 2). A validator module found in
   neither location relative to the CLI exits 2 naming the tried paths and
-  emits nothing.
+  emits nothing. Every verb loads that module for `received_at`, so a missing
+  validator exits 2 on every verb. Every stdout JSON response, machine errors
+  (exit 1) included, carries `received_at` as its first key; stderr carries no
+  time.
 - **Reset**: `sai-state reset <id> <machineId>` clears that one machine's state
-  and returns `{reset: <machineId>}`; other machines in the session keep theirs.
+  and returns `{received_at, reset: <machineId>}`; other machines in the session keep theirs.
   A linear step machine (§ Step machines) also returns
   `{stage, next: {follow, hint}}` for its first filed step, the first step
-  whose `follow` is a file. Other machines return only `{reset}`.
+  whose `follow` is a file. Other machines return only `{received_at, reset}`.
 - **Close**: `sai-state close <id>` deletes the session file and returns
-  `{closed: id}`; the same id then starts from the initial state. Close the
+  `{received_at, closed: id}`; the same id then starts from the initial state. Close the
   session when the run closes.
 
 `machineId` is exactly `<name>@<version>` (for example `explore-idea@1`).

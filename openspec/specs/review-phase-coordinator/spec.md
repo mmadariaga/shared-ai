@@ -106,8 +106,8 @@ After a completed worker result, the coordinator SHALL print the worker-authored
 
 ### Requirement: Review progress uses payload-derived stamps
 
-The review coordinator SHALL validate lifecycle results and render each completed-step stamp from the `validated_at` of the verdict that marked it, without taking ownership of review analysis or report I/O.
+The review coordinator SHALL validate lifecycle results and render each completed-step stamp from the `received_at` of the response that marked it, without taking ownership of review analysis or report I/O.
 
 #### Scenario: Review progress returns
 - **WHEN** the review worker reports progress
-- **THEN** the coordinator renders the `validated_at`-derived stamp and resumes the worker unchanged.
+- **THEN** the coordinator renders the `received_at`-derived stamp and resumes the worker unchanged.

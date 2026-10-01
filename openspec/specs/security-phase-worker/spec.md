@@ -86,7 +86,7 @@ The security instruction and report contract SHALL assign every finding a severi
 
 ### Requirement: Security lifecycle results carry no time field
 
-The security worker SHALL return progress and terminal lifecycle results with no time field, while retaining SAST, SCA, report, and no-production-write boundaries; the validator's `validated_at` sidecar is the only observed time.
+The security worker SHALL return progress and terminal lifecycle results with no time field, while retaining SAST, SCA, report, and no-production-write boundaries; the CLI response's `received_at` is the only observed time.
 
 #### Scenario: Security reports a milestone
 - **WHEN** a security milestone completes

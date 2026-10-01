@@ -172,7 +172,7 @@ todo surface on opencode). A TODO state never authorizes a mutation.
 ## Terminal
 
 `render_terminal` prints the worker source `summary` unchanged and forwards the
-validator's `validated_at` sidecar verbatim. It prints `Merge done.` only when
+terminal `validate` response's `received_at` verbatim. It prints `Merge done.` only when
 `commit_executed` is true. Before clearing the merge-owned TODO surface it
 records the final state; the invocation's changed-files union stays coordinator
 state.

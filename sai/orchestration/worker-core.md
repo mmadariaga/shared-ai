@@ -29,8 +29,7 @@ operation prevails.
 Every closed payload — terminal status, notice, progress event, ready return,
 and phase-defined extension alike — carries no time field.
 Time is observation, not claim: the worker never reads a clock and never authors a timestamp, and
-the validator tool observes each valid result and emits a display-only
-`validated_at` sidecar on its verdict, per
+the CLI tools stamp each response with a top-level `received_at`, per
 `@sai/orchestration/command-runner.md` § Validation. A replacement worker never
 reconstructs a prior observation, and the worker
 never renders, attaches, or formats a stamp itself. Unknown payload fields are ignored, so

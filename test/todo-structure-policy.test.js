@@ -121,7 +121,7 @@ test('todo-structure policy names no per-harness time command in the milestone s
   assert.doesNotMatch(source, /\bdate\b/i);
 });
 
-test('todo-structure policy makes the stamp closure-only, sourced from validated_at, with no wall-clock call', () => {
+test('todo-structure policy makes the stamp closure-only, sourced from received_at, with no wall-clock call', () => {
   const source = policy();
 
   assert.match(source, /closure-only/i,
@@ -130,9 +130,9 @@ test('todo-structure policy makes the stamp closure-only, sourced from validated
     'a step should be stamped exactly when it renders completed');
   assert.match(source, /`pending` step and the `in_progress` step carry none/i,
     'pending and in_progress steps should carry no stamp');
-  assert.match(source, /`validated_at` of the validator verdict that marked the step/i,
+  assert.match(source, /top-level `received_at` of the response that marked the step/i,
     'the value should come from the marking verdict');
-  assert.match(source, /terminal verdict's `validated_at`/i,
+  assert.match(source, /terminal `validate` response's `received_at`/i,
     'bulk close should use the terminal verdict value');
   assert.match(source, /no wall-clock call of any kind/i,
     'the coordinator should issue no wall-clock call');

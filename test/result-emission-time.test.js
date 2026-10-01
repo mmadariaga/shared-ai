@@ -13,7 +13,7 @@ function artifact(relativePath) {
   return fs.readFileSync(fullPath, 'utf8');
 }
 
-// ─── worker-core: payloads are timeless, validator emits validated_at ───────
+// ─── worker-core: payloads are timeless, CLI responses carry received_at ───────
 
 test('worker-core keeps closed payloads timeless with no time field', () => {
   const core = artifact('sai/orchestration/worker-core.md');
@@ -33,11 +33,15 @@ test('worker-core keeps closed payloads timeless with no time field', () => {
   }
 });
 
-test('the runner fixes validated_at as validator-observed ISO-8601 sidecar', () => {
+test('the runner fixes received_at as the CLI-reception ISO-8601 response key', () => {
   const core = `${artifact('sai/orchestration/worker-core.md')}\n${artifact('sai/orchestration/command-runner.md')}`;
 
-  assert.match(core, /validator-observed/i,
-    'validated_at should be validator-observed');
+  assert.match(core, /received_at/,
+    'received_at should be the response time key');
+  assert.match(core, /CLI reception time/i,
+    'received_at should be CLI reception time');
+  assert.doesNotMatch(core, /validated_at/,
+    'validated_at should be gone with no alias');
   assert.match(core, /YYYY-MM-DDTHH:MM:SS±HH:MM/,
     'the exact wire form should be stated');
   assert.match(core, /local wall-clock time/i,
@@ -61,7 +65,7 @@ test('the validator owns the clock with reception-time semantics', () => {
     'the worker should never read a clock');
 });
 
-test('validated_at is validator-owned and the coordinator never rewrites it', () => {
+test('received_at is validator-module-owned and the coordinator never rewrites it', () => {
   const core = `${artifact('sai/orchestration/worker-core.md')}\n${artifact('sai/orchestration/command-runner.md')}`;
 
   assert.match(artifact('sai/orchestration/worker-core.md'), /command-runner\.md` § Validation/,
@@ -74,7 +78,7 @@ test('validated_at is validator-owned and the coordinator never rewrites it', ()
     'reconstruction should not carry observation time');
 });
 
-test('validated_at is the sole source of the Milestone Stamp', () => {
+test('received_at is the sole source of the Milestone Stamp', () => {
   const core = `${artifact('sai/orchestration/worker-core.md')}\n${artifact('sai/orchestration/command-runner.md')}`;
 
   assert.match(core, /sole source of the\s+Milestone Stamp/i,
@@ -87,7 +91,7 @@ test('validated_at is the sole source of the Milestone Stamp', () => {
     'the worker should still not render or attach stamps');
 });
 
-// ─── the stamp derives from validated_at end to end ─────────────────────────
+// ─── the stamp derives from received_at end to end ─────────────────────────
 
 test('the three planning wrappers carry no shell grant now that stamps need no clock', () => {
   for (const relativePath of [
@@ -118,7 +122,7 @@ test('no production surface asks a coordinator to acquire a wall-clock time', ()
   }
 });
 
-test('DDR 0141 records the closure-only, validated_at-sourced stamp and ADR 0144 the dropped grant', () => {
+test('DDR 0141 records the closure-only, time-sourced stamp and ADR 0144 the dropped grant', () => {
   const ddr = artifact('docs/ddr/0141-milestone-stamp-is-closure-only-and-derived-from-emitted-on.md');
   const adr = artifact('docs/adr/0144-planning-coordinators-drop-the-scoped-date-shell-entry.md');
   const supersededAdr = artifact('docs/adr/0117a-planning-coordinators-scoped-shell-entry.md');
@@ -150,11 +154,11 @@ test('both decision indexes carry the new records', () => {
 
 // ─── command-runner: the coordinator consumes the validator verdict ─────────
 
-test('the command runner consumes validated_at on every closed payload', () => {
+test('the command runner consumes received_at on every closed payload', () => {
   const runner = artifact('sai/orchestration/command-runner.md');
 
-  assert.match(runner, /validated_at/,
-    'terminal-result validation should include validated_at');
+  assert.match(runner, /received_at/,
+    'terminal-result validation should include received_at');
   assert.match(runner, /YYYY-MM-DDTHH:MM:SS±HH:MM/,
     'the runner should pin the same wire form as worker-core');
   assert.match(runner, /resolves no zone|no conversion/i,
@@ -168,9 +172,9 @@ test('the command runner consumes validated_at on every closed payload', () => {
   assert.match(runner, /verbatim/i,
     'the coordinator should forward the verdict verbatim');
   assert.match(runner, /Milestone Stamp/,
-    'the runner should keep the Milestone Stamp separate from validated_at');
+    'the runner should keep the Milestone Stamp separate from received_at');
   assert.match(runner, /prompt[\s\S]{0,80}terminal[\s\S]{0,40}progress|terminal[\s\S]{0,40}progress[\s\S]{0,80}prompt/i,
-    'the coordinator should surface validated_at in its prompt for terminal and progress');
+    'the coordinator should surface received_at in its prompt for terminal and progress');
 });
 
 // ─── every routed surface restating the progress shape agrees ───────────────
@@ -195,28 +199,28 @@ test('every routed surface restating the progress shape is timeless with no time
     const text = artifact(relativePath);
     // timeless progress shape carries step_ids without a time field
     if (/event:\s*"?progress"?/.test(text)) {
-      assert.doesNotMatch(text, /progress.", validated_at|progress, validated_at/,
-        `${relativePath} should not carry validated_at in the payload shape`);
+      assert.doesNotMatch(text, /progress.", (?:validated|received)_at|progress, (?:validated|received)_at/,
+        `${relativePath} should not carry a time in the payload shape`);
     }
   }
 });
 
 // ─── glossary ───────────────────────────────────────────────────────────────
 
-test('the glossary names Validated At and separates it from the Milestone Stamp', () => {
+test('the glossary names Received At and separates it from the Milestone Stamp', () => {
   const glossary = artifact('GLOSSARY.md');
 
-  assert.match(glossary, /\*\*Validated At\*\*/,
-    'the glossary should define Validated At');
+  assert.match(glossary, /\*\*Received At\*\*/,
+    'the glossary should define Received At');
   assert.match(glossary, /\*\*Progress Event\*\*[\s\S]{0,320}no time field/,
     'the Progress Event definition should be timeless');
-  assert.match(glossary, /Milestone Stamp vs Validated At/,
+  assert.match(glossary, /Milestone Stamp vs Received At/,
     'the glossary should carry the disambiguation between the two time surfaces');
 });
 
 // ─── decision record ────────────────────────────────────────────────────────
 
-test('DDR 0140 records the validated_at decision', () => {
+test('DDR 0140 records the validated_at decision and DDR 0162 amends it with received_at', () => {
   const ddr = artifact('docs/ddr/0140-closed-worker-payloads-carry-result-emission-time.md');
 
   assert.match(ddr, /## Status\s*\n\s*Accepted/);
@@ -224,4 +228,8 @@ test('DDR 0140 records the validated_at decision', () => {
   assert.match(ddr, /## Alternatives Considered/);
   assert.match(ddr, /## Consequences/);
   assert.match(ddr, /## Provenance/);
+  const amend = artifact('docs/ddr/0162-received-at-is-the-cli-response-clock.md');
+  assert.match(amend, /## Status\s*\n\s*Accepted/);
+  assert.match(amend, /received_at/);
+  assert.match(artifact('docs/ddr/0000-INDEX.md'), /0162-received-at-is-the-cli-response-clock/);
 });

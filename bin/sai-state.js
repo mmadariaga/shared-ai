@@ -9,11 +9,18 @@ const envelope = require('../sai-state/envelope.js');
 
 // The worker-report validator is resolved relative to this file. The installed
 // layout is `sai/{bin,tools}` and the source layout is `{bin,sai/tools}`; in each
-// layout exactly one candidate exists. Loaded lazily, only by `emit --progress`.
+// layout exactly one candidate exists. Loaded by every verb: it is the single source of `received_at`.
 const VALIDATOR_CANDIDATES = [
   path.join(__dirname, '..', 'tools', 'worker-report-validator.js'),
   path.join(__dirname, '..', 'sai', 'tools', 'worker-report-validator.js'),
 ];
+
+let receivedAt = null;
+
+// Every stdout JSON response goes through here so `received_at` is its first key.
+function writeResponse(payload) {
+  process.stdout.write(JSON.stringify(Object.assign({ received_at: receivedAt }, payload)) + '\n');
+}
 
 function loadValidator() {
   for (const candidate of VALIDATOR_CANDIDATES) {
@@ -371,7 +378,7 @@ function commandSpawn(key) {
 
   if (record && record.stateVersion === STATE_VERSION) {
     const payload = withWarnings({ id }, loadWarnings);
-    process.stdout.write(JSON.stringify(payload) + '\n');
+    writeResponse(payload);
     process.exitCode = 0;
     return;
   }
@@ -385,7 +392,7 @@ function commandSpawn(key) {
   };
   writeSessionFile(id, newRecord);
   const payload = withWarnings({ id }, loadWarnings);
-  process.stdout.write(JSON.stringify(payload) + '\n');
+  writeResponse(payload);
   process.exitCode = 0;
 }
 
@@ -487,7 +494,7 @@ function commandEmit(id, machineIdArg, eventSource, extraArgs) {
       return { payload };
     }
   });
-  process.stdout.write(JSON.stringify(outcome.payload) + '\n');
+  writeResponse(outcome.payload);
   process.exitCode = outcome.code;
 }
 
@@ -521,11 +528,6 @@ function commandEmitProgress(id, machineIdArg, eventSource, extraArgs, withOverv
   }
 
   const validator = loadValidator();
-  if (!validator || typeof validator.validateText !== 'function') {
-    process.stderr.write('emit --progress could not load the worker-report validator; tried: ' + VALIDATOR_CANDIDATES.join(', ') + '\n');
-    process.exitCode = 2;
-    return;
-  }
 
   // The raw stdin text goes to the validator unmodified, so the verdict is
   // byte-identical to `worker-report-validator.js validate --kind progress`.
@@ -533,7 +535,7 @@ function commandEmitProgress(id, machineIdArg, eventSource, extraArgs, withOverv
   try { text = readStdinSync(); } catch (err) { text = ''; }
   const validation = validator.validateText(text, 'progress');
   if (!validation.ok) {
-    process.stdout.write(JSON.stringify({ validation }) + '\n');
+    writeResponse({ validation });
     process.exitCode = 1;
     return;
   }
@@ -543,7 +545,7 @@ function commandEmitProgress(id, machineIdArg, eventSource, extraArgs, withOverv
   if (withOverview !== undefined) event.withOverview = withOverview;
 
   const outcome = runEmit(id, machineIdArg, () => ({ event }));
-  process.stdout.write(JSON.stringify(Object.assign({ validation }, outcome.payload)) + '\n');
+  writeResponse(Object.assign({ validation }, outcome.payload));
   process.exitCode = outcome.code;
 }
 
@@ -561,7 +563,7 @@ function commandReset(id, machineIdArg) {
   const parsed = envelope.parseTarget(machineIdArg);
   if (!parsed) {
     const payload = withWarnings({ error: 'INVALID_EVENT' }, loadWarnings);
-    process.stdout.write(JSON.stringify(payload) + '\n');
+    writeResponse(payload);
     process.exitCode = 1;
     return;
   }
@@ -571,7 +573,7 @@ function commandReset(id, machineIdArg) {
   try { mod = registry.get(targetId); } catch (err) { mod = null; }
   if (!mod) {
     const payload = withWarnings({ error: 'UNKNOWN_MACHINE' }, loadWarnings);
-    process.stdout.write(JSON.stringify(payload) + '\n');
+    writeResponse(payload);
     process.exitCode = 1;
     return;
   }
@@ -620,7 +622,7 @@ function commandReset(id, machineIdArg) {
     writeSessionFile(id, merged);
   } catch (err) {
     const payload = withWarnings({ error: 'WRITE_FAILED' }, loadWarnings);
-    process.stdout.write(JSON.stringify(payload) + '\n');
+    writeResponse(payload);
     process.exitCode = 1;
     return;
   }
@@ -644,7 +646,7 @@ function commandReset(id, machineIdArg) {
   }
 
   const payload = withWarnings(response, loadWarnings);
-  process.stdout.write(JSON.stringify(payload) + '\n');
+  writeResponse(payload);
   process.exitCode = 0;
 }
 
@@ -667,12 +669,21 @@ function commandClose(id) {
   }
 
   sessions.delete(id);
-  process.stdout.write(JSON.stringify({ closed: id }) + '\n');
+  writeResponse({ closed: id });
   process.exitCode = 0;
 }
 
 function main(argv) {
   const parsed = parseArgs(argv);
+  if (['spawn', 'emit', 'reset', 'close'].includes(parsed.command)) {
+    const validator = loadValidator();
+    if (!validator || typeof validator.generateReceivedAt !== 'function' || typeof validator.validateText !== 'function') {
+      process.stderr.write('sai-state could not load the worker-report validator; tried: ' + VALIDATOR_CANDIDATES.join(', ') + '\n');
+      process.exitCode = 2;
+      return;
+    }
+    receivedAt = validator.generateReceivedAt();
+  }
   if (parsed.command === 'spawn') {
     commandSpawn(parsed.named.key);
     return;

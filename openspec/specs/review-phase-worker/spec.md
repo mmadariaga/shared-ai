@@ -92,7 +92,7 @@ The worker SHALL write only `openspec/changes/{change-name}/review.md` using the
 
 ### Requirement: Review lifecycle results carry no time field
 
-The review worker SHALL return progress and terminal lifecycle results with no time field, while retaining passes 1–11, report generation, and triage ownership; the validator's `validated_at` sidecar is the only observed time.
+The review worker SHALL return progress and terminal lifecycle results with no time field, while retaining passes 1–11, report generation, and triage ownership; the CLI response's `received_at` is the only observed time.
 
 #### Scenario: Review reports a milestone
 - **WHEN** a review milestone completes

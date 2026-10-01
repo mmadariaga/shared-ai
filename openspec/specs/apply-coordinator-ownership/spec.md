@@ -70,7 +70,7 @@ The apply coordinator SHALL retain task-list, verification, union, gate, and com
 
 #### Scenario: Apply receives a worker result
 - **WHEN** a RED or GREEN worker returns progress or a terminal result
-- **THEN** the coordinator takes observation time from the validator's `validated_at`, never from the payload.
+- **THEN** the coordinator takes observation time from the CLI response's `received_at`, never from the payload.
 
 ### Requirement: Coordinator-owned commit gates honor the session flag
 

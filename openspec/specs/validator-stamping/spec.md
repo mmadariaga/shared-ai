@@ -2,25 +2,34 @@
 
 ## Purpose
 TBD - created by archiving change replace-emitted-on-with-validated-at. Update Purpose after archive.
+
 ## Requirements
-### Requirement: Valid verdicts carry a display-only observation timestamp
-Valid results SHALL carry an additive display-only validated_at sidecar as a text suffix and a JSON field. Exit codes and ok/errors semantics SHALL remain unchanged and the payload SHALL never be rewritten.
 
-#### Scenario: A valid terminal payload validates
-- **WHEN** a valid closed terminal payload is validated
-- **THEN** the verdict carries ok true with empty errors and a well-formed validated_at
+### Requirement: Verdicts are timeless
+`validateText(text, kind)` in `sai/tools/worker-report-validator.js` SHALL be a pure function that returns exactly `{ok, action, kind, errors}` for valid and invalid results of every kind, with no time field. The payload SHALL never be rewritten, and exit codes and `ok`/`errors` semantics SHALL be unchanged.
 
-### Requirement: Invalid verdicts carry no timestamp
-Invalid results SHALL return errors with exit 1 and SHALL carry no timestamp.
+#### Scenario: A valid payload yields a timeless verdict
+- **WHEN** `validateText` validates a valid payload of kind terminal, notice, progress or conflict_detected
+- **THEN** it returns `{ok: true, action: "validate", kind, errors: []}` with no `received_at` or `validated_at` field
 
-#### Scenario: An invalid payload is rejected without time
-- **WHEN** an invalid closed payload is validated
-- **THEN** the verdict carries ok false with errors and no timestamp
+#### Scenario: An invalid payload yields a timeless verdict
+- **WHEN** `validateText` validates an invalid payload
+- **THEN** it returns `ok: false` with `errors` and no time field
 
-### Requirement: The sidecar applies to all four validated kinds
-The sidecar SHALL apply to terminal, notice, progress, and conflict_detected kinds.
+### Requirement: The validate response carries received_at as its first key
+`worker-report-validator.js validate --json` SHALL read the time once per invocation and write `{received_at, ok, action, kind, errors}` with `received_at` as the first key, for valid and invalid verdicts and for all four kinds. In text mode the valid line SHALL read `valid (<kind>) received_at <ts>` and the invalid line SHALL be unchanged and carry no time. Usage errors, IO errors and exceptions SHALL go to stderr with exit 2 and carry no time. `validated_at` SHALL NOT appear anywhere, with no alias and no dual emission.
 
-#### Scenario: Each kind carries the sidecar when valid
-- **WHEN** a valid payload of any of the four kinds is validated
-- **THEN** the verdict for that kind carries validated_at with exit 0
+#### Scenario: JSON response puts received_at first
+- **WHEN** a payload of any kind, valid or invalid, is piped to `validate --kind <kind> --json`
+- **THEN** the stdout object's first key is `received_at` followed by `ok`, `action`, `kind` and `errors`, and the exit code is unchanged
 
+#### Scenario: Text mode keeps the invalid line unchanged
+- **WHEN** a valid payload is validated in text mode
+- **THEN** the line reads `valid (<kind>) received_at <ts>`, while an invalid payload still prints `invalid (<kind>): <errors>` with no time
+
+### Requirement: One exported generator is the single clock of both CLIs
+The validator module SHALL export `generateReceivedAt` as the only time source for `worker-report-validator.js` and `bin/sai-state.js`. It SHALL return local wall-clock time with its numeric UTC offset in `YYYY-MM-DDTHH:MM:SS±HH:MM` form, never the `Z` designator (a machine on UTC writes `+00:00`).
+
+#### Scenario: The generator format is stable
+- **WHEN** `generateReceivedAt()` is called
+- **THEN** the value matches `^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$`
