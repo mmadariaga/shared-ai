@@ -538,7 +538,7 @@ function commandEmitProgress(id, machineIdArg, eventSource, extraArgs, withOverv
     return;
   }
 
-  const progress = JSON.parse(text);
+  const progress = validator.parsePayloadText(text).payload;
   const event = { step_ids: progress.step_ids };
   if (withOverview !== undefined) event.withOverview = withOverview;
 

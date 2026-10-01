@@ -52,9 +52,33 @@ The autonomy audit log SHALL be rendered in the pinned scannable layout single-s
 
 ### Requirement: Direct Build final report omits the autonomy audit
 
-The Direct Build - Unattended final report SHALL NOT present an autonomy audit, including the empty-report case. This exception SHALL apply only to that final report; supervised spec and design phases and every other audit-emitting route SHALL retain the existing autonomy-audit display behavior.
+The Direct Build - Unattended final report SHALL NOT present the auto-answer autonomy audit, including the empty-report case. This exception SHALL apply only to the auto-answer audit of that final report and SHALL NOT suppress the correction and ignored-process-statement entries; supervised spec and design phases and every other audit-emitting route SHALL retain the existing autonomy-audit display behavior.
 
 #### Scenario: Direct Build closes without an autonomy audit
 
 - **WHEN** Direct Build - Unattended reaches its final terminal report
-- **THEN** the report omits the autonomy audit while the shared audit layout and display behavior remain unchanged for every other audit-emitting route
+- **THEN** the report omits the auto-answer autonomy audit while the shared audit layout and display behavior remain unchanged for every other audit-emitting route
+
+#### Scenario: Direct Build reports corrections
+
+- **WHEN** Direct Build - Unattended made an automatic correction or ignored a process statement
+- **THEN** the final report still carries those entries in the shared layout
+
+### Requirement: Automatic corrections and ignored process statements are reported
+
+Unattended lanes SHALL add entries for automatic corrections and for ignored process statements to their terminal report, in the layout single-sourced at `sai/policies/autonomy-audit-log.md`, after the auto-answer entries when both exist. A correction entry SHALL record what failed, what was corrected, and why it stays within the authorization; an ignored-statement entry SHALL record the worker input statement and the worker that reported it. Each count SHALL be emitted only when non-zero. The Direct Build close of `/sai-5-review` and `/sai-review` SHALL produce this record too, appended after the caller's close.
+
+#### Scenario: An automatic correction is reported
+
+- **WHEN** an unattended lane corrects a failure automatically
+- **THEN** its terminal report lists the correction with what failed, what was corrected, and why it stays within the authorization
+
+#### Scenario: A process statement was ignored
+
+- **WHEN** a worker reports that it ignored a process statement
+- **THEN** the terminal report lists the statement and the worker that reported it
+
+#### Scenario: The review close produces the record
+
+- **WHEN** the Direct Build close of `/sai-5-review` or `/sai-review` made an automatic correction
+- **THEN** its terminal report carries the correction entry after the caller's close

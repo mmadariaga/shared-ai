@@ -1,4 +1,4 @@
-  Fetch @sai/policies/unattended-runtime-recovery.md and use it for pre-result runtime interruptions in this route; valid worker results retain the existing handling below.
+  Fetch @sai/policies/unattended-runtime-recovery.md and use it for every non-clean outcome in this route: its resilience rule replaces the local failure branches, applied after the existing validation and **Bounded Recovery** handling below, and a stop reports per its § Stop condition.
 
   **Delegated write scope (Plan exception detail, owns item-1 exception):** The spec-proposal worker writes only its owned `openspec/changes/{name}/proposal.md`, `specs/**`, and permitted change metadata, and the chained design worker writes only its owned `openspec/changes/{name}/design.md`, `tasks.md`, `interfaces.md`, `change-overview.md`, and permitted change metadata (`.openspec.yaml`). Explore gains no direct write tool.
 

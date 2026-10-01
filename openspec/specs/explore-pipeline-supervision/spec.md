@@ -303,7 +303,7 @@ After a successful slice completion, explore SHALL preserve completed progress s
 
 ### Requirement: Direct Build - Unattended run state and failure handling
 
-Direct Build slice inventory (`set` / `active` / `done`) and TODO (`mode` plus `stage` cursor) SHALL be owned by `explore-slice@1` in sidecar-owned state. Remaining Direct Build run state SHALL remain conversation-only and SHALL preserve the fixed worker order, execution boundaries, owned-path staging, and pre-authorized local commit. A backfill execution failure with a partial mutation SHALL report the exact draft paths written before stopping and SHALL never refire any order onto the partially mutated state. An archive preparation or execution failure evaluated as a backfill-artifact error SHALL route the verbatim error to the same backfill worker that created those specs for correction and SHALL relaunch archive with the corrected artifacts. A repeated defect reported without progress after correction SHALL close as failed-retryable with the verbatim failure in view and no further automatic continuation. A late continuation after success SHALL be rejected without mutation. Repeated-defect and partial-mutation closures SHALL carry no finality and SHALL run new retries or changes only at explicit user request. An archive preparation or execution failure that is not a backfill-artifact error SHALL report the exact CLI, staging, or commit state and SHALL never commit a partial plan. CLI failure or invalid JSON that is not a backfill-artifact error SHALL stop before staging and commit. Manual `/sai-archive` and `/sai-commit` guidance remains applicable after a non-clean archive outcome. Incomplete Archive SHALL NOT mark the slice done.
+Direct Build slice inventory (`set` / `active` / `done`) and TODO (`mode` plus `stage` cursor) SHALL be owned by `explore-slice@1` in sidecar-owned state. Remaining Direct Build run state SHALL remain conversation-only and SHALL preserve the fixed worker order, execution boundaries, owned-path staging, and pre-authorized local commit. A backfill execution failure with a partial mutation SHALL report the exact draft paths written before stopping and SHALL never refire any order onto the partially mutated state. An archive preparation or execution failure evaluated as a backfill-artifact error SHALL route the verbatim error to the same backfill worker that created those specs for correction and SHALL relaunch archive with the corrected artifacts. A repeated defect reported without progress after correction SHALL close as failed-retryable with the verbatim failure in view and no further automatic continuation. A late continuation after success SHALL be rejected without mutation. Repeated-defect and partial-mutation closures SHALL carry no finality and SHALL run new retries or changes only at explicit user request. An archive preparation or execution failure that is not a backfill-artifact error SHALL report the exact CLI, staging, or commit state and SHALL never commit a partial plan. CLI failure or invalid JSON that is not a backfill-artifact error SHALL stop before staging and commit. A backfill or archive worker failure before its closed order completes SHALL be evaluated by the resilience rule first, and the run SHALL stop only when the rule answers no; the one-shot limits above SHALL remain unchanged, so a sent execution order is never replayed and a partial mutation is never refired. Manual `/sai-archive` and `/sai-commit` guidance remains applicable after a non-clean archive outcome. Incomplete Archive SHALL NOT mark the slice done.
 
 #### Scenario: Archive failure stops the unattended flow
 
@@ -312,8 +312,8 @@ Direct Build slice inventory (`set` / `active` / `done`) and TODO (`mode` plus `
 
 #### Scenario: Hands-worker failure stops clean
 
-- **WHEN** the backfill or archive worker returns a failure before completing its closed order
-- **THEN** the run stops before the next mutation stage and manual `/sai-archive` and `/sai-commit` guidance is reported
+- **WHEN** the backfill or archive worker returns a failure before completing its closed order and the resilience rule answers no
+- **THEN** the run stops before the next mutation stage, never replays a sent execution order, and manual `/sai-archive` and `/sai-commit` guidance is reported
 
 #### Scenario: Backfill partial-mutation failure stops before archive
 
@@ -459,31 +459,31 @@ After a valid native picker answer for `Plan - Unattended` activates `route-choi
 
 ### Requirement: Plan - Unattended activates shared runtime recovery for pre-result interruptions
 
-The Plan - Unattended route SHALL load `sai/policies/unattended-runtime-recovery.md` for post-disclosure runtime interruptions before a worker result is accepted, while valid worker results SHALL retain the existing supervision, question, review, and phase-transition handling. Claude Code and opencode SHALL use the same policy semantics while retaining their harness-specific binding mechanics.
+The Plan - Unattended route SHALL load `sai/policies/unattended-runtime-recovery.md` and apply its resilience rule to every non-clean outcome, replacing the route's local failure branches. The rule SHALL apply after the existing validation and Bounded Recovery handling, and a stop SHALL report per the policy's Stop condition. Claude Code and opencode SHALL use the same policy semantics while retaining their harness-specific binding mechanics.
 
 #### Scenario: Plan runtime interruption reaches the shared rule
 
-- **WHEN** a disclosed Plan spec or design worker stretch cannot produce a result accepted by the existing lifecycle checks
-- **THEN** the route evaluates the shared unattended runtime-recovery policy before stopping or asking the user to choose a routine next action
+- **WHEN** a disclosed Plan spec or design worker stretch ends in a non-clean outcome after the existing validation and Bounded Recovery handling
+- **THEN** the route evaluates the shared resilience rule before stopping or asking the user to choose a routine next action
 
 #### Scenario: Valid Plan results remain unchanged
 
 - **WHEN** a Plan worker returns a valid `needs_input`, `failed`, or `cancelled` result
-- **THEN** Plan follows its existing result handling instead of treating the result as an unaccepted runtime interruption
+- **THEN** Plan follows its existing result handling first and applies the rule only where that handling would end the run
 
 ### Requirement: Direct Build - Unattended activates the policy only for the full route
 
-The Direct Build - Unattended route SHALL load `sai/policies/unattended-runtime-recovery.md` only for the full `direct-build-unattended` flow after dispatch/startup handling, payload validation, accepted-result Bounded Recovery, and each role's one-shot execution contract. The pinned `--no-specs` POC profile SHALL remain outside this policy.
+The Direct Build - Unattended route SHALL load `sai/policies/unattended-runtime-recovery.md` only for the full `direct-build-unattended` flow and apply its resilience rule to every non-clean outcome after dispatch/startup handling, payload validation, and accepted-result Bounded Recovery. Where a step says to stop on a failure, the route SHALL stop only when the rule answers no, and it SHALL never use the rule to replay an execution order. The pinned `--no-specs` POC profile SHALL remain outside this policy.
 
 #### Scenario: Full Direct Build reaches runtime recovery
 
-- **WHEN** the full Direct Build - Unattended route has a disclosed worker interruption outside its existing dispatch, validation, Bounded Recovery, and one-shot handling
-- **THEN** the route evaluates the shared runtime-recovery rule without changing its worker order
+- **WHEN** the full Direct Build - Unattended route has a non-clean outcome after its existing dispatch, validation, and Bounded Recovery handling
+- **THEN** the route evaluates the shared resilience rule without changing its worker order
 
 #### Scenario: The POC profile remains excluded
 
 - **WHEN** the Direct Build `--no-specs` POC profile is active
-- **THEN** the route does not load or apply unattended runtime recovery
+- **THEN** the route does not load or apply the resilience rule
 
 ### Requirement: Direct Build implementer accepts a bounded verification note
 

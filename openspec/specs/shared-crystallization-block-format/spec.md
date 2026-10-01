@@ -90,3 +90,17 @@ The `Ready to Propose` block format in `sai/policies/ready-to-propose-format.md`
 
 - **WHEN** a consumer reads a block whose `**Out of scope Implementation Details**` lists items
 - **THEN** no requirement, scenario, intent item, or implementation obligation is derived from those items
+
+### Requirement: Key constraints carries only constraints of the change itself
+
+The Ready to Propose block's `**Key constraints**` field SHALL carry constraints and non-goals of the change's own behavior and scope. The emission sweep that runs before the block is printed SHALL additionally require that every `**Key constraints**` line constrains the change, so that statements about authorization, route, or workflow are not emitted there.
+
+#### Scenario: A process statement is drafted into Key constraints
+
+- **WHEN** a block-emitting surface drafts a `**Key constraints**` line that speaks about authorization, route, or workflow rather than the change
+- **THEN** the emission sweep fails that line and it is not emitted under `**Key constraints**`
+
+#### Scenario: A change constraint is emitted
+
+- **WHEN** a line states a constraint or non-goal of the change's own behavior or scope
+- **THEN** it is emitted under `**Key constraints**` and not as a process statement
