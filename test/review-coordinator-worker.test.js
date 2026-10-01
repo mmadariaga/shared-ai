@@ -122,6 +122,64 @@ test('Direct Build discloses findings and resolves exclusions before the fix wor
   assert.match(fixWorker, /initial exclusion list remains in force across continuations/);
 });
 
+test('zero-audit eligible findings reach the composition-owned shared close on both harnesses', () => {
+  const composition = artifact('sai/commands/meta-review/coordinator.md');
+  const bootstrap = artifact('sai/commands/meta-review/command-bootstrap.md');
+  assert.match(composition, /After successful review and a valid triage parse, apply the composition's\s+shared Direct Build close with only the freshly regenerated `review\.md`/);
+  assert.match(composition, /Eligible findings receive the existing correction choice/);
+  assert.match(bootstrap, /When no audit is activated[\s\S]*existing findings-driven Direct Build\s+close/);
+  assert.doesNotMatch(composition, /do not apply the Direct Build close below|even when `review\.md` still carries findings/);
+  assert.match(composition, /standalone Direct Build close belongs to `\/sai-5-review` and never runs\s+inside this composition/);
+  for (const harness of ['claude', 'opencode']) {
+    assert.ok(artifact(`commands/${harness}/sai-review.md`).includes(`@sai/adapters/${harness}/boot.md`));
+    const boot = artifact(`sai/adapters/${harness}/boot.md`);
+    assert.match(boot, /Routed names[^\n]*`meta-review`[^\n]*select the\s+coordinator card/);
+    assert.ok(boot.includes('Fetch @sai/commands/{name}/coordinator.md'));
+  }
+});
+
+test('zero-audit no-eligible findings preserve the literal and existing eligibility exclusions', () => {
+  const composition = artifact('sai/commands/meta-review/coordinator.md');
+  const close = artifact('sai/commands/meta-review/direct-build-close.md');
+  const literal = 'Review complete. No audits recommended. Run `/sai-archive {name}` in a new chat when ready.';
+  assert.equal(composition.split(literal).length - 1, 1);
+  assert.match(composition, /When no eligible findings remain, print the literal unchanged and stop/);
+  assert.match(composition, /standard close is the zero-audit literal above when zero audits/);
+  assert.match(composition, /`decline-close` = the run-specific standard close/);
+  assert.match(close, /zero remaining findings, offer no selector/);
+  assert.match(close, /Leave open Questions \(`Q\*`\) out of the fix input/);
+  assert.match(close, /whose fix changes a requirement or the design/);
+  assert.match(close, /no remaining finding can be[\s\S]*offer no selector/);
+});
+
+test('zero-audit close excludes stale audit reports from every findings stage', () => {
+  const composition = artifact('sai/commands/meta-review/coordinator.md');
+  assert.match(composition, /only when each audit was activated and regenerated in\s+this same run/);
+  assert.match(composition, /with zero audits, input is only the freshly regenerated\s+`review\.md`/);
+  assert.match(composition, /Existing non-activated audit reports stay untouched and are\s+excluded from eligibility, findings selection, and fix input/);
+});
+
+test('zero-audit correction does not bypass triage errors or individual warnings', () => {
+  const composition = artifact('sai/commands/meta-review/coordinator.md');
+  const bootstrap = artifact('sai/commands/meta-review/command-bootstrap.md');
+  assert.match(composition, /Missing `review\.md` or no legible triage section takes the error close above,\s+never this findings-driven close/);
+  assert.match(composition, /individually illegible section retains\s+its warning and activates no audit; it adds no correction authorization/);
+  assert.match(bootstrap, /none of the three sections is legible — abort/);
+  assert.match(bootstrap, /One or two sections are illegible — each counts as not recommended plus a\s+summary warning line/);
+  assert.match(bootstrap, /exactly `Yes` activates the matching audit segment/);
+  assert.match(composition, /audit failure\/cancellation never aborts siblings/);
+});
+
+test('zero-audit fixes retain explicit selection, existing rounds and local-commit boundaries', () => {
+  const composition = artifact('sai/commands/meta-review/coordinator.md');
+  const close = artifact('sai/commands/meta-review/direct-build-close.md');
+  assert.match(composition, /no\s+fix dispatch before explicit Direct Build selection/);
+  assert.match(close, /nothing is dispatched\s+before that selection/);
+  assert.match(close, /pre-authorizes exactly one local commit/);
+  assert.match(close, /loop is capped at three rounds/);
+  assert.match(close, /no push, no amend, no retry, no other path staged/);
+});
+
 test('review worker contract enumerates the four ids and pins the batch semantics', () => {
   const worker = artifact('sai/commands/review/worker.md');
 

@@ -116,17 +116,20 @@
      status (completed / failed / cancelled) and the path to its artifact.
   2. **Cross-segment changed-files union** — the ordered, duplicate-free union
      across all segments in first-seen order.
-  3. **Zero-audit terminal literal** — when zero audits were activated, print
-     exactly:
+  3. **Zero-audit standard close** — when zero audits were activated, use
+     exactly this literal as the standard close for the shared Direct Build
+     close below:
 
      `Review complete. No audits recommended. Run `/sai-archive {name}` in a new chat when ready.`
 
-     and stop. The zero-audit branch is terminal for this composition: print that
-     literal, dispatch nothing, and do not apply the Direct Build close below —
-     even when `review.md` still carries findings (E2/E5). The review adapter's
+     After successful review and a valid triage parse, apply the composition's
+     shared Direct Build close with only the freshly regenerated `review.md`.
+     When no eligible findings remain, print the literal unchanged and stop;
+     retain any warning or blocked-finding explanation required by the existing
+     close. Eligible findings receive the existing correction choice, with no
+     fix dispatch before explicit Direct Build selection. The review adapter's
      own standalone Direct Build close belongs to `/sai-5-review` and never runs
-     inside this composition, so using the final adapter's `terminal_navigation`
-     here selects its presentation only, never its selector or dispatches.
+     inside this composition; the composition coordinator owns this close.
 
   When one or more audits were activated, print the combined terminal. Do not
   invent a distinct meta-review-only success message that replaces the
@@ -134,21 +137,31 @@
 
   ## Direct Build close (findings-driven)
 
+  The caller's standard close is the zero-audit literal above when zero audits
+  were activated; otherwise it is the combined terminal above. Every shared-close
+  path uses this same run-specific standard close.
+
   Fetch @sai/commands/meta-review/direct-build-close.md and follow it with:
 
   - `input` — `review.md` plus `security.md`, `performance.md`, and
     `accessibility.md` only when each audit was activated and regenerated in
-    this same run; a non-recommended audit is never touched nor regenerated.
+    this same run; with zero audits, input is only the freshly regenerated
+    `review.md`. Existing non-activated audit reports stay untouched and are
+    excluded from eligibility, findings selection, and fix input.
   - `direct-label = Direct Build (Recommended)`, `decline-label = Run sai-build
-    manually`, and `decline-close` = the combined terminal above plus guidance
+    manually`, and `decline-close` = the run-specific standard close plus guidance
     to run `/sai-build {name}` by hand.
+
+  Missing `review.md` or no legible triage section takes the error close above,
+  never this findings-driven close. An individually illegible section retains
+  its warning and activates no audit; it adds no correction authorization.
 
   ## Edge cases
   - **E1**: empty or ambiguous arguments resolve through the standard change-picker exactly once, before any dispatch.
   - **E2**: `review.md` missing or with no legible triage section after a completed review segment → suite aborts without dispatching, reporting the gap.
   - **E3**: an individually illegible section → that audit counts as not recommended plus a summary warning line; the suite continues.
   - **E4**: existing and recommended artifact → re-run and overwrite silently; existing but not recommended → left untouched; missing and recommended → dispatched directly.
-  - **E5**: zero audits recommended → terminal end message, no dispatches.
+  - **E5**: zero audits recommended after successful review and valid triage → shared Direct Build close using freshly regenerated `review.md` only; eligible findings receive the existing choice, otherwise preserve the exact zero-audit literal. No audit dispatches; fixes require explicit selection.
   - **E6**: a `needs_input` pauses only its own segment via the native picker; multiple pending ones process sequentially security→performance→accessibility.
   - **E7**: an audit failure/cancellation never aborts siblings; per-audit status appears in the combined terminal; nothing retries or re-runs review.
   - **E8**: `--fast-track` is stripped as a behavioral no-op (build parity); it suppresses nothing because sai-review owns no questions.
