@@ -31,8 +31,8 @@ must never be written to an artifact or returned.
 
 Use trimmed `arguments_value`, or run `openspec list --json` when it is empty and
 resolve its zero/one/multiple outcomes. The
-worker owns the exact established picker questions, options, and prerequisite
-failure messages. Each input payload has a `question` and ordered options. The
+worker owns the exact established picker questions, options, and failure
+messages. Each input payload has a `question` and ordered options. The
 closed outcomes are `completed`, `needs_input`, `failed`,
 and `cancelled`. For one change ask `Use change '{name}'?`; for multiple
 changes ask `Which change?`; this is the 0/1/N zero/one/multiple protocol. Do not
@@ -56,7 +56,7 @@ When a fast-track auto-correction applies, record it in the terminal `summary` (
 
 ## Active Step Execution
 
-Instruction stretches are delivered just-in-time, one step file at a time. Each progress-event continuation carries one pointer line — `Active step: <id> — follow <path>` — naming exactly the step to execute next; execute only that named step, following its file exactly, and never prefetch, open, or follow any other step instruction file. Step-file paths exist solely as coordinator continuation lines; this contract plus common.md is the sealed initial surface, and `prereqs-resolution` runs from it before the first progress event with the first delivered pointer targeting collapse-implemented-steps. That pointer arrives as the first line of the task-disclosure continuation, before `arguments_value` and `fast_track_active`, per `@sai/orchestration/worker-core.md` § Step-machine task disclosure. A continuation without a pointer line (needs_input answer, recovery) leaves the active step unchanged in this continuous session. Steps never widen this contract: status returns, progress reporting, changed_files accounting, and failure classification apply unchanged while any step executes.
+Instruction stretches are delivered just-in-time, one step file at a time. Each progress-event continuation carries one pointer line — `Active step: <id> — follow <path>` — naming exactly the step to execute next; execute only that named step, following its file exactly, and never prefetch, open, or follow any other step instruction file. Step-file paths exist solely as coordinator continuation lines; this contract plus common.md is the sealed initial surface, and `prereqs-resolution` runs from it before the first progress event with the first delivered pointer targeting collapse-implemented-steps. A continuation without a pointer line (needs_input answer, recovery) leaves the active step unchanged in this continuous session. Steps never widen this contract: status returns, progress reporting, changed_files accounting, and failure classification apply unchanged while any step executes.
 
 ## Recovery
 
@@ -76,20 +76,20 @@ runner's recovery policy, never by inventing a replacement inside the worker.
 This phase declares a progress plan with exactly these canonical step ids, in
 order:
 
-- `prereqs-resolution` — "Check prerequisites"
+- `prereqs-resolution` — "Resolve change"
 - `collapse-implemented-steps` — "Collapse implemented steps"
 - `artifact-analysis` — "Analyze artifacts and validate decisions"
 - `documentation-review` — "Review required documentation"
 - `plan-generation` — "Write implementation.md"
 - `validation` — "Validate implementation.md and the audit append"
 
-Return exactly one progress event per completed batch after prerequisite checks
-pass and change resolution completes, whenever one or more plan steps
+Return exactly one progress event per completed batch after change resolution
+completes, whenever one or more plan steps
 complete, per `@sai/orchestration/worker-core.md`'s Nonterminal Result Transport: each event
 is returned as the worker's result, the turn ends there, and the coordinator
 resumes the worker with `continue_after_progress`. Composing the event as text
-inside this session marks nothing. The startup act (prerequisite checks +
-resolution) completes `prereqs-resolution` and must pass before dispatching any
+inside this session marks nothing. The startup act (change
+resolution and the artifact checks) completes `prereqs-resolution` and must pass before dispatching any
 `budget-subagent` or `budget-explorer`, writing `implementation.md`, or
 beginning artifact analysis. Per `@sai/orchestration/worker-core.md`
 § Step-machine task disclosure, the startup batch reports `prereqs-resolution`

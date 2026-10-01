@@ -22,14 +22,19 @@
  *            disk, then `git add` + `git commit`. The add-list is the stdin
  *            text above the first `---` line; the commit message is the text
  *            below it. `--dry-run` runs only the guard and the report.
+ *            `--mark-only` only marks the Step's Automated checkboxes, for a
+ *            declined commit: no guard, no report, no message, no git.
  *
  * Usage:
  *   node sai/tools/apply-step.js verify --change <name> --step <N>
  *        --dispatch red|green|green-direct|green-exception
  *        [--parent-was-absent] [--json] [--cwd <dir>]        (add-list on stdin)
  *   node sai/tools/apply-step.js close --change <name> --step <N>
- *        [--guard-base <sha|n/a>] [--dry-run] [--json] [--cwd <dir>]
- *        (add-list, a `---` line, then the message on stdin)
+ *        [--guard-base <sha|n/a>] [--dry-run | --mark-only] [--json] [--cwd <dir>]
+ *        (add-list, a `---` line, then the message on stdin; nothing for
+ *        --mark-only)
+ *
+ * Output is always one JSON object; `--json` is accepted and changes nothing.
  *
  * Exit codes: 0 = the call ran (read `ok` / `committed` in the JSON);
  *             1 = close refused or failed (guard violation, bad message,
@@ -635,6 +640,9 @@ function splitCloseInput(stdin) {
 function close(opts, stdin) {
   const { cwd, change, step } = opts;
   const { addList, message } = splitCloseInput(stdin);
+  if (opts.markOnly) {
+    return { committed: false, reason: 'mark-only', marked: markAutomated(cwd, change, step).marked, error: null };
+  }
   const result = {
     status_letter: null,
     report_text: null,
@@ -721,15 +729,17 @@ function usage() {
     'Usage:',
     '  node sai/tools/apply-step.js verify --change <name> --step <N> --dispatch red|green|green-direct|green-exception',
     '       [--parent-was-absent] [--json] [--cwd <dir>]   (add-list on stdin)',
-    '  node sai/tools/apply-step.js close --change <name> --step <N> [--guard-base <sha|n/a>] [--dry-run]',
+    '  node sai/tools/apply-step.js close --change <name> --step <N> [--guard-base <sha|n/a>] [--dry-run | --mark-only]',
     '       [--json] [--cwd <dir>]   (add-list, a `---` line, then the commit message on stdin)',
+    '',
+    'Output is always one JSON object; --json is accepted and changes nothing.',
     '',
     'Exit codes: 0 = ran; 1 = close refused or failed; 2 = usage or IO error.',
   ].join('\n');
 }
 
 function parseArgs(argv) {
-  const opts = { command: null, json: false, cwd: null, change: null, step: null, dispatch: null, guardBase: null, dryRun: false, parentWasAbsent: false, help: false };
+  const opts = { command: null, json: false, cwd: null, change: null, step: null, dispatch: null, guardBase: null, dryRun: false, markOnly: false, parentWasAbsent: false, help: false };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === '--json') opts.json = true;
@@ -739,6 +749,7 @@ function parseArgs(argv) {
     else if (arg === '--dispatch') opts.dispatch = argv[++i];
     else if (arg === '--guard-base') opts.guardBase = argv[++i];
     else if (arg === '--dry-run') opts.dryRun = true;
+    else if (arg === '--mark-only') opts.markOnly = true;
     else if (arg === '--parent-was-absent') opts.parentWasAbsent = true;
     else if (arg === '--help' || arg === '-h') opts.help = true;
     else if (arg.startsWith('--')) return { error: `unknown flag: ${arg}` };
@@ -774,6 +785,9 @@ function main(argv) {
     opts.cwd = path.resolve(opts.cwd || process.cwd());
     if (opts.command === 'verify' && !DISPATCHES.includes(opts.dispatch)) {
       throw new ToolError(`--dispatch must be one of ${DISPATCHES.join('|')}`);
+    }
+    if (opts.markOnly && (opts.command !== 'close' || opts.dryRun)) {
+      throw new ToolError('--mark-only applies to close only and excludes --dry-run');
     }
     if (opts.guardBase && opts.guardBase !== guard.N_A && !guard.SHA_RE.test(opts.guardBase)) {
       throw new ToolError('--guard-base must be a git SHA or n/a');

@@ -41,9 +41,7 @@ The worker owns the change's overview lifecycle for `change-overview.md` per `sp
 - A malformed or empty envelope uses the same `status: failed`, `changed_files` path, `validation: not-performed`, and `failure_kind: envelope-contract-violation` shape, with a non-empty diagnostic naming the detected contract violation, location, and verbatim offending value or `missing` field.
 - If the invalid value supplied `failure_kind`, quote that value before reclassification.
 - Persist the parent-authored classification and details in `.openspec.yaml`, set `overview.state: failed`, preserve the overview file, and suppress completion.
-- **Stale-before-first-write** — every post-materialization source-modifying transaction (a re-invoked `/sai-2-design` or the supervised design phase) sets `overview.state: stale` immediately before the first effective source-artifact write and clears both diagnostic keys.
-- A run that exits unsuccessfully before its first source write leaves the prior state unchanged.
-- A run abandoned after the first source write is conservatively stale without another write.
+- **Stale-before-first-write** — defined in the worker card's § Overview lifecycle guard, which fires before this step loads.
 - **Exactly one regeneration per effective transaction** — after all requested edits complete and a successful `Continue` closes the feedback gate, regenerate exactly once through `materializing` → dispatch → `current`.
 - A generator-run failure atomically leaves the generator-owned stale record, persists its exact `failure_kind` and non-empty `failure_details`, reports the overview path and `.openspec.yaml`, and sets `overview.state: stale`.
 - A dispatch failure preserves the prior file, persists `dispatch-failed` and its diagnostic, reports only the state carrier in addition to the required changed-file union, and sets `stale`.
@@ -51,7 +49,7 @@ The worker owns the change's overview lifecycle for `change-overview.md` per `sp
 - The parent never writes, deletes, or edits `change-overview.md` in any failure mode.
 - **Failure boundary** — whenever a generator or parent-owned overview-generation failure is mapped, present the applicable non-empty `failure_details` together with `failure_kind` to the user, identifying the source, artifact, dispatch, envelope, worker, or file location.
 - Do not report only the state or a generic failure sentence, and do not emit the design completion sentence for a failed first materialization or failed regeneration.
-- **No-effective-change protocol** — capture the exact persisted bytes of the five source sets (`proposal.md`, `specs/**/*.md`, `design.md`, `tasks.md`, `interfaces.md`) at run start, before any write.
+- **No-effective-change protocol** — the run-start byte capture of the five source sets is in the worker card's § Overview lifecycle guard.
 - Compare the final source set byte-for-byte after edits; this byte-exact comparison is the effective-change gate.
 - Byte-identical sources mean no effective change and do not dispatch generation: verify the existing overview against the captured sources and restore `overview.state: current` only when complete and consistent, clearing both diagnostics.
 - Verification failure regenerates.

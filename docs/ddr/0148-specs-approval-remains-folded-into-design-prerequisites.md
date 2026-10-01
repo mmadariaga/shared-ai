@@ -10,7 +10,9 @@ The design phase already gates its work on approval of the generated specs. Intr
 
 ## Decision
 
-Keep the specs approval gate inside the design plan's `prereqs-resolution` step, relabel that step `Check prerequisites`, and introduce no standalone approval step. The step remains `in_progress` while the approval answer is pending; only after approval does the worker proceed to research and the later design artifacts. Approval mechanics and persisted approval metadata remain unchanged.
+Keep the specs approval gate inside the design plan's `prereqs-resolution` step, label that step `Resolve change`, and introduce no standalone approval step. The step remains `in_progress` while the approval answer is pending; only after approval does the worker proceed to research and the later design artifacts. Approval mechanics and persisted approval metadata remain unchanged.
+
+**Amended:** the label was first `Check prerequisites`; it became `Resolve change` once the prerequisite check moved to `/sai-explore` alone.
 
 ## Alternatives Considered
 
@@ -19,7 +21,7 @@ Keep the specs approval gate inside the design plan's `prereqs-resolution` step,
 
 ## Consequences
 
-The design panel continues to communicate that prerequisite resolution is active until the user approves the specs, while the visible label becomes imperative and user-facing. The plan remains seven steps with stable ids, and the approval metadata contract does not change. This is a durable property of the design workflow's gate and rendered state, so it is recorded as a DDR.
+The design panel continues to communicate that prerequisite resolution is active until the user approves the specs, while the visible label becomes imperative and user-facing. The plan keeps stable ids (six steps with overview, five without, since the `review` step was retired), and the approval metadata contract does not change. This is a durable property of the design workflow's gate and rendered state, so it is recorded as a DDR.
 
 ## Provenance
 

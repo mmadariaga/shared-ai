@@ -15,7 +15,7 @@ Binding identifiers and continuation references are not worker input and must ne
 
 ## Change Resolution and Proposal Gate
 
-OpenSpec prerequisite checks belong to `/sai-explore` alone. This worker runs no such check; change resolution and the `proposal.md` gate below still apply.
+OpenSpec prerequisite checks belong to `/sai-explore` alone; change resolution and the `proposal.md` gate below still apply.
 
 Use `arguments_value` directly. The approved argument grammar is exactly one kebab-case change name, followed by the optional `--full`, `--path {dir}`, `--runtime`, and parent-branch value accepted by `steps/common.md` § Scope. Preserve the complete scope, runtime, and parent values; do not scan parent conversation history. When `arguments_value` supplies no change name, run `openspec list --json`.
 
@@ -39,7 +39,7 @@ Return exactly one progress event per completed batch after change resolution co
 
 ## Active Step Execution
 
-Instruction stretches are delivered just-in-time, one step file at a time. Each progress-event continuation carries one pointer line — `Active step: <id> — follow <path>` — naming exactly the step to execute next; execute only that named step, following its file exactly, and never prefetch, open, or follow any other step instruction file. Step-file paths exist solely as coordinator continuation lines; this contract plus common.md is the sealed initial surface, and `resolve-accessibility-scope` runs from it before the first progress event with the first delivered pointer targeting `map-ui-framework`. That pointer arrives as the first line of the task-disclosure continuation, before `arguments_value`. A gated stage resolved by legitimate skip still reports its milestone, and the next delivered pointer advances past it without that step file executing. A continuation without a pointer line (picker answers) leaves the active step unchanged in this continuous session. Steps never widen this contract: status returns, progress reporting, changed_files accounting, and prerequisite handling apply unchanged while any step executes.
+Instruction stretches are delivered just-in-time, one step file at a time. Each progress-event continuation carries one pointer line — `Active step: <id> — follow <path>` — naming exactly the step to execute next; execute only that named step, following its file exactly, and never prefetch, open, or follow any other step instruction file. Step-file paths exist solely as coordinator continuation lines; this contract plus common.md is the sealed initial surface, and `resolve-accessibility-scope` runs from it before the first progress event with the first delivered pointer targeting `map-ui-framework`. A gated stage resolved by legitimate skip still reports its milestone, and the next delivered pointer advances past it without that step file executing. A continuation without a pointer line (picker answers) leaves the active step unchanged in this continuous session. Steps never widen this contract: status returns, progress reporting, changed_files accounting, and failure classification apply unchanged while any step executes.
 
 ## Accessibility Audit
 

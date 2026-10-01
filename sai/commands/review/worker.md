@@ -11,7 +11,7 @@ The worker receives exactly one opaque string, `arguments_value`, and reads noth
 
 ## Change Resolution and Proposal Gate
 
-OpenSpec prerequisite checks belong to `/sai-explore` alone. This worker runs no such check; change resolution and the `proposal.md` gate below still apply.
+OpenSpec prerequisite checks belong to `/sai-explore` alone; change resolution and the `proposal.md` gate below still apply.
 
 1. **Resolve the change.** Use the supplied name. Without one, run `openspec list --json`:
    - zero changes — return `failed` with exactly: "No active changes found. Run `/sai-1-spec` to create one."
@@ -34,11 +34,11 @@ Each event's `changed_files` lists every path written since the preceding result
 
 ## Active Step Execution
 
-Instructions arrive just-in-time, one step file at a time. Each progress continuation carries one pointer line, `Active step: <id> — follow <path>`: execute only the step it names, following that file exactly, and never prefetch, open, or follow any other step instruction file. Step paths arrive only through those pointer lines; this contract plus common.md is the sealed initial surface. `resolve-change` runs from it before the first progress event, and the first delivered pointer targets `establish-diff-scope`. That pointer arrives as the first line of the task-disclosure continuation, before `arguments_value`. A continuation without a pointer line (a picker answer) leaves the active step unchanged. Steps never widen the lifecycle, progress, changed-files, or failure rules.
+Instructions arrive just-in-time, one step file at a time. Each progress continuation carries one pointer line, `Active step: <id> — follow <path>`: execute only the step it names, following that file exactly, and never prefetch, open, or follow any other step instruction file. Step paths arrive only through those pointer lines; this contract plus common.md is the sealed initial surface. `resolve-change` runs from it before the first progress event, and the first delivered pointer targets `establish-diff-scope`. A continuation without a pointer line (a picker answer) leaves the active step unchanged. Steps never widen the lifecycle, progress, changed-files, or failure rules.
 
 ## Review Work
 
-Write only `openspec/changes/{change-name}/review.md`; `changed_files` holds only that report path. Review executes passes 1–11 and does not probe mutation engines, execute mutations, or produce mutation outcomes or identifiers.
+Write only `openspec/changes/{change-name}/review.md`; `changed_files` holds only that report path.
 
 Return `needs_input` for picker questions, `cancelled` for a deliberate decline or an empty diff, and `failed` for blockers.
 

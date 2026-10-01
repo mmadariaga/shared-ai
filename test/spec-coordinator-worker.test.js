@@ -29,7 +29,7 @@ function countLiteral(source, value) {
 
 // The canonical five-step spec progress plan owned by the phase contract.
 const SPEC_PLAN_STEPS = [
-  ['prereqs-and-change', 'Check prerequisites'],
+  ['prereqs-and-change', 'Resolve change'],
   ['research', 'Research the change request'],
   ['proposal', 'Write proposal.md'],
   ['specs', 'Write specs/**'],
@@ -236,10 +236,10 @@ test('coordinator unions changed files in order and replaces a failed continuati
   assert.match(coordinator, /at most one|one replacement|once/i);
 });
 
-test('worker owns prerequisites, resolution, artifacts, summary, and feedback responsibilities', () => {
+test('worker owns resolution, artifacts, summary, and feedback responsibilities', () => {
   const worker = artifact(SPEC_COORDINATOR_ARTIFACTS.worker);
   for (const responsibility of [
-    'prerequisite', 'resolved_change_name', 'artifact', 'summary', 'feedback',
+    'resolved_change_name', 'artifact', 'summary', 'feedback',
   ]) assert.match(worker, new RegExp(responsibility, 'i'));
   assert.match(worker, /metadata[- ]only|metadata/);
   assert.doesNotMatch(worker, /artifact_contents/);

@@ -6,7 +6,7 @@ Keep rare implement content out of the always-loaded step surface: audit ingesti
 ## Requirements
 
 ### Requirement: Audit ingestion SHALL load only when an audit artifact exists
-The audit-ingestion content (Judgment Rubric for Audit Findings, escalation detection, and Ready to Propose handoff) SHALL live in `sai/commands/implement/steps/audit-ingestion.md`. The `artifact-analysis` step SHALL fetch it only when at least one of `review.md`, `security.md`, `performance.md`, or `accessibility.md` exists in `openspec/changes/{change-name}/` at run start, and SHALL skip it silently otherwise.
+The audit-ingestion content (Judgment Rubric for Audit Findings, escalation detection, Ready to Propose handoff, and the audit-step interface contract rule, which both the first-run and re-run append paths use) SHALL live in `sai/commands/implement/steps/audit-ingestion.md`. The `artifact-analysis` step SHALL fetch it only when at least one of `review.md`, `security.md`, `performance.md`, or `accessibility.md` exists in `openspec/changes/{change-name}/` at run start, and SHALL skip it silently otherwise.
 
 #### Scenario: Audit artifact present at run start
 - **WHEN** `artifact-analysis` runs and an audit artifact exists
@@ -17,7 +17,7 @@ The audit-ingestion content (Judgment Rubric for Audit Findings, escalation dete
 - **THEN** it does not load `audit-ingestion.md` and emits no notice about the skip
 
 ### Requirement: Re-run preservation SHALL load only when implementation.md exists
-The re-run preservation content (classify, preserve, and append audit-derived steps, plus the audit-step interface contract rule) SHALL live in `sai/commands/implement/steps/rerun-preservation.md`. The `plan-generation` step SHALL fetch it only when `implementation.md` already exists in `openspec/changes/{change-name}/` at run start, and SHALL skip it silently on a first run.
+The re-run preservation content (classify, preserve, and append audit-derived steps, applying the audit-step interface contract rule from `audit-ingestion.md`) SHALL live in `sai/commands/implement/steps/rerun-preservation.md`. The `plan-generation` step SHALL fetch it only when `implementation.md` already exists in `openspec/changes/{change-name}/` at run start, and SHALL skip it silently on a first run.
 
 #### Scenario: implementation.md exists at run start
 - **WHEN** `plan-generation` runs and `implementation.md` already exists

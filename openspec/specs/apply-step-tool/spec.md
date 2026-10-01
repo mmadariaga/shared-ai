@@ -51,11 +51,15 @@ The coordinator SHALL invoke `apply-step.js close` only after a passing `verify`
 
 ### Requirement: apply-step.js close performs the Step close in one call
 
-`apply-step.js close` SHALL take `--change`, `--step`, `--guard-base <sha|n/a>`, and on stdin the add-list, a `---` line, then the commit message. It SHALL run the no-commit guard `verify` against `--guard-base`, build the visibility report with its pinned status letter, mark the Step's Automated checkboxes `[x]` in `implementation.md` on disk, then run `git add` for exactly the add-list paths that exist in the working tree (a declared removal stages the deletion) and `git commit` with the message. It SHALL return one JSON object carrying `status_letter`, `report_text`, `guard`, `committed`, `sha`, `subject`, `reason`, `marked`, and `error`, and the coordinator SHALL print `report_text` verbatim. Functional checkboxes SHALL never be marked by `close`, and the tool SHALL never add a path outside the add-list. The marks SHALL be written to disk before the commit.
+`apply-step.js close` SHALL take `--change`, `--step`, `--guard-base <sha|n/a>`, optionally `--dry-run` or `--mark-only` (mutually exclusive), and on stdin the add-list, a `---` line, then the commit message. It SHALL run the no-commit guard `verify` against `--guard-base`, build the visibility report with its pinned status letter, mark the Step's Automated checkboxes `[x]` in `implementation.md` on disk, then run `git add` for exactly the add-list paths that exist in the working tree (a declared removal stages the deletion) and `git commit` with the message. It SHALL return one JSON object carrying `status_letter`, `report_text`, `guard`, `committed`, `sha`, `subject`, `reason`, `marked`, and `error`, and the coordinator SHALL print `report_text` verbatim. Functional checkboxes SHALL never be marked by `close`, and the tool SHALL never add a path outside the add-list. The marks SHALL be written to disk before the commit.
 
 #### Scenario: Close marks the Step and commits only the add-list
 - **WHEN** `close` runs with add-list `{src/feature.js}` while `src/unrelated.js` is also modified
 - **THEN** the Step's Automated checkboxes are `[x]` on disk, the commit contains only `src/feature.js`, and the result carries `committed: true`, the `sha`, and the `subject`
+
+#### Scenario: Close mark-only marks a declined Step
+- **WHEN** `close --mark-only` runs
+- **THEN** it marks the Step's Automated checkboxes `[x]` on disk, runs no guard, report, message check, `git add`, or `git commit`, and returns `reason: mark-only` with `marked`
 
 #### Scenario: Close dry-run only reports
 - **WHEN** `close --dry-run` runs
@@ -63,7 +67,7 @@ The coordinator SHALL invoke `apply-step.js close` only after a passing `verify`
 
 ### Requirement: Close call order follows session authorization
 
-Under an active `session_commit_authorized` (including `/sai-build`) the coordinator SHALL make one `close` call per Step. Without it, the coordinator SHALL run `close --dry-run`, print `report_text`, ask the commit-gate authorization question, and only on authorization run `close`. On a `no` answer there SHALL be no commit and the coordinator SHALL print the existing "Commit not authorized" literal.
+Under an active `session_commit_authorized` (including `/sai-build`) the coordinator SHALL make one `close` call per Step. Without it, the coordinator SHALL run `close --dry-run`, print `report_text`, ask the commit-gate authorization question, and only on authorization run `close`. On a `no` answer there SHALL be no commit: the coordinator SHALL run `close --mark-only`, so the verified Step's Automated checkboxes are `[x]` on disk and neither the resumed run nor the terminal sweep re-runs it, and SHALL print the existing "Commit not authorized" literal.
 
 #### Scenario: Session authorization skips the dry run
 - **WHEN** `session_commit_authorized` is active at a Step's commit gate
@@ -71,7 +75,7 @@ Under an active `session_commit_authorized` (including `/sai-build`) the coordin
 
 #### Scenario: Authorization declined
 - **WHEN** the user answers `no` to the commit question after a `close --dry-run`
-- **THEN** no `close` call is made, no commit is created, and the coordinator prints the "Commit not authorized" text
+- **THEN** the coordinator makes one `close --mark-only` call and no committing `close` call, no commit is created, the Step's Automated checkboxes are `[x]` on disk, and the coordinator prints the "Commit not authorized" text
 
 ### Requirement: Close refusals and failures are reported without retry
 

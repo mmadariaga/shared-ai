@@ -10,7 +10,7 @@ Define the canonical spec progress plan: its three ordered steps, their one-to-o
 
 The spec phase adapter SHALL declare the existing six ordered progress steps and the worker contract SHALL enumerate the same ids and labels. The plan SHALL be fully known at dispatch and immutable for the invocation. A worker dispatch SHALL pass only `arguments_value`; the plan SHALL remain coordinator state.
 
-    prereqs-and-change: "Check prerequisites"
+    prereqs-and-change: "Resolve change"
     research: "Research the change request"
     proposal: "Write proposal.md"
     specs: "Write specs/**"
@@ -23,7 +23,7 @@ The indented block above is illustrative of the ids and labels only; it is not t
 
 - **WHEN** `/sai-1-spec` starts in Claude Code or opencode through the routed coordinator
 - **THEN** the spec adapter SHALL declare the six canonical progress steps in order and SHALL render them as a live task list before the first worker result, per the neutral policy `sai/policies/todo-structure.md`
-- **AND** the first step SHALL be labeled `Check prerequisites`
+- **AND** the first step SHALL be labeled `Resolve change`
 
 #### Scenario: spec worker contract mirrors the ids
 

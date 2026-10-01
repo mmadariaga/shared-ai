@@ -58,7 +58,7 @@ function capture(fn) {
 // ─── Step 1: reshape and pin the implementation progress plan ───────────────
 
 const IMPLEMENT_PLAN_STEPS = [
-  ['prereqs-resolution', 'Check prerequisites'],
+  ['prereqs-resolution', 'Resolve change'],
   ['collapse-implemented-steps', 'Collapse implemented steps'],
   ['artifact-analysis', 'Analyze artifacts and validate decisions'],
   ['documentation-review', 'Review required documentation'],
@@ -814,17 +814,13 @@ test('Step 6: implementation completion reconciles every unmarked step without a
 
   assert.equal(declaredIds.includes('review'), false,
     'the implementation plan should declare no literal review step');
-  assert.match(
-    coordinator,
-    /no `review` step and no[\s\S]{0,80}evidence-marked designation, so no reconciliation carve-out applies/i,
-    'the coordinator should state the affirmative no-carve-out contract'
-  );
+  assert.doesNotMatch(coordinator, /evidence-marked|carve-out/i,
+    'the coordinator should carry no evidence-marked designation or carve-out');
   assert.match(
     coordinator,
     /`completed` renders every unmarked step `completed`, `validation` included/i,
     'run-closing completion should reconcile every unmarked step, including validation'
   );
-  assert.doesNotMatch(coordinator, /evidence-marked `review` step/i);
 });
 
 test('Step 6: continue_after_progress is protocol-only and the plan survives reconstruction without a reconstruction field', () => {
@@ -1025,7 +1021,7 @@ test('implement maintains interfaces.md: collapse-implemented-steps prunes both 
 });
 
 test('implement maintains interfaces.md: plan-generation appends audit-step contracts', () => {
-  const planGenStep = artifact('sai/commands/implement/steps/rerun-preservation.md');
+  const planGenStep = artifact('sai/commands/implement/steps/audit-ingestion.md');
 
   assert.match(planGenStep, /Audit-step interface contracts/,
     'plan-generation should have an Audit-step interface contracts section');

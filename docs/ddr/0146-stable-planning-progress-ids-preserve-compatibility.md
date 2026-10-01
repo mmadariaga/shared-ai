@@ -10,7 +10,9 @@ The spec, design, and implementation progress plans already use stable ids such 
 
 ## Decision
 
-Keep every existing planning progress id and its position unchanged, and change the first visible label in each planning phase to `Check prerequisites`. Add the spec phase's new `research` id only where the approved plan explicitly extends the plan shape; do not rename any existing id to match a label. The coordinator declarations and worker enumerations remain canonical peers after the label update.
+Keep every existing planning progress id and its position unchanged, and change the first visible label in each planning phase to `Resolve change`. Add the spec phase's new `research` id only where the approved plan explicitly extends the plan shape; do not rename any existing id to match a label. The coordinator declarations and worker enumerations remain canonical peers after the label update.
+
+**Amended:** the label was first `Check prerequisites`; it became `Resolve change` once the prerequisite check moved to `/sai-explore` alone (`prereq-check-ownership`), because the step no longer checks prerequisites. The ids stay unchanged, as this record requires.
 
 ## Alternatives Considered
 

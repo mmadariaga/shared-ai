@@ -8,16 +8,15 @@ is loaded.
 
 1. Load project context on every run: read `openspec/config.yaml` (read
    `config.yml` only when `config.yaml` is absent) and apply its `context`
-   string as a constraint on research and planning. Never copy it into an
-   artifact. When the file is missing or unreadable, continue without context.
+   string as a constraint on research and planning. When the file is missing
+   or unreadable, continue without context.
 2. On creation, run `openspec new change "<name>"` with the block's `Change
    name`. A refinement run skips it, because the change directory already
    exists.
-3. Run `openspec status --change "<name>" --json`, then
-   `openspec instructions proposal --change "<name>" --json`, and write
-   `proposal.md` to the `resolvedOutputPath` the instructions return, from its
-   `template`, `instruction`, and `rules`, grounded in your research. Apply
-   `context` and `rules` as constraints; never copy them into the file. `--store` is not supported.
+3. Run `openspec instructions proposal --change "<name>" --json` and write
+   `proposal.md` to the `resolvedOutputPath` it returns, from its `template`,
+   `instruction`, and `rules`, grounded in your research. `context` and `rules`
+   constrain the content; keep both out of every artifact.
 4. Stop there: `specs/**` is the next step, and `design.md` and `tasks.md`
    belong to `/sai-2-design`.
 

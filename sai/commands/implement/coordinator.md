@@ -31,7 +31,7 @@
 
   Declare the canonical progress plan for this phase, in order, with exactly these ids and labels — no omissions, reorders, renames, or additions:
 
-  - `prereqs-resolution` — "Check prerequisites"
+  - `prereqs-resolution` — "Resolve change"
   - `collapse-implemented-steps` — "Collapse implemented steps"
   - `artifact-analysis` — "Analyze artifacts and validate decisions"
   - `documentation-review` — "Review required documentation"
@@ -51,8 +51,7 @@
   `@sai/policies/todo-structure.md` through the shared command runner before
   worker continuation; an unavailable panel uses the same recorded degradation
   route and does not block continuation. Mark steps only
-  from worker progress-event `step_ids`; and reconcile at run-closing results. This implementation plan has no `review` step and no
-  evidence-marked designation, so no reconciliation carve-out applies:
+  from worker progress-event `step_ids`; and reconcile at run-closing results:
   `completed` renders every unmarked step `completed`, `validation` included;
   `failed` and `cancelled` leave the list exactly as last rendered; and a
   `needs_input` result — a terminal lifecycle status that is not run-closing —

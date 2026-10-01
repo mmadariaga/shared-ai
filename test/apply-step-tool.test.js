@@ -234,6 +234,37 @@ test('close --dry-run reports OK and touches nothing', () => {
   }
 });
 
+test('close --mark-only marks the Automated boxes of a declined commit and touches git nothing', () => {
+  const { parent, repo, planPath } = makeRepo();
+  try {
+    writeFeature(repo, { passing: true });
+    const head = git(['rev-parse', 'HEAD'], repo);
+    const out = tool(['close', '--change', 'demo', '--step', '1', '--mark-only'], repo, '');
+    assert.equal(out.status, 0, out.stderr);
+    assert.equal(out.payload.reason, 'mark-only');
+    assert.equal(out.payload.committed, false);
+    assert.equal(out.payload.marked, 4);
+    const plan = fs.readFileSync(planPath, 'utf8');
+    assert.match(plan, /- \[x\] RED verified/);
+    assert.match(plan, /- \[ \] Looks fine/); // Functional untouched
+    assert.match(plan, /- \[ \] `node -e "process.exit\(0\)"` — exit 0\n\n#### Step 2 STOP/); // Step 2 untouched
+    assert.equal(git(['rev-parse', 'HEAD'], repo), head);
+    assert.equal(git(['diff', '--cached', '--name-only'], repo), '');
+  } finally {
+    cleanup(parent);
+  }
+});
+
+test('close --mark-only rejects --dry-run', () => {
+  const { parent, repo } = makeRepo();
+  try {
+    const out = tool(['close', '--change', 'demo', '--step', '1', '--mark-only', '--dry-run'], repo, '');
+    assert.equal(out.status, 2);
+  } finally {
+    cleanup(parent);
+  }
+});
+
 test('close marks Automated boxes on disk, then commits only the add-list', () => {
   const { parent, repo, planPath } = makeRepo();
   try {
