@@ -3,10 +3,11 @@ description: Audit a change for security flaws — SAST on the diff vs parent (o
 argument-hint: "[change-name] [optional: --full | --path {dir}] [optional: parent branch]"
 model: opus
 effort: medium
-allowed-tools: Read, Glob, Skill, Agent, SendMessage, AskUserQuestion, TaskCreate, TaskUpdate, TaskGet, TaskList, Bash(node .claude/sai/tools/worker-report-validator.js:*), Bash(node ~/.claude/sai/tools/worker-report-validator.js:*), Bash(node .claude/sai/tools/no-commit-guard.js:*), Bash(node ~/.claude/sai/tools/no-commit-guard.js:*), Bash(node .claude/sai/bin/sai-state.js:*), Bash(node ~/.claude/sai/bin/sai-state.js:*), Bash(git reset:*)
+allowed-tools: {{capabilityAllowedTools}}
 ---
 Fetch @skills/fetch/SKILL.md
 Fetch @sai/adapters/claude/boot.md and follow it.
+Required capability profile: {{capabilityProfile}}.
 Fetch @sai/commands/security/command-bootstrap.md and follow those instructions exactly, forwarding the InvocationEnvelope block below.
 
 InvocationEnvelope:

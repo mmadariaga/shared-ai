@@ -7,99 +7,105 @@ TBD - this spec was authored as a change delta and never merged into the main tr
 ## Requirements
 
 ### Requirement: One-time research-tooling check at explore session start
-`sai-explore` SHALL NOT perform any main-session research-tooling availability check; no probe SHALL run at session start and no notice SHALL be printed before code search. Explorer-owned detection plus per-segment discards SHALL be the only signal.
+
+Explore SHALL NOT perform a main-session research-tooling availability probe at startup or before delegated discovery. Explorer-owned detection and per-segment diagnostics SHALL remain the sole availability signal. Consumers SHALL render only eligible explorer-reported absences under the shared notice rule; no startup state notice SHALL be inferred independently.
 
 #### Scenario: check fires once before any code search
-- **WHEN** a `sai-explore` session begins
-- **THEN** the agent performs no research-tooling check and prints no notice, delegating discovery directly
+- **WHEN** an Explore session begins
+- **THEN** the principal performs no research-tooling probe or startup state notice and delegates discovery directly
 
 #### Scenario: check does not fire again later in the same session
-- **WHEN** the same `sai-explore` session continues with further turns after the initial notice
-- **THEN** the agent still performs no research-tooling check and reprints no notice
+- **WHEN** the same Explore session continues
+- **THEN** the principal runs no independent probe and presents notices only for eligible diagnostics in returned research results
 
 #### Scenario: check never blocks the session
-- **WHEN** the research-tooling check runs
-- **THEN** no check runs, so the session proceeds by delegation with no prompt and no halt
+- **WHEN** startup research availability would otherwise be checked
+- **THEN** no independent check runs and eligible absence notices remain informational rather than a halt
 
 #### Scenario: other sai commands are unaffected
-- **WHEN** any `sai-*` command other than `sai-explore` runs
-- **THEN** its behavior is unchanged and no research-tooling notice is printed
+- **WHEN** another SAI command runs
+- **THEN** it gains no Explore startup availability probe, while Design applies the shared eligible-notice rule when consuming explorer results
 
 #### Scenario: check runs after prereqs pass and before first research
-- **WHEN** prereqs pass in a `sai-explore` session
-- **THEN** the agent runs no script probe before the `## Behaviors` loads and prints no literal, delegating instead
+- **WHEN** Explore prerequisites pass
+- **THEN** the principal runs no research-availability script probe before behavior loading and delegates discovery without a startup state literal
 
 ### Requirement: Read-only detection via tool presence and Glob
-The main session SHALL NOT determine research-tooling state via any filesystem probe, caller-supplied `--mcp-present` flag, or Glob; detection SHALL live only in the explorer in its own session.
+
+The principal SHALL NOT determine research availability through a filesystem probe, caller-supplied mcp-present flag, or Glob. Detection SHALL remain in the explorer's session and shall not mutate the project. The consumer MAY render eligible diagnostics returned by the explorer but SHALL NOT independently infer a notice from index contents.
 
 #### Scenario: detection uses only read-only probes
-- **WHEN** the agent evaluates the research-tooling state
-- **THEN** the principal runs no evaluation and delegates without any file write or edit
+- **WHEN** research-tooling state is evaluated
+- **THEN** detection remains explorer-owned without principal availability evaluation or file writes
 
 #### Scenario: harness-namespaced tool names are recognized
-- **WHEN** the code-graph MCP tools are exposed under a harness namespace such as `mcp__codegraph__*` rather than an unprefixed `codegraph_*`
-- **THEN** only the explorer recognizes that presence in its own session; the principal computes no flag
+- **WHEN** CodeGraph MCP uses a harness namespace
+- **THEN** the explorer recognizes its granted access in its own session and the principal computes no availability flag
 
 #### Scenario: a root entry other than the sentinel is evidence
-- **WHEN** the root-scoped `.codegraph` results include an entry such as `codegraph.db`
-- **THEN** only the explorer treats that as index presence; the principal prints no notice
+- **WHEN** the explorer encounters root index evidence such as codegraph.db
+- **THEN** only the explorer evaluates it and the principal infers no state notice independently
 
 #### Scenario: a sentinel-only directory is not evidence
-- **WHEN** the root-scoped results contain only `.gitignore`
-- **THEN** only the explorer treats the index as absent; the principal prints no notice
+- **WHEN** explorer-observed root results contain only the index sentinel
+- **THEN** the explorer may report applicable index absence with remediation and the consumer applies the shared eligibility filter rather than probing independently
 
 #### Scenario: a nested-only directory is not evidence
-- **WHEN** a `.codegraph` directory exists only below another project directory and the root-scoped results contain no non-sentinel entry
-- **THEN** the nested directory determines nothing in the principal, which runs no check
+- **WHEN** an index exists only below another directory and no usable root index is established
+- **THEN** the explorer owns that assessment and the principal performs no independent check
 
 #### Scenario: binary probe and explicit MCP flag decide installed state
-- **WHEN** the script evaluates binary presence and the caller supplies explicit MCP presence
-- **THEN** no caller-supplied flag is produced from the explore path and no script-side MCP inference occurs for explore
+- **WHEN** tooling outside the live Explore route accepts binary evidence or an explicit MCP flag
+- **THEN** the Explore principal produces no caller-supplied availability flag and performs no script-side MCP inference
 
 ### Requirement: Three-state detection with matching notice
-There SHALL be no main-session three-state classification and no main-session notice; the `not-installed`, `no-index`, and `ready` literals SHALL NOT be printed by the principal.
+
+The principal SHALL NOT restore the retired three-state classification or its not-installed, no-index, and ready literals. Availability SHALL remain explorer-owned. Explore and Design MAY present eligible unavailable diagnostics through the shared Research tool unavailable format, including concrete remediation, without a separate principal probe.
 
 #### Scenario: no code-graph tools present
-- **WHEN** the session has no code-graph MCP tools available
-- **THEN** the principal prints no fallback notice and delegates instead
+- **WHEN** the explorer establishes that granted applicable CodeGraph tools are absent
+- **THEN** the consumer may present eligible absence guidance without printing a retired state literal or running an independent probe
 
 #### Scenario: code-graph tools present but no index
-- **WHEN** code-graph MCP tools are present but the root-scoped directory `Glob` returns no entry other than `.gitignore`
-- **THEN** the principal prints no fallback notice and delegates instead
+- **WHEN** the explorer establishes applicable project-index absence
+- **THEN** the consumer may present reported codegraph init guidance without initializing the index or probing independently
 
 #### Scenario: code-graph tools and index both present
-- **WHEN** code-graph MCP tools are present and the root-scoped directory `Glob` returns an entry other than `.gitignore`
-- **THEN** the principal prints no ready notice and delegates instead
+- **WHEN** the explorer has usable granted tools and index access
+- **THEN** the consumer prints no ready-state notice
 
 ### Requirement: Notice is always English
-No research-tooling notice SHALL be printed by the main session in any language; the English-only literal rule for this notice SHALL be retired with the notice itself.
+
+The retired English-only three-state notice SHALL NOT be restored. Eligible notices SHALL preserve the shared required format and the explorer's reason and concrete remediation under the applicable communication policy. Other diagnostics SHALL remain internal.
 
 #### Scenario: non-English session still gets an English notice
-- **WHEN** the `sai-explore` session's conversation language is not English
-- **THEN** no research-tooling notice is printed in any language
+- **WHEN** the conversation is not English and an eligible absence is reported
+- **THEN** the consumer preserves the required shared notice format without reviving the retired English-only state notice
 
 ### Requirement: Notice is visually emphasized
-No research-tooling notice SHALL be rendered by the main session; no bold lead, blockquote callout, or warning marker SHALL be printed for this retired check.
+
+Eligible missing-tool notices SHALL use the shared informational blockquote format. The retired startup-check bold leads, ready-state callouts, and warning markers SHALL NOT be restored. These notices SHALL gate nothing.
 
 #### Scenario: fallback notice is emphasized
-- **WHEN** the check prints a fallback notice for the not-installed or installed-but-no-index state
-- **THEN** no fallback notice is printed and no emphasis is rendered
+- **WHEN** an eligible environmental absence is presented
+- **THEN** it uses the shared informational blockquote rather than the retired three-state warning
 
 #### Scenario: ready notice is emphasized
-- **WHEN** the check prints the ready-state notice
-- **THEN** no ready notice is printed and no callout is rendered
+- **WHEN** research tools and index are usable
+- **THEN** no ready-state notice or callout is rendered
 
 #### Scenario: ready JSON literal carries no warning marker
-- **WHEN** the check emits the ready state with `--json`
-- **THEN** no ready literal is emitted from the explore path
+- **WHEN** tooling outside the live route emits ready JSON state
+- **THEN** the Explore path does not render that state as a ready notice or warning marker
 
 ### Requirement: Generic preference with CodeGraph-specific recommendation
-The main session SHALL NOT express install or init recommendations for CodeGraph; tool preference SHALL be decided inside the explorer via its ladder.
+
+Tool preference SHALL remain explorer-owned through its profile-aware ladder. Consumers MAY present concrete remediation from eligible explorer diagnostics: configuring or reconnecting CodeGraph MCP, installing the CLI and adding it to PATH, or initializing an absent applicable project index. They SHALL NOT independently invent an availability recommendation, and the explorer SHALL NOT initialize the index itself.
 
 #### Scenario: recommendation names CodeGraph
-- **WHEN** the notice recommends installing or initializing a code-graph tool
-- **THEN** the principal prints no recommendation and delegates the decision to the explorer
+- **WHEN** an eligible explorer-reported absence supplies CodeGraph installation or index-initialization guidance
+- **THEN** the consumer presents that guidance without assuming tool selection or performing installation or initialization
 
 #### Scenario: check does not duplicate global prefer-codegraph guidance
-- **WHEN** a code-graph MCP is present and already injects prefer-codegraph-over-grep guidance into the harness's global memory
-- **THEN** the principal restates nothing and prints no state notice
+- **WHEN** usable CodeGraph access already exists and global guidance prefers it
+- **THEN** the consumer prints no ready-state notice or redundant recommendation

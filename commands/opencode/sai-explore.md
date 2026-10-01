@@ -4,6 +4,7 @@ model: opencode-go/muse-spark-1.3-contributor#xhigh
 ---
 Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.
 Fetch @sai/adapters/opencode/boot.md and follow it.
+Required capability profile: {{capabilityProfile}}.
 Fetch @sai/adapters/opencode/idea-list-render.md and use it.
 Fetch @sai/commands/explore/command-bootstrap.md and follow those instructions exactly, forwarding the InvocationEnvelope block below.
 

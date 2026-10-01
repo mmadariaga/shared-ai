@@ -139,7 +139,7 @@ test('Step 3 manifest projects the shared lifecycle and one active harness bindi
   }
 });
 
-test('a tuned Claude worker is overwritten with repo defaults and is removed by uninstall', () => {
+test('a tuned Claude worker is reused and is removed by uninstall', () => {
   const base = tempDir('sai-step-3-claude-');
   try {
     installClaude(base);
@@ -159,8 +159,7 @@ test('a tuned Claude worker is overwritten with repo defaults and is removed by 
     }
     assert.equal(installError, null, 're-install should not throw on a tuned destination');
     const after = fs.readFileSync(workerPath, 'utf8');
-    assert.deepEqual(Buffer.from(after), sourceBytes,
-      'a tuned destination should be overwritten with repo defaults');
+    assert.equal(after, tuned);
     assert.equal(fs.existsSync(ownerPath), false, 'no owner sidecar should exist');
 
     runDeletion(enumerateClaude(base));
@@ -370,8 +369,8 @@ test('Step 3 opencode agent files install with subagent frontmatter and the cano
       assert.match(content, /^description:/m, `${worker} should declare a description`);
       assert.match(content, /^mode:\s*["']?subagent["']?$/m, `${worker} should declare subagent mode`);
       assert.match(content, /^model:/m, `${worker} should declare a model`);
-      assert.match(content, /^permission:\s*$/m, `${worker} should declare a permission block`);
-      assert.match(content, /^\s*task:/m, `${worker} should declare permission.task`);
+      assert.match(content, /^permissions:\s*$/m, `${worker} should declare V2 permissions`);
+      assert.match(content, /action: "\*"\n\s+resource: "\*"\n\s+effect: deny/, `${worker} should deny undeclared actions`);
       assert.ok(content.includes(`Fetch @sai/commands/${WORKER_CONTRACT_DIRS[worker]}/worker.md and follow it exactly.`),
         `${worker} body should fetch its worker contract`);
     }

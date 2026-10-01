@@ -3,9 +3,11 @@ description: Commit the staged changes with a Conventional Commits message — d
 argument-hint: "[optional: --scope X --type Y --no-body --amend]"
 model: sonnet
 effort: medium
+allowed-tools: {{capabilityAllowedTools}}
 ---
 Fetch @skills/fetch/SKILL.md
 Fetch @sai/adapters/claude/boot.md and follow it.
+Required capability profile: {{capabilityProfile}}.
 Fetch @sai/commands/commit/command-bootstrap.md and follow those instructions exactly, forwarding the InvocationEnvelope block below.
 
 InvocationEnvelope:

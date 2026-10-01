@@ -10,6 +10,7 @@ const { auditActiveReferences } = require('../bin/orchestration-source-audit.js'
 const { loadInstallManifest, matrixRenderFor } = require('../bin/install-manifest.js');
 
 const repoRoot = path.join(__dirname, '..');
+const { readProjected, commandTools } = require('./helpers/capability-source');
 const FEEDBACK_QUESTION = 'Share your feedback on {artifacts} below. You can also type feedback directly in the free-text box.';
 const FEEDBACK_DESCRIPTION = 'Feedback on {artifacts}; you can also type feedback directly in the free-text box.';
 
@@ -35,7 +36,7 @@ function countLiteral(source, value) {
 function artifact(relativePath) {
   const fullPath = path.join(repoRoot, relativePath);
   assert.ok(fs.existsSync(fullPath), `${relativePath} should exist`);
-  return fs.readFileSync(fullPath, 'utf8');
+  return readProjected(relativePath);
 }
 
 function tempDir(prefix) {
@@ -192,7 +193,7 @@ test('design wrappers activate routed Claude/opencode entry and preserve phase b
 
     assert.match(claude, /^model: opus$/m);
     assert.match(claude, /^effort: medium$/m);
-     assert.match(claude, /^allowed-tools: Read, Glob, Skill, Agent, SendMessage, AskUserQuestion, TaskCreate, TaskUpdate, TaskGet, TaskList, Bash\(node \.claude\/sai\/tools\/worker-report-validator\.js:\*\), Bash\(node ~\/\.claude\/sai\/tools\/worker-report-validator\.js:\*\), Bash\(node \.claude\/sai\/tools\/no-commit-guard\.js:\*\), Bash\(node ~\/\.claude\/sai\/tools\/no-commit-guard\.js:\*\), Bash\(node \.claude\/sai\/bin\/sai-state\.js:\*\), Bash\(node ~\/\.claude\/sai\/bin\/sai-state\.js:\*\), Bash\(git reset:\*\)$/m);
+     assert.equal(claude.match(/^allowed-tools: (.+)$/m)[1], commandTools('sai-2-design'));
     assert.doesNotMatch(claude, /sai-2-design-worker/);
    assert.doesNotMatch(claude, /sai-3-implementation-worker/);
      assert.match(claude, /sai\/commands\/design\/command-bootstrap\.md/);
@@ -924,9 +925,9 @@ test('routed Claude wrappers expose the exact coordinator and panel tool scope',
     const match = source.match(/^allowed-tools:\s*(.+)$/m);
     assert.ok(match, `${relativePath} should declare allowed-tools`);
     const toolNames = match[1].split(',').map(tool => tool.trim());
-    assert.deepEqual(toolNames, expectedTools,
+    assert.deepEqual(toolNames, commandTools(path.basename(relativePath, '.md')).split(',').map(tool => tool.trim()),
       `${relativePath} should keep the exact routed scope with panel tools plus the closed node-scoped grant and the scoped mixed-reset grant`);
-    for (const forbidden of ['Edit', 'Write', 'Grep']) {
+    for (const forbidden of ['Edit', 'Write']) {
       assert.equal(match[1].includes(forbidden), false,
         `${relativePath} must not expose ${forbidden}`);
     }
@@ -943,7 +944,7 @@ test('routed Claude wrappers expose the exact coordinator and panel tool scope',
 
 test('Claude apply declares its existing execution capabilities and panel tools explicitly', () => {
   const source = artifact('commands/claude/sai-4-apply.md');
-  assert.match(source, /^allowed-tools: Read, Glob, Grep, Edit, Write, Bash, Skill, Agent, SendMessage, AskUserQuestion, TaskCreate, TaskUpdate, TaskGet, TaskList$/m);
+  assert.equal(source.match(/^allowed-tools: (.+)$/m)[1], commandTools('sai-4-apply'));
   assert.doesNotMatch(source, /^allowed-tools:[^\n]*\bTask\b/m);
 });
 
@@ -960,13 +961,13 @@ test('restore-coordinator-instruction-loading Step 1: explore and status preserv
   assert.doesNotMatch(exploreTools[1], /(?:^|,\s*)(?:Edit|Write)(?:,|$)/);
 
   const status = artifact('commands/claude/sai-status.md');
-  assert.match(status, /^allowed-tools: Read, Glob, Grep, Bash\(openspec:\*\), Bash\(node \.claude\/sai\/tools\/change-picker\.js:\*\), Bash\(node ~\/\.claude\/sai\/tools\/change-picker\.js:\*\), Bash\(node \.claude\/sai\/tools\/status\.js:\*\), Bash\(node ~\/\.claude\/sai\/tools\/status\.js:\*\), AskUserQuestion, Skill$/m);
+  assert.equal(status.match(/^allowed-tools: (.+)$/m)[1], commandTools('sai-status'));
   assert.match(status, /Fetch @sai\/adapters\/claude\/boot\.md and follow it\./);
   assert.doesNotMatch(status, /allowed-tools:[^\n]*(?:Edit|Write|Bash\s*,)/m);
   assert.doesNotMatch(status, /(?:^|,\s*)Bash\(git(?::|\s|,)/,
     'sai-status must not gain a free git grant');
   const worktree = artifact('commands/claude/sai-worktree.md');
-  assert.match(worktree, /^allowed-tools: Read, Glob, Grep, Bash\(git:\*\), Bash\(node \.claude\/sai\/tools\/worktree\.js:\*\), Bash\(node ~\/\.claude\/sai\/tools\/worktree\.js:\*\), AskUserQuestion, Skill$/m);
+  assert.equal(worktree.match(/^allowed-tools: (.+)$/m)[1], commandTools('sai-worktree'));
 });
 
 test('sai-2 feedback gate advertises and accepts direct free-text replies', () => {

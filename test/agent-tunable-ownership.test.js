@@ -113,60 +113,51 @@ test('first install writes source verbatim', () => {
   }
 });
 
-test('global reinstall overwrites customized models with repo defaults', () => {
+test('global reinstall updates managed content and preserves customized models', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-tunable-overwrite-'));
   try {
     const source = '---\ndescription: Source command\nmodel: source-model\neffort: source-effort\n---\n\nSource body.\n';
     const dest = installTunableSeed(dir, source,
       '---\ndescription: Dest command\nmodel: tuned-model\neffort: tuned-effort\n---\n\nDest body.\n');
-    assert.equal(dest, source,
-      'global install should overwrite the destination with source bytes verbatim');
-    assert.ok(dest.includes('model: source-model') && dest.includes('effort: source-effort'),
-      'source tunable values should overwrite destination tunables');
-    assert.ok(!dest.includes('model: tuned-model') && !dest.includes('effort: tuned-effort'),
-      'destination tunable customizations should not survive a global reinstall');
+    assert.equal(dest, source.replace('source-model', 'tuned-model').replace('source-effort', 'tuned-effort'));
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
 
-test('global reinstall overwrites destination with source including tunables', () => {
+test('global reinstall preserves destination-only model with new managed keys', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-tunable-gain-'));
   try {
     const source = '---\ndescription: Test\ndescription_priority: override\npermission:\n  task:\n    "*": deny\n---\n\nbody\n';
     const dest = installTunableSeed(dir,
       source,
       '---\ndescription: Test\nmodel: tuned-model\npermission:\n  task:\n    "*": deny\n---\n\nbody\n');
-    assert.equal(dest, source,
-      'global install should overwrite the destination with source bytes verbatim');
+    assert.equal(flow.stripTunableLines(Buffer.from(dest), ['model']).toString(), source);
     assert.ok(dest.includes('description_priority: override'),
       'a source non-tunable key should be present after overwrite');
-    assert.ok(!dest.includes('model: tuned-model'),
-      'destination tunable customizations should not survive a global reinstall');
+    assert.ok(dest.includes('model: tuned-model'));
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
 
-test('global reinstall removes stale keys and discards destination tunables', () => {
+test('global reinstall removes stale managed keys and retains tunables', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-tunable-lose-'));
   try {
     const source = '---\ndescription: Test\npermission:\n  edit: allow\n---\n\nbody\n';
     const dest = installTunableSeed(dir,
       source,
       '---\ndescription: Test\neffort: tuned-effort\ndescription_priority: stale\npermission:\n  edit: allow\n---\n\nbody\n');
-    assert.equal(dest, source,
-      'global install should overwrite the destination with source bytes verbatim');
+    assert.equal(flow.stripTunableLines(Buffer.from(dest), ['effort']).toString(), source);
     assert.ok(!dest.includes('description_priority'),
       'a non-tunable key absent from the source should be removed from the destination');
-    assert.ok(!dest.includes('effort: tuned-effort'),
-      'destination tunable customizations should not survive a global reinstall');
+    assert.ok(dest.includes('effort: tuned-effort'));
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
 
-test('global reinstall overwrites permission-block destinations with source bytes', () => {
+test('global reinstall reuses compatible permission blocks with tuned models', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-tunable-permission-'));
   try {
     const source = '---\ndescription: Test\npermission:\n  edit: "**"\n  task:\n    "*": deny\n---\n\nbody\n';
@@ -174,60 +165,48 @@ test('global reinstall overwrites permission-block destinations with source byte
       source,
       '---\ndescription: Test\nmodel: tuned-model\npermission:\n  edit: "**"\n  task:\n    "*": deny\n---\n\nbody\n',
       'opencode');
-    assert.equal(dest, source,
-      'global install should overwrite the destination with source bytes verbatim');
-    assert.ok(!dest.includes('model: tuned-model'),
-      'destination tunable customizations should not survive a global reinstall');
+    assert.equal(flow.stripTunableLines(Buffer.from(dest), ['model']).toString(), source);
+    assert.ok(dest.includes('model: tuned-model'));
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
 
-test('global reinstall overwrites tunable lines with source values', () => {
+test('global reinstall leaves compatible tunable lines unchanged', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-tunable-order-'));
   try {
     const source = '---\ndescription: Test\nmodel: source-model\neffort: source-effort\n---\n\nbody\n';
     const dest = installTunableSeed(dir,
       source,
       '---\ndescription: Test\neffort: tuned-effort\nmodel: tuned-model\n---\n\nbody\n');
-    assert.equal(dest, source,
-      'global install should overwrite the destination with source bytes verbatim');
-    assert.ok(dest.includes('model: source-model') && dest.includes('effort: source-effort'),
-      'source tunable values should overwrite destination tunables');
+    assert.equal(dest, '---\ndescription: Test\neffort: tuned-effort\nmodel: tuned-model\n---\n\nbody\n');
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
 
-test('global reinstall discards destination-only tunables', () => {
+test('global reinstall retains destination-only tunables', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-tunable-preserve-'));
   try {
     const source = '---\ndescription: Test\nmodel: source-model\n---\n\nbody\n';
     const dest = installTunableSeed(dir,
       source,
       '---\ndescription: Test\nmodel: tuned-model\neffort: tuned-effort\n---\n\nbody\n');
-    assert.equal(dest, source,
-      'global install should overwrite the destination with source bytes verbatim');
-    assert.ok(!dest.includes('effort: tuned-effort'),
-      'a destination-only tunable should not survive a global reinstall');
-    assert.ok(dest.includes('model: source-model'),
-      'the source tunable value should overwrite the destination');
+    assert.ok(dest.includes('effort: tuned-effort') && dest.includes('model: tuned-model'));
+    assert.ok(!dest.includes('source-model'));
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
 
-test('global reinstall seeds source tunables into the destination', () => {
+test('global reinstall retains omitted tunables on compatible existing agents', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-tunable-absent-'));
   try {
     const source = '---\ndescription: Test\nmodel: source-model\neffort: source-effort\n---\n\nbody\n';
     const dest = installTunableSeed(dir,
       source,
       '---\ndescription: Test\n---\n\nbody\n');
-    assert.equal(dest, source,
-      'global install should overwrite the destination with source bytes verbatim');
-    assert.ok(dest.includes('model: source-model') && dest.includes('effort: source-effort'),
-      'source tunables should be seeded into the destination');
+    assert.equal(dest, '---\ndescription: Test\n---\n\nbody\n');
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
@@ -272,8 +251,7 @@ test('extraction does not require a YAML library', () => {
     }
     assert.ok(!requested.some(name => /yaml/i.test(name)),
       'the tunable extraction path must not require a YAML parser');
-    assert.ok(fs.readFileSync(destinationPath, 'utf8').includes('model: source-model'),
-      'global install should overwrite destination tunables with source values');
+    assert.ok(fs.readFileSync(destinationPath, 'utf8').includes('model: tuned-model'));
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }

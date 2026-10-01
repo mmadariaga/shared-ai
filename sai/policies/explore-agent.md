@@ -8,6 +8,11 @@ A dispatch that carries no goal is a ready probe: return exactly `event: ready` 
 
 ## Tool-preference ladder
 
+After goal disclosure, Fetch @sai/policies/tool-access.md and check your declared
+profile. Consider only profile-granted tools at every ladder level, including
+web research and Code Mode's auxiliary grant. An excluded level is not a missing
+runtime tool. Do not use an ungranted shell command to detect availability.
+
 Research tools, in fixed order:
 
 1. **Codegraph** for structural questions (where something is defined, what calls it, what a change would affect):
@@ -24,13 +29,52 @@ You detect availability yourself, in your own session: the caller runs no probe,
 
 ## Ladder level discard logging
 
-`ladder_discards` is an array of `{level, reason}` objects, one per level skipped without an attempt, emitted again in every execution segment. Each reason is one plain phrase:
+`ladder_discards` is an array of objects with `level`, `reason`, and the
+classification fields below, one per level skipped without an attempt,
+emitted again in every execution segment. Each reason is one plain phrase:
 
 - Level 1a: `codegraph MCP tool not available`.
 - Level 1b: `codegraph binary not on PATH`, or `shell unavailable`.
 - Level 2: `shell unavailable`, `git not on PATH`, or `working tree not a git repository`.
 - Levels 1 and 2 on a documentation or known-file query: `not applicable for this query type`.
-- Plus the `caller prescribed <tool>` and `shell operation refused: <description>` entries above.
+- Plus `excluded by capability profile`, `required permission denied`, and the
+  `caller prescribed <tool>` and `shell operation refused: <description>`
+  entries above. Web research uses the same classification when a granted,
+  applicable web tool is absent.
+
+Each entry also carries `classification`, one of `unavailable`, `excluded`,
+`inapplicable`, or `instruction-error`. For an `unavailable` entry include
+`tool`, `granted: true`, `applicable: true`, and concrete `remediation`.
+Only observed environmental absence qualifies: a permission rejection is an
+instruction/access incompatibility, not absence. Keep all entries in the
+payload, including excluded tools, inapplicable queries, caller-prescribed
+tools, and refused shell operations. Missing project indexes are environmental
+unavailability for structural queries, with `codegraph init` as remediation;
+never initialize an index yourself.
+
+### Missing-tool notice presentation
+
+When Explore or Design consumes an explorer result, present once per result
+only entries classified `unavailable` with both `granted` and `applicable`
+equal to `true` and a non-empty `remediation`. Print an informational notice
+that gates nothing: `> Research tool unavailable: <tool> — <reason>. <remediation>`.
+Preserve all other diagnostics internally, without presenting them as missing
+tools. A legacy reason-only entry is unclassified, not a missing-tool notice.
+
+Use `sai/tools/tool-access.js notices` with `{ladder_discards: [...]}` on stdin
+to apply this filter deterministically, resolving the installed tool under
+`@sai/policies/tool-resolution.md` (Fetch that policy before invoking the
+helper). Print its `notices` in order; the input
+diagnostics remain part of the research result. The explorer itself does not
+run this helper: presentation belongs to the consumer.
+
+For CodeGraph MCP, guidance names configuring/enabling the CodeGraph server in
+the active harness and reconnecting it; for its CLI, installing CodeGraph and
+adding it to PATH; for shell, enabling the harness's shell tool; for Git,
+installing Git and adding it to PATH. A non-repository query is inapplicable,
+not a missing Git tool. For web tools, guidance names enabling the active
+harness's web fetch/search integration. Do not fold panel absence into these
+notices; the panel adapter owns its continuation.
 
 ## Decision-record index
 

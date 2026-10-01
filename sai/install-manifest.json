@@ -1,5 +1,68 @@
 {
   "version": 1,
+  "capabilities": {
+    "profiles": {
+      "boot": { "read": true, "skills": ["*"] },
+      "research": { "extends": "boot", "search": true, "codegraph": true, "webfetch": true, "websearch": true, "skills": ["fetch"], "shell": ["git grep *", "codegraph explore *"] },
+      "executor": { "extends": "boot", "skills": ["fetch"], "shell": ["*"] },
+      "task": { "extends": "boot", "search": true, "write": true, "codegraph": true, "webfetch": true, "websearch": true, "shell": ["*"] },
+      "worker-write": { "extends": "boot", "search": true, "write": true, "codegraph": true, "shell": ["*"], "message": true },
+      "worker-execution": { "extends": "worker-write", "skills": ["fetch"] },
+      "worker-read": { "extends": "boot", "search": true, "shell": ["*"], "message": true },
+      "worker-research": { "extends": "worker-write", "delegate": ["explorer"] },
+      "worker-design": { "extends": "worker-write", "codegraph": false, "delegate": ["explorer", "budget"] },
+      "worker-implementation": { "extends": "worker-write", "webfetch": true, "delegate": ["explorer", "budget"] },
+      "worker-backfill": { "extends": "worker-write", "delegate": ["explorer"] },
+      "coordinator": { "extends": "boot", "search": true, "question": true, "panel": true, "message": true, "shell": ["node {sai}/tools/worker-report-validator.js *", "node {sai}/tools/no-commit-guard.js *", "node {sai}/bin/sai-state.js *", "git reset *"] },
+      "spec-command": { "extends": "coordinator", "delegate": ["sai-1-spec-proposal-worker"] },
+      "design-command": { "extends": "coordinator", "delegate": ["sai-2-design-worker"] },
+      "implementation-command": { "extends": "coordinator", "delegate": ["sai-3-implementation-worker"] },
+      "security-command": { "extends": "coordinator", "delegate": ["sai-6-security-worker"] },
+      "performance-command": { "extends": "coordinator", "delegate": ["sai-7-performance-worker"] },
+      "accessibility-command": { "extends": "coordinator", "delegate": ["sai-8-accessibility-worker"] },
+      "review-coordinator": { "extends": "coordinator", "shell": ["node {sai}/tools/worker-report-validator.js *", "node {sai}/tools/no-commit-guard.js *", "node {sai}/bin/sai-state.js *", "git reset *", "git diff *", "git add *", "git commit *"], "delegate": ["sai-5-review-worker", "sai-6-security-worker", "sai-7-performance-worker", "sai-8-accessibility-worker", "sai-review-fix-worker"] },
+      "review-command": { "extends": "review-coordinator", "delegate": ["sai-5-review-worker", "sai-review-fix-worker"] },
+      "apply-coordinator": { "extends": "coordinator", "write": true, "shell": ["*"], "delegate": ["explorer", "executor", "budget", "sai-3-implementation-worker", "sai-4-red-worker", "sai-4-green-worker"] },
+      "apply-command": { "extends": "apply-coordinator", "delegate": ["explorer", "executor", "budget", "sai-4-red-worker", "sai-4-green-worker"] },
+      "mutation-coordinator": { "extends": "coordinator", "write": true, "shell": ["*"] },
+      "commit-command": { "extends": "mutation-coordinator", "write": false, "delegate": ["sai-commit-worker"] },
+      "archive-command": { "extends": "mutation-coordinator", "delegate": ["sai-archive-worker", "sai-backfill-worker"] },
+      "backfill-command": { "extends": "mutation-coordinator", "delegate": ["sai-backfill-worker"] },
+      "merge-command": { "extends": "mutation-coordinator", "delegate": ["sai-merge-worker"] },
+      "explore-command": { "extends": "coordinator", "codegraph": true, "webfetch": true, "websearch": true, "shell": ["openspec *", "git *", "node {sai}/*"], "delegate": ["explorer", "executor", "budget", "sai-1-spec-proposal-worker", "sai-2-design-worker", "sai-3-implementation-worker", "sai-direct-build-worker", "sai-backfill-worker", "sai-archive-worker"] },
+      "utility-write": { "extends": "boot", "search": true, "write": true, "codegraph": true, "shell": ["*"], "question": true },
+      "status-command": { "extends": "boot", "search": true, "question": true, "shell": ["openspec *", "node {sai}/tools/status.js *", "node {sai}/tools/change-picker.js *"] },
+      "worktree-command": { "extends": "boot", "search": true, "question": true, "shell": ["git *", "node {sai}/tools/worktree.js *"] }
+    },
+    "assignments": {
+      "agents": {
+        "budget-explorer": "research", "explore": "research",
+        "budget-executor": "executor", "executor": "executor",
+        "budget-subagent": "task", "budget": "task",
+        "sai-1-spec-proposal-worker": "worker-research",
+        "sai-2-design-worker": "worker-design",
+        "sai-3-implementation-worker": "worker-implementation",
+        "sai-5-review-worker": "worker-research",
+        "sai-6-security-worker": "worker-research",
+        "sai-7-performance-worker": "worker-research",
+        "sai-8-accessibility-worker": "worker-research",
+        "sai-commit-worker": "worker-read", "sai-archive-worker": "worker-read",
+        "sai-backfill-worker": "worker-backfill", "sai-merge-worker": "worker-write",
+        "sai-4-red-worker": "worker-execution", "sai-4-green-worker": "worker-execution",
+        "sai-direct-build-worker": "worker-write", "sai-review-fix-worker": "worker-write"
+      },
+      "commands": {
+        "sai-1-spec": "spec-command", "sai-2-design": "design-command", "sai-3-implement": "implementation-command",
+        "sai-4-apply": "apply-command", "sai-build": "apply-coordinator",
+        "sai-5-review": "review-command", "sai-review": "review-coordinator",
+        "sai-6-security": "security-command", "sai-7-performance": "performance-command", "sai-8-accessibility": "accessibility-command",
+        "sai-commit": "commit-command", "sai-archive": "archive-command",
+        "sai-backfill": "backfill-command", "sai-merge": "merge-command",
+        "sai-explore": "explore-command", "sai-pr": "utility-write", "sai-retire-docs": "utility-write",
+        "sai-status": "status-command", "sai-worktree": "worktree-command"
+      }
+    }
+  },
   "worker-matrix": {
     "templates": {
       "claudeBinding": "sai/orchestration/workers/bindings/claude/worker-template.md",
@@ -47,14 +110,12 @@
           "agentName": "sai-1-spec-proposal-worker",
           "description": "Spec-proposal worker for /sai-1-spec and /sai-explore, dispatched only by their coordinators. Writes a change's proposal.md and specs/.",
           "model": "opus",
-          "effort": "medium",
-          "tools": "Read, Glob, Grep, Bash, Edit, Write, Agent, Skill, SendMessage"
+          "effort": "medium"
         },
         "opencodeAgent": {
           "description": "Spec-proposal worker for /sai-1-spec and /sai-explore, dispatched only by their coordinators. Writes a change's proposal.md and specs/.",
           "model": "opencode-go/deepseek-v4.1-flash",
-          "variant": "max",
-          "permissionBlock": "    budget: allow\n    explore: allow"
+          "variant": "max"
         }
       },
       {
@@ -66,14 +127,12 @@
           "agentName": "sai-2-design-worker",
           "description": "Design worker for /sai-2-design and /sai-explore, dispatched only by their coordinators. Writes design.md, tasks.md, and interfaces.md.",
           "model": "opus",
-          "effort": "medium",
-          "tools": "Read, Glob, Grep, Bash, Edit, Write, Agent, Skill, SendMessage"
+          "effort": "medium"
         },
         "opencodeAgent": {
           "description": "Design worker for /sai-2-design and /sai-explore, dispatched only by their coordinators. Writes design.md, tasks.md, and interfaces.md.",
           "model": "opencode-go/deepseek-v4.1-flash",
-          "variant": "max",
-          "permissionBlock": "    budget: allow\n    explore: allow"
+          "variant": "max"
         }
       },
       {
@@ -85,14 +144,12 @@
           "agentName": "sai-3-implementation-worker",
           "description": "Implementation-planning worker for /sai-3-implement and /sai-build, dispatched only by their coordinators. Writes implementation.md.",
           "model": "opus",
-          "effort": "medium",
-          "tools": "Read, Glob, Grep, Bash, Edit, Write, Agent, Skill, SendMessage"
+          "effort": "medium"
         },
         "opencodeAgent": {
           "description": "Implementation-planning worker for /sai-3-implement and /sai-build, dispatched only by their coordinators. Writes implementation.md.",
           "model": "opencode-go/deepseek-v4.1-flash",
-          "variant": "max",
-          "permissionBlock": "    budget: allow\n    explore: allow"
+          "variant": "max"
         }
       },
       {
@@ -104,14 +161,12 @@
           "agentName": "sai-5-review-worker",
           "description": "Review worker for /sai-5-review and /sai-review, dispatched only by their coordinators. Writes review.md.",
           "model": "opus",
-          "effort": "medium",
-          "tools": "Read, Glob, Grep, Bash, Edit, Write, Agent, Skill, SendMessage"
+          "effort": "medium"
         },
         "opencodeAgent": {
           "description": "Review worker for /sai-5-review and /sai-review, dispatched only by their coordinators. Writes review.md.",
           "model": "opencode-go/gpt-5.6-luna",
-          "variant": "max",
-          "permissionBlock": "    budget: allow\n    explore: allow"
+          "variant": "max"
         }
       },
       {
@@ -123,14 +178,12 @@
           "agentName": "sai-6-security-worker",
           "description": "Security-audit worker for /sai-6-security and /sai-review, dispatched only by their coordinators. Writes security.md.",
           "model": "opus",
-          "effort": "xhigh",
-          "tools": "Read, Glob, Grep, Bash, Edit, Write, Agent, Skill, SendMessage"
+          "effort": "xhigh"
         },
         "opencodeAgent": {
           "description": "Security-audit worker for /sai-6-security and /sai-review, dispatched only by their coordinators. Writes security.md.",
           "model": "opencode-go/deepseek-v4.1-flash",
-          "variant": "max",
-          "permissionBlock": "    budget: allow\n    explore: allow"
+          "variant": "max"
         }
       },
       {
@@ -142,14 +195,12 @@
           "agentName": "sai-7-performance-worker",
           "description": "Performance-audit worker for /sai-7-performance and /sai-review, dispatched only by their coordinators. Writes performance.md.",
           "model": "opus",
-          "effort": "medium",
-          "tools": "Read, Glob, Grep, Bash, Edit, Write, Agent, Skill, SendMessage"
+          "effort": "medium"
         },
         "opencodeAgent": {
           "description": "Performance-audit worker for /sai-7-performance and /sai-review, dispatched only by their coordinators. Writes performance.md.",
           "model": "opencode-go/deepseek-v4.1-flash",
-          "variant": "max",
-          "permissionBlock": "    budget: allow\n    explore: allow"
+          "variant": "max"
         }
       },
       {
@@ -161,14 +212,12 @@
           "agentName": "sai-8-accessibility-worker",
           "description": "Accessibility-audit worker for /sai-8-accessibility and /sai-review, dispatched only by their coordinators. Writes accessibility.md.",
           "model": "opus",
-          "effort": "medium",
-          "tools": "Read, Glob, Grep, Bash, Edit, Write, Agent, Skill, SendMessage"
+          "effort": "medium"
         },
         "opencodeAgent": {
           "description": "Accessibility-audit worker for /sai-8-accessibility and /sai-review, dispatched only by their coordinators. Writes accessibility.md.",
           "model": "opencode-go/deepseek-v4.1-flash",
-          "variant": "max",
-          "permissionBlock": "    budget: allow\n    explore: allow"
+          "variant": "max"
         }
       },
       {
@@ -180,14 +229,12 @@
           "agentName": "sai-commit-worker",
           "description": "Commit-message worker for /sai-commit, dispatched only by its coordinator. Drafts the message from the staged changes; the coordinator runs git.",
           "model": "sonnet",
-          "effort": "medium",
-          "tools": "Read, Glob, Grep, Bash, Skill, SendMessage"
+          "effort": "medium"
         },
         "opencodeAgent": {
           "description": "Commit-message worker for /sai-commit, dispatched only by its coordinator. Drafts the message from the staged changes; the coordinator runs git.",
           "model": "opencode-go/muse-spark-1.3-contributor",
-          "variant": "xhigh",
-          "permissionBlock": "    budget: allow\n    explore: allow"
+          "variant": "xhigh"
         }
       },
       {
@@ -199,14 +246,12 @@
           "agentName": "sai-archive-worker",
           "description": "Archive worker for /sai-archive and /sai-explore, dispatched only by their coordinators. Runs the read-only archive pre-flight and, under Direct Build, the authorized sync, move, staging, and commit.",
           "model": "sonnet",
-          "effort": "medium",
-          "tools": "Read, Glob, Grep, Bash, Skill, SendMessage"
+          "effort": "medium"
         },
         "opencodeAgent": {
           "description": "Archive worker for /sai-archive and /sai-explore, dispatched only by their coordinators. Runs the read-only archive pre-flight and, under Direct Build, the authorized sync, move, staging, and commit.",
           "model": "opencode-go/muse-spark-1.3-contributor",
-          "variant": "high",
-          "permissionBlock": "    budget: allow\n    explore: allow"
+          "variant": "high"
         }
       },
       {
@@ -218,14 +263,12 @@
           "agentName": "sai-backfill-worker",
           "description": "Backfill worker for /sai-backfill, /sai-archive, and /sai-explore, dispatched only by their coordinators. Interviews and drafts proposal and spec content from a diff and, under Direct Build, writes the authorized drafts.",
           "model": "opus",
-          "effort": "medium",
-          "tools": "Read, Glob, Grep, Bash, Write, Agent, Skill, SendMessage"
+          "effort": "medium"
         },
         "opencodeAgent": {
           "description": "Backfill worker for /sai-backfill, /sai-archive, and /sai-explore, dispatched only by their coordinators. Interviews and drafts proposal and spec content from a diff and, under Direct Build, writes the authorized drafts.",
           "model": "opencode-go/deepseek-v4.1-flash",
-          "variant": "max",
-          "permissionBlock": "    budget: allow\n    explore: allow"
+          "variant": "max"
         }
       },
       {
@@ -237,14 +280,12 @@
           "agentName": "sai-merge-worker",
           "description": "Merge worker for /sai-merge, dispatched only by its coordinator. Analyzes conflicts, proposes one resolution strategy, scans ADR/DDR collisions, and writes resolution content.",
           "model": "opus",
-          "effort": "medium",
-          "tools": "Read, Glob, Grep, Bash, Edit, Write, Skill, SendMessage"
+          "effort": "medium"
         },
         "opencodeAgent": {
           "description": "Merge worker for /sai-merge, dispatched only by its coordinator. Analyzes conflicts, proposes one resolution strategy, scans ADR/DDR collisions, and writes resolution content.",
           "model": "opencode-go/deepseek-v4.1-flash",
-          "variant": "max",
-          "permissionBlock": "    budget: allow\n    explore: allow"
+          "variant": "max"
         }
       },
       {
@@ -257,14 +298,12 @@
           "agentName": "sai-4-red-worker",
           "description": "RED worker for /sai-4-apply and /sai-build, dispatched only by their coordinators. Writes one plan Step's failing tests.",
           "model": "sonnet",
-          "effort": "medium",
-          "tools": "Read, Glob, Grep, Bash, Edit, Write, Agent, Skill, SendMessage"
+          "effort": "medium"
         },
         "opencodeAgent": {
           "description": "RED worker for /sai-4-apply and /sai-build, dispatched only by their coordinators. Writes one plan Step's failing tests.",
           "model": "opencode-go/deepseek-v4.1-flash",
-          "variant": "max",
-          "permissionBlock": "    budget: allow\n    explore: allow"
+          "variant": "max"
         }
       },
       {
@@ -277,14 +316,12 @@
           "agentName": "sai-4-green-worker",
           "description": "GREEN worker for /sai-4-apply and /sai-build, dispatched only by their coordinators. Implements one plan Step's code, leaving its tests as written.",
           "model": "opus",
-          "effort": "medium",
-          "tools": "Read, Glob, Grep, Bash, Edit, Write, Agent, Skill, SendMessage"
+          "effort": "medium"
         },
         "opencodeAgent": {
           "description": "GREEN worker for /sai-4-apply and /sai-build, dispatched only by their coordinators. Implements one plan Step's code, leaving its tests as written.",
           "model": "opencode-go/deepseek-v4.1-flash",
-          "variant": "max",
-          "permissionBlock": "    budget: allow\n    explore: allow"
+          "variant": "max"
         }
       },
       {
@@ -297,14 +334,12 @@
           "agentName": "sai-direct-build-worker",
           "description": "Direct Build implementer for /sai-explore, dispatched only by its coordinator. Implements a change straight from its Ready to Propose block.",
           "model": "opus",
-          "effort": "medium",
-          "tools": "Read, Glob, Grep, Bash, Edit, Write, Skill, SendMessage"
+          "effort": "medium"
         },
         "opencodeAgent": {
           "description": "Direct Build implementer for /sai-explore, dispatched only by its coordinator. Implements a change straight from its Ready to Propose block.",
           "model": "opencode-go/deepseek-v4.1-flash",
-          "variant": "max",
-          "permissionBlock": "    budget: allow\n    explore: allow"
+          "variant": "max"
         }
       },
       {
@@ -317,14 +352,12 @@
           "agentName": "sai-review-fix-worker",
           "description": "Review-fix worker for /sai-5-review and /sai-review, dispatched only by their coordinators. Fixes the review findings in a Direct Build close.",
           "model": "opus",
-          "effort": "medium",
-          "tools": "Read, Glob, Grep, Bash, Edit, Write, Skill, SendMessage"
+          "effort": "medium"
         },
         "opencodeAgent": {
           "description": "Review-fix worker for /sai-5-review and /sai-review, dispatched only by their coordinators. Fixes the review findings in a Direct Build close.",
           "model": "opencode-go/deepseek-v4.1-flash",
-          "variant": "max",
-          "permissionBlock": "    budget: allow\n    explore: allow"
+          "variant": "max"
         }
       }
     ]

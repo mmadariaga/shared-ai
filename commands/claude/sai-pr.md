@@ -3,9 +3,11 @@ description: Write a change's pull request from its OpenSpec artifacts and its d
 argument-hint: "[change-name] [optional: parent branch]"
 model: sonnet
 effort: medium
+allowed-tools: {{capabilityAllowedTools}}
 ---
 Fetch @skills/fetch/SKILL.md
 Fetch @sai/adapters/claude/boot.md and follow it.
+Required capability profile: {{capabilityProfile}}.
 Fetch @sai/commands/pr/command-bootstrap.md and follow those instructions exactly, forwarding the InvocationEnvelope block below.
 
 InvocationEnvelope:

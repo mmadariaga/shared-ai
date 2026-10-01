@@ -400,7 +400,7 @@ function matrixRenderFor(manifest, harness, repoRoot) {
     templates[name] = fs.readFileSync(templatePath, 'utf8');
     assertOneStringInvocationEnvelope(templates[name], `${harness} worker matrix template ${name}`);
   }
-  const rendered = materializeWorkerMatrix(defineWorkerMatrix(matrix.entries), templates);
+  const rendered = materializeWorkerMatrix(defineWorkerMatrix(matrix.entries, manifest.capabilities), templates);
   return rendered
     .filter(item => item.harness === harness)
     .map(item => ({
@@ -412,7 +412,7 @@ function matrixRenderFor(manifest, harness, repoRoot) {
     }));
 }
 
-function expandWorkerMatrix(matrix, { harness, repoRoot, destinationRoot }) {
+function expandWorkerMatrix(matrix, { harness, repoRoot, destinationRoot, capabilities }) {
   const bindingsSection = matrix.bindings;
   const agentsSection = matrix.agents;
   assertWorkerContractsUseOneStringEnvelope(matrix, { harness, repoRoot });
@@ -432,7 +432,7 @@ function expandWorkerMatrix(matrix, { harness, repoRoot, destinationRoot }) {
   let matrixDef;
   let rendered;
   try {
-    matrixDef = defineWorkerMatrix(matrix.entries);
+    matrixDef = defineWorkerMatrix(matrix.entries, capabilities);
     rendered = materializeWorkerMatrix(matrixDef, templates);
   } catch (error) {
     throw new Error(`${harness} worker matrix: ${error.message}`);
@@ -469,6 +469,7 @@ function expandWorkerMatrix(matrix, { harness, repoRoot, destinationRoot }) {
 }
 
 function expandInstallManifest(manifest, { harness, repoRoot, destinationRoot }) {
+  if (manifest.capabilities) require('./capabilities').validateRegistry(manifest.capabilities);
   validateMatrixEntriesForInstall(manifest, harness);
   validateManifest(manifest);
   const destinations = new Map();
@@ -486,13 +487,17 @@ function expandInstallManifest(manifest, { harness, repoRoot, destinationRoot })
   for (const rule of manifest.projections.filter(candidate => candidate.harnesses.includes(harness))) {
     if (rule.matrix) continue;
     for (const projection of expandRule(rule, { harness, repoRoot, destinationRoot })) {
-      addProjection(projection);
+      addProjection(manifest.capabilities ? require('./capabilities').projectFile(projection, manifest.capabilities, repoRoot) : projection);
     }
   }
   if (manifest['worker-matrix'] !== undefined) {
-    for (const projection of expandWorkerMatrix(manifest['worker-matrix'], { harness, repoRoot, destinationRoot })) {
+    for (const projection of expandWorkerMatrix(manifest['worker-matrix'], { harness, repoRoot, destinationRoot, capabilities: manifest.capabilities })) {
       addProjection(projection);
     }
+  }
+  if (manifest.capabilities && SUPPORTED_HARNESSES.has(harness)) {
+    addProjection(require('./capabilities').requirementsProjection(manifest.capabilities, harness, destinationRoot, repoRoot));
+    for (const projection of require('./capabilities').profileProjections(manifest.capabilities, harness, destinationRoot, repoRoot)) addProjection(projection);
   }
   return [...destinations.values()]
     .sort((left, right) => normalizeRelative(left.destinationPath).localeCompare(normalizeRelative(right.destinationPath)) || left.id.localeCompare(right.id))

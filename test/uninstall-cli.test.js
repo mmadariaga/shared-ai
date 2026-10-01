@@ -154,7 +154,7 @@ test('main default with confirm=true deletes installed files and prints summary'
     const sourcePath = path.join(__dirname, '..', 'commands', 'claude', 'sai-1-spec.md');
     const filePath = path.join(tmpDir, 'commands', 'sai-1-spec.md');
     fs.mkdirSync(path.join(tmpDir, 'commands'), { recursive: true });
-    fs.writeFileSync(filePath, fs.readFileSync(sourcePath));
+    fs.writeFileSync(filePath, require('./helpers/capability-source').readProjected('commands/claude/sai-1-spec.md'));
 
     const logs = [];
     const origLog = console.log;
@@ -210,7 +210,7 @@ test('main --yes proceeds without confirmation, deletes files, emits summary', a
     const sourcePath = path.join(__dirname, '..', 'commands', 'claude', 'sai-1-spec.md');
     const filePath = path.join(tmpDir, 'commands', 'sai-1-spec.md');
     fs.mkdirSync(path.join(tmpDir, 'commands'), { recursive: true });
-    fs.writeFileSync(filePath, fs.readFileSync(sourcePath));
+    fs.writeFileSync(filePath, require('./helpers/capability-source').readProjected('commands/claude/sai-1-spec.md'));
 
     let confirmCalled = false;
     const logs = [];

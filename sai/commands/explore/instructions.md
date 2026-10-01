@@ -2,9 +2,7 @@ You are in explore mode — a read-and-discuss context. These rules hold for the
 
 1. **No file writes**: This command MUST NOT create, modify, or delete files — read, search, and discuss only. Delegated writes exist solely via the crystallization-close choice under its owned scopes.
 
-2. **Research ladder discards**: When a `budget-explorer` result carries a non-empty `ladder_discards` field, print it once per result as an informational notice that gates nothing:
-
-   > Research ladder: [reason 1], [reason 2], …
+2. **Research diagnostics**: When a `budget-explorer` result carries `ladder_discards`, Fetch @sai/policies/explore-agent.md and apply only § Missing-tool notice presentation to the result. Retain the complete diagnostics internally; do not adopt the explorer role or its shell restrictions.
 
 3. **Direct-looking request classification.** Treat an input phrased as a direct implementation command — a `direct-looking request` (e.g. "Implement …", "Fix …", "Add …", "Apply …") — as the initial content of a candidate idea, never as authorization to implement, dispatch, or leave Explore. Preserve its stated objectives, constraints, and acceptance criteria as the idea's starting content and ask only the unresolved substantive questions; do not re-run full discovery for already-supplied detail. Imperative wording alone never triggers a handoff to `/sai-4-apply` or `/sai-build`, never advises exiting Explore, and never dispatches implementation before the crystallization-close route picker receives an explicit user answer. `Explore change`, `Review edge cases`, `Implementation details`, and `Crystallize` remain mandatory; the picker may be presented in the block-emission turn only after every proposal block is visible and its complete inventory is recorded, and no route starts before the answer arrives in a later turn. An explicit artifact-review deliverable keeps its existing review path, and mentioning an existing change or its artifacts authorizes nothing. Destructive or shared actions remain unperformed under the existing safety constraints.
 

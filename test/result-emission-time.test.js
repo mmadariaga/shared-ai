@@ -95,10 +95,10 @@ test('the three planning wrappers carry no shell grant now that stamps need no c
     'commands/claude/sai-2-design.md',
     'commands/claude/sai-3-implement.md'
   ]) {
-    const wrapper = artifact(relativePath);
+    const wrapper = require('./helpers/capability-source').readProjected(relativePath);
     const line = wrapper.match(/^allowed-tools:\s*(.+)$/m);
     assert.ok(line, `${relativePath} should declare allowed-tools`);
-    assert.equal(line[1].trim(), 'Read, Glob, Skill, Agent, SendMessage, AskUserQuestion, TaskCreate, TaskUpdate, TaskGet, TaskList, Bash(node .claude/sai/tools/worker-report-validator.js:*), Bash(node ~/.claude/sai/tools/worker-report-validator.js:*), Bash(node .claude/sai/tools/no-commit-guard.js:*), Bash(node ~/.claude/sai/tools/no-commit-guard.js:*), Bash(node .claude/sai/bin/sai-state.js:*), Bash(node ~/.claude/sai/bin/sai-state.js:*), Bash(git reset:*)',
+    assert.equal(line[1].trim(), require('./helpers/capability-source').commandTools(path.basename(relativePath, '.md')),
       `${relativePath} should carry the routed coordinator list with panel tools plus the closed scoped grant (validator plus guard plus store, both roots, plus the mixed reset)`);
   }
 });

@@ -1,5 +1,7 @@
 'use strict';
 
+const { assignment, translate, permissionYaml } = require('./capabilities');
+
 const PHASE_ORDER = Object.freeze([
   'spec',
   'design',
@@ -168,7 +170,7 @@ function validateEntry(entry, index) {
   }
 }
 
-function defineWorkerMatrix(entries) {
+function defineWorkerMatrix(entries, capabilities = require('../sai/install-manifest.json').capabilities) {
   if (!Array.isArray(entries) || entries.length !== EXPECTED_ENTRY_COUNT) {
     throw new Error(`Worker Matrix requires exactly ${EXPECTED_ENTRY_COUNT} entries`);
   }
@@ -216,7 +218,16 @@ function defineWorkerMatrix(entries) {
   });
   return Object.freeze({
     phases: PHASE_ORDER,
-    entries: Object.freeze(entries.map(entry => Object.freeze(clone(entry)))),
+    entries: Object.freeze(entries.map(entry => {
+      const profileName = assignment(capabilities, 'agents', entry.workerName);
+      const claude = translate(capabilities, profileName, 'claude');
+      const opencode = translate(capabilities, profileName, 'opencode');
+      return Object.freeze({ ...clone(entry),
+        capabilityProfile: profileName,
+        claudeAgent: { ...clone(entry.claudeAgent), tools: claude.tools },
+        opencodeAgent: { ...clone(entry.opencodeAgent), permissionBlock: permissionYaml(opencode.permissions) },
+      });
+    })),
   });
 }
 

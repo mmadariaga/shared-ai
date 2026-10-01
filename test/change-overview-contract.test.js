@@ -383,8 +383,8 @@ test('design worker persists diagnostics for generator and parent-owned failure 
 test('opencode design worker permits budget dispatch beside explore', () => {
   const agent = matrixItem('opencode', 'design', 'agent');
 
-  assert.match(agent, /explore:\s*allow/, 'permission.task should allow explore');
-  assert.match(agent, /budget:\s*allow/, 'permission.task should allow budget dispatch beside explore');
+  assert.match(agent, /action: "subagent"\n\s+resource: "explore"\n\s+effect: allow/, 'permissions should allow explore');
+  assert.match(agent, /action: "subagent"\n\s+resource: "budget"\n\s+effect: allow/, 'permissions should allow budget dispatch beside explore');
 });
 
 test('installation projects the shared change-overview instruction through the recursive commands projection', () => {

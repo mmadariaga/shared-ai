@@ -7,42 +7,48 @@ Prioritizes the most suitable research tools available in the explorer's environ
 ## Requirements
 
 ### Requirement: Fixed research-tool preference order
-All discovery research in `sai-explore` SHALL be delegated to the explorer where the fixed ladder governs; the explorer SHALL self-detect CodeGraph availability in its own session and the principal SHALL NOT research code directly.
+
+All discovery research in Explore SHALL remain delegated to the explorer, and the principal SHALL NOT research code directly. After goal disclosure the explorer SHALL check its assigned capability profile, then apply the fixed ladder only to granted tools: CodeGraph MCP for structural queries, CodeGraph CLI fallback, git grep for textual queries, and disk tools as fallback. Availability detection SHALL remain explorer-owned. Documentation and known-file reads SHALL retain their direct-read exception.
 
 #### Scenario: Structural questions go to codegraph MCP first
-- **WHEN** `codegraph_*` MCP tools are present in the session and the explorer faces a structural question about definitions, callers, or change impact
-- **THEN** the delegated explorer routes that question to the codegraph MCP tool before any text search with no principal probe
+- **WHEN** granted CodeGraph MCP access is available and the explorer has a structural question about definitions, callers, or impact
+- **THEN** it uses that MCP tool before textual search without a principal probe
 
 #### Scenario: Structural questions use codegraph CLI when MCP unavailable
-- **WHEN** `codegraph_*` MCP tools are absent but `codegraph` binary is on PATH and shell is available, and the explorer faces a structural question
-- **THEN** the delegated explorer routes that question to `codegraph explore` via shell with no principal probe
+- **WHEN** granted MCP access is unavailable but granted CodeGraph CLI and shell access are available for a structural query
+- **THEN** the explorer uses codegraph explore without a principal probe
 
 #### Scenario: Textual searches use git grep
-- **WHEN** shell and git are available and the explorer needs a textual search
-- **THEN** the delegated explorer runs that search through `git grep` via shell instead of principal direct search
+- **WHEN** granted shell and Git access are available for a textual query
+- **THEN** the explorer uses git grep instead of principal direct search
 
 #### Scenario: Direct disk tools are the last fallback
-- **WHEN** neither codegraph nor `git grep` answered the question or neither earlier level is available
-- **THEN** the delegated explorer falls back to Glob, Grep, and direct file reads with no principal direct research
+- **WHEN** earlier granted applicable levels are unavailable or do not answer the query
+- **THEN** the explorer falls back to granted Glob, Grep, and direct reads without principal direct research
 
 ### Requirement: Conditional skipping of unavailable levels
-Each ladder level SHALL be evaluated conditionally inside the delegated explorer and skipped when its precondition fails with a discard entry logged; the main session SHALL run no probe of its own.
+
+Each ladder level SHALL be evaluated conditionally within the explorer and skipped when its grant, applicability, or availability precondition fails. Discards SHALL distinguish excluded, inapplicable, unavailable, and instruction-error states. The main session SHALL run no availability probe of its own. Intentional exclusions SHALL NOT become environmental absence, and ungranted shell operations SHALL NOT be used for detection.
 
 #### Scenario: Codegraph absent from the session
-- **WHEN** the explorer runs where codegraph MCP tools are absent and shell or binary is unavailable
-- **THEN** level 1 is skipped with a discard reason logged and the principal runs no independent check
+- **WHEN** granted applicable CodeGraph MCP is absent and its granted CLI path is also unavailable
+- **THEN** level 1 is skipped with classified absence diagnostics and no principal independent check
 
 #### Scenario: Shell or git unavailable
-- **WHEN** shell or git is unavailable inside the explorer runtime
-- **THEN** level 2 is skipped with an appropriate reason logged and the principal runs no independent check
+- **WHEN** granted applicable shell or Git support is absent inside the explorer runtime
+- **THEN** level 2 is skipped with the appropriate unavailable diagnostic and no principal independent check
 
 #### Scenario: Discard logging distinguishes level 1a from level 1b
-- **WHEN** the codegraph_explore MCP tool is absent but the codegraph binary is on PATH
-- **THEN** a discard entry distinguishes CLI success from MCP absence with no principal probe
+- **WHEN** granted MCP access is absent but granted CLI access succeeds
+- **THEN** the discard identifies level 1a absence separately from level 1b success without a principal probe
 
 #### Scenario: Discard logging emitted per execution segment
-- **WHEN** the explorer continues into a second execution segment under the 40-call ceiling
-- **THEN** ladder_discards is emitted independently per segment and the principal runs no independent check
+- **WHEN** the explorer continues into another segment under its forty-call ceiling
+- **THEN** ladder_discards is emitted independently for that segment and the principal runs no independent check
+
+#### Scenario: Excluded level does not become a missing-tool warning
+- **WHEN** the explorer profile excludes a ladder level
+- **THEN** its diagnostic records exclusion rather than environmental absence
 
 ### Requirement: The ladder governs only research-tool choice
 
@@ -58,16 +64,16 @@ The tool-preference ladder SHALL govern only research-tool choice and SHALL NOT 
 
 ### Requirement: Ladder precedence over caller tool prescriptions
 
-A caller prompt naming a specific research tool, mentioning a procedure, or prescribing a method SHALL NOT override the tool-preference ladder. The ladder remains the governing preference order regardless of caller instructions. When a caller prompt prescribes a tool, the ladder still governs, the task does not abort, and a discard log entry is emitted with `reason: "caller prescribed <tool-name>"` if that tool would be skipped. The shell is restricted to `git grep` and `codegraph explore` operations only; if the explorer is asked to run a shell command for any other purpose, that command is not executed and a discard entry is logged with `reason: "shell operation refused: <description>"`.
+A caller's tool name, procedure, or method SHALL NOT override the profile grants or research ladder. The task SHALL continue under the ladder; skipped prescribed tools SHALL retain a caller prescribed diagnostic. Shell SHALL remain restricted to granted git grep and codegraph explore operations. Requests for other shell purposes SHALL be refused and logged without execution. Caller-prescription and refusal entries SHALL be classified as instruction errors rather than environmental absences.
 
 #### Scenario: Caller prescribes a tool before the ladder would reach it
-- **WHEN** a caller prompt says "use Glob to find X" but level 1 (codegraph) succeeded before level 3 (disk tools) is reached
-- **THEN** the ladder governs the tool choice (codegraph is used, not Glob) and a discard log entry includes `reason: "caller prescribed Glob"` if Glob was skipped
+- **WHEN** the caller prescribes Glob but a granted CodeGraph structural lookup succeeds first
+- **THEN** the ladder governs and a caller prescribed Glob diagnostic records the skipped prescription
 
 #### Scenario: Caller prompt violation does not abort the task
-- **WHEN** a caller prompt prescribes a tool despite the ladder policy
-- **THEN** the task continues without abortion; the ladder governs tool selection; the discard log records the violation
+- **WHEN** a caller prescribes a tool contrary to the ladder
+- **THEN** the task continues under granted ladder choices with the prescription recorded internally
 
 #### Scenario: Shell operation other than git grep or codegraph is refused
-- **WHEN** the explorer is asked to run a shell command other than `git grep` or `codegraph explore`
-- **THEN** the explorer does not execute it and emits a discard entry with `reason: "shell operation refused: <description>"`
+- **WHEN** the explorer is asked to run another shell operation
+- **THEN** it refuses execution and records shell operation refused with instruction-error classification
