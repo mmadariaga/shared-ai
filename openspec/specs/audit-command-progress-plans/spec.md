@@ -17,7 +17,7 @@ The review adapter SHALL declare an immutable four-step `progress_plan`; securit
 | `sai-7-performance` | `resolve-performance-scope` - Resolve performance scope and tier: selection, proposal gate, scope grammar, tier filter, and parent complete; `map-stack-hot-paths` - Map stack and hot paths: detection, baseline, mapping, and 500-LOC cutover complete; `audit-performance-tiers` - Resolve performance tier analysis: applicable backend, frontend, database, queue, and cross-cutting checks complete; `resolve-diagnostics` - Resolve diagnostics gate: authorization or applicability resolved, diagnostics run only when authorized; `close-performance-outcome` - Close performance outcome: result and artifact verification complete |
 | `sai-8-accessibility` | `resolve-accessibility-scope` - Resolve accessibility scope and runtime mode: selection, proposal gate, UI-scope/no-UI decision, runtime flag, and parent complete; `map-ui-framework` - Map UI components and framework: UI filtering, detection, component mapping, and delegation choice complete; `resolve-static-audit` - Resolve static accessibility audit: semantics, ARIA, keyboard/focus, forms, visual, media, and dynamic checks complete; `resolve-runtime-audit` - Resolve runtime-audit gate: runtime request, server confirmation, and per-command authorization resolved, checks run only when applicable; `close-accessibility-outcome` - Close accessibility outcome: result and artifact verification complete |
 
-Adapters SHALL render through the shared policy and SHALL NOT add passes, tools, severities, or delegation units as steps. Completed steps SHALL receive closure-only Milestone Stamps from the marking verdict's `validated_at`, not a clock call. The Idea Progress List remains separate.
+Adapters SHALL render through the shared policy and SHALL NOT add passes, tools, severities, or delegation units as steps. Completed steps SHALL receive closure-only Milestone Stamps from the marking response's `received_at`, not a clock call. The Idea Progress List remains separate.
 
 #### Scenario: review declares its canonical plan
 - **WHEN** `sai-5-review` dispatches its worker
@@ -41,7 +41,7 @@ Adapters SHALL render through the shared policy and SHALL NOT add passes, tools,
 
 #### Scenario: audit plans receive payload-derived milestone stamps
 - **WHEN** an audit adapter renders its plan
-- **THEN** Claude Code and opencode render each completed step's stamp from the marking verdict's `validated_at` without a coordinator clock call
+- **THEN** Claude Code and opencode render each completed step's stamp from the marking response's `received_at` without a coordinator clock call
 - **AND** ids, labels, order, and states remain governed by `sai/policies/todo-structure.md`
 
 ### Requirement: audit-workers-report-completed-milestones

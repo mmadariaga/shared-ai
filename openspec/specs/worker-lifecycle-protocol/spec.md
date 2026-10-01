@@ -3,7 +3,9 @@
 ## Purpose
 
 Define the common lifecycle protocol shared across all worker types (design, implementation, review, etc.), including terminal statuses, continuation semantics, binding metadata, changed-file aggregation, and reconstruction metadata.
+
 ## Requirements
+
 ### Requirement: Canonical shared lifecycle ownership
 The worker lifecycle protocol SHALL be defined once at the shared orchestration lifecycle seam and SHALL be consumed by every routed planning worker and coordinator. Phase contracts MAY extend the protocol only with phase-specific fields or events already permitted by their capability specifications.
 
@@ -105,11 +107,15 @@ Every routed SAI planning worker SHALL author a structured payload with exactly 
 
 ### Requirement: Closed payloads carry no time field
 
-Every terminal status, design notice, and progress event SHALL carry no time field, including pre-resolution and no-plan results. The validator observes each valid result and emits a `validated_at` sidecar in `YYYY-MM-DDTHH:MM:SS±HH:MM` form, which the coordinator forwards verbatim.
+Every terminal status, design notice, and progress event SHALL carry no time field, including pre-resolution and no-plan results. The CLI tools stamp each response with a top-level `received_at` in `YYYY-MM-DDTHH:MM:SS±HH:MM` form, which the coordinator forwards verbatim. A worker payload that carries `received_at` or `validated_at` has it ignored like any unknown field, with no new rejection.
 
 #### Scenario: Lifecycle stream is timestamped
 - **WHEN** any worker returns a terminal result, notice, or progress event
-- **THEN** the coordinator validates it and preserves the verdict's `validated_at` without recomputing or formatting it.
+- **THEN** the coordinator validates it and preserves the response's `received_at` without recomputing or formatting it.
+
+#### Scenario: A time field in a worker payload is ignored
+- **WHEN** a worker payload carries a `received_at` or `validated_at` field
+- **THEN** the validator ignores it as an unknown field and accepts or rejects the payload on its closed shape alone.
 
 ### Requirement: Audit workers share the progress extension
 
@@ -216,4 +222,3 @@ The coordinator SHALL maintain an ordered duplicate-free `changed_files` union a
 
 - **WHEN** a worker returns a conflict extension after previously reporting changed files
 - **THEN** the coordinator retains the prior paths and appends only newly reported paths in first-seen order
-

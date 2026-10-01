@@ -683,7 +683,8 @@ test('CLI: reset on a non-step machine keeps the plain {reset} response', () => 
   try {
     for (const machineId of ['explore-idea@1', 'explore-slice@1', 'apply-standalone@1', 'recovery-ledger@1']) {
       const json = JSON.parse(invokeCommand('reset', id, machineId).stdout);
-      assert.deepEqual(json, { reset: machineId }, `${machineId} reset should stay unchanged`);
+      assert.deepEqual(Object.keys(json), ['received_at', 'reset'], `${machineId} reset carries only the time and reset`);
+      assert.equal(json.reset, machineId);
     }
   } finally {
     cleanup([id]);

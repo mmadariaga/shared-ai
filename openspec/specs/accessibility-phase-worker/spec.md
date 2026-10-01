@@ -106,7 +106,7 @@ The worker SHALL write and verify only `openspec/changes/{change-name}/accessibi
 
 ### Requirement: Accessibility lifecycle results carry no time field
 
-The accessibility worker SHALL return progress and terminal lifecycle results with no time field, while retaining static review, runtime authorization, and report-only write boundaries; the validator's `validated_at` sidecar is the only observed time.
+The accessibility worker SHALL return progress and terminal lifecycle results with no time field, while retaining static review, runtime authorization, and report-only write boundaries; the CLI response's `received_at` is the only observed time.
 
 #### Scenario: Accessibility reports a milestone
 - **WHEN** an accessibility milestone completes

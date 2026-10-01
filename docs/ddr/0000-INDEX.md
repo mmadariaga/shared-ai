@@ -154,6 +154,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 ### `sai-state`
 
 - [0161 — In-memory authoritative conversation snapshots](./0161-in-memory-authoritative-conversation-snapshots.md)
+- [0162 — `received_at` is the CLI response clock; verdicts are timeless](./0162-received-at-is-the-cli-response-clock.md) — **Amends** 0140, **Amends** 0141
 
 ### `npx shared-ai` (install / setup / uninstall / doctor)
 
@@ -211,6 +212,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0152 — Cause Locus gates eligibility; unresolved is not out-of-scope](./0152-cause-locus-gates-eligibility.md) — Refs 0151b
 - [0155 — Terminal documentation set is explicit and root-aware](./0155-terminal-documentation-set-is-explicit-and-root-aware.md)
 - [0161 — In-memory authoritative conversation snapshots](./0161-in-memory-authoritative-conversation-snapshots.md)
+- [0162 — `received_at` is the CLI response clock; verdicts are timeless](./0162-received-at-is-the-cli-response-clock.md) — **Amends** 0140, **Amends** 0141
 
 ### Fetch resolution & path conventions
 
@@ -305,6 +307,8 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 | [0062](./0062-field-9-soft-degradation-stated-at-two-sites.md) | amends | [0026](./0026-stable-eight-field-report.md) |
 | [0137b](./0137b-apply-routed-boundary-carries-progress-events.md) | supersedes | [0116](./0116-apply-phase-carries-no-progress-events.md) |
 | [0141](./0141-milestone-stamp-is-closure-only-and-derived-from-emitted-on.md) | supersedes | [adr:0118a](../adr/0118a-per-harness-wall-clock-commands-in-bindings.md) |
+| [0162](./0162-received-at-is-the-cli-response-clock.md) | amends | [0140](./0140-closed-worker-payloads-carry-result-emission-time.md) |
+| [0162](./0162-received-at-is-the-cli-response-clock.md) | amends | [0141](./0141-milestone-stamp-is-closure-only-and-derived-from-emitted-on.md) |
 | [0149](./0149-orchestration-core-contracts-live-under-orchestration.md) | supersedes | [0128](./0128-neutral-root-protocols-and-command-cards.md) |
 | [0150](./0150-mode-parameterized-at-fetch-site-not-detected.md) | amends | [0028](../adr/0028-gate-parameters-inline-at-fetch-site.md) |
 | [0151c](./0151c-external-findings-block-is-only-review-evidence.md) | amends | [0133b](./0133b-review-progress-is-evidence-only.md) |

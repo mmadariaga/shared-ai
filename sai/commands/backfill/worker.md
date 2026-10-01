@@ -46,7 +46,7 @@ Every stretch opens with `event: ready` as its first nonterminal return before
 any expensive work; the task arrives only in the post-ready same-worker
 continuation. Every run closes with exactly one terminal lifecycle
 status — `completed`, `needs_input`, or `failed`/`cancelled` — in the closed
-worker-core shapes, each carrying a concrete English `summary`, and an ordered duplicate-free `changed_files`. Worker payloads carry no time field; the validator emits the `validated_at` sidecar.
+worker-core shapes, each carrying a concrete English `summary`, and an ordered duplicate-free `changed_files`. Worker payloads carry no time field; the CLI response carries `received_at`.
 
 A Direct Build (unattended) prepare envelope is still a read-only stretch. It may resolve the
 same unattended questions and compose the same draft payload as the ordinary

@@ -71,10 +71,10 @@ call. The coordinator pipes the worker's progress payload, as received, into
 `sai-state emit <id> <machineId> --progress -` per `@sai/policies/stage-machine.md`
 § Step machines; that one invocation runs the same validator module before any
 store read and returns its verdict as the `validation` block, then advances the
-machine only when the verdict is valid. The verdict shape, the `validated_at`
-source, and the malformed-payload route are unchanged: read `validation.ok`,
-`validation.errors`, and `validation.validated_at` exactly as the `validate`
-verdict's `ok`, `errors`, and `validated_at`. Every other result kind, and a
+machine only when the verdict is valid. The verdict shape and the
+malformed-payload route are unchanged: read `validation.ok` and
+`validation.errors` exactly as the `validate` verdict's `ok` and `errors`; the
+time is the response's top-level `received_at`, never a verdict field. Every other result kind, and a
 progress result under an adapter without a `step_machine`, keeps the separate
 `validate --kind <kind>` call.
 
@@ -87,18 +87,21 @@ Worker payloads carry no time field in any phase; unknown fields are ignored. A
 missing required field is a malformed payload, handled through the same route as
 any other closed-shape violation.
 
-On a valid result the validator module, which owns the only clock, emits an additive
-display-only `validated_at` sidecar: the validator-observed validation
-timestamp in `YYYY-MM-DDTHH:MM:SS±HH:MM` form — local wall-clock time with the
+The verdict is timeless: a pure function of the payload. The validator module
+owns the only clock (`generateReceivedAt`), consumed by both CLIs, and every
+JSON response of `sai-state` and of `validate` carries `received_at` as its
+first key: the CLI reception time of the invocation, read once per invocation,
+in `YYYY-MM-DDTHH:MM:SS±HH:MM` form — local wall-clock time with the
 session's numeric offset, never the `Z` designator, so a machine on UTC writes
 `+00:00`. Reception time substitutes emission time; the small transport delta
-is accepted as a duration proxy. The sidecar never alters the verdict or the
-payload, and an invalid result carries no timestamp. Forward the verdict
-verbatim and surface `validated_at` in the coordinator prompt for terminal and progress results at minimum; never
+is accepted as a duration proxy. `received_at` never alters the verdict or the
+payload, and usage or IO errors (stderr, exit 2) carry no time. Forward the
+response verbatim and surface `received_at` in the coordinator prompt for
+terminal and progress results at minimum; never
 invent, correct, re-derive, or reformat it. It is also the sole source of the
 Milestone Stamp: the `HH:mm` a progress task list attaches to a step it renders
-`completed` is that step's marking verdict's `validated_at` (under a progress
-emit, `validation.validated_at`) per
+`completed` is the `received_at` of the response that marked the step (the
+`emit --progress` response, or the terminal `validate` response) per
 `@sai/policies/todo-structure.md`, read straight off the value with no
 conversion, so the coordinator issues no wall-clock call and resolves no zone.
 

@@ -35,7 +35,7 @@ test('no-op events render nothing and milestone stamps retain their validator so
   const policy = read('sai/policies/todo-structure.md');
   assert.match(policy, /re-render the full list in the same assistant turn as worker continuation/);
   assert.match(policy, /performs no render and stamps nothing/);
-  assert.match(policy, /validation\.validated_at/);
+  assert.match(policy, /`emit --progress` response/);
   assert.match(policy, /The render precedes the dispatch call itself/);
 });
 

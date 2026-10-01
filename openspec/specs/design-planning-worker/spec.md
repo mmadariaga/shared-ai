@@ -116,7 +116,7 @@ Completion SHALL verify `design.md`, `tasks.md`, AND `interfaces.md` before clai
 
 ### Requirement: Design lifecycle payloads carry no time field
 
-The design worker SHALL return notices, progress events, and terminal payloads with no time field while preserving worker-owned design workflow and continuation; the validator's `validated_at` sidecar is the only observed time.
+The design worker SHALL return notices, progress events, and terminal payloads with no time field while preserving worker-owned design workflow and continuation; the CLI response's `received_at` is the only observed time.
 
 #### Scenario: Design composes a closed result
 - **WHEN** the design worker emits a notice, progress event, or terminal result

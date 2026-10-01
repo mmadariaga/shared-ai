@@ -1481,7 +1481,7 @@ test('Step 2: the design coordinator renders task-list stamps coordinator-only v
   assert.match(policy, /never from a worker subagent/i,
     'the policy should state attachment never originates from the worker subagent');
   assert.match(claudeWrapper, /Bash\(node .*worker-report-validator\.js:\*\).*Bash\(node .*no-commit-guard\.js:\*\).*Bash\(node .*sai-state\.js:\*\).*Bash\(git reset:\*\)/,
-    'the wrapper should carry the closed scoped grant (validator plus guard plus store, both roots, plus the mixed reset) now that stamps come from validated_at');
+    'the wrapper should carry the closed scoped grant (validator plus guard plus store, both roots, plus the mixed reset) now that stamps come from received_at');
   assert.doesNotMatch(coordinator, /date \+%H:%M|Get-Date/,
     'per-harness wall-clock commands no longer live in the coordinator body');
 });

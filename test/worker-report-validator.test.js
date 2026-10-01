@@ -8,7 +8,7 @@ const { spawnSync } = require('child_process');
 const REPO_ROOT = path.join(__dirname, '..');
 const TOOL = path.join(REPO_ROOT, 'sai', 'tools', 'worker-report-validator.js');
 
-const VALIDATED_AT_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/;
+const RECEIVED_AT_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/;
 
 function tool(stdinData, args, cwd = REPO_ROOT) {
   const result = spawnSync(process.execPath, [TOOL, ...args], {
@@ -32,16 +32,19 @@ function assertValidSidecar(result, kind) {
   assert.equal(result.payload.ok, true);
   assert.equal(result.payload.errors.length, 0);
   assert.equal(result.payload.kind, kind);
-  // contains assert: validated_at present and well-formed; ignore exact value (non-deterministic)
-  assert.ok('validated_at' in result.payload, 'valid verdict should carry validated_at');
-  assert.match(result.payload.validated_at, VALIDATED_AT_PATTERN);
+  // contains assert: received_at is the first key and well-formed; ignore exact value (non-deterministic)
+  assert.equal(Object.keys(result.payload)[0], 'received_at');
+  assert.match(result.payload.received_at, RECEIVED_AT_PATTERN);
+  assert.ok(!('validated_at' in result.payload));
 }
 
 function assertInvalidNoSidecar(result) {
   assert.equal(result.status, 1);
   assert.equal(result.payload.ok, false);
   assert.ok(result.payload.errors.length > 0);
-  assert.ok(!('validated_at' in result.payload), 'invalid verdict should carry no timestamp');
+  assert.equal(Object.keys(result.payload)[0], 'received_at', 'invalid response carries received_at first');
+  assert.match(result.payload.received_at, RECEIVED_AT_PATTERN);
+  assert.ok(!('validated_at' in result.payload));
 }
 
 test('validate terminal payload - completed (valid)', () => {
@@ -144,7 +147,7 @@ test('validate terminal payload - invalid status value', () => {
   assert.ok(result.payload.errors.some((e) => e.includes('status must be one of')));
 });
 
-test('valid terminal payload carries validated_at sidecar without rewriting payload', () => {
+test('valid terminal payload response carries received_at without rewriting payload', () => {
   const payload = {
     status: 'completed',
     summary: 'Task completed',
@@ -156,7 +159,7 @@ test('valid terminal payload carries validated_at sidecar without rewriting payl
   assert.deepEqual(result.payload.errors, []);
 });
 
-test('invalid terminal payload carries no timestamp', () => {
+test('invalid terminal payload response still carries received_at', () => {
   const payload = {
     status: 'completed',
     summary: 'Task completed',
@@ -363,6 +366,7 @@ test('validate with malformed JSON input', () => {
   assert.equal(result.payload.ok, false);
   assert.ok(result.payload.errors.some((e) => e.includes('invalid payload on stdin')));
   assert.ok(!('validated_at' in result.payload));
+  assert.equal(Object.keys(result.payload)[0], 'received_at');
 });
 
 test('validate with non-object JSON input', () => {
@@ -425,7 +429,7 @@ test('validate with empty stdin', () => {
   assert.ok(result.payload.errors.some((e) => e.includes('empty payload')));
 });
 
-test('text output format for valid payload carries validated_at suffix', () => {
+test('text output format for valid payload carries received_at suffix', () => {
   const payload = {
     status: 'completed',
     summary: 'Task completed',
@@ -436,10 +440,10 @@ test('text output format for valid payload carries validated_at suffix', () => {
   assert.ok(result.stdout.includes('valid'));
   assert.ok(result.stdout.includes('terminal'));
   // contains assert for non-deterministic sidecar
-  assert.match(result.stdout, /validated_at \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}/);
+  assert.match(result.stdout, /received_at \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}/);
 });
 
-test('text output format for invalid payload carries no timestamp', () => {
+test('text output format for invalid payload is unchanged and carries no timestamp', () => {
   const payload = {
     status: 'invalid',
     summary: 'Task completed',
@@ -448,7 +452,7 @@ test('text output format for invalid payload carries no timestamp', () => {
   const result = tool(JSON.stringify(payload), ['validate', '--kind', 'terminal']);
   assert.equal(result.status, 1);
   assert.ok(result.stdout.includes('invalid'));
-  assert.ok(!result.stdout.includes('validated_at'));
+  assert.ok(!result.stdout.includes('received_at'));
 });
 
 test('validate cancelled status', () => {
@@ -493,11 +497,11 @@ test('validate all valid failure classes', () => {
     const result = tool(JSON.stringify(payload), ['validate', '--kind', 'terminal', '--json']);
     assert.equal(result.status, 0, `failed to validate failure_class: ${failureClass}`);
     assert.equal(result.payload.ok, true);
-    assert.match(result.payload.validated_at, VALIDATED_AT_PATTERN);
+    assert.match(result.payload.received_at, RECEIVED_AT_PATTERN);
   }
 });
 
-test('validated_at sidecar applies to all four kinds', () => {
+test('received_at applies to all four kinds', () => {
   const cases = [
     [{ status: 'completed', summary: 'ok', changed_files: [] }, 'terminal'],
     [{ event: 'notice', message: 'hi', changed_files: [] }, 'notice'],

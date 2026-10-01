@@ -122,7 +122,7 @@ The design phase accepts the generic worker-core terminal statuses:
 
 - `completed` — `summary`, ordered
   duplicate-free `changed_files`, and post-resolution `resolved_change_name`
-  and `overview_language` (no time field; the validator emits `validated_at`);
+  and `overview_language` (no time field; the CLI response carries `received_at`);
 - `needs_input` — the same fields plus the worker's exact `question` and
   ordered `options` (with `resolved_change_name` and `overview_language` after
   resolution);

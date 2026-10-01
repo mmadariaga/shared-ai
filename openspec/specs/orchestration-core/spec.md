@@ -253,7 +253,7 @@ The shared orchestration contract SHALL support a phase adapter declaring a clos
 
 ### Requirement: Stateless worker payload validation
 
-The shared orchestration source SHALL define a deterministic, stateless tool that validates the closed payload shapes a coordinator receives from a worker. The validator tool at `sai/tools/worker-report-validator.js` SHALL accept a closed payload on stdin with a `--kind` flag, enumerate the required fields and their types for each payload kind, and return a structured verdict containing an `ok` boolean and an `errors` array, plus a `validated_at` sidecar in ISO-8601 with a numeric offset (never the `Z` designator) on a valid verdict. It SHALL build that verdict through one exported pure function, which is the only clock. The validator SHALL never repair, infer, or reformat values; a malformed value is reported as malformed without correction. The shared coordinator contract in `sai/orchestration/command-runner.md` SHALL invoke this tool for terminal, notice, progress, and extension payloads and consume its verdict rather than re-deriving the validation checks in prose. One exception applies: when the active adapter declares a `step_machine`, a progress payload SHALL be validated by the same validator module inside `sai-state emit <id> <machineId> --progress -`. Its `validation` block is read exactly as the `validate` verdict, and the payload is not run through a separate `validate --kind progress` call.
+The shared orchestration source SHALL define a deterministic, stateless tool that validates the closed payload shapes a coordinator receives from a worker. The validator tool at `sai/tools/worker-report-validator.js` SHALL accept a closed payload on stdin with a `--kind` flag, enumerate the required fields and their types for each payload kind, and return a structured, timeless verdict containing an `ok` boolean and an `errors` array; its `validate` JSON response SHALL carry `received_at` in ISO-8601 with a numeric offset (never the `Z` designator) as its first key. It SHALL build that verdict through one exported pure function, and the module's exported `generateReceivedAt` SHALL be the only clock, consumed by both `validate` and `bin/sai-state.js`. The validator SHALL never repair, infer, or reformat values; a malformed value is reported as malformed without correction. The shared coordinator contract in `sai/orchestration/command-runner.md` SHALL invoke this tool for terminal, notice, progress, and extension payloads and consume its verdict rather than re-deriving the validation checks in prose. One exception applies: when the active adapter declares a `step_machine`, a progress payload SHALL be validated by the same validator module inside `sai-state emit <id> <machineId> --progress -`. Its `validation` block is read exactly as the `validate` verdict, and the payload is not run through a separate `validate --kind progress` call.
 
 #### Scenario: Validator accepts closed terminal payloads
 
@@ -264,7 +264,7 @@ The shared orchestration source SHALL define a deterministic, stateless tool tha
 
 #### Scenario: validated_at uses a numeric offset without Z
 
-- **WHEN** the validator emits `validated_at` on a valid verdict
+- **WHEN** a CLI emits `received_at` on a JSON response
 - **THEN** the value SHALL have the format `YYYY-MM-DDTHH:MM:SS±HH:MM` with a numeric offset
 - **AND** it SHALL never use the `Z` designator (a machine on UTC writes `+00:00`)
 
@@ -286,7 +286,7 @@ The shared orchestration source SHALL define a deterministic, stateless tool tha
 
 - **WHEN** a coordinator result-processing loop receives a payload
 - **THEN** it SHALL run the validator tool, or the `sai-state` progress emit for a `step_machine` progress payload, and read the verdict
-- **AND** it SHALL not re-derive the closed-shape checks, field-type validation, or `validated_at` format rules in its own prose or logic
+- **AND** it SHALL not re-derive the closed-shape checks, field-type validation, or `received_at` format rules in its own prose or logic
 - **AND** any validation logic SHALL be implemented as code in the tool, not duplicated in the coordinator or other consumers
 
 ### Requirement: Progress registration precedes same-turn presentation and continuation

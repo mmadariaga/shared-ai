@@ -90,7 +90,7 @@ The coordinator MAY render the adaptive merge TODO after method and branch selec
 
 ### Requirement: Terminal rendering follows finalization
 
-The terminal renderer MUST forward the worker-authored summary and the validator's `validated_at` sidecar verbatim, and MUST print `Merge done.` only when `commit_executed` is true.
+The terminal renderer MUST forward the worker-authored summary and the CLI response's `received_at` verbatim, and MUST print `Merge done.` only when `commit_executed` is true.
 
 #### Scenario: Finalized run completes
 

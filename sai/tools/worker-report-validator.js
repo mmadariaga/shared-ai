@@ -13,12 +13,10 @@
  * presence and types, ignores unknown fields with no explicit legacy handling,
  * and rejects malformed payloads without repair or inference.
  *
- * On valid results the validator emits an additive display-only validated_at
- * sidecar (validator-observed validation timestamp in
- * YYYY-MM-DDTHH:MM:SS±HH:MM form, local wall-clock with numeric offset, never Z)
- * as a text suffix and a JSON field. The sidecar never alters the validation
- * decision or payload identity; exit codes and ok/errors semantics are unchanged.
- * Invalid results carry no timestamp. Zone handling lives in this tool; the
+ * The verdict is timeless. The `validate` CLI response carries received_at (CLI
+ * reception time in YYYY-MM-DDTHH:MM:SS±HH:MM form, local wall-clock with numeric
+ * offset, never Z) as its first JSON key, and as a text suffix on valid results.
+ * The time never alters the validation decision. Zone handling lives in this tool; the
  * coordinator never calls wall-clock time and forwards the verdict verbatim.
  *
  * Sub-commands:
@@ -61,11 +59,11 @@ const VALID_EVENTS = ['notice', 'progress', 'conflict_detected'];
 const VALID_CONTINUATION_STATES = ['language-selection', 'strategy-analysis'];
 
 /**
- * Validated-at wire form: YYYY-MM-DDTHH:MM:SS±HH:MM
+ * Received-at wire form: YYYY-MM-DDTHH:MM:SS±HH:MM
  * Local wall-clock time with numeric offset (never Z). This pattern describes
- * the validator-observed sidecar only; it is never a payload field.
+ * the response-envelope `received_at` only; it is never a payload field.
  */
-const VALIDATED_AT_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/;
+const RECEIVED_AT_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/;
 
 /** Usage error / tooling failure. Carries the exit code the caller sees. */
 class ToolError extends Error {
@@ -80,12 +78,12 @@ function pad2(n) {
 }
 
 /**
- * Generate the validator-observed validation timestamp.
+ * Generate the CLI reception timestamp (`received_at`), the single clock of both CLIs.
  * Local wall-clock time with its numeric UTC offset, colon-separated, never Z.
  * Reception time substitutes emission time; the small transport delta is
  * accepted as a duration proxy. Time is observation, not claim.
  */
-function generateValidatedAt(now = new Date()) {
+function generateReceivedAt(now = new Date()) {
   const year = now.getFullYear();
   const month = pad2(now.getMonth() + 1);
   const day = pad2(now.getDate());
@@ -674,9 +672,8 @@ function parsePayloadText(text) {
 
 /**
  * Pure verdict builder: turns stdin text plus a payload kind into the closed
- * validation verdict (JSON or YAML parse, validatePayload, generateValidatedAt). It is
- * the single source of the verdict shape and of the validated_at clock; the
- * `validate` CLI and `sai-state emit --progress` both consume it.
+ * validation verdict (JSON or YAML parse, validatePayload). It is pure and carries no
+ * time; the `validate` CLI and `sai-state emit --progress` both consume it.
  */
 function validateText(text, kind) {
   const parsed = parsePayloadText(text);
@@ -704,7 +701,6 @@ function validateText(text, kind) {
     action: 'validate',
     kind,
     errors: [],
-    validated_at: generateValidatedAt(),
   };
 }
 
@@ -729,8 +725,7 @@ function usage() {
     '                           currently used by the validator).',
     '',
     'Exit codes: 0 = ok; 1 = validation failed; 2 = usage or IO error.',
-    'Valid results carry an additive display-only validated_at sidecar',
-    '(validator-observed validation timestamp); invalid results carry none.',
+    'The JSON response carries received_at (CLI reception time) as its first key.',
   ].join('\n');
 }
 
@@ -753,7 +748,7 @@ function renderText(payload) {
   if (!payload.ok) {
     return `invalid (${payload.kind}): ${payload.errors.join('; ')}`;
   }
-  return `valid (${payload.kind}) validated_at ${payload.validated_at}`;
+  return `valid (${payload.kind}) received_at ${payload.received_at}`;
 }
 
 function render(payload, json) {
@@ -792,7 +787,9 @@ async function main(argv) {
   }
 
   try {
-    const payload = await commandValidate(kind);
+    const receivedAt = generateReceivedAt();
+    const verdict = await commandValidate(kind);
+    const payload = Object.assign({ received_at: receivedAt }, verdict);
     render(payload, opts.json);
     return payload.ok ? 0 : 1;
   } catch (err) {
@@ -821,11 +818,11 @@ module.exports = {
   validateNotice,
   validateProgress,
   validateConflictDetected,
-  generateValidatedAt,
+  generateReceivedAt,
   usage,
   VALID_STATUSES,
   VALID_FAILURE_CLASSES,
   VALID_EVENTS,
   VALID_CONTINUATION_STATES,
-  VALIDATED_AT_PATTERN,
+  RECEIVED_AT_PATTERN,
 };
