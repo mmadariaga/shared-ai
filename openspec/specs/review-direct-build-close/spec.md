@@ -6,24 +6,32 @@ TBD - created by archiving change review-direct-build-option. Update Purpose aft
 ## Requirements
 
 ### Requirement: Review Direct Build Close Selector
-The sai-review close SHALL offer a Direct Build lane only when review.md or an activated audit reports remaining findings, and SHALL close with the normal terminal when clean.
+
+After successful review and a valid triage parse, the sai-review close SHALL offer the existing Direct Build lane when `review.md` or an activated audit reports an eligible remaining finding, including runs with zero activated audits. An eligible finding is a non-question finding whose fix changes neither requirements nor design. When no eligible findings remain, the close SHALL preserve its normal terminal, including the exact zero-audit literal for a zero-audit run and existing blocked-finding explanations. Missing review content or no legible triage section SHALL retain the error close without offering correction authorization. Existing selection, exclusions, fix rounds and write/local-commit authorization boundaries SHALL remain unchanged.
+
 #### Scenario: Findings remain
-- **WHEN** review or an activated audit reports a remaining finding
+- **WHEN** a successful review with a valid triage parse or an activated audit reports an eligible remaining finding
 - **THEN** the close presents Direct Build versus running sai-build manually and dispatches only on explicit selection
+
+#### Scenario: Zero audits with eligible review findings
+- **WHEN** no audit activates after successful review and a valid triage parse, and the freshly generated `review.md` reports an eligible remaining finding
+- **THEN** the composition SHALL offer the same Direct Build correction choice with the existing findings-selection and fix-loop boundaries, without dispatching an audit
 
 ### Requirement: Findings-Scoped Fix Input
 
-The `/sai-5-review` Direct Build input SHALL use `review.md` and the existing on-disk `security.md`, `performance.md`, and `accessibility.md` artifacts as-is, even when those audit artifacts are stale. The `/sai-review` Direct Build input SHALL use `review.md` plus only the security, performance, and accessibility findings from audits activated and regenerated in that same run. Before dispatch, both routes SHALL obtain a validated selection of eligible findings and exclusions, and SHALL pass only selected findings plus a labeled exclusion list to the fix worker.
+The `/sai-5-review` Direct Build input SHALL use `review.md` and the existing on-disk `security.md`, `performance.md`, and `accessibility.md` artifacts as-is, even when those audit artifacts are stale. The `/sai-review` Direct Build input SHALL use the freshly generated `review.md` plus only the security, performance, and accessibility findings from audits activated and regenerated in that same run. With zero activated audits, only the freshly generated `review.md` SHALL be inspected for eligibility, findings selection, and fix input; existing non-activated audit reports SHALL remain untouched and excluded from all three stages. Before dispatch, both routes SHALL obtain a validated selection of eligible findings and exclusions, and SHALL pass only selected findings plus a labeled exclusion list to the fix worker.
 
 #### Scenario: Non-recommended audit excluded
-
 - **WHEN** an audit was not recommended in the same run
 - **THEN** its findings are never touched nor regenerated as fix input
 
 #### Scenario: Excluded finding is not fix input
-
 - **WHEN** an eligible finding is excluded during the Direct Build selection
 - **THEN** the fix worker input SHALL omit that finding and the finding SHALL remain unresolved in its report.
+
+#### Scenario: Zero audits exclude stale reports
+- **WHEN** no audit activates and existing audit reports contain findings from earlier runs
+- **THEN** the composition SHALL inspect only the freshly generated `review.md` for eligibility, findings selection, and fix input, leaving all non-activated audit reports untouched
 
 ### Requirement: Single-Commit Local Close
 

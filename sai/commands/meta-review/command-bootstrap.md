@@ -32,5 +32,9 @@ Missing or illegible content:
   summary warning line, and the audits whose sections were legible still run.
 
 The activated list keeps the declared order (review → security → performance →
-accessibility). When no audit is activated, the suite ends after the review
-segment with a terminal message and no audit dispatches.
+accessibility). When no audit is activated after successful review and a valid
+triage parse, the coordinator applies the existing findings-driven Direct Build
+close using only the freshly regenerated `review.md`, with no audit dispatches.
+Eligible findings receive the existing correction choice; when none remain,
+the exact zero-audit terminal literal is preserved. Missing or wholly illegible
+triage takes the error close above, not the correction choice.

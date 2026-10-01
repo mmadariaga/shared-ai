@@ -37,9 +37,8 @@ The review coordinator's sole read exception SHALL cover, in addition to the fre
 
 ### Requirement: Meta-Review Zero-Audit Branch Is Terminal
 
-The `/sai-review` composition coordinator SHALL treat its zero-audit branch as terminal for the composition: it SHALL print its pinned zero-audit literal, SHALL dispatch nothing, and SHALL NOT apply the review adapter's Direct Build close, even when `review.md` still carries findings. Using the final adapter's `terminal_navigation` in that branch SHALL select its presentation only, never its selector or its dispatches.
+After successful review and a valid triage parse, the `/sai-review` composition coordinator SHALL own the zero-audit close and SHALL apply the shared findings-driven Direct Build close with only the freshly generated `review.md`. Eligible findings SHALL receive the existing correction choice, with no fix dispatch before explicit selection; when no eligible findings remain, the composition SHALL preserve its pinned zero-audit literal and existing blocked-finding explanations. The composition SHALL NOT apply the review adapter's standalone Direct Build close. Using the final adapter's `terminal_navigation` SHALL select its presentation only, never its standalone selector or dispatches. Missing review content or no legible triage section SHALL retain the error close, not a correction choice.
 
 #### Scenario: Zero audits recommended with findings still present
-
-- **WHEN** a `/sai-review` run recommends zero audits while `review.md` still carries findings
-- **THEN** the composition prints its pinned zero-audit literal, offers no Direct Build selector, and dispatches nothing
+- **WHEN** a successful `/sai-review` run has a valid triage parse, recommends zero audits, and the freshly generated `review.md` still carries eligible findings
+- **THEN** the composition coordinator SHALL offer the existing shared Direct Build correction choice with `review.md` only, dispatch no audits and dispatch no fix before explicit selection; the standalone review adapter SHALL offer no selector and dispatch nothing
