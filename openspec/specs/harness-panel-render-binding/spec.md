@@ -72,3 +72,19 @@ Claude Code and opencode SHALL preserve equivalent merge TODO states and transit
 
 - **WHEN** the same conflict lifecycle is rendered by either supported harness
 - **THEN** both preserve the same strategy, mutation, and re-entry semantics
+
+### Requirement: Routed progress updates and continuation share an assistant turn
+
+Claude Code and opencode panel bindings SHALL make routed progress-event continuation the sole exception to their render-first ordering. After the shared runner validates and registers the event, opencode SHALL issue `todowrite` and the same-worker `task` continuation as parallel calls in one assistant turn. Claude Code SHALL issue the necessary independent task-panel updates and `SendMessage` in one assistant turn, resolving panel ids required for those updates beforehand. Both calls SHALL use the registered progress result independently; neither SHALL depend on the other's return value. Emission SHALL remain coordinator-owned, with step-level granularity and validator-sourced milestone stamps. Initial dispatch, other continuations, and non-routed surfaces SHALL retain render-first ordering. The existing one-time unavailable-panel degradation SHALL remain unchanged, and all other panel errors SHALL remain failures without retries.
+
+#### Scenario: Opencode progress batching
+- **WHEN** a validated progress event marks a new declared step in an opencode routed plan
+- **THEN** the coordinator registers progress and issues the full `todowrite` update plus the same-worker `task` continuation in the same assistant turn without waiting for either return value to issue the other
+
+#### Scenario: Claude Code progress batching
+- **WHEN** a validated progress event marks a new declared step in a Claude Code routed plan
+- **THEN** the coordinator registers progress and issues the necessary independent task updates plus `SendMessage` in the same assistant turn without requiring panel completion first
+
+#### Scenario: Panel calls already disabled
+- **WHEN** progress is registered after the invocation's panel tooling has degraded
+- **THEN** the coordinator continues the same worker without a panel call while retaining logical step state

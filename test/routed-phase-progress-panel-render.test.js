@@ -65,7 +65,8 @@ test('shared runner renders only after a progress event changes the marked set',
   assert.match(runner, /routing-only event performs\s+no render and stamps\s+nothing/);
   assert.doesNotMatch(runner, /changed no marked state performs no render or wall-clock/);
   assert.match(runner, /changed_files[\s\S]{0,180}progress-event render act/);
-  assert.match(runner, /render act[\s\S]{0,320}continue_after_progress/);
+  assert.match(runner, /After validation and registration, issue the independent panel updates and same-worker continuation in one assistant turn/);
+  assert.match(runner, /continuation remains exactly `continue_after_progress`/);
 });
 
 test('routed coordinators delegate progress rendering to the shared policy', () => {
@@ -81,7 +82,8 @@ test('routed coordinators delegate progress rendering to the shared policy', () 
 
   for (const relativePath of coordinatorPaths) {
     const coordinator = read(relativePath);
-    assert.match(coordinator, /Progress-event\s+panel updates follow/);
+    assert.match(coordinator, /Progress-event\s+panel updates(?: and worker continuation)? follow/);
+    assert.doesNotMatch(coordinator, /shared command runner before worker continuation/);
     assert.match(coordinator, /panel tool is unavailable at runtime|declared panel tool is unavailable at runtime/);
     assert.match(coordinator, /record its notice/);
     assert.match(coordinator, /disable later[\s\S]{0,40}panel calls/);

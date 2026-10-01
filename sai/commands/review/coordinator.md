@@ -52,7 +52,7 @@
 
   Process every result through the runner. The review-specific additions:
 
-  - `progress` — Mark steps only from worker progress-event `step_ids`. Progress-event panel updates follow `@sai/policies/todo-structure.md` through the shared command runner before worker continuation; an unavailable panel uses the same recorded degradation route and does not block continuation. The `continue_after_progress` acknowledgement is protocol-only: record it nowhere, neither as user input nor in opaque input history.
+  - `progress` — Mark steps only from worker progress-event `step_ids`. Progress-event panel updates and worker continuation follow `@sai/policies/todo-structure.md` through the shared command runner's same-turn rule; an unavailable panel uses the same recorded degradation route and does not block continuation. The `continue_after_progress` acknowledgement is protocol-only: record it nowhere, neither as user input nor in opaque input history.
   - `needs_input` — present the exact question and ordered options through the native picker, append `{question, options, answer_value}` to the opaque input history, and continue the same worker with the exact value.
   - Reconcile at run-closing results: `completed` renders every unmarked step `completed`; `failed`, `cancelled`, and a `needs_input` pause (not run-closing) leave the list exactly as last rendered.
 

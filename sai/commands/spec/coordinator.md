@@ -51,7 +51,7 @@
 
   Process every result through the runner. The spec-specific additions:
 
-  - `progress` — Progress-event panel updates follow `@sai/policies/todo-structure.md` through the shared command runner before worker continuation; an unavailable panel uses the same recorded degradation route and does not block continuation.
+  - `progress` — Progress-event panel updates and worker continuation follow `@sai/policies/todo-structure.md` through the shared command runner's same-turn rule; an unavailable panel uses the same recorded degradation route and does not block continuation.
   - `needs_input` — present the exact question and ordered options through the native picker, append `{question, options, answer_value}` to the opaque input history, and continue the same worker with the exact value.
   - Continuation failure — always try same-worker continuation before a replacement; only when it fails, dispatch at most one replacement worker from the reconstruction fields above. Its first continuation carries the pointer line for the departing worker's `active_step_id`.
   - Recovery — the runner and `@sai/policies/bounded-recovery.md` own diagnosis, eligibility, attempts, and hand-back. Forward the ordered diagnosis with exactly `continue_after_recovery`; recovery text never marks, adds, or renames plan steps.
