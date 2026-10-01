@@ -288,3 +288,17 @@ The shared orchestration source SHALL define a deterministic, stateless tool tha
 - **THEN** it SHALL run the validator tool, or the `sai-state` progress emit for a `step_machine` progress payload, and read the verdict
 - **AND** it SHALL not re-derive the closed-shape checks, field-type validation, or `validated_at` format rules in its own prose or logic
 - **AND** any validation logic SHALL be implemented as code in the tool, not duplicated in the coordinator or other consumers
+
+### Requirement: Progress registration precedes same-turn presentation and continuation
+
+The shared runner SHALL validate each progress result before acting on it and SHALL register declared marks, the ordered duplicate-free changed-file union, and deterministic routing state before issuing presentation or continuation calls. For a state-changing visual progress event, the coordinator SHALL issue independent panel updates and same-worker continuation in one assistant turn through the active harness binding, without waiting for a panel return value before continuation. A no-op, routing-only, suppressed-plan, or already-degraded-panel event SHALL issue only the continuation. The coordinator SHALL process panel and worker results before the next Result Loop iteration. Existing continuation literals, just-in-time pointers, validation-observed milestone stamps, reconstruction fields, and no-commit guard windows SHALL remain unchanged. Initial rendering SHALL still precede initial dispatch; this exception SHALL change no other continuation ordering.
+
+#### Scenario: A registered result drives both calls
+- **WHEN** a valid worker progress event adds a declared visual progress mark
+- **THEN** the coordinator registers logical progress and changed files, and uses that registered result independently for the panel update and same-worker continuation in one assistant turn
+- **AND** no new guard window opens and neither call waits for the other call's return value
+
+#### Scenario: Startup disclosure remains combined
+- **WHEN** a spec, design, implement, review, security, performance, or accessibility worker receives its post-ready task disclosure
+- **THEN** the first filed step pointer opens the task continuation, the worker runs the fileless startup act first, and a successful ordinary startup reports the first two completed ids together
+- **AND** a resolution failure returns before analysis or the first filed step, a legitimate early outcome reports only actually completed steps, design seeds its selected variant on the first emit, and reconstruction preserves the active step id

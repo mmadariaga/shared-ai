@@ -16,14 +16,20 @@ The Claude Code and opencode panel bindings SHALL treat a rejected panel call ca
 
 ### Requirement: Degradation preserves render ordering
 
-The coordinator SHALL complete the panel render attempt or recorded degradation decision before a worker dispatch or continuation, including the merge adaptive TODO route.
+The coordinator SHALL complete the panel render attempt or recorded degradation decision before a worker dispatch or surface continuation, including the merge adaptive TODO route, except for routed progress-event continuation. After validating and registering a routed progress event, the coordinator SHALL issue independent panel updates and continuation in one assistant turn and process both results before the next Result Loop iteration. A runtime-unavailable panel SHALL retain exactly one notice and disable later panel calls while preserving logical progress; other panel errors SHALL remain failures without retries. A continuation already issued alongside the rejected panel call SHALL not be issued again. Initial rendering and all non-progress surfaces SHALL retain render-first ordering.
 
 #### Scenario: Dispatch does not bypass the render prerequisite
 
 - **WHEN** the initial or progress render encounters an unavailable panel tool
-- **THEN** the coordinator records the degradation before dispatching or resuming the worker and does not alter the logical progress-plan state rules.
+- **THEN** for initial rendering the coordinator records degradation before dispatching; for progress rendering it processes the rejection from the same-turn calls before its next Result Loop iteration
+- **AND** it preserves logical progress, emits the notice once, disables later panel calls, and does not repeat an already issued continuation
 
 #### Scenario: Merge continuation waits for degradation recording
 
 - **WHEN** a merge TODO render fails because the declared panel tool is unavailable
 - **THEN** the coordinator records the degradation before launching or continuing the merge worker
+
+#### Scenario: A non-unavailability panel error remains a failure
+
+- **WHEN** the progress panel call returns an error other than tool unavailability
+- **THEN** the coordinator treats it as a failure before processing the next worker result without retrying, switching mechanisms, or calling it unavailability

@@ -7,7 +7,7 @@ TBD - created by archiving change spec-step-gated-instructions. Update Purpose a
 
 ### Requirement: Opt-in step_machine pointer routing
 
-The shared command runner SHALL route just-in-time step pointers only through an optional static `step_machine` adapter field alongside `progress_plan` and `recovery_policy` — fully known at dispatch and immutable for the active adapter segment — and SHALL NOT require it: an adapter that declares no `step_machine` sends a progress continuation of exactly `continue_after_progress`, leaving every other phase observationally identical. The runner SHALL admit no static `step_pointer_map` adapter field.
+The shared command runner SHALL route just-in-time step pointers only through an optional static `step_machine` adapter field alongside `progress_plan` and `recovery_policy` — fully known at dispatch and immutable for the active adapter segment — and SHALL NOT require it: an adapter that declares no `step_machine` sends a progress continuation of exactly `continue_after_progress`, leaving every other phase observationally identical. The runner SHALL admit no static `step_pointer_map` adapter field. After validating and registering progress, it SHALL issue any state-changing panel update and the same-worker continuation independently in one assistant turn, without waiting for panel completion. No-op or routing-only events SHALL continue without a render or stamp. The pointer SHALL derive only from the registered machine result, never from a panel result.
 
 #### Scenario: undeclared machine keeps the single-line continuation
 
@@ -17,7 +17,8 @@ The shared command runner SHALL route just-in-time step pointers only through an
 #### Scenario: declared machine yields a two-line continuation payload
 
 - **WHEN** an adapter declares `step_machine` and a progress event changes the marked set
-- **THEN** the coordinator renders the progress mark before resuming and continues the same worker with exactly two payload lines: the protocol continuation line, then the pointer line taken from the machine's `next.follow`
+- **THEN** after validating and recording the event, the coordinator issues any progress panel update and the same-worker continuation in the same assistant turn
+- **AND** the continuation has exactly two payload lines: the protocol continuation line, then the pointer line taken from the machine's `next.follow`
 
 ### Requirement: Pointer delivery in the runner
 

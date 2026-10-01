@@ -126,11 +126,20 @@ conversion, so the coordinator issues no wall-clock call and resolves no zone.
   amended at runtime. The runner records whether the event reported at least one
   previously unmarked declared id before rendering, and adds every path in
   `changed_files` to the union. When a visual `progress_plan` exists and the
-  event changed its marked set, apply the progress-event render act from
-  `@sai/policies/todo-structure.md` before continuing, so the user sees the mark
-  before the next stretch of worker work begins. A routing-only event performs
-  no render and stamps nothing. Then continue the same worker with exactly
-  `continue_after_progress` (plus the pointer line of § Step-gated pointer delivery when one applies).
+  event changed its marked set, prepare the progress-event render act from
+  `@sai/policies/todo-structure.md`, including stamps from the marking verdict.
+  After validation and registration, issue the independent panel updates and same-worker continuation in one assistant turn.
+  Do not wait for the panel result before issuing the continuation. Use the
+  active harness panel binding's batching mechanics; panel completion order is
+  not guaranteed. The continuation remains exactly `continue_after_progress`
+  (plus the pointer line of § Step-gated pointer delivery when one applies).
+  A no-op or routing-only event performs no render and stamps nothing; continue
+  without a panel call. If panel rendering is already disabled or suppressed by
+  policy, issue only the continuation. Process both results before the next
+  Result Loop iteration: tool unavailability takes the binding's one-time
+  degradation route, and other panel errors remain failures, without retries.
+  This exception is progress-only: the initial render still precedes the first dispatch.
+  Same-turn calls open no new guard window and change no existing guard boundary.
 - **Nonterminal extension** (`--kind <extension-event>`) — an adapter may
   declare a phase-defined closed nonterminal extension in
   `allowed_nonterminal_extensions`; the tool validates its discriminator,
@@ -217,8 +226,8 @@ reconstruction, that reconstruction state additionally includes the worker's
 line for that step. The `active_step_id` is the `stage` of the latest progress
 emit; before the first progress event it is the first filed step from the
 `reset` response, never the fileless first step and never a `none` pointer. The coordinator
-renders the progress mark, when a visual `progress_plan` exists, before sending
-the two-line continuation. Without a `step_machine`, a progress continuation is
+issues any progress render and the two-line continuation in the same turn per
+§ Result kinds, after validation and registration. Without a `step_machine`, a progress continuation is
 exactly `continue_after_progress`.
 
 ## Chained phase composition
