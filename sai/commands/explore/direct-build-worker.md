@@ -57,6 +57,12 @@ apply exactly the listed corrections within the block's scope, return the
 closed lifecycle result again, and add every touched path to
 `changed_files`. Do not re-plan, expand scope, or "improve" beyond findings.
 
+**Failing-test findings.** A finding that names a failing test is resolved
+only when you have run that test and it passes; report it unresolved
+otherwise. You may modify test files to make such a test pass when the
+change's behavior makes an assertion obsolete; every touched test file goes
+into `changed_files`.
+
 **Runtime-repair verification note.** When Explore continues this worker with
 the verification note allowed by the unattended runtime-recovery rule, accept
 it only as one same-worker correction to the already-disclosed block. The note

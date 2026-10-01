@@ -6,11 +6,11 @@ TBD - created by archiving change enhanced-direct-build-reviews. Update Purpose 
 ## Requirements
 
 ### Requirement: Direct Build Review Executes Project, Structural, and Empirical Checks
-The pipeline SHALL execute all three review checks for every Direct Build functional fix-loop round: project checks when available, an always-on structural check, and empirical verification whenever feasible. The structural check SHALL include an excess-scope check: the diff SHALL implement no item listed under the block's `**Out of scope Implementation Details**` and SHALL contain no anticipatory implementation — no whole item, stub, hook, "for later" abstraction, or reference whose only purpose is to serve a later slice. Each such occurrence SHALL be recorded as a finding that requires reverting it, within the existing fix-round budget and cap-exhaustion semantics.
+The pipeline SHALL execute two review checks for every Direct Build functional fix-loop round: an always-on structural check and empirical verification whenever feasible. Project test checks SHALL NOT run inside the fix-loop round; they SHALL run once as the mandatory Step 2b suite gate after the fix loop. The structural check SHALL include an excess-scope check: the diff SHALL implement no item listed under the block's `**Out of scope Implementation Details**` and SHALL contain no anticipatory implementation — no whole item, stub, hook, "for later" abstraction, or reference whose only purpose is to serve a later slice. Each such occurrence SHALL be recorded as a finding that requires reverting it, within the existing fix-round budget and cap-exhaustion semantics.
 
 #### Scenario: Three checks run together
 - **WHEN** a Direct Build result is reviewed against its Capabilities and Edge Cases
-- **THEN** the review runs project checks when available plus the structural mapping, including the excess-scope check, plus empirical verification whenever feasible
+- **THEN** each fix-loop round runs the structural mapping, including the excess-scope check, plus empirical verification whenever feasible, and the project's full test suite runs afterwards as the Step 2b suite gate
 
 #### Scenario: Anticipatory implementation is a revert finding
 - **WHEN** the reviewed diff implements an out-of-scope item or contains code whose only purpose is to serve a later slice
