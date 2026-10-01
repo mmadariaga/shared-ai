@@ -172,3 +172,12 @@ Under the crystallization language gate, the `**Request Additional Notes**` bold
 
 - **WHEN** a non-English crystallization language is chosen and the emitted block carries Request Additional Notes content
 - **THEN** the `**Request Additional Notes**` label is rendered in English
+
+### Requirement: Out of scope Implementation Details label stays English scaffolding
+
+Under the crystallization language gate, the `**Out of scope Implementation Details**` bold field label SHALL remain in English as scaffolding, like the other bold field labels, regardless of the chosen language. The agreed `I` statements listed under it SHALL follow the same translation rule as those under `**Implementation Details**`.
+
+#### Scenario: Label is not localized
+
+- **WHEN** a non-English crystallization language is chosen and a block is emitted
+- **THEN** the `**Out of scope Implementation Details**` label is rendered in English while its `I` statements render in the chosen language with identifiers and order preserved

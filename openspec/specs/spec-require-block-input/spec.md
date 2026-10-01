@@ -2,7 +2,9 @@
 
 ## Purpose
 Make `sai-1-spec` creation require the crystallized `Ready to Propose` block from `sai-explore`, while refinement of an existing change needs no block.
+
 ## Requirements
+
 ### Requirement: Creation requires crystallized block concepts
 
 The `sai-1-spec` creation entry SHALL require the crystallized `Ready to Propose` block judged by concepts never byte-exact: What, Why, Capabilities in scope, Decisions and Rationale, Alternatives Considered, Trade-offs Accepted, Key constraints, Terms, Edge Cases, and Implementation Details, with Change name as the resolution source. When the request carries those concepts the worker SHALL resolve the name from the block and proceed as creation. Otherwise the worker SHALL STOP before change resolution and print exactly the creation STOP with redirect to sai-explore. This covers an empty request, a name-only request, an incomplete block with any listed concept missing, and a hand-created change directory with no proposal or specs.
@@ -48,3 +50,11 @@ Re-entry or refinement on an existing change directory already holding proposal 
 - **WHEN** refinement targets a change directory holding proposal or specs
 - **THEN** the worker SHALL proceed from a simple prompt without requiring the block
 
+### Requirement: Creation derives nothing from out-of-scope implementation items
+
+During `sai-1-spec` creation, only the items under the block's `Implementation Details` concept SHALL count as implementation decisions of the change. Items under `Out of scope Implementation Details` SHALL be non-normative context and SHALL NOT become requirements or scenarios of the change.
+
+#### Scenario: Out-of-scope items produce no requirement
+
+- **WHEN** creation runs from a per-slice block whose `**Out of scope Implementation Details**` lists items
+- **THEN** the written proposal and specs contain no requirement or scenario derived from those items

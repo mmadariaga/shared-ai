@@ -33,7 +33,9 @@ The block is structured as follows:
 **Edge Cases**:
 - <agreed `E1`…`En` behavior statement, or None>
 **Implementation Details**:
-- <agreed `I1`…`In` statement in order, or None>
+- <in-scope `I1`…`In` statement in order, or None>
+**Out of scope Implementation Details**:
+- <out-of-scope `I1`…`In` statement in order, or None>
 **Request Additional Notes**:
 <optional free Markdown: paragraphs or bullets>
 **Overview language**: <explicit `--overview-lang` option value or literal None>
@@ -50,9 +52,11 @@ The five sections between `**Capabilities in scope**` and `**Key constraints**` 
 - `**Trade-offs Accepted**`
 - `**Model / Re-framings**`
 
+`**Out of scope Implementation Details**` is also mandatory: every block carries it immediately after `**Implementation Details**`, as exactly `- None` when no item is out of scope.
+
 Sections follow the block order above; `**Overview language**` is the last line before the `---` separator.
 
-`**Request Additional Notes**` is optional and sits outside the five mandatory sections: when present it follows `**Implementation Details**` and immediately precedes `**Overview language**`; when it has no content it is omitted entirely — no label, no `- None`.
+`**Request Additional Notes**` is optional and sits outside the mandatory sections: when present it follows `**Out of scope Implementation Details**` and immediately precedes `**Overview language**`; when it has no content it is omitted entirely — no label, no `- None`.
 
 ## Field rules
 
@@ -68,7 +72,8 @@ Sections follow the block order above; `**Overview language**` is the last line 
 - **Key constraints**: constraints or non-goals
 - **Terms**: agreed terms fixed before edge cases, each as `term: definition`; emits exactly `- None` when no term was agreed; conversation-only agreement, never a file write
 - **Edge Cases**: agreed `E1`…`En` behavior statements in their established order, or exactly one `- None` bullet when the agreed list is empty
-- **Implementation Details**: agreed `I1`…`In` statements in their established order with identifiers and wording preserved, or exactly one `- None` bullet when the agreed list is empty. `wording preserved` means identifiers and order, not source language, and does not block translation under the crystallization language gate.
+- **Implementation Details**: the in-scope agreed `I1`…`In` statements — the items this block's change needs — in their established global order with identifiers and wording preserved, or exactly one `- None` bullet when no agreed item is in scope. `wording preserved` means identifiers and order, not source language, and does not block translation under the crystallization language gate. In a non-sliced block every agreed item is in scope.
+- **Out of scope Implementation Details**: every other agreed `I1`…`In` statement — items owned by an earlier or a later slice — under the same field rules (global order, identifiers, and wording preserved), or exactly one `- None` bullet when no item is out of scope (always in a non-sliced block, and whenever the agreed list is empty). Within one block each identifier appears exactly once, in exactly one of the two sections, and together the two sections cover the full agreed list. This section is non-normative context for the receiving change: no requirement, scenario, intent item, or implementation obligation derives from it.
 - **Request Additional Notes**: optional, free-form, non-normative Markdown (paragraphs or bullets) carrying discussed, agreed context that could influence implementation and fits no other field. Examples of what it holds, not an exhaustive list:
   - future behavior the conversation agreed on but excluded from this change;
   - related follow-up work, such as PBIs or tickets;

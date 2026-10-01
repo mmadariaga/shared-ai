@@ -70,19 +70,34 @@ When no technical decision qualifies for the stage, `sai-explore` SHALL emit exa
 
 ### Requirement: The Ready to Propose block carries an Implementation Details section
 
-Every `Ready to Propose` block — the single-change protocol and each per-slice block of the sliced protocol — SHALL include a dedicated `**Implementation Details**` section placed immediately after `**Edge Cases**`, carrying the agreed `I1` through `In` statements in their established order with their identifiers and wording preserved, or exactly one `- None` bullet when the agreed list is empty. The section SHALL carry only the agreed technical decisions — the "what"; their rationale and alternatives SHALL NOT be restated there, remaining in **Decisions & Rationale** and **Alternatives Considered**.
+Every `Ready to Propose` block — the single-change protocol and each per-slice block of the sliced protocol — SHALL include a dedicated `**Implementation Details**` section placed immediately after `**Edge Cases**`, followed immediately by a mandatory `**Out of scope Implementation Details**` section. `**Implementation Details**` SHALL carry the in-scope agreed `I1` through `In` statements and `**Out of scope Implementation Details**` SHALL carry every other agreed statement, each section in the established global order with identifiers and wording preserved, or exactly one `- None` bullet when it holds no item. In a single-change block every agreed item SHALL be in scope and `**Out of scope Implementation Details**` SHALL be exactly `- None`. In each per-slice block the agreed list SHALL be split by judgment: the items the slice needs are in scope and every other item, from an earlier or a later slice, is out of scope. Within one block each identifier SHALL appear exactly once, in exactly one of the two sections, and together the sections SHALL cover the full agreed list. An item that several slices need SHALL be in scope in each of those slices' blocks; an item that an earlier slice delivered SHALL be out of scope unless this slice must extend it. The sections SHALL carry only the agreed technical decisions — the "what"; their rationale and alternatives SHALL NOT be restated there, remaining in **Decisions & Rationale** and **Alternatives Considered**.
 
 #### Scenario: A single-change block includes the agreed decisions
 
 - **WHEN** the agreed technical-decision list is non-empty and a single-change block is emitted
-- **THEN** the block's `**Implementation Details**` section lists the agreed `I1`…`In` statements in order immediately after `**Edge Cases**`
+- **THEN** the block's `**Implementation Details**` section lists the agreed `I1`…`In` statements in order immediately after `**Edge Cases**`, and `**Out of scope Implementation Details**` follows as exactly `- None`
 
 #### Scenario: An empty agreed list emits None
 
 - **WHEN** the agreed list is empty
-- **THEN** the block's `**Implementation Details**` section carries exactly one `- None` bullet
+- **THEN** both the `**Implementation Details**` section and the `**Out of scope Implementation Details**` section carry exactly one `- None` bullet
 
 #### Scenario: Every per-slice block carries the section
 
 - **WHEN** the sliced protocol emits a set of per-slice blocks
-- **THEN** each block carries the full agreed `I1`…`In` list in order, or exactly `- None` when the list is empty, and no slice omits the section
+- **THEN** each block carries both sections, with every agreed identifier appearing exactly once across them in global order, and no slice omits either section
+
+#### Scenario: A shared item is in scope in every slice that needs it
+
+- **WHEN** an agreed item is needed by more than one slice
+- **THEN** it is listed under `**Implementation Details**` in each of those slices' blocks
+
+#### Scenario: An earlier-slice item is out of scope unless extended
+
+- **WHEN** an agreed item was delivered by an earlier slice
+- **THEN** it is listed under `**Out of scope Implementation Details**` in a later slice's block, unless that later slice must extend it, in which case it is in scope
+
+#### Scenario: A slice with no own items
+
+- **WHEN** a slice needs none of the agreed items
+- **THEN** its block carries `**Implementation Details**` as exactly `- None` and lists the full agreed list under `**Out of scope Implementation Details**`

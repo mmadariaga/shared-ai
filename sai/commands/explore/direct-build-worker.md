@@ -29,14 +29,14 @@ requirement. Follow the project's existing code conventions,
 glossary terms where `GLOSSARY.md` exists, and format rules. Keep the diff
 minimal and reviewable.
 
-**Slice-scoped scope rule**: when the block comes from a sliced
-crystallization set, `**Capabilities in scope**` bounds this run. Every
-per-slice block carries the whole-idea `**Implementation Details**` list,
-deliberately unattributed per slice, so implement an item `I1`…`In` only when
-a capability in this block's `**Capabilities in scope**` (or an Edge Case
-attributed to this slice) requires its behavior. Items that serve a later
-slice's capabilities stay wholly outside this run's diff: no stub, no
-reference.
+**Scope rule**: `**Capabilities in scope**` and `**Implementation Details**`
+bound this run; implement exactly the items listed under
+`**Implementation Details**`. `**Out of scope Implementation Details**` is
+context only: use its items solely to choose among options that are equivalent
+for this run, so a choice does not block a later slice. Never implement an
+out-of-scope item and never do anticipatory implementation — no whole item,
+stub, hook, "for later" abstraction, or reference whose only purpose is to
+serve a later slice.
 
 Write any artifact the crystallized change requires, within the
 repository-artifact scope and its protected update protocols, under these role

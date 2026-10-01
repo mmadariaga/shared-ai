@@ -83,12 +83,12 @@ When multiple Escalate findings exist across artifacts, escalated findings SHALL
 
 ### Requirement: Escalation block content and format
 
-Each Ready to Propose block for an Escalation group SHALL include: a change name derived from escalated work's substance, a one-to-two-sentence work summary, a description of gaps or constraints revealed by findings, research leads pointing to referenced code and documentation (not artifact offsets), Edge Cases set to None, and Implementation Details set to None since only explore can establish those with the user.
+Each Ready to Propose block for an Escalation group SHALL include: a change name derived from escalated work's substance, a one-to-two-sentence work summary, a description of gaps or constraints revealed by findings, research leads pointing to referenced code and documentation (not artifact offsets), Edge Cases set to None, Implementation Details set to None since only explore can establish those with the user, and Out of scope Implementation Details set to None.
 
 #### Scenario: Block includes all required fields
 
 - **WHEN** artifact-analysis emits a Ready to Propose block for an escalation group
-- **THEN** the block SHALL include **Change name**, **What**, **Why**, **Research Leads**, **Edge Cases** as None, and **Implementation Details** as None
+- **THEN** the block SHALL include **Change name**, **What**, **Why**, **Research Leads**, **Edge Cases** as None, **Implementation Details** as None, and **Out of scope Implementation Details** as None
 
 #### Scenario: Research Leads reference codebase, not artifacts
 

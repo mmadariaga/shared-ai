@@ -14,19 +14,23 @@ TBD - created by archiving change auto-fast-selector-option. Update Purpose afte
 
 ### Requirement: Alpha input model
 
-The implementer worker SHALL receive exactly one opaque `arguments_value` whose first line is the marker `--direct-build` and whose remainder is the complete crystallized Ready to Propose block; it SHALL strip the marker line and treat that block as its sole substantive input, with no conversation context forwarded and no requirements inferred from repository discovery beyond what implementing the block requires.
+The implementer worker SHALL receive exactly one opaque `arguments_value` whose first line is the marker `--direct-build` and whose remainder is the complete crystallized Ready to Propose block; it SHALL strip the marker line and treat that block as its sole substantive input, with no conversation context forwarded and no requirements inferred from repository discovery beyond what implementing the block requires. `**Capabilities in scope**` and `**Implementation Details**` SHALL bound the run, and the worker SHALL implement exactly the items listed under `**Implementation Details**`. `**Out of scope Implementation Details**` SHALL be context only: the worker SHALL use its items solely to choose among options that are equivalent for this run, SHALL NOT implement an out-of-scope item, and SHALL NOT do anticipatory implementation — no whole item, stub, hook, "for later" abstraction, or reference whose only purpose is to serve a later slice.
 
 #### Scenario: Block-only input
 
 - **WHEN** the worker is dispatched by explore's Direct Build - Unattended flow
-- **THEN** it implements directly from Capabilities in scope, Key constraints, Implementation Details, and Edge Cases, treating Research Leads as non-authoritative starting points only
+- **THEN** it implements directly from Capabilities in scope, Key constraints, Implementation Details, and Edge Cases, treating Research Leads and Out of scope Implementation Details as non-authoritative context only
 
 #### Scenario: Slice-scoped implementation
 
 - **WHEN** the block comes from a sliced crystallization set
-- **THEN** the worker implements only the behavior this block's `**Capabilities in scope**` require
-- **AND** an `I` item is in scope only when its behavior is required by a capability listed in the block's Capabilities in scope or by an Edge Case attributed to this slice
-- **AND** an `I` item serving a capability of a later slice is not implemented, stubbed, or referenced in this run
+- **THEN** the worker implements only the items listed under the block's `**Implementation Details**`
+- **AND** no item listed under `**Out of scope Implementation Details**` is implemented, stubbed, hooked, or referenced in this run
+
+#### Scenario: Out-of-scope items inform equivalent choices only
+
+- **WHEN** two implementation options are equivalent for the current slice and only one of them would block a later out-of-scope item
+- **THEN** the worker chooses the option that does not block the later item, and adds no code whose only purpose is to serve that item
 
 ### Requirement: Write containment
 The implementer worker SHALL treat any repository artifact required by the crystallized block as writable, regardless of file format, under the shared protected update protocols and its role restrictions. It SHALL NOT directly modify `openspec/specs/**`, with proposal, specs, design, tasks, and metadata reconstructed later by backfill. It SHALL NOT create planning artifacts, SHALL NOT run a mutating git command, and SHALL NOT dispatch subagents.

@@ -60,9 +60,23 @@ Each sub-check SHALL be read-only. Invocation of any check SHALL NOT modify the 
 
 ### Requirement: Ready-to-propose check accepts the optional Request Additional Notes field
 
-The `lint.js ready-to-propose` check SHALL accept a `Ready to Propose` block both with and without an optional `**Request Additional Notes**` field between `**Implementation Details**` and `**Overview language**`. The field SHALL NOT break the required-section order check.
+The `lint.js ready-to-propose` check SHALL accept a `Ready to Propose` block both with and without an optional `**Request Additional Notes**` field between `**Out of scope Implementation Details**` and `**Overview language**`. The field SHALL NOT break the required-section order check.
 
 #### Scenario: Block with the notes field passes
 
-- **WHEN** the ready-to-propose check runs on a block whose `**Request Additional Notes**` field, holding paragraph and bullet content, sits between `**Implementation Details**` and `**Overview language**`
+- **WHEN** the ready-to-propose check runs on a block whose `**Request Additional Notes**` field, holding paragraph and bullet content, sits between `**Out of scope Implementation Details**` and `**Overview language**`
 - **THEN** the check exits 0 and reports that the check passed
+
+### Requirement: Ready-to-propose check requires the Out of scope Implementation Details section
+
+The `lint.js ready-to-propose` check SHALL treat `**Out of scope Implementation Details**` as a required section that follows `**Implementation Details**` in the required-section order.
+
+#### Scenario: Block without the section fails
+
+- **WHEN** the ready-to-propose check runs on a block that has every other required section but no `**Out of scope Implementation Details**`
+- **THEN** the check exits non-zero and its report names `Out of scope Implementation Details`
+
+#### Scenario: Block with the section as None passes
+
+- **WHEN** the ready-to-propose check runs on a block whose `**Out of scope Implementation Details**` is exactly `- None` after `**Implementation Details**`
+- **THEN** the check exits 0

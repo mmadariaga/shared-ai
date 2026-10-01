@@ -271,6 +271,7 @@ function checkReadyToPropose(content) {
     '**Key constraints**',
     '**Edge Cases**',
     '**Implementation Details**',
+    '**Out of scope Implementation Details**',
   ];
 
   for (const section of requiredSections) {

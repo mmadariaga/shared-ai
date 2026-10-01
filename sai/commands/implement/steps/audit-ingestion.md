@@ -36,6 +36,7 @@ The Apply/Discard/Escalate classification SHALL follow from the rubric outcome, 
      - **Research Leads**: populated from the repository-relative paths the escalated findings point to in the codebase (e.g., `specs/auth.md`, `sai/commands/config/auth-handler.md`, any source files the findings cite). Do NOT use artifact offsets or finding id suffixes; Research Leads are pointers to code and documentation the findings reference, not the audit artifact itself.
      - **Edge Cases**: `- None` (only explore can agree on edge cases with the user).
      - **Implementation Details**: `- None` (only explore can agree on implementation details with the user).
+     - **Out of scope Implementation Details**: `- None`.
      - All other sections populated to the best of the agent's ability from the escalated findings' text.
   5. Return `failed`, with `summary` carrying every emitted Ready to Propose block (one block per escalation group), and stop the run.
 
