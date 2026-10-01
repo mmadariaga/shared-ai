@@ -22,10 +22,13 @@ A Step without a RED block (green-direct or green-exception test-only) SHALL rec
 - **THEN** its task disclosure carries only that Step's Automated checklist commands
 
 ### Requirement: RED execution scope
-The RED worker SHALL run the injected step-test-command with its exact paths, selectors, and arguments, scoped to the current Step tests. An assertion failure on the behavior under test SHALL be classified as valid.
+The RED worker SHALL run the injected step-test-command with its exact paths, selectors, and arguments, scoped to the current Step tests. An assertion failure on the behavior under test SHALL be classified as valid, and so SHALL the declared `compile` or `runtime` failure of a test the plan names under `**Existing tests to update:**` when it matches that test's declared mode.
 #### Scenario: RED runs the Step command
 - **WHEN** RED executes its injected command
 - **THEN** only the current Step tests run and a behavior assertion failure is reported as valid
+#### Scenario: Declared failure of a plan-named updated test is valid
+- **WHEN** RED executes its injected command and a plan-named existing test to update fails in its declared `compile` or `runtime` mode
+- **THEN** that failure is reported as valid
 
 ### Requirement: GREEN execution scope
 The GREEN worker SHALL run only the exact step-test-command copied unchanged from the current Step RED block, with identical paths, selectors, and arguments. GREEN SHALL NOT run tests from earlier or later Steps and SHALL NOT run the full repository suite at Step time.

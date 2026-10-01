@@ -18,6 +18,7 @@
 
 - **Rule:** RED may only contain the failing test + minimal stubs/imports. Do NOT paste the full implementation here. If a stub is needed to compile, make it return the wrong value so the test still fails with an assertion error.
 - **Retirements:** When this step replaces obsolete guard tests, list each retired test file ONLY inside this RED block — one entry per file with its exact repository-relative path marked `retired`. A step without a RED block never carries retirements. Each retirement adds one Verification Checklist item asserting the retired file's absence; the coordinator runs it after the RED dispatch returns and before GREEN may be dispatched.
+- **Existing tests to update:** When this step breaks a pre-existing test (the design's `Existing Tests Broken` entry), list each file by exact repository-relative path with its failure mode, `compile` or `runtime` — e.g. `{test-file}` (`runtime`). RED may modify exactly these files. Omit the line when the Step breaks none; a test that no longer makes sense is a retirement instead.
 - **Step test command:** `{step-test-command}` — selects only this Step's tests, with explicit paths, selectors, and arguments.
 
 - [ ] Create a minimal stub at `{file}` so the test can compile:
@@ -31,7 +32,7 @@
 - {Scenario A description}
 - {Scenario B description}
 
-- [ ] Verify RED: run `{step-test-command}` — expected: **assertion failure** (exit ≠ 0 AND failure attributable to behaviour under test, NOT a setup/import/compilation error).
+- [ ] Verify RED: run `{step-test-command}` — expected: **assertion failure** (exit ≠ 0 AND failure attributable to behaviour under test, NOT a setup/import/compilation error; the one exception is a plan-named existing test to update, whose declared `compile` or `runtime` failure also counts).
 - [ ] **GATE — DO NOT PROCEED to GREEN until RED is verified.** If the test passes, or the failure is not an assertion failure, STOP and report to the user. Do not paste the GREEN code below.
 
 ##### GREEN phase (only after RED is verified)

@@ -137,6 +137,7 @@ function parseStep(planText, step) {
     redPaths: [],
     testPaths: [],
     retirements: [],
+    updates: [],
     instructionPaths: [],
     automated: [],
     automatedRange: null,
@@ -170,6 +171,11 @@ function parseStep(planText, step) {
         info.retirements.push(...found);
         info.redPaths.push(...found);
         info.testPaths.push(...found);
+      } else if (/^\s*-\s+\*\*Existing tests to update:\*\*/.test(line)) {
+        const found = pathsOf(line);
+        info.updates.push(...found);
+        info.redPaths.push(...found);
+        info.testPaths.push(...found);
       } else if (/^\s*-\s+\[.\]\s+(Create a minimal stub at|Write the test into)/.test(line)) {
         const found = pathsOf(line);
         info.redPaths.push(...found);
@@ -200,6 +206,7 @@ function parseStep(planText, step) {
 
   if (!info.stepTestCommand && verifyRedCommand) info.stepTestCommand = verifyRedCommand;
   info.retirements = unique(info.retirements);
+  info.updates = unique(info.updates);
   info.redPaths = unique(info.redPaths);
   info.testPaths = unique(info.testPaths);
   info.instructionPaths = unique(info.instructionPaths);

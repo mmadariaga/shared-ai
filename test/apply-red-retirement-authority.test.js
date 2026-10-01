@@ -145,3 +145,16 @@ test('AGENTS.md documents RED-owned retirement and the anti-pattern rule for tes
   assert.match(section, /Tests assert the absence of retired files; they never encode routing vocabulary such as "must be removed in GREEN"/,
     'tests must assert absence, never encode routing vocabulary');
 });
+
+test('RED may update exactly the plan-named existing tests and counts their declared failure as valid', () => {
+  const red = artifact('sai/commands/apply/red-worker.md');
+  assert.match(red, /Existing tests to update/);
+  assert.match(red, /exactly those files/);
+  const common = artifact(PATHS.implementCommon);
+  assert.match(common, /\*\*Existing tests to update:\*\*/);
+  assert.match(common, /green-direct Step requires `None`/);
+  assert.match(common, /Manual Verification/);
+  assert.match(common, /Migration Plan/);
+  const validation = artifact('sai/commands/implement/steps/validation.md');
+  assert.match(validation, /Design carry-through/);
+});

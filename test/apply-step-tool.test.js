@@ -384,3 +384,52 @@ test('usage errors exit 2', () => {
   const out = tool(['verify', '--change', 'demo', '--step', 'x'], os.tmpdir());
   assert.equal(out.status, 2);
 });
+
+function withUpdateLine(planPath) {
+  const plan = fs.readFileSync(planPath, 'utf8').replace(
+    '- **Step test command:**',
+    '- **Existing tests to update:** `test/legacy.test.js` (`runtime`)\n- **Step test command:**',
+  );
+  fs.writeFileSync(planPath, plan);
+}
+
+test('verify red: a plan-named existing test to update is allowed', () => {
+  const { parent, repo, planPath } = makeRepo();
+  try {
+    withUpdateLine(planPath);
+    writeFeature(repo, { passing: false });
+    fs.appendFileSync(path.join(repo, 'test', 'legacy.test.js'), '// updated\n');
+    const out = tool(['verify', '--change', 'demo', '--step', '1', '--dispatch', 'red'], repo, 'src/feature.js\ntest/feature.test.js\ntest/legacy.test.js\n');
+    assert.equal(out.payload.ok, true);
+    assert.equal(out.payload.out_of_allowed.includes('test/legacy.test.js'), false);
+  } finally {
+    cleanup(parent);
+  }
+});
+
+test('verify red: modifying an existing test the plan does not name is out of the allowed set', () => {
+  const { parent, repo } = makeRepo();
+  try {
+    writeFeature(repo, { passing: false });
+    fs.appendFileSync(path.join(repo, 'test', 'legacy.test.js'), '// sneaky\n');
+    const out = tool(['verify', '--change', 'demo', '--step', '1', '--dispatch', 'red'], repo, 'src/feature.js\ntest/feature.test.js\ntest/legacy.test.js\n');
+    assert.equal(out.payload.ok, false);
+    assert.ok(out.payload.out_of_allowed.includes('test/legacy.test.js'));
+  } finally {
+    cleanup(parent);
+  }
+});
+
+test('verify green: a plan-named existing test to update stays forbidden for GREEN', () => {
+  const { parent, repo, planPath } = makeRepo();
+  try {
+    withUpdateLine(planPath);
+    writeFeature(repo, { passing: true });
+    fs.appendFileSync(path.join(repo, 'test', 'legacy.test.js'), '// updated\n');
+    const out = tool(['verify', '--change', 'demo', '--step', '1', '--dispatch', 'green'], repo, 'src/feature.js\ntest/legacy.test.js\n');
+    assert.equal(out.payload.ok, false);
+    assert.ok(out.payload.out_of_allowed.includes('test/legacy.test.js'));
+  } finally {
+    cleanup(parent);
+  }
+});
