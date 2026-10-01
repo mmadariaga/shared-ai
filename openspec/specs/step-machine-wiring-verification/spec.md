@@ -2,7 +2,9 @@
 
 ## Purpose
 TBD - created by archiving change extract-step-machine-routing. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: Coordinator-machine fetch validation
 
 For each coordinator that declares `step_machine: <name>@<version>`, a test MUST verify that the coordinator file loads `@sai/policies/stage-machine.md` via a fetch directive.
@@ -27,42 +29,35 @@ For each coordinator that declares `step_machine: <name>@<version>`, a test MUST
 
 ### Requirement: Step id alignment validation
 
-For all coordinators that declare `step_machine` — spec, design, implement, performance, review, security, and accessibility — tests MUST verify that the coordinator's progress_plan step ids match the machine's STEPS array exactly. Prevents step mismatch between coordinator declarations and machine implementation.
+Tests SHALL verify exact ordered agreement between every declared coordinator progress plan and its registered machine STEPS, including both design variants. Review SHALL have exactly `resolve-change`, `establish-diff-scope`, `resolve-review-analysis`, and `close-review-outcome`; security, performance, and accessibility SHALL retain their five-step lists. Other phase lists SHALL remain unchanged.
 
 #### Scenario: Coordinator progress_plan matches machine STEPS
-
-- **WHEN** spec-standalone@1 machine declares STEPS as `['prereqs-and-change', 'research', 'proposal', 'specs', 'validation', 'review']`
-- **THEN** a test verifies that the spec coordinator's progress_plan contains the same step ids in the same order
+- **WHEN** the spec machine declares its current STEPS
+- **THEN** a test verifies the spec coordinator declares the same ids in the same order
 
 #### Scenario: Design variant steps match both machine arrays
-
-- **WHEN** design-standalone@1 declares UNOPTED_STEPS and OPTED_IN_STEPS arrays
-- **THEN** a test verifies that the unopted design coordinator variant's progress_plan matches UNOPTED_STEPS and the opted-in variant matches OPTED_IN_STEPS
+- **WHEN** design declares UNOPTED_STEPS and OPTED_IN_STEPS
+- **THEN** a test verifies each corresponding coordinator variant matches its array
 
 #### Scenario: Implement coordinator step ids read from card and match machine STEPS
-
-- **WHEN** implement-standalone@1 machine declares STEPS as `['prereqs-resolution', 'collapse-implemented-steps', 'artifact-analysis', 'documentation-review', 'plan-generation', 'validation']`
-- **THEN** a test extracts the step ids from the implement coordinator's progress_plan and verifies exact match with the machine's STEPS
+- **WHEN** implement declares its current STEPS
+- **THEN** a test extracts the coordinator ids and verifies exact agreement
 
 #### Scenario: Performance coordinator step ids read from card and match machine STEPS
-
-- **WHEN** performance-standalone@1 machine declares STEPS as `['resolve-performance-scope', 'map-stack-hot-paths', 'audit-performance-tiers', 'resolve-diagnostics', 'close-performance-outcome']`
-- **THEN** a test extracts the step ids from the performance coordinator's progress_plan and verifies exact match with the machine's STEPS
+- **WHEN** performance declares `resolve-performance-scope`, `map-stack-hot-paths`, `audit-performance-tiers`, `resolve-diagnostics`, `close-performance-outcome`
+- **THEN** a test verifies exact coordinator agreement
 
 #### Scenario: Review coordinator step ids read from card and match machine STEPS
-
-- **WHEN** review-standalone@1 machine declares STEPS as `['resolve-change', 'establish-diff-scope', 'resolve-review-analysis', 'resolve-mutation-analysis', 'close-review-outcome']`
-- **THEN** a test extracts the step ids from the review coordinator's progress_plan and verifies exact match with the machine's STEPS
+- **WHEN** review declares `resolve-change`, `establish-diff-scope`, `resolve-review-analysis`, `close-review-outcome`
+- **THEN** a test verifies exact coordinator agreement with no mutation id
 
 #### Scenario: Security coordinator step ids read from card and match machine STEPS
-
-- **WHEN** security-standalone@1 machine declares STEPS as `['resolve-security-scope', 'discover-module-map', 'resolve-sast-analysis', 'resolve-sca', 'close-security-outcome']`
-- **THEN** a test extracts the step ids from the security coordinator's progress_plan and verifies exact match with the machine's STEPS
+- **WHEN** security declares `resolve-security-scope`, `discover-module-map`, `resolve-sast-analysis`, `resolve-sca`, `close-security-outcome`
+- **THEN** a test verifies exact coordinator agreement
 
 #### Scenario: Accessibility coordinator step ids read from card and match machine STEPS
-
-- **WHEN** accessibility-standalone@1 machine declares STEPS as `['resolve-accessibility-scope', 'map-ui-framework', 'resolve-static-audit', 'resolve-runtime-audit', 'close-accessibility-outcome']`
-- **THEN** a test extracts the step ids from the accessibility coordinator's progress_plan and verifies exact match with the machine's STEPS
+- **WHEN** accessibility declares `resolve-accessibility-scope`, `map-ui-framework`, `resolve-static-audit`, `resolve-runtime-audit`, `close-accessibility-outcome`
+- **THEN** a test verifies exact coordinator agreement
 
 ### Requirement: Step file path alignment validation
 
@@ -111,4 +106,3 @@ Tests MUST discover all coordinators declaring `step_machine` by scanning `sai/c
 
 - **WHEN** the coordinator discovery scan completes
 - **THEN** it identifies exactly spec, design, implement, performance, review, security, and accessibility declaring `step_machine` with registered implementations
-

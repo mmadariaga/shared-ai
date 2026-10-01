@@ -4,7 +4,7 @@ Active step: resolve-review-analysis. The step is done when every pass below has
 
 Apply each pass to the full diff. Delegate codebase-context lookups (how a modified function is called elsewhere, whether a pattern matches existing code) to **`budget-explorer`** subagents in parallel, each with the output contract `file:line` + one-line note, ≤200 words, no raw code blocks. In delegated review mode (diff over 500 changed lines), inspect each file group recorded by the scope step through one **`budget-explorer`** with the output contract `file:line` + pass category + ≤80 words per finding. All of these dispatches share a cap of eight per review.
 
-1. **Domain Alignment** — Does the change fulfill the feature goal in `proposal.md` and the acceptance criteria in `specs/**/*.md`? Does it contradict a recorded decision, or bring in something explicitly discarded?
+1. **Domain Alignment** — Does the change fulfill the feature goal in `proposal.md` and the acceptance criteria in `specs/**/*.md`? Does it contradict a recorded decision, or bring in something explicitly discarded? Contradictions remain findings; the report's Summary records goal coverage and scope creep only where not already raised as findings.
 2. **Correctness & Bugs** — Logic errors, off-by-one, null/undefined handling, race conditions, incorrect API usage, broken edge cases.
 3. **Security triage** — Flag *surface touched: yes/no* and list the files when the diff touches:
    - authentication or authorization paths
@@ -44,4 +44,4 @@ Apply each pass to the full diff. Delegate codebase-context lookups (how a modif
     - absent fallback where impact warrants it.
 
     Severity: Critical only for cascade or outage, data loss, or duplicate side effects with concrete impact; otherwise High, Medium, or Low by blast radius. When the repo has no existing pattern for the case, cap the finding at Question or Low. Resilience is a deep pass, not a triage: it adds no audit recommendation.
-12. **Mutation Analysis** — test sensitivity measured by the declared deterministic mutation engine. It runs in the `resolve-mutation-analysis` step when its pointer arrives, because it writes to the working tree and runs tests; the report step renders its outcomes.
+    Record the surface outcome (including no surface), affected areas with file paths, and relevant idempotency and no-existing-pattern notes on the `Resilience:` line in Coverage Notes. Findings stay in Findings with Category Resilience and the severity rule above; this recording adds no audit recommendation.

@@ -8,10 +8,7 @@
 **Date:** <!-- YYYY-MM-DD -->
 
 ## Summary
-<!-- Summarize whether the change meets {the stated goal} and is ready for merge. -->
-
-## Domain Alignment Check
-<!-- Describe alignment with the goal, decisions, and intended scope. -->
+<!-- Record goal coverage against {the stated goal} and scope creep in one or two lines, without repeating findings; decision contradictions remain findings. -->
 
 ## Security Surface Triage
 <!-- Describe whether the reviewed change touches a security-sensitive surface. -->
@@ -22,20 +19,11 @@
 ## Accessibility Surface Triage
 <!-- Describe whether the reviewed change touches an accessibility-sensitive surface. -->
 
-## Resilience Surface Triage
-<!-- Describe whether the reviewed change touches a resilience-sensitive surface. -->
-
 ## Findings
 <!-- Record the review findings and their supporting context. -->
 
-## Mutation Analysis (Pass 12)
-<!-- Describe the mutation-analysis outcome when that pass applies. -->
-
 ## Coverage Notes
-<!-- Summarize the review coverage and any intentionally skipped material. -->
-
-## Next Steps
-<!-- List the ordered actions that follow from the review. -->
+<!-- Summarize coverage and skips, including a Resilience: outcome even with no surface, affected paths, and relevant idempotency and no-existing-pattern notes. -->
 
 <!-- Summary: use the command-owned tally line from the write-time authority; do not restate severity levels here. -->
 <!-- Write-time authority: severity vocabulary, evidence rules, finding shape, and tally line are defined in sai/commands/review/review-report.template.md -->

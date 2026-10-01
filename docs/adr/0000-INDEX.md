@@ -151,7 +151,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 
 ### `/sai-5-review`
 
-- [0012 — Mutation Analysis (pass 11) as a dedicated protocol section in review.md](./0012-mutation-analysis-as-dedicated-protocol-section.md)
+- [0190 — Review keeps domain and resilience analysis without mutation execution](./0190-review-keeps-analysis-without-mutation-execution.md) — Supersedes 0012, **Amends** 0107b, Refs 0013, Refs 0162b, Refs 0189, Refs ddr:0105
 - [0096 — Fail closed when dispatching owned worker sidecars](./0096-fail-closed-owned-worker-owner-dispatch.md) — Refs 0084, Refs 0085
 - [0107b — Unified audit severity vocabulary across the four report surfaces](./0107b-unified-audit-severity-vocabulary.md) — Supersedes 0013
 - [0162b — Schema report templates point to write-time authority](./0162b-schema-report-templates-point-to-write-time-authority.md) — Supersedes 0106b
@@ -625,6 +625,8 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 | [0186](./0186-gate-order-without-per-step-human-gate.md) | supersedes | [0019](./0019-coordinator-gate-ordering-after-subagent-report.md) |
 | [0187](./0187-composition-rules-live-in-their-own-orchestration-file.md) | supersedes | [0147a](./0147a-three-rule-composition-delta-in-command-runner.md) |
 | [0189](./0189-first-step-pointer-travels-with-the-task.md) | amends | [0172c](./0172c-step-gated-instruction-delivery.md) |
+| [0190](./0190-review-keeps-analysis-without-mutation-execution.md) | supersedes | [0012](./0012-mutation-analysis-as-dedicated-protocol-section.md) |
+| [0190](./0190-review-keeps-analysis-without-mutation-execution.md) | amends | [0107b](./0107b-unified-audit-severity-vocabulary.md) |
 | [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0033](./archive/0033-echo-line-format-and-placement.md) |
 | [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0034](./archive/0034-resolution-precedence-wrapper-echo-first.md) |
 | [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0035](./archive/0035-harness-specific-adapter-carve-out.md) |
@@ -632,6 +634,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 
 ## Superseded ADRs (historical)
 
+- [0012 — Mutation Analysis (pass 11) as a dedicated protocol section in review.md](./0012-mutation-analysis-as-dedicated-protocol-section.md) — *Superseded by [0190](./0190-review-keeps-analysis-without-mutation-execution.md)*
 - [0002 — Both harness resolver files live under ~/.claude/instructions/sai/](./0002-sai-harness-files-under-claude-instructions.md) — *Superseded by [0004](./0004-source-layout-and-install-path-restructure.md)*
 - [0003 — Fetch Path Convention for Shared Command Bodies](./0003-fetch-path-convention-commands-sai.md) — *Superseded by [0004](./0004-source-layout-and-install-path-restructure.md), root-exception rule superseded by [0146b](./0146b-command-owned-files-live-in-their-consuming-command-directory.md)*
 - [0013 — Dedicated mMUT-N finding namespace and Mutation Analysis output section](./0013-mmut-n-finding-namespace-for-mutation-analysis.md) — *Superseded by [0107b](./0107b-unified-audit-severity-vocabulary.md)*

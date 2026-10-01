@@ -13,7 +13,7 @@ module.exports = {
   // The CLI entrypoint is covered by black-box tests. The remaining package
   // modules are inspected as source text by contract tests, which makes
   // instrumenting them incompatible with the project's test stack.
-  // Review invocations override this default with their exact diff-scoped
+  // Independent development runs can override this default with explicit
   // production paths through SAI_MUTATION_SCOPE or Stryker's --mutate flag.
   mutate: requestedMutationScope.length > 0 ? requestedMutationScope : defaultMutationScope,
   ignorePatterns: ['/.codegraph/**', '/.git/**'],

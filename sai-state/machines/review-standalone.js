@@ -12,14 +12,12 @@ const machine = createLinearStepMachine({
     'resolve-change',
     'establish-diff-scope',
     'resolve-review-analysis',
-    'resolve-mutation-analysis',
     'close-review-outcome',
   ],
   stageFiles: {
     'resolve-change': 'none',
     'establish-diff-scope': 'sai/commands/review/steps/establish-diff-scope.md',
     'resolve-review-analysis': 'sai/commands/review/steps/resolve-review-analysis.md',
-    'resolve-mutation-analysis': 'sai/commands/review/steps/resolve-mutation-analysis.md',
     'close-review-outcome': 'sai/commands/review/steps/close-review-outcome.md',
   },
 });

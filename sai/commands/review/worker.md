@@ -19,35 +19,34 @@ OpenSpec prerequisite checks belong to `/sai-explore` alone. This worker runs no
    - several — ask `Which change?` with the changes as options in CLI order; after invalid input ask again, with no retry cap.
 2. **Gate on `proposal.md`.** When it is missing, return `failed` with exactly `openspec/changes/{change-name}/proposal.md not found. Ensure the change name is correct and that /sai-1-spec has been run for this change.`
 
-A missing `proposal.md` ends the run before any review analysis, mutation, or durable write. Every payload after resolution includes `resolved_change_name`; no payload carries artifact contents.
+A missing `proposal.md` ends the run before any review analysis or durable write. Every payload after resolution includes `resolved_change_name`; no payload carries artifact contents.
 
 ## Progress Reporting
 
-Report the coordinator's five-step plan as progress events, each id once, in plan order, per `@sai/orchestration/worker-core.md` § Nonterminal Result Transport:
+Report the coordinator's four-step plan as progress events, each id once, in plan order, per `@sai/orchestration/worker-core.md` § Nonterminal Result Transport. The complete path returns three progress events: the first two ids together, then analysis, then close:
 
 - `resolve-change` — the startup act (change resolution and the proposal gate above) passes. It must pass before dispatching any `budget-explorer`, computing the diff, or beginning a review pass, and it reports together with `establish-diff-scope` in the first progress event, per `@sai/orchestration/worker-core.md` § Step-machine task disclosure.
 - `establish-diff-scope` — the diff scope is established. An empty diff reports it before returning `cancelled`.
 - `resolve-review-analysis` — passes 1–11 are done.
-- `resolve-mutation-analysis` — the Pass 12 activation gate is resolved, whether the mutation path runs or is legitimately skipped.
 - `close-review-outcome` — `review.md` is written and verified.
 
 Each event's `changed_files` lists every path written since the preceding result. Progress events start only after resolution, never replace a terminal payload, and never arrive during a `needs_input` pause; the run always closes with exactly one terminal lifecycle status.
 
 ## Active Step Execution
 
-Instructions arrive just-in-time, one step file at a time. Each progress continuation carries one pointer line, `Active step: <id> — follow <path>`: execute only the step it names, following that file exactly, and never prefetch, open, or follow any other step instruction file. Step paths arrive only through those pointer lines; this contract plus common.md is the sealed initial surface. `resolve-change` runs from it before the first progress event, and the first delivered pointer targets `establish-diff-scope`. That pointer arrives as the first line of the task-disclosure continuation, before `arguments_value`. A gated stage resolved by legitimate skip still reports its milestone, and the next delivered pointer advances past it without that step file executing. A continuation without a pointer line (a picker answer) leaves the active step unchanged. Steps never widen the lifecycle, progress, changed-files, or failure rules.
+Instructions arrive just-in-time, one step file at a time. Each progress continuation carries one pointer line, `Active step: <id> — follow <path>`: execute only the step it names, following that file exactly, and never prefetch, open, or follow any other step instruction file. Step paths arrive only through those pointer lines; this contract plus common.md is the sealed initial surface. `resolve-change` runs from it before the first progress event, and the first delivered pointer targets `establish-diff-scope`. That pointer arrives as the first line of the task-disclosure continuation, before `arguments_value`. A continuation without a pointer line (a picker answer) leaves the active step unchanged. Steps never widen the lifecycle, progress, changed-files, or failure rules.
 
 ## Review Work
 
-Write only `openspec/changes/{change-name}/review.md`; Pass 12's engine applies and reverts its own temporary mutations. `changed_files` holds `review.md` plus any production file whose revert failed or whose mutation outcome is unaccounted; cleanly reverted targets stay out.
+Write only `openspec/changes/{change-name}/review.md`; `changed_files` holds only that report path. Review executes passes 1–11 and does not probe mutation engines, execute mutations, or produce mutation outcomes or identifiers.
 
 Return `needs_input` for picker questions, `cancelled` for a deliberate decline or an empty diff, and `failed` for blockers.
 
 Before returning `completed`, verify that `review.md` exists, is non-empty, and contains:
 
 - a severity-prefixed identifier (`C1`/`H1`/`M1`/`L1`/`Q1`) on every finding, when there are any;
-- the severity roll-up, coverage notes, and Pass 12 outcomes;
+- the severity roll-up and coverage notes, including a `Resilience:` outcome and relevant notes even when no resilience surface exists;
 - all three audit recommendations;
-- a closing `Summary:` tally line whose counts match the report's findings, with mutation findings folded in at their remapped severities.
+- a closing `Summary:` tally line whose counts match the report's findings.
 
 The close step composes the `completed` summary.

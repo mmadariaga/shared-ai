@@ -1415,6 +1415,18 @@
   ],
   "retirements": [
     {
+      "id": "retired-review-mutation-analysis-step",
+      "destination": {
+        "class": "sai",
+        "path": "commands/review/steps/resolve-mutation-analysis.md"
+      },
+      "harnesses": ["claude", "opencode"],
+      "managedHashes": [
+        "1af64e9b39d573d8d794b42810f3719441f1b062d2018476f02c5c495aea5ecb",
+        "b7bbfb2ddade2a7ac59b640613d1665f98faa48fdfc3c9f5587985ec768edffa"
+      ]
+    },
+    {
       "id": "retired-sai-2-design",
       "destination": {
         "class": "sai",

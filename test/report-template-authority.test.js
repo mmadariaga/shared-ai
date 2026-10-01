@@ -207,6 +207,24 @@ function assertFinalAuthority(pair, scaffold, delegatedWording) {
     `${pair.scaffold} authority target must exist`);
 }
 
+test('review report simplifies presentation while preserving coverage and recommendations', () => {
+  const authority = readUtf8('sai/commands/review/review-report.template.md');
+  const scaffold = readUtf8('openspec/schemas/sai-workflow/templates/review.md');
+  const expected = ['Summary', 'Security Surface Triage', 'Performance Surface Triage',
+    'Accessibility Surface Triage', 'Findings', 'Coverage Notes'];
+  assert.deepEqual(extractTopHeadings(extractBody(authority)), expected);
+  assert.deepEqual(extractTopHeadings(scaffold), expected);
+  assert.match(authority, /One or two lines[\s\S]*not already raised as findings/);
+  assert.match(authority, /Resilience:.*No surface.*idempotency.*no-existing-pattern/);
+  assert.match(scaffold, /Resilience:.*even with no surface/);
+  assert.match(authority, /Category:\*\* \{Correctness \| Security \| Resilience \| Domain Alignment/);
+  assert.match(authority, /Summary: Critical=\{n\} High=\{n\} Medium=\{n\} Low=\{n\} Questions=\{n\}/);
+  assert.doesNotMatch(authority + scaffold, /## (?:Next Steps|Domain Alignment Check|Resilience Surface Triage|Mutation Analysis)|mMUT/);
+  for (const audit of ['security', 'performance', 'accessibility']) {
+    assert.match(authority, new RegExp('Run `/sai-[678]-' + audit));
+  }
+});
+
 test('schema report scaffolds use the command-owned write-time authorities', () => {
   for (const pair of reportPairs) {
     const scaffold = readUtf8(pair.scaffold);

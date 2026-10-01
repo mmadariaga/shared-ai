@@ -2,7 +2,9 @@
 
 ## Purpose
 Define the resilience review check itself: what it flags (unbounded retries, missing timeouts, idempotency, fallback), how its severities are gated, its no-surface recording, and the Resilience Surface Triage section of the review report.
+
 ## Requirements
+
 ### Requirement: Resilience pass SHALL be the single owner for retries, timeouts, circuit-breaker, idempotency and fallback
 Resilience owns these points; Correctness and Performance-triage MUST NOT duplicate them.
 
@@ -67,9 +69,9 @@ Diffs without resilience surface SHALL be recorded as no surface. Docs-only, com
 - **THEN** Resilience records no surface with no findings
 
 ### Requirement: Review report SHALL carry Resilience Surface Triage
-The report MUST include surface touched, affected areas with file paths, and idempotency and no-convention notes.
+
+The report SHALL record resilience in a `Resilience:` line under Coverage Notes, not a separate Resilience Surface Triage section. It SHALL include the outcome even when no relevant surface exists, affected areas with file paths when present, and relevant idempotency and no-existing-pattern notes. Findings SHALL remain in Findings with Category Resilience and existing severity and no-convention limits. This recording SHALL add no audit recommendation.
 
 #### Scenario: Triage reported
 - **WHEN** Resilience evaluates a diff
-- **THEN** the report records surface, affected areas, and constraint notes
-
+- **THEN** Coverage Notes records a `Resilience:` outcome, affected areas and constraint notes, including no surface when appropriate
