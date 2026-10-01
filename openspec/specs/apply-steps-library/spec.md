@@ -2,10 +2,12 @@
 
 ## Purpose
 TBD - created by archiving change apply-routing-steps-decomposition. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: Step instruction files exist per routing mode and terminal phase
 
-The apply command SHALL provide a step instruction library under `sai/commands/apply/steps/` containing one instruction file per routing decision mode and one for the terminal phase: `routing-green-direct.md`, `routing-green-exception-test-only.md`, `routing-stop-missing-contract.md`, `routing-split-flow.md`, `routing-green-exception-no-production.md`, and `terminal-lifecycle.md`. The routing files contain the five exclusive step routing conditions from the original decision tree; the terminal file contains the final sweep, learnings promotion, terminal documentation evaluation, visibility, authorization, and commit behaviors.
+The apply command SHALL provide a step instruction library under `sai/commands/apply/steps/` containing one instruction file per routing decision mode and one for the terminal phase: `routing-green-direct.md`, `routing-green-exception-test-only.md`, `routing-stop-missing-contract.md`, `routing-split-flow.md`, `routing-green-exception-no-production.md`, and `terminal-lifecycle.md`, plus `branch-selection.md`, a plainly fetched non-routing file that is not a machine pointer and loads only when the branch picker must be presented. The routing files contain the five exclusive step routing conditions from the original decision tree; the terminal file contains the final sweep, learnings promotion, terminal documentation evaluation, visibility, authorization, and commit behaviors.
 
 #### Scenario: Routing files are named by mode
 - **WHEN** a consumer inspects `sai/commands/apply/steps/` for a routing mode
@@ -38,4 +40,3 @@ The terminal-lifecycle file SHALL preserve the complete sequence and logic of ap
 #### Scenario: Terminal paths remain distinct from implementation paths
 - **WHEN** the terminal documentation set is evaluated
 - **THEN** only changed `docs/**`, root `SAI_LEARNINGS.md` (if promotion wrote it), and changed `GLOSSARY.md` are eligible; `openspec/changes/**` and `implementation.md` remain excluded.
-
