@@ -18,6 +18,10 @@ Launch one `budget-explorer` with this goal and output contract:
 
 Use the report to make design decisions. If directly affected callers, tests, or claims remain unverified, continue research with a targeted `budget-explorer` request before closing this step. Carry unresolved design decisions into `design.md` for the tasks-step gate.
 
+When consuming `ladder_discards`, Fetch @sai/policies/explore-agent.md and apply
+only § Missing-tool notice presentation; retain internal diagnostics without
+adopting the explorer's role, ladder execution, or shell restrictions.
+
 ## Evidence boundary
 
 Source files are the authority for codebase facts; the explorer reports bounded evidence from them. When a report is surprising, ambiguous, or conflicts with another source, ask the explorer to check the specific claim and cite the source lines. If the evidence remains unresolved and blocks drafting `design.md`, return `needs_input` for that decision.

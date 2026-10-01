@@ -445,7 +445,7 @@ test('explore remains read-only and closes with the supervised in-session comple
 });
 
 test('Claude Code explore adapter permits worker supervision without direct writes', () => {
-  const source = fs.readFileSync(path.join(repoRoot, 'commands/claude/sai-explore.md'), 'utf8');
+  const source = require('./helpers/capability-source').readProjected('commands/claude/sai-explore.md');
 
   const allowedToolsLine = source.match(/^allowed-tools:\s*(.+)$/im);
   assert.ok(allowedToolsLine, 'allowed-tools frontmatter should exist');

@@ -88,3 +88,15 @@ Claude Code and opencode panel bindings SHALL make routed progress-event continu
 #### Scenario: Panel calls already disabled
 - **WHEN** progress is registered after the invocation's panel tooling has degraded
 - **THEN** the coordinator continues the same worker without a panel call while retaining logical step state
+
+### Requirement: Panel access errors remain distinct from runtime absence
+
+Both panel bindings SHALL treat missing permission grants as access errors governed by the shared tool-access policy. Only runtime tool absence SHALL use the existing one-time panel degradation notice and continuation without panel updates. Permission grants SHALL NOT be represented as creating panel tools.
+
+#### Scenario: Runtime panel tool is absent
+- **WHEN** a panel call fails because the runtime does not provide the tool
+- **THEN** the coordinator emits the existing degradation notice once and continues without further panel calls while preserving logical list state
+
+#### Scenario: Native permission blocks a panel call
+- **WHEN** a panel tool exists but its required native grant is missing
+- **THEN** the coordinator handles an access error rather than silently treating the panel as unavailable

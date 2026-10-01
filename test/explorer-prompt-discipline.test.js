@@ -82,7 +82,7 @@ test('explorer spawn prompts across sai/ must not prescribe research tools or pr
 });
 
 test('budget-explorer agent has required tools for ladder levels', () => {
-  const agentFile = read('agents/claude/budget-explorer.md');
+  const agentFile = require('./helpers/capability-source').readProjected('agents/claude/budget-explorer.md');
 
   // Check for Bash tool
   assert.match(

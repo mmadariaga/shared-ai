@@ -539,7 +539,7 @@ test('installOpencode overwrites existing vendor command files', () => {
   fs.mkdirSync(path.dirname(cmdFile), { recursive: true });
   fs.writeFileSync(cmdFile, 'old sentinel content');
   installOpencode(tmpDir);
-  const expected = fs.readFileSync(path.join(__dirname, '..', 'commands', 'opencode', 'sai-1-spec.md'), 'utf8');
+  const expected = require('./helpers/capability-source').readProjected('commands/opencode/sai-1-spec.md');
   assert.equal(fs.readFileSync(cmdFile, 'utf8'), expected, 'existing vendor command should be overwritten with repo version');
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
@@ -1461,8 +1461,8 @@ test('Step 2 fresh install seeds the generic opencode agent files from their sou
         'Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.',
         `specs/opencode-generic-agent-files/spec.md: ${name} should bootstrap opencode fetch resolution before its policy Fetch`
       );
-      assert.deepEqual(fs.readFileSync(agentPath), fs.readFileSync(repoAgentPath),
-        `specs/opencode-generic-agent-files/spec.md: ${name} should be byte-identical to its opencode source`);
+      assert.equal(fs.readFileSync(agentPath, 'utf8'), require('./helpers/capability-source').readProjected(`agents/opencode/${name}.md`),
+        `${name} should be identical to its compiled opencode source`);
       assert.equal(fs.existsSync(path.join(tmpDir, 'agents', `.${name}.owner.json`)), false,
         `specs/opencode-generic-agent-files/spec.md: ${name} must not gain an ownership sidecar`);
     }

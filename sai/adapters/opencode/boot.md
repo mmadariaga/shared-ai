@@ -4,6 +4,7 @@ This invocation starts clean: disregard prior conversational context except wher
 
 1. Fetch @sai/orchestration/command-runner.md and follow it first.
 2. Read `command_name` and `arguments_value` from the wrapper's InvocationEnvelope.
+   Before card selection, Fetch @sai/policies/tool-access.md and check the wrapper's required capability profile.
 3. Select the card from `command_name`:
    - Routed names (`spec`, `design`, `implement`, `review`, `security`, `performance`, `accessibility`, `apply`, `meta-build`, `meta-review`, `commit`, `archive`, `backfill`, `merge`) select the coordinator card, e.g. `@sai/commands/apply/coordinator.md`, `@sai/commands/meta-build/coordinator.md`.
    - Utility names (`explore`, `pr`, `retire-docs`, `status`, `worktree`) select the body card, e.g. `@sai/commands/explore/body.md`.

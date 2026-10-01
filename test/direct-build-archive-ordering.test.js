@@ -204,7 +204,7 @@ test('Claude Code and opencode retain the same implementer projection without a 
   const matrix = read('bin/worker-matrix.js');
   const manifest = read('sai/install-manifest.json');
   const parsedManifest = JSON.parse(manifest);
-  const backfill = parsedManifest['worker-matrix'].entries
+  const backfill = require('../bin/worker-matrix').defineWorkerMatrix(parsedManifest['worker-matrix'].entries, parsedManifest.capabilities).entries
     .find(entry => entry.workerName === 'sai-backfill-worker');
 
   assert.match(matrix, /phase: 'direct-build'[\s\S]{0,220}workerContract: 'sai\/commands\/explore\/direct-build-worker\.md'/);

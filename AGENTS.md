@@ -104,6 +104,16 @@ OpenSpec skill `SKILL.md` files are **never modified** — the OpenSpec CLI rege
 ### Harness universality
 The pipeline supports two harnesses: **Claude Code** and **opencode**. Every change to a wrapper, shared instruction, skill, installer, or this AGENTS.md MUST consider both. Harness-agnostic content stays harness-agnostic; the moment one harness is named, both are named with their own mechanism. This rule is upstream of Mirror discipline and also governs instruction prose, installer scripts, model tables, and docs. Before finishing any change, scan the diff for a harness name and verify both supported harnesses are addressed.
 
+### Contract-required tool capabilities
+
+When changing agent or command access, edit the profiles and assignments in
+`sai/install-manifest.json`; `bin/capabilities.js` projects native declarations
+and installed command requirements for both harnesses. Before an operation or
+after a required tool is rejected, consult `sai/policies/tool-access.md` for
+effective-access verification and remediation. When presenting research
+diagnostics, consult `sai/policies/explore-agent.md` § Missing-tool notice
+presentation. Panel absence remains adapter-owned.
+
 ### Implementation coordinator and worker
 Claude Code and opencode route `/sai-3-implement` through the shared orchestration core and their respective worker binding. Both preserve the same `implementation.md` artifact contract and MANDATORY STOP. The routed coordinator performs no technical I/O and only the worker owns routed planning writes. Fast-track parse and banner: see ### Fast-track flag.
 
@@ -210,7 +220,14 @@ Loaded by 10 sai-* commands (`sai-1-spec`, `sai-4-apply`, `sai-archive`, `sai-ba
 Worker "never run a mutating git command" rules are prose the worker reads at start; the no-commit guard turns the one invariant true in every project — HEAD immobility across worker stretches — into a filesystem check. `sai/tools/no-commit-guard.js` (`snapshot`/`verify`, JSON verdicts `clean | violation | allowed | n/a`) is single-sourced in `sai/policies/no-commit-guard.md`: every coordinator card that dispatches a routed worker binding (spec, design, implement, apply, review, security, performance, accessibility, commit, archive, backfill, merge, meta-review) plus explore's three Direct Build windows pairs one snapshot and one verify per guard window. Windows are bounded by control hand-offs (a human turn, a coordinator git mutation, or run close), not by dispatches; the policy's § Window pairing owns the rules. The baseline SHA lives in coordinator conversation state as `guard_base` (literal `n/a` when HEAD cannot be resolved; never persisted); on violation the coordinator captures the payload's commit evidence, runs `git reset <guard_base>` (mixed), prints the one pinned incident line from the guard policy's § Incident line, and continues the route — the remediation reset is pre-authorized by the flow and carved out of safe-operations' confirmation gate. `allow_commit` is the lax dispatch-carried flag that permits HEAD movement; its only carrier is the archive worker's pre-authorized Direct Build `--direct-build-execute` continuation. Coordinator-owned mutations (apply gates, merge launch, the archive commit gate) always run between windows; worker prose prohibitions stay unchanged.
 
 ### Explore-mode read-only enforcement
-`sai-explore`'s explore-mode "No file writes" guarantee (`sai/commands/explore/instructions.md`) is **enforced**, not merely conventional, in Claude Code via `allowed-tools` (scoped to read/search/dispatch tools — `Edit`, `Write`, and bare `Bash` omitted; shell limited to `Bash(openspec:*)`, `Bash(git:*)`, and the `node .claude/sai` / `node ~/.claude/sai` globs, whose permitted tools `sai/policies/tool-execution-permissions.md` lists (`prereqs.js` and `sai-state.js`); `WebFetch` and `WebSearch` are also granted). **opencode** has no per-command tool-restriction frontmatter field, so `commands/opencode/sai-explore.md` is intentionally left unchanged and its read-only guarantee stays model-discipline-only; routing opencode's `sai-explore` to a read-only sub-agent was rejected because it breaks the main-session interactivity the command requires.
+`sai-explore`'s explore-mode "No file writes" boundary lives in
+`sai/commands/explore/instructions.md`. Claude Code's command `allowed-tools`
+pre-approves selected tools but does not remove unlisted tools; opencode has no
+command-local permission field and retains the active primary agent. Neither
+mechanism alone enforces read-only command execution. Both harnesses retain
+the contract boundary and delegated-write authorization gates. Consult
+`sai/policies/tool-access.md` when verifying access; do not route the interactive
+command into a read-only child as a workaround.
 
 ### Language Policy
 All agents MUST think and reason internally in English, regardless of the user's input language.
@@ -224,7 +241,7 @@ Cards that spawn budget-tier helpers fetch `@skills/budget/SKILL.md` (explore `b
 - Multi-step synthesis stays with the main agent; speculative exploration ("look around") is allowed only in the explorer tier.
 - Opencode retains its own mechanism: the `explore` keyword binds the explore agent, and the model comes from the explore agent file's `model` frontmatter (`~/.config/opencode/agents/explore.md`).
 - Every subagent call declares an **output contract** (exact fields, length cap, no raw content).
-- Main agent never calls WebFetch directly, except `/sai-explore` on Claude Code where `WebFetch` is an explicit `allowed-tools` grant.
+- Direct web consultation follows the owning contract and capability profile on both harnesses. For example, Implement's initial documentation URL read is direct, while Design delegates web research. Do not impose a blanket worker-web exclusion over a contractual requirement; consult `sai/policies/tool-access.md` when access is rejected.
 
 ### Budget-subagent hang containment
 

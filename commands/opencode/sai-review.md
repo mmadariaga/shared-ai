@@ -5,6 +5,7 @@ subtask: false
 ---
 Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.
 Fetch @sai/adapters/opencode/boot.md and follow it.
+Required capability profile: {{capabilityProfile}}.
 Fetch @sai/commands/meta-review/command-bootstrap.md and follow those instructions exactly, forwarding the InvocationEnvelope block below.
 
 InvocationEnvelope:

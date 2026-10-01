@@ -2,20 +2,21 @@
 
 ## Purpose
 Define the closed `node` execution grant each worker-coordinator Claude wrapper permits, and which wrappers keep their existing execution surface unchanged.
+
 ## Requirements
+
 ### Requirement: Coordinator Minimal Grant
 
-Each worker-coordinator Claude wrapper (`sai-1-spec`, `sai-2-design`, `sai-3-implement`, `sai-5-review`, `sai-6-security`, `sai-7-performance`, `sai-8-accessibility`, `sai-review`) SHALL permit exactly the validator, guard, and stage-store `node` tools in both roots and no other `node` invocation.
+Claude coordinator pre-approvals for Spec, Design, Implement, Review, Security, Performance, Accessibility, and Meta-review SHALL derive from canonical command profiles. Scoped Node access SHALL cover validator, guard, and stage-store tools in both installed roots; authorized mixed-reset remediation SHALL remain included. Review profiles SHALL additionally cover contracted Direct Build close operations. Native inventories SHALL NOT be maintained independently in instruction prose. Pre-approval SHALL remain subject to inherited native permissions and SHALL NOT authorize off-contract operations.
 
 #### Scenario: Coordinator runs validator and guard
-- **WHEN** a coordinator runs the result validator every turn and guard snapshot/verify every window
-- **THEN** execution proceeds with no interactive permission prompt
+- **WHEN** a coordinator runs result validation each turn and guard snapshot or verify each window with effective native access
+- **THEN** its projected scoped pre-approvals cover those operations without an additional tool permission prompt
 
 ### Requirement: Unchanged Execution Surface
 
-`sai-4-apply`, `sai-build`, `sai-commit`, `sai-archive`, `sai-backfill`, `sai-merge`, `sai-retire-docs`, and `sai-pr` SHALL keep their current execution surface unchanged. `sai-build` declares the apply-parity execution set its chained apply segment requires.
+Apply, Build, Commit, Archive, Backfill, Merge, documentation retirement, and PR SHALL retain access required for existing contracted operations through explicit profile-derived declarations. Build SHALL retain the Apply execution capabilities required by its chained segment. Generated declarations SHALL NOT change mutation ownership, confirmation gates, or commit limits.
 
 #### Scenario: Unchanged wrappers untouched
-- **WHEN** the change is applied
-- **THEN** those eight wrappers gain no new `node` entry under this change
-
+- **WHEN** canonical capability projection replaces independent native wrapper declarations
+- **THEN** these eight command surfaces retain their contracted execution behavior through generated requirements rather than relying on unchanged source bytes or absent declarations

@@ -100,10 +100,8 @@ test('tunable-seed routes to the dedicated installer', () => {
     assert.doesNotThrow(() => installProjection(projection, dir),
       'installProjection should accept a tunable-seed projection without throwing');
     const dest = fs.readFileSync(projection.destinationPath, 'utf8');
-    assert.ok(dest.includes('model: source-model'),
-      'global install should overwrite the destination model with the source value');
-    assert.ok(dest.includes('effort: source-effort'),
-      'global install should overwrite the destination effort with the source value');
+    assert.ok(dest.includes('model: tuned-model'));
+    assert.ok(dest.includes('effort: tuned-effort'));
     assert.ok(dest.includes('description: Source command'),
       'the destination non-tunable frontmatter should come from the source');
     assert.ok(dest.includes('Source body.'), 'the destination body should come from the source');
@@ -323,7 +321,7 @@ test('OpenCode worker generation omits optional variant without changing Claude 
     && item.workerName === worker.workerName).text;
   assert.match(generated, /^model: opencode-go\/deepseek-v4\.1-flash$/m);
   assert.doesNotMatch(generated, /^variant:/m);
-  assert.match(generated, /^permission:$/m);
+  assert.match(generated, /^permissions:$/m);
   const claude = outputs.find(item => item.kind === 'agent' && item.harness === 'claude'
     && item.workerName === worker.workerName).text;
   assert.match(claude, /^model: sonnet\neffort: medium$/m);

@@ -326,7 +326,9 @@ function managedBytesMatch(projection, destinationPath) {
     ? Buffer.from(projection.sourceText, 'utf8')
     : fs.readFileSync(projection.sourcePath);
   const destination = fs.readFileSync(destinationPath);
-  return source.equals(destination);
+  const { stripTunableLines } = require('./install-flow');
+  const keys = projection.harness === 'opencode' ? ['model', 'variant'] : ['model', 'effort'];
+  return stripTunableLines(source, keys).equals(stripTunableLines(destination, keys));
 }
 
 function managedClaudeWorkerRecords(harness, repoRoot) {

@@ -246,7 +246,7 @@ test('installClaude copies commands/claude/*.md to dest/commands/', () => {
   const design = fs.readFileSync(path.join(cmdDir, 'sai-2-design.md'), 'utf8');
   assert.match(design, /^model: opus$/m);
   assert.match(design, /^effort: medium$/m);
-   assert.match(design, /^allowed-tools: Read, Glob, Skill, Agent, SendMessage, AskUserQuestion, TaskCreate, TaskUpdate, TaskGet, TaskList, Bash\(node \.claude\/sai\/tools\/worker-report-validator\.js:\*\), Bash\(node ~\/\.claude\/sai\/tools\/worker-report-validator\.js:\*\), Bash\(node \.claude\/sai\/tools\/no-commit-guard\.js:\*\), Bash\(node ~\/\.claude\/sai\/tools\/no-commit-guard\.js:\*\), Bash\(node \.claude\/sai\/bin\/sai-state\.js:\*\), Bash\(node ~\/\.claude\/sai\/bin\/sai-state\.js:\*\), Bash\(git reset:\*\)$/m);
+   assert.equal(design.match(/^allowed-tools: (.+)$/m)[1], require('./helpers/capability-source').commandTools('sai-2-design'));
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
@@ -521,7 +521,7 @@ test('Claude installer projects the three budget-agent destinations with role-ma
   }
 });
 
-test('installClaude replaces a foreign Claude budget-agent destination with source defaults and emitting a notice', () => {
+test('installClaude replaces foreign managed content but retains tunables with a notice', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-budget-foreign-'));
   const agentPath = path.join(tmpDir, 'agents', 'budget-explorer.md');
   try {
@@ -532,10 +532,8 @@ test('installClaude replaces a foreign Claude budget-agent destination with sour
         'installClaude should not throw on a foreign budget-agent destination');
     });
     const after = fs.readFileSync(agentPath, 'utf8');
-    assert.ok(!after.includes('model: foreign-model'),
-      'the foreign destination model should be overwritten with repo defaults');
-    assert.ok(!after.includes('effort: foreign-effort'),
-      'the foreign destination effort should be overwritten with repo defaults');
+    assert.ok(after.includes('model: foreign-model'));
+    assert.ok(after.includes('effort: foreign-effort'));
     assert.ok(!after.includes('foreign body'),
       'the foreign body should be replaced by the managed source content');
     assert.ok(notices.some(message => message.includes(agentPath)),
@@ -545,7 +543,7 @@ test('installClaude replaces a foreign Claude budget-agent destination with sour
   }
 });
 
-test('installClaude overwrites tuned tunables and divergent bodies with notice', () => {
+test('installClaude retains tuning and overwrites divergent bodies with notice', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-tuned-'));
   const agentPath = path.join(tmpDir, 'agents', 'sai-5-review-worker.md');
   const sidecarPath = path.join(tmpDir, 'agents', '.sai-5-review-worker.owner.json');
@@ -567,10 +565,7 @@ test('installClaude overwrites tuned tunables and divergent bodies with notice',
     assert.equal(reinstallError, null,
       'installClaude should not throw on a tuned agent destination');
     const after = fs.readFileSync(agentPath, 'utf8');
-    assert.deepEqual(Buffer.from(after), sourceBytes,
-      'a tuned destination should be overwritten with repo defaults');
-    assert.ok(!after.includes('model: tuned-review-model'),
-      'the tuned model value should not survive a re-install');
+    assert.equal(after, tuned);
     assert.equal(fs.existsSync(sidecarPath), false,
       'no owner sidecar should exist after a tuned re-install');
 
@@ -594,7 +589,7 @@ test('installClaude overwrites existing vendor command files', () => {
   fs.mkdirSync(path.dirname(cmdFile), { recursive: true });
   fs.writeFileSync(cmdFile, 'old sentinel content');
   installClaude(tmpDir);
-  const expected = fs.readFileSync(path.join(__dirname, '..', 'commands', 'claude', 'sai-1-spec.md'), 'utf8');
+  const expected = require('./helpers/capability-source').readProjected('commands/claude/sai-1-spec.md');
   assert.equal(fs.readFileSync(cmdFile, 'utf8'), expected, 'existing vendor command should be overwritten with repo version');
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
@@ -609,7 +604,7 @@ test('installClaude overwrites stale command wrappers', () => {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-test('installClaude re-install overwrites tuned values and never recreates ownership', () => {
+test('installClaude re-install preserves tuned values and never recreates ownership', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-'));
   try {
     installClaude(tmpDir);
@@ -636,10 +631,8 @@ test('installClaude re-install overwrites tuned values and never recreates owner
     assert.equal(reinstallError, null,
       'installClaude should not throw on a tuned agent destination');
     const after = fs.readFileSync(agentPath, 'utf8');
-    assert.deepEqual(Buffer.from(after), sourceBytes,
-      'tuned values should be overwritten with repo defaults on re-install');
-    assert.ok(notices.some(message => message.includes(agentPath)),
-      'a tunable-only difference should print an overwrite notice');
+    assert.ok(after.includes('model: tuned-model') && after.includes('effort: tuned-effort'));
+    assert.ok(!notices.some(message => message.includes(agentPath)));
     assert.equal(fs.existsSync(sidecarPath), false,
       'a re-install must not create an owner sidecar');
   } finally {

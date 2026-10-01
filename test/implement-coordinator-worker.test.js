@@ -28,7 +28,7 @@ function matrixAgent(harness, phase) {
 function artifact(relativePath) {
   const fullPath = path.join(repoRoot, relativePath);
   assert.ok(fs.existsSync(fullPath), `${relativePath} should exist`);
-  return fs.readFileSync(fullPath, 'utf8');
+  return require('./helpers/capability-source').readProjected(relativePath);
 }
 
 function tempDir(prefix) {
@@ -131,8 +131,9 @@ test('Claude worker agent is pinned to the required model, effort, and tools', (
    assert.match(agent, /^effort:\s*medium\s*$/m);
   assert.match(
     agent,
-    /^tools:\s*Read,\s*Glob,\s*Grep,\s*Bash,\s*Edit,\s*Write,\s*Agent,\s*Skill,\s*SendMessage\s*$/m
+    /^tools: .+WebFetch.+$/m
   );
+  for (const tool of ['Read', 'Glob', 'Grep', 'Bash', 'Edit', 'Write', 'Agent', 'Skill', 'SendMessage']) assert.ok(agent.match(/^tools: (.+)$/m)[1].split(', ').includes(tool));
 });
 
 test('Claude and opencode worker bindings own dispatch and continuation mechanics', () => {
@@ -403,7 +404,7 @@ test('routed harness bindings and inline parity', () => {
   assert.match(claudeAgent, /^effort:\s*medium\s*$/m);
   assert.match(
     claudeAgent,
-    /^tools:\s*Read,\s*Glob,\s*Grep,\s*Bash,\s*Edit,\s*Write,\s*Agent,\s*Skill,\s*SendMessage\s*$/m
+    /^tools: .+WebFetch.+$/m
   );
   assert.doesNotMatch(worker, /\b(?:task_id|run_in_background|SendMessage)\b/);
 });
@@ -872,7 +873,7 @@ test('Step 6: the implementation coordinator and policy drive the harness task l
 test('Step 2: the implementation coordinator renders task-list stamps coordinator-only via the todo-structure policy, with no shell grant on the wrapper (stamp-emission-coordinator-only)', () => {
   const coordinator = artifact('sai/commands/implement/coordinator.md');
   const policy = artifact('sai/policies/todo-structure.md');
-  const claudeWrapper = artifact('commands/claude/sai-3-implement.md');
+  const claudeWrapper = require('./helpers/capability-source').readProjected('commands/claude/sai-3-implement.md');
 
   assert.match(coordinator, /todo-structure\.md/,
     'the coordinator should reference the neutral stamping policy');

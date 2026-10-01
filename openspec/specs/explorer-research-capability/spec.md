@@ -8,32 +8,40 @@ Grants the `budget-explorer` agent the tool permissions its research ladder requ
 
 ### Requirement: Explorer tool permissions enable ladder level access
 
-The `budget-explorer` agent SHALL have `Bash` and `mcp__codegraph__codegraph_explore` tools granted in its agent frontmatter. These tools enable structural query access (level 1a via MCP, level 1b via CLI) and textual search access (level 2 via git grep).
+Both harnesses SHALL derive explorer access from the canonical research profile. Claude grants SHALL include the applicable shell and CodeGraph MCP tools enabling levels 1a, 1b, and 2. Opencode SHALL grant equivalent read, search, web, restricted research shell, fetch-skill, CodeGraph, and execute bridge capabilities through ordered deny-default V2 permissions. Required auxiliary access SHALL be included, while excluded writes, delegation, unrelated skills, and unknown actions remain denied by opencode profile rules. The explorer SHALL apply its profile before availability detection.
 
 #### Scenario: MCP tool present, structural query via level 1a
-- **WHEN** `codegraph_explore` MCP tool is present in the session and the explorer receives a structural question
-- **THEN** the explorer uses the MCP tool and does not emit a discard log entry for level 1a
+- **WHEN** granted CodeGraph MCP is available for a structural query
+- **THEN** the explorer uses it without a level 1a discard
 
 #### Scenario: MCP tool absent, codegraph binary available, shell accessible
-- **WHEN** `codegraph_explore` MCP tool is absent but `codegraph` binary is on PATH and shell is available
-- **THEN** the explorer invokes `codegraph explore` CLI through shell (level 1b) and level 1 is not discarded
+- **WHEN** granted MCP access is absent but granted CodeGraph CLI and shell access are available
+- **THEN** the explorer uses codegraph explore at level 1b without discarding the entire first level
 
 #### Scenario: Neither MCP nor CLI available
-- **WHEN** `codegraph_explore` MCP tool is absent AND either shell is unavailable OR `codegraph` binary is not on PATH
-- **THEN** the explorer skips level 1 and emits discard log entry with appropriate reason
+- **WHEN** granted applicable MCP is absent and its granted CLI path is unavailable
+- **THEN** the explorer skips level 1 with appropriately classified absence and remediation entries
 
 #### Scenario: Shell available, git grep available, textual search
-- **WHEN** shell and `git` are available and the explorer receives a textual search query
-- **THEN** the explorer uses `git grep` through shell (level 2) and does not emit a discard log entry for level 2
+- **WHEN** granted shell and Git access are available for a textual query
+- **THEN** the explorer uses git grep without a level 2 discard
 
 #### Scenario: Shell unavailable for level 2
-- **WHEN** shell is unavailable
-- **THEN** the explorer skips level 2 and emits discard log with reason `shell unavailable`
+- **WHEN** granted applicable shell support is absent
+- **THEN** level 2 is skipped with shell unavailable and shell-enabling remediation
 
 #### Scenario: Git not on PATH despite shell available
-- **WHEN** shell is available but `git` is not on PATH
-- **THEN** the explorer skips level 2 and emits discard log with reason `git not on PATH`
+- **WHEN** granted applicable shell exists but Git is absent from PATH
+- **THEN** level 2 is skipped with git not on PATH and installation guidance
 
 #### Scenario: Query type is documentation read, not structural or textual
-- **WHEN** the explorer receives a documentation-read query (not a "where is X" or "search for Y")
-- **THEN** ladder levels 1 and 2 are not attempted; both are reported as `not applicable for this query type` rather than environment discards
+- **WHEN** the explorer receives a documentation-read query
+- **THEN** levels 1 and 2 are not attempted and are classified as inapplicable rather than environmental absences
+
+#### Scenario: Native research grants include the bridge
+- **WHEN** the opencode research profile is translated
+- **THEN** it includes execute and the exact CodeGraph action while leaving unrelated permission-checked tools denied
+
+#### Scenario: New action does not inherit broad access
+- **WHEN** an unknown action is evaluated despite inherited allow rules
+- **THEN** research profile deny-default rules deny that action

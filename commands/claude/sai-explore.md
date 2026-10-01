@@ -3,10 +3,11 @@ description: Think through an idea, problem, or requirement with a read-only par
 argument-hint: "[optional: change-name or topic] [--overview-lang <language>] [--fast-track]"
 model: opus
 effort: medium
-allowed-tools: Read, Glob, Grep, Bash(openspec:*), Bash(git:*), Bash(node .claude/sai:*), Bash(node ~/.claude/sai:*), AskUserQuestion, Skill, Task, Agent, SendMessage, TodoWrite, TaskCreate, TaskUpdate, TaskGet, TaskList, WebFetch, WebSearch
+allowed-tools: {{capabilityAllowedTools}}
 ---
 Fetch @skills/fetch/SKILL.md
 Fetch @sai/adapters/claude/boot.md and follow it.
+Required capability profile: {{capabilityProfile}}.
 Fetch @sai/adapters/claude/idea-list-render.md and use it.
 Fetch @sai/commands/explore/command-bootstrap.md and follow those instructions exactly, forwarding the InvocationEnvelope block below.
 

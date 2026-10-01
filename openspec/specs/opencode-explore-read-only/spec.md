@@ -7,19 +7,25 @@ Keep the managed opencode `explore` agent read-only through harness-enforced per
 
 ### Requirement: The managed opencode `explore` agent MUST deny direct mutation tools.
 
-The source frontmatter SHALL declare `permission.edit: deny`, which gates opencode's `write`, `edit`, and `apply_patch` tools. It SHALL NOT use the deprecated `tools` field.
+The managed explore source SHALL project its research profile into ordered V2 permissions beginning with deny-all and granting no edit action. This action controls supported native mutation tools, including patch or edit/write alternatives. Frontmatter SHALL NOT use deprecated tools or legacy permission fields.
 
 #### Scenario: Direct mutation tools are restricted
+- **WHEN** managed explore is projected from its source
+- **THEN** its ordered permissions deny the edit action without a restoring grant
+- **AND** its frontmatter carries no deprecated tools field
 
-- **WHEN** the managed `explore` agent is projected from its source definition
-- **THEN** its frontmatter declares `edit: deny` under `permission`
-- **AND** its frontmatter carries no `tools` field
+#### Scenario: Direct mutation remains denied despite inheritance
+- **WHEN** inherited configuration allows editing but the research profile is applied
+- **THEN** the effective edit action remains denied
 
 ### Requirement: The managed opencode `explore` agent SHALL retain shell access and its fetch wrapper.
 
-The source frontmatter SHALL leave `bash` at opencode's default, which permits it, and the post-frontmatter body SHALL preserve the existing fetch bootstrap followed by `Fetch @sai/policies/explore-agent.md`.
+The managed explore source SHALL grant the V2 shell action only for contracted git grep and codegraph explore patterns rather than default unrestricted bash access. Its body SHALL preserve fetch bootstrap first, followed by profile disclosure and the canonical explore-agent policy Fetch. Profile access SHALL NOT authorize unrelated shell purposes.
 
 #### Scenario: Research and wrapper behavior remain available
+- **WHEN** the managed explore definition is projected
+- **THEN** its permissions allow contracted research shell patterns and its fetch bootstrap precedes the canonical explore policy
 
-- **WHEN** the managed `explore` source definition is read
-- **THEN** its `permission` block does not deny `bash` and the existing fetch-wrapper directives remain in their original order
+#### Scenario: Restricted research shell remains usable
+- **WHEN** shell permissions are evaluated for git grep and an unrelated mutation command
+- **THEN** git grep is allowed while the unrelated mutation command is denied

@@ -69,6 +69,9 @@ takes one — never substitute one for the other.
 - `worker-report-validator.js`: `node <tool-path> validate --kind <kind>`
   with the payload on stdin (plus `--json --cwd` where the tool accepts
   them).
+- `tool-access.js`: `node <tool-path> <verify|notices>` with JSON on stdin;
+  `verify` takes `{required, evidence}`, `notices` takes `{ladder_discards}`.
+  It prints JSON and takes neither `--json` nor `--cwd`.
 - `bin/sai-state.js` verbs (`spawn`, `emit`, `reset`, `close`): `node
   <tool-path> <verb> ...` with the verb's own arguments; they take neither
   `--json` nor `--cwd`. The progress emit (`emit <id> <machineId> --progress

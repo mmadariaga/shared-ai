@@ -25,7 +25,7 @@ const INVOCATION_ENVELOPE_FIELD = 'arguments_value';
 const RETIRED_INVOCATION_ENVELOPE_FIELD = ['wrapper', 'echo', 'value'].join('_');
 
 function splitFrontmatter(text) {
-  const lines = text.split('\n');
+  const lines = text.split(/\r?\n/);
   if (lines.length === 0 || lines[0] !== '---') return null;
   const end = lines.indexOf('---', 1);
   if (end === -1) return null;
@@ -134,10 +134,7 @@ function stripTunableLines(bytes, tunableKeys) {
   const text = bytes.toString('utf8');
   const split = splitFrontmatter(text);
   if (!split) return bytes;
-  const kept = split.frontmatter.filter((line) => {
-    const match = TUNABLE_SCALAR.exec(line);
-    return !(match && tunableKeys.includes(match[1]));
-  });
+  const kept = frontmatterBlocks(split.frontmatter).filter(block => !tunableKeys.includes(block.key)).flatMap(block => block.lines);
   return Buffer.from([split.header, ...kept, ...split.rest].join('\n'), 'utf8');
 }
 
@@ -170,15 +167,47 @@ function tunableSeedInstaller(projection) {
     outcome = 'created';
   } else {
     const destinationBytes = fs.readFileSync(destination);
-    const differs = !sourceBytes.equals(destinationBytes);
-    fs.writeFileSync(destination, sourceBytes);
+    const keys = projection.harness === 'opencode' ? OPENCODE_TUNABLE_KEYS : CLAUDE_TUNABLE_KEYS;
+    const differs = !stripTunableLines(sourceBytes, keys).equals(stripTunableLines(destinationBytes, keys));
     outcome = differs ? 'overwritten' : 'reused';
     if (differs) {
+      fs.writeFileSync(destination, preserveAgentTunables(sourceBytes.toString('utf8'), destinationBytes.toString('utf8'), keys));
       console.log(`Notice: managed agent differs from source; overwritten ${destination}`);
     }
   }
   deleteSidecarUnderShapeGuard(destination);
   return outcome;
+}
+
+function preserveAgentTunables(sourceText, destinationText, keys) {
+  const source = splitFrontmatter(sourceText);
+  const destination = splitFrontmatter(destinationText);
+  if (!source || !destination) return sourceText;
+  const lines = new Map();
+  for (const block of frontmatterBlocks(destination.frontmatter)) {
+    if (keys.includes(block.key)) lines.set(block.key, block.lines);
+  }
+  const kept = [];
+  let insertion;
+  for (const block of frontmatterBlocks(source.frontmatter)) {
+    if (keys.includes(block.key)) {
+      if (insertion === undefined) insertion = kept.length;
+    } else kept.push(...block.lines);
+  }
+  // Absence of an optional tunable is also user-owned. Keep the agent's
+  // separate model/variant shape; never splice command-style # suffixes.
+  kept.splice(insertion ?? kept.length, 0, ...keys.filter(key => lines.has(key)).flatMap(key => lines.get(key)));
+  return [source.header, ...kept, ...source.rest].join('\n');
+}
+
+function frontmatterBlocks(lines) {
+  const blocks = [];
+  for (const line of lines) {
+    const match = TUNABLE_SCALAR.exec(line);
+    if (match || blocks.length === 0) blocks.push({ key: match ? match[1] : null, lines: [line] });
+    else blocks[blocks.length - 1].lines.push(line);
+  }
+  return blocks;
 }
 const REPOSITORY_ROOT = path.join(__dirname, '..');
 const PACKAGE_VERSION = require(path.join(REPOSITORY_ROOT, 'package.json')).version;

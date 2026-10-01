@@ -170,6 +170,7 @@ test('Claude sai-build keeps exact apply parity for the chained apply segment', 
   assert.equal(buildTools[1].trim(), applyTools[1].trim(),
     'sai-build should keep exact apply parity for coordinator-owned git, checklist, and verification work');
   assert.match(buildWrapper,
-    /^allowed-tools: Read, Glob, Grep, Edit, Write, Bash, Skill, Agent, SendMessage, AskUserQuestion, TaskCreate, TaskUpdate, TaskGet, TaskList$/m,
+    /^allowed-tools: \{\{capabilityAllowedTools\}\}$/m,
     'sai-build should pin the wide execution set without node-scoped narrowing');
+  assert.equal(require('./helpers/capability-source').commandTools('sai-build'), require('./helpers/capability-source').commandTools('sai-4-apply'));
 });
