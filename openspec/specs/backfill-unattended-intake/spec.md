@@ -67,3 +67,12 @@ When a detected crystallized block carries `**Request Additional Notes**` with c
 
 - **WHEN** backfill runs without a detected block, or with a block that carries no Request Additional Notes field
 - **THEN** the `proposal.md` draft contains no `## Request Additional Notes` section
+
+### Requirement: Out-of-scope implementation items never become intent items
+
+When a crystallized block is detected, `/sai-backfill` SHALL map only the items under the `Implementation Details` section onto intent items. Items under `Out of scope Implementation Details` SHALL be non-normative context and SHALL NOT become intent items.
+
+#### Scenario: Out-of-scope items are excluded from reconciliation
+
+- **WHEN** a detected block lists items under `**Out of scope Implementation Details**`
+- **THEN** those items are not classified as intent items and never appear as `stated-but-unevidenced` items or as normative requirements in the drafts

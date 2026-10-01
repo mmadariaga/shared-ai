@@ -71,3 +71,22 @@ The rule SHALL define an emission sweep that runs before the block is printed. T
 
 - **WHEN** a block-emitting surface is about to print a `Ready to Propose` block
 - **THEN** it verifies that every discussed-and-excluded topic whose detail goes beyond its non-goal in `**Key constraints**` has that detail in `**Request Additional Notes**` before emission
+
+### Requirement: Mandatory non-normative Out of scope Implementation Details field
+
+The `Ready to Propose` block format in `sai/policies/ready-to-propose-format.md` SHALL define a mandatory `**Out of scope Implementation Details**` field placed immediately after `**Implementation Details**` and before the optional `**Request Additional Notes**` field. `**Implementation Details**` SHALL hold the in-scope agreed statements, and the new field SHALL hold every other agreed statement under the same field rules (global order, identifiers, and wording preserved), or exactly one `- None` bullet when no item is out of scope. The field SHALL be non-normative context for the receiving change: no requirement, scenario, intent item, or implementation obligation SHALL derive from it.
+
+#### Scenario: Field placement
+
+- **WHEN** any block is emitted
+- **THEN** `**Out of scope Implementation Details**` appears immediately after `**Implementation Details**`, and `**Request Additional Notes**`, when present, follows it
+
+#### Scenario: Non-sliced block carries None
+
+- **WHEN** a non-sliced block is emitted
+- **THEN** every agreed item is under `**Implementation Details**` and `**Out of scope Implementation Details**` is exactly `- None`
+
+#### Scenario: No obligation derives from the field
+
+- **WHEN** a consumer reads a block whose `**Out of scope Implementation Details**` lists items
+- **THEN** no requirement, scenario, intent item, or implementation obligation is derived from those items

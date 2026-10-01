@@ -303,6 +303,9 @@ test('lint.js ready-to-propose: valid block passes', () => {
 **Implementation Details**:
 - I1: implementation detail one.
 
+**Out of scope Implementation Details**:
+- None
+
 **Overview language**: None
 
 ---
@@ -345,6 +348,8 @@ test('lint.js ready-to-propose: block with Request Additional Notes passes', () 
 - E1: edge case one.
 **Implementation Details**:
 - I1: implementation detail one.
+**Out of scope Implementation Details**:
+- None
 **Request Additional Notes**:
 The user prefers short examples; see the earlier discussion about naming.
 - A bullet note is also allowed.
@@ -356,6 +361,46 @@ The user prefers short examples; see the earlier discussion about naming.
     const result = tool(['ready-to-propose', 'proposal.md'], tmpdir);
     assert.equal(result.status, 0);
     assert.match(result.stdout, /check passed/);
+  } finally {
+    fs.rmSync(tmpdir, { recursive: true });
+  }
+});
+
+test('lint.js ready-to-propose: block without Out of scope Implementation Details fails', () => {
+  const tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), 'lint-'));
+  try {
+    const testFile = path.join(tmpdir, 'proposal.md');
+    const block = `## Ready to Propose
+
+**Change name**: example-change
+**What**: This is what we're doing.
+**Why**: This is why we're doing it.
+**Capabilities in scope**:
+- capability-one: description
+**Research Leads**:
+- None
+**Decisions & Rationale**:
+- None
+**Alternatives Considered**:
+- None
+**Trade-offs Accepted**:
+- None
+**Model / Re-framings**:
+- None
+**Key constraints**:
+- Constraint one.
+**Edge Cases**:
+- E1: edge case one.
+**Implementation Details**:
+- I1: implementation detail one.
+**Overview language**: None
+
+---
+`;
+    fs.writeFileSync(testFile, block);
+    const result = tool(['ready-to-propose', 'proposal.md'], tmpdir);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stdout + result.stderr, /Out of scope Implementation Details/);
   } finally {
     fs.rmSync(tmpdir, { recursive: true });
   }
