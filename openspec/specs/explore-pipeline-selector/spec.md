@@ -26,7 +26,7 @@ Selecting Plan - Unattended SHALL dispatch only the existing supervised sai-1 an
 
 ### Requirement: Preserve Direct Build (unattended) behavior
 
-Selecting Direct Build - Unattended SHALL preserve the direct implementation, functional-fix, backfill, archive, and exactly-one-local-commit order. Its route identity SHALL be `direct-build-unattended`, and its panel projection SHALL contain only Build/Implement, Backfill, and Archive.
+Selecting Direct Build - Unattended SHALL preserve the direct implementation, functional-fix, suite-gate, backfill, archive, and exactly-one-local-commit order. Its route identity SHALL be `direct-build-unattended`, and its panel projection SHALL contain only Build/Implement, Backfill, and Archive.
 
 #### Scenario: Build uses the existing closed flow
 

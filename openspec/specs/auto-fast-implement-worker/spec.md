@@ -53,12 +53,17 @@ The implementer worker SHALL treat any repository artifact required by the cryst
 
 ### Requirement: Fix-loop continuation discipline
 
-When explore continues the same worker instance with an ordered finding list, the worker SHALL apply exactly the listed corrections within the block's scope, return a closed lifecycle result again, and add every touched path to its changed_files union; it MUST NOT re-plan, expand scope, or improve beyond the findings.
+When explore continues the same worker instance with an ordered finding list, the worker SHALL apply exactly the listed corrections within the block's scope, return a closed lifecycle result again, and add every touched path to its changed_files union; it MUST NOT re-plan, expand scope, or improve beyond the findings. A finding that names a failing test SHALL be reported resolved only when the worker has run that test and it passes; otherwise the worker SHALL report it unresolved. The worker MAY modify test files to make such a test pass when the change's behavior makes an assertion obsolete, and every touched test file SHALL enter changed_files.
 
 #### Scenario: Findings applied exactly
 
 - **WHEN** a continuation payload arrives containing an ordered finding list
 - **THEN** only the listed corrections are applied and the returned result carries the unioned changed_files including every newly touched path
+
+#### Scenario: Failing-test finding needs an observed pass
+
+- **WHEN** a continuation finding names a failing test
+- **THEN** the worker reports it resolved only after running that test and observing it pass, and lists every test file it touched in changed_files
 
 ### Requirement: Failure honesty
 
@@ -71,7 +76,7 @@ The implementer worker SHALL return `failed` with a concrete failure class when 
 
 ### Requirement: The implementer window snapshot head is base_sha and guard_base
 
-The Direct Build implementer dispatch SHALL be a no-commit-guard window opened by the Step 1 `snapshot` step, whose returned head SHALL be recorded as both the run's `base_sha` (the diff base for the functional fix loop) and the window's `guard_base`. The window SHALL be verified after the implementer stretch closes — the fix loop converged or the cap was exhausted — and before the Step 3 path-scoped staging, without changing the worker's closed write containment, its mutating-git prohibition prose, or any closed exclusion of its contract.
+The Direct Build implementer dispatch SHALL be a no-commit-guard window opened by the Step 1 `snapshot` step, whose returned head SHALL be recorded as both the run's `base_sha` (the diff base for the functional fix loop and the suite-gate classification) and the window's `guard_base`. The window SHALL be verified after the implementer stretch closes — the fix loop converged or the cap was exhausted, and the Step 2b suite gate green, skipped, or stopped — and before the Step 3 path-scoped staging, or before the stop report when the suite gate stops the route, without changing the worker's closed write containment, its mutating-git prohibition prose, or any closed exclusion of its contract.
 
 #### Scenario: one snapshot serves the diff base and the guard baseline
 
