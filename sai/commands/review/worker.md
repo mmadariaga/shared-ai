@@ -9,7 +9,9 @@ Fetch @sai/commands/review/steps/common.md and keep it in force for the entire r
 
 The worker receives exactly one opaque string, `arguments_value`, and reads nothing from parent conversation history. Parse it as at most two positional values: change name, then optional parent branch.
 
-## Prerequisites and Resolution
+## Change Resolution and Proposal Gate
+
+OpenSpec prerequisite checks belong to `/sai-explore` alone. This worker runs no such check; change resolution and the `proposal.md` gate below still apply.
 
 1. **Resolve the change.** Use the supplied name. Without one, run `openspec list --json`:
    - zero changes — return `failed` with exactly: "No active changes found. Run `/sai-1-spec` to create one."
@@ -23,7 +25,7 @@ A missing `proposal.md` ends the run before any review analysis, mutation, or du
 
 Report the coordinator's five-step plan as progress events, each id once, in plan order, per `@sai/orchestration/worker-core.md` § Nonterminal Result Transport:
 
-- `resolve-change` — the startup act (the three steps above) passes. It must pass before dispatching any `budget-explorer`, computing the diff, or beginning a review pass, and it reports together with `establish-diff-scope` in the first progress event, per `@sai/orchestration/worker-core.md` § Step-machine task disclosure.
+- `resolve-change` — the startup act (change resolution and the proposal gate above) passes. It must pass before dispatching any `budget-explorer`, computing the diff, or beginning a review pass, and it reports together with `establish-diff-scope` in the first progress event, per `@sai/orchestration/worker-core.md` § Step-machine task disclosure.
 - `establish-diff-scope` — the diff scope is established. An empty diff reports it before returning `cancelled`.
 - `resolve-review-analysis` — passes 1–11 are done.
 - `resolve-mutation-analysis` — the Pass 12 activation gate is resolved, whether the mutation path runs or is legitimately skipped.

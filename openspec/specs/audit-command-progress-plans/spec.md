@@ -8,59 +8,52 @@ Define the five-step progress plans for the audit commands (`sai-5-review`, `sai
 
 ### Requirement: audit-adapters-declare-five-step-plans
 
-The `sai-5-review`, `sai-6-security`, `sai-7-performance`, and `sai-8-accessibility` phase adapters SHALL declare an immutable five-step `progress_plan`. Each plan SHALL use the following stable ids and user-facing labels in the listed order, and each worker contract SHALL enumerate the same ids. The completion condition is the existing workflow boundary shown for each step:
+The `sai-5-review`, `sai-6-security`, `sai-7-performance`, and `sai-8-accessibility` phase adapters SHALL declare an immutable five-step `progress_plan`. Each plan SHALL use the following stable ids and user-facing labels in the listed order, and each worker contract SHALL enumerate the same ids. The completion condition is the existing workflow boundary shown for each step. OpenSpec environment prerequisite checks SHALL belong to `/sai-explore` alone; each worker's startup SHALL retain change selection, the required proposal gate, and its scope rules, without running that preflight.
 
 | Command | Ordered progress steps and completion conditions |
 | --- | --- |
-| `sai-5-review` | `resolve-change` - Resolve change: prerequisites, change selection, and proposal gate complete; `establish-diff-scope` - Resolve diff scope: parent, diff statistics, empty-diff decision, and 500-LOC cutover complete; `resolve-review-analysis` - Resolve review analysis: passes 1-10, delegated research, severity classification, and audit triage complete; `resolve-mutation-analysis` - Resolve mutation-analysis gate: Pass 11 is run when applicable or its gate is recorded as not applicable; `close-review-outcome` - Close review outcome: the review result and any applicable artifact verification are complete |
-| `sai-6-security` | `resolve-security-scope` - Resolve security scope: prerequisites, change selection, scope flags, and parent complete; `discover-module-map` - Discover modules and trust boundaries: ecosystems, modules, entry points, trust boundaries, and manifest-change decision complete; `resolve-sast-analysis` - Resolve SAST analysis: taint analysis, direct CWE mapping, and evidence-backed classification complete; `resolve-sca` - Resolve SCA gate: SCA is run when a manifest changed or recorded as skipped when none changed; `close-security-outcome` - Close security outcome: the security result and any applicable artifact verification are complete |
-| `sai-7-performance` | `resolve-performance-scope` - Resolve performance scope and tier: prerequisites, change selection, scope grammar, tier filter, and parent complete; `map-stack-hot-paths` - Map stack and hot paths: stack detection, baseline, hot-path mapping, and 500-LOC cutover complete; `audit-performance-tiers` - Resolve performance tier analysis: applicable backend, frontend, database, queue, and cross-cutting checks complete; `resolve-diagnostics` - Resolve diagnostics gate: diagnostics authorization or applicability is resolved, with diagnostics run only when authorized; `close-performance-outcome` - Close performance outcome: the performance result and any applicable artifact verification are complete |
-| `sai-8-accessibility` | `resolve-accessibility-scope` - Resolve accessibility scope and runtime mode: prerequisites, change selection, UI-scope/no-UI decision, runtime flag, and parent complete; `map-ui-framework` - Map UI components and framework: UI filtering, framework detection, component mapping, and delegation choice complete; `resolve-static-audit` - Resolve static accessibility audit: semantics, ARIA, keyboard/focus, forms, visual, media, and dynamic checks complete; `resolve-runtime-audit` - Resolve runtime-audit gate: runtime request, server confirmation, and per-command authorization are resolved, with checks run only when applicable; `close-accessibility-outcome` - Close accessibility outcome: the accessibility result and any applicable artifact verification are complete |
+| `sai-5-review` | `resolve-change` - Resolve change: change selection and proposal gate complete; `establish-diff-scope` - Resolve diff scope: parent, diff statistics, empty-diff decision, and 500-LOC cutover complete; `resolve-review-analysis` - Resolve review analysis: passes 1-10, delegated research, severity classification, and audit triage complete; `resolve-mutation-analysis` - Resolve mutation-analysis gate: Pass 11 is run when applicable or its gate is recorded as not applicable; `close-review-outcome` - Close review outcome: the review result and any applicable artifact verification are complete |
+| `sai-6-security` | `resolve-security-scope` - Resolve security scope: change selection, proposal gate, scope flags, and parent complete; `discover-module-map` - Discover modules and trust boundaries: ecosystems, modules, entry points, trust boundaries, and manifest-change decision complete; `resolve-sast-analysis` - Resolve SAST analysis: taint analysis, direct CWE mapping, and evidence-backed classification complete; `resolve-sca` - Resolve SCA gate: SCA is run when a manifest changed or recorded as skipped when none changed; `close-security-outcome` - Close security outcome: the security result and any applicable artifact verification are complete |
+| `sai-7-performance` | `resolve-performance-scope` - Resolve performance scope and tier: change selection, proposal gate, scope grammar, tier filter, and parent complete; `map-stack-hot-paths` - Map stack and hot paths: stack detection, baseline, hot-path mapping, and 500-LOC cutover complete; `audit-performance-tiers` - Resolve performance tier analysis: applicable backend, frontend, database, queue, and cross-cutting checks complete; `resolve-diagnostics` - Resolve diagnostics gate: diagnostics authorization or applicability is resolved, with diagnostics run only when authorized; `close-performance-outcome` - Close performance outcome: the performance result and any applicable artifact verification are complete |
+| `sai-8-accessibility` | `resolve-accessibility-scope` - Resolve accessibility scope and runtime mode: change selection, proposal gate, UI-scope/no-UI decision, runtime flag, and parent complete; `map-ui-framework` - Map UI components and framework: UI filtering, framework detection, component mapping, and delegation choice complete; `resolve-static-audit` - Resolve static accessibility audit: semantics, ARIA, keyboard/focus, forms, visual, media, and dynamic checks complete; `resolve-runtime-audit` - Resolve runtime-audit gate: runtime request, server confirmation, and per-command authorization are resolved, with checks run only when applicable; `close-accessibility-outcome` - Close accessibility outcome: the accessibility result and any applicable artifact verification are complete |
 
 The adapters SHALL render these plans through the shared progress policy and SHALL NOT add audit passes, tool names, severity categories, or internal delegation units as additional progress steps. Audit plans SHALL receive closure-only `Milestone Stamp` annotations sourced from the `validated_at` of the verdict that marks each step; the `sai-explore` Idea Progress List remains outside this scope.
 
 #### Scenario: review declares its canonical plan
-
 - **WHEN** `sai-5-review` dispatches its worker
 - **THEN** its adapter SHALL declare the five review steps in the specified order with the specified labels
 - **AND** the worker contract SHALL enumerate the same five ids
 
 #### Scenario: security declares its canonical plan
-
 - **WHEN** `sai-6-security` dispatches its worker
 - **THEN** its adapter SHALL declare the five security steps in the specified order with the specified labels
 - **AND** the worker contract SHALL enumerate the same five ids
 
 #### Scenario: performance declares its canonical plan
-
 - **WHEN** `sai-7-performance` dispatches its worker
 - **THEN** its adapter SHALL declare the five performance steps in the specified order with the specified labels
 - **AND** the worker contract SHALL enumerate the same five ids
 
 #### Scenario: accessibility declares its canonical plan
-
 - **WHEN** `sai-8-accessibility` dispatches its worker
 - **THEN** its adapter SHALL declare the five accessibility steps in the specified order with the specified labels
 - **AND** the worker contract SHALL enumerate the same five ids
 
 #### Scenario: audit plans receive payload-derived milestone stamps
-
 - **WHEN** any audit adapter renders its declared progress plan
 - **THEN** the Claude Code and opencode bindings SHALL render each completed step's `Milestone Stamp` from the marking verdict's `validated_at` and make no coordinator clock call
 - **AND** the plan's ids, labels, order, and derived states SHALL remain governed by `sai/policies/todo-structure.md`
 
 ### Requirement: audit-workers-report-completed-milestones
 
-Each audit worker SHALL emit an additive `Progress Event` after one or more of its declared milestones actually complete. Events SHALL report completed ids in declared plan order and SHALL include the paths written since the preceding worker result. A worker SHALL NOT emit a milestone before its prerequisite and change or scope resolution gates complete, and SHALL continue through the existing audit workflow after the coordinator acknowledges the event.
+Each audit worker SHALL emit an additive `Progress Event` after one or more of its declared milestones actually complete. Events SHALL report completed ids in declared plan order and SHALL include the paths written since the preceding worker result. A worker SHALL NOT emit a milestone before its change resolution, required proposal gate, and scope resolution complete, and SHALL continue through the existing audit workflow after the coordinator acknowledges the event. The first filed pointer SHALL arrive with task disclosure; the normal first progress event SHALL report the fileless startup id together with the first filed step id. Existing empty-diff and no-UI early outcomes SHALL retain their completed-id mapping and terminal behavior.
 
 #### Scenario: audit worker reports a completed batch
-
 - **WHEN** an audit worker completes one or more milestones
 - **THEN** it SHALL return a progress event containing the corresponding canonical ids in plan order
 - **AND** the coordinator SHALL acknowledge it with `continue_after_progress` without treating that value as user input
 
 #### Scenario: audit workers continue under step-gated instruction delivery
-
 - **WHEN** a security, performance, or accessibility audit worker continues between milestones
 - **THEN** it follows the step file named by the most recent `Active step:` pointer from its phase's carved `steps/` library, loaded through `common.md` at dispatch, instead of fetching a wholesale analysis instruction monolith mid-run
 - **AND** the plan ids, labels, order, gated-milestone semantics, and report artifact remain exactly as declared in `audit-adapters-declare-five-step-plans`
