@@ -42,7 +42,6 @@ const REPORT_FIELDS = [
   'Technical learnings/friction',
   'STOP reached?',
   'Files modified',
-  'Attempts per phase',
 ];
 
 const RECOVERY_HEADINGS = ['Reported', 'Evidence', 'Cause', 'Correction', 'Verification'];
@@ -297,7 +296,7 @@ test('Step 3 Apply RED/GREEN transport carries only arguments_value plus contrac
 
 // ─── specs/apply-subagent-report-contract/spec.md — report fields ───────────
 
-test('Step 2 RED and GREEN terminal payloads use the worker-core closed envelope plus the nine-field apply report extension', () => {
+test('Step 2 RED and GREEN terminal payloads use the worker-core closed envelope plus the eight-field apply report extension', () => {
   const red = workerContract(APPLY_CARDS.redWorker);
   const green = workerContract(APPLY_CARDS.greenWorker);
   for (const worker of [red, green]) {
@@ -314,7 +313,7 @@ test('Step 2 RED and GREEN terminal payloads use the worker-core closed envelope
   }
 });
 
-test('Step 2 the report dispatch-kind table pins field values, malformed field 8, soft-degraded field 9, and scratch-free field 8', () => {
+test('Step 2 the report dispatch-kind table pins field values, malformed field 8, retired field 9, and scratch-free field 8', () => {
   const runner = runnerSurface();
   const coordinator = artifact(APPLY_CARDS.coordinator);
   const combined = `${runner}\n${coordinator}`;
@@ -324,46 +323,27 @@ test('Step 2 the report dispatch-kind table pins field values, malformed field 8
     'specs/apply-subagent-report-contract/spec.md: field values must follow the dispatch-kind table');
   assert.match(combined, /field 8[\s\S]{0,140}(?:malformed|omitted)|malformed[\s\S]{0,140}field 8/i,
     'specs/apply-subagent-report-contract/spec.md: an absent field 8 must be malformed');
-  assert.match(combined, /field 9[\s\S]{0,180}(?:soft[- ]degrad|not malformed|exempt)|soft[- ]degrad[\s\S]{0,180}field 9/i,
-    'specs/apply-subagent-report-contract/spec.md: an absent field 9 must soft-degrade');
+  assert.doesNotMatch(`${combined}\n${artifact(APPLY_CARDS.workerCommon)}`, /field 9|Attempts per phase/i,
+    'field 9 (Attempts per phase) is retired from the apply report contract');
   assert.match(combined, /scratch[\s\S]{0,120}field 8|field 8[\s\S]{0,120}scratch/i,
     'specs/apply-subagent-report-contract/spec.md: scratch must never appear in field 8');
 });
 
-// ─── specs/apply-execution-telemetry-appendix/spec.md — telemetry row ───────
+// ─── Execution Telemetry appendix — retired ─────────────────────────────────
 
-test('Step 2 the execution telemetry row uses the pinned column shape and closed vocabularies', () => {
+test('Step 2 the Execution Telemetry appendix is retired: apply writes no telemetry table and leaves in-flight sections alone', () => {
   const runner = runnerSurface();
   const coordinator = artifact(APPLY_CARDS.coordinator);
   const combined = `${runner}\n${coordinator}`;
-  assert.match(combined, /\| Step \| dispatch \| phase \| attempts \| first_failure \| note \|/,
-    'specs/apply-execution-telemetry-appendix/spec.md: the telemetry table must carry the six fixed columns');
-  assert.match(combined, /green[- ]direct/,
-    'specs/apply-execution-telemetry-appendix/spec.md: dispatch must admit green-direct');
-  assert.match(combined, /first_failure/,
-    'specs/apply-execution-telemetry-appendix/spec.md: the table must carry a first_failure column');
-  assert.match(combined, /assertion[\s\S]{0,60}setup[\s\S]{0,60}import[\s\S]{0,60}other[\s\S]{0,60}n\/a|assertion\s*\/\s*setup\s*\/\s*import\s*\/\s*other\s*\/\s*n\/a/i,
-    'specs/apply-execution-telemetry-appendix/spec.md: first failure must draw from assertion|setup|import|other|n/a');
-  assert.match(combined, /`red`[\s\S]{0,60}`green`|red\s*\/\s*green|(?:phase|`phase`)[\s\S]{0,60}(?:red|green)[\s\S]{0,60}(?:green|red)/i,
-    'specs/apply-execution-telemetry-appendix/spec.md: phase must admit exactly red and green');
-});
-
-test('Step 2 the appendices keep Plan vs Final Implementation before Execution Telemetry; telemetry appends once before commit', () => {
-  const coordinator = artifact(APPLY_CARDS.coordinator);
-  const runner = runnerSurface();
-  const combined = `${coordinator}\n${runner}`;
-  const plan = combined.search(/## Appendix: Plan vs Final Implementation/);
-  const telemetry = combined.search(/## Appendix: Execution Telemetry/);
-  assert.ok(plan >= 0 && telemetry >= 0,
-    'specs/apply-execution-telemetry-appendix/spec.md: both appendices must be declared');
-  assert.ok(plan < telemetry,
-    'specs/apply-execution-telemetry-appendix/spec.md: Plan vs Final Implementation must precede Execution Telemetry regardless of creation order');
+  assert.doesNotMatch(combined, /\| Step \| dispatch \| phase \| attempts \| first_failure \| note \|/,
+    'the telemetry table shape must be gone');
+  assert.doesNotMatch(combined, /### Execution Telemetry/, 'the Execution Telemetry subsection must be gone');
+  assert.match(combined, /## Appendix: Plan vs Final Implementation/,
+    'the Plan vs Final Implementation appendix stays');
+  assert.match(combined, /## Appendix: Execution Telemetry[^\n]*keeps it untouched[^\n]*neither migrates nor deletes/,
+    'an in-flight telemetry section is left as it is: no migration, no deletion');
   assert.match(combined, /created once|never create a second section|one section/i,
-    'specs/apply-execution-telemetry-appendix/spec.md: the telemetry section must be created once');
-  assert.match(combined, /before the commit|before[\s\S]{0,80}commit/i,
-    'specs/apply-execution-telemetry-appendix/spec.md: telemetry must append before the commit');
-  assert.match(combined, /after the coordinator's verification passes/i,
-    "specs/apply-execution-telemetry-appendix/spec.md: telemetry must append after the coordinator's verification passes");
+    'the Plan vs Final Implementation section must be created once');
 });
 
 // ─── specs/apply-step-routing-tree/spec.md — routing tree ───────────────────
@@ -1124,7 +1104,7 @@ test('the coordinator drives apply-standalone@1 through the stage-machine policy
   assert.match(coordinator, /\{"intent":"complete-step"\}/, 'each finished Step must advance the cursor');
 });
 
-test('the per-Step commit gate previews, asks, and stages exactly the field-8 add-list', () => {
+test('the per-Step commit gate defines the report, the pinned letter, and the apply-step.js close call order', () => {
   const runner = artifact(APPLY_CARDS.runner);
   const start = runner.indexOf('## Step commit gate');
   assert.ok(start >= 0, 'the runner must define the per-Step commit gate');
@@ -1133,10 +1113,15 @@ test('the per-Step commit gate previews, asks, and stages exactly the field-8 ad
   const positions = blocks.map(block => gate.indexOf(block));
   assert.ok(positions.every(position => position >= 0), 'every visibility-report block must be defined');
   assert.deepEqual([...positions].sort((a, b) => a - b), positions, 'the report blocks must keep their order');
-  assert.match(gate, /never read or change the index/);
+  assert.match(gate, /never reading or changing the index/);
   assert.match(gate, /Ready to commit Step N\. May I create commit with message: '<subject>'\?/);
   assert.match(gate, /`git add -- <add-list>` exactly/);
-  assert.match(gate, /Never add a path from `git status` that is not in the add-list\./);
+  assert.match(gate, /never adding a path from `git status` that is not in the add-list/);
+  assert.match(gate, /`apply-step\.js close`/, 'the gate runs through the tool');
+  assert.match(gate, /`MISMATCH`[\s\S]{0,160}over `DEVIATION`[\s\S]{0,160}over `WARN`[\s\S]{0,120}over `OK`/,
+    'the status letter precedence is pinned');
+  assert.match(gate, /`close --dry-run`/, 'the unauthorized flow dry-runs first');
+  assert.match(gate, /never rebuilds it/, 'the coordinator prints report_text verbatim');
 });
 
 test('the RED worker defines the green-exception mode the routing tree dispatches', () => {

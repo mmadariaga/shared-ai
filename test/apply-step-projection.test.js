@@ -64,12 +64,12 @@ test('Step 2 the projection renders the full list before the first Step dispatch
     'specs/apply-step-projection/spec.md: the initial render state must use the pending/in_progress/completed vocabulary');
 });
 
-test('Step 2 the projection marks its entry completed in the same batched update that flips the checkboxes, after verification', () => {
+test('Step 2 the projection marks its entry completed only after apply-step.js close has marked the checkboxes, after verification', () => {
   const coordinator = artifact(COORDINATOR_PATH);
   assert.match(coordinator, /checkbox|`\[x\]`|mark(?:ing)? checkboxes/i,
     'specs/apply-step-projection/spec.md: the coordinator must mark checkboxes');
-  assert.match(coordinator, /same (?:batched )?update|one update|single update/i,
-    'specs/apply-step-projection/spec.md: the checkbox flip and the projection mark must share one update');
+  assert.match(coordinator, /only after `apply-step\.js close` has marked its Automated checkboxes/,
+    'the projection mark must follow the tool call that flips the checkboxes');
   assert.match(coordinator, /completed/i,
     'specs/apply-step-projection/spec.md: the projected entry must be marked completed');
   assert.match(coordinator, /after.*verification|verification.*pass|Human Verification/i,

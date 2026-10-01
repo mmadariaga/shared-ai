@@ -2,7 +2,9 @@
 
 ## Purpose
 Defines the coordinator's pre-commit file visibility and staging report.
+
 ## Requirements
+
 ### Requirement: Staged set equals the previewed add-list
 
 The report's truthfulness depends on the commit staging exactly what the report previewed. The coordinator SHALL therefore stage exactly the add-list shown in the report's `Will be committed` block — the same subagent field-8 set (union of both dispatches for a testable Step) — when it proceeds to commit on `yes` / `Allow on this session`. The previewed set and the staged set SHALL share one definition (the field-8 add-list), so the preview cannot diverge from the resulting commit.
@@ -19,7 +21,7 @@ This pins only the **staged file set**, not staging timing or authorization: sta
 
 ### Requirement: Mandatory pre-commit file visibility report at every STOP & COMMIT
 
-When `sai-4-apply` reaches a STOP & COMMIT marker (whether driven by a subagent's `STOP reached? = yes` or by a completed Step in `implementation.md`), the coordinator SHALL print a structured pre-commit file visibility report **before** proposing the commit message. The report is mandatory — there is no opt-out flag, and skipping it is a spec violation.
+When `sai-4-apply` reaches a STOP & COMMIT marker (whether driven by a subagent's `STOP reached? = yes` or by a completed Step in `implementation.md`), the coordinator SHALL print a structured pre-commit file visibility report **before** proposing the commit message. The report is produced deterministically by `apply-step.js close` (`close --dry-run` when the authorization ask comes first) from the inputs below, and the coordinator SHALL print the returned `report_text` verbatim and SHALL NOT rebuild it. The report is mandatory — there is no opt-out flag, and skipping it is a spec violation.
 
 Because staging is deferred to commit-time (the `git add` runs only on the `yes` / `Allow on this session` path, after the authorization ask), the git index is empty when this report runs. The report is therefore a forward-looking **preview of the proposed commit** — it SHALL answer "what would this commit contain, and what would it leave behind?" — and it SHALL NOT read the git index (`git diff --cached`) for its committed-files content, nor mutate the git index.
 
@@ -31,15 +33,17 @@ The report SHALL be sourced from these inputs:
 
 The report SHALL contain, in this order:
 
-    1. A header line with the change name, the Step number `N`, and the overall status letter (one of `OK`, `WARN`, `MISMATCH`, `DEVIATION`).
+    1. A header line with the change name, the Step number `N`, and the overall status letter (one of `OK`, `WARN`, `MISMATCH`, `DEVIATION`). The letter SHALL follow a pinned precedence: `MISMATCH` when the `Subagent ↔ git` block is not in sync, otherwise `DEVIATION` when the `Plan cross-check` block lists `Missing` or `Extra` paths, otherwise `WARN` when the `Will NOT be committed` block is non-empty, otherwise `OK`. A `Plan cross-check` that is `not available` SHALL NOT raise the letter.
     2. A human-readable status line summarising what the letter means (e.g. "All changes to be committed match the plan", "1 leftover file present", "Subagent reported 3 files; git shows 5 — see mismatch section").
     3. A `Will be committed` block listing each add-list path with its `+N -M` count (sourced per input 3), one per line, paths relative to repo root. For renames (git status shows `R  old -> new`), format as a single line `R  <new-path>  (renamed from <old-path>, +N -M)` rather than two separate entries.
     4. A `Totals` line in the format `Totals: <N> files, +<ins> -<del>` summing insertions and deletions across the add-list paths (working tree vs `HEAD`, untracked paths counted as all-insertions).
     5. A `Will NOT be committed` block listing genuine leftovers — the `git status` working-tree paths (tracked-modified + untracked) that are **not** in the add-list, one per line. If there are none, the block is omitted entirely.
-    6. A `Plan cross-check` block: a `Missing` sub-list of paths declared in the matching tasks.md step's `**Files Affected**` line that have no matching entry in `git status`, and an `Extra` sub-list of paths present in `git status` that are not declared in the matching tasks.md step's `**Files Affected**`. The lookup matches the integer `N` from the current implementation.md `## Step N — <title>` heading to the integer `N` of the tasks.md `## Step N: <title>` heading. The implementation.md template's `**Task ref:**` value is NOT the lookup key. If both sub-lists are empty, the block prints `No deviations`. If no tasks.md step with that integer exists, the block prints `Plan scope not declared — cross-check skipped`. If the matching tasks.md step's `**Files Affected**` value is empty (or only a placeholder), the block prints `Plan scope empty — cross-check skipped`. In both skip cases, the status letter is not downgraded to `DEVIATION` solely on that basis.
+    6. A `Plan cross-check` block: a `Missing` sub-list of paths declared in the matching tasks.md step's `**Files Affected**` line that have no matching entry in `git status`, and an `Extra` sub-list of paths present in `git status` that are not declared in the matching tasks.md step's `**Files Affected**`. The lookup matches the integer `N` from the current implementation.md `## Step N — <title>` heading to the integer `N` of the tasks.md `## Step N: <title>` heading. The implementation.md template's `**Task ref:**` value is NOT the lookup key. If both sub-lists are empty, the block prints `No deviations`. If no tasks.md step with that integer exists, or the matching step has no `**Files Affected**` value (absent, empty, or only a placeholder), the block prints `not available`; the changed paths are never all marked `Extra`, and the status letter is not raised to `DEVIATION` solely on that basis.
     7. A `Subagent ↔ git` block: when the subagent-claimed set (the single dispatch's field 8, or the union of both dispatches' field 8 for a testable Step) differs from the working-tree paths in `git status` (tracked-modified + untracked), the block lists paths present in one set and not the other, prefixed with `only-in-subagent:` or `only-in-git:`. When the sets are equal, the block prints `In sync`.
 
 Because the `Will be committed` block is sourced from the add-list (field 8) rather than from actual working-tree diffs, an add-list path that has no change vs `HEAD` in the working tree (claimed in field 8 but touched-then-reverted or never actually modified) is still listed — with `+0 -0`. Such a path is absent from the working-tree change set, so the `Subagent ↔ git` block surfaces it as `only-in-subagent` and the status letter is `MISMATCH`, making the over-claim visible before the commit. The block SHALL list it rather than silently dropping it, so the preview always shows exactly what the coordinator intends to stage.
+
+The plan's own `openspec/changes/{change-name}/implementation.md` is apply bookkeeping: the report SHALL leave it out of every block (`Will NOT be committed`, `Plan cross-check`, and `Subagent ↔ git` alike).
 
 The report SHALL NOT include a diff preview, full file contents, or tracebacks.
 
@@ -79,6 +83,18 @@ The report SHALL NOT include a diff preview, full file contents, or tracebacks.
 - **WHEN** the matching tasks.md step's `**Files Affected**` declares `src/foo.ts, src/bar.ts` but `git status` shows only `src/foo.ts` changed in the working tree
 - **THEN** the report sets status letter `DEVIATION` and the `Plan cross-check` block's `Missing` sub-list contains `src/bar.ts`
 
+#### Scenario: Status letter follows the pinned precedence
+- **WHEN** the add-list `{src/foo.ts}` is out of sync with `git status` (`src/baz.ts` also changed) and the matching tasks.md step declares only `src/foo.ts` and `src/bar.ts`
+- **THEN** the report sets status letter `MISMATCH`, not `DEVIATION`, because the `Subagent ↔ git` block is not in sync
+
+#### Scenario: Plan cross-check is not available
+- **WHEN** the change has no tasks.md step with the integer `N`, or that step has no `**Files Affected**`, the add-list equals the working-tree changes, and nothing is left out of the commit
+- **THEN** the `Plan cross-check` block prints `not available`, the status letter is `OK`, and no changed path is marked `Extra`
+
+#### Scenario: The plan's own implementation.md stays out of the report
+- **WHEN** the working tree shows `openspec/changes/{change-name}/implementation.md` modified alongside the add-list paths
+- **THEN** no block of the report lists it, and it does not raise the status letter
+
 ### Requirement: Malformed subagent report is surfaced, not guessed
 
 If a subagent report omits field 8 (`Files modified`), the coordinator SHALL treat that report as malformed and surface the omission to the user explicitly. An explicitly present empty field 8 SHALL be treated as a valid empty add-list, including when the dispatch created or modified only declared scratch paths that are excluded from field 8. The coordinator SHALL NOT guess or fabricate the file list from `git status` alone when a subagent failed to provide field 8. For a **testable** Step this check applies independently to BOTH the test-writer report and the implementation report — either one omitting field 8 makes the pre-commit report unreliable for that Step. A subagent's failure to populate field 8 is itself a deviation worth flagging.
@@ -94,4 +110,3 @@ If a subagent report omits field 8 (`Files modified`), the coordinator SHALL tre
 #### Scenario: One of a testable Step's two dispatches omits field 8
 - **WHEN** a testable Step's implementation dispatch returns a report with field 8 missing while the test-writer's field 8 is present
 - **THEN** the coordinator still treats the Step's pre-commit report as unreliable, surfaces which dispatch omitted field 8, and pauses for the user before proposing the commit message
-

@@ -55,11 +55,11 @@ The workers SHALL NOT be dispatched to `budget-explorer` (read-only) and SHALL N
 - **THEN** the resolved model is the budget tier — the coordinator does NOT force the worker to inherit its own model
 
 ### Requirement: Checkboxes are marked per Step, not per item
-The coordinator SHALL mark a Step's **Automated** checkboxes `[x]` in `implementation.md` in exactly one batched update after it receives the worker's report and its own re-run of the Step's Verification Checklist passes (per `apply-coordinator-verification`). This per-Step granularity supersedes the prior "mark each item immediately, do not batch" rule for the `sai-4-apply` phase. The Step's **Functional** checkboxes (legacy header `**Human (...)**`) SHALL NOT be marked in that slot; they belong exclusively to the terminal functional review.
+The coordinator SHALL have a Step's **Automated** checkboxes marked `[x]` in `implementation.md` in exactly one batched update, performed by `apply-step.js close` on the coordinator's behalf. The coordinator SHALL invoke `close` only after it receives the worker's report and a passing `apply-step.js verify` for the Step (per `apply-coordinator-verification`). This per-Step granularity supersedes the prior "mark each item immediately, do not batch" rule for the `sai-4-apply` phase. The Step's **Functional** checkboxes (legacy header `**Human (...)**`) SHALL NOT be marked in that slot; they belong exclusively to the terminal functional review.
 
 #### Scenario: Step completes and is verified
-- **WHEN** the subagent reports a Step done and the coordinator's own re-run of the Step's Verification Checklist passes
-- **THEN** the coordinator marks all of that Step's Automated checkboxes `[x]` in one update, rather than marking each item the instant it was executed, and leaves every Functional checkbox `- [ ]`
+- **WHEN** the subagent reports a Step done and the coordinator's `apply-step.js verify` for the Step passes
+- **THEN** `apply-step.js close` marks all of that Step's Automated checkboxes `[x]` in one update, rather than marking each item the instant it was executed, and leaves every Functional checkbox `- [ ]`
 
 ### Requirement: Subagent is barred from git, commits, and the STOP & COMMIT boundary
 The Step-execution subagent SHALL NOT run any git operation, SHALL NOT create commits, and SHALL NOT cross a STOP & COMMIT marker. When a subagent's Step reaches a STOP & COMMIT, the subagent SHALL stop and report the STOP rather than acting on it.

@@ -55,14 +55,14 @@ test('Step 4 the coordinator surface sweeps scratch after every dispatch and che
   const runner = artifact(APPLY_CARDS.runner);
   const combined = `${coordinator}\n${runner}`;
 
-  assert.match(combined, /Sweep\*\* exactly `\.tmp\/\{change-name\}\/`/,
+  assert.match(combined, /The tool sweeps exactly `\.tmp\/\{change-name\}\/`/,
     'specs/apply-coordinator-verification/spec.md: the coordinator must sweep exactly the per-change scratch path');
   assert.match(combined, /every dispatch|each dispatch|once per dispatch/i,
     'specs/apply-coordinator-verification/spec.md: every dispatch return must trigger a sweep');
   assert.match(combined, /continuation/i,
     'specs/apply-coordinator-verification/spec.md: every continuation return must trigger a sweep');
-  assert.match(combined, /after each coordinator-owned run of the Step's Verification Checklist|Verification Checklist[\s\S]{0,300}sweep/i,
-    'specs/apply-coordinator-verification/spec.md: every coordinator checklist run must be followed by a sweep');
+  assert.match(combined, /It sweeps again\./,
+    'specs/apply-coordinator-verification/spec.md: every checklist run must be followed by a sweep');
   assert.match(combined, /before[\s\S]{0,80}(?:comparison|redispatch)|comparison[\s\S]{0,80}(?:sweep|exclude)|sweep[\s\S]{0,80}before[\s\S]{0,80}(?:comparison|redispatch)/i,
     'specs/apply-coordinator-verification/spec.md: the sweep must precede comparison or redispatch');
   for (const outcome of ['clean', 'STOP', 'failure', 'crash']) {
@@ -263,7 +263,7 @@ test('Step 4 the worker contracts never receive coordinator-only recovery eviden
     'specs/apply-test-impl-split/spec.md: the worker prohibitions must remain');
 });
 
-test('Step 4 report field 8 omission is malformed while an explicit empty list is valid and field 9 soft-degrades', () => {
+test('Step 4 report field 8 omission is malformed while an explicit empty list is valid and field 9 is retired', () => {
   const runner = artifact(APPLY_CARDS.runner);
   const coordinator = artifact(APPLY_CARDS.coordinator);
   const combined = `${runner}\n${coordinator}`;
@@ -276,24 +276,19 @@ test('Step 4 report field 8 omission is malformed while an explicit empty list i
     'specs/apply-subagent-report-contract/spec.md: an omitted field 8 is malformed');
   assert.match(artifact(APPLY_CARDS.workerCommon), /an empty list is valid, a missing field makes the report malformed/,
     'specs/apply-subagent-report-contract/spec.md: an explicit empty list must remain valid');
-  assert.match(combined, /field 9[\s\S]{0,180}(?:soft[- ]degrad|not malformed|exempt)|soft[- ]degrad[\s\S]{0,180}field 9/i,
-    'specs/apply-subagent-report-contract/spec.md: an absent field 9 must soft-degrade, not block');
+  assert.doesNotMatch(`${combined}\n${artifact(APPLY_CARDS.workerCommon)}`, /field 9|Attempts per phase/i,
+    'field 9 (Attempts per phase) is retired from the apply report contract');
   assert.match(combined, /scratch[\s\S]{0,120}field 8|field 8[\s\S]{0,120}scratch/i,
     'specs/apply-subagent-report-contract/spec.md: scratch must never appear in field 8');
 });
 
-test('Step 4 the execution telemetry row shape is pinned with the green-direct dispatch vocabulary', () => {
+test('Step 4 the telemetry row shape is retired from the apply cards', () => {
   const runner = artifact(APPLY_CARDS.runner);
   const coordinator = artifact(APPLY_CARDS.coordinator);
   const combined = `${runner}\n${coordinator}`;
-  assert.match(combined, /\| Step \| dispatch \| phase \| attempts \| first_failure \| note \|/,
-    'specs/apply-execution-telemetry-appendix/spec.md: the telemetry table must carry the six fixed columns');
-  assert.match(combined, /green[- ]direct/,
-    'specs/apply-execution-telemetry-appendix/spec.md: dispatch must admit green-direct');
-  assert.match(combined, /`red`[\s\S]{0,80}`green`|red[\s\S]{0,80}green/,
-    'specs/apply-execution-telemetry-appendix/spec.md: dispatch must admit red and green');
-  assert.match(combined, /first_failure/,
-    'specs/apply-execution-telemetry-appendix/spec.md: the first_failure column must be pinned');
+  assert.doesNotMatch(combined, /\| Step \| dispatch \| phase \| attempts \| first_failure \| note \|/,
+    'the telemetry table must carry no fixed columns any more');
+  assert.doesNotMatch(combined, /first_failure/, 'the first_failure column is retired');
 });
 
 function activeTerminalLifecycle() {

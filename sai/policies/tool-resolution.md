@@ -15,7 +15,7 @@ candidate below that exists**, copied **verbatim**, exactly as written.
 
 Substitute the concrete file name (for example `prereqs.js`,
 `change-picker.js`, `commit.js`, `check-delta-headers.js`,
-`worker-report-validator.js`, `pr.js`, `file-manifest.js`) for `<name>` below.
+`worker-report-validator.js`, `pr.js`, `file-manifest.js`, `apply-step.js`) for `<name>` below.
 
 On **Claude Code**, in this order:
 
@@ -56,6 +56,12 @@ takes one — never substitute one for the other.
   and no `--json`, since `--json` and `--change` are `collect`-only).
 - `file-manifest.js`: `node <tool-path> <fold|verify> <change-name> --json
   --cwd <project-root>`.
+- `apply-step.js`: `node <tool-path> <verify|close> --change <change-name>
+  --step <N> --cwd <project-root>` plus the sub-command's own flags (`verify`
+  takes `--dispatch red|green|green-direct|green-exception` and the add-list on
+  stdin; `close` takes `--guard-base <sha|n/a>`, optional `--dry-run`, and the
+  add-list, a `---` line, then the commit message on stdin via a quoted
+  heredoc). It always prints one JSON object and takes no `--json`.
 - `check-delta-headers.js`: `node <tool-path> <change-name> [--json]
   [--root <dir>] [--delta-dir <dir>] [--specs-dir <dir>]`; it takes no
   `--cwd`.
