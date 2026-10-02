@@ -2,7 +2,9 @@
 
 ## Purpose
 Turn review, security, performance, and accessibility findings into judged, dedicated steps of `implementation.md`.
+
 ## Requirements
+
 ### Requirement: The `/sai-3-implement` agent SHALL read all existing audit artifacts for a change before generating `implementation.md`.
 
 When producing an implementation plan, the agent SHALL check for audit artifacts produced by earlier review passes, SHALL apply editorial judgment over each finding using the rubric defined in this spec, SHALL classify every finding as Apply (rendered as a code action) or Discard (listed in a Discarded findings sub-block with a one-sentence reason and surfaced in chat for confirmation), and SHALL append a single step per artifact with the Apply/Discard structure. The agent SHALL NOT append every actionable finding unconditionally — judgment is mandatory and precedes appending.
@@ -113,21 +115,27 @@ The judgment, classification, and Discarded block behaviors SHALL apply to findi
 
 ### Requirement: The re-run preservation contract SHALL be preserved
 
-The existing re-run preservation contract — one new step appended per existing audit artifact on re-run, with no dedup logic across re-runs — SHALL be preserved unchanged. The canonical name of that contract today is `openspec/specs/implement-rerun-preservation/spec.md` (introduced by `openspec/changes/archive/2026-06-20-sai-3-rerun-preserve-compacted`); this requirement name-links it so a future reader of this spec knows which contract is being locked. Re-running `/sai-3-implement` against a change that already has an appended audit step for a given artifact SHALL still append a new step (numbered strictly after the last existing step) with its own Apply/Discard list. The judgment behavior is re-exercised on every re-run, but the re-run itself still appends a new step each time. No dedup logic SHALL be added to detect that the same audit artifact produced a prior step. Judgment is not idempotent w.r.t. the audit artifact: two re-runs against the same unchanged artifact may produce slightly different Apply/Discard lists because the LLM is not perfectly deterministic; the appended step is best-effort, not byte-stable across re-runs.
+The existing re-run preservation contract — one new step appended per audit artifact that needs a new audit step on re-run, with no dedup logic across re-runs other than skipping an artifact whose latest audit step is still pending — SHALL be preserved. The canonical name of that contract today is `openspec/specs/implement-rerun-preservation/spec.md` (introduced by `openspec/changes/archive/2026-06-20-sai-3-rerun-preserve-compacted`); this requirement name-links it so a future reader of this spec knows which contract is being locked. Re-running `/sai-3-implement` against a change whose latest audit step for a given artifact is applied SHALL still append a new step (numbered strictly after the last existing step) with its own Apply/Discard list. The judgment behavior is re-exercised on every such re-run, and the re-run appends a new step each time. No further dedup logic SHALL be added to detect that the same audit artifact produced a prior step. Judgment is not idempotent w.r.t. the audit artifact: two re-runs against the same unchanged artifact may produce slightly different Apply/Discard lists because the LLM is not perfectly deterministic; the appended step is best-effort, not byte-stable across re-runs.
 
 #### Scenario: re-run appends, does not dedupe
 
-- **WHEN** `/sai-3-implement` re-runs against a change that already has an appended audit step for a given artifact
+- **WHEN** `/sai-3-implement` re-runs against a change that already has an applied audit step for a given artifact
 - **THEN** it appends a new step (numbered after the last existing step) with its own Apply/Discard list
 - **AND** it does NOT deduplicate against the prior appended step
 - **AND** the judgment behavior is re-exercised on the artifact's findings for the new step
 - **AND** the new step's Apply/Discard list is permitted to differ from the prior step's list, because judgment is not idempotent
 
+#### Scenario: re-run skips an artifact whose audit step is pending
+
+- **WHEN** `/sai-3-implement` re-runs against a change whose latest audit step for a given artifact still has an unchecked `[ ]` checkbox
+- **THEN** it does NOT append another step for that artifact
+- **AND** the pending audit step stands
+
 ### Requirement: The append of audit-derived steps SHALL be verified before the plan is delivered
 
-Before delivering `implementation.md`, the `/sai-3-implement` agent SHALL verify that the current invocation appended exactly one step per audit artifact that existed at the start of the invocation (among `review.md`, `security.md`, `performance.md`, and `accessibility.md`), each appended step numbered strictly after the baseline established by the run path: on the first-run path, the highest `#### Step N:` number in the generated plan (the plan produced by the current run before the audit steps are appended); on the re-run path, the highest `#### Step N:` number present in `implementation.md` at the start of the invocation, captured before any write. The verification SHALL be scoped to what the current invocation appended, not to what `implementation.md` contains: a step appended by an earlier invocation does NOT satisfy the check, because the re-run contract appends one new step per artifact on every re-run with no dedup. The chat confirmation of the existing "Discarded findings SHALL be surfaced in chat for conversational confirmation" requirement remains a plain obligation of every appended step but is NOT part of this verification: that requirement is conversational-only by design (the agent SHALL NOT write any approval key), so no durable record exists that this check could observe, and a verification clause over it would reduce to the agent's self-report.
+Before delivering `implementation.md`, the `/sai-3-implement` agent SHALL verify that the current invocation appended exactly one step per audit artifact that existed at the start of the invocation and needs a new audit step (among `review.md`, `security.md`, `performance.md`, and `accessibility.md`; an artifact whose latest audit step is still pending is excluded and is never re-appended), each appended step numbered strictly after the baseline established by the run path: on the first-run path, the highest `#### Step N:` number in the generated plan (the plan produced by the current run before the audit steps are appended); on the re-run path, the highest `#### Step N:` number present in `implementation.md` at the start of the invocation, captured before any write. The verification SHALL be scoped to what the current invocation appended, not to what `implementation.md` contains: a step appended by an earlier invocation does NOT satisfy the check, because the re-run contract appends one new step per artifact that needs one on every re-run. The chat confirmation of the existing "Discarded findings SHALL be surfaced in chat for conversational confirmation" requirement remains a plain obligation of every appended step but is NOT part of this verification: that requirement is conversational-only by design (the agent SHALL NOT write any approval key), so no durable record exists that this check could observe, and a verification clause over it would reduce to the agent's self-report.
 
-This pre-delivery self-check is the first stage of a two-stage design: a failed verification SHALL NOT be delivered as a complete plan, and the agent SHALL repair it by appending the missing step(s) before reporting completion. A repair append SHALL fire the chat confirmation of the existing "Discarded findings SHALL be surfaced in chat for conversational confirmation" requirement exactly as a first-run append does. The implementation-planning worker's Durable artifact verification gate is the second stage and the last resort: it fails only if a required append is still missing at completion time.
+This pre-delivery self-check is the first stage of a two-stage design: a failed verification SHALL NOT be delivered as a complete plan, and the agent SHALL repair it by appending the missing step(s) before reporting completion. A repair append SHALL fire the chat confirmation of the existing "Discarded findings SHALL be surfaced in chat for conversational confirmation" requirement exactly as a first-run append does. The implementation-planning worker's Durable artifact verification gate is the second stage and the last resort: it requires the `validation` step's audit-append invariant to hold and fails only if a required append is still missing at completion time.
 
 #### Scenario: First-run append is verified against the generated-plan baseline
 
@@ -150,3 +158,22 @@ This pre-delivery self-check is the first stage of a two-stage design: a failed 
 - **AND** the repair append fires the chat confirmation of the existing "Discarded findings SHALL be surfaced in chat for conversational confirmation" requirement
 - **AND** the worker gate is the last resort, failing only if the append is still missing at completion time
 
+#### Scenario: Artifact with a pending audit step is excluded from the check
+
+- **WHEN** an audit artifact existed at the start of the invocation and its latest audit step is still pending
+- **THEN** the verification does not require this invocation to append a step for it
+- **AND** the repair rule does not re-append it
+
+### Requirement: Each audit step SHALL use the pinned heading literal
+
+Every audit step the plan-generation step appends, on a first run or a re-run, SHALL be headed exactly `#### Step N: Address <kind> findings`, with `<kind>` one of `review`, `security`, `performance`, or `accessibility` matching the artifact it addresses. The literal is the sole identification of an audit step: a pending audit step is detected by that heading plus at least one unchecked `[ ]` in its section.
+
+#### Scenario: appended audit step carries the literal heading
+
+- **WHEN** the plan-generation step appends an audit step for `performance.md` after step 4
+- **THEN** its heading is `#### Step 5: Address performance findings`
+
+#### Scenario: pending audit step is recognized by heading and checkbox
+
+- **WHEN** a section headed `#### Step 6: Address accessibility findings` holds at least one `[ ]` checkbox
+- **THEN** it is a pending audit step for `accessibility.md`

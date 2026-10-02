@@ -71,11 +71,15 @@ Failed or cancelled implementation SHALL close the invocation without RED/GREEN 
 - **THEN** build reports the failure and does not activate apply
 
 ### Requirement: Re-entry uses implement collapse
-Re-entry after interruption or partial apply SHALL run the implement `collapse-implemented-steps` step again. APPLIED, VERIFY-PENDING, and INCOMPLETE SHALL retain their existing meanings; build SHALL never resume apply directly.
+Re-entry after interruption or partial apply SHALL start at the implement segment again, and implement's re-run contract SHALL decide the outcome; build SHALL never resume apply directly and SHALL NOT restate implement's re-run classifications. Apply activation SHALL depend solely on implement's terminal status, and apply SHALL resume at the first unchecked Step.
+
+#### Scenario: Pending Steps re-entry continues into apply
+- **WHEN** implement's re-run over a partly applied `implementation.md` ends `completed`
+- **THEN** apply activates and starts at the first unchecked Step
 
 #### Scenario: Incomplete re-entry blocks apply
-- **WHEN** implement classifies a prior step as INCOMPLETE
-- **THEN** implement stops and apply does not activate
+- **WHEN** implement's re-run ends `failed` because an INCOMPLETE Step exists while an audit artifact needs a new audit step
+- **THEN** apply does not activate
 
 ### Requirement: Apply stops and worker isolation remain unchanged
 

@@ -88,7 +88,7 @@ test('build coordinator owns fast-track activation and blocks apply after phase-
 
 test('build coordinator preserves re-entry, stops, completion, and changed-files union', () => {
   const source = readRequired(coordinatorPath);
-  assertContains(source, 'Re-entry after interruption or partial apply goes through the implement segment again');
+  assertContains(source, 'Re-entry after interruption or partial apply starts at the implement segment again');
   assertContains(source, 'Non-removable stops');
   assertContains(source, 'routing-tree STOP');
   assertContains(source, 'GREEN-conflict STOP');

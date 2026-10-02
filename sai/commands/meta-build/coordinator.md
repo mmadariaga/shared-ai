@@ -85,8 +85,7 @@
   accumulated changed-files union.
 
   ## Re-entry
-  Re-entry after interruption or partial apply goes through the implement segment again, including the implement `collapse-implemented-steps` step and the plan-generation re-run classification (APPLIED / VERIFY-PENDING / INCOMPLETE). Never resume the apply loop directly while skipping implement
-  re-planning. On-disk `implementation.md` checkbox state remains the recovery
+  Re-entry after interruption or partial apply starts at the implement segment again; implement's re-run contract decides the outcome, and apply resumes at the first unchecked Step. On-disk `implementation.md` checkbox state remains the recovery
   record. Implement collapse remains the default: a human-authorized retry reuses the current `implementation.md` and worktree state without a full collapse only when the plan contents are unchanged and the on-disk checkbox state is preserved; a changed plan collapses normally.
 
   ## Apply recovery choice
