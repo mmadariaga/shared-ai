@@ -5,6 +5,7 @@
 TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
 
 ## Requirements
+
 ### Requirement: The plan-generation step SHALL preserve a prior `implementation.md` on re-run instead of regenerating it from the implementation plan template
 
 When `openspec/changes/{change-name}/implementation.md` already exists at the start of `/sai-3-implement` (keyed on file presence, not on how many steps the collapse step collapsed), the plan-generation step (`sai/commands/implement/steps/plan-generation.md`) SHALL build its output by preserving the prior file rather than generating a fresh plan from `sai/commands/implement/implementation-plan.template.md`. The template generation path applies ONLY on a first run.
@@ -37,7 +38,7 @@ On re-run, every step the collapse step collapsed to a heading followed by `*(al
 
 ### Requirement: Audit-derived steps SHALL be appended after the last existing step
 
-For each audit artifact that exists in `openspec/changes/{change-name}/` (`review.md`, `security.md`, `performance.md`, `accessibility.md`), the plan-generation step SHALL append exactly one new step at the end of `implementation.md`, numbered strictly after the highest existing `#### Step N:` number found in the prior file. Each appended step is dedicated to a single artifact and MUST NOT be merged into an existing step.
+For each audit artifact that exists in `openspec/changes/{change-name}/` (`review.md`, `security.md`, `performance.md`, `accessibility.md`) and needs a new audit step, the plan-generation step SHALL append exactly one new step at the end of `implementation.md`, numbered strictly after the highest existing `#### Step N:` number found in the prior file. Each appended step is dedicated to a single artifact and MUST NOT be merged into an existing step. An audit artifact needs a new audit step unless its latest audit step is still pending: an audit step is a step headed exactly `#### Step N: Address <kind> findings` with `<kind>` one of `review`, `security`, `performance`, `accessibility`, and it is pending when its section holds at least one unchecked `[ ]` checkbox. A pending audit step already carries its artifact, so the artifact SHALL NOT be re-appended.
 
 #### Scenario: one appended step per existing audit artifact
 
@@ -54,6 +55,22 @@ For each audit artifact that exists in `openspec/changes/{change-name}/` (`revie
 
 - **WHEN** none of `review.md`, `security.md`, `performance.md`, `accessibility.md` exist
 - **THEN** the plan-generation step appends no audit-derived steps and preserves the prior file as-is
+
+#### Scenario: artifact covered by a pending audit step is skipped
+
+- **WHEN** `security.md` exists and the prior file already holds `#### Step 7: Address security findings` with at least one unchecked `[ ]` checkbox
+- **THEN** the plan-generation step does not append another security step
+- **AND** the pending Step 7 stands unchanged
+
+#### Scenario: artifact whose audit step is applied is appended again
+
+- **WHEN** `review.md` exists and the latest `#### Step N: Address review findings` section has every checkbox marked `[x]`
+- **THEN** the plan-generation step appends a new review audit step numbered after the highest existing step
+
+#### Scenario: no artifact needs a new audit step
+
+- **WHEN** no audit artifact needs a new audit step
+- **THEN** the preserved file stands as-is, byte-for-byte, and the run ends `completed`
 
 ### Requirement: Review findings naming a compacted step SHALL become new appended steps, not re-openings
 

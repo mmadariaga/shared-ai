@@ -115,8 +115,7 @@ pre-delivery verification is the sole technical source for the durable
 requires a non-empty plan with every task in order, verification and STOP markers,
 RED before GREEN for testable steps, interface conformance, the
 required functional-check encoding, and has executed no implementation step or
-checked plan checkbox. It also requires exactly one new step for each audit artifact
-present at the start of this run, numbered after the run-path baseline. A failed
+checked plan checkbox. It also requires the `validation` step's audit-append invariant to hold. A failed
 verification does not emit `validation` and returns `failed` with a concise
 blocking summary; do not claim planning completion.
 

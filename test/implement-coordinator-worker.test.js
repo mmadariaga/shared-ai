@@ -1149,6 +1149,18 @@ test('apply branch selection lives in its own step and the plan template carries
   assert.doesNotMatch(template, /## Prerequisites/);
 });
 
+test('re-run INCOMPLETE gate sits inside the audit-append section with the pinned audit-step heading', () => {
+  const rerun = artifact('sai/commands/implement/steps/rerun-preservation.md');
+  const append = rerun.slice(rerun.indexOf('##### Append audit-derived steps'));
+  const classify = rerun.slice(rerun.indexOf('##### Classify each prior step'), rerun.indexOf('##### Preserve the prior file'));
+  assert.match(append, /INCOMPLETE gate/);
+  assert.doesNotMatch(classify, /return `failed`/);
+  assert.match(rerun, /#### Step N: Address <kind> findings/);
+  assert.match(artifact('sai/commands/implement/steps/plan-generation.md'), /#### Step N: Address <kind> findings/);
+  assert.match(artifact('sai/commands/implement/steps/validation.md'), /needs a new audit step/);
+  assert.doesNotMatch(artifact('sai/commands/implement/worker.md'), /exactly one new step for each audit artifact/);
+});
+
 test('first-run plan generation fetches the plan template and re-run preservation does not', () => {
   const tpl = /Fetch @sai\/commands\/implement\/implementation-plan\.template\.md/;
   assert.match(artifact('sai/commands/implement/steps/plan-generation.md'), tpl);
