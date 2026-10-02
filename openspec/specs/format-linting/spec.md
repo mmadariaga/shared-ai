@@ -21,8 +21,8 @@ The repository SHALL provide a single runnable validator at `sai/tools/lint.js` 
 
 #### Scenario: ready-to-propose check validates crystallized block structure
 - **WHEN** the ready-to-propose check is invoked on a block containing `## Ready to Propose`
-- **THEN** it validates presence of required sections and their ordering (Capabilities in scope, Research Leads, Decisions & Rationale, Alternatives Considered, Trade-offs Accepted, Model / Re-framings, Key constraints, Edge Cases, Implementation Details)
-- **AND** exit 0 when all sections are present in order, exit 1 with findings when sections are missing or misordered
+- **THEN** it validates the block with the `strict` profile of `sai/tools/ready-to-propose.js`: presence and order of every canonical field (Change name, What, Why, Capabilities in scope, Research Leads, Decisions & Rationale, Alternatives Considered, Trade-offs Accepted, Model / Re-framings, Key constraints, Terms, Edge Cases, Implementation Details, Out of scope Implementation Details, optional Request Additional Notes, Overview language)
+- **AND** exit 0 when the block conforms, exit 1 with findings when fields are missing, misordered, or malformed
 
 #### Scenario: artifact-review check validates finding format and severity
 - **WHEN** the artifact-review check is invoked on artifact review findings
@@ -80,3 +80,15 @@ The `lint.js ready-to-propose` check SHALL treat `**Out of scope Implementation 
 
 - **WHEN** the ready-to-propose check runs on a block whose `**Out of scope Implementation Details**` is exactly `- None` after `**Implementation Details**`
 - **THEN** the check exits 0
+
+### Requirement: Ready-to-propose check delegates to the detector strict profile
+
+The `lint.js ready-to-propose` check SHALL obtain its verdict from the `strict` profile of `sai/tools/ready-to-propose.js` and MUST NOT carry a section list of its own. It SHALL report each detector violation as a lint finding with its line, problem, and detail.
+
+#### Scenario: Missing Change name fails through delegation
+- **WHEN** the ready-to-propose check runs on a block that has every other canonical field but no `**Change name**`
+- **THEN** the check exits 1 and its report carries `MISSING_SECTION` naming `Change name`
+
+#### Scenario: lint.js holds no section list
+- **WHEN** the `sai/tools/lint.js` source is read
+- **THEN** it requires `./ready-to-propose.js` and contains no list of block section labels

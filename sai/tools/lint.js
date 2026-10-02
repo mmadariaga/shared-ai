@@ -14,7 +14,8 @@
  *   commit-rules <file>                  Check that a commit message follows commit rules.
  *   pr-title-rules <text>                Check that a PR title follows title rules.
  *   glossary-format <file>               Check that GLOSSARY.md follows glossary format.
- *   ready-to-propose <file>              Check that a file follows ready-to-propose format.
+ *   ready-to-propose <file>              Check that a file follows ready-to-propose format
+ *                                        (delegates to sai/tools/ready-to-propose.js, strict profile).
  *   artifact-review <file>               Check that artifact review findings follow the contract.
  *   sai-learnings-format <file>          Check that SAI_LEARNINGS.md follows learnings format.
  *   step-contract <file>                 Check that interfaces.md follows step contract format.
@@ -36,6 +37,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { checkStrict: checkStrictReadyToPropose } = require('./ready-to-propose.js');
 
 /** Usage error / tooling failure. Carries the exit code the caller sees. */
 class ToolError extends Error {
@@ -222,92 +224,21 @@ function checkGlossaryFormat(content) {
 
 /**
  * Check Ready to Propose block format.
- * Validates per sai/policies/ready-to-propose-format.md:
- *   - Has ## Ready to Propose heading
- *   - Has required sections in correct order
- *   - Mandatory sections have either content or "- None"
+ * Delegates to the strict profile of sai/tools/ready-to-propose.js, the single
+ * definition of sai/policies/ready-to-propose-format.md; no section list lives
+ * here.
  */
 function checkReadyToPropose(content) {
+  const verdict = checkStrictReadyToPropose(content);
   const violations = [];
-  const lines = content.split('\n');
-
-  // Check 1: Must contain ## Ready to Propose heading
-  let blockStartLine = -1;
-  for (let i = 0; i < lines.length; i++) {
-    if (lines[i].includes('## Ready to Propose')) {
-      blockStartLine = i;
-      break;
+  for (const v of verdict.violations) {
+    violations.push({ file: 'block', line: v.line, problem: v.problem, detail: v.detail });
+  }
+  for (const block of verdict.blocks) {
+    for (const v of block.violations) {
+      violations.push({ file: 'block', line: v.line, problem: v.problem, detail: v.detail });
     }
   }
-  if (blockStartLine === -1) {
-    violations.push({
-      file: 'block',
-      line: 1,
-      problem: 'MISSING_BLOCK_HEADING',
-      detail: 'block must contain ## Ready to Propose heading',
-    });
-    return violations;
-  }
-
-  // Extract the block content (from heading to --- separator)
-  let blockEndLine = lines.length;
-  for (let i = blockStartLine + 1; i < lines.length; i++) {
-    if (lines[i].startsWith('---')) {
-      blockEndLine = i;
-      break;
-    }
-  }
-  const blockLines = lines.slice(blockStartLine, blockEndLine);
-  const blockContent = blockLines.join('\n');
-
-  // Check 2: Required sections must be present
-  const requiredSections = [
-    '**Capabilities in scope**',
-    '**Research Leads**',
-    '**Decisions & Rationale**',
-    '**Alternatives Considered**',
-    '**Trade-offs Accepted**',
-    '**Model / Re-framings**',
-    '**Key constraints**',
-    '**Edge Cases**',
-    '**Implementation Details**',
-    '**Out of scope Implementation Details**',
-  ];
-
-  for (const section of requiredSections) {
-    if (!blockContent.includes(section)) {
-      violations.push({
-        file: 'block',
-        line: blockStartLine + 1,
-        problem: 'MISSING_SECTION',
-        detail: `required section "${section}" is missing`,
-      });
-    }
-  }
-
-  // Check 3: Validate section order
-  const sectionPositions = {};
-  for (const section of requiredSections) {
-    const pos = blockContent.indexOf(section);
-    if (pos !== -1) {
-      sectionPositions[section] = pos;
-    }
-  }
-
-  const sortedSections = Object.entries(sectionPositions)
-    .sort((a, b) => a[1] - b[1])
-    .map(entry => entry[0]);
-
-  const expectedOrder = requiredSections.filter(s => sectionPositions[s]);
-  if (JSON.stringify(sortedSections) !== JSON.stringify(expectedOrder)) {
-    violations.push({
-      file: 'block',
-      line: blockStartLine + 1,
-      problem: 'WRONG_SECTION_ORDER',
-      detail: 'sections are not in the required order',
-    });
-  }
-
   return violations;
 }
 

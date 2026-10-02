@@ -8,19 +8,27 @@ TBD — created by archive sync of change unattended-backfill. Describe: pinned-
 
 ### Requirement: Crystallized-block intake replaces intent capture
 
-When the request body contains the nine mandatory consulted plain literals (`Change name`, `What`, `Why`, `Capabilities in scope`, `Alternatives Considered`, `Trade-offs Accepted`, `Key constraints`, `Edge Cases`, `Implementation Details`) as substrings, `/sai-backfill` SHALL treat the pasted block as supplied structured intent and SHALL NOT present the optional intent-capture choice. Detection SHALL be bold-insensitive: the command SHALL strip `**` before searching, then match each plain literal case-sensitive with the exact written spacing, anywhere with no line-start anchor. The `## Ready to Propose` heading SHALL NOT be required; when present it SHALL be ignored and form no part of the gate. A literal present but empty or with `- None` SHALL still count as present. A literal inside ordinary prose SHALL count the same as a label. Extras SHALL be ignored and `Request Additional Notes` SHALL never be required nor counted. Text without the quorum SHALL fall through intact to the generic flow with no partial parsing.
+`/sai-backfill` SHALL detect a crystallized block deterministically, never by inference. It SHALL pipe the request body on stdin to `node <tool-path> check --profile loose`, where `<tool-path>` resolves `ready-to-propose.js` per `sai/policies/tool-resolution.md`. The `loose` profile implements the quorum: the nine mandatory consulted plain literals (`Change name`, `What`, `Why`, `Capabilities in scope`, `Alternatives Considered`, `Trade-offs Accepted`, `Key constraints`, `Edge Cases`, `Implementation Details`) present as substrings, bold-insensitive (`**` stripped before searching), case-sensitive with the exact written spacing, anywhere with no line-start anchor. The `## Ready to Propose` heading SHALL NOT be required; when present it SHALL be ignored and form no part of the gate. A literal present but empty or with `- None` SHALL still count as present. A literal inside ordinary prose SHALL count the same as a label. Extras SHALL be ignored and `Request Additional Notes` SHALL never be required nor counted. On exit 0 the command SHALL treat the pasted block as supplied structured intent and SHALL NOT present the optional intent-capture choice. On exit 1, text without the quorum SHALL fall through intact to the generic flow with no partial parsing. On exit 2 the command SHALL report the tool failure and stop. When no detector candidate exists, the command SHALL name the tried paths and stop, with no prose fallback.
 
 #### Scenario: Plain literals route to structured intake
 - **WHEN** an invocation's request body contains the nine plain literals as substrings with or without bold markers and with or without the heading
-- **THEN** the intent-capture choice is never presented and the flow proceeds directly into intent reconciliation with block-derived records
+- **THEN** the detector's `loose` profile exits 0, the intent-capture choice is never presented, and the flow proceeds directly into intent reconciliation with block-derived records
 
 #### Scenario: Pinned labels route to structured intake
 - **WHEN** an invocation's request body contains the `## Ready to Propose` heading with its pinned labels
-- **THEN** the intent-capture choice is never presented and the flow proceeds directly into intent reconciliation with block-derived records
+- **THEN** the detector's `loose` profile exits 0, the intent-capture choice is never presented, and the flow proceeds directly into intent reconciliation with block-derived records
 
 #### Scenario: Unlabeled paste falls through intact
 - **WHEN** pasted text lacks the quorum of nine plain literals
-- **THEN** the command runs today's generic flow unchanged and never partially parses the text as a block
+- **THEN** the detector's `loose` profile exits 1 and the command runs today's generic flow unchanged, never partially parsing the text as a block
+
+#### Scenario: Missing detector stops backfill
+- **WHEN** no `ready-to-propose.js` candidate exists under the tool-resolution order
+- **THEN** backfill names the tried paths and stops without applying the quorum in prose
+
+#### Scenario: Detector failure stops backfill
+- **WHEN** the detector exits 2
+- **THEN** backfill reports the tool failure and stops
 
 ### Requirement: Consumed block fields resolve label then mined prose then ask
 

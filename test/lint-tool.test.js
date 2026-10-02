@@ -297,6 +297,9 @@ test('lint.js ready-to-propose: valid block passes', () => {
 **Key constraints**:
 - Constraint one.
 
+**Terms**:
+- None
+
 **Edge Cases**:
 - E1: edge case one.
 
@@ -417,6 +420,56 @@ test('lint.js ready-to-propose: missing block heading fails', () => {
   } finally {
     fs.rmSync(tmpdir, { recursive: true });
   }
+});
+
+test('lint.js ready-to-propose: delegates to the detector strict profile (Change name required)', () => {
+  const tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), 'lint-'));
+  try {
+    const testFile = path.join(tmpdir, 'proposal.md');
+    const block = `## Ready to Propose
+
+**What**: This is what we're doing.
+**Why**: This is why we're doing it.
+**Capabilities in scope**:
+- capability-one: description
+**Research Leads**:
+- None
+**Decisions & Rationale**:
+- None
+**Alternatives Considered**:
+- None
+**Trade-offs Accepted**:
+- None
+**Model / Re-framings**:
+- None
+**Key constraints**:
+- Constraint one.
+**Terms**:
+- None
+**Edge Cases**:
+- None
+**Implementation Details**:
+- None
+**Out of scope Implementation Details**:
+- None
+**Overview language**: None
+
+---
+`;
+    fs.writeFileSync(testFile, block);
+    const result = tool(['ready-to-propose', 'proposal.md'], tmpdir);
+    assert.equal(result.status, 1);
+    assert.match(result.stdout, /MISSING_SECTION/);
+    assert.match(result.stdout, /Change name/);
+  } finally {
+    fs.rmSync(tmpdir, { recursive: true });
+  }
+});
+
+test('lint.js ready-to-propose: carries no section list of its own', () => {
+  const source = fs.readFileSync(TOOL, 'utf8');
+  assert.match(source, /require\('\.\/ready-to-propose\.js'\)/);
+  assert.doesNotMatch(source, /'\*\*Research Leads\*\*'/);
 });
 
 // ============================================================================
