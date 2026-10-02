@@ -109,7 +109,7 @@
   When apply is the final segment and all apply completion conditions pass, use
   apply's final `terminal_navigation` action: print exactly
 
-  `Implementation applied. Run `/sai-5-review {name}` in a new chat when ready.`
+  `Implementation applied. In a new chat when ready, run `/sai-5-review {name}` for a general review, or `/sai-review {name}` to add specialized audits based on the initial assessment performed by `/sai-5-review`.`
 
   then stop. Do not invent a distinct build-only success message that replaces
   that pinned apply completion text. Do not chain further phases.

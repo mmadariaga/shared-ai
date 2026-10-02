@@ -93,7 +93,13 @@ test('build coordinator preserves re-entry, stops, completion, and changed-files
   assertContains(source, 'routing-tree STOP');
   assertContains(source, 'GREEN-conflict STOP');
   assertContains(source, 'Recovery-budget exhaustion stops the current');
-  assertContains(source, 'Implementation applied. Run `/sai-5-review {name}` in a new chat when ready.');
+  const completion = 'Implementation applied. In a new chat when ready, run `/sai-5-review {name}` for a general review, or `/sai-review {name}` to add specialized audits based on the initial assessment performed by `/sai-5-review`.';
+  assertContains(source, completion);
+  assertContains(readRequired('sai/commands/apply/invocation.md'), completion,
+    'build must use the same completion guidance as standalone apply');
+  assertContains(source, 'When apply is the final segment and all apply completion conditions pass');
+  assertContains(source, 'without the successful final completion transition');
+  assertContains(source, 'Do not chain further phases');
   assertContains(source, 'Do not declare a maximum Step count');
   assertContains(source, 'Large plans are accepted');
   assertContains(source, 'ordered, duplicate-free changed-files union');

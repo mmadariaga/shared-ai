@@ -3,7 +3,9 @@
 ## Purpose
 
 Defines the routed card set for `/sai-4-apply` — coordinator.md + runner.md + invocation.md + the RED/GREEN worker contracts with their shared worker-common.md, plus the step library under `sai/commands/apply/steps/` — so apply has the same routed shape as the other numbered commands.
+
 ## Requirements
+
 ### Requirement: apply-terminal-lifecycle-contract-coverage
 
 The repository SHALL contain focused contract tests for the active routed apply source that assert the coordinator-owned terminal lifecycle in `sai/commands/apply/steps/terminal-lifecycle.md` is reached from the runner's Step loop once every Step is done (the `apply-standalone@1` terminal pointer, or after the last Step in the degraded fallback): terminal functional review, Final sweep, exactly one learnings promotion pass, terminal documentation-set evaluation, visibility disclosure, authorization/commit behavior, and the print cluster with MANDATORY STOP, in that order. The tests SHALL cover the no-op path, decline path, active session-flag and `--fast-track` paths, and the boundary that halts before the Final sweep.
@@ -125,7 +127,9 @@ The apply `invocation.md` SHALL preserve the utility body's loading behavior min
 
 ### Requirement: apply-mandatory-stop-preserved
 
-The routed apply run SHALL close with the same MANDATORY STOP semantics as the utility card: the coordinator prints exactly `Implementation applied. Run \`/sai-5-review {name}\` in a new chat when ready.` only when every Step's Automated checkboxes are marked and every commit gate has finished; unmarked Functional checks are reported, not gating. A run halted early SHALL NOT print the completion message.
+The routed apply run SHALL close with the same MANDATORY STOP semantics as the utility card: the coordinator prints exactly "Implementation applied. In a new chat when ready, run `/sai-5-review {name}` for a general review, or `/sai-review {name}` to add specialized audits based on the initial assessment performed by `/sai-5-review`." only when every Step's Automated checkboxes are marked and every commit gate has finished; unmarked Functional checks are reported, not gating. A run halted early SHALL NOT print the completion message.
+
+While any Step still has an unmarked Automated checkbox, apply SHALL continue the Step loop and SHALL NOT mention `/sai-5-review` or `/sai-review` as completion guidance.
 
 #### Scenario: completed run prints the stop literal
 
@@ -136,6 +140,11 @@ The routed apply run SHALL close with the same MANDATORY STOP semantics as the u
 
 - **WHEN** the run halts before the final sweep (GREEN-conflict halt, user stop, or declined commit gate)
 - **THEN** the coordinator does not print the completion literal and does not claim completion
+
+#### Scenario: incomplete run recommends neither review command
+
+- **WHEN** any Step still has an unmarked Automated checkbox
+- **THEN** apply continues the Step loop without mentioning either review command as completion guidance
 
 ### Requirement: apply-progress-plan-declared
 
@@ -194,4 +203,3 @@ AGENTS.md SHALL document exactly three irreducible apply differences as delibera
 
 - **WHEN** a contributor reads the Apply coordinator-and-worker section of AGENTS.md
 - **THEN** the three irreducible differences appear together as an intentional-design block with the coordinator-card ownership note for the runner fetch and relocated behaviors
-
