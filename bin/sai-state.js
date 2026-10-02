@@ -15,6 +15,13 @@ const VALIDATOR_CANDIDATES = [
   path.join(__dirname, '..', 'sai', 'tools', 'worker-report-validator.js'),
 ];
 
+// The Ready to Propose detector, resolved the same way. Loaded only by the
+// block emit (`emit --ready-to-propose`).
+const DETECTOR_CANDIDATES = [
+  path.join(__dirname, '..', 'tools', 'ready-to-propose.js'),
+  path.join(__dirname, '..', 'sai', 'tools', 'ready-to-propose.js'),
+];
+
 let receivedAt = null;
 
 // Every stdout JSON response goes through here so `received_at` is its first key.
@@ -24,6 +31,13 @@ function writeResponse(payload) {
 
 function loadValidator() {
   for (const candidate of VALIDATOR_CANDIDATES) {
+    if (fs.existsSync(candidate)) return require(candidate);
+  }
+  return null;
+}
+
+function loadDetector() {
+  for (const candidate of DETECTOR_CANDIDATES) {
     if (fs.existsSync(candidate)) return require(candidate);
   }
   return null;
@@ -83,6 +97,10 @@ function sessionDir() {
 
 const EMIT_STDIN_FORM = "echo '<json>' | node <tool-path> emit <id> <machineId> -";
 const EMIT_PROGRESS_FORM = "echo '<progress-payload-json>' | node <tool-path> emit <id> <machineId> --progress [--with-overview true|false] -";
+const EMIT_BLOCKS_FORM = "node <tool-path> emit <id> explore-slice@1 --ready-to-propose - (Ready to Propose block set on stdin: quoted heredoc in Bash, single-quoted here-string in PowerShell)";
+
+// The explore slice machine is the only one that accepts the block emit.
+const READY_TO_PROPOSE_MACHINE = 'explore-slice@1';
 
 // The design machine is the only one that accepts the variant option.
 const WITH_OVERVIEW_MACHINE = 'design-standalone@1';
@@ -326,7 +344,7 @@ function persistMachineOutcome(id, record, machineId, nextState, eventId, wire) 
 }
 
 // Flags that never take a value, so a following `-` stays positional.
-const BOOLEAN_FLAGS = new Set(['progress']);
+const BOOLEAN_FLAGS = new Set(['progress', 'ready-to-propose']);
 
 function parseArgs(argv) {
   const out = { command: null, positional: [], named: {} };
@@ -549,6 +567,77 @@ function commandEmitProgress(id, machineIdArg, eventSource, extraArgs, withOverv
   process.exitCode = outcome.code;
 }
 
+// Block emit: validates the Ready to Propose block set read from stdin with the
+// detector's strict profile BEFORE any session, machine, or registry read, then
+// derives `{ recordedList: [...] }` from the extracted change names (display
+// order) and advances the explore slice machine. The whole set is validated as
+// one unit: an invalid verdict records nothing. Output always carries
+// `validation`; change names never appear on the wire, so the verdict is
+// projected without them. A delivery failure (`EVENT_UNPARSEABLE`) is empty
+// stdin, stdin with no block heading, or a final block cut off before its
+// `---` line; every other violation is an invalid verdict.
+function projectBlockVerdict(verdict) {
+  return {
+    ok: verdict.ok,
+    profile: verdict.profile,
+    blocks: verdict.blocks.map((block) => ({ index: block.index, line: block.line, violations: block.violations })),
+    violations: verdict.violations,
+  };
+}
+
+function blockDeliveryFailed(text, verdict) {
+  if (normalizeEventText(text) === '') return true;
+  if (verdict.blocks.length === 0) return true;
+  const last = verdict.blocks[verdict.blocks.length - 1];
+  return last.violations.some((v) => v.problem === 'MISSING_SEPARATOR');
+}
+
+function commandEmitReadyToPropose(id, machineIdArg, eventSource, extraArgs) {
+  if (!id || !machineIdArg || eventSource !== '-' || (extraArgs && extraArgs.length > 0) || process.stdin.isTTY) {
+    process.stderr.write('emit --ready-to-propose requires <id> explore-slice@1 --ready-to-propose - and reads the block set from stdin: ' + EMIT_BLOCKS_FORM + '\n');
+    process.exitCode = 2;
+    return;
+  }
+  const target = envelope.parseTarget(machineIdArg);
+  if (!target || target.key !== READY_TO_PROPOSE_MACHINE) {
+    process.stderr.write('--ready-to-propose is accepted only on ' + READY_TO_PROPOSE_MACHINE + ', got ' + machineIdArg + '\n');
+    process.exitCode = 2;
+    return;
+  }
+
+  const detector = loadDetector();
+  if (!detector || typeof detector.detect !== 'function') {
+    process.stderr.write('sai-state could not load the Ready to Propose detector; tried: ' + DETECTOR_CANDIDATES.join(', ') + '\n');
+    process.exitCode = 2;
+    return;
+  }
+
+  let text = '';
+  try { text = readStdinSync(); } catch (err) { text = ''; }
+  const verdict = detector.detect(text, 'strict');
+  const validation = projectBlockVerdict(verdict);
+
+  if (blockDeliveryFailed(text, verdict)) {
+    const session = getSession(id);
+    seedFromRecord(session, readSessionRecord(id).record);
+    process.stderr.write('emit --ready-to-propose read an empty or cut-off block set from stdin; no transition occurred. Send it as: ' + EMIT_BLOCKS_FORM + '\n');
+    writeResponse({ validation, error: 'INVALID_EVENT', reason: 'EVENT_UNPARSEABLE', next: pointerFor(session, READY_TO_PROPOSE_MACHINE) });
+    process.exitCode = 1;
+    return;
+  }
+
+  if (!verdict.ok) {
+    writeResponse({ validation });
+    process.exitCode = 1;
+    return;
+  }
+
+  const event = { recordedList: verdict.names.slice() };
+  const outcome = runEmit(id, machineIdArg, () => ({ event }));
+  writeResponse(Object.assign({ validation }, outcome.payload));
+  process.exitCode = outcome.code;
+}
+
 function commandReset(id, machineIdArg) {
   if (!id || !machineIdArg) {
     process.stderr.write('reset requires <id> <machineId>\n');
@@ -688,6 +777,15 @@ function main(argv) {
     commandSpawn(parsed.named.key);
     return;
   }
+  if (parsed.command === 'emit' && parsed.named['ready-to-propose'] === true) {
+    if (parsed.named.progress !== undefined || parsed.named['with-overview'] !== undefined) {
+      process.stderr.write('--ready-to-propose cannot be combined with --progress or --with-overview\n');
+      process.exitCode = 2;
+      return;
+    }
+    commandEmitReadyToPropose(parsed.positional[0], parsed.positional[1], parsed.positional[2], parsed.positional.slice(3));
+    return;
+  }
   if (parsed.command === 'emit' && parsed.named.progress === true) {
     commandEmitProgress(parsed.positional[0], parsed.positional[1], parsed.positional[2], parsed.positional.slice(3), parsed.named['with-overview']);
     return;
@@ -707,6 +805,7 @@ function main(argv) {
   process.stderr.write('Usage: sai-state spawn --key <stable-key>\n');
   process.stderr.write('       sai-state emit <id> <machineId> -   (event JSON on stdin)\n');
   process.stderr.write('       sai-state emit <id> <machineId> --progress [--with-overview true|false] -   (worker progress payload JSON on stdin)\n');
+  process.stderr.write('       sai-state emit <id> explore-slice@1 --ready-to-propose -   (Ready to Propose block set on stdin)\n');
   process.stderr.write('       sai-state reset <id> <machineId>\n');
   process.stderr.write('       sai-state close <id>\n');
   process.exitCode = 2;

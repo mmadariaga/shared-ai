@@ -56,6 +56,23 @@ verbs take neither `--json` nor `--cwd`. A missing argument is a usage error
   validator exits 2 on every verb. Every stdout JSON response, machine errors
   (exit 1) included, carries `received_at` as its first key; stderr carries no
   time.
+- **Block emit**: `sai-state emit <id> explore-slice@1 --ready-to-propose -`
+  reads the complete `Ready to Propose` block set as text from stdin instead of
+  a hand-composed event, in the style of the progress emit. It validates the
+  set with the strict profile of `sai/tools/ready-to-propose.js` before any
+  session, machine, or registry read; on a valid verdict it derives
+  `{"recordedList": [...]}` from the extracted `**Change name**` values in
+  display order and advances the machine. The set is validated as a whole: an
+  invalid verdict records no name and leaves the machine untouched. It always
+  returns `received_at` and `validation: {ok, profile, blocks: [{index, line,
+  violations}], violations}` (change names stay off the wire), plus the
+  ordinary emit fields on a valid verdict. An invalid verdict exits 1. Empty
+  stdin, stdin with no block heading, or a final block cut off before its
+  `---` line is a delivery failure instead (`INVALID_EVENT` with
+  `reason: "EVENT_UNPARSEABLE"`, exit 1). On any other machine, or combined with
+  `--progress` or `--with-overview`, the option is a usage error (exit 2). A
+  detector module found in neither location relative to the CLI exits 2
+  naming the tried paths.
 - **Reset**: `sai-state reset <id> <machineId>` clears that one machine's state
   and returns `{received_at, reset: <machineId>}`; other machines in the session keep theirs.
   A linear step machine (§ Step machines) also returns
@@ -116,6 +133,30 @@ is recorded or empty. `explore-slice@1` is the one exception: its
 identifiers, because that machine tracks slices by name. Route events carry no
 slice name; the machine always chooses the first pending entry in that ordered
 inventory.
+
+**Block emits are the one exception.** The block emit carries the free-text
+block set, so it travels as literal text, not as single-quoted JSON: a quoted
+heredoc in Bash, a single-quoted here-string in PowerShell, on both Claude Code
+and opencode. Nothing inside is expanded or escaped. Send the set exactly as it
+will be displayed:
+
+```text
+node <tool-path> emit <id> explore-slice@1 --ready-to-propose - <<'SAI_BLOCKS'
+<block set>
+SAI_BLOCKS
+```
+
+```text
+@'
+<block set>
+'@ | node <tool-path> emit <id> explore-slice@1 --ready-to-propose -
+```
+
+The PowerShell closing `'@` starts its own line. A re-encoded non-ASCII
+character in the prose does not change the verdict: the labels are English and
+the change names are kebab-case ASCII. An empty or cut-off delivery returns
+`EVENT_UNPARSEABLE` and falls under § Corrective retry; a validation failure
+does not, and follows the retry rule of the command that sends the block set.
 
 ## Corrective retry
 

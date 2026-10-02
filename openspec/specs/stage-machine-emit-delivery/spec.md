@@ -6,7 +6,7 @@ TBD - created by archiving change sai-state-emit-via-stdin. Update Purpose after
 ## Requirements
 
 ### Requirement: Single canonical emit invocation form
-`sai/policies/stage-machine.md` SHALL document exactly one event emit invocation form, `echo '<json>' | node <tool-path> emit <id> <machineId> -`, with the JSON in single quotes, plain double quotes inside, and nothing escaped. The only other documented emit form SHALL be the step-machine progress emit, `echo '<payload-json>' | node <tool-path> emit <id> <machineId> --progress [--with-overview true|false] -`, which carries a worker progress payload rather than event JSON. The policy SHALL state that this form is identical in Bash and PowerShell 7 on both Claude Code and opencode. Windows PowerShell 5.1 SHALL be outside the supported-shell contract. It SHALL NOT document `Legacy` argument passing, escaped doubles, or an argv event form. The policy SHALL state that the store strips a leading BOM and surrounding whitespace or line breaks from an event, and that shell pipes may re-encode text and received characters are accepted as received. The `sai-state` entries in `sai/policies/tool-execution-permissions.md` SHALL state that `emit` takes the event JSON on stdin in the same form, and that the same entries cover the progress emit form.
+`sai/policies/stage-machine.md` SHALL document exactly one event emit invocation form, `echo '<json>' | node <tool-path> emit <id> <machineId> -`, with the JSON in single quotes, plain double quotes inside, and nothing escaped. It SHALL document only two other emit forms. The first SHALL be the step-machine progress emit, `echo '<payload-json>' | node <tool-path> emit <id> <machineId> --progress [--with-overview true|false] -`, which carries a worker progress payload rather than event JSON. The second SHALL be the explore block emit, `node <tool-path> emit <id> explore-slice@1 --ready-to-propose -`, which carries a `Ready to Propose` block set as literal text rather than event JSON. The policy SHALL state that the event form is identical in Bash and PowerShell 7 on both Claude Code and opencode. Windows PowerShell 5.1 SHALL be outside the supported-shell contract. The policy SHALL NOT document `Legacy` argument passing, escaped doubles, or an argv event form. The policy SHALL state that the store strips a leading BOM and surrounding whitespace or line breaks from an event, and that shell pipes may re-encode text and received characters are accepted as received. The `sai-state` entries in `sai/policies/tool-execution-permissions.md` SHALL state that `emit` takes the event JSON on stdin in the same form, and that the same entries cover the progress emit form.
 
 #### Scenario: Reader emits from any supported shell
 - **WHEN** a reader follows the canonical example in Bash or PowerShell 7
@@ -41,3 +41,14 @@ The stage-machine policy SHALL require that a recordedList event carries only li
 #### Scenario: Explore route emits carry no slice name
 - **WHEN** a Plan or Direct Build route emits to explore-slice
 - **THEN** the emit carries only route intent with no slice name and the first pending entry starts.
+
+### Requirement: Block emit travels as literal text
+The stage-machine policy SHALL document the block emit under § Event delivery as the one exception to single-quoted JSON delivery. The block set SHALL travel as literal text: a quoted heredoc in Bash and a single-quoted here-string in PowerShell, on both Claude Code and opencode. Nothing inside SHALL be expanded or escaped, the PowerShell closing `'@` SHALL start its own line, and the set SHALL be sent exactly as it will be displayed. The policy SHALL state that an empty or cut-off delivery returns `EVENT_UNPARSEABLE` and falls under the corrective retry. It SHALL also state that a validation failure does not fall under the corrective retry and follows the retry rule of the command that sends the block set.
+
+#### Scenario: Reader sends a block set from either shell
+- **WHEN** a reader follows the block emit example in Bash or PowerShell
+- **THEN** they pass the block set through a quoted heredoc or a single-quoted here-string with no escaping
+
+#### Scenario: Validation failure is not a delivery failure
+- **WHEN** a block emit returns an invalid `validation` verdict with no `reason`
+- **THEN** the corrective retry does not apply, and the sending command's own retry rule governs
