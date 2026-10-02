@@ -181,7 +181,8 @@ action whose effects cannot be checked.
 The stop notice states: what failed; what is done and what is pending
 (including known partial effects and what remains unverified); which limit
 blocked the correction (agreed content, authorization, available information,
-planned process, one-shot state, or budget); and what the user must decide.
+planned process, one-shot state, or budget); and what the user must decide,
+presented as the stop options of `@sai/policies/stop-options.md`.
 Lanes reference this notice and do not restate it. Retrying a stopped slice
 still requires a fresh route picker answer.
 
