@@ -101,11 +101,25 @@ Build SHALL preserve routing-tree STOP, GREEN-conflict STOP, three-attempt recov
 - **THEN** Build SHALL resume only that apply Step with one paired fresh budget grant and SHALL retain the completed implement segment and earlier attempt history
 
 ### Requirement: Final navigation is apply completion
-When apply completes successfully as the final segment, build SHALL print exactly `Implementation applied. Run \`/sai-5-review {name}\` in a new chat when ready.` and shall not chain another phase.
+
+When apply completes successfully as the final segment, build SHALL print exactly "Implementation applied. In a new chat when ready, run `/sai-5-review {name}` for a general review, or `/sai-review {name}` to add specialized audits based on the initial assessment performed by `/sai-5-review`." and SHALL NOT chain another phase. This SHALL be the same completion guidance used by standalone apply, with the resolved change name substituted for `{name}`.
+
+The guidance SHALL distinguish a general review from a review that adds specialized audits selected by the initial assessment performed by `/sai-5-review`; it SHALL NOT promise that every specialized audit runs.
 
 #### Scenario: Successful build closes at review navigation
+
 - **WHEN** both segments complete and apply gates pass
 - **THEN** the pinned apply completion message is printed
+
+#### Scenario: Completion guidance describes conditional audits
+
+- **WHEN** build prints its successful final completion message
+- **THEN** it offers `/sai-5-review {name}` for a general review or `/sai-review {name}` to add specialized audits based on the initial assessment rather than an unconditional audit suite
+
+#### Scenario: No successful final completion transition
+
+- **WHEN** build stops without successful completion of the final apply segment
+- **THEN** build does not print the successful completion recommendation
 
 ### Requirement: Fast-track Human Verification is a report
 Under injected fast-track, functional checks SHALL be handled exactly as without fast-track: apply's terminal functional review marks the checks it verified and reports the rest as pending human review in the ordinary terminal print cluster. There SHALL be no approval gate and no separate fast-track deferred list.

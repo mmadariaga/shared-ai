@@ -125,12 +125,15 @@ When all Steps in `implementation.md` are complete, the apply agent MUST scan th
 - **THEN** the agent reports those checks as pending human review and the sweep passes
 
 ### Requirement: Apply agent completion message
-When `/sai-4-apply` reaches its completion phase, the agent's stop condition SHALL require that: (1) every Step's **Automated** checkboxes are marked `[x]`, (2) any Functional checkbox still unmarked is reported as pending human review, and (3) commits are done. There is no human-verification review condition, because apply no longer has a human verification gate. The completion message printed to the user SHALL be: "Implementation applied. Run `/sai-5-review {name}` in a new chat when ready."
+
+When `/sai-4-apply` reaches its completion phase, the agent's stop condition SHALL require that: (1) every Step's **Automated** checkboxes are marked `[x]`, (2) any Functional checkbox still unmarked is reported as pending human review, and (3) commits are done. There is no human-verification review condition, because apply no longer has a human verification gate. The completion message printed to the user SHALL be: "Implementation applied. In a new chat when ready, run `/sai-5-review {name}` for a general review, or `/sai-review {name}` to add specialized audits based on the initial assessment performed by `/sai-5-review`."
 
 #### Scenario: Apply agent reaches completion
+
 - **WHEN** `/sai-4-apply` has marked every Step's Automated checkboxes, reported any Functional check still pending human review, and created all commits
-- **THEN** the agent prints exactly: "Implementation applied. Run `/sai-5-review {name}` in a new chat when ready." and stops
+- **THEN** the agent prints exactly: "Implementation applied. In a new chat when ready, run `/sai-5-review {name}` for a general review, or `/sai-review {name}` to add specialized audits based on the initial assessment performed by `/sai-5-review`." and stops
 
 #### Scenario: Human verification gates not yet reviewed
+
 - **WHEN** `/sai-4-apply` has marked every Step's Automated checkboxes and created all commits while Functional checks remain unverified
 - **THEN** the former blocking behavior no longer applies — the agent presents no verification gate, prints the completion message, and reports the unverified checks as pending human review

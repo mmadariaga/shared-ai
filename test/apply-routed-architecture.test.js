@@ -650,8 +650,12 @@ test('Step 2 full completion emits exactly the pinned completion literal; fast t
   const runner = runnerSurface();
   const invocation = artifact(APPLY_CARDS.invocation);
   const combined = `${coordinator}\n${runner}\n${invocation}`;
-  assert.match(invocation, /Implementation applied\. Run `\/sai-5-review \{name\}` in a new chat when ready\./,
+  assert.ok(invocation.includes('Implementation applied. In a new chat when ready, run `/sai-5-review {name}` for a general review, or `/sai-review {name}` to add specialized audits based on the initial assessment performed by `/sai-5-review`.'),
     'specs/apply-routed-card-set/spec.md: the full successful completion literal must be pinned on invocation Completion');
+  assert.match(invocation, /When complete, print[\s\S]*then STOP/,
+    'review commands remain guidance after successful completion, not automatic execution');
+  assert.ok(invocation.includes('do not mention `/sai-5-review` or `/sai-review`'),
+    'incomplete apply must not recommend either review command');
   assert.match(invocation, /> FAST-TRACK MODE ACTIVE/,
     'specs/apply-routed-card-set/spec.md: the fast-track banner must be emitted exactly once');
   assert.match(combined, /exactly once|once per run|once/i,
@@ -717,7 +721,7 @@ test('terminal_navigation is parameterized for sole/final completion vs non-fina
     'coordinator declares terminal_navigation');
   assert.match(coordinator, /non-final|parameterized/i,
     'terminal_navigation must be parameterized for non-final transition');
-  assert.match(coordinator, /Implementation applied\. Run `\/sai-5-review \{name\}` in a new chat when ready\.|standalone completion/i,
+  assert.match(coordinator, /standalone completion/i,
     'sole/final path still binds the shell completion action');
 });
 

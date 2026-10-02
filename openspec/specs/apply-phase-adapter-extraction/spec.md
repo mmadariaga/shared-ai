@@ -22,17 +22,18 @@ The reusable adapter SHALL own the phase-adapter field set, Step projection, cha
 - **AND** shared lifecycle mechanics SHALL remain runner-owned
 
 ### Requirement: Parameterized apply terminal navigation
+
 Apply `terminal_navigation` SHALL bind positionally to standalone completion for direct or final apply and to the authorized composition transition for non-final apply. Completion gates SHALL remain unchanged.
 
 #### Scenario: Non-final apply transitions
+
 - **WHEN** apply is a non-final phase in an ordered composition and its gates pass
-- **THEN** it SHALL invoke only the authorized transition
-- **AND** it SHALL not print the standalone completion message
+- **THEN** it SHALL invoke only the authorized transition and SHALL not print the standalone completion message
 
 #### Scenario: Final apply closes the invocation
+
 - **WHEN** direct or final chained apply satisfies all completion conditions
-- **THEN** it SHALL print exactly `Implementation applied. Run `/sai-5-review {name}` in a new chat when ready.`
-- **AND** the invocation SHALL stop
+- **THEN** it SHALL print exactly "Implementation applied. In a new chat when ready, run `/sai-5-review {name}` for a general review, or `/sai-review {name}` to add specialized audits based on the initial assessment performed by `/sai-5-review`." and the invocation SHALL stop
 
 ### Requirement: Single normative adapter surface
 Normative apply routing, dispatch-plan selection, checklist execution, and scratch-cleanup rules SHALL have one normative home on the reusable adapter surface; duplicate equal-authority copies SHALL not remain across the apply cards.

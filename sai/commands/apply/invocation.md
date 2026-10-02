@@ -31,11 +31,11 @@
   - every Step in `implementation.md` has all its **Automated** checkboxes `[x]`, confirmed by the Final sweep; and
   - every commit gate has finished (committed, declined, or no-op).
 
-  Functional checkboxes (legacy header `**Human (...)**`) never gate completion; unmarked ones are reported as pending human review. While any Step still has an unmarked Automated checkbox, the run is not complete: continue the Step loop and do not mention `/sai-5-review`.
+  Functional checkboxes (legacy header `**Human (...)**`) never gate completion; unmarked ones are reported as pending human review. While any Step still has an unmarked Automated checkbox, the run is not complete: continue the Step loop and do not mention `/sai-5-review` or `/sai-review`.
 
   When complete, print the terminal print cluster (`sai/commands/apply/steps/terminal-lifecycle.md` § 5) and end it with this literal, then STOP:
 
-  "Implementation applied. Run `/sai-5-review {name}` in a new chat when ready."
+  "Implementation applied. In a new chat when ready, run `/sai-5-review {name}` for a general review, or `/sai-review {name}` to add specialized audits based on the initial assessment performed by `/sai-5-review`."
 </TASK>
 
 Follow instruction on <TASK> step by step
