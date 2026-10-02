@@ -1413,26 +1413,26 @@ test('an empty scope prints the no-targets notice, returns to the scope picker, 
 
 // --- Step 4: command enumeration from the manifest's commands-class projections ---
 
-test('opencode enumerateCommands returns exactly the 19 manifest-declared commands', () => {
+const SHIPPED_COMMANDS = [...OPENCODE_COMMANDS, 'to-backlog'];
+
+test('opencode enumerateCommands returns exactly the manifest-declared commands including to-backlog', () => {
   const adapter = createOpencodeAdapter({ repoRoot: REPO_ROOT });
   const commands = adapter.enumerateCommands();
-  assert.equal(commands.length, 19, 'exactly 19 commands should enumerate for opencode');
-  assert.deepEqual([...commands].sort(), [...OPENCODE_COMMANDS].sort(),
-    'opencode commands should be exactly the 19 manifest-declared names');
+  assert.equal(commands.length, SHIPPED_COMMANDS.length);
+  assert.deepEqual([...commands].sort(), [...SHIPPED_COMMANDS].sort());
 });
 
-test('claude enumerateCommands returns exactly the same 19 manifest-declared commands', () => {
+test('claude enumerateCommands returns exactly the same manifest-declared commands including to-backlog', () => {
   const adapter = createClaudeAdapter({ repoRoot: REPO_ROOT });
   const commands = adapter.enumerateCommands();
-  assert.equal(commands.length, 19, 'exactly 19 commands should enumerate for claude');
-  assert.deepEqual([...commands].sort(), [...OPENCODE_COMMANDS].sort(),
-    'claude commands should be exactly the same 19 manifest-declared names');
+  assert.equal(commands.length, SHIPPED_COMMANDS.length);
+  assert.deepEqual([...commands].sort(), [...SHIPPED_COMMANDS].sort());
 });
 
 test('command enumeration reads the manifest-declared package source directory, never the installed global command directory', () => {
   const decoyNames = ['decoy-command', 'decoy-other'];
   for (const harness of ['opencode', 'claude']) {
-    const fixture = makeEnumerationFixture(harness, OPENCODE_COMMANDS, decoyNames);
+    const fixture = makeEnumerationFixture(harness, SHIPPED_COMMANDS, decoyNames);
     try {
       const createAdapter = harness === 'opencode' ? createOpencodeAdapter : createClaudeAdapter;
       const adapter = createAdapter({
@@ -1440,13 +1440,13 @@ test('command enumeration reads the manifest-declared package source directory, 
         globalCommandRoot: fixture.decoyDir,
       });
       const commands = adapter.enumerateCommands();
-      assert.equal(commands.length, OPENCODE_COMMANDS.length,
+      assert.equal(commands.length, SHIPPED_COMMANDS.length,
         `${harness}: the fixture package source should enumerate every command the fixture manifest declares`);
       assert.ok(commands.includes('sai-worktree'),
         `${harness}: a package-source command absent from the decoy installed directory still enumerates`);
       assert.ok(!commands.includes('decoy-command'),
         `${harness}: decoy-only names from the installed global command directory never appear`);
-      assert.deepEqual([...commands].sort(), [...OPENCODE_COMMANDS].sort(),
+      assert.deepEqual([...commands].sort(), [...SHIPPED_COMMANDS].sort(),
         `${harness}: the enumerated set should be exactly the fixture package-source command set`);
     } finally {
       fs.rmSync(fixture.root, { recursive: true, force: true });

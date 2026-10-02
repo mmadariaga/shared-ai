@@ -70,6 +70,29 @@ In the configured project, start with `/sai-explore`. See [Installation](#instal
 
 ## How to use it
 
+**Capture work for later:** `/to-backlog` uses the current conversation in
+Claude Code and OpenCode to propose one title and Markdown description. It
+asks before creating a GitHub repository issue and adding it to a GitHub
+Project. It needs an authenticated `gh` with repository and Project access;
+it does not need OpenSpec or discard conversation context.
+
+Supply a provider, repository, or Project explicitly, or configure defaults
+in `.to-backlog.json` in the target working directory:
+
+```json
+{"provider":"github","repository":"owner/repo","project":"https://github.com/orgs/board-owner/projects/1"}
+```
+
+Explicit destination fields take precedence over configuration, then Git
+remotes. Ambiguous destinations are questions, not guesses. GitHub is the only
+publication provider shipped; another requested provider is not replaced with
+GitHub. If publication is partial or uncertain, keep the reported local receipt
+and existing issue link: recovery verifies outcomes and never recreates an issue.
+Provider detection rules and adapter references live in
+`skills/universal/to-backlog/providers/registry.json`; new providers register
+their capabilities, plain instruction file and isolated Node adapter without
+changing the common workflow or resolver.
+
 ```
 /sai-explore                      # discuss the idea, edge cases, and implementation details
                                   # then choose a path:
