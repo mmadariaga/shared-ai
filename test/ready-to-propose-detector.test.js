@@ -72,6 +72,14 @@ test('strict: multiple blocks pass and names keep block order', () => {
   assert.deepEqual(verdict.names, ['slice-one', 'slice-two']);
 });
 
+test('strict: one invalid block fails the whole set and is identified by index', () => {
+  const verdict = checkStrict(`${block('good-slice')}\n${block('bad-slice', { Terms: null })}`);
+  assert.equal(verdict.ok, false);
+  assert.deepEqual(verdict.blocks[0].violations, []);
+  assert.equal(verdict.blocks[1].index, 1);
+  assert.ok(verdict.blocks[1].violations.some((v) => v.problem === 'MISSING_SECTION'));
+});
+
 test('strict: duplicate change names across the set fail', () => {
   const verdict = checkStrict(`${block('same-name')}\n${block('same-name')}`);
   assert.equal(verdict.ok, false);

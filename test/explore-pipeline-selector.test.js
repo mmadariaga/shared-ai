@@ -92,21 +92,26 @@ test('the shared crystallization close records inventory before presenting route
   assert.ok(closeEnd > closeStart, 'the inline-refusal section should follow the shared close');
   const close = protocol.slice(closeStart, closeEnd);
 
-  const checkpoints = [
-    '1. **Final block emitted.**',
-    '2. **Stage panel handled.**',
-    '3. **Ordered inventory recorded.**',
+  const steps = [
+    '1. **Stage panel.**',
+    '2. **Block emit.**',
+    '3. **Load the pointer.**',
+    '4. **Print the blocks.**',
+    '5. **Act on the loaded file.**',
   ];
   let previous = -1;
-  for (const checkpoint of checkpoints) {
-    const position = close.indexOf(checkpoint);
-    assert.ok(position > previous, `${checkpoint} should follow the prior close condition`);
+  for (const step of steps) {
+    const position = close.indexOf(step);
+    assert.ok(position > previous, `${step} should follow the prior close step`);
     previous = position;
   }
-  assert.match(close, /complete only after all three conditions below hold, in order, in the same turn/i);
-  assert.match(close, /The final `---` starts this close; it does not end the turn/i);
-  assert.match(close, /After a successful inventory emit, set `route_choice_reply_pending = true`[\s\S]{0,320}follow the returned pointer/i);
-  assert.match(close, /presents the native picker at the end of this same assistant turn/i);
+  assert.doesNotMatch(close, /The final `---` starts this close/i, 'the final-separator trigger is retired');
+  assert.doesNotMatch(close, /three conditions/i, 'the three ordered conditions are retired');
+  assert.match(close, /The blocks are composed inside the block emit, never printed first/i);
+  assert.match(close, /`sai-state emit <id> explore-slice@1 --ready-to-propose -`/);
+  assert.match(close, /never compose a `recordedList` by hand/i);
+  assert.match(close, /Print the block set exactly as sent in step 2/i);
+  assert.match(close, /Set `route_choice_reply_pending = true`[\s\S]{0,200}present its native picker as the final action of this turn/i);
   assert.match(close, /do not emit `route-choice`, `plan`, or `direct-build`[\s\S]{0,180}until the user returns one valid option/i);
 
   const singleStart = protocol.indexOf('5. **Crystallization protocol (single change)**');
@@ -120,9 +125,10 @@ test('the shared crystallization close records inventory before presenting route
     assert.doesNotMatch(branch, /clear the stage TODO|emit the `recordedList`|present the crystallization-close route selector/i,
       `${name} should not repeat the close procedure`);
   }
-  assert.match(close, /The `inline-refusal` path is excluded and keeps its immediate handoff/i);
+  assert.match(close, /The `inline-refusal` path is excluded and keeps its immediate handoff: it prints its block\(s\) without the block emit and records no inventory/i);
   assert.match(protocol.slice(inlineStart), /no further choice|no choice/i);
   assert.match(selector, /The shared close in `crystallization-protocol\.md` owns block emission, stage-panel handling, and ordered inventory recording/i);
+  assert.match(selector, /its block emit records the complete ordered inventory before any block is displayed/i);
   assert.match(selector, /only after a complete ordered inventory has been recorded successfully/i);
   assert.match(selector, /This event is emitted only after the user's picker answer/i);
 });
@@ -152,20 +158,13 @@ test('Claude Code and opencode share the native route-picker contract', () => {
   assert.match(selector, /No route intent, panel entry, or dispatch occurs on picker presentation alone/i);
 });
 
-test('the Ready to Propose format cues only Explore to continue its close outside the emitted block', () => {
+test('the Ready to Propose format carries no post-block close cue; the block emit gates the close instead', () => {
   const format = spec('sai/policies/ready-to-propose-format.md');
-  const templateOpening = format.indexOf('\n```\n');
-  const templateClosing = format.indexOf('\n```\n', templateOpening + 1);
-  const cueIndex = format.indexOf('When `/sai-explore` emits a `Ready to Propose` block');
+  const protocol = spec('sai/commands/explore/steps/crystallization-protocol.md');
 
-  assert.ok(templateOpening >= 0, 'the emitted block template should exist');
-  assert.ok(templateClosing > templateOpening, 'the emitted block template should close');
-  assert.ok(cueIndex > templateClosing, 'the Explore cue should be outside the emitted block');
-  assert.equal(format.match(/When `\/sai-explore` emits a `Ready to Propose` block/g)?.length, 1);
-  assert.match(format.slice(cueIndex), /continue the same turn with \*\*Crystallization-turn close \(shared, owns B6\)\*\*/);
-  assert.match(format.slice(cueIndex), /sai\/commands\/explore\/steps\/crystallization-protocol\.md/);
-  assert.match(format.slice(cueIndex), /ordinary single-change or sliced crystallization \(not the inline proposal-refusal path\)/);
-  assert.match(format.slice(cueIndex), /route picker[\s\S]*same turn[\s\S]*explicit picker answer in a later turn[\s\S]*applies only to `\/sai-explore`/);
+  assert.doesNotMatch(format, /When `\/sai-explore` emits a `Ready to Propose` block/);
+  assert.doesNotMatch(format, /continue the same turn with \*\*Crystallization-turn close/);
+  assert.match(protocol, /--ready-to-propose -/);
 });
 
 test('the close records one or many names in order before exposing the native route picker', () => {
@@ -173,8 +172,9 @@ test('the close records one or many names in order before exposing the native ro
   const closeStart = protocol.indexOf('**Crystallization-turn close (shared, owns B6).**');
   const closeEnd = protocol.indexOf('**Inline proposal refusal**', closeStart);
   const close = protocol.slice(closeStart, closeEnd);
-  assert.match(close, /one `explore-slice@1` event with `recordedList` containing every emitted change name in display order/i);
-  assert.match(close, /Use the existing session.*do not reset either machine/i);
+  assert.match(close, /extracts the change names, and records them as the ordered inventory in one step/i);
+  assert.match(close, /The set is validated as a whole: when any block fails, no name is recorded/i);
+  assert.match(close, /Use the existing session; do not reset either machine/i);
 
   const previousState = {
     stage: 'idle',
@@ -204,27 +204,32 @@ test('the close records one or many names in order before exposing the native ro
   }
 });
 
-test('panel degradation continues to inventory recording, but store and step-load failures stop before the picker', () => {
+test('panel errors never block the close; validation, delivery, store, and step-load failures stop before the picker', () => {
   const protocol = spec('sai/commands/explore/steps/crystallization-protocol.md');
   const ideaList = spec('sai/commands/explore/steps/idea-list.md');
   const stageMachine = spec('sai/policies/stage-machine.md');
   const closeStart = protocol.indexOf('**Crystallization-turn close (shared, owns B6).**');
   const closeEnd = protocol.indexOf('**Inline proposal refusal**', closeStart);
   const close = protocol.slice(closeStart, closeEnd);
-  const panelIndex = close.indexOf('**Stage panel handled.**');
-  const inventoryIndex = close.indexOf('**Ordered inventory recorded.**');
-  const panelCondition = close.slice(panelIndex, inventoryIndex);
-  const inventoryCondition = close.slice(inventoryIndex);
+  const panelIndex = close.indexOf('**Stage panel.**');
+  const emitIndex = close.indexOf('**Block emit.**');
+  const pointerIndex = close.indexOf('**Load the pointer.**');
+  const panelStep = close.slice(panelIndex, emitIndex);
+  const emitStep = close.slice(emitIndex, pointerIndex);
 
-  assert.match(panelCondition, /If a panel call is rejected because the panel tool is unavailable/i);
-  assert.match(panelCondition, /disable panel calls for the rest of the chat, and continue to inventory recording/i);
+  assert.match(panelStep, /If a panel call is rejected because the panel tool is unavailable/i);
+  assert.match(panelStep, /disable panel calls for the rest of the chat, and continue; report any other panel error in one line and continue/i);
+  assert.match(panelStep, /never blocks the close/i);
   assert.match(ideaList, /> Panel rendering unavailable; continuing without task-panel updates\./);
-  assert.match(inventoryCondition, /checkpoint passes only when the emit succeeds without an `error` or `rejected` result/i);
-  assert.match(inventoryCondition, /Apply that policy's corrective retries and error handling/i);
-  assert.match(inventoryCondition, /If the emit exhausts its retry rule or returns a rejection[\s\S]*?stop this close, and wait for instructions[\s\S]*?no route may start/i);
-  assert.match(inventoryCondition, /After a successful result, follow its actual `next\.follow` under policy/i);
-  assert.match(inventoryCondition, /this loads `route-selector\.md`; it opens the native picker only after the inventory checkpoint succeeds/i);
-  assert.match(inventoryCondition, /The picker presentation is not a choice: do not emit `route-choice`, `plan`, or `direct-build`[\s\S]{0,220}until the user returns one valid option/i);
+  assert.match(emitStep, /\*\*Validation failure\*\*[\s\S]*?machine is untouched[\s\S]*?without showing anything to the user — at most two retries/i);
+  assert.match(emitStep, /show the violations \(block index, line, and problem for each\) and stop: print no block, open no picker/i);
+  assert.match(emitStep, /\*\*Delivery failure\*\*[\s\S]*?corrective retry, whose counter of two is separate from the validation counter/i);
+  assert.match(emitStep, /\*\*Any other error or a rejection\*\*[\s\S]*?no picker opens and no route may start/i);
+  assert.match(close, /load the returned `next\.follow` file under policy, whatever it names/i);
+  assert.match(close, /The picker presentation is not a choice: do not emit `route-choice`, `plan`, or `direct-build`[\s\S]{0,220}until the user returns one valid option/i);
+  assert.match(stageMachine, /\*\*Block emits are the one exception\.\*\*[\s\S]*?quoted\s+heredoc in Bash, a single-quoted here-string in PowerShell/i);
+  assert.match(stageMachine, /<<'SAI_BLOCKS'/);
+  assert.match(stageMachine, /'@ \| node <tool-path> emit <id> explore-slice@1 --ready-to-propose -/);
   assert.match(stageMachine, /A follow-load failure or an emit error stops the run/i);
   assert.match(stageMachine, /show the error and wait for the user/i);
   assert.match(stageMachine, /up to 2 retries of that same emit without asking the user/i);

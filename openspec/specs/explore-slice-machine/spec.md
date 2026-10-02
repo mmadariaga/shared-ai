@@ -157,3 +157,22 @@ A `complete` intent while Plan is at `implement` SHALL reject with `READINESS_IS
 #### Scenario: Slice close resolves in slice step
 - **WHEN** a Plan or Manual slice closes
 - **THEN** the slice ownership rules govern completion with no Direct Build next-slice
+
+### Requirement: Slice inventory is derived from validated Ready to Propose blocks
+
+The explore crystallization close SHALL record the `explore-slice@1` inventory only through the block emit, which derives the `recordedList` from the `**Change name**` values extracted from the validated block set, in display order. The close SHALL never compose a `recordedList` by hand. The derived event SHALL keep the existing `recordedList` semantics: it replaces `set` atomically, preserves a running cursor, and discards parked steps, and a later block emit replaces the inventory and the pending route choice. When a slice is active, the block emit SHALL return that slice's pointer rather than the route-selector pointer.
+
+#### Scenario: Multi-slice set records names in display order
+
+- **WHEN** the block emit receives a valid set of several blocks with header text between them
+- **THEN** the inventory records every change name in display order and ignores the header text
+
+#### Scenario: Later block emit replaces the inventory
+
+- **WHEN** a second valid block emit arrives in the same session
+- **THEN** its names replace the earlier inventory and the pending route choice
+
+#### Scenario: Active slice keeps its pointer
+
+- **WHEN** a valid block emit arrives while a slice route is active
+- **THEN** the inventory is replaced and the response returns the active slice's pointer instead of `route-selector.md`

@@ -102,5 +102,3 @@ Sections follow the block order above; `**Overview language**` is the last line 
 - **Overview language**: the explicit `--overview-lang` option value or literal None; reflects only what is knowable at print time, so a gate-9-selected value never appears in an already-emitted block
 
 Provenance citations are optional: with nothing to cite, **Why** and **Decisions & Rationale** carry no citation placeholder. Provenance is evidence for intent only and SHALL NOT designate files to modify; the block has no target-file field.
-
-When `/sai-explore` emits a `Ready to Propose` block through ordinary single-change or sliced crystallization (not the inline proposal-refusal path), continue the same turn with **Crystallization-turn close (shared, owns B6)** in `sai/commands/explore/steps/crystallization-protocol.md`; that close records the complete ordered set before following the returned pointer to the native route picker. The picker may be presented in that same turn, but a route starts only after the user returns an explicit picker answer in a later turn. This cue applies only to `/sai-explore`, not to other producers or consumers of this format.

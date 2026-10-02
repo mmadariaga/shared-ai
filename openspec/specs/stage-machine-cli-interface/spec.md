@@ -189,3 +189,42 @@ Every stdout JSON response of `bin/sai-state.js` SHALL carry `received_at` as it
 #### Scenario: Machine error responses carry the time
 - **WHEN** `emit` returns `INVALID_EVENT`, `UNKNOWN_MACHINE` or `VERSION_MISMATCH` with exit 1
 - **THEN** the stdout JSON's first key is `received_at` and stderr carries no time
+
+### Requirement: Ready to Propose block emit
+
+`sai-state emit <id> explore-slice@1 --ready-to-propose -` SHALL read a complete `Ready to Propose` block set as text from stdin. It SHALL validate the set with the strict profile of `sai/tools/ready-to-propose.js` before any session, machine, or registry read. `--ready-to-propose` SHALL be a flag that takes no value. On a valid verdict, the command SHALL derive `{"recordedList": [...]}` from the extracted change names in display order, advance the machine, and return the ordinary emit fields. The set SHALL be validated as a whole: an invalid verdict SHALL exit 1, record no name, and leave the machine untouched. Every response SHALL carry `received_at` as its first key and a `validation` object `{ok, profile, blocks: [{index, line, violations}], violations}`, with no change names on the wire. These inputs SHALL be a delivery failure that answers `INVALID_EVENT` with `reason: "EVENT_UNPARSEABLE"` and a `next` pointer, exits 1, and makes no transition: empty stdin, stdin with no block heading, and a final block cut off before its `---` line. These SHALL be usage errors with exit 2: use on any machine other than `explore-slice@1`; combination with `--progress` or `--with-overview`; a missing id, machine id, or `-` marker; extra positional arguments; and interactive stdin. When the detector module is found in neither candidate location relative to the CLI, the command SHALL exit 2 and name the tried paths.
+
+#### Scenario: Valid single block records its name
+
+- **WHEN** a valid single block is piped to `emit <id> explore-slice@1 --ready-to-propose -` with no active slice
+- **THEN** the process exits 0 with `validation.ok` true, stage `waiting`, and the route-selector pointer
+
+#### Scenario: One invalid block fails the whole set
+
+- **WHEN** a set with one valid block and one invalid block is piped
+- **THEN** the process exits 1 with a `validation` that identifies the failing block by index, and the machine records nothing
+
+#### Scenario: Duplicate change names fail validation
+
+- **WHEN** two blocks carrying the same change name are piped
+- **THEN** validation fails with exit 1 and nothing is recorded
+
+#### Scenario: Empty or cut-off delivery is unparseable
+
+- **WHEN** empty stdin, heading-less text, or a block cut off before its `---` line is piped
+- **THEN** the process exits 1 with `error: "INVALID_EVENT"` and `reason: "EVENT_UNPARSEABLE"` and no transition
+
+#### Scenario: Change names stay off the wire
+
+- **WHEN** a valid block set is recorded
+- **THEN** the response text contains none of the extracted change names
+
+#### Scenario: Non-English prose validates
+
+- **WHEN** a valid block whose field prose is written in another language is piped
+- **THEN** validation passes and its change name is recorded
+
+#### Scenario: Misuse is a usage error
+
+- **WHEN** the option is used on another machine, combined with `--progress` or `--with-overview`, or given without the `-` marker
+- **THEN** the process exits 2 with no transition

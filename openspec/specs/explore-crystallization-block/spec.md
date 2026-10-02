@@ -72,17 +72,17 @@ The companion `explore-handoff-edge-cases` capability governs the same `**Edge C
 
 ### Requirement: Close crystallization with selector
 
-`sai-explore` SHALL define one authoritative crystallization-turn close in `sai/commands/explore/steps/crystallization-protocol.md`. Single-change and sliced-feature items SHALL reference that definition rather than restating its emission sequence. Inline proposal refusal SHALL stay outside the shared close. The shared close SHALL handle the final block or blocks, stage-TODO panel handling, and ordered `recordedList` recording. After a successful inventory result, it SHALL follow the actual `next.follow`; when no slice is active, that pointer SHALL load `route-selector.md`, which presents the native picker after the checkpoint. A later valid picker answer SHALL control whether Manual emits its handoff and recommendation; Plan and Direct Build SHALL not emit that handoff.
+`sai-explore` SHALL define one authoritative crystallization-turn close in `sai/commands/explore/steps/crystallization-protocol.md`. The single-change and sliced-feature items SHALL compose their blocks and reference that definition rather than restating its emission sequence. Inline proposal refusal SHALL stay outside the shared close. The shared close SHALL run, in order: stage-TODO panel handling; the block emit that validates the composed block or blocks and records the ordered inventory; and printing the blocks exactly as sent. After a successful block emit, the close SHALL load the actual `next.follow` before printing. When no slice is active, that pointer SHALL load `route-selector.md`, whose native picker SHALL be presented after the printed blocks. A later valid picker answer SHALL control whether Manual emits its handoff and recommendation; Plan and Direct Build SHALL not emit that handoff.
 
 #### Scenario: single-change handoff uses the shared close
 
-- **WHEN** `sai-explore` emits the single-change `Ready to Propose` block in the same turn
-- **THEN** item 5 invokes the protocol-owned shared close, handles the panel and ordered inventory, and presents the route picker only after successful recording without starting a route
+- **WHEN** `sai-explore` composes the single-change `Ready to Propose` block in the same turn
+- **THEN** item 5 invokes the protocol-owned shared close, which handles the panel, records the inventory through the block emit, prints the block, and presents the route picker without starting a route
 
 #### Scenario: sliced output closes once after the final slice
 
-- **WHEN** `sai-explore` emits one `Ready to Propose` block per slice in the same turn
-- **THEN** item 6 invokes the protocol-owned shared close only after the final slice block, records the ordered inventory once, and presents the picker only after that checkpoint succeeds
+- **WHEN** `sai-explore` composes one `Ready to Propose` block per slice in the same turn
+- **THEN** item 6 invokes the protocol-owned shared close once for the complete ordered set, whose block emit extracts the names in display order and records the inventory once, and the picker is presented only after every block is printed
 
 #### Scenario: inline proposal refusal uses the shared close
 
