@@ -365,11 +365,13 @@ test('final wrappers: every launcher has no envelope fields and remains harness-
   }
 });
 
-test('final wrappers: source wrapper directories contain exactly 19 sai files and no budget wrapper', () => {
+test('final wrappers: source wrapper directories contain 19 sai files plus to-backlog and no budget wrapper', () => {
   for (const harness of ['claude', 'opencode']) {
     const dir = path.join(repoRoot, 'commands', harness);
     const files = fs.readdirSync(dir);
-    assert.equal(files.length, 19, `${harness} wrapper directory should contain exactly 19 files`);
+    assert.equal(files.filter(file => file.startsWith('sai-')).length, 19, `${harness} should retain exactly 19 sai wrappers`);
+    assert.equal(files.length, 20, `${harness} wrapper directory should contain 20 files`);
+    assert.ok(files.includes('to-backlog.md'), `${harness} should include conversation capture`);
     assert.equal(files.includes('budget.md'), false, `${harness} should not include budget.md`);
     for (const file of files) {
       assert.notEqual(file, 'command-bootstrap.md', `${harness} should not contain command-bootstrap.md`);

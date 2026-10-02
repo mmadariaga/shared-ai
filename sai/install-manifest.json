@@ -32,7 +32,8 @@
       "explore-command": { "extends": "coordinator", "codegraph": true, "webfetch": true, "websearch": true, "shell": ["openspec *", "git *", "node {sai}/*"], "delegate": ["explorer", "executor", "budget", "sai-1-spec-proposal-worker", "sai-2-design-worker", "sai-3-implementation-worker", "sai-direct-build-worker", "sai-backfill-worker", "sai-archive-worker"] },
       "utility-write": { "extends": "boot", "search": true, "write": true, "codegraph": true, "shell": ["*"], "question": true },
       "status-command": { "extends": "boot", "search": true, "question": true, "shell": ["openspec *", "node {sai}/tools/status.js *", "node {sai}/tools/change-picker.js *"] },
-      "worktree-command": { "extends": "boot", "search": true, "question": true, "shell": ["git *", "node {sai}/tools/worktree.js *"] }
+      "worktree-command": { "extends": "boot", "search": true, "question": true, "shell": ["git *", "node {sai}/tools/worktree.js *"] },
+      "to-backlog-command": { "extends": "boot", "search": true, "question": true, "skills": ["to-backlog", "safe-operations"], "shell": ["node {sai}/tools/to-backlog.js *"] }
     },
     "assignments": {
       "agents": {
@@ -59,7 +60,7 @@
         "sai-commit": "commit-command", "sai-archive": "archive-command",
         "sai-backfill": "backfill-command", "sai-merge": "merge-command",
         "sai-explore": "explore-command", "sai-pr": "utility-write", "sai-retire-docs": "utility-write",
-        "sai-status": "status-command", "sai-worktree": "worktree-command"
+        "sai-status": "status-command", "sai-worktree": "worktree-command", "to-backlog": "to-backlog-command"
       }
     }
   },
@@ -678,6 +679,17 @@
       "include": [
         "**/SKILL.md"
       ],
+      "ownership": "managed",
+      "drift": "content"
+    },
+    {
+      "id": "to-backlog-references",
+      "source": "skills/universal/to-backlog/providers",
+      "destination": { "class": "skills", "path": "to-backlog/providers" },
+      "harnesses": ["claude", "opencode"],
+      "strategy": "copy",
+      "recursive": true,
+      "include": ["**/*.md", "**/*.json"],
       "ownership": "managed",
       "drift": "content"
     },
