@@ -2,6 +2,8 @@
 
 Fetch @sai/policies/public-chat.md and follow it exactly.
 
+When a run stops on an error or an unexpected condition, Fetch @sai/policies/stop-options.md and close the stop with its options.
+
 This contract is phase-neutral. The coordinator owns lifecycle routing and does
 not perform the technical work delegated to a worker.
 
