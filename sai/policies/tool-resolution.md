@@ -69,6 +69,9 @@ takes one — never substitute one for the other.
 - `worker-report-validator.js`: `node <tool-path> validate --kind <kind>`
   with the payload on stdin (plus `--json --cwd` where the tool accepts
   them).
+- `ready-to-propose.js`: `node <tool-path> check --profile loose|strict`
+  with the text on stdin. It always prints one JSON verdict; `--json` is
+  accepted and changes nothing, and it takes no `--cwd`.
 - `tool-access.js`: `node <tool-path> <verify|notices>` with JSON on stdin;
   `verify` takes `{required, evidence}`, `notices` takes `{ladder_discards}`.
   It prints JSON and takes neither `--json` nor `--cwd`.

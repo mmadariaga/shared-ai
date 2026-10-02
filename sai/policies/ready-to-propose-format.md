@@ -1,4 +1,4 @@
-<!-- Format validator: node sai/tools/lint.js ready-to-propose <file> -->
+<!-- Format validator: node sai/tools/ready-to-propose.js check --profile strict < text (strict profile; also via node sai/tools/lint.js ready-to-propose <file>) -->
 
 # Ready to Propose Block Format
 
