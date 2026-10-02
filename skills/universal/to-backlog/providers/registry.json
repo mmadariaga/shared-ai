@@ -1,0 +1,11 @@
+{
+  "providers": [
+    {
+      "id": "github",
+      "hosts": ["github.com"],
+      "capabilities": ["query", "publish", "recover"],
+      "instructions": "providers/github.md",
+      "adapter": "to-backlog-github.js"
+    }
+  ]
+}

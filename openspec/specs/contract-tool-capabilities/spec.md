@@ -7,15 +7,22 @@ Define canonical contract-derived tool capabilities and their native projections
 
 ### Requirement: Canonical capability profiles and assignments
 
-The system SHALL declare abstract capability profiles and agent and command assignments in `sai/install-manifest.json`. Profiles SHALL support inherited flags and replacement of list-valued grants. Resolution SHALL reject unknown capabilities, missing profile assignments, invalid values, and inheritance cycles.
+The system SHALL declare abstract capability profiles and agent and command assignments in `sai/install-manifest.json`. Profiles SHALL support inherited flags and replacement of list-valued grants. Resolution SHALL reject unknown capabilities, missing profile assignments, invalid values, and inheritance cycles. The twenty shipped commands SHALL include to-backlog with its own resolvable command profile, alongside the nineteen SAI commands.
 
 #### Scenario: Required identities receive assignments
+
 - **WHEN** canonical capability assignments are inspected
-- **THEN** all fifteen managed workers, all three Generic Agent roles under both harness names, and all nineteen commands have resolvable profiles
+- **THEN** all fifteen managed workers, all three Generic Agent roles under both harness names, and all twenty commands have resolvable profiles.
 
 #### Scenario: Invalid profile fails closed
+
 - **WHEN** profile resolution encounters an unknown capability or inheritance cycle
-- **THEN** resolution fails instead of granting unspecified access
+- **THEN** resolution fails instead of granting unspecified access.
+
+#### Scenario: Backlog invocation capabilities
+
+- **WHEN** the to-backlog command profile is resolved for either harness
+- **THEN** it grants reading, search, questions, the to-backlog and safe-operations skills, and shell invocation of the common to-backlog Node tool without changing publication confirmation requirements.
 
 ### Requirement: Harness-native capability translation
 
