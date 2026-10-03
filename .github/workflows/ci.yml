@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: Tests (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Require Bash and PowerShell 7
+        run: |
+          bash --noprofile --norc -c 'exit 0'
+          pwsh -NoProfile -NonInteractive -Command 'if ($PSVersionTable.PSVersion.Major -lt 7) { exit 1 }; exit 0'
+      - run: npm ci
+      - run: npm test
+
+  package:
+    name: Package contents
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - name: Verify npm package completeness
+        shell: bash
+        run: npm pack --dry-run --json | node .github/scripts/verify-package.cjs
+
+  required:
+    name: CI Required
+    if: ${{ always() }}
+    needs: [tests, package]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every prerequisite to succeed
+        shell: bash
+        env:
+          TEST_RESULT: ${{ needs.tests.result }}
+          PACKAGE_RESULT: ${{ needs.package.result }}
+        run: |
+          printf 'Tests: %s; package: %s\n' "$TEST_RESULT" "$PACKAGE_RESULT"
+          test "$TEST_RESULT" = success && test "$PACKAGE_RESULT" = success

@@ -187,3 +187,14 @@ After all copies complete, the installer MUST print:
 #### Scenario: reminder always shown
 - **WHEN** the installer finishes copying at least one target
 - **THEN** the reminder is printed regardless of which targets were selected
+
+### Requirement: package-lock-root-metadata-alignment
+
+The root package entry in `package-lock.json` SHALL record both existing executable mappings, `shared-ai` to `bin/install.js` and `sai-state` to `bin/sai-state.js`, and the existing package.json Node engine requirement `>=22`.
+
+This requirement records lockfile metadata reconciliation, not a change to package.json or the introduction of a new executable.
+
+#### Scenario: Root lockfile metadata is inspected
+
+- **WHEN** the root package entry in package-lock.json is inspected
+- **THEN** its executable mappings include shared-ai and sai-state and its Node engine requirement is >=22, matching package.json.
