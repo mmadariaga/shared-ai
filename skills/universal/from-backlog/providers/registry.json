@@ -1,0 +1,12 @@
+{
+  "providers": [
+    {
+      "id": "github",
+      "hosts": ["github.com"],
+      "domainless": true,
+      "capabilities": ["read"],
+      "instructions": "providers/github.md",
+      "adapter": "from-backlog-github.js"
+    }
+  ]
+}

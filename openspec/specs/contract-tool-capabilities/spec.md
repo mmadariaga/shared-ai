@@ -7,12 +7,12 @@ Define canonical contract-derived tool capabilities and their native projections
 
 ### Requirement: Canonical capability profiles and assignments
 
-The system SHALL declare abstract capability profiles and agent and command assignments in `sai/install-manifest.json`. Profiles SHALL support inherited flags and replacement of list-valued grants. Resolution SHALL reject unknown capabilities, missing profile assignments, invalid values, and inheritance cycles. The twenty shipped commands SHALL include to-backlog with its own resolvable command profile, alongside the nineteen SAI commands.
+The system SHALL declare abstract capability profiles and agent and command assignments in `sai/install-manifest.json`. Profiles SHALL support inherited flags and replacement of list-valued grants. Resolution SHALL reject unknown capabilities, missing profile assignments, invalid values, and inheritance cycles. The twenty-one shipped commands SHALL include to-backlog and from-backlog with their own resolvable command profiles, alongside the nineteen SAI commands.
 
 #### Scenario: Required identities receive assignments
 
 - **WHEN** canonical capability assignments are inspected
-- **THEN** all fifteen managed workers, all three Generic Agent roles under both harness names, and all twenty commands have resolvable profiles.
+- **THEN** all fifteen managed workers, all three Generic Agent roles under both harness names, and all twenty-one commands have resolvable profiles.
 
 #### Scenario: Invalid profile fails closed
 
@@ -23,6 +23,11 @@ The system SHALL declare abstract capability profiles and agent and command assi
 
 - **WHEN** the to-backlog command profile is resolved for either harness
 - **THEN** it grants reading, search, questions, the to-backlog and safe-operations skills, and shell invocation of the common to-backlog Node tool without changing publication confirmation requirements.
+
+#### Scenario: Backlog import capabilities
+
+- **WHEN** the from-backlog command profile is resolved for either harness
+- **THEN** it grants reading, search, questions, the from-backlog skill, and shell invocation of the common from-backlog Node tool, without granting file writes or the publication helper.
 
 ### Requirement: Harness-native capability translation
 
