@@ -77,17 +77,17 @@ One gate round SHALL be one continuation of the same implementer worker carrying
 
 ### Requirement: Unresolved new failures or an unrunnable suite stop the route
 
-When new failures remain after the third completed gate round, or when the suite command fails before running any test, the route SHALL stop the way `/sai-4-apply`'s Terminal suite gate does: Steps 3 through 8 SHALL NOT run, so no backfill, archive, or commit occurs; guard window 1 SHALL be verified; the changes SHALL stay unstaged in the working tree; the Direct Build terminal report SHALL state in `Outcome` that the run is incomplete and SHALL list the red tests or the command and error in `Verification`; and explore SHALL then emit `{intent: fail}` to `explore-slice@1`. The slice SHALL be marked failed and remain retryable, and no later slice SHALL start. The stop SHALL NOT go through **Bounded Recovery** and SHALL NOT enter the slice completion transition.
+When new failures remain after the third completed gate round, or when the suite command fails before running any test, the route SHALL stop the way `/sai-4-apply`'s Terminal suite gate does: Steps 3 through 8 SHALL NOT run, so no backfill, archive, or commit occurs; guard window 1 SHALL be verified; the changes SHALL stay unstaged in the working tree; the shared stopped Direct Build terminal report SHALL state in What you need to know that the run is incomplete and name the verification limitation, and SHALL list the red tests or the command and error in Verification within Execution details; and explore SHALL then emit `{intent: fail}` to `explore-slice@1`. The slice SHALL be marked failed and remain retryable, and no later slice SHALL start. The stop SHALL NOT go through **Bounded Recovery** and SHALL NOT enter the slice completion transition.
 
 #### Scenario: New failures remain after three gate rounds
 
 - **WHEN** new failures remain after the third completed gate round
-- **THEN** the route runs no backfill, archive, or commit, leaves the changes unstaged, reports the run as incomplete with the red tests, emits `{intent: fail}`, and starts no later slice
+- **THEN** the route runs no backfill, archive, or commit, leaves the changes unstaged, reports stopped incompleteness before the red-test diagnostic record, emits `{intent: fail}`, and starts no later slice
 
 #### Scenario: The suite cannot run
 
 - **WHEN** the suite command fails before running any test because of missing dependencies, a broken environment, or a runner error
-- **THEN** the route stops, reports the command and the error, and runs no backfill, archive, or commit
+- **THEN** the route stops, identifies the verification limitation before the detailed command and error, and runs no backfill, archive, or commit
 
 ### Requirement: The no-specs POC profile runs no suite gate
 

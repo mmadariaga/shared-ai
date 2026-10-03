@@ -18,7 +18,7 @@ Planned stops keep their own contracts and get no options: a MANDATORY STOP afte
 - Base options on the evidence the stopping surface already holds (payload, diagnosis, hand-back, or what it may read under its contract). Offering options widens no read or write scope.
 - Present options through the native picker per `@sai/policies/question-context.md`: context before the picker, short picker. A free-text reply (the picker's "Other" entry) is the user's own instruction, not an invalid option.
 - In unattended lanes, "what the user must decide" in the stop notice of `@sai/policies/unattended-runtime-recovery.md` is presented as stop options. The options are concrete actions, so the rule against a routine "how should I proceed?" question holds.
-- The Direct Build final report keeps its four exact sections (Outcome / Changes / Verification / Incidents); the options follow after them as a separate decision prompt, never a fifth section.
+- Apply, Build, and full Direct Build use `@sai/policies/implementation-closing-report.md` for their closing report. Their Next step names the required decision; stop options follow Execution details as a separate decision prompt, outside the report. Existing choices and planned-stop exclusions remain in force; a pending execution question is a pause, not a terminal closing. The `--no-specs` POC keeps its own closing behavior.
 - In a composition (/sai-build, /sai-review), a stop inside a segment closes once, at the supervisor, with options covering the whole invocation (for example re-entering through /sai-build), not one set per segment.
 
 ## Authority

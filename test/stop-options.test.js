@@ -45,8 +45,8 @@ test('policy covers existing choices, single path, and required reports (E3-E5)'
 test('policy covers unattended, Direct Build, and composition stops (E6-E8)', () => {
   const text = policy();
   assert.match(text, /unattended-runtime-recovery\.md/);
-  assert.match(text, /Outcome \/ Changes \/ Verification \/ Incidents/);
-  assert.match(text, /never a fifth section/);
+  assert.match(text, /implementation-closing-report\.md/);
+  assert.match(text, /stop options follow Execution details as a separate decision prompt, outside the report/);
   assert.match(text, /closes once, at the supervisor/);
 });
 
@@ -70,7 +70,7 @@ test('unattended recovery and Direct Build pipeline reference the policy', () =>
   assert.match(recovery, /what the user must decide,\s+presented as the stop options of `@sai\/policies\/stop-options\.md`/);
   assert.match(recovery, /Do not ask a routine "how should I\s+proceed\?" question/);
   const pipeline = artifact('sai/commands/explore/steps/pipeline-direct-build.md');
-  assert.match(pipeline, /stop options of `@sai\/policies\/stop-options\.md` follow after `Incidents` as a separate question/);
+  assert.match(pipeline, /stop options of `@sai\/policies\/stop-options\.md` follow after `Execution details` as a separate question/);
 });
 
 test('AGENTS.md lists the policy', () => {

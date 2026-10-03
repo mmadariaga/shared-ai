@@ -82,7 +82,7 @@ test('build coordinator owns fast-track activation and blocks apply after phase-
   assertContains(source, 'Safe-operations confirmations remain required');
   assertContains(source, 'If the implement segment returns `failed` or `cancelled`');
   assertContains(source, 'without activating apply');
-  assertContains(source, 'without printing the FAST-TRACK banner');
+  assertContains(source, 'without printing any FAST-TRACK banner beyond the single activation banner when implement activated');
   assertContains(source, 'without claiming apply completion');
 });
 

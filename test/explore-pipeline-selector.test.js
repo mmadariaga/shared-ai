@@ -1419,7 +1419,8 @@ test('Direct Build final report is outcome-first and leaves the Plan report unch
 
   assert.ok(reportStart >= 0 && reportEnd > reportStart, 'the Direct Build terminal-report contract should exist');
   const report = directBuild.slice(reportStart, reportEnd);
-  const sections = ['**Outcome**', '**Changes**', '**Verification**', '**Incidents**'];
+  assert.match(report, /@sai\/policies\/implementation-closing-report\.md.*single format authority/);
+  const sections = ['**What you need to know**', '**Next step**', '**Execution details**', '**Verification**', '**Incidents**'];
   let previous = -1;
   for (const section of sections) {
     const index = report.indexOf(section);

@@ -81,6 +81,8 @@ Checkbox marking is per Step and batched, done by `apply-step.js close`, overrid
 
 ## Step commit gate
 
+For the final diagnostic collection, keep the returned tool-generated reports verbatim in Execution details under `@sai/policies/implementation-closing-report.md`; relevant problems also belong in the concise summary. All reports and authorization disclosures below still print at their original decision point.
+
 Every Step's `STOP & COMMIT` marker runs this gate through `apply-step.js close`, resolved per `@sai/policies/tool-resolution.md`, which overrides any "stage and commit" wording in the plan. The **add-list** is the Step's field-8 paths, the union of both reports in split-flow, scratch paths excluded. The tool implements blocks 1.1–1.7 and the status-letter rule below; this section is their normative definition, and the coordinator prints the returned `report_text` verbatim and never rebuilds it. The plan's own `implementation.md` is apply bookkeeping: the tool leaves it out of every block of the report below (not-committed paths, cross-check, and git comparison alike).
 
 Call order. Under `session_commit_authorized` (including `/sai-build`): one `close` call, the report printing before the commit. Without it: `close --dry-run` (guard and report only: no marking, no commit), print `report_text`, then step 3's question, then `close`. Each call takes `--change {change-name} --step N --guard-base <guard_base>` and the add-list, a `---` line, then the message on stdin through a quoted heredoc. `close` is invoked only after a passing verify (coordinator § Post-dispatch sequence); the tool keeps no such state.

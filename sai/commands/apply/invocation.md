@@ -33,7 +33,7 @@
 
   Functional checkboxes (legacy header `**Human (...)**`) never gate completion; unmarked ones are reported as pending human review. While any Step still has an unmarked Automated checkbox, the run is not complete: continue the Step loop and do not mention `/sai-5-review` or `/sai-review`.
 
-  When complete, print the terminal print cluster (`sai/commands/apply/steps/terminal-lifecycle.md` § 5) and end it with this literal, then STOP:
+  When complete, print the terminal print cluster (`sai/commands/apply/steps/terminal-lifecycle.md` § 5) using `@sai/policies/implementation-closing-report.md`. Put this literal in Next step, followed by Execution details as the last report section, then STOP:
 
   "Implementation applied. In a new chat when ready, run `/sai-5-review {name}` for a general review, or `/sai-review {name}` to add specialized audits based on the initial assessment performed by `/sai-5-review`."
 </TASK>

@@ -8,6 +8,7 @@
   Fetch @sai/commands/apply/runner.md and follow those instructions exactly.
   Fetch @sai/policies/commit-rules.md and follow it at every commit gate.
   Fetch @sai/policies/no-commit-guard.md and follow it for every Step (§ No-commit guard).
+  Fetch @sai/policies/implementation-closing-report.md and use it for completed and stopped closings, on standalone and chained entry.
   Fetch @sai/policies/tool-resolution.md and use it to locate `apply-step.js` (§ Post-dispatch sequence, runner § Step commit gate); a missing tool stops the Step, with no prose fallback.
 
   ## Role
@@ -140,15 +141,15 @@
   - **Delegate before self-edit.** You never write a test file. When no RED worker was dispatched for the Step (GREEN-only) and the cause is in a test, dispatch a fresh RED worker for that correction. When the Step's RED owner is exhausted or vetoed, escalate to a human even with coordinator attempts left.
   - **Last-resort infra fix.** Only when the RED-owner retry returns unpassable or `unrecoverable` and no worker-safe path remains, you MAY repair test setup, adapter, or seed scaffolding yourself, spending one coordinator attempt. Never assertion bodies, expected values, production semantics, or a test file. Preserve Step headings, checkbox semantics, prohibitions, and the Coverage Signature; add each touched path to the union; then run the full § Post-dispatch sequence.
   - **Stops.** Exhausting either budget stops the current Step attempt and escalates, naming the Step, the diagnosis, and the spend on each budget; the exhausted-Step choice above is the only path to a fresh budget. Remaining budget never authorizes a forbidden correction, and destructive or shared-system actions stay gated by safe-operations. The only other reasons to stop for a human: weakening or deleting an assertion, redefining the agreed contract (`implementation.md` or the change's specs), a safe-operations gate, a worker `unrecoverable: true` veto, or a pre-existing failure outside the change's radius. Nothing else interrupts an unattended run.
-  - **Trace.** Record one line per autonomous rung taken, zero-cost outcomes included: `> Autonomous correction: Step <N> | <rung> | key <path> :: <point> :: <boundary> | <budget> <ordinal> of 3 | <outcome>`. `<rung>` is `red-owner-retry`, `delegated-dispatch`, `plan-artifact-repair`, or `infra-fix`; `<budget>` is `worker` or `coordinator`; `<ordinal>` is the returned ordinal (`0` when nothing was spent); `<outcome>` is `corrected`, `unchanged`, or the returned `rejected` value. Print the collected lines at run close however the run ends, or `> Autonomous corrections: none`. The trace is conversation text only.
+  - **Trace.** Record one line per autonomous rung taken, zero-cost outcomes included: `> Autonomous correction: Step <N> | <rung> | key <path> :: <point> :: <boundary> | <budget> <ordinal> of 3 | <outcome>`. `<rung>` is `red-owner-retry`, `delegated-dispatch`, `plan-artifact-repair`, or `infra-fix`; `<budget>` is `worker` or `coordinator`; `<ordinal>` is the returned ordinal (`0` when nothing was spent); `<outcome>` is `corrected`, `unchanged`, or the returned `rejected` value. Print the collected lines in Execution details at run close however the run ends, or `> Autonomous corrections: none`. The trace is conversation text only.
   - **Human override.** After a non-exhaustion hand-back, an explicit human order naming a viable point may re-attempt with a new key in the same recovery budget; ordinary Step re-entry never resets it. At exhaustion, only the explicit exhausted-Step choice or an unequivocal order naming that exact Step can grant the fresh whole-Step budget. A repeated key in the active budget spends nothing. A non-viable point, `unrecoverable` evidence, a safe-operations denial, or a missing `## Step N` contract stays blocked, reporting the routing diagnosis, `failure_class` when present, locus, keys and ordinals spent, prior attempt history when present, and the stopping reason.
 
   ## Terminal navigation
   When the terminal lifecycle reaches § 5, invoke the bound `terminal_navigation` action by position:
-  - **Sole or final apply:** the standalone completion action of `invocation.md` § Completion, which prints the full cluster and its literal, then STOPs.
-  - **Non-final chained apply:** print cluster (a) only, then run the composition-owned authorized transition. Do not print the standalone MANDATORY STOP literal.
+  - **Sole or final apply:** the standalone completion action of `invocation.md` § Completion, which prints the full shared report, with its literal in Next step and Execution details last, then STOPs.
+  - **Non-final chained apply:** use the shared report with cluster (a), then the composition-owned authorized transition in Next step and Execution details last. Do not print the standalone MANDATORY STOP literal.
 
-  An incomplete run (an unmarked Automated checkbox or an unfinished commit gate) prints no findings, no completion, and no transition.
+  An incomplete run (an unmarked Automated checkbox or an unfinished commit gate) prints no invented findings, no completion literal, and no transition. When it actually closes, use the shared stopped report with partial work and remaining commits; retain existing recovery/navigation choices. A pending question is a pause, not a closing report. Under `/sai-build`, the supervisor owns the single stopped closing and its options for the whole invocation.
 </TASK>
 
 Follow instruction on <TASK> step by step

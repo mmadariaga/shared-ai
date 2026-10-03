@@ -1,14 +1,18 @@
 # Terminal Lifecycle
 
+Fetch @sai/policies/implementation-closing-report.md and use it at the existing terminal close.
+
 Run once, after the Step loop has closed every Step (Step commit gates included). A run that stops for a human before this point runs none of it. Sections run in this order.
 
 ## 0. Terminal suite gate
 
 Run the plan's full-suite command (coordinator § Verification commands) once, verbatim. A pass continues to § 1.
 
-When the plan's `## Verification commands` section lacks the command, the command cannot run, or the suite fails, report the command and the failure and stop: §§ 1–5 do not run, and neither the Functional checks nor the synthetic terminal entry is marked. Every Step is already committed, so the next `/sai-4-apply` run finds every Step done, re-enters here, and runs the suite afresh.
+When the plan's `## Verification commands` section lacks the command, the command cannot run, or the suite fails, report the command and the failure in the shared stopped closing report and stop: §§ 1–5 do not run, and neither the Functional checks nor the synthetic terminal entry is marked. Every Step is already committed, so the next `/sai-4-apply` run finds every Step done, re-enters here, and runs the suite afresh. State those remaining commits and the re-entry action; the functional review has not run.
 
-A plan with no `## Verification commands` section predates this gate: print exactly `> Terminal suite gate: skipped — plan has no full-suite command` and continue to § 1.
+**Stopped-report print path:** print the shared stopped closing report directly in § 0, independently of § 5 and without invoking successful `terminal_navigation`. Include the command (or its absence), failure/cannot-run reason, remaining work and commits, and re-entry guidance in What you need to know and Next step; print the available verification evidence, original commit reports, work/commit records, and autonomous correction traces in Execution details last. Under Build, hand these available results to the supervisor to print its single invocation-wide stopped report. Omit the pending human-review block: no functional review ran. This path performs no functional review, final sweep, learnings promotion, or terminal documentation commit, marks no terminal entry, and prints no completion literal or successful transition. Close with the existing stop options when applicable.
+
+A plan with no `## Verification commands` section predates this gate: print exactly `> Terminal suite gate: skipped — plan has no full-suite command` and continue to § 1. Carry this known skipped-gate result into the closing What you need to know and Execution details as an omitted full-suite check with the reason `plan has no full-suite command`; classify an otherwise completed run as completed with warnings under the shared policy. The permitted skip still continues through §§ 1–5 and is not successful verification.
 
 ## 1. Terminal functional review
 
@@ -48,9 +52,9 @@ A candidate qualifies only when it names a repository-level artifact, not a symb
 
 ## 5. Print and stop
 
-Invoke the bound `terminal_navigation` action (coordinator § Terminal navigation). The **print cluster** is the last user-visible block of the run, printed exactly once and identical with or without fast-track:
+Invoke the bound `terminal_navigation` action (coordinator § Terminal navigation). The **print cluster** is the shared outcome-first closing report, printed exactly once and identical with or without fast-track:
 
-- **(a) Findings:** each held `fail` / `unverifiable` check with its reason, as pending human review, plus one recommendation line in the user's input language (English fallback). Silent when every check passed or there were none.
-- **(b) Target:** the standalone completion literal of `invocation.md` § Completion, or, for a non-final chained apply, the composition transition.
+- **(a) Findings:** print the complete `Terminal functional review — pending human review` block under the shared policy: each held `fail` / `unverifiable` check with its reason, plus one recommendation line in the user's input language (English fallback). Silent when every check passed or there were none.
+- **(b) Target:** in Next step, the standalone completion literal of `invocation.md` § Completion, or, for a non-final chained apply, the composition transition.
 
-Nothing prints between (a) and (b). The projection's synthetic terminal entry turns `completed` when the cluster prints, even when (a) is silent.
+Execution details follows the target and contains the final diagnostic collection of original commit reports, work/commit records, affected files, declined/no-op commit decisions, verification, and autonomous correction traces, under the shared policy as sole format authority. Keep their pre-authorization disclosures where they are. The projection's synthetic terminal entry turns `completed` when the cluster prints, even when (a) is silent.

@@ -64,11 +64,18 @@ Both implement and apply SHALL receive fast-track true as invocation-scoped stat
 - **AND** bounded lookup approval for the implement segment is covered by the companion scenario above
 
 ### Requirement: Phase-one failure blocks apply
-Failed or cancelled implementation SHALL close the invocation without RED/GREEN dispatch, apply completion, or a successful transition.
+
+Failed or cancelled implementation SHALL close the invocation without RED/GREEN dispatch, apply completion, or a successful transition. The Build supervisor SHALL use the single shared stopped closing report for the whole invocation, naming observed partial work and commits and the failure or cancellation reason in What you need to know, retaining existing re-entry options, and printing Execution details last. An interruption that actually closes the invocation SHALL use the same stopped presentation. The report SHALL invent no Apply functional review and print no Apply success message. No FAST-TRACK banner beyond the single implement-activation banner SHALL print when implement activated; closing guidance SHALL change neither routing nor banner ownership.
 
 #### Scenario: Failed implement stops build
+
 - **WHEN** implement returns `failed`
-- **THEN** build reports the failure and does not activate apply
+- **THEN** build reports the failure and observed partial work in its single shared stopped closing, does not activate apply, and retains existing re-entry guidance
+
+#### Scenario: Interrupted Build closes without success
+
+- **WHEN** an interruption actually ends Build before final Apply completion
+- **THEN** the supervisor identifies interruption and the observed remaining work and commits in the stopped report without an Apply success message or invented functional review
 
 ### Requirement: Re-entry uses implement collapse
 Re-entry after interruption or partial apply SHALL start at the implement segment again, and implement's re-run contract SHALL decide the outcome; build SHALL never resume apply directly and SHALL NOT restate implement's re-run classifications. Apply activation SHALL depend solely on implement's terminal status, and apply SHALL resume at the first unchecked Step.
@@ -102,14 +109,14 @@ Build SHALL preserve routing-tree STOP, GREEN-conflict STOP, three-attempt recov
 
 ### Requirement: Final navigation is apply completion
 
-When apply completes successfully as the final segment, build SHALL print exactly "Implementation applied. In a new chat when ready, run `/sai-5-review {name}` for a general review, or `/sai-review {name}` to add specialized audits based on the initial assessment performed by `/sai-5-review`." and SHALL NOT chain another phase. This SHALL be the same completion guidance used by standalone apply, with the resolved change name substituted for `{name}`.
+When apply completes successfully as the final segment, build SHALL reuse Apply's shared closing report and print exactly "Implementation applied. In a new chat when ready, run `/sai-5-review {name}` for a general review, or `/sai-review {name}` to add specialized audits based on the initial assessment performed by `/sai-5-review`." in Next step, followed by Execution details as the last report section. It SHALL NOT chain another phase or replace the pinned text with a Build-only success message. The resolved change name SHALL replace `{name}`.
 
-The guidance SHALL distinguish a general review from a review that adds specialized audits selected by the initial assessment performed by `/sai-5-review`; it SHALL NOT promise that every specialized audit runs.
+The guidance SHALL distinguish a general review from a review that adds specialized audits selected by the initial assessment performed by `/sai-5-review`; it SHALL NOT promise that every specialized audit runs. A stopped invocation SHALL retain existing recovery guidance without printing the successful completion recommendation.
 
 #### Scenario: Successful build closes at review navigation
 
 - **WHEN** both segments complete and apply gates pass
-- **THEN** the pinned apply completion message is printed
+- **THEN** the pinned apply completion message is printed in Next step within the shared report and Execution details is the last report section
 
 #### Scenario: Completion guidance describes conditional audits
 
@@ -119,7 +126,7 @@ The guidance SHALL distinguish a general review from a review that adds speciali
 #### Scenario: No successful final completion transition
 
 - **WHEN** build stops without successful completion of the final apply segment
-- **THEN** build does not print the successful completion recommendation
+- **THEN** build does not print the successful completion recommendation and uses the shared stopped report with existing outcome-appropriate guidance
 
 ### Requirement: Fast-track Human Verification is a report
 Under injected fast-track, functional checks SHALL be handled exactly as without fast-track: apply's terminal functional review marks the checks it verified and reports the rest as pending human review in the ordinary terminal print cluster. There SHALL be no approval gate and no separate fast-track deferred list.

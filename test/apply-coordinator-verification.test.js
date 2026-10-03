@@ -450,6 +450,6 @@ test('Step 4 exhaustion is self-describing and the autonomous-correction trace h
     'the trace line format must be pinned');
   assert.match(ladder, /Record one line per autonomous rung taken, zero-cost outcomes included/,
     'the trace must cover zero-cost outcomes too');
-  assert.match(ladder, /Print the collected lines at run close however the run ends, or `> Autonomous corrections: none`\./,
+  assert.match(ladder, /Print the collected lines in Execution details at run close however the run ends, or `> Autonomous corrections: none`\./,
     'the trace must be reported at run close, empty or not');
 });

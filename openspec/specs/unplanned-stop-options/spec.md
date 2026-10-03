@@ -67,11 +67,12 @@ In unattended lanes, the "what the user must decide" part of the stop notice in 
 
 ### Requirement: Direct Build final report keeps four sections
 
-The Direct Build final report SHALL keep its four exact sections (Outcome / Changes / Verification / Incidents). On an incomplete run the stop options SHALL follow after `Incidents` as a separate decision prompt and SHALL NOT form a fifth section.
+Apply, Build, and full Direct Build SHALL use `sai/policies/implementation-closing-report.md` for their closing reports instead of the former Direct Build four-section presentation. Next step SHALL name the required decision, and applicable stop options SHALL follow Execution details as a separate decision prompt outside the report. Existing choices and planned-stop exclusions SHALL remain in force; a pending execution question SHALL remain a pause rather than a terminal closing. The `--no-specs` POC SHALL retain its own closing behavior.
 
 #### Scenario: Direct Build run ends incomplete
-- **WHEN** a Direct Build run ends incomplete and its final report is printed
-- **THEN** the report keeps its four sections and the stop options follow as a separate decision prompt
+
+- **WHEN** a full Direct Build run ends incomplete and its final report is printed
+- **THEN** the shared stopped report identifies the required decision in Next step and applicable stop options follow Execution details as a separate decision prompt outside the report
 
 ### Requirement: Composition stops close once at the supervisor
 
