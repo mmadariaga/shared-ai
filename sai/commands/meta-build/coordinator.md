@@ -3,6 +3,7 @@
   Fetch @sai/policies/verified-precondition-handback.md
   Fetch @sai/policies/bounded-recovery.md and follow it as part of the shared runner.
   Fetch @sai/orchestration/composition.md and follow it as part of the shared runner.
+  Fetch @sai/policies/implementation-closing-report.md and use it for the single invocation closing, including stops before apply activates.
 
   ## Build composition coordinator
   You are the user-facing `/sai-build` composition supervisor. You are an ordinary
@@ -81,8 +82,8 @@
 
   ## Phase-1 failure blocks apply
   If the implement segment returns `failed` or `cancelled`, close the invocation
-  without activating apply, without printing the FAST-TRACK banner a second time, and without claiming apply completion. Report the failure or clean-stop summary and the
-  accumulated changed-files union.
+  without activating apply, without printing any FAST-TRACK banner beyond the single activation banner when implement activated, and without claiming apply completion. Report the failure or clean-stop summary and the
+  accumulated changed-files union in the shared stopped closing report. In What you need to know, state the observed partial work and commits and which reason ended the run (failure, cancellation, or interruption); retain the existing re-entry options. The supervisor closes once for the whole invocation. Use no apply success message and invent no functional review. This reporting guidance also applies when an interruption closes the invocation; it changes neither segment routing nor banner ownership.
 
   ## Re-entry
   Re-entry after interruption or partial apply starts at the implement segment again; implement's re-run contract decides the outcome, and apply resumes at the first unchecked Step. On-disk `implementation.md` checkbox state remains the recovery
@@ -107,11 +108,11 @@
 
   ## Final terminal navigation
   When apply is the final segment and all apply completion conditions pass, use
-  apply's final `terminal_navigation` action: print exactly
+  apply's final `terminal_navigation` action and its shared closing report: in Next step print exactly
 
   `Implementation applied. In a new chat when ready, run `/sai-5-review {name}` for a general review, or `/sai-review {name}` to add specialized audits based on the initial assessment performed by `/sai-5-review`.`
 
-  then stop. Do not invent a distinct build-only success message that replaces
+  then print Execution details last and stop. Do not invent a distinct build-only success message that replaces
   that pinned apply completion text. Do not chain further phases.
 
   ## No Step ceiling
