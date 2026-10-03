@@ -73,9 +73,9 @@ The invocation envelope SHALL remain in the command file, directly after the com
 
 ### Requirement: wrapper-directory-shape-unchanged
 
-The source wrapper directories SHALL each contain exactly the nineteen active `sai-*.md` files and one `to-backlog.md` file, for twenty wrapper files per harness. Neither directory SHALL contain `budget.md` or a command bootstrap card. The active SAI wrapper set and its harness parity SHALL remain intact; to-backlog SHALL remain a separate conversation-preserving invocation.
+The source wrapper directories SHALL each contain exactly the nineteen active `sai-*.md` files, one `to-backlog.md` file, and one `from-backlog.md` file, for twenty-one wrapper files per harness. Neither directory SHALL contain `budget.md` or a command bootstrap card. The active SAI wrapper set and its harness parity SHALL remain intact; to-backlog and from-backlog SHALL remain separate conversation-preserving invocations.
 
 #### Scenario: Source wrapper directories exclude budget
 
 - **WHEN** `commands/claude/` and `commands/opencode/` are listed
-- **THEN** each directory contains nineteen `sai-*.md` files and one `to-backlog.md`, with no `budget.md` or command bootstrap card.
+- **THEN** each directory contains nineteen `sai-*.md` files, one `to-backlog.md`, and one `from-backlog.md`, with no `budget.md` or command bootstrap card.

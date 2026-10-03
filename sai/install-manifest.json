@@ -33,7 +33,8 @@
       "utility-write": { "extends": "boot", "search": true, "write": true, "codegraph": true, "shell": ["*"], "question": true },
       "status-command": { "extends": "boot", "search": true, "question": true, "shell": ["openspec *", "node {sai}/tools/status.js *", "node {sai}/tools/change-picker.js *"] },
       "worktree-command": { "extends": "boot", "search": true, "question": true, "shell": ["git *", "node {sai}/tools/worktree.js *"] },
-      "to-backlog-command": { "extends": "boot", "search": true, "question": true, "skills": ["to-backlog", "safe-operations"], "shell": ["node {sai}/tools/to-backlog.js *"] }
+      "to-backlog-command": { "extends": "boot", "search": true, "question": true, "skills": ["to-backlog", "safe-operations"], "shell": ["node {sai}/tools/to-backlog.js *"] },
+      "from-backlog-command": { "extends": "boot", "search": true, "question": true, "skills": ["from-backlog"], "shell": ["node {sai}/tools/from-backlog.js *"] }
     },
     "assignments": {
       "agents": {
@@ -60,7 +61,7 @@
         "sai-commit": "commit-command", "sai-archive": "archive-command",
         "sai-backfill": "backfill-command", "sai-merge": "merge-command",
         "sai-explore": "explore-command", "sai-pr": "utility-write", "sai-retire-docs": "utility-write",
-        "sai-status": "status-command", "sai-worktree": "worktree-command", "to-backlog": "to-backlog-command"
+        "sai-status": "status-command", "sai-worktree": "worktree-command", "to-backlog": "to-backlog-command", "from-backlog": "from-backlog-command"
       }
     }
   },
@@ -679,6 +680,17 @@
       "include": [
         "**/SKILL.md"
       ],
+      "ownership": "managed",
+      "drift": "content"
+    },
+    {
+      "id": "from-backlog-references",
+      "source": "skills/universal/from-backlog/providers",
+      "destination": { "class": "skills", "path": "from-backlog/providers" },
+      "harnesses": ["claude", "opencode"],
+      "strategy": "copy",
+      "recursive": true,
+      "include": ["**/*.md", "**/*.json"],
       "ownership": "managed",
       "drift": "content"
     },

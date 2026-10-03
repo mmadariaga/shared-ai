@@ -70,6 +70,14 @@ In the configured project, start with `/sai-explore`. See [Installation](#instal
 
 ## How to use it
 
+**Load existing work:** `/from-backlog <reference>` imports a GitHub issue into
+the current conversation in Claude Code and opencode. Use
+`https://github.com/owner/repo/issues/123` or `/owner/repo/issues/123`
+(query parameters and fragments are accepted). Requires Node.js and readable
+GitHub access through `gh`. GitHub issues are the only supported items; pull
+requests and GitHub Enterprise hosts are not supported. See the installed
+`from-backlog` skill for import rules.
+
 **Capture work for later:** `/to-backlog` uses the current conversation in
 Claude Code and OpenCode to propose one title and Markdown description. It
 asks before creating a GitHub repository issue and adding it to a GitHub
