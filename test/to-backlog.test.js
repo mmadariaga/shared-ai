@@ -8,7 +8,9 @@ const os = require('node:os');
 const { spawnSync } = require('node:child_process');
 const { resolve, address } = require('../sai/tools/to-backlog');
 const github = require('../sai/tools/to-backlog-github');
-const registry = require('../skills/universal/to-backlog/providers/registry.json');
+// Keep the shared resolver's original host-based contract under a GitHub-only
+// fixture; backlog-gitlab.test.js covers the installed multi-provider registry.
+const registry = { providers: require('../skills/universal/to-backlog/providers/registry.json').providers.filter(entry => entry.id === 'github') };
 const { loadInstallManifest, expandInstallManifest } = require('../bin/install-manifest');
 const { translate } = require('../bin/capabilities');
 const { prepareTemp } = require('../skills/universal/to-backlog/scripts/prepare-temp');

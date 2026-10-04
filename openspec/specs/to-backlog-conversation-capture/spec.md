@@ -31,7 +31,7 @@ The to-backlog skill SHALL operate in the current conversation, prioritize recen
 
 ### Requirement: Exact publication confirmation
 
-The skill SHALL present the complete final title, description, repository, and repository visibility before publication and explicitly warn when content will be public. For creation, it SHALL also present the Project name and link and ask "Create this exact issue and add it to this Project?" For update, it SHALL present the canonical issue URL, baseline title and description, and exactly what changes, apply the update branch's pre-approval review requirements, and ask "Update only this issue's title and description to this exact content?" Confirm, edit, and cancel SHALL be offered. Approval SHALL bind the current exact destination and final content, and for update the baseline version. Editing content or destination SHALL require renewed inspection and full confirmation. Invocation, unattended mode, and a general prior grant SHALL NOT replace explicit approval of the current proposal.
+The skill SHALL present the complete final title, description, repository, and repository visibility before publication and explicitly warn when content will be public. For creation, it SHALL use the selected provider's confirmation wording and present a Project name and link only when that provider requires a Project. GitHub creation SHALL ask "Create this exact issue and add it to this Project?" GitLab creation SHALL ask "Create this exact issue in this GitLab project?" For update, it SHALL present the canonical issue URL, baseline title and description, and exactly what changes, apply the update branch's pre-approval review requirements, and ask "Update only this issue's title and description to this exact content?" Confirm, edit, and cancel SHALL be offered. Approval SHALL bind the current exact destination and final content, and for update the baseline version. Editing content or destination SHALL require renewed inspection and full confirmation. Invocation, unattended mode, and a general prior grant SHALL NOT replace explicit approval of the current proposal.
 
 #### Scenario: Approved proposal
 
@@ -52,6 +52,16 @@ The skill SHALL present the complete final title, description, repository, and r
 
 - **WHEN** the user changes the content or destination
 - **THEN** the skill returns to inspection and obtains a new full confirmation before publication.
+
+#### Scenario: GitLab creation without a board
+
+- **WHEN** the selected provider prepares GitLab issue creation
+- **THEN** the skill shows the exact issue content and canonical GitLab project destination and requests GitLab's creation confirmation without requiring board insertion.
+
+#### Scenario: GitHub creation retains Project confirmation
+
+- **WHEN** the selected provider prepares GitHub issue creation
+- **THEN** the skill still shows the Project name and link and requests confirmation of both issue creation and Project insertion.
 
 ### Requirement: Single workflow ownership
 

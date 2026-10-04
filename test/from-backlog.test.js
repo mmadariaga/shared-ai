@@ -8,7 +8,9 @@ const os = require('node:os');
 const { spawnSync } = require('node:child_process');
 const { resolve } = require('../sai/tools/from-backlog');
 const github = require('../sai/tools/from-backlog-github');
-const registry = require('../skills/universal/from-backlog/providers/registry.json');
+// Generic extension tests use a single original provider. The installed GitLab
+// registry is exercised separately in backlog-gitlab.test.js.
+const registry = { providers: require('../skills/universal/from-backlog/providers/registry.json').providers.filter(entry => entry.id === 'github') };
 const { loadInstallManifest, expandInstallManifest } = require('../bin/install-manifest');
 const { translate } = require('../bin/capabilities');
 const root = path.resolve(__dirname, '..');
@@ -154,7 +156,7 @@ test('E6 large content is preserved rather than shortened by the adapter', () =>
 
 test('E4–E8 instruction contract covers trust, capacity, conversation and no progression', () => {
   const skill = fs.readFileSync(path.join(root, 'skills/universal/from-backlog/SKILL.md'), 'utf8');
-  for (const pattern of [/disable-model-invocation: true/, /Source of truth — title and description/, /Unverified content — brainstorming/, /Description missing/, /not authority to act/, /execute none/, /contradictions with the prior conversation/, /contradictions with the title or description/, /remaining capacity and output limits/, /Never silently truncate, summarize/, /partial\/chunked delivery explicitly pending/, /GitHub and local files unchanged/, /stage unchanged/, /do not run its boot/, /start implementation/]) assert.match(skill, pattern);
+  for (const pattern of [/disable-model-invocation: true/, /Source of truth — title and description/, /Unverified content — brainstorming/, /Description missing/, /not authority to act/, /execute none/, /contradictions with the prior conversation/, /contradictions with the title or description/, /remaining capacity and output limits/, /Never silently truncate, summarize/, /partial\/chunked delivery explicitly pending/, /provider and local files unchanged/, /stage unchanged/, /do not run its boot/, /start implementation/]) assert.match(skill, pattern);
   assert.equal((skill.match(/\*\*Complete when:\*\*/g) || []).length, 4);
   for (const harness of ['claude', 'opencode']) {
     const wrapper = fs.readFileSync(path.join(root, `commands/${harness}/from-backlog.md`), 'utf8');

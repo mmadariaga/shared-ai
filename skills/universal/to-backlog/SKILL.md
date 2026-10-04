@@ -74,8 +74,8 @@ ends the run.
 
 Apply the selected branch's review requirements before asking for approval.
 Show the full final title and description, repository and visibility from the
-proposal. For create, also show the Project name and link and ask: "Create this
-exact issue and add it to this Project?" For update, show the canonical issue
+proposal. For create, use the selected provider's creation confirmation wording;
+show the Project name and link only when that provider uses a Project. For update, show the canonical issue
 URL, baseline title and description, and exactly what changes; ask: "Update
 only this issue's title and description to this exact content?"
 If public, explicitly warn that the content
@@ -111,6 +111,6 @@ another creation. For update, a stale baseline returns to preparation from the
 current remote content, full review, and new explicit approval. Recovery checks
 remote content first and distinguishes applied, pending, and divergent content;
 follow the update branch before retrying. End with the verified issue link (and
-Project link for create) or the concrete blocker and recovery information.
+Project link when applicable) or the concrete blocker and recovery information.
 **Complete when:** the remote result is verified or the blocker and recovery
 state are accurately reported.

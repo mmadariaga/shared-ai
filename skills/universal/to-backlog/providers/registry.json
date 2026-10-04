@@ -7,6 +7,14 @@
       "instructions": "providers/github.md",
       "updateInstructions": "providers/github-update.md",
       "adapter": "to-backlog-github.js"
+    },
+    {
+      "id": "gitlab",
+      "resolution": "provider",
+      "capabilities": ["query", "publish", "recover", "read-update", "query-update", "update", "recover-update"],
+      "instructions": "providers/gitlab.md",
+      "updateInstructions": "providers/gitlab-update.md",
+      "adapter": "to-backlog-gitlab.js"
     }
   ]
 }
