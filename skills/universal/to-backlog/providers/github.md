@@ -29,8 +29,10 @@ The common skill owns review and confirmation; this file defines no extra gate.
 After the common skill's confirmation, run
 `node <tool> publish <registry>` with the same JSON fields, the returned
 `confirmation` token, and `receipt`: a new unique absolute path in an existing
-private local temporary directory. Claude Code uses its permitted local
-temporary directory; OpenCode uses `/tmp/opencode` when available. Keep this
+private local temporary directory. On Linux use the common skill's prepared
+directory and receipt path. On Windows Claude Code uses its permitted local
+temporary directory; OpenCode uses `/tmp/opencode` when available, retaining
+the existing workflow without a new verified Windows privacy claim. Keep this
 receipt path in conversation state and show it if recovery is needed. Receipts
 contain the approved description; use a private directory, not the repository.
 The tool creates the receipt with restrictive permissions and refuses to
