@@ -15,6 +15,17 @@ function api(io, query, variables) {
   return response.data;
 }
 
+function readIssue(reference, io) {
+  const checked = normalize(reference.url);
+  const [owner, name] = checked.repository.split('/');
+  const repo = api(io, 'query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){nameWithOwner isArchived issueOrPullRequest(number:$number){__typename ... on Issue{number url title body state}}}}', { owner, name, number: checked.number }).repository;
+  const issue = repo?.issueOrPullRequest;
+  if (!issue) throw fault('inaccessible-issue', 'Issue is missing or not readable; check authentication and repository access');
+  if (issue.__typename === 'PullRequest') throw fault('not-an-issue', 'This number identifies a pull request, not an issue');
+  if (issue.__typename !== 'Issue' || issue.number !== checked.number || typeof issue.url !== 'string' || typeof issue.title !== 'string' || typeof issue.body !== 'string' || !['OPEN', 'CLOSED'].includes(issue.state) || typeof repo.isArchived !== 'boolean' || typeof repo.nameWithOwner !== 'string') throw fault('incomplete-response', 'GitHub issue response is incomplete');
+  return { provider: 'github', repository: repo.nameWithOwner, repository_archived: repo.isArchived, number: issue.number, url: issue.url, title: issue.title, description: issue.body, state: issue.state, description_missing: issue.body.trim().length === 0 };
+}
+
 function read(reference, io) {
   let item;
   const comments = [];
@@ -22,12 +33,7 @@ function read(reference, io) {
     const checked = normalize(reference.url);
     const [owner, name] = checked.repository.split('/');
     const variables = { owner, name, number: checked.number };
-    const repo = api(io, 'query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){nameWithOwner isArchived issueOrPullRequest(number:$number){__typename ... on Issue{number url title body state}}}}', variables).repository;
-    const issue = repo?.issueOrPullRequest;
-    if (!issue) throw fault('inaccessible-issue', 'Issue is missing or not readable; check authentication and repository access');
-    if (issue.__typename === 'PullRequest') throw fault('not-an-issue', 'This number identifies a pull request, not an issue');
-    if (issue.__typename !== 'Issue' || issue.number !== checked.number || typeof issue.url !== 'string' || typeof issue.title !== 'string' || typeof issue.body !== 'string' || !['OPEN', 'CLOSED'].includes(issue.state) || typeof repo.isArchived !== 'boolean' || typeof repo.nameWithOwner !== 'string') throw fault('incomplete-response', 'GitHub issue response is incomplete');
-    item = { provider: 'github', repository: repo.nameWithOwner, repository_archived: repo.isArchived, number: issue.number, url: issue.url, title: issue.title, description: issue.body, state: issue.state, description_missing: issue.body.trim().length === 0 };
+    item = readIssue(checked, io);
     let cursor = null;
     const seen = new Set();
     do {
@@ -49,4 +55,4 @@ function read(reference, io) {
   }
 }
 
-module.exports = { normalize, read };
+module.exports = { normalize, readIssue, read };

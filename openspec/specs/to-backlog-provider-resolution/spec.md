@@ -46,3 +46,41 @@ Provider host detection rules, supported operation capabilities, instruction ref
 
 - **WHEN** a provider entry supplies host rules, operation capabilities, an instruction reference, and an adapter
 - **THEN** common resolution can identify that provider without adding a provider-specific resolver condition.
+
+### Requirement: Origin-update provider operations
+
+The to-backlog provider registry SHALL declare read-update, query-update, update, and recover-update capabilities for the shipped GitHub adapter alongside its existing creation capabilities. It SHALL supply a separate updateInstructions reference for GitHub update mechanics. The common CLI SHALL accept these update operations and dispatch them through the existing registry capability and adapter validation seam, treating no_changes as a successful result. Existing resolve, query, publish, and recover operations SHALL remain available for creation.
+
+#### Scenario: Registered GitHub update
+
+- **WHEN** the CLI receives a GitHub update operation declared by the registry
+- **THEN** it dispatches to the corresponding isolated adapter operation rather than running creation publication.
+
+#### Scenario: Verified no-op CLI result
+
+- **WHEN** the adapter returns no_changes for an update request
+- **THEN** the CLI returns that result with a successful exit status.
+
+#### Scenario: Creation compatibility
+
+- **WHEN** a conversation without an origin uses the existing resolver and creation operations
+- **THEN** the existing registry-driven resolve, query, publish, and recover path remains available.
+
+### Requirement: Origin-driven update reference resolution
+
+The update branch SHALL select provider mechanics from the originating issue reference rather than creation destination defaults. The shipped GitHub provider SHALL accept supported full github.com issue URLs and domainless /owner/repo/issues/123 references through the existing issue-reference normalizer. Missing provider or reference components SHALL require clarification without guessing from remotes, configuration, or incidental links. Unsupported providers and invalid references SHALL block update without creating a replacement issue. The selected provider's updateInstructions SHALL be loaded before origin inspection.
+
+#### Scenario: Concrete partial reference
+
+- **WHEN** the originating reference is /owner/repo/issues/123
+- **THEN** the update branch selects GitHub update mechanics and resolves the concrete issue without requiring a Project.
+
+#### Scenario: Missing reference components
+
+- **WHEN** the starting reference omits information needed to identify one issue
+- **THEN** the workflow asks for that information without filling it from creation defaults or later reference links.
+
+#### Scenario: Unsupported origin provider
+
+- **WHEN** the originating issue belongs to a provider without update mechanics
+- **THEN** update stops with the blocker instead of substituting GitHub or creating another issue.

@@ -201,4 +201,73 @@ function recover(request, io) {
   }
 }
 
-module.exports = { query, publish, recover, pages, inspect, digest };
+const sourceIssue = require('./from-backlog-github');
+
+function readUpdate(request, io) {
+  io.run('gh', ['--version']);
+  io.run('gh', ['auth', 'status', '--hostname', 'github.com']);
+  const reference = sourceIssue.normalize(request.reference);
+  const item = sourceIssue.readIssue(reference, io);
+  const [owner, name] = repository(item.repository);
+  const data = api(io, 'query($owner:String!,$name:String!,$number:Int!){viewer{login} repository(owner:$owner,name:$name){visibility issue(number:$number){id url viewerCanUpdate title body}}}', { owner, name, number: item.number });
+  const issue = data.repository?.issue;
+  if (item.repository_archived || !issue?.viewerCanUpdate) throw new Error('Originating issue is inaccessible, archived, or not editable; no replacement will be created');
+  if (!issue.id || issue.url !== item.url || typeof issue.title !== 'string' || typeof issue.body !== 'string' || typeof data.viewer?.login !== 'string' || typeof data.repository.visibility !== 'string') throw new Error('Incomplete issue update response');
+  return { status: 'complete', issue: { id: issue.id, number: item.number, url: item.url }, repository: item.repository, visibility: data.repository.visibility, actor: data.viewer.login, baseline: { title: issue.title, description: issue.body } };
+}
+
+function queryUpdate(request, io) {
+  const current = readUpdate(request, io);
+  if (digest(current.baseline) !== digest(request.baseline)) return { status: 'needs_input', reason: 'stale-baseline', current, message: 'Originating issue content changed; prepare and approve a new proposal from the current baseline' };
+  const proposal = { provider: 'github', operation: 'update', issue: current.issue, repository: current.repository, visibility: current.visibility, actor: current.actor, baseline: current.baseline, ...content(request) };
+  if (proposal.title === current.baseline.title && proposal.description === current.baseline.description) return { status: 'no_changes', issue: current.issue, message: 'No update is necessary' };
+  return { status: 'ready', proposal, confirmation: digest(proposal) };
+}
+
+function updateOutcome(receipt, io) {
+  const current = readUpdate({ reference: receipt.proposal.issue.url }, io);
+  const proposal = receipt.proposal;
+  if (current.repository !== proposal.repository || current.actor !== proposal.actor || current.issue.id !== proposal.issue.id || current.visibility !== proposal.visibility) throw new Error('Update identity or destination changed; fresh review is required');
+  const final = { title: proposal.title, description: proposal.description };
+  if (digest(current.baseline) === digest(final)) return { status: 'complete', issue: current.issue, message: 'Remote title and description match the approved update' };
+  if (digest(current.baseline) === digest(proposal.baseline)) return { status: 'pending', issue: current.issue, message: 'Remote content still matches the baseline. Renew review and explicit confirmation before retrying; recovery does not mutate.' };
+  return { status: 'divergent', issue: current.issue, current, message: 'Remote content differs from both baseline and proposal; reread, reconcile, and obtain fresh approval' };
+}
+
+function update(request, io) {
+  let receipt;
+  try {
+    request = { ...request, receipt: receiptPath(request.receipt) };
+    // Re-read immediately before execution; the token binds target, actor,
+    // visibility, baseline and exact final content, not merely the new text.
+    const ready = queryUpdate(request, io);
+    if (ready.status !== 'ready') return ready;
+    if (request.confirmation !== ready.confirmation) throw new Error('Exact issue, baseline and content confirmation is required; review again');
+    receipt = { proposal: ready.proposal, stage: 'update_pending' };
+    fs.writeFileSync(request.receipt, JSON.stringify(receipt), { flag: 'wx', mode: 0o600 });
+  } catch (error) { return { status: 'failure_before_publication', message: error.message }; }
+  let submissionError;
+  try {
+    api(io, 'mutation($id:ID!,$title:String!,$body:String!){updateIssue(input:{id:$id,title:$title,body:$body}){issue{id url}}}', { id: receipt.proposal.issue.id, title: receipt.proposal.title, body: receipt.proposal.description });
+  } catch (error) { submissionError = error.message; }
+  try {
+    const result = updateOutcome(receipt, io);
+    receipt.stage = result.status;
+    save(request.receipt, receipt);
+    return { ...result, ...(submissionError ? { submission_error: submissionError } : {}) };
+  } catch (error) { return { status: 'uncertain', issue: receipt.proposal.issue, message: error.message, ...(submissionError ? { submission_error: submissionError } : {}) }; }
+}
+
+function recoverUpdate(request, io) {
+  try {
+    const file = receiptPath(request.receipt);
+    const receipt = JSON.parse(fs.readFileSync(file, 'utf8'));
+    if (receipt.proposal?.provider !== 'github' || receipt.proposal.operation !== 'update' || !receipt.proposal.issue?.url || typeof receipt.proposal.baseline?.title !== 'string' || typeof receipt.proposal.baseline?.description !== 'string') throw new Error('Invalid update receipt');
+    const result = updateOutcome(receipt, io);
+    receipt.stage = result.status;
+    save(file, receipt);
+    return result;
+  } catch (error) { return { status: 'uncertain', message: error.message }; }
+}
+
+module.exports = { query, publish, recover, pages, inspect, digest, 'read-update': readUpdate, 'query-update': queryUpdate, update, 'recover-update': recoverUpdate };

@@ -696,12 +696,12 @@
     },
     {
       "id": "to-backlog-references",
-      "source": "skills/universal/to-backlog/providers",
-      "destination": { "class": "skills", "path": "to-backlog/providers" },
+      "source": "skills/universal/to-backlog",
+      "destination": { "class": "skills", "path": "to-backlog" },
       "harnesses": ["claude", "opencode"],
       "strategy": "copy",
       "recursive": true,
-      "include": ["**/*.md", "**/*.json"],
+      "include": ["create.md", "update.md", "providers/**/*.md", "providers/**/*.json"],
       "ownership": "managed",
       "drift": "content"
     },
