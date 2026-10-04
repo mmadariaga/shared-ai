@@ -11,6 +11,7 @@ const github = require('../sai/tools/to-backlog-github');
 const registry = require('../skills/universal/to-backlog/providers/registry.json');
 const { loadInstallManifest, expandInstallManifest } = require('../bin/install-manifest');
 const { translate } = require('../bin/capabilities');
+const { prepareTemp } = require('../skills/universal/to-backlog/scripts/prepare-temp');
 
 const root = path.resolve(__dirname, '..');
 const request = { provider: 'github', repository: 'code/repo', title: '-n $(touch nope)', description: '# Markdown\n```sh\necho "$HOME"; `whoami`\n```\nUnicode: ñ' };
@@ -60,7 +61,8 @@ function mock(state = {}) { return { run: (...args) => fakeGithub(state, ...args
 function approved(state = {}) {
   const io = mock(state);
   const ready = github.query(request, io);
-  const receipt = path.join(temp(), 'receipt.json');
+  const directory = process.platform === 'linux' ? prepareTemp('opencode', { cwd: root }).directory : temp();
+  const receipt = path.join(directory, 'receipt.json');
   return { io, receipt, input: { ...request, confirmation: ready.confirmation, receipt } };
 }
 
