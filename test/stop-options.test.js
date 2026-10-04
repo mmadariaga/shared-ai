@@ -6,7 +6,9 @@ const fs = require('fs');
 const path = require('path');
 
 const repoRoot = path.join(__dirname, '..');
-const artifact = relativePath => fs.readFileSync(path.join(repoRoot, relativePath), 'utf8');
+// Normalize CRLF checkouts (Windows autocrlf) to LF so literal `\n`
+// assertions hold on every platform. See .gitattributes (eol=lf).
+const artifact = relativePath => fs.readFileSync(path.join(repoRoot, relativePath), 'utf8').replace(/\r\n/g, '\n');
 const policy = () => artifact('sai/policies/stop-options.md');
 
 test('runner carries the conditional stop-options pointer right after public-chat', () => {

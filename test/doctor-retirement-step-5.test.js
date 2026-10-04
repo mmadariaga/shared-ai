@@ -179,7 +179,9 @@ test('doctor reports a recognized former ADR-template copy through retirement st
     const destination = path.join(claudeBase, 'sai', 'compat', '_templates', 'adr-index.md');
     const source = path.join(__dirname, '..', 'sai', 'commands', 'implement', 'adr-index.template.md');
     fs.mkdirSync(path.dirname(destination), { recursive: true });
-    fs.copyFileSync(source, destination);
+    // Normalize a possible CRLF checkout (Windows autocrlf) to the canonical
+    // LF bytes the registered retirement hash covers. See .gitattributes.
+    fs.writeFileSync(destination, fs.readFileSync(source, 'utf8').replace(/\r\n/g, '\n'));
 
     const { report } = await runJson(projectRoot, claudeBase);
     const warning = retirementWarning(report, destination);

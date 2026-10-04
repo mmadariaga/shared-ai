@@ -78,7 +78,7 @@ test('the native selector follows the authoritative shared close after inventory
   assert.match(source, /\*\*Plan\*\* \(`route_mode = plan-unattended`\)/);
 
   assert.match(sharedCloseSpec, /one authoritative crystallization-turn close/i);
-  assert.match(sharedCloseSpec, /Single-change and sliced-feature items SHALL reference that definition/);
+  assert.match(sharedCloseSpec, /single-change and sliced-feature items SHALL compose their blocks and reference that definition/i);
   assert.match(sharedCloseSpec, /Inline proposal refusal SHALL stay outside the shared close/);
   assert.match(source, /`--fast-track` auto-selects nothing: the native picker requires an explicit answer/i);
 });

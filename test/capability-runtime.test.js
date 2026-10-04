@@ -23,7 +23,7 @@ function api(method, endpoint, data, directory) {
 test('opencode native effective access survives inherited allow/deny and keeps exclusions', {
   skip: process.env.SAI_RUNTIME_ACCESS_TEST !== '1',
 }, () => {
-  const root = fs.mkdtempSync('/tmp/opencode/sai-capability-runtime-');
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-capability-runtime-'));
   const agents = {};
   // Global rules intentionally disagree with profile grants and exclusions.
   const permissions = [
