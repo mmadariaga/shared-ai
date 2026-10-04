@@ -49,6 +49,50 @@ test('E1 concrete references normalize query and fragment without searching', ()
   }
 });
 
+test('provider-owned resolution delegates unknown-host compatibility and retains GitHub priority', () => {
+  const entry = { id: 'example', resolution: 'provider', capabilities: ['read'], instructions: 'providers/example.md', adapter: 'from-backlog-example.js' };
+  const extended = { providers: [...registry.providers, entry] };
+  const value = 'https://private.example:8443/group/nested/repo/items/3';
+  const io = {
+    run(command, args) { assert.equal(command, 'example-cli'); assert.deepEqual(args, ['resolve', value]); return value; },
+    loadAdapter(selected) {
+      assert.equal(selected, entry);
+      return { resolve(input, receivedIO) {
+        assert.equal(input, value);
+        assert.equal(receivedIO, io);
+        return { status: 'resolved', url: receivedIO.run('example-cli', ['resolve', input]), repository: 'group/nested/repo', number: 3 };
+      } };
+    },
+  };
+  assert.deepEqual(resolve(` ${value} `, extended, io), { status: 'resolved', url: value, repository: 'group/nested/repo', number: 3, provider: 'example', instructions: entry.instructions, adapter: entry.adapter });
+  assert.equal(resolve(reference.url, extended).provider, 'github');
+  assert.equal(resolve('/owner/repo/issues/123', extended).provider, 'github');
+  assert.throws(() => resolve(value, { providers: [...extended.providers, { ...entry, id: 'other' }] }, io), error => error.reason === 'unsupported-provider' && /exactly one registered provider/.test(error.message) && !/github.com/.test(error.message));
+  assert.throws(() => resolve('https://unknown.example/items/3', registry), /Only github.com issues and \/owner\/repo\/issues\/123 are supported/);
+  assert.throws(() => resolve(value, extended, { loadAdapter: () => ({ resolve() { throw new Error('CLI rejected destination'); } }) }), /CLI rejected/);
+  assert.equal(resolve(value, extended, { loadAdapter: () => ({ resolve: () => ({ status: 'error', reason: 'invalid-reference' }) }) }).status, 'error');
+  assert.throws(() => resolve(value, { providers: [{ ...entry, adapter: '../escape.js' }] }), /Invalid provider reference/);
+});
+
+test('delegated non-resolved outcomes retain metadata and read CLI never retrieves them', () => {
+  const entry = { id: 'example', resolution: 'provider', capabilities: ['read'], instructions: 'providers/example.md', adapter: 'from-backlog-github.js' };
+  const extended = { providers: [entry] };
+  const directory = fs.mkdtempSync(path.join(fs.existsSync('/tmp/opencode') ? '/tmp/opencode' : os.tmpdir(), 'from-backlog-outcome-'));
+  const registryPath = path.join(directory, 'registry.json');
+  fs.writeFileSync(registryPath, JSON.stringify(extended));
+  for (const outcome of [
+    { status: 'needs_input', reason: 'reference-ambiguous', candidates: ['one', 'two'] },
+    { status: 'unsupported', reason: 'incompatible-reference', message: 'Unsupported reference' },
+  ]) {
+    const expected = { ...outcome, provider: entry.id, instructions: entry.instructions, adapter: entry.adapter };
+    assert.deepEqual(resolve('https://example.test/items/3', extended, { loadAdapter: () => ({ resolve: () => outcome, read() { assert.fail('Must not read'); } }) }), expected);
+    const script = `const adapter=require('./sai/tools/from-backlog-github'); adapter.resolve=()=>(${JSON.stringify(outcome)}); adapter.read=()=>{throw new Error('Must not read')}; process.exitCode=require('./sai/tools/from-backlog').main(['read',process.argv[1]]);`;
+    const result = spawnSync(process.execPath, ['-e', script, registryPath], { cwd: root, input: JSON.stringify({ reference: 'https://example.test/items/3' }), encoding: 'utf8' });
+    assert.equal(result.status, 1, result.stdout + result.stderr);
+    assert.deepEqual(JSON.parse(result.stdout), expected);
+  }
+});
+
 test('E2 pull requests are rejected even under an issues path', () => {
   const state = { pr: true };
   const result = read(state);
@@ -124,7 +168,7 @@ test('both harness projections install every import surface and grant only the r
   for (const harness of ['claude', 'opencode']) {
     const destinationRoot = Object.fromEntries(['root', 'sai', 'commands', 'skills', 'agents', 'config'].map(key => [key, path.join(os.tmpdir(), 'from-backlog-projection', key)]));
     const projections = expandInstallManifest(manifest, { harness, repoRoot: root, destinationRoot });
-    for (const suffix of ['skills/from-backlog/SKILL.md', 'skills/from-backlog/providers/github.md', 'skills/from-backlog/providers/registry.json', 'commands/from-backlog.md', 'sai/tools/from-backlog.js', 'sai/tools/from-backlog-github.js']) assert.ok(projections.some(item => item.destinationPath.endsWith(path.join(...suffix.split('/')))), `${harness}: ${suffix}`);
+    for (const suffix of ['skills/from-backlog/SKILL.md', 'skills/from-backlog/providers/github.md', 'skills/from-backlog/providers/registry.json', 'skills/from-backlog/providers/resolution.md', 'commands/from-backlog.md', 'sai/tools/from-backlog.js', 'sai/tools/from-backlog-github.js']) assert.ok(projections.some(item => item.destinationPath.endsWith(path.join(...suffix.split('/')))), `${harness}: ${suffix}`);
     const profile = translate(manifest.capabilities, 'from-backlog-command', harness).profile;
     assert.ok(profile.read && profile.question);
     assert.ok(!profile.write);
