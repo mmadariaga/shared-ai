@@ -60,7 +60,7 @@ The resolver SHALL return unsupported for an explicitly requested provider witho
 
 ### Requirement: External provider registry and isolated adapters
 
-Provider host detection rules, supported operation capabilities, instruction references, adapter filenames, and optional provider-owned resolution mode SHALL reside in the external registry. The common resolver SHALL dispatch registered operations to isolated Node adapters without provider-specific branches. A provider declaring `resolution: provider` MAY omit `hosts` and SHALL export `resolve({ explicit, config, remotes }, io)` for destination resolution. Provider adapter filenames SHALL match `to-backlog-[a-z0-9-]+.js`, and provider instruction references SHALL match `providers/[a-z0-9-]+.md` before production adapter loading. The shipped publication registry SHALL retain GitHub as its only provider.
+Provider host detection rules, supported operation capabilities, instruction references, adapter filenames, and optional provider-owned resolution mode SHALL reside in the external registry. The common resolver SHALL dispatch registered operations to isolated Node adapters without provider-specific branches. A provider declaring `resolution: provider` MAY omit `hosts` and SHALL export `resolve({ explicit, config, remotes }, io)` for destination resolution. Provider adapter filenames SHALL match `to-backlog-[a-z0-9-]+.js`, and provider instruction references SHALL match `providers/[a-z0-9-]+.md` before production adapter loading. The shipped publication registry SHALL retain GitHub and add GitLab with provider-owned resolution, separate creation and update instructions, and query, publish, recover, read-update, query-update, update, and recover-update capabilities.
 
 #### Scenario: Registered provider extension
 
@@ -76,6 +76,11 @@ Provider host detection rules, supported operation capabilities, instruction ref
 
 - **WHEN** a selected publication provider supplies an instruction reference outside the permitted provider-reference filename pattern
 - **THEN** the common helper rejects that reference before loading the provider adapter.
+
+#### Scenario: Shipped GitLab operations
+
+- **WHEN** the CLI receives a declared GitLab creation or origin-update operation
+- **THEN** registry dispatch loads the GitLab adapter and applicable instructions while preserving the existing GitHub operations.
 
 ### Requirement: Origin-update provider operations
 
@@ -98,7 +103,7 @@ The to-backlog provider registry SHALL declare read-update, query-update, update
 
 ### Requirement: Origin-driven update reference resolution
 
-The update branch SHALL select provider mechanics from the originating issue reference rather than creation destination defaults. The shipped GitHub provider SHALL accept supported full github.com issue URLs and domainless /owner/repo/issues/123 references through the existing issue-reference normalizer. Missing provider or reference components SHALL require clarification without guessing from remotes, configuration, or incidental links. Unsupported providers and invalid references SHALL block update without creating a replacement issue. The selected provider's updateInstructions SHALL be loaded before origin inspection.
+The update branch SHALL select provider mechanics from the originating issue reference rather than creation destination defaults. Registered host matches SHALL take precedence; otherwise a complete URL SHALL use the sole provider-owned resolver. The shipped GitHub provider SHALL accept supported full github.com issue URLs and domainless /owner/repo/issues/123 references through the existing issue-reference normalizer. The shipped GitLab provider SHALL resolve complete `/-/issues/N` URLs through glab using the reference's project and hostname. Missing provider or reference components SHALL require clarification without guessing from remotes, configuration, or incidental links. Unsupported providers and invalid references SHALL block update without creating a replacement issue. The selected provider's updateInstructions SHALL be loaded before origin inspection.
 
 #### Scenario: Concrete partial reference
 
@@ -114,6 +119,11 @@ The update branch SHALL select provider mechanics from the originating issue ref
 
 - **WHEN** the originating issue belongs to a provider without update mechanics
 - **THEN** update stops with the blocker instead of substituting GitHub or creating another issue.
+
+#### Scenario: Complete GitLab origin
+
+- **WHEN** an originating issue has a complete GitLab URL without a registered host match
+- **THEN** the update branch loads GitLab update mechanics and resolves that exact origin without selecting a creation destination or board.
 
 ### Requirement: Read-only delegated destination resolution contract
 

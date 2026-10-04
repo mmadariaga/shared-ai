@@ -23,6 +23,8 @@ linked Project pages, excludes closed or non-writable Projects, and returns
 returns an error, never an empty candidate list. Supply the user's Project URL
 and query again. `ready` returns a complete `proposal` and `confirmation` token.
 The common skill owns review and confirmation; this file defines no extra gate.
+For creation, show the Project name and link and ask: **"Create this exact issue
+and add it to this Project?"**
 
 ## Publication operation
 
