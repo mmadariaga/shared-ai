@@ -122,9 +122,9 @@ test('E4–E8 instruction contract covers trust, capacity, conversation and no p
 test('both harness projections install every import surface and grant only the read helper', () => {
   const manifest = loadInstallManifest(root);
   for (const harness of ['claude', 'opencode']) {
-    const destinationRoot = Object.fromEntries(['root', 'sai', 'commands', 'skills', 'agents', 'config'].map(key => [key, path.join('/tmp/opencode/from-backlog-projection', key)]));
+    const destinationRoot = Object.fromEntries(['root', 'sai', 'commands', 'skills', 'agents', 'config'].map(key => [key, path.join(os.tmpdir(), 'from-backlog-projection', key)]));
     const projections = expandInstallManifest(manifest, { harness, repoRoot: root, destinationRoot });
-    for (const suffix of ['skills/from-backlog/SKILL.md', 'skills/from-backlog/providers/github.md', 'skills/from-backlog/providers/registry.json', 'commands/from-backlog.md', 'sai/tools/from-backlog.js', 'sai/tools/from-backlog-github.js']) assert.ok(projections.some(item => item.destinationPath.endsWith(suffix)), `${harness}: ${suffix}`);
+    for (const suffix of ['skills/from-backlog/SKILL.md', 'skills/from-backlog/providers/github.md', 'skills/from-backlog/providers/registry.json', 'commands/from-backlog.md', 'sai/tools/from-backlog.js', 'sai/tools/from-backlog-github.js']) assert.ok(projections.some(item => item.destinationPath.endsWith(path.join(...suffix.split('/')))), `${harness}: ${suffix}`);
     const profile = translate(manifest.capabilities, 'from-backlog-command', harness).profile;
     assert.ok(profile.read && profile.question);
     assert.ok(!profile.write);

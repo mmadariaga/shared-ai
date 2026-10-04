@@ -55,7 +55,7 @@ The skill SHALL present the complete final title, description, repository, and r
 
 ### Requirement: Single workflow ownership
 
-The common skill SHALL own mode selection, extraction, clarification, proposal review, confirmation, and result presentation. It SHALL load creation-only or update-only branch instructions only for the selected mode and satisfy that branch's destination or origin prerequisites before content extraction. Provider instruction files SHALL supply platform-specific requirements, operations, and results without duplicating the common workflow. Shared and branch steps SHALL declare checkable completion criteria. The skill SHALL load safe-operations before publication and stop when required tools are unavailable or denied, retaining the draft.
+The common skill SHALL own mode selection, extraction, clarification, proposal review, confirmation, and result presentation. It SHALL load creation-only or update-only branch instructions only for the selected mode and satisfy that branch's destination or origin prerequisites before content extraction. For both creation and update, preparation SHALL read `issue-format.md` from the same installed skill directory selected during mode selection before drafting, apply its format and final drafting checks, and use its preservation boundary on update. Provider instruction files SHALL supply platform-specific requirements, operations, and results without duplicating the common workflow. Shared and branch steps SHALL declare checkable completion criteria. The skill SHALL load safe-operations before publication and stop when required tools are unavailable or denied, retaining the draft.
 
 #### Scenario: Provider-specific inspection
 
@@ -72,10 +72,15 @@ The common skill SHALL own mode selection, extraction, clarification, proposal r
 - **WHEN** mode selection chooses origin-issue update
 - **THEN** the skill loads update.md and the provider's update mechanics without requiring creation-only Project selection.
 
+#### Scenario: Canonical format disclosure
+
+- **WHEN** either creation or update preparation begins drafting
+- **THEN** it first reads issue-format.md from the selected installed skill directory and applies the reference's format, checks, and applicable update boundary.
+
 #### Scenario: Proposal readiness
 
 - **WHEN** a branch's proposal query has run
-- **THEN** preparation completes only when the provider returns ready with exact content and a confirmation token, or a verified no_changes outcome ends the run.
+- **THEN** preparation completes only when the provider returns ready with exact content and a confirmation token after final format checks pass, or a verified no_changes outcome ends the run.
 
 ### Requirement: Origin-based publication mode selection
 
