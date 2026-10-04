@@ -29,11 +29,11 @@
       "archive-command": { "extends": "mutation-coordinator", "delegate": ["sai-archive-worker", "sai-backfill-worker"] },
       "backfill-command": { "extends": "mutation-coordinator", "delegate": ["sai-backfill-worker"] },
       "merge-command": { "extends": "mutation-coordinator", "delegate": ["sai-merge-worker"] },
-      "explore-command": { "extends": "coordinator", "codegraph": true, "webfetch": true, "websearch": true, "shell": ["openspec *", "git *", "node {sai}/*"], "delegate": ["explorer", "executor", "budget", "sai-1-spec-proposal-worker", "sai-2-design-worker", "sai-3-implementation-worker", "sai-direct-build-worker", "sai-backfill-worker", "sai-archive-worker"] },
+      "explore-command": { "extends": "coordinator", "codegraph": true, "webfetch": true, "websearch": true, "shell": ["openspec *", "git *", "node {sai}/*", "node {skills}/to-backlog/scripts/prepare-temp.js {harness}"], "delegate": ["explorer", "executor", "budget", "sai-1-spec-proposal-worker", "sai-2-design-worker", "sai-3-implementation-worker", "sai-direct-build-worker", "sai-backfill-worker", "sai-archive-worker"] },
       "utility-write": { "extends": "boot", "search": true, "write": true, "codegraph": true, "shell": ["*"], "question": true },
       "status-command": { "extends": "boot", "search": true, "question": true, "shell": ["openspec *", "node {sai}/tools/status.js *", "node {sai}/tools/change-picker.js *"] },
       "worktree-command": { "extends": "boot", "search": true, "question": true, "shell": ["git *", "node {sai}/tools/worktree.js *"] },
-      "to-backlog-command": { "extends": "boot", "search": true, "question": true, "skills": ["to-backlog", "safe-operations"], "shell": ["node {sai}/tools/to-backlog.js *"] },
+      "to-backlog-command": { "extends": "boot", "search": true, "question": true, "skills": ["to-backlog", "safe-operations"], "shell": ["node {sai}/tools/to-backlog.js *", "node {skills}/to-backlog/scripts/prepare-temp.js {harness}"] },
       "from-backlog-command": { "extends": "boot", "search": true, "question": true, "skills": ["from-backlog"], "shell": ["node {sai}/tools/from-backlog.js *"] }
     },
     "assignments": {
@@ -701,7 +701,7 @@
       "harnesses": ["claude", "opencode"],
       "strategy": "copy",
       "recursive": true,
-      "include": ["create.md", "update.md", "providers/**/*.md", "providers/**/*.json"],
+      "include": ["create.md", "update.md", "prepare-temp.md", "providers/**/*.md", "providers/**/*.json", "scripts/prepare-temp.js"],
       "ownership": "managed",
       "drift": "content"
     },

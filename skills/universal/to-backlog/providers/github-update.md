@@ -14,8 +14,10 @@ All operations include `provider: "github"`. Other hosts are unsupported.
   or `needs_input` with `reason: stale-baseline` and `current` for renewed review.
 - `update`: pass the same fields, `confirmation`, and `receipt`: a unique new
   absolute path in an existing private temporary directory outside the repository.
-  Claude Code uses its permitted local temporary directory; opencode uses a
-  private subdirectory of `/tmp/opencode` when available. Preserve the receipt
+  On Linux use the common skill's prepared directory and receipt path. On
+  Windows Claude Code uses its permitted local temporary directory; OpenCode
+  retains its existing private-subdirectory workflow under `/tmp/opencode`
+  when available, without a new verified Windows privacy claim. Preserve the receipt
   path in conversation state. It contains approved content; keep it private.
   The tool binds approval to identity, visibility, baseline and final content,
   rereads, records the attempt before mutation, then calls only `updateIssue`
