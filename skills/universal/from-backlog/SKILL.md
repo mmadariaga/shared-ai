@@ -24,6 +24,10 @@ root first, then its user-global root (Claude Code: `.claude/skills/from-backlog
 Locate `sai/tools/from-backlog.js` under that harness's project-local root first,
 then user-global root. Use only those roots and separate quoted arguments.
 
+Resolution selects a registered provider; that provider may resolve the exact
+reference through its read-only CLI. Load only the returned provider's
+instructions. Read `providers/resolution.md` when adding or changing a provider.
+
 Run `node <tool> resolve <registry>` with JSON on stdin:
 `{"reference":"<exact invocation reference>"}`. With no reference, ask for a
 concrete PBI / Issue / Ticket reference and wait. On rejection, explain the

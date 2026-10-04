@@ -87,6 +87,53 @@ test('registry extensions do not need provider branches in resolver', () => {
   assert.equal(resolve({ remotes: ['git@example.test:a/b.git', 'git@github.com:a/b.git'] }, extended).reason, 'provider-ambiguous');
 });
 
+test('provider-owned resolution receives raw inputs and read-only IO without a host catalogue', () => {
+  const entry = { id: 'example', resolution: 'provider', capabilities: ['publish'], instructions: 'providers/example.md', adapter: 'to-backlog-example.js' };
+  const extended = { providers: [...registry.providers, entry] };
+  const remote = 'ssh://git@private.example:2222/group/nested/repo.git';
+  const explicit = { provider: 'example', repository: remote };
+  const config = { repository: 'configured/project' };
+  const remotes = [remote];
+  const io = {
+    run(command, args) { assert.equal(command, 'example-cli'); assert.deepEqual(args, ['resolve', remote]); return 'group/nested/repo'; },
+    loadAdapter(selected) {
+      assert.equal(selected, entry);
+      return { resolve(input, receivedIO) {
+        assert.equal(receivedIO, io);
+        assert.deepEqual(input, { explicit, config, remotes });
+        return { status: 'resolved', repository: receivedIO.run('example-cli', ['resolve', input.explicit.repository]) };
+      } };
+    },
+  };
+  assert.deepEqual(resolve({ explicit, config, remotes }, extended, io), { status: 'resolved', repository: 'group/nested/repo', provider: 'example', instructions: entry.instructions, adapter: entry.adapter });
+  assert.equal(resolve({ remotes: [remote] }, extended, { loadAdapter: () => ({ resolve: input => ({ status: 'resolved', repository: input.remotes[0] }) }) }).repository, remote);
+  assert.equal(resolve({ remotes: [remote, 'git@github.com:a/b.git'] }, extended).reason, 'provider-ambiguous');
+  assert.equal(resolve({ explicit: { repository: 'https://github.com/a/b' } }, extended).provider, 'github');
+  assert.equal(resolve({ config: { provider: 'example' } }, extended, { loadAdapter: () => ({ resolve: () => ({ status: 'needs_input', reason: 'repository-ambiguous' }) }) }).reason, 'repository-ambiguous');
+  assert.throws(() => resolve({ explicit: { provider: 'example' } }, { providers: [{ ...entry, adapter: '../escape.js' }] }), /Invalid registry adapter/);
+  assert.throws(() => resolve({ explicit: { provider: 'example' } }, { providers: [{ ...entry, instructions: '../escape.md' }] }, io), /Invalid provider instruction reference/);
+  assert.throws(() => resolve({ explicit: { provider: 'github', repository: 'a/b' } }, { providers: [{ ...registry.providers[0], instructions: '../escape.md' }] }), /Invalid provider instruction reference/);
+});
+
+test('delegated clarification and unsupported results pass through without publication', () => {
+  const entry = { id: 'example', resolution: 'provider', capabilities: ['publish'], instructions: 'providers/example.md', adapter: 'to-backlog-github.js' };
+  const extended = { providers: [entry] };
+  const directory = temp();
+  const registryPath = path.join(directory, 'registry.json');
+  fs.writeFileSync(registryPath, JSON.stringify(extended));
+  for (const outcome of [
+    { status: 'needs_input', reason: 'destination-required', candidates: ['one', 'two'] },
+    { status: 'unsupported', reason: 'incompatible-destination', message: 'Unsupported destination' },
+  ]) {
+    const expected = { ...outcome, provider: entry.id, instructions: entry.instructions, adapter: entry.adapter };
+    assert.deepEqual(resolve({ explicit: { provider: 'example' } }, extended, { loadAdapter: () => ({ resolve: () => outcome, publish() { assert.fail('Must not publish'); } }) }), expected);
+    const script = `const adapter=require('./sai/tools/to-backlog-github'); adapter.resolve=()=>(${JSON.stringify(outcome)}); adapter.publish=()=>{throw new Error('Must not publish')}; process.exitCode=require('./sai/tools/to-backlog').main(['resolve',process.argv[1]]);`;
+    const result = spawnSync(process.execPath, ['-e', script, registryPath], { cwd: root, input: JSON.stringify({ explicit: { provider: 'example' } }), encoding: 'utf8' });
+    assert.equal(result.status, 1, result.stdout + result.stderr);
+    assert.deepEqual(JSON.parse(result.stdout), expected);
+  }
+});
+
 test('queries exhaust pages, omit closed Projects, respect explicit independent owner and public visibility', () => {
   const ready = github.query(request, mock());
   assert.equal(ready.status, 'ready');
@@ -296,10 +343,13 @@ test('both harness projections install references, registry, wrappers, skill and
     const destination = temp();
     const destinationRoot = Object.fromEntries(['root', 'sai', 'commands', 'skills', 'agents', 'config'].map(key => [key, path.join(destination, key)]));
     const projections = expandInstallManifest(manifest, { harness, repoRoot: root, destinationRoot });
-    for (const suffix of ['skills/to-backlog/SKILL.md', 'skills/to-backlog/providers/github.md', 'skills/to-backlog/providers/registry.json', 'commands/to-backlog.md', 'sai/tools/to-backlog.js', 'sai/tools/to-backlog-github.js']) {
+    for (const suffix of ['skills/to-backlog/SKILL.md', 'skills/to-backlog/providers/github.md', 'skills/to-backlog/providers/registry.json', 'skills/to-backlog/providers/resolution.md', 'commands/to-backlog.md', 'sai/tools/to-backlog.js', 'sai/tools/to-backlog-github.js']) {
       assert.ok(projections.some(item => item.destinationPath.endsWith(path.join(...suffix.split('/')))), `${harness}: ${suffix}`);
     }
-    assert.ok(translate(manifest.capabilities, 'to-backlog-command', harness).profile.question);
+    const profile = translate(manifest.capabilities, 'to-backlog-command', harness).profile;
+    assert.ok(profile.question);
+    assert.ok(profile.shell.includes('node {sai}/tools/to-backlog.js *'));
+    assert.ok(!profile.shell.some(command => /^(gh|glab) /.test(command)));
   }
 });
 
