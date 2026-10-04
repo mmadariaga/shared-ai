@@ -7,7 +7,7 @@ Resolve the backlog provider and destination from ordered evidence through a reg
 
 ### Requirement: Ordered deterministic destination resolution
 
-The Node resolver SHALL accept destination objects containing only nonempty string provider, repository, and Project fields. Explicit fields SHALL override optional working-directory `.to-backlog.json` configuration fields, and registered Git remote detection SHALL supply unresolved provider or repository choices. An explicit repository address identifying one registered provider SHALL take precedence over a configured provider. Remote addresses SHALL be parsed as data and duplicate provider-repository candidates SHALL be deduplicated.
+The Node resolver SHALL accept destination objects containing only nonempty string provider, repository, and Project fields. Explicit fields SHALL override optional working-directory `.to-backlog.json` configuration fields, and registered Git remote detection SHALL supply unresolved provider or repository choices. An explicit repository address identifying one registered provider SHALL take precedence over a configured provider. Remote addresses SHALL be parsed as data and duplicate provider-repository candidates SHALL be deduplicated. Registered host matches SHALL take precedence over provider-owned fallback candidates. When a selected provider declares `resolution: provider`, the common resolver SHALL delegate destination resolution before shared host-compatibility or repository checks, passing the unchanged explicit fields, configuration fields, and raw remote addresses.
 
 #### Scenario: Explicit destination precedence
 
@@ -16,12 +16,22 @@ The Node resolver SHALL accept destination objects containing only nonempty stri
 
 #### Scenario: Equivalent remote addresses
 
-- **WHEN** SSH and HTTPS remotes identify the same registered repository
+- **WHEN** SSH and HTTPS remotes identify the same registered repository through host-based resolution
 - **THEN** resolution treats them as one provider-repository candidate.
+
+#### Scenario: Selected provider owns compatibility
+
+- **WHEN** an explicitly or configurationally selected publication provider declares provider-owned resolution
+- **THEN** its resolver receives the unchanged destination inputs before shared host-compatibility or repository checks.
+
+#### Scenario: Registered GitHub address retains priority
+
+- **WHEN** an explicit repository address identifies GitHub and another registered provider offers provider-owned fallback resolution
+- **THEN** the registered GitHub host match selects GitHub rather than the fallback provider.
 
 ### Requirement: Unsupported and ambiguous destinations
 
-The resolver SHALL return unsupported for an explicitly requested provider without publication capability before probing Git or gh, even when its repository address identifies GitHub. It SHALL NOT substitute a supported provider. Missing or ambiguous provider and repository choices, unrecognized destination addresses, and provider-address conflicts SHALL return clarification results instead of invented destinations.
+The resolver SHALL return unsupported for an explicitly requested provider without publication capability before probing Git or a provider CLI, even when its repository address identifies GitHub. It SHALL NOT substitute a supported provider. Missing or ambiguous provider and repository choices, unrecognized destination addresses, and host-based provider-address conflicts SHALL return clarification results instead of invented destinations. For parsed addresses without registered host matches, providers declaring `resolution: provider` SHALL be fallback candidates. Multiple provider candidates SHALL require clarification rather than arbitrary selection. Delegated clarification and unsupported outcomes SHALL retain their fields and SHALL NOT authorize publication.
 
 #### Scenario: Unsupported explicit provider
 
@@ -30,22 +40,42 @@ The resolver SHALL return unsupported for an explicitly requested provider witho
 
 #### Scenario: Ambiguous repository candidates
 
-- **WHEN** remote detection yields more than one repository for the selected provider
+- **WHEN** remote detection yields more than one repository for the selected host-based provider
 - **THEN** resolution returns the candidates for clarification rather than selecting one.
 
 #### Scenario: Mixed recognized and unknown remote hosts
 
-- **WHEN** no higher-priority provider is selected and remotes include an unregistered host
+- **WHEN** no higher-priority provider is selected and remotes include an unregistered host without provider-owned fallback candidates
 - **THEN** resolution requests provider clarification rather than treating the recognized host as conclusive.
+
+#### Scenario: Mixed registered and delegated providers
+
+- **WHEN** remotes identify GitHub and a distinct provider-owned fallback candidate without a higher-priority selected provider
+- **THEN** resolution requests provider clarification rather than choosing either provider.
+
+#### Scenario: Delegated outcome does not publish
+
+- **WHEN** a selected provider resolver returns a clarification or unsupported outcome
+- **THEN** the shared helper forwards that outcome with registry-selected metadata without calling publication.
 
 ### Requirement: External provider registry and isolated adapters
 
-Provider host detection rules, supported operation capabilities, instruction references, and adapter filenames SHALL reside in the external registry. The common resolver SHALL dispatch registered operations to isolated Node adapters without provider-specific branches. GitHub SHALL be the only publication provider shipped by this change.
+Provider host detection rules, supported operation capabilities, instruction references, adapter filenames, and optional provider-owned resolution mode SHALL reside in the external registry. The common resolver SHALL dispatch registered operations to isolated Node adapters without provider-specific branches. A provider declaring `resolution: provider` MAY omit `hosts` and SHALL export `resolve({ explicit, config, remotes }, io)` for destination resolution. Provider adapter filenames SHALL match `to-backlog-[a-z0-9-]+.js`, and provider instruction references SHALL match `providers/[a-z0-9-]+.md` before production adapter loading. The shipped publication registry SHALL retain GitHub as its only provider.
 
 #### Scenario: Registered provider extension
 
 - **WHEN** a provider entry supplies host rules, operation capabilities, an instruction reference, and an adapter
 - **THEN** common resolution can identify that provider without adding a provider-specific resolver condition.
+
+#### Scenario: Provider-owned extension without hosts
+
+- **WHEN** a publication provider declares provider-owned resolution without a host list and is selected for an unmatched address
+- **THEN** the common helper calls its resolver with raw destination inputs rather than enforcing a shared host catalogue.
+
+#### Scenario: Invalid instruction reference
+
+- **WHEN** a selected publication provider supplies an instruction reference outside the permitted provider-reference filename pattern
+- **THEN** the common helper rejects that reference before loading the provider adapter.
 
 ### Requirement: Origin-update provider operations
 
@@ -84,3 +114,22 @@ The update branch SHALL select provider mechanics from the originating issue ref
 
 - **WHEN** the originating issue belongs to a provider without update mechanics
 - **THEN** update stops with the blocker instead of substituting GitHub or creating another issue.
+
+### Requirement: Read-only delegated destination resolution contract
+
+Provider-owned destination resolution SHALL use `io.run(command, args, input)` for read-only CLI resolution with arguments and content passed as data. The shared helper SHALL preserve the delegated result fields and attach the selected registry provider, instruction reference, and adapter filename. A delegated `provider-ambiguous` or `repository-ambiguous` clarification SHALL allow the CLI wrapper to collect Git remotes and repeat resolution. Resolution SHALL grant no publication authority. The skill SHALL load only the selected provider's instructions and expose the extension contract through its separate `providers/resolution.md` reference. Existing universal skill projections SHALL install that reference for Claude Code and opencode without adding direct provider-CLI permission grants.
+
+#### Scenario: Read-only IO reaches the resolver
+
+- **WHEN** a selected provider resolver uses its supplied IO to resolve a raw destination through a CLI
+- **THEN** the command receives separate data arguments and the shared helper returns the result with selected registry metadata.
+
+#### Scenario: Resolver needs remotes
+
+- **WHEN** delegated resolution returns provider-ambiguous or repository-ambiguous clarification
+- **THEN** the CLI wrapper collects Git remote addresses and invokes resolution again with those addresses.
+
+#### Scenario: Both harnesses receive the extension reference
+
+- **WHEN** installation projections are expanded for Claude Code and opencode
+- **THEN** both include the destination-resolution reference while retaining helper-based permissions without direct provider-CLI grants.
