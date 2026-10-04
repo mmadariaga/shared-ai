@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 Run only on explicit user invocation, in the current conversation with its
 existing context. This skill owns the flow; provider references supply retrieval
-mechanics only. Import is read-only: keep GitHub and local files unchanged. Keep
+mechanics only. Import is read-only: keep the provider and local files unchanged. Keep
 any active sai-explore session and its stage unchanged; do not run its boot
 sequence or start implementation. Use ordinary conversation for clarification;
 for closed choices use Claude Code's `AskUserQuestion` or opencode's `question`.

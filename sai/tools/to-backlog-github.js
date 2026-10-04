@@ -270,4 +270,4 @@ function recoverUpdate(request, io) {
   } catch (error) { return { status: 'uncertain', message: error.message }; }
 }
 
-module.exports = { query, publish, recover, pages, inspect, digest, 'read-update': readUpdate, 'query-update': queryUpdate, update, 'recover-update': recoverUpdate };
+module.exports = { query, publish, recover, pages, inspect, digest, receiptPath, save, 'read-update': readUpdate, 'query-update': queryUpdate, update, 'recover-update': recoverUpdate };
