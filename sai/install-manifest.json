@@ -701,7 +701,7 @@
       "harnesses": ["claude", "opencode"],
       "strategy": "copy",
       "recursive": true,
-      "include": ["create.md", "update.md", "prepare-temp.md", "providers/**/*.md", "providers/**/*.json", "scripts/prepare-temp.js"],
+      "include": ["create.md", "update.md", "issue-format.md", "prepare-temp.md", "providers/**/*.md", "providers/**/*.json", "scripts/prepare-temp.js"],
       "ownership": "managed",
       "drift": "content"
     },

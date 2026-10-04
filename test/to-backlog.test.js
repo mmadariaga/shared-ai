@@ -297,7 +297,7 @@ test('both harness projections install references, registry, wrappers, skill and
     const destinationRoot = Object.fromEntries(['root', 'sai', 'commands', 'skills', 'agents', 'config'].map(key => [key, path.join(destination, key)]));
     const projections = expandInstallManifest(manifest, { harness, repoRoot: root, destinationRoot });
     for (const suffix of ['skills/to-backlog/SKILL.md', 'skills/to-backlog/providers/github.md', 'skills/to-backlog/providers/registry.json', 'commands/to-backlog.md', 'sai/tools/to-backlog.js', 'sai/tools/to-backlog-github.js']) {
-      assert.ok(projections.some(item => item.destinationPath.endsWith(suffix)), `${harness}: ${suffix}`);
+      assert.ok(projections.some(item => item.destinationPath.endsWith(path.join(...suffix.split('/')))), `${harness}: ${suffix}`);
     }
     assert.ok(translate(manifest.capabilities, 'to-backlog-command', harness).profile.question);
   }
