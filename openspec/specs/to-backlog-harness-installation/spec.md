@@ -25,7 +25,7 @@ The installation manifest SHALL project the to-backlog skill, create.md and upda
 
 ### Requirement: Simulated regression coverage
 
-Regression tests SHALL retain creation coverage for resolution precedence, ambiguity, unsupported providers, explicit confirmation binding, faithful content, pagination errors, partial and uncertain outcomes, recovery drift, receipt boundaries, and mirrored projections. Update tests SHALL cover concrete full and partial issue references, origin-selection instructions, restricted title-and-description mutation, confirmation binding, stale baselines, inaccessible origins, verified no-op results, uncertain submission reconciliation, repository identity drift, pre-approval concurrency disclosure, both harness projections, and structured CLI dispatch. Tests SHALL use simulated Git and gh rather than publishing real items.
+Regression tests SHALL retain creation coverage for resolution precedence, ambiguity, unsupported providers, explicit confirmation binding, faithful content, pagination errors, partial and uncertain outcomes, recovery drift, receipt boundaries, and mirrored projections. Update tests SHALL cover concrete full and partial issue references, origin-selection instructions, restricted title-and-description mutation, confirmation binding, stale baselines, inaccessible origins, verified no-op results, uncertain submission reconciliation, repository identity drift, pre-approval concurrency disclosure, both harness projections, and structured CLI dispatch. Tests SHALL use simulated Git, gh, and glab rather than publishing real items. GitLab tests SHALL cover provider-owned resolution without a host catalogue, GitHub priority, complete and partial comment retrieval, missing or malformed issue-enablement responses, disabled projects, exact confirmation, literal JSON content, lost-response creation recovery, version-only baseline changes, and applied, pending, or divergent update verification. Projection tests SHALL verify GitLab references and adapters for both harnesses under existing helper-only permissions.
 
 #### Scenario: CLI publication regression
 
@@ -46,6 +46,11 @@ Regression tests SHALL retain creation coverage for resolution precedence, ambig
 
 - **WHEN** instruction tests inspect the update review branch and provider mechanics
 - **THEN** they verify that the concurrency limitation note is required before approval and is not imposed on the creation branch.
+
+#### Scenario: Simulated GitLab workflow
+
+- **WHEN** GitLab adapter and CLI tests exercise import, creation, origin updates, and recovery
+- **THEN** simulated glab verifies literal content, conservative outcomes, publication guards, and both-harness projections without creating or changing real issues.
 
 ### Requirement: Linux preparation regression coverage
 

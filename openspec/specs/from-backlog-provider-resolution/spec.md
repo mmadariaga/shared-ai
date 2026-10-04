@@ -7,7 +7,7 @@ Resolve concrete GitHub issue references and retrieve complete original issue da
 
 ### Requirement: Registry-selected concrete GitHub references
 
-The common helper SHALL select a read-capable provider from the from-backlog registry and return its provider identifier, instruction reference, adapter, repository, number, and canonical URL on successful reference resolution. Registered host matches SHALL take precedence over provider-owned fallback candidates. A complete URL without a registered host match SHALL use providers declaring `resolution: provider` as fallback candidates, and selection SHALL require exactly one candidate. Domainless references SHALL require an explicit `domainless` registry declaration. The shipped registry SHALL continue to support only github.com and domainless `/owner/repo/issues/123` references. Host-based GitHub full URLs SHALL use HTTPS without credentials or custom ports; query parameters and fragments SHALL NOT change issue identity. Host-based GitHub incomplete paths, unsupported hosts, pull-request paths, and invalid issue numbers SHALL be rejected without search or guessing. A selected provider-owned resolver SHALL receive the trimmed raw reference and SHALL own protocol, credential, port, and issue-path compatibility validation.
+The common helper SHALL select a read-capable provider from the from-backlog registry and return its provider identifier, instruction reference, adapter, repository, number, and canonical URL on successful reference resolution. Registered host matches SHALL take precedence over provider-owned fallback candidates. A complete URL without a registered host match SHALL use providers declaring `resolution: provider` as fallback candidates, and selection SHALL require exactly one candidate. Domainless references SHALL require an explicit `domainless` registry declaration. The shipped registry SHALL support github.com and domainless `/owner/repo/issues/123` references through GitHub, and complete GitLab issue URLs through a GitLab entry declaring `resolution: provider` without a host catalogue. Host-based GitHub full URLs SHALL use HTTPS without credentials or custom ports; query parameters and fragments SHALL NOT change issue identity. Host-based GitHub incomplete paths, pull-request paths, and invalid issue numbers SHALL be rejected without search or guessing. A selected provider-owned resolver SHALL receive the trimmed raw reference and SHALL own protocol, credential, port, and issue-path compatibility validation.
 
 #### Scenario: Equivalent concrete references
 
@@ -16,7 +16,7 @@ The common helper SHALL select a read-capable provider from the from-backlog reg
 
 #### Scenario: Unsupported or incomplete reference
 
-- **WHEN** the shipped registry receives another host, an incomplete issue reference, or a pull-request path
+- **WHEN** the shipped registry receives an incomplete issue reference, a pull-request path, or a reference rejected by the selected provider's compatibility checks
 - **THEN** resolution returns an explicit rejection without searching for or guessing an issue.
 
 #### Scenario: Registered GitHub host beats fallback
@@ -33,6 +33,11 @@ The common helper SHALL select a read-capable provider from the from-backlog reg
 
 - **WHEN** an unmatched URL selects more than one read-capable provider-owned fallback
 - **THEN** the helper rejects the reference as not selecting exactly one registered provider.
+
+#### Scenario: Shipped GitLab reference
+
+- **WHEN** a complete GitLab `/-/issues/N` URL has no registered host match
+- **THEN** the shipped registry selects GitLab's provider-owned resolver and returns its canonical issue provenance.
 
 ### Requirement: Conditional provider mechanics and separate import helpers
 
@@ -113,3 +118,22 @@ Provider-owned reference resolution SHALL use `io.run(command, args, input)` for
 
 - **WHEN** installation projections are expanded for Claude Code and opencode
 - **THEN** both include the reference-resolution guidance while retaining existing read-only helper permissions.
+
+### Requirement: Structured GitLab issue and comment import
+
+The GitLab read adapter SHALL resolve a complete HTTP or HTTPS `/-/issues/N` URL through authenticated `glab repo view --output json`, reject credentials and invalid issue numbers, and use the resolved project identity and hostname for structured `glab api` reads. It SHALL verify issue identity and issue-only type, preserve title and description as data, represent a null description as empty, and return canonical provenance, issue state, and repository archived state. It SHALL read all note pages in ascending identifier order, exclude system activity notes, retain original user-comment text and source links, represent unknown authors explicitly, and reject malformed or repeated comments. Retrieval SHALL perform no remote mutation. Authentication, permission, compatibility, or pagination failures SHALL retain the same provider and destination; failures after issue retrieval SHALL return incomplete with all retrieved parts.
+
+#### Scenario: Complete paginated GitLab import
+
+- **WHEN** glab returns a readable GitLab issue and multiple pages of notes, including system notes and unknown authors
+- **THEN** import returns the original issue content, canonical provenance and states, and every user comment in order without including system activity or performing a mutation.
+
+#### Scenario: Later GitLab comment page fails
+
+- **WHEN** a note-page request fails after the issue and earlier comments have been retrieved
+- **THEN** import reports incomplete with the concrete error and preserves the issue and already retrieved comments without switching provider or destination.
+
+#### Scenario: GitLab project resolution fails
+
+- **WHEN** glab cannot resolve or read the supplied project because of authentication, permissions, compatibility, or malformed responses
+- **THEN** import reports the concrete failure rather than searching for a different issue or substituting another provider.
