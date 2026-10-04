@@ -37,20 +37,19 @@ merge_outcome: clean | conflicted
 rebase_state: not-applicable | stopped | finished
 working_language: unresolved | the selected language token
 conflict_files_by_category
-eligible_scope_options, selected_scope
 strategy_status: not-applicable | pending | revised | confirmed | declined
 strategy_revision, conflict_detection_round: non-negative integers
 verification_round: 0 | 1 | 2 | 3
-verification_result: pending | passed | failed | cap-exhausted
+verification_result: pending | passed | unavailable | failed | cap-exhausted
 staged_files
-compact_authorization_summary
+compact_finalization_summary
 unresolved_escalations
 collision_applicability: not-applicable | no-collision | repair-required | escalation-required
 ambiguous_references
 adr_ddr_renames
 adaptive_todo_steps, adaptive_todo_marked
 panel_ownership: unclaimed | exclusive | cleared
-authorization_status: pending | committed | refused | cleared
+finalization_status: pending | continued | committed | failed | cleared
 commit_executed: false | true
 ```
 
@@ -69,8 +68,8 @@ never rereads an artifact to fill a missing field.
   language. The coordinator's own branch-entry prompt also travels here, in
   the ambient conversation language.
 - **Native question** — closed decisions with non-empty options: Batch 1,
-  Batch 2, the strategy confirmation, the no-suite question, and the
-  authorization question. Claude Code uses `AskUserQuestion`; opencode uses
+  Batch 2 and the normal-mode strategy confirmation. Claude Code uses
+  `AskUserQuestion`; opencode uses
   `question`. The exact question and the ordered option values go to the
   picker unchanged.
 
@@ -127,37 +126,35 @@ Per gate:
   `origin/<branch>` reference to use."** Localize the prose to the ambient
   language; keep refs and protocol tokens unchanged.
 - **Batch 2** — the conflict notice prints first as ordinary text, then the
-  `language` item and, outside fast-track, the `scope` item. Before rendering,
-  check that `eligible_scope_options` matches `conflict_files_by_category`:
-  `full` first as `Full scope (Recommended)`, then `artifacts` as
-  `Artifacts only (specs + ADR/DDR)` only with a specs or ADR/DDR conflict, then
-  `code` as `Code only` only with a code conflict.
-- **Strategy confirmation** — before rendering, check that the worker source
-  covers the whole selected conflict set in file and region order and holds
+  `language` item. Full scope is fixed by `instructions.md` Step 5.
+- **Strategy presentation** — before rendering in either mode, check that the worker source
+  covers the whole affected conflict set in file and region order and holds
   `## Global resolution strategy` with **Facts**, **Inferences**, both branch
   objectives, what the plan preserves, gains, and gives up, risks, affected
   contracts, the alternatives considered, and a combination assessment where
-  one applies. Print it as ordinary text, then ask the confirmation.
-- **No suite** — an explicit decision, never an automatic skip.
-- **Authorization** — show `compact_authorization_summary` in place of the
-  worker's staged-file context.
+  one applies. Print it as ordinary text, then follow the mode-specific
+  hand-off in `instructions.md` Step 7. Only normal mode uses `render_gate`.
+- **No suite** — print the worker's unavailable-verification notice as ordinary
+  text under `instructions.md` Step 8; it is not a gate.
+- **Finalization** — show `compact_finalization_summary` as ordinary text in
+  place of the worker's staged-file context; it is not a gate.
 
-### Compact authorization summary
+### Compact finalization summary
 
-Derived from coordinator state immediately before the authorization picker:
+Derived from coordinator state immediately before the local operation:
 
 ```text
 Method: <merge | rebase (squash yes/no)>
 Target branch: <current branch>
 Source branch: <selected branch>
-Verification status: <passed | not required (clean integration) | continued without a detectable suite | failed after round N>
+Verification status: <passed | not required (clean integration) | unavailable (no detectable suite) | failed after round N>
 Conflict result: <clean | resolved (N files) | unresolved (N escalations)>
 Collision result: <not applicable | none detected | N repaired | N reported (N escalations)>
 Staged files: <N>
 ```
 
-`Staged files` stays a count; the exact paths stay in coordinator state for the
-refusal record and for staging. Conflict, verification, and collision details
+`Staged files` stays a count; the exact paths stay in coordinator state for
+failure reporting and staging. Conflict, verification, and collision details
 may print beside it as worker-authored text.
 
 ## Progress

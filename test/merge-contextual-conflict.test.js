@@ -37,7 +37,7 @@ const cards = () => ({
   lifecycle: read('sai/commands/merge/lifecycle.md'),
 });
 
-test('merge launch stops every merge before its commit so authorization precedes it', () => {
+test('merge launch stops before the coordinator finalizes it automatically', () => {
   const { instructions, coordinator } = cards();
 
   assert.match(instructions, /`git merge --no-ff --no-commit <source_ref>`, so every merge, clean\s+or conflicted, stops before its commit/);
@@ -47,16 +47,16 @@ test('merge launch stops every merge before its commit so authorization precedes
   assert.match(instructions, /When `merge_base`\s+equals `target_sha` there is nothing to squash/);
 });
 
-test('merge rebase path continues per stop and finishes without a spurious authorization', () => {
+test('merge rebase path finalizes each stop and creates no extra commit when finished', () => {
   const { instructions, coordinator } = cards();
   const authorization = section(instructions, '### Step 10:');
 
-  assert.match(authorization, /merge in progress \| \*\*"Run `git commit` to finalize the merge\?"\*\*/);
-  assert.match(authorization, /rebase stopped at a resolved commit \| \*\*"Continue the rebase onto <branch>\?"\*\* \| `git rebase --continue`/);
-  assert.match(authorization, /rebase finished, collision repair staged \| \*\*"Run `git commit` to record the ADR\/DDR collision repair\?"\*\*/);
-  assert.match(authorization, /A rebase that finished with nothing staged asks nothing/);
+  assert.match(authorization, /merge in progress \| local merge commit/);
+  assert.match(authorization, /rebase stopped at a resolved commit \| `git rebase --continue`/);
+  assert.match(authorization, /rebase finished, collision repair staged \| local collision-repair commit/);
+  assert.match(authorization, /A rebase that finished with nothing staged needs no operation/);
   assert.match(authorization, /continues at Step 5 \(a new conflicted commit\) or Step 9 \(the rebase finished\)/);
-  assert.match(authorization, /for `rebase-squash` this returns\s+to the squash commit; the pre-squash `HEAD` is `target_sha`/);
+  assert.doesNotMatch(authorization, /needs_input|On `no`|On `yes`/);
   assert.match(coordinator, /`GIT_EDITOR=true git rebase --continue`/);
   assert.match(coordinator, /a new conflicted commit re-enters\s+§ Conflict hand-off as `strategy-analysis`/);
 });
@@ -87,10 +87,8 @@ test('merge conflicts use a closed hand-off before language selection and analys
     'git diff --name-only --diff-filter=U',
     'read the three stages',
     'classify each file',
-    'Derive the eligible scope values',
     'event: conflict_detected',
     'Categories: specs=<n>, adr-ddr=<n>, code=<n>',
-    'Eligible scope:',
   ]);
   assert.match(detection, /changed_files: \[\]/);
   assert.match(detection, /carries no semantic analysis, proposal, question, or options/);
@@ -112,21 +110,21 @@ test('merge language question is coordinator-owned, asked once per run, and neve
   assert.doesNotMatch(presentation, /Which language should I use/, 'the language question lives only in the coordinator');
 });
 
-test('merge strategy is one global plan confirmed before any write, revised through open input', () => {
+test('merge strategy is presented before any write and normal mode retains open revision', () => {
   const { instructions, coordinator, presentation } = cards();
   const strategy = section(instructions, '### Step 7:', '### Step 8:');
 
-  assert.match(strategy, /Compose one strategy over the whole selected conflict set/);
+  assert.match(strategy, /Compose one strategy over the whole affected conflict set/);
   assert.match(strategy, /The strategy is prose; resolution text appears only\s+in the completed payload/);
   assert.match(strategy, /\*\*"Apply this complete global resolution strategy before changing the\s+conflicted files\?"\*\*/);
   assertInOrder(strategy, ['value: "apply-strategy"', 'value: "revise-strategy"', 'value: "decline-strategy"']);
   assert.match(strategy, /`revise-strategy` — return a `needs_input` with an empty `options` list/);
-  assert.match(strategy, /`decline-strategy` — return `completed` stating that no resolution was\s+written/);
+  assert.match(strategy, /`decline-strategy` — return `completed` stating that no resolution was\s+written at this stop/);
   assert.match(strategy, /\[No declared rule found for this region\]/);
-  assert.match(strategy, /### Deferred \(out of scope\)/);
+  assert.doesNotMatch(strategy, /### Deferred \(out of scope\)/);
 
   assert.match(presentation, /A worker `needs_input` with an empty `options` list is open input/);
-  assert.match(presentation, /Print it as ordinary text, then ask the confirmation/);
+  assert.match(presentation, /Print it as ordinary text, then follow the mode-specific/);
   assert.match(coordinator, /Open input goes back\s+unchanged; build no options for it/);
 });
 
@@ -193,7 +191,7 @@ test('merge worker runs only read-only git and writes only resolution content', 
   assert.doesNotMatch(instructions, /never run git commands/i);
 });
 
-test('merge branch and scope gates filter candidates and order full scope first', () => {
+test('merge branch gate filters candidates and resolution always covers the full set', () => {
   const { instructions, coordinator, presentation } = cards();
   const branchStep = section(instructions, '### Step 3: Branch', '### Step 4:');
 
@@ -223,8 +221,9 @@ test('merge branch and scope gates filter candidates and order full scope first'
   assert.match(branchEntryGate, /picker free text needs no prompt, and the sentinel\s+leads to this open prompt/);
   assert.doesNotMatch(branchEntryGate, /Claude Code|opencode/);
   assert.match(presentation, /¿Sobre qué rama quieres operar\?/);
-  for (const contract of [instructions, presentation]) {
-    assertInOrder(contract, ['Full scope (Recommended)', 'Artifacts only (specs + ADR/DDR)', 'Code only']);
+  assert.match(section(instructions, '### Step 6:', '### Step 7:'), /Analyze every file in `affected_files`; the strategy and payload cover them\s+all/);
+  for (const contract of [instructions, coordinator, presentation]) {
+    assert.doesNotMatch(contract, /Eligible scope:|Artifacts only|Code only|Select resolution scope/);
   }
 });
 
@@ -255,13 +254,13 @@ test('free-text merge branches fetch and validate exact refs before the existing
   assert.match(lifecycle, /branch-validation\s+merge-outcome/);
 });
 
-test('merge fast-track changes exactly the method and scope gates', () => {
+test('merge fast-track changes method and strategy approval, not scope or finalization', () => {
   const { instructions, coordinator, lifecycle } = cards();
 
-  assert.match(coordinator, /Fast-track changes exactly two gates: the method is pinned to `merge` and the\s+scope is `full`/);
-  assert.match(instructions, /Fast-track pins the method to\s+`merge` and auto-applies `full` scope/);
+  assert.match(coordinator, /Fast-track pins the method to `merge`; strategy application follows/);
+  assert.match(instructions, /Fast-track pins the method to\s+`merge` and applies each strategy after presentation/);
   assert.match(lifecycle, /preflight\s+branch-selection\s+environment checks passed; fast_track_active pins method=merge/);
-  assert.match(lifecycle, /fast_track_active supplies full/);
+  assert.doesNotMatch(lifecycle, /scope-selection|selected_scope/);
 });
 
 test('merge lifecycle table covers early closures, re-entry, and the rebase cycle', () => {
@@ -274,9 +273,9 @@ test('merge lifecycle table covers early closures, re-entry, and the rebase cycl
     /merge-outcome\s+contextual-analysis\s+outcome conflicted; working_language already selected/,
     /resolution\s+contextual-analysis/,
     /verification\s+contextual-analysis/,
-    /verification\s+authorization\s+rebase stopped/,
+    /verification\s+finalization\s+rebase stopped/,
     /adr-ddr\s+terminal\s+rebase finished with nothing staged/,
-    /authorization\s+merge-outcome\s+rebase stopped; answer yes/,
+    /finalization\s+merge-outcome\s+rebase stopped; command-local authority/,
     /<any>\s+terminal\s+the worker returned a closing result/,
   ]) {
     assert.match(table, row);
@@ -296,9 +295,82 @@ test('merge presentation points at the TODO policy instead of restating it', () 
   assert.doesNotMatch(presentation, /\[~\] Merge <source> into <target>/);
   assert.match(presentation, /TaskUpdate`\/`TaskList` on Claude Code, `todowrite` and the session\s+todo surface on opencode/);
   assert.match(policy, /Analyze conflict alternatives/);
-  assert.match(policy, /Authorize rebase continuation/);
-  assert.match(policy, /Authorize collision repair commit/);
+  assert.match(policy, /Continue rebase/);
+  assert.match(policy, /Commit collision repair/);
   assert.match(policy, /typed branch that\s+passed the coordinator's validation/);
   assert.match(policy, /Render no\s+merge TODO while that validation is pending/);
   assert.match(policy, /No TODO\s+transition authorizes\s+a write or stage/);
+});
+
+test('fast-track hands each strategy to presentation before automatic application', () => {
+  const { instructions, coordinator, worker, presentation } = cards();
+  const strategy = section(instructions, '#### The strategy proposal', '#### Writing the resolution');
+  assertInOrder(strategy, [
+    'In fast-track, return it as `completed`',
+    'before writing any resolution',
+    'the coordinator presents it and continues you',
+    'that continuation is',
+    'Every later strategy takes the same hand-off',
+    'In normal mode, return it as `needs_input`',
+    'value: "apply-strategy"', 'value: "revise-strategy"', 'value: "decline-strategy"',
+  ]);
+  const handoff = section(coordinator, '**Strategy presentation and application.**', '**Resolution validation.**');
+  assertInOrder(handoff, ['validate its completeness', 'print the', 'complete strategy', 'continue the same worker']);
+  assert.match(handoff, /continue the same worker, unprompted/);
+  assert.match(handoff, /Repeat for every new conflict or strategy revision, including later rebase\s+stops/);
+  assert.match(worker, /coordinator's fast-track\s+presentation-and-application continuation/);
+  assert.match(presentation, /Only normal mode uses `render_gate`/);
+  assert.match(strategy, /no valid resolution stops or escalates as usual in either mode/);
+});
+
+test('no suite is unavailable verification, not a question, refusal, or passing test', () => {
+  const { instructions, coordinator, lifecycle, presentation } = cards();
+  const verification = section(instructions, '### Step 8:', '### Step 9:');
+  assert.match(verification, /When no suite is detected[\s\S]+continue to Step 9 for a merge or Step 10 for a stopped rebase/);
+  assert.match(verification, /`verification_result: unavailable`, not passed/);
+  assert.match(verification, /already been applied and staged/);
+  assert.doesNotMatch(verification, /needs_input|Continue\?|code fusion was not performed|On `no`/);
+  assert.match(coordinator, /record `verification_result: unavailable` before proceeding/);
+  assert.match(presentation, /verification_result: pending \| passed \| unavailable \| failed \| cap-exhausted/);
+  assert.match(lifecycle, /method=merge; verification_result ∈ \{passed, unavailable, cap-exhausted\}/);
+  assert.match(lifecycle, /rebase stopped; verification_result ∈ \{passed, unavailable, cap-exhausted\}/);
+  assert.doesNotMatch(lifecycle, /no-suite=no/);
+});
+
+test('automatic local finalization preserves safety, remaining questions, and retry budgets', () => {
+  const { instructions, coordinator, lifecycle } = cards();
+  const scope = section(coordinator, '## Command-local authorization', '## Merge phase adapter');
+  const finalization = section(coordinator, '**Finalization.**', '## Content assignment');
+  assert.match(scope, /merge commit, `git rebase --continue` at each\s+resolved stop, and a collision-repair commit after a finished rebase/);
+  assert.match(scope, /expires when this invocation closes/);
+  assert.match(scope, /applies to no other command/);
+  assert.match(scope, /no push, amend, force,\s+hook bypass, destructive operation, or unrelated change/);
+  assert.match(finalization, /directly execute the operation/);
+  assert.doesNotMatch(finalization, /needs_input|On `yes`|On `no`/);
+  assert.match(finalization, /stop if unrelated staged content would enter a commit/);
+  assert.match(finalization, /On a Git failure,[\s\S]+without bypassing checks or claiming success/);
+  assert.match(instructions, /Working tree\s+has uncommitted changes\. Continue anyway\?/);
+  assert.match(instructions, /Which integration\s+method do you want to use\?/);
+  assert.match(instructions, /Fail in round 1 or 2/);
+  assert.match(instructions, /Fail in round 3[\s\S]+run continues as on a pass/);
+  assert.match(coordinator, /After three rounds without a match, stop without\s+staging/);
+  assert.match(coordinator, /No\s+merge window carries `allow_commit`/);
+  assert.match(lifecycle, /finalization\s+terminal\s+local commit succeeded, or operation failed/);
+  const rules = read('sai/policies/commit-rules.md');
+  assert.doesNotMatch(rules, /sai-merge/);
+  assert.match(coordinator, /§ Command-local authorization below replaces its Authorization gate/);
+  assert.match(rules, /Ask through the native closed-choice picker/);
+  assert.match(rules, /Never use `--no-verify`/);
+});
+
+test('merge task panel and both wrapper descriptions use the new general behavior', () => {
+  const todo = section(read('sai/policies/todo-structure.md'), '## Merge adaptive TODO');
+  assert.doesNotMatch(todo, /Select resolution scope|resolve-artifacts|resolve-code|Authorize merge|Authorize rebase|Authorize collision|no-suite decision/);
+  assert.match(todo, /`resolve-full` \| `Resolve all conflicts` \| Every conflicted route/);
+  assert.match(todo, /`finalization` \| `Finalize merge commit`/);
+  assert.match(todo, /unavailable-suite notice is reported/);
+  const descriptions = ['claude', 'opencode'].map(harness =>
+    read(`commands/${harness}/sai-merge.md`).split('\n').find(line => line.startsWith('description:')));
+  assert.equal(descriptions[0], descriptions[1]);
+  assert.match(descriptions[0], /resolves all conflicts[\s\S]+finalizes locally automatically[\s\S]+fast-track applies presented strategies/);
 });

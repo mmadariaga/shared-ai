@@ -86,3 +86,18 @@ test('merge collision repair data flows from the worker plan to coordinator exec
   assert.match(presentation, /Groups outside the source frontier\s+never render/);
   assert.match(presentation, /never rereads an artifact to fill a missing field/);
 });
+
+test('collision repair finalizes automatically only after the final integration state', () => {
+  const instructions = read('sai/commands/merge/instructions.md');
+  const coordinator = read('sai/commands/merge/coordinator.md');
+  const lifecycle = read('sai/commands/merge/lifecycle.md');
+  const finalization = section(instructions, '### Step 10:');
+  assert.match(finalization, /Return `completed`/);
+  assert.match(finalization, /rebase finished, collision repair staged \| local collision-repair commit/);
+  assert.match(finalization, /A rebase that finished with nothing staged needs no operation/);
+  assert.match(coordinator, /finished rebase with a staged repair[\s\S]+git commit -F -/);
+  assert.match(coordinator, /finished rebase goes to the\s+collision pass/);
+  assert.match(lifecycle, /adr-ddr\s+finalization\s+applicability resolved; repairs applied; final staging done/);
+  assert.match(lifecycle, /adr-ddr\s+terminal\s+rebase finished with nothing staged/);
+  assert.doesNotMatch(finalization, /needs_input|yes \(Recommended\)|On `no`/);
+});

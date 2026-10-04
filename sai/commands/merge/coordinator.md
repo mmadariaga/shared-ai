@@ -2,7 +2,8 @@
 
   Fetch @sai/policies/verified-precondition-handback.md
   Fetch @skills/safe-operations/SKILL.md and use it
-  Fetch @sai/policies/commit-rules.md and follow it at the commit gate.
+  Fetch @sai/policies/commit-rules.md and follow its message and safety rules;
+  § Command-local authorization below replaces its Authorization gate.
   Fetch @sai/policies/command-execution.md and follow it exactly.
   Fetch @sai/policies/remember.md
   Fetch @sai/policies/question-context.md
@@ -37,9 +38,21 @@
     1. Leave `fast_track_active` false.
     2. Use `arguments_value` verbatim.
 
-  Fast-track changes exactly two gates: the method is pinned to `merge` and the
-  scope is `full`. The language question, the strategy confirmation, and every
-  other gate stay.
+  Fast-track pins the method to `merge`; strategy application follows
+  `instructions.md` Step 7. The language question and all unrelated gates
+  stay.
+
+  ## Command-local authorization
+
+  Invoking `/sai-merge` authorizes exactly these local finalization operations
+  for this integration: the merge commit, `git rebase --continue` at each
+  resolved stop, and a collision-repair commit after a finished rebase. Run
+  them **unprompted** after the existing review, verification, collision, and
+  staging checks: report as ordinary text, then execute, with no picker. This
+  grant expires when this invocation closes; it is not a session
+  grant and applies to no other command. It authorizes no push, amend, force,
+  hook bypass, destructive operation, or unrelated change. All remaining
+  safety confirmations and error paths stay in force.
 
   ## Merge phase adapter
 
@@ -76,7 +89,7 @@
     event, and it arrives after ready.
   - `extension_handlers` — for `conflict_detected`, validate the payload,
     record `affected_files` as the conflict inventory (never as a worker
-    write), read the `Categories:` and `Eligible scope:` summary lines, and
+    write), read the `Categories:` summary line, and
     route per § Conflict hand-off.
     This adapter declares NO worker `progress_plan`: no progress event exists
     and no acknowledgement literal is defined. The merge TODO is separate
@@ -180,9 +193,6 @@
     language (once, when they coincide), plus the harness's free-text path when
     it has one. Labels may be localized; each value is the exact language
     token.
-  - `scope` — outside fast-track, the worker's `Eligible scope:` values, worded
-    per the seam.
-
   Store the language answer as invocation-scoped `working_language`, outside
   `arguments_value`, artifacts, configuration, and worker payload
   persistence, and forward the ordered batch answers in one continuation.
@@ -260,15 +270,24 @@
     Record the outcome — `clean` or `conflicted`, and for a rebase `stopped` or
     `finished` — report it with the provenance to the worker, and reconcile the
     TODO to the actual route.
-  - **Resolution validation.** The worker writes `authored` files after
-    `apply-strategy` and returns the `## Complete resolution payload` JSON
+  - **Strategy presentation and application.** Follow `instructions.md` Step 7
+    for the mode-specific hand-off. In normal mode the strategy arrives as a
+    gate and the user's `apply-strategy` sets `strategy_status: confirmed`. For
+    a fast-track strategy `completed` result, validate its completeness through
+    the presentation seam, print the complete strategy, set
+    `strategy_status: confirmed`, then continue the same worker, unprompted,
+    with an instruction to apply that presented strategy under invocation
+    authority. Repeat for every new conflict or strategy revision, including later rebase
+    stops. This strategy-only result is not terminal navigation.
+  - **Resolution validation.** The worker writes `authored` files after the
+    Step 7 application hand-off and returns the `## Complete resolution payload` JSON
     object defined in `@sai/commands/merge/instructions.md`. Surrounding prose
     is explanation, never file content. Validate the whole object at once:
     1. `selected_contextual_decisions` holds exactly one `ours`, `theirs`, or
        `synthesis` per semantic conflict, each matching the decision the
        confirmed strategy states for it.
-    2. `files` holds exactly one record per conflicted path in the selected
-       scope, with no duplicate or unexpected path, the worker's category, and
+    2. `files` holds exactly one record per affected conflicted path,
+       with no duplicate or unexpected path, the worker's category, and
        `decisions` that agree with the decision records.
     3. `source` is `git-ours` or `git-theirs` with empty `regions`, or
        `authored` with at least one region, each region's `conflict_id` present
@@ -285,7 +304,7 @@
     byte-identical to its `git show :2:` / `:3:` stage. An `authored` file
     matches its stage content outside the resolved regions and carries the
     confirmed decisions inside them. No write lands outside the agreed regions
-    or the selected scope. On a divergence (an unapproved change, an unresolved
+    or the affected file set. On a divergence (an unauthorized change, an unresolved
     region, an out-of-scope write, any deviation from the strategy), stage
     nothing and send the named divergence to the same worker as a correction,
     then review again. After three rounds without a match, stop without
@@ -297,9 +316,11 @@
   - **Verification.** Resume the worker to run the suite. For each failed
     round below three, the worker applies its fixes; re-stage the corrected
     files and resume it. On cap exhaustion the resolution stays staged and the
-    run continues. A new conflict or inconsistency arrives as a
-    `strategy-analysis` event: route it per § Conflict hand-off, and require a
-    fresh strategy confirmation before the next resolution write.
+    run continues. When the worker reports no suite, present its notice and
+    record `verification_result: unavailable` before proceeding unprompted,
+    per Step 8. A new conflict or inconsistency arrives as a
+    `strategy-analysis` event: route it per § Conflict hand-off, then repeat
+    the Step 7 mode-specific strategy hand-off before the next resolution write.
   - **Collision repair.** When the worker's collision plan is
     `repair-required`, for each rename first record its worker data in the
     seam's `adr_ddr_renames`, then apply exactly the worker's replacements —
@@ -310,21 +331,27 @@
     escalations are reported, never modified. Add renamed and updated paths to
     the union.
   - **Final staging.** `git add` exactly the union.
-  - **Authorization.** On the worker's authorization `needs_input`, build
-    `compact_authorization_summary` and present it with the exact question
-    and options. On `yes`:
+  - **Finalization.** On the worker's Step 10 `completed` report, build and
+    present `compact_finalization_summary`, then directly execute the operation
+    unprompted under § Command-local authorization.
+    This pre-operation report is not terminal navigation:
     - merge in progress, or a finished rebase with a staged repair — pass the
       informative message defined by **Informative messages**
       (`merge_base..source_sha`) literally on standard input to
       `git commit -F -`, using `@sai/policies/command-execution.md`; show the
-      resulting SHA and subject;
+      resulting SHA and subject, then continue the worker with the actual
+      success outcome for its closing summary;
     - rebase stopped — `GIT_EDITOR=true git rebase --continue`, then report
       the new outcome to the worker: a new conflicted commit re-enters
       § Conflict hand-off as `strategy-analysis`; a finished rebase goes to the
       collision pass.
 
-    On `no`, record `authorization_status: refused` and pass the worker's
-    refusal record through the seam; stop without committing.
+    Record the actual outcome in `finalization_status`. On a Git failure,
+    preserve the current state, surface the error, and follow the existing
+    error path without bypassing checks or claiming success. Finalize only
+    integration-owned staged content: retain unrelated working-tree changes,
+    and stop if unrelated staged content would enter a commit. A finished
+    rebase with nothing pending to commit creates no extra commit.
 
   ## Content assignment
 

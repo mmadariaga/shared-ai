@@ -60,7 +60,8 @@ asks.
 
 Your writes are content writes to the working tree:
 
-- after `apply-strategy`, the region splices of each `authored` file from the
+- after normal-mode `apply-strategy` or the coordinator's fast-track
+  presentation-and-application continuation, the region splices of each `authored` file from the
   confirmed resolution payload;
 - the verification fixes the coordinator forwards, applied the same way;
 - the named divergence corrections from the coordinator's post-resolution

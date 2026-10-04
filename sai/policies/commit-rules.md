@@ -138,7 +138,7 @@ for the remainder of the in-conversation session. The grant is in-memory only:
 never written to `.openspec.yaml`, config, or any file, and inactive at every
 new chat or new `/sai-*` invocation.
 
-The grant never authorizes `push`, `--force`, branch create/switch, rebase,
+The session grant never authorizes `push`, `--force`, branch create/switch, rebase,
 merge, tag, or `gh pr`; those operations always require their own
 per-operation approval, regardless of the flag. Any git mutation not covered by
 a granted gate likewise requires its own per-operation approval. A consuming
