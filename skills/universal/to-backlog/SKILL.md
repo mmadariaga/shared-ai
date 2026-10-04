@@ -35,6 +35,11 @@ registry `providers/registry.json` from that same directory. Locate
 then user-global root. Use only those roots; keep paths as separate quoted
 arguments. The caller's working directory is the target repository directory.
 
+Resolution selects a registered provider; that provider may resolve its own
+destination through its read-only CLI. Load only the returned provider's
+instructions. The extension contract is in `providers/resolution.md`; read it
+when adding or changing a provider.
+
 For **create**, read `create.md` beside this skill and follow its destination
 selection. For **update**, read `update.md` beside this skill and follow its
 origin resolution and baseline reading. **Complete when:** one mode is selected

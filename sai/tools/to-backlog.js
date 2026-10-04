@@ -23,10 +23,22 @@ function address(value) {
 function detect(value, registry) {
   const parsed = address(value);
   if (!parsed) return [];
-  return registry.providers.filter(entry => entry.hosts.includes(parsed.host)).map(entry => ({ provider: entry.id, repository: parsed.repository }));
+  const hosted = registry.providers.filter(entry => entry.hosts?.includes(parsed.host));
+  const entries = hosted.length ? hosted : registry.providers.filter(entry => entry.resolution === 'provider');
+  return entries.map(entry => ({ provider: entry.id, repository: entry.resolution === 'provider' ? value : parsed.repository }));
 }
 
-function resolve({ explicit = {}, config = {}, remotes = [] }, registry) {
+function loadAdapter(entry) {
+  if (!/^to-backlog-[a-z0-9-]+\.js$/.test(entry.adapter)) throw new Error('Invalid registry adapter');
+  validateInstructions(entry);
+  return require(path.join(__dirname, entry.adapter));
+}
+
+function validateInstructions(entry) {
+  if (!/^providers\/[a-z0-9-]+\.md$/.test(entry.instructions)) throw new Error('Invalid provider instruction reference');
+}
+
+function resolve({ explicit = {}, config = {}, remotes = [] }, registry, io = {}) {
   for (const input of [explicit, config]) {
     if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('Destination must be an object');
     for (const [key, value] of Object.entries(input)) {
@@ -42,15 +54,22 @@ function resolve({ explicit = {}, config = {}, remotes = [] }, registry) {
   let provider = explicit.provider || (explicitAddress.length === 1 ? explicitAddress[0].provider : config.provider);
   let repository = selected.repository;
   const fromAddress = repository ? detect(repository, registry) : [];
-  if (address(repository) && !fromAddress.length) return { status: 'needs_input', reason: 'unrecognized-destination', repository };
   if (!provider && fromAddress.length === 1) provider = fromAddress[0].provider;
+  const delegated = registry.providers.find(entry => entry.id === provider && entry.resolution === 'provider');
+  if (delegated) {
+    if (!delegated.capabilities.includes('publish')) return { status: 'unsupported', provider };
+    validateInstructions(delegated);
+    const result = (io.loadAdapter || loadAdapter)(delegated).resolve({ explicit, config, remotes }, io);
+    return { ...result, provider, instructions: delegated.instructions, adapter: delegated.adapter };
+  }
+  if (address(repository) && !fromAddress.length) return { status: 'needs_input', reason: 'unrecognized-destination', repository };
   if (fromAddress.length === 1) repository = fromAddress[0].repository;
   if (provider && fromAddress.length && !fromAddress.some(item => item.provider === provider)) {
     return { status: 'needs_input', reason: 'provider-destination-conflict' };
   }
   const candidates = [...new Map(remotes.flatMap(value => detect(value, registry)).map(item => [`${item.provider}:${item.repository}`, item])).values()];
   if (!provider) {
-    const unknownHosts = [...new Set(remotes.map(address).filter(parsed => parsed && !registry.providers.some(entry => entry.hosts.includes(parsed.host))).map(parsed => parsed.host))];
+    const unknownHosts = [...new Set(remotes.filter(value => !detect(value, registry).length).map(address).filter(Boolean).map(parsed => parsed.host))];
     if (unknownHosts.length) return { status: 'needs_input', reason: 'provider-ambiguous', candidates, unknownHosts };
     const providers = [...new Set(candidates.map(item => item.provider))];
     if (providers.length !== 1) return { status: 'needs_input', reason: 'provider-ambiguous', candidates };
@@ -58,6 +77,11 @@ function resolve({ explicit = {}, config = {}, remotes = [] }, registry) {
   }
   const entry = registry.providers.find(item => item.id === provider);
   if (!entry || !entry.capabilities.includes('publish')) return { status: 'unsupported', provider };
+  validateInstructions(entry);
+  if (entry.resolution === 'provider') {
+    const result = (io.loadAdapter || loadAdapter)(entry).resolve({ explicit, config, remotes }, io);
+    return { ...result, provider, instructions: entry.instructions, adapter: entry.adapter };
+  }
   if (!repository) {
     const repos = candidates.filter(item => item.provider === provider);
     if (repos.length !== 1) return { status: 'needs_input', reason: 'repository-ambiguous', provider, candidates: repos };
@@ -75,24 +99,23 @@ function main(argv) {
     const request = JSON.parse(fs.readFileSync(0, 'utf8'));
     const registry = JSON.parse(fs.readFileSync(registryPath, 'utf8'));
     const cwd = process.cwd();
+    const io = { run: (command, args, input) => run(command, args, cwd, input) };
     let result;
     if (operation === 'resolve') {
       let config = {};
       try { config = JSON.parse(fs.readFileSync(path.join(cwd, '.to-backlog.json'), 'utf8')); }
       catch (error) { if (error.code !== 'ENOENT') throw error; }
-      result = resolve({ explicit: request.explicit, config }, registry);
+      result = resolve({ explicit: request.explicit, config }, registry, io);
       // Unsupported explicit providers and complete destinations need no Git.
       if (result.status === 'needs_input' && ['provider-ambiguous', 'repository-ambiguous'].includes(result.reason)) {
         const remotes = run('git', ['remote', '-v'], cwd).split(/\r?\n/).map(line => line.split(/\s+/)[1]).filter(Boolean);
-        result = resolve({ explicit: request.explicit, config, remotes }, registry);
+        result = resolve({ explicit: request.explicit, config, remotes }, registry, io);
       }
     } else {
       const entry = registry.providers.find(item => item.id === request.provider);
       if (!entry?.capabilities.includes(operation)) result = { status: 'unsupported', provider: request.provider };
       else {
-        if (!/^to-backlog-[a-z0-9-]+\.js$/.test(entry.adapter)) throw new Error('Invalid registry adapter');
-        const adapter = require(path.join(__dirname, entry.adapter));
-        result = adapter[operation](request, { run: (command, args, input) => run(command, args, cwd, input) });
+        result = loadAdapter(entry)[operation](request, io);
       }
     }
     process.stdout.write(JSON.stringify(result) + '\n');
