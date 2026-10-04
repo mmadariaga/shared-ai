@@ -1,5 +1,5 @@
 ---
-description: Capture one conversation work item in the backlog after confirmation
+description: Create a backlog item or update the originating issue after confirmation
 allowed-tools: {{capabilityAllowedTools}}
 ---
 
