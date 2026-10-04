@@ -5,7 +5,11 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-function read(file) { return fs.readFileSync(path.join(__dirname, '..', file), 'utf8'); }
+function read(file) {
+  // Normalize CRLF checkouts (Windows autocrlf) to LF so heading scans
+  // hold on every platform. See .gitattributes (eol=lf).
+  return fs.readFileSync(path.join(__dirname, '..', file), 'utf8').replace(/\r\n/g, '\n');
+}
 
 test('implementation coordinator owns typed lookup decisions for build and standalone', () => {
   const coordinator = read('sai/commands/implement/coordinator.md');

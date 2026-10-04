@@ -6,7 +6,9 @@ const test = require('node:test');
 const repoRoot = path.join(__dirname, '..');
 
 function read(relativePath) {
-  return fs.readFileSync(path.join(repoRoot, relativePath), 'utf8');
+  // Normalize CRLF checkouts (Windows autocrlf) to LF so `## Title\n`
+  // section scans hold on every platform. See .gitattributes (eol=lf).
+  return fs.readFileSync(path.join(repoRoot, relativePath), 'utf8').replace(/\r\n/g, '\n');
 }
 
 function compact(value) {

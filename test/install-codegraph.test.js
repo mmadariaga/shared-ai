@@ -258,6 +258,27 @@ function makeProjectDir({ withOpenspec = true, withConfig = true } = {}) {
   return dir;
 }
 
+// The setup CLI requires the openspec binary (offerOpenspecInstall probes
+// `openspec --version` before any other step). CI runners do not provide it,
+// so CLI-spawning tests install a fake `openspec` on PATH that satisfies the
+// probe. The posix script covers bash shells; the .cmd shim covers cmd.exe
+// (PATHEXT) when the probe runs with `shell: true` on Windows.
+function makeFakeOpenspecBin() {
+  const binDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-fake-openspec-'));
+  fs.writeFileSync(path.join(binDir, 'openspec'), '#!/bin/sh\nexit 0\n', { mode: 0o755 });
+  fs.writeFileSync(path.join(binDir, 'openspec.cmd'), '@echo off\r\nexit /b 0\r\n');
+  try {
+    fs.chmodSync(path.join(binDir, 'openspec'), 0o755);
+  } catch {
+    // Windows has no posix mode bits; the .cmd shim carries that platform.
+  }
+  return binDir;
+}
+
+function envWithFakeOpenspec(binDir) {
+  return { ...process.env, PATH: binDir + path.delimiter + process.env.PATH };
+}
+
 test('setup runs with an injected workflow: copy before workflow, ctx readline live, closed once after settle', async () => {
   const restoreSpawn = stubSpawnSync();
   const projectDir = makeProjectDir();
@@ -451,11 +472,13 @@ test('requiring bin/setup.js performs no side effects and exports only main and 
 
 test('setup CLI announces the target path and lets the user decline openspec init', () => {
   const dir = makeProjectDir({ withOpenspec: false });
+  const binDir = makeFakeOpenspecBin();
   try {
     const res = childProcess.spawnSync(process.execPath, [path.join(__dirname, '..', 'bin', 'setup.js')], {
       input: 'n\n',
       encoding: 'utf8',
       cwd: dir,
+      env: envWithFakeOpenspec(binDir),
     });
     assert.equal(res.status, 0, 'decline must exit 0');
     assert.ok(res.stdout.includes("Run 'openspec init'?"), 'openspec initialization still requires confirmation');
@@ -463,6 +486,7 @@ test('setup CLI announces the target path and lets the user decline openspec ini
     assert.ok(res.stdout.startsWith('Configuring SAI workflow at '), 'the target path is announced before any prompt');
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
+    fs.rmSync(binDir, { recursive: true, force: true });
   }
 });
 
@@ -485,14 +509,17 @@ test('setup CLI maps a successful run to exit 0 (success)', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-setup-'));
   fs.mkdirSync(path.join(dir, 'openspec'), { recursive: true });
   fs.writeFileSync(path.join(dir, 'openspec', 'config.yaml'), 'schema: sai-workflow\n');
+  const binDir = makeFakeOpenspecBin();
   try {
     const res = childProcess.spawnSync(process.execPath, [path.join(__dirname, '..', 'bin', 'setup.js'), dir], {
       encoding: 'utf8',
       cwd: path.join(__dirname, '..'),
+      env: envWithFakeOpenspec(binDir),
     });
     assert.equal(res.status, 0, 'successful run must exit 0');
     assert.ok(res.stdout.includes(`SAI workflow configured at ${dir}.`), 'completion message printed');
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
+    fs.rmSync(binDir, { recursive: true, force: true });
   }
 });

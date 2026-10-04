@@ -3,6 +3,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const manifest = require('../sai/install-manifest.json');
@@ -132,7 +133,7 @@ test('worker rendering keeps model/effort/variant seeds and native syntax', () =
 });
 
 test('changing required grants preserves scalar and structured user-owned tunables', () => {
-  const root = fs.mkdtempSync('/tmp/opencode/sai-tunable-capabilities-');
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-tunable-capabilities-'));
   const sourcePath = path.join(root, 'source.md');
   const destinationPath = path.join(root, 'destination.md');
   for (const harness of ['claude', 'opencode']) {
