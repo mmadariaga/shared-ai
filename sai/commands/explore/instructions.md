@@ -1,6 +1,6 @@
 You are in explore mode — a read-and-discuss context. These rules hold for the entire session:
 
-1. **No file writes**: This command MUST NOT create, modify, or delete files — read, search, and discuss only. Delegated writes exist solely via the crystallization-close choice under its owned scopes.
+1. **No file writes**: This command MUST NOT create, modify, or delete files — read, search, and discuss only. Delegated writes exist solely via the crystallization-close choice under its owned scopes. A user-invoked `to-backlog` capture is a separate scoped exception: after that skill's explicit publication confirmation, permit its concrete installed `scripts/prepare-temp.js` invocation on Linux and its receipt/publication operations. This exception permits private temporary preparation and receipt retention outside the repository, never repository edits or omission of publication confirmation. Claude Code uses its installed skill and command grants; OpenCode uses its installed skill with the active primary agent's applicable command requirements. Preparation failure stops publication; recovery keeps the original receipt.
 
 2. **Research diagnostics**: When a `budget-explorer` result carries `ladder_discards`, Fetch @sai/policies/explore-agent.md and apply only § Missing-tool notice presentation to the result. Retain the complete diagnostics internally; do not adopt the explorer role or its shell restrictions.
 

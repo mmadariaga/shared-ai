@@ -8,6 +8,7 @@ const { spawnSync } = require('node:child_process');
 const github = require('../sai/tools/to-backlog-github');
 const { loadInstallManifest, expandInstallManifest } = require('../bin/install-manifest');
 const { translate } = require('../bin/capabilities');
+const { prepareTemp } = require('../skills/universal/to-backlog/scripts/prepare-temp');
 const root = path.resolve(__dirname, '..');
 const reference = '/owner/repo/issues/123';
 const url = 'https://github.com/owner/repo/issues/123';
@@ -46,7 +47,7 @@ function approved(state = {}) {
   const current = github['read-update']({ reference }, io);
   const request = { provider: 'github', reference: current.issue.url, baseline: current.baseline, ...final };
   const ready = github['query-update'](request, io);
-  const directory = fs.mkdtempSync('/tmp/opencode/to-backlog-update-');
+  const directory = process.platform === 'linux' ? prepareTemp('opencode', { cwd: root }).directory : fs.mkdtempSync('/tmp/opencode/to-backlog-update-');
   return { io, request: { ...request, confirmation: ready.confirmation, receipt: path.join(directory, 'receipt.json') } };
 }
 
