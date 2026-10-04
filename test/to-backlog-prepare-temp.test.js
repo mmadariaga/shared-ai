@@ -4,6 +4,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const os = require('node:os');
 const { spawnSync } = require('node:child_process');
 const { prepareTemp } = require('../skills/universal/to-backlog/scripts/prepare-temp');
 const { expandInstallManifest } = require('../bin/install-manifest');
@@ -150,7 +151,7 @@ test('both harnesses install the same skill-owned script and declare only its co
   const research = translate(manifest.capabilities, 'research', 'opencode').profile.shell;
   assert.ok(!research.some(pattern => pattern.includes('prepare-temp')));
   for (const harness of ['claude', 'opencode']) {
-    const base = `/tmp/opencode/prepare-temp-install-${harness}`;
+    const base = path.join(os.tmpdir(), `prepare-temp-install-${harness}`);
     const destinationRoot = Object.fromEntries(['commands', 'agents', 'sai', 'skills', 'config', 'root'].map(key => [key, path.join(base, key)]));
     const projections = expandInstallManifest(manifest, { harness, repoRoot, destinationRoot });
     const installed = projections.find(item => item.destinationPath === path.join(destinationRoot.skills, 'to-backlog/scripts/prepare-temp.js'));

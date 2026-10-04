@@ -4,6 +4,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const os = require('node:os');
 const { spawnSync } = require('node:child_process');
 const github = require('../sai/tools/to-backlog-github');
 const { loadInstallManifest, expandInstallManifest } = require('../bin/install-manifest');
@@ -14,6 +15,11 @@ const reference = '/owner/repo/issues/123';
 const url = 'https://github.com/owner/repo/issues/123';
 const baseline = { title: 'Original', description: 'Requested work\n\nUnrelated appendix: ñ\n' };
 const final = { title: '-n $(touch nope)', description: 'Refined work\n\nUnrelated appendix: ñ\n' };
+
+function temp(prefix) {
+  const base = process.platform === 'linux' && fs.existsSync('/tmp/opencode') ? '/tmp/opencode' : os.tmpdir();
+  return fs.mkdtempSync(path.join(base, prefix));
+}
 
 function fakeUpdate(state, command, args, input) {
   assert.equal(command, 'gh');
@@ -47,7 +53,7 @@ function approved(state = {}) {
   const current = github['read-update']({ reference }, io);
   const request = { provider: 'github', reference: current.issue.url, baseline: current.baseline, ...final };
   const ready = github['query-update'](request, io);
-  const directory = process.platform === 'linux' ? prepareTemp('opencode', { cwd: root }).directory : fs.mkdtempSync('/tmp/opencode/to-backlog-update-');
+  const directory = process.platform === 'linux' ? prepareTemp('opencode', { cwd: root }).directory : temp('to-backlog-update-');
   return { io, request: { ...request, confirmation: ready.confirmation, receipt: path.join(directory, 'receipt.json') } };
 }
 
@@ -186,16 +192,16 @@ test('E1/E3 instruction selection preserves manual creation and explicit origin 
 test('both harnesses install every branch and update provider through existing capability seam', () => {
   const manifest = loadInstallManifest(root);
   for (const harness of ['claude', 'opencode']) {
-    const directory = fs.mkdtempSync('/tmp/opencode/to-backlog-update-projection-');
+    const directory = temp('to-backlog-update-projection-');
     const destinationRoot = Object.fromEntries(['root', 'sai', 'commands', 'skills', 'agents', 'config'].map(key => [key, path.join(directory, key)]));
     const projection = expandInstallManifest(manifest, { harness, repoRoot: root, destinationRoot });
-    for (const suffix of ['skills/to-backlog/create.md', 'skills/to-backlog/update.md', 'skills/to-backlog/providers/github-update.md', 'sai/tools/from-backlog-github.js']) assert.ok(projection.some(item => item.destinationPath.endsWith(suffix)), `${harness}: ${suffix}`);
+    for (const suffix of ['skills/to-backlog/create.md', 'skills/to-backlog/update.md', 'skills/to-backlog/providers/github-update.md', 'sai/tools/from-backlog-github.js']) assert.ok(projection.some(item => item.destinationPath.endsWith(path.join(...suffix.split('/')))), `${harness}: ${suffix}`);
     assert.ok(translate(manifest.capabilities, 'to-backlog-command', harness).profile.shell.includes('node {sai}/tools/to-backlog.js *'));
   }
 });
 
 test('update CLI dispatch handles structured Markdown data through registry and simulated gh', { skip: process.platform === 'win32' }, () => {
-  const directory = fs.mkdtempSync('/tmp/opencode/to-backlog-update-cli-');
+  const directory = temp('to-backlog-update-cli-');
   const statePath = path.join(directory, 'state.json');
   fs.writeFileSync(statePath, '{}');
   fs.writeFileSync(path.join(directory, 'gh'), `#!${process.execPath}\nconst assert=require('node:assert/strict'); const fs=require('node:fs');\n${fakeUpdate.toString()}\nconst file=process.env.FAKE_GH_STATE; const state=JSON.parse(fs.readFileSync(file));\ntry { console.log(fakeUpdate(state,'gh',process.argv.slice(2),fs.readFileSync(0,'utf8'))); } catch(e) { console.error(e.message);process.exitCode=1; } finally { fs.writeFileSync(file,JSON.stringify(state)); }\n`, { mode: 0o700 });
@@ -207,7 +213,7 @@ test('update CLI dispatch handles structured Markdown data through registry and 
   const current = invoke('read-update', { provider: 'github', reference });
   const request = { provider: 'github', reference: current.issue.url, baseline: current.baseline, ...final };
   const ready = invoke('query-update', request);
-  const receipt = path.join(fs.mkdtempSync('/tmp/opencode/to-backlog-update-receipt-'), 'receipt.json');
+  const receipt = path.join(temp('to-backlog-update-receipt-'), 'receipt.json');
   assert.equal(invoke('update', { ...request, confirmation: ready.confirmation, receipt }).status, 'complete');
   assert.equal(invoke('recover-update', { provider: 'github', receipt }).status, 'complete');
   assert.equal(fs.existsSync(path.join(directory, 'nope')), false);

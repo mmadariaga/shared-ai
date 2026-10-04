@@ -16,12 +16,12 @@ Both harnesses SHALL expose `/to-backlog` through minimal invocation wrappers lo
 
 ### Requirement: Mirrored ancillary installation
 
-The installation manifest SHALL project the to-backlog skill, create.md and update.md branch instructions, provider Markdown instructions including GitHub update mechanics, JSON registry, invocation wrappers, and Node tools for both Claude Code and opencode. Branch and provider references SHALL use a managed recursive projection covering their Markdown and JSON files without duplicating the main skill projection. That ancillary projection SHALL also install `prepare-temp.md` and the same skill-owned `scripts/prepare-temp.js` for both harnesses with managed ownership and content drift tracking. JavaScript tools in `sai/tools`, including the reusable from-backlog GitHub reader, SHALL use the existing sai-tools projection; the preparation helper SHALL remain under the installed to-backlog skill rather than sai-tools. Both invocation descriptions SHALL identify creation and originating-issue update.
+The installation manifest SHALL project the to-backlog skill, create.md and update.md branch instructions, provider Markdown instructions including GitHub update mechanics, JSON registry, invocation wrappers, and Node tools for both Claude Code and opencode. Branch and provider references SHALL use a managed recursive projection covering their Markdown and JSON files without duplicating the main skill projection. That ancillary projection SHALL also install `issue-format.md`, `prepare-temp.md`, and the same skill-owned `scripts/prepare-temp.js` for both harnesses with managed ownership and content drift tracking. JavaScript tools in `sai/tools`, including the reusable from-backlog GitHub reader, SHALL use the existing sai-tools projection; the preparation helper SHALL remain under the installed to-backlog skill rather than sai-tools. Both invocation descriptions SHALL identify creation and originating-issue update.
 
 #### Scenario: Both harness projections expand
 
 - **WHEN** installation projections are expanded for Claude Code and opencode
-- **THEN** each includes the main skill, both branch files, creation and update GitHub instructions, registry, wrapper, common resolver, GitHub publication adapter, reusable GitHub issue reader, preparation instructions, and identical skill-owned preparation script.
+- **THEN** each includes the main skill, both branch files, creation and update GitHub instructions, registry, wrapper, common resolver, GitHub publication adapter, reusable GitHub issue reader, canonical issue-format reference, preparation instructions, and identical skill-owned preparation script.
 
 ### Requirement: Simulated regression coverage
 
@@ -65,3 +65,17 @@ Regression tests SHALL cover distinct and concurrent receipt-directory creation,
 
 - **WHEN** instruction tests inspect the normative exploration rule and common read-only reminder
 - **THEN** both preserve the explicitly confirmed outside-repository to-backlog exception without allowing repository edits or treating proposal emission as write authorization.
+
+### Requirement: Issue format source-contract regression coverage
+
+Regression tests SHALL inspect the authoritative companion and common skill for mandatory loading before both drafting branches, section-local rules and order, empty optional-section omission, agreement and research authority boundaries, cumulative maturity and invalidation, update preservation, identifier allocation and counters, and separate publication confirmation. Projection tests SHALL verify one companion destination with identical source content for each supported harness and managed content tracking. These tests SHALL enforce source contracts rather than claim to execute or validate model-generated issue content.
+
+#### Scenario: Instruction contract regression
+
+- **WHEN** issue-format regression tests inspect the companion reference and common drafting instructions
+- **THEN** they verify the format rules, update boundaries, completion checks, and mandatory loading while retaining separate publication confirmation.
+
+#### Scenario: Companion projection regression
+
+- **WHEN** tests expand installation projections for Claude Code and opencode
+- **THEN** each harness has exactly one installed to-backlog/issue-format.md destination sourced from the canonical companion under the managed content-tracked reference projection.
