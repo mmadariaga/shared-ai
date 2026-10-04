@@ -50,10 +50,9 @@ route-owned.
 5. **Next step.** Use the route's existing navigation or recovery options,
    appropriate to the outcome. Apply and Build use the same pinned completion
    message only on completion; stopped reports use the existing stop/recovery
-   guidance instead. For an unplanned stop whose options require a separate
-   question, identify the decision here and present the existing options after
-   the report per `stop-options.md`; retain its planned-stop exclusions and
-   existing choices, with no second question.
+   guidance instead. For an unplanned stop, name the required decision here;
+   the options of `@sai/policies/stop-options.md` follow Execution details as a
+   separate decision prompt, outside the report.
 6. **Execution details**, last report section. Put the technical record of
    work, verification results, affected files, created commits, declined/no-op
    commit decisions, collected tool-generated commit reports, and correction

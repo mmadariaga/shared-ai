@@ -1,5 +1,5 @@
 ---
-description: Merge, rebase, or squash-rebase a local branch — resolves conflicts under one confirmed strategy, repairs ADR/DDR number collisions, and commits only after you authorize it.
+description: Merge, rebase, or squash-rebase a branch — resolves all conflicts, reports unavailable tests, and finalizes locally automatically; fast-track applies presented strategies without approval.
 argument-hint: "[--fast-track]"
 model: opus
 effort: medium

@@ -124,7 +124,7 @@ Claude Code and opencode route these core phases through a coordinator and a man
 
 | Command | Purpose |
 |---------|---------|
-| `/sai-merge` | Integrate a local branch into the current branch with `Merge`, `Rebase`, or `Rebase with squash` — conflict resolution, ADR/DDR collision repair, and explicit final authorization. |
+| `/sai-merge` | Integrate a branch with `Merge`, `Rebase`, or `Rebase with squash` — full conflict resolution, ADR/DDR collision repair, and automatic local finalization. Normal mode approves strategies; `--fast-track` applies them after presentation. Unavailable tests are reported, not counted as passing. |
 | `/sai-worktree` | Interactive git worktree manager — inventory, create, and delete linked worktrees. Attempts to initialize CodeGraph in new worktrees when available. |
 | `/sai-status` | Read-only progress panel — single change or table over every active change. Never writes anything. |
 | `/sai-retire-docs` | Read-only, index-driven analysis of active ADRs, DDRs, and related specs. Asks for explicit per-candidate confirmation before any archival move. |

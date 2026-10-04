@@ -8,9 +8,9 @@ state-changing git command, file rename, collision replacement, and staging
 operation belongs to the coordinator.
 
 A **semantic conflict** is a conflict between intended behavior or
-architecture, not between text ranges: you explain the intent you can observe,
-the human owns the architectural choice, and the coordinator executes only the
-confirmed complete outcome.
+architecture, not between text ranges: explain the intent you can observe and
+execute only the **confirmed** strategy — user-approved in normal mode,
+presented by the coordinator in fast-track (Step 7).
 
 Once a `working_language` is selected, write explanatory prose and questions in
 it; hashes, paths, identifiers, option values, protocol tokens, JSON keys, and
@@ -22,9 +22,8 @@ artifact formats stay unchanged.
 
 `arguments_value` carries no merge-specific flags; `--fast-track` reaches you
 only as the `fast_track_active` session state. Fast-track pins the method to
-`merge` and auto-applies `full` scope. Every other gate, the working-language
-question, the strategy confirmation, verification, and the collision pass run
-unchanged.
+`merge` and applies each strategy after presentation per Step 7. The
+working-language question, verification budgets, and collision pass stay.
 
 ---
 
@@ -55,9 +54,8 @@ Closed decisions travel in as few user trips as their dependencies allow:
 | trip | when | items |
 | --- | --- | --- |
 | Batch 1 | always | `dirty` (only when dirty), `method` (not in fast-track), `branch` |
-| Batch 2 | first conflict of the run | `language` (coordinator-owned), `scope` (not in fast-track) |
-| Strategy | every conflict stop | the global strategy confirmation |
-| Authorization | per Step 8 | the method-aware finalization question |
+| Batch 2 | first conflict of the run | `language` (coordinator-owned) |
+| Strategy | every conflict stop in normal mode | the global strategy confirmation |
 
 A batch is a `needs_input` carrying `questions: [{id, question, options}]`,
 one stable `id` per item; without `questions` a `needs_input` carries the
@@ -111,8 +109,8 @@ method do you want to use?"** with ordered options:
 `rebase` alone means `squash=no`, and `merge` means `squash=not-applicable`.
 The summary states the current branch and what each method does:
 
-- `Merge` integrates the selected branch into the current branch; the merge
-  commit waits for the final authorization.
+- `Merge` integrates the selected branch into the current branch; the coordinator
+  finalizes it automatically under its command-local authorization.
 - `Rebase` replays the current branch's commits onto the selected branch one by
   one, so conflicts may appear at each commit.
 - `Rebase with squash` first unifies the current branch's unique commits
@@ -216,10 +214,6 @@ classify each file:
 - **code** — everything else. Without an `openspec/` directory, `openspec/`
   paths are code.
 
-Derive the eligible scope values in this order, keeping only applicable ones:
-`full` (always), `artifacts` (a specs or adr-ddr conflict exists), `code` (a
-code conflict exists).
-
 Return the closed nonterminal event:
 
 ```yaml
@@ -233,12 +227,11 @@ continuation_state: language-selection
 `continuation_state` is `language-selection` on the run's first conflict and
 `strategy-analysis` on every later one (a rebase stopping at a new commit, or a
 new problem from application or verification). The `summary` is a concise state
-report: conflicts detected, the integration still unresolved, and two
-classification lines the coordinator parses:
+report: conflicts detected, the integration still unresolved, and one
+classification line the coordinator parses:
 
 ```text
 Categories: specs=<n>, adr-ddr=<n>, code=<n>
-Eligible scope: <eligible values in order>
 ```
 
 The event carries no semantic analysis, proposal, question, or options.
@@ -246,16 +239,13 @@ The event carries no semantic analysis, proposal, question, or options.
 `changed_files`.
 
 On a `language-selection` event the coordinator asks Batch 2 and forwards the
-`language` and `scope` answers; the `scope` item uses the question **"Select
-resolution scope"** with the labels `Full scope (Recommended)`,
-`Artifacts only (specs + ADR/DDR)`, and `Code only` for the eligible values. In
-fast-track, scope is `full`. On a `strategy-analysis` event the coordinator
-continues you with the language and scope already selected.
+`language` answer. On a `strategy-analysis` event the coordinator continues you
+with the language already selected.
 
 ### Step 6: Intent reconstruction
 
-Work only on the files inside the selected scope; list the others in a
-**Deferred (out of scope)** section of the strategy.
+Analyze every file in `affected_files`; the strategy and payload cover them
+all.
 
 For every conflict region, reconstruct each side's intent before proposing
 anything. Read the governing rules that touch the conflicted set, at their
@@ -336,7 +326,7 @@ an escalation.
 
 #### The strategy proposal
 
-Compose one strategy over the whole selected conflict set, in deterministic file
+Compose one strategy over the whole affected conflict set, in deterministic file
 and region order. For each file it states what is kept from the current branch,
 adopted from the selected branch, combined, or escalated. It carries the branch
 objectives, governing rules, **Facts**, **Inferences**, affected contracts,
@@ -345,8 +335,14 @@ semantic region. Obvious regions appear with their outcome and the rule or
 pattern that settles them. The strategy is prose; resolution text appears only
 in the completed payload.
 
-Return it as a `needs_input` whose `summary` holds `## Global resolution
-strategy` followed by the `## Conflict Analysis` block below, with the question
+Return a summary holding `## Global resolution strategy` followed by the
+`## Conflict Analysis` block below. In fast-track, return it as `completed`
+before writing any resolution; the coordinator presents it and continues you
+with an instruction to apply the presented strategy, and that continuation is
+your `apply-strategy`. Every later strategy takes the same hand-off. A strategy
+with no valid resolution stops or escalates as usual in either mode.
+
+In normal mode, return it as `needs_input`, with the question
 **"Apply this complete global resolution strategy before changing the
 conflicted files?"** and ordered options:
 
@@ -380,8 +376,6 @@ and comparing the alternatives for semantic ones>
 ### Escalations
 <contradictions with no safe outcome>
 
-### Deferred (out of scope)
-- <path> — <category>
 ```
 
 On the answer:
@@ -392,8 +386,10 @@ On the answer:
   evidence, and return the proposal again. Revisions repeat as often as the
   user needs.
 - `decline-strategy` — return `completed` stating that no resolution was
-  written and documenting the repository state as in the Step 10 refusal
-  record.
+  written at this stop. Document the current branch, source, method, squash
+  choice, staged paths, and whether merge or rebase remains in progress;
+  earlier stops may already have been finalized. Give the applicable manual
+  continuation and abort commands without executing them.
 - `apply-strategy` — write the confirmed resolution, then return the completed
   payload below.
 
@@ -402,7 +398,7 @@ On the answer:
 For each `authored` file, splice each region's text into its marked conflict
 region, in `conflict_id` order. Write nothing outside the agreed regions and
 nothing for `git-ours` / `git-theirs` files. When no complete marker-free
-outcome exists for a file in scope, return `failed` and leave the conflict
+outcome exists for an affected file, return `failed` and leave the conflict
 untouched.
 
 The completed `summary` holds, in order: `## Selected contextual decisions`
@@ -439,8 +435,8 @@ The completed `summary` holds, in order: `## Selected contextual decisions`
 
 Payload rules:
 
-- `files` holds exactly one record per conflicted file in the selected scope,
-  obvious ones included; out-of-scope files appear only in the deferred list.
+- `files` holds exactly one record per affected conflicted file, obvious ones
+  included.
 - `category` is `specs`, `adr-ddr`, or `code`.
 - `source` is `git-ours`, `git-theirs`, or `authored`. Git-sourced records carry
   an empty `regions`; authored records carry one region per conflict region,
@@ -463,23 +459,23 @@ Detect the suite from project metadata: `package.json` `scripts.test`
 `make test`, `mix.exs` → `mix test`, `pom.xml` / `build.gradle` → `mvn test` /
 `gradle test`.
 
-When the scope includes code and no suite is detected, return `needs_input`:
-**"No test suite detected. Full-scope code fusion has no verification net.
-Continue?"** with ordered options `yes` / `no`. On `no`, return `completed`
-stating that code fusion was not performed.
+When no suite is detected, record `verification_result: unavailable`, not passed,
+and continue to Step 9 for a merge or Step 10 for a stopped rebase.
+Your next completed summary carries the notice: automated verification is
+unavailable, and the resolution has already been applied and staged.
 
 Run the suite and capture the exit code and output. The budget is three rounds
 per conflict stop.
 
 - **Pass** — continue to Step 9 for a merge and to Step 10 for a stopped
-  rebase. A `yes` to the no-suite question continues the same way.
+  rebase.
 - **Fail in round 1 or 2** — return `completed` with the failure analysis and
-  the proposed fixes inside the selected scope. The coordinator continues you;
+  the proposed fixes within the affected file set. The coordinator continues you;
   apply exactly those fixes and re-run.
 - **Fail in round 3** — return `completed` stating that verification failed
   through all three rounds, listing the remaining failures, and noting that the
   resolved state stays staged and uncommitted. The run continues as on a pass;
-  the authorization summary carries the failure.
+  the finalization summary carries the failure.
 
 When a fix would change a confirmed objective or introduce a new contract-level
 alternative, or when a write, marker check, staging check, test run, or fix
@@ -609,47 +605,41 @@ collision was detected and claims no repository-wide scan):
 
 `commit date` is rendered from the selected introduction event after ordering.
 
-### Step 10: Authorization
+### Step 10: Finalization report
 
-The coordinator resumes you after it has applied every collision repair and
-finished staging. Return a `needs_input` whose summary holds only these facts
+The coordinator resumes you after final staging: at each resolved rebase stop,
+or after applying every collision repair on the final integration state.
+Return `completed` whose summary holds only these facts
 (no staged-file list):
 
 - **Method** — `merge`, or `rebase` with `squash: yes|no`;
 - **Target branch** — the current branch;
 - **Source branch** — the selected branch;
 - **Verification status** — passed, not required (clean integration),
-  continued without a detectable suite, or failed after round N;
+  unavailable (no detectable suite), or failed after round N;
 - **Conflict result** — clean, resolved (N files), or unresolved (N
   escalations);
 - **Collision result** — not applicable, none detected, N repaired, or N
   reported (N escalations), with the `collision_applicability` value;
 - **Staged files** — the count.
 
-The question depends on the integration state, always with ordered options
-`yes (Recommended)` / `no`:
+The coordinator selects the automatic local operation from the integration
+state under its command-local authorization:
 
-| state | question | on `yes` the coordinator runs |
-| --- | --- | --- |
-| merge in progress | **"Run `git commit` to finalize the merge?"** | `git commit` |
-| rebase stopped at a resolved commit | **"Continue the rebase onto <branch>?"** | `git rebase --continue` |
-| rebase finished, collision repair staged | **"Run `git commit` to record the ADR/DDR collision repair?"** | `git commit` |
+| state | coordinator operation |
+| --- | --- |
+| merge in progress | local merge commit |
+| rebase stopped at a resolved commit | `git rebase --continue` |
+| rebase finished, collision repair staged | local collision-repair commit |
 
-A rebase that finished with nothing staged asks nothing: return `completed`
-reporting the new `HEAD`, and that `target_sha` is the pre-rebase `HEAD`.
+A rebase that finished with nothing staged needs no operation: return
+`completed` reporting the new `HEAD`, and that `target_sha` is the pre-rebase
+`HEAD`.
 
-On `yes`, return `completed` restating the exact finalization. After a
-`git rebase --continue` the coordinator reports the new outcome, and the run
+After the operation succeeds, return `completed` restating the exact
+finalization. After a `git rebase --continue` the coordinator reports the new
+outcome, and the run
 continues at Step 5 (a new conflicted commit) or Step 9 (the rebase finished).
 
-On `no`, return `completed` holding the **refusal record**, the exact
-repository state:
-
-- the current branch, the selected branch, the method, and the squash choice;
-- the staged paths;
-- how to finalize manually: `git commit` for a merge or a collision repair,
-  `git rebase --continue` for a stopped rebase;
-- how to revert: `git merge --abort` for a merge in progress,
-  `git rebase --abort` for a stopped rebase (for `rebase-squash` this returns
-  to the squash commit; the pre-squash `HEAD` is `target_sha`), and
-  `git reset --hard HEAD` to discard a staged collision repair.
+If the operation fails, report it as failed, with the exact repository state,
+through the existing error path.

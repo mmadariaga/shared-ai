@@ -91,19 +91,15 @@ every full render. The canonical item set is:
 | id | native label | inclusion |
 | --- | --- | --- |
 | `merge` | `Merge <source> into <target>` for method `merge`; `Rebase <target> onto <source>` for method `rebase` (same id, method-aware label) | Always after method and source-branch selection. |
-| `scope` | `Select resolution scope` | A conflicted route when fast-track is inactive. |
-| `contextual-analysis` | `Analyze conflict alternatives` | Every conflicted route after the language hand-off and scope selection; it covers the global strategy and completes only after the strategy is confirmed and its payload returned. |
-| `resolve-artifacts` | `Resolve artifact conflicts` | A conflicted route whose selected scope is `artifacts`. |
-| `resolve-code` | `Resolve code conflicts` | A conflicted route whose selected scope is `code`. |
-| `resolve-full` | `Resolve all conflicts` | A conflicted route whose selected scope is `full`; fast-track selects this route directly. |
+| `contextual-analysis` | `Analyze conflict alternatives` | Every conflicted route after the language hand-off; completes after the Step 7 strategy hand-off and matching payload return. |
+| `resolve-full` | `Resolve all conflicts` | Every conflicted route. |
 | `verification` | `Verify merge result` | Every conflict-resolution route after resolution staging. |
 | `collision` | `Repair ADR/DDR collisions` | Only when collision applicability is `repair-required` or `escalation-required`. |
-| `authorization` | `Authorize merge commit` for a merge in progress; `Authorize rebase continuation` for a stopped rebase; `Authorize collision repair commit` for a finished rebase with a staged repair (same id, state-aware label) | Whenever the worker asks the authorization question. |
+| `finalization` | `Finalize merge commit` for a merge in progress; `Continue rebase` for a stopped rebase; `Commit collision repair` for a finished rebase with a staged repair (same id, state-aware label) | Whenever the corresponding local operation is ready. |
 
-Item order is fixed: `merge`, optional `scope`, `contextual-analysis`, exactly
-one applicable `resolve-*` item, optional `verification`, optional `collision`,
-then optional `authorization`. Scope option labels are gate content, not TODO
-items. A renderer must not invent category-specific ids, reorder items, or
+Item order is fixed: `merge`, optional `contextual-analysis`, optional
+`resolve-full`, optional `verification`, optional `collision`, then optional
+`finalization`. A renderer must not invent category-specific ids, reorder items, or
 replace a canonical label with a question, summary, or worker finding.
 
 ### Canonical route transitions
@@ -116,43 +112,35 @@ replace a canonical label with a question, summary, or worker finding.
   as `merge: in_progress`; no possible conflict item is present yet. Render no
   merge TODO while that validation is pending or after it fails.
 - **Clean route:** after a clean outcome (a merge stopped before its commit, or
-  a finished rebase), mark `merge` `completed` and remove `scope`, every
-  `resolve-*` item, and `verification`. Wait for the collision result. For
+  a finished rebase), mark `merge` `completed` and remove `contextual-analysis`,
+  `resolve-full`, and `verification`. Wait for the collision result. For
   `repair-required` or `escalation-required`, add `collision` as
   `in_progress` and mark it `completed` after all owned repairs and reference
-  updates. Then add `authorization` as `in_progress` when the worker asks the
-  authorization question; a finished rebase with nothing staged adds no
-  `authorization` item.
-- **Conflicted non-fast-track route:** after the conflict outcome, the
+  updates. Then add `finalization` as `in_progress` when the local operation is
+  ready; a finished rebase with nothing staged adds no `finalization` item.
+- **Conflicted route in either mode:** after the conflict outcome, the
   coordinator performs the language hand-off before exposing semantic
   analysis; the language is invocation state, not a TODO item. Keep
-  `merge: completed`, add `scope: in_progress`, add
-  `contextual-analysis: pending`, and add the applicable `resolve-*` item as
-  `pending`. When the scope answer is forwarded, mark `scope` `completed` and
-  make `contextual-analysis` `in_progress`.
-- **Conflicted fast-track route:** omit `scope`, mark `merge` `completed`, and
-  make `contextual-analysis` `in_progress` with `resolve-full` pending.
-  Fast-track changes only the scope item; it never bypasses a contextual human
-  decision. Verification, collision applicability, authorization, refusal, and
-  terminal transitions remain identical.
+  `merge: completed`, make `contextual-analysis` `in_progress`, and add
+  `resolve-full` as `pending`.
 - **Contextual analysis:** keep `contextual-analysis` `in_progress` through
   every strategy proposal, confirmation, and open revision. Mark it
-  `completed` only after the user confirms the strategy and the worker returns
-  the matching complete marker-free payload, then make the applicable
-  `resolve-*` item `in_progress`. A new conflict or inconsistency from
+  `completed` only after the Step 7 mode-specific hand-off in
+  `sai/commands/merge/instructions.md` and the worker's matching complete
+  marker-free payload, then make `resolve-full` `in_progress`. A new conflict or inconsistency from
   application or verification returns the item to `in_progress` with the same
   worker and selected language; no language question is repeated. No TODO
   transition authorizes a write or stage.
 - **Resolution and verification:** after coordinator resolution writes and
-  staging, mark the applicable `resolve-*` item `completed` and make
+  staging, mark `resolve-full` `completed` and make
   `verification` `in_progress`. Mark `verification` `completed` when the
-  suite passes, the no-suite decision completes, or the three-round cap is
+  suite passes, the unavailable-suite notice is reported, or the three-round cap is
   reached; failed/cap-exhausted evidence remains in merge state and does not
   imply a commit.
 - **Rebase stops:** after a stopped rebase's verification, add
-  `authorization` (`Authorize rebase continuation`) as `in_progress`. On
-  `yes`, once `git rebase --continue` has run, remove it: a new conflicted
-  commit returns `contextual-analysis` to `in_progress` with the `resolve-*`
+  `finalization` (`Continue rebase`) as `in_progress`. Once
+  `git rebase --continue` has run, remove it: a new conflicted
+  commit returns `contextual-analysis` to `in_progress` with `resolve-full`
   and `verification` items back to `pending`; a finished rebase follows the
   collision route.
 - **Collision route:** after the ADR/DDR pass, omit `collision` for
@@ -161,15 +149,14 @@ replace a canonical label with a question, summary, or worker finding.
   it `completed` only after every coordinator-owned rename and canonical
   reference update has finished. Escalations remain in the summary and do not
   create extra TODO ids.
-- **Authorization and refusal:** add `authorization` only after final staging
-  is complete and make it `in_progress` while the native picker is pending. On
-  `yes`, mark it `completed` only after the commit succeeds. On `no`, remove
-  and clear it rather than marking a commit complete; preserve the exact
-  refusal repository-state summary.
+- **Finalization:** add `finalization` only after final staging is complete and
+  make it `in_progress` while the local operation runs. Mark it `completed`
+  only after success. On failure, preserve the exact repository-state summary
+  and leave the operation incomplete until terminal clearing.
 - **Terminal closure:** after recording the final worker result, clear the
   merge-owned TODO surface. A successful commit retains the completed state
-  until this clear; a refusal or any other non-committing terminal never leaves
-  an actionable authorization item.
+  until this clear; an early stop or failed finalization never leaves an
+  actionable finalization item.
 
 The list uses the same `pending`, `in_progress`, and `completed` state
 vocabulary and coordinator-owned full-list rendering discipline. Its state

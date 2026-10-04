@@ -15,24 +15,23 @@ dispatches nothing, answers nothing, and runs no git.
 | `branch-validation` | a free-text branch entry is being refreshed and checked as an exact branch ref; no integration has launched |
 | `merge-outcome` | the coordinator ran a launch or a `git rebase --continue` and recorded the outcome |
 | `language-selection` | the first conflict is detected; the working language is being chosen |
-| `scope-selection` | the conflict scope is being chosen |
 | `contextual-analysis` | the global strategy is being analyzed, revised, or confirmed |
 | `resolution` | the confirmed resolution is being written, reviewed, and staged |
 | `verification` | the suite runs within its three-round budget |
 | `adr-ddr` | the collision pass runs on the final integration state, or is skipped |
-| `authorization` | the finalization question is pending or answered |
+| `finalization` | the authorized local finalization operation is ready or running |
 | `terminal` | the run is closed and its final state recorded |
 
 The usual paths:
 
 ```text
-merge, clean:        preflight → method → branch → merge-outcome → adr-ddr → authorization → terminal
-merge, free-text:    … → branch → branch-validation → merge-outcome → adr-ddr → authorization → terminal
-merge, conflicted:   … → merge-outcome → language → scope → contextual-analysis → resolution
-                       → verification → adr-ddr → authorization → terminal
-rebase, per stop:    … → merge-outcome → [language → scope →] contextual-analysis → resolution
-                       → verification → authorization → merge-outcome (git rebase --continue)
-rebase, finished:    merge-outcome → adr-ddr → [authorization →] terminal
+merge, clean:        preflight → method → branch → merge-outcome → adr-ddr → finalization → terminal
+merge, free-text:    … → branch → branch-validation → merge-outcome → adr-ddr → finalization → terminal
+merge, conflicted:   … → merge-outcome → language → contextual-analysis → resolution
+                       → verification → adr-ddr → finalization → terminal
+rebase, per stop:    … → merge-outcome → [language →] contextual-analysis → resolution
+                       → verification → finalization → merge-outcome (git rebase --continue)
+rebase, finished:    merge-outcome → adr-ddr → [finalization →] terminal
 ```
 
 ## Transition check
@@ -54,9 +53,8 @@ A batch checks each boundary it covers in item order within its one trip:
 Batch 1 covers `preflight` → `method-selection` → `branch-selection`
 (fast-track: `preflight` → `branch-selection`). Choosing the branch-entry
 sentinel keeps the route in `branch-selection` while the coordinator collects
-the exact text; it then enters `branch-validation`. Batch 2 covers
-`language-selection` → `scope-selection`. An abandoned batch makes no
-transition.
+the exact text; it then enters `branch-validation`. Batch 2 stores the language
+before entering `contextual-analysis`. An abandoned batch makes no transition.
 
 ## Permitted transitions
 
@@ -75,26 +73,28 @@ branch-validation     terminal              fetch failed or exact ref is unusabl
 merge-outcome         adr-ddr               outcome clean (merge stopped before commit, or rebase finished)
 merge-outcome         language-selection    outcome conflicted; working_language unresolved
 merge-outcome         contextual-analysis   outcome conflicted; working_language already selected
-language-selection    scope-selection       working_language is a non-empty token
-scope-selection       contextual-analysis   selected_scope is eligible, or fast_track_active supplies full
+language-selection    contextual-analysis   working_language is a non-empty token; full affected set retained
 contextual-analysis   resolution            strategy_status = confirmed; completed payload validated
 resolution            contextual-analysis   a write or review exposed a new conflict (strategy-analysis event)
 resolution            verification          review passed; resolution staged
 verification          contextual-analysis   a fix or run exposed a new conflict (strategy-analysis event)
-verification          adr-ddr               method=merge; verification_result ∈ {passed, cap-exhausted}
-verification          authorization         rebase stopped; verification_result ∈ {passed, cap-exhausted}
-adr-ddr               authorization         applicability resolved; repairs applied; final staging done;
+verification          adr-ddr               method=merge; verification_result ∈ {passed, unavailable, cap-exhausted}
+verification          finalization          rebase stopped; verification_result ∈ {passed, unavailable, cap-exhausted}
+adr-ddr               finalization          applicability resolved; repairs applied; final staging done;
                                             a merge in progress, or a finished rebase with staged repair
 adr-ddr               terminal              rebase finished with nothing staged
-authorization         merge-outcome         rebase stopped; answer yes; git rebase --continue ran
-authorization         terminal              answer recorded: committed or refused
+finalization          merge-outcome         rebase stopped; command-local authority; git rebase --continue ran
+finalization          terminal              local commit succeeded, or operation failed and exact state recorded
 <any>                 terminal              the worker returned a closing result (in-progress guard,
-                                            dirty=no, branch-resolution failure, decline-strategy, no-suite=no,
+                                            dirty=no, branch-resolution failure, decline-strategy,
                                             review budget exhausted)
 ```
 
-`verification_result` is `passed` also when the user continued past the
-no-suite question. A clean integration never passes through `verification`.
+`strategy_status = confirmed` is defined by the Step 7 hand-off in
+`instructions.md`; finalization authority comes only from `coordinator.md`
+§ Command-local authorization.
+
+`verification_result` is `unavailable` when no suite is detected. A clean integration never passes through `verification`.
 
 `commit_executed` is true when the run ends finalized: the merge commit
 succeeded, or the rebase finished and its collision repair (if any) was
