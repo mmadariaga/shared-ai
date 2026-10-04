@@ -3,8 +3,9 @@
     {
       "id": "github",
       "hosts": ["github.com"],
-      "capabilities": ["query", "publish", "recover"],
+      "capabilities": ["query", "publish", "recover", "read-update", "query-update", "update", "recover-update"],
       "instructions": "providers/github.md",
+      "updateInstructions": "providers/github-update.md",
       "adapter": "to-backlog-github.js"
     }
   ]

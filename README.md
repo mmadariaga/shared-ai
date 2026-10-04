@@ -79,12 +79,19 @@ requests and GitHub Enterprise hosts are not supported. See the installed
 `from-backlog` skill for import rules.
 
 **Capture work for later:** `/to-backlog` uses the current conversation in
-Claude Code and OpenCode to propose one title and Markdown description. It
-asks before creating a GitHub repository issue and adding it to a GitHub
-Project. It needs an authenticated `gh` with repository and Project access;
-it does not need OpenSpec or discard conversation context.
+Claude Code and OpenCode to propose one title and Markdown description. If the
+conversation started from an existing issue (via `/from-backlog` or a directly
+supplied full or partial issue URL), it updates only that issue's title and
+description, preserving unrelated text. Later reference links are not targets.
+It shows the exact target and content for explicit approval, rereads before
+updating, and requires fresh approval when the baseline content changes. Update
+does not select or modify a Project, and never creates a replacement issue.
+Without an originating issue, it retains creation of a GitHub issue and insertion
+into a GitHub Project after confirmation. It needs authenticated `gh` with issue
+edit access for update, or repository and Project access for creation; it does
+not need OpenSpec or discard conversation context.
 
-Supply a provider, repository, or Project explicitly, or configure defaults
+For creation, supply a provider, repository, or Project explicitly, or configure defaults
 in `.to-backlog.json` in the target working directory:
 
 ```json

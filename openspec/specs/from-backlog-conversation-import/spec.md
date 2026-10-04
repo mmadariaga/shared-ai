@@ -67,3 +67,22 @@ The skill SHALL finish by accurately reporting that the backlog item is loaded f
 
 - **WHEN** all original issue content and comments have been presented with their provenance and trust levels
 - **THEN** the skill reports successful loading for discussion and does not automatically advance exploration or implementation.
+
+### Requirement: Conversation-scoped originating issue provenance
+
+When a from-backlog imported issue is the conversation's starting point, the skill SHALL retain its canonical identity as the originating issue in conversation state separately from later reference links. A later import SHALL NOT silently replace that origin. Unclear provenance or multiple possible origins SHALL require user clarification. This retained identity SHALL remain conversation context rather than authorization for remote mutation.
+
+#### Scenario: Starting-point import
+
+- **WHEN** the imported issue is the conversation's starting point
+- **THEN** the skill retains its canonical identity as the originating issue separately from incidental references.
+
+#### Scenario: Later reference import
+
+- **WHEN** a later from-backlog invocation imports another issue into a conversation with an established origin
+- **THEN** the import does not silently replace the originating issue.
+
+#### Scenario: Ambiguous provenance
+
+- **WHEN** the conversation contains unclear or multiple possible origins
+- **THEN** the skill asks the user to clarify rather than choosing an origin without confirmation.

@@ -69,8 +69,8 @@ function resolve({ explicit = {}, config = {}, remotes = [] }, registry) {
 function main(argv) {
   try {
     const [operation, registryPath] = argv;
-    if (!['resolve', 'query', 'publish', 'recover'].includes(operation) || !registryPath || argv.length !== 2) {
-      throw new Error('Usage: node to-backlog.js resolve|query|publish|recover <registry.json>; JSON request on stdin; JSON result on stdout');
+    if (!['resolve', 'query', 'publish', 'recover', 'read-update', 'query-update', 'update', 'recover-update'].includes(operation) || !registryPath || argv.length !== 2) {
+      throw new Error('Usage: node to-backlog.js resolve|query|publish|recover|read-update|query-update|update|recover-update <registry.json>; JSON request on stdin; JSON result on stdout');
     }
     const request = JSON.parse(fs.readFileSync(0, 'utf8'));
     const registry = JSON.parse(fs.readFileSync(registryPath, 'utf8'));
@@ -96,7 +96,7 @@ function main(argv) {
       }
     }
     process.stdout.write(JSON.stringify(result) + '\n');
-    return ['resolved', 'ready', 'complete'].includes(result.status) ? 0 : 1;
+    return ['resolved', 'ready', 'complete', 'no_changes'].includes(result.status) ? 0 : 1;
   } catch (error) {
     process.stdout.write(JSON.stringify({ status: 'failure_before_publication', message: error.message }) + '\n');
     return 2;
