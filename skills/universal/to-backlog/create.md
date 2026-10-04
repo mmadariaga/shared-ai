@@ -24,5 +24,5 @@ precedence. **Complete when:** query returns `ready`.
 ## Publication — after common confirmation
 
 Use the provider's publish operation and creation recovery from its instructions.
-**Complete when:** issue and Project insertion are verified, or a concrete
+**Complete when:** issue and any provider-required Project insertion are verified, or a concrete
 failure or uncertain outcome and receipt are available for common reporting.

@@ -7,7 +7,7 @@ Load existing backlog work into the active conversation without granting action 
 
 ### Requirement: Explicit conversation-preserving import
 
-The from-backlog skill SHALL run only on explicit user invocation and SHALL declare `disable-model-invocation: true`. It SHALL retain the current conversation and any active sai-explore stage without running its boot sequence, starting implementation, modifying GitHub, or creating local files. Missing required access SHALL be reported without installing tools or changing authentication.
+The from-backlog skill SHALL run only on explicit user invocation and SHALL declare `disable-model-invocation: true`. It SHALL retain the current conversation and any active sai-explore stage without running its boot sequence, starting implementation, modifying the selected provider, or creating local files. Missing required access SHALL be reported without installing tools or changing authentication.
 
 #### Scenario: Import during exploration
 

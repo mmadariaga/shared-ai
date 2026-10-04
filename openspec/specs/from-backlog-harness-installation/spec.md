@@ -16,12 +16,12 @@ Claude Code and opencode SHALL provide `/from-backlog <reference>` through minim
 
 ### Requirement: Managed mirrored import installation
 
-The manifest-driven installation SHALL project the from-backlog skill, provider registry, provider mechanics reference, both import tools, and the appropriate command entry for both supported harnesses. Provider references SHALL be managed, content-tracked recursive projections.
+The manifest-driven installation SHALL project the from-backlog skill, provider registry, GitHub and GitLab provider mechanics references, common import helper, GitHub and GitLab import adapters, and the appropriate command entry for both supported harnesses. Provider references SHALL be managed, content-tracked recursive projections. GitLab additions SHALL use the existing universal skill and sai-tools projections without requiring direct provider-CLI permission grants.
 
 #### Scenario: Expand installation projections
 
 - **WHEN** installation projections are expanded for Claude Code or opencode
-- **THEN** the resulting surfaces include the from-backlog skill, registry, GitHub mechanics, common helper, GitHub adapter, and corresponding command entry.
+- **THEN** the resulting surfaces include the from-backlog skill, registry, GitHub and GitLab mechanics, common helper, both provider adapters, and corresponding command entry.
 
 ### Requirement: Documented scope and simulated regression coverage
 
