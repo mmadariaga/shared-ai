@@ -88,3 +88,27 @@ The opt-in runtime test SHALL exercise the actual opencode permission evaluator 
 #### Scenario: Inherited permissions conflict with a profile
 - **WHEN** the opt-in test evaluates profile permissions after conflicting inherited rules
 - **THEN** required grants are allowed and excluded or unknown actions remain denied
+
+### Requirement: Concrete skill-owned preparation invocation declarations
+
+The to-backlog and explore command profiles SHALL declare `node {skills}/to-backlog/scripts/prepare-temp.js {harness}` in addition to their existing grants. Capability translation SHALL expand `{skills}` to project-local and user-global skill roots and `{harness}` to `claude` or `opencode`, retaining installed `{sai}` expansion. Claude Code SHALL receive concrete Bash pre-approvals for `.claude/skills` and `~/.claude/skills`; opencode SHALL receive explicit shell allow rules for `.opencode/skills` and `~/.config/opencode/skills`. These additions SHALL NOT add arbitrary Node execution, general-purpose mkdir or chmod grants, or preparation access to the research profile. Declarations SHALL remain separate from operation authorization and live effective-access evidence.
+
+#### Scenario: Claude Code preparation declarations
+
+- **WHEN** the to-backlog or explore command profile is translated for Claude Code
+- **THEN** it includes Bash pre-approvals for the concrete local and global to-backlog preparation script invocations with the `claude` argument.
+
+#### Scenario: OpenCode preparation declarations
+
+- **WHEN** the to-backlog or explore command profile is translated for opencode
+- **THEN** it includes explicit shell allow rules for the concrete local and global to-backlog preparation script invocations with the `opencode` argument.
+
+#### Scenario: Research profile remains unchanged
+
+- **WHEN** the research profile is resolved after adding the command preparation declarations
+- **THEN** it has no preparation-script grant.
+
+#### Scenario: Declaration does not approve publication
+
+- **WHEN** a command has a concrete preparation invocation declaration
+- **THEN** that declaration does not replace explicit publication confirmation or establish that the active harness permits the operation at runtime.

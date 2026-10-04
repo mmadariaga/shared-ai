@@ -81,6 +81,12 @@ and (for update) baseline version; cancellation ends the run.
 
 ## 4. Publish and report
 
+For a confirmed new creation or update on Linux, read `prepare-temp.md` beside
+this skill and complete its preparation before publication. Recovery uses the
+saved receipt, without preparing another directory. On Windows, retain the
+selected provider's existing temporary-directory workflow; this change adds no
+Windows privacy guarantee. Activate the new script only on Linux.
+
 Use the selected branch's publication operation once, passing structured data
 for the exact approved title, description, and destination. Keep its durable
 local receipt path and returned work-item identification for recovery. Do not

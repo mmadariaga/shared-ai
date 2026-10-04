@@ -179,3 +179,69 @@ Before every update approval, including renewed approval, the skill SHALL presen
 
 - **WHEN** the user requires atomic prevention of concurrent overwrites
 - **THEN** the workflow reports the API limitation rather than claiming that its final reread provides that guarantee.
+
+### Requirement: Deterministic Linux receipt directory preparation
+
+The skill-owned `scripts/prepare-temp.js` helper SHALL accept exactly one harness argument, `claude` or `opencode`, and support Linux only. It SHALL use native Node filesystem operations to create a unique new directory under `/tmp` for Claude Code or `/tmp/opencode` for OpenCode. It SHALL return JSON containing an absolute `directory` only after successful verification. Invalid arguments, unsupported platforms, or preparation errors SHALL produce a nonzero exit and a concrete error without a usable directory result. The CLI SHALL NOT accept a temporary-root override or execute shell directory commands.
+
+#### Scenario: Separate confirmed operations
+
+- **WHEN** independent Linux helper invocations prepare directories for either supported harness
+- **THEN** each successful invocation returns a distinct absolute directory directly within that harness's permitted temporary root.
+
+#### Scenario: Unsupported invocation
+
+- **WHEN** the helper receives an unsupported platform, invalid harness, or extra CLI arguments
+- **THEN** it fails without returning a usable directory path.
+
+### Requirement: Existing temporary root safety
+
+The helper SHALL require an existing non-symbolic-link temporary root whose canonical path equals its configured path and whose owner is root or the current user. A root with group-write or other-write permission SHALL require the sticky bit. The helper SHALL check these safety conditions before creation and again before returning the directory, and SHALL reject a detected root identity change. It SHALL NOT create, repair, or change permissions on the shared root. A missing root SHALL produce an error identifying the required path and the prerequisite to restore it before retrying.
+
+#### Scenario: Missing temporary root
+
+- **WHEN** the configured temporary root does not exist
+- **THEN** preparation fails with the required root path and restoration prerequisite, without creating the root or choosing another location.
+
+#### Scenario: Unsafe shared root
+
+- **WHEN** the root has an unacceptable owner, is a symbolic link, or permits shared writes without sticky-bit protection
+- **THEN** preparation fails without repairing the root or returning a usable directory.
+
+#### Scenario: Root changes during preparation
+
+- **WHEN** final checks detect changed root identity, unsafe ownership, or unsafe shared-write permissions after child creation
+- **THEN** preparation fails without returning the created directory as usable.
+
+### Requirement: Verified private child directory
+
+Before returning a directory, the helper SHALL verify that it is a direct child of the configured temporary root and outside the target repository discovered from the canonical working directory and its ancestors. The new directory SHALL belong to the current user, SHALL NOT be a symbolic link, and SHALL have mode `0700`. The helper SHALL use a no-follow directory descriptor to set permissions only on the newly created directory and compare directory identity during verification. It SHALL reject detected substitutions or canonical-path changes and SHALL NOT reuse an incidental existing directory.
+
+#### Scenario: Verified private directory
+
+- **WHEN** creation and all descriptor, path, ownership, and permission checks succeed
+- **THEN** the helper returns the new current-user-owned non-symbolic-link directory with mode `0700` outside the repository.
+
+#### Scenario: Repository-contained location
+
+- **WHEN** the configured root or created directory would be within the discovered target repository
+- **THEN** preparation fails without returning a usable directory.
+
+#### Scenario: Child verification failure
+
+- **WHEN** child verification detects unsafe ownership, permissions, type, changed identity, or a symbolic-link substitution
+- **THEN** preparation fails without presenting that directory as usable.
+
+### Requirement: Preparation-only mutation scope
+
+The helper SHALL create only its unique temporary child and set permissions only on that new directory. It SHALL NOT publish a work item, write repository files, delete receipts, or change permissions on existing directories. Subsequent preparation SHALL leave previously retained receipts intact, and failures SHALL NOT trigger automatic cleanup or insecure fallback.
+
+#### Scenario: Existing receipt retention
+
+- **WHEN** another operation prepares a new directory while an earlier directory contains a receipt
+- **THEN** preparation leaves the earlier receipt unchanged.
+
+#### Scenario: Filesystem operation fails
+
+- **WHEN** creation, descriptor access, permission setting, or verification fails
+- **THEN** the helper reports the failure without publishing, deleting receipts, or repairing existing paths.
