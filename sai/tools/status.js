@@ -314,7 +314,7 @@ function resolveNext(statuses, specsApproved, implProgress, implExists, auditSta
   }
 
   // all audits present and satisfied (including N/A) - ready for PR/archive
-  return '/sai-pr';
+  return '/to-pr';
 }
 
 /**

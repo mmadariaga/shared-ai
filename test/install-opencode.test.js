@@ -42,7 +42,6 @@ const UTILITY_COMMANDS = {
   'sai-4-apply': 'apply',
   'sai-archive': 'archive',
   'sai-explore': 'explore',
-  'sai-pr': 'pr',
   'sai-retire-docs': 'retire-docs',
   'sai-status': 'status',
   'sai-worktree': 'worktree',
