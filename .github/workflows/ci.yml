@@ -24,6 +24,9 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+          # fetch-depth 1 (shallow) breaks tests that read install history, e.g.
+          # test/to-pr.test.js resolving the sai-pr deletion commit via git log.
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '22'

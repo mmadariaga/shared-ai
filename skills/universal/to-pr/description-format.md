@@ -1,11 +1,11 @@
 # Description format
 
-Use an imperative Conventional Commit title, validated by `checkPrTitleRules` in
-the tool. Draft in English unless the user requests another language. Ground each
+Title: imperative Conventional Commit (`feat|fix|perf|refactor|docs|test|build|ci|chore|style|revert`,
+optional scope), at most 70 characters, no emoji, no trailing period. Draft in English unless the user requests another language. Ground each
 claim in committed Git changes or clearly identified supporting context; exclude
 credentials and incidental private data.
 
-Use these headings, adapting the former PR description template:
+Use these headings:
 
 - `## Summary`: user-facing outcomes, not a file inventory.
 - `## Goal`: purpose in one or two sentences.

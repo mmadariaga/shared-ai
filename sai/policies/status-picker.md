@@ -1,6 +1,6 @@
 # Status Picker
 
-Dedicated instruction that resolves a missing OpenSpec change name for `sai-status` ONLY. It reuses the shared `change-picker.md` 0/1/N resolution machinery verbatim, adding a **"See all"** bulk-view option on the two-or-more-changes branch. No other command fetches this file. The `to-pr` skill uses Git as its primary source and does not require change-name resolution.
+Dedicated instruction that resolves a missing OpenSpec change name for `sai-status` ONLY. It reuses the shared `change-picker.md` 0/1/N resolution machinery verbatim, adding a **"See all"** bulk-view option on the two-or-more-changes branch. No other command fetches this file.
 
 ## Envelope-only resolution source
 
