@@ -17,7 +17,7 @@ const STRATEGIES = Object.freeze([
 ]);
 const SUPPORTED_HARNESSES = new Set(['claude', 'opencode']);
 const SHA256 = /^[0-9a-f]{64}$/;
-const RETIREMENT_DESTINATION_CLASSES = new Set(['sai', 'skills', 'agents']);
+const RETIREMENT_DESTINATION_CLASSES = new Set(['sai', 'skills', 'agents', 'commands']);
 const MATRIX_TEMPLATE_NAMES = Object.freeze([
   'claudeBinding',
   'opencodeBinding',
@@ -319,7 +319,7 @@ function validateRetirements(manifest, projectionIds) {
     if (!retirement.destination
         || !RETIREMENT_DESTINATION_CLASSES.has(retirement.destination.class)
         || typeof retirement.destination.path !== 'string') {
-      throw new Error(`Retirement ${retirement.id} must declare destination { class: "sai" | "skills", path }`);
+      throw new Error(`Retirement ${retirement.id} must declare destination { class: "sai" | "skills" | "agents" | "commands", path }`);
     }
     const destination = `${retirement.destination.class}/${normalizeRelative(retirement.destination.path)}`;
     if (!Array.isArray(retirement.harnesses) || retirement.harnesses.length === 0 || retirement.harnesses.some(harness => !SUPPORTED_HARNESSES.has(harness))) {

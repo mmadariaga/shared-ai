@@ -29,7 +29,7 @@ const MODEL_TABLE_DIFFICULTY_HEADER = 'DIFFICULTY';
 const MODEL_TABLE_DIFFICULTY_WIDTH = MODEL_TABLE_DIFFICULTY_HEADER.length;
 const COMBINED_ENTRY_DELIMITER = ' | ';
 const TARGET_PREFIXES = Object.freeze({ worker: 'worker:', agent: 'agent:', command: 'command:', utility: 'utility:' });
-const UTILITY_NAMES = Object.freeze(['sai-pr', 'sai-retire-docs', 'sai-status', 'sai-worktree']);
+const UTILITY_NAMES = Object.freeze(['sai-retire-docs', 'sai-status', 'sai-worktree']);
 // Display-only profile per family-qualified target. `context` estimates typical task
 // context (instructions, documents, results, history), not model context-window size;
 // fresh per-Step workers carry less than their supervisor. `difficulty` is reasoning demand.
@@ -70,7 +70,6 @@ const TARGET_PROFILE = Object.freeze({
   'command:sai-merge':                   { context: 'Large',   difficulty: '↑↑↑' },
   'command:sai-review':                  { context: 'Large',   difficulty: '↑↑' },
   'command:sai-commit':                  { context: 'Small',   difficulty: '↑' },
-  'utility:sai-pr':                      { context: 'Medium',  difficulty: '↑' },
   'utility:sai-retire-docs':             { context: 'Large',   difficulty: '↑↑' },
   'utility:sai-status':                  { context: 'Small',   difficulty: '↑' },
   'utility:sai-worktree':                { context: 'Small',   difficulty: '↑' },

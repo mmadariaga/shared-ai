@@ -15,7 +15,6 @@ OpenSpec artifacts live under `openspec/` at the project root. Read them at thes
 - `openspec/changes/{change-name}/security.md`
 - `openspec/changes/{change-name}/performance.md`
 - `openspec/changes/{change-name}/accessibility.md`
-- `openspec/changes/{change-name}/pr.md`
 - `openspec/changes/{change-name}/change-overview.md`
 - `openspec/changes/{change-name}/.openspec.yaml`
 - `openspec/changes/archive/YYYY-MM-DD-{change-name}/`

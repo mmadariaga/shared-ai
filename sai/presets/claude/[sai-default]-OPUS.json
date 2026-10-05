@@ -131,10 +131,6 @@
     "model": "haiku",
     "effort": "medium"
   },
-  "utility:sai-pr": {
-    "model": "haiku",
-    "effort": "medium"
-  },
   "utility:sai-retire-docs": {
     "model": "opus",
     "effort": "medium"

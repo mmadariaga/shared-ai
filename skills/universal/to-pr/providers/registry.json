@@ -1,0 +1,6 @@
+{
+  "providers": [
+    { "id": "github", "hosts": ["github.com"], "capabilities": ["publish"], "instructions": "providers/github.md", "adapter": "to-pr-github.js" },
+    { "id": "gitlab", "resolution": "provider", "capabilities": ["publish"], "instructions": "providers/gitlab.md", "adapter": "to-pr-gitlab.js" }
+  ]
+}

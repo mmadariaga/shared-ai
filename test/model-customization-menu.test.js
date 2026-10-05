@@ -73,7 +73,7 @@ const CLAUDE_AGENTS = [
 ];
 const OPENCODE_WORKERS = OPENCODE_AGENTS.filter(name => name.startsWith('sai-'));
 const CLAUDE_WORKERS = CLAUDE_AGENTS.filter(name => name.startsWith('sai-'));
-const UTILITY_COMMANDS = ['sai-pr', 'sai-retire-docs', 'sai-status', 'sai-worktree'];
+const UTILITY_COMMANDS = ['sai-retire-docs', 'sai-status', 'sai-worktree'];
 
 // Step 3: command-family targets exposed by the adapter enumeration seam.
 // Kept alphabetical so a bare-name checklist assertion is order-independent of
@@ -92,7 +92,6 @@ const COMMANDS = [
   'sai-build',
   'sai-commit',
   'sai-explore',
-  'sai-pr',
   'sai-retire-docs',
   'sai-review',
   'sai-status',
@@ -109,7 +108,7 @@ const SCRAMBLED_WORKERS = [
 ];
 
 const SCRAMBLED_COMMANDS = [
-  'sai-pr',
+  'sai-status',
   'sai-1-spec',
   'sai-backfill',
 ];
@@ -120,7 +119,7 @@ const COMBINED_BOTH = [
   'command:sai-backfill',
   'worker:budget',
   'worker:sai-3-implementation-worker',
-  'utility:sai-pr',
+  'utility:sai-status',
 ];
 
 const COMBINED_BOTH_BARE = [
@@ -129,11 +128,11 @@ const COMBINED_BOTH_BARE = [
   'sai-backfill',
   'budget',
   'sai-3-implementation-worker',
-  'sai-pr',
+  'sai-status',
 ];
 
 // Step 4: command-family names mirrored from the current commands/{harness}
-// basenames. Both harnesses ship the same 19 names. These are current-state
+// basenames. Both harnesses ship the same 18 names. These are current-state
 // fixture assertions, not hardcoded enumerations â€” production derives the
 // names from the manifest's commands-class projections.
 const OPENCODE_COMMANDS = [
@@ -151,7 +150,6 @@ const OPENCODE_COMMANDS = [
   'sai-commit',
   'sai-explore',
   'sai-merge',
-  'sai-pr',
   'sai-retire-docs',
   'sai-review',
   'sai-status',
@@ -194,7 +192,6 @@ const COMBINED_BOTH_FULL = [
   'worker:executor',
   'worker:explore',
   'worker:sai-merge-worker',
-  'utility:sai-pr',
   'utility:sai-retire-docs',
   'utility:sai-status',
   'utility:sai-worktree',
@@ -1179,7 +1176,7 @@ test('injected checklist seam renders context before difficulty in both harnesse
     const ops = { select: [], create: [] };
     const restore = patchFactory(factoryName, () => makeFakeAdapter(
       ['sai-worker'], ops, { model: 'opencode-go/test-model', variant: 'high' },
-      ['sai-pr', 'sai-build']
+      ['sai-status', 'sai-build']
     ));
     try {
       const checklistCalls = [];
@@ -1192,11 +1189,11 @@ test('injected checklist seam renders context before difficulty in both harnesse
       });
       assert.equal(result.reason, 'cancelled');
       assert.deepEqual(checklistCalls[0][0], [
-        'command:sai-build', '', 'worker:sai-worker', '', 'utility:sai-pr',
+        'command:sai-build', '', 'worker:sai-worker', '', 'utility:sai-status',
       ],
         'the All scope checklist items carry a blank separator between the orchestrator-worker block and utilities');
       assert.deepEqual(checklistCalls[0][1], [
-        'command:sai-build', 'worker:sai-worker', 'utility:sai-pr',
+        'command:sai-build', 'worker:sai-worker', 'utility:sai-status',
       ],
         'selection defaults use stable values without the blank separator, not display labels');
       assert.deepEqual(checklistCalls[0][4].header, [
@@ -1209,10 +1206,10 @@ test('injected checklist seam renders context before difficulty in both harnesse
         '',
         `WORKER        sai-worker  Unknown  Unknown${' '.repeat(3)}  opencode-go/test-model (high)`,
         '',
-        `UTILITY       sai-pr      Medium   ↑${' '.repeat(9)}  opencode-go/test-model (high)`,
+        `UTILITY       sai-status  Small    ↑${' '.repeat(9)}  opencode-go/test-model (high)`,
       ],
         'display labels are left-aligned type/target/context/difficulty/setting columns with a blank separator row and no ANSI wrappers');
-      assert.deepEqual(ops.select, ['command:sai-build, worker:sai-worker, utility:sai-pr'],
+      assert.deepEqual(ops.select, ['command:sai-build, worker:sai-worker, utility:sai-status'],
         'the injected seam returns stable identities independently of labels');
     } finally {
       restore();
@@ -1413,7 +1410,7 @@ test('an empty scope prints the no-targets notice, returns to the scope picker, 
 
 // --- Step 4: command enumeration from the manifest's commands-class projections ---
 
-const SHIPPED_COMMANDS = [...OPENCODE_COMMANDS, 'to-backlog', 'from-backlog'];
+const SHIPPED_COMMANDS = [...OPENCODE_COMMANDS, 'to-backlog', 'from-backlog', 'to-pr'];
 
 test('opencode enumerateCommands returns exactly the manifest-declared commands including both backlog commands', () => {
   const adapter = createOpencodeAdapter({ repoRoot: REPO_ROOT });
@@ -4062,7 +4059,7 @@ test('flow: command targets with no source or invalid frontmatter are reported i
     makeFakeAdapter([], { select: [], create: [] }));
   try {
     const valid = 'sai-backfill';
-    const missing = 'sai-pr';
+    const missing = 'sai-worktree';
     const invalid = 'sai-status';
     const commandSourceDir = path.join(fixture.packageRoot, 'commands', 'claude');
     fs.mkdirSync(commandSourceDir, { recursive: true });
