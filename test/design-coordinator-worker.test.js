@@ -2263,12 +2263,12 @@ test('overview excludes Architecture Snapshot and its complete subtree', () => {
   assert.doesNotMatch(overview, /#### External Surfaces|#### Internal Public Surfaces/);
 });
 
-test('overview wrappers stay English while source headings may translate', () => {
+test('overview wrappers and source headings stay English while explanatory prose translates', () => {
   const overview = artifact('sai/commands/design/change-overview.md');
 
   assert.match(overview, /overview_language/);
-  assert.match(overview, /Keep the structural wrappers[\s\S]*in English/);
-  assert.match(overview, /translate only natural-language prose, source headings/);
+  assert.match(overview, /Keep source headings and labels verbatim in English; use English structural wrappers/);
+  assert.match(overview, /translate only natural-language explanatory prose/);
 });
 
 test('Step 5: unclear boundary classification falls back to external and File Manifest is a direct inventory', () => {
