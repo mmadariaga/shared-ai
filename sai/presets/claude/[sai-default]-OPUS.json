@@ -130,10 +130,6 @@
     "model": "sonnet",
     "effort": "medium"
   },
-  "utility:sai-pr": {
-    "model": "sonnet",
-    "effort": "medium"
-  },
   "utility:sai-retire-docs": {
     "model": "opus",
     "effort": "medium"

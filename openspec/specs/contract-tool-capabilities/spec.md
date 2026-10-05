@@ -7,7 +7,7 @@ Define canonical contract-derived tool capabilities and their native projections
 
 ### Requirement: Canonical capability profiles and assignments
 
-The system SHALL declare abstract capability profiles and agent and command assignments in `sai/install-manifest.json`. Profiles SHALL support inherited flags and replacement of list-valued grants. Resolution SHALL reject unknown capabilities, missing profile assignments, invalid values, and inheritance cycles. The twenty-one shipped commands SHALL include to-backlog and from-backlog with their own resolvable command profiles, alongside the nineteen SAI commands.
+The system SHALL declare abstract capability profiles and agent and command assignments in `sai/install-manifest.json`. Profiles SHALL support inherited flags and replacement of list-valued grants. Resolution SHALL reject unknown capabilities, missing profile assignments, invalid values, and inheritance cycles. The twenty-one shipped commands SHALL include to-backlog, from-backlog, and to-pr with their own resolvable command profiles, alongside the eighteen SAI commands. The retired sai-pr command SHALL have no current assignment.
 
 #### Scenario: Required identities receive assignments
 
@@ -28,6 +28,11 @@ The system SHALL declare abstract capability profiles and agent and command assi
 
 - **WHEN** the from-backlog command profile is resolved for either harness
 - **THEN** it grants reading, search, questions, the from-backlog skill, and shell invocation of the common from-backlog Node tool, without granting file writes or the publication helper.
+
+#### Scenario: PR/MR invocation capabilities
+
+- **WHEN** the to-pr command profile is resolved for either harness
+- **THEN** it grants reading, search, questions, the to-pr and safe-operations skills, and shell invocation of the common to-pr Node tool without authorizing publication or push.
 
 ### Requirement: Harness-native capability translation
 

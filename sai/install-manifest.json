@@ -34,7 +34,8 @@
       "status-command": { "extends": "boot", "search": true, "question": true, "shell": ["openspec *", "node {sai}/tools/status.js *", "node {sai}/tools/change-picker.js *"] },
       "worktree-command": { "extends": "boot", "search": true, "question": true, "shell": ["git *", "node {sai}/tools/worktree.js *"] },
       "to-backlog-command": { "extends": "boot", "search": true, "question": true, "skills": ["to-backlog", "safe-operations"], "shell": ["node {sai}/tools/to-backlog.js *", "node {skills}/to-backlog/scripts/prepare-temp.js {harness}"] },
-      "from-backlog-command": { "extends": "boot", "search": true, "question": true, "skills": ["from-backlog"], "shell": ["node {sai}/tools/from-backlog.js *"] }
+      "from-backlog-command": { "extends": "boot", "search": true, "question": true, "skills": ["from-backlog"], "shell": ["node {sai}/tools/from-backlog.js *"] },
+      "to-pr-command": { "extends": "boot", "search": true, "question": true, "skills": ["to-pr", "safe-operations"], "shell": ["node {sai}/tools/to-pr.js *"] }
     },
     "assignments": {
       "agents": {
@@ -60,8 +61,8 @@
         "sai-6-security": "security-command", "sai-7-performance": "performance-command", "sai-8-accessibility": "accessibility-command",
         "sai-commit": "commit-command", "sai-archive": "archive-command",
         "sai-backfill": "backfill-command", "sai-merge": "merge-command",
-        "sai-explore": "explore-command", "sai-pr": "utility-write", "sai-retire-docs": "utility-write",
-        "sai-status": "status-command", "sai-worktree": "worktree-command", "to-backlog": "to-backlog-command", "from-backlog": "from-backlog-command"
+        "sai-explore": "explore-command", "sai-retire-docs": "utility-write",
+        "sai-status": "status-command", "sai-worktree": "worktree-command", "to-backlog": "to-backlog-command", "from-backlog": "from-backlog-command", "to-pr": "to-pr-command"
       }
     }
   },
@@ -680,6 +681,17 @@
       "include": [
         "**/SKILL.md"
       ],
+      "ownership": "managed",
+      "drift": "content"
+    },
+    {
+      "id": "to-pr-references",
+      "source": "skills/universal/to-pr",
+      "destination": { "class": "skills", "path": "to-pr" },
+      "harnesses": ["claude", "opencode"],
+      "strategy": "copy",
+      "recursive": true,
+      "include": ["description-format.md", "providers/**/*.md", "providers/**/*.json"],
       "ownership": "managed",
       "drift": "content"
     },
@@ -1471,6 +1483,13 @@
     }
   ],
   "retirements": [
+    { "id": "retired-sai-pr-claude", "destination": { "class": "commands", "path": "sai-pr.md" }, "harnesses": ["claude"], "managedHashes": ["c0571888d02f3a4d5cb92c2c9328c37ac42453703db3592e871f049b495d0dfa", "895c177fa529659d34d0d94344775cc3779d7236ec6c3671012de4ec708f33d9"] },
+    { "id": "retired-sai-pr-opencode", "destination": { "class": "commands", "path": "sai-pr.md" }, "harnesses": ["opencode"], "managedHashes": ["b5464e822849b6499d4054c4acaa62df4b6d699beda80f48c44ada59a6922c68", "757f4406f2db41f40744bd3dd0b4055441a90d90d5d2618497e93637bdd8c12b"] },
+    { "id": "retired-pr-body", "destination": { "class": "sai", "path": "commands/pr/body.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["634f3094b588e912e2ede4d7273afcb15f25f48437caddd3ccac56d701da32f4"] },
+    { "id": "retired-pr-bootstrap", "destination": { "class": "sai", "path": "commands/pr/command-bootstrap.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["39709b33c1b6a487596eaea9d7ad8eab7d3f5b9625fe5eeda5a5ff9429d63f09"] },
+    { "id": "retired-pr-instructions", "destination": { "class": "sai", "path": "commands/pr/instructions.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["64d7a151bd92028ca357b508a34683c098de12dd1ff661767f7289963e0da5bf"] },
+    { "id": "retired-pr-template", "destination": { "class": "sai", "path": "commands/pr/pr-body.template.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["9dc9c051e2d52e4a2392da54032c17c97e0c614d6a69e054b0c5e426376c9cef"] },
+    { "id": "retired-pr-tool", "destination": { "class": "sai", "path": "tools/pr.js" }, "harnesses": ["claude", "opencode"], "managedHashes": ["02660495e8d1fe672a55e47d4c2029f5d2a718a66603218ff1fdff3644cd040b"] },
     {
       "id": "retired-review-mutation-analysis-step",
       "destination": {
