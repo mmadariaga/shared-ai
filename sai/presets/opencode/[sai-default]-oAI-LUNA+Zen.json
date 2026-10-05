@@ -127,10 +127,6 @@
     "model": "openai/gpt-6-luna",
     "variant": "xhigh"
   },
-  "utility:sai-pr": {
-    "model": "openai/gpt-6-luna",
-    "variant": "xhigh"
-  },
   "utility:sai-retire-docs": {
     "model": "openai/gpt-5.6-luna",
     "variant": "max"

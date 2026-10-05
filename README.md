@@ -160,6 +160,12 @@ Claude Code and opencode route these core phases through a coordinator and a man
 
 ## Utility commands
 
+Use the universal `/to-pr` skill to create or update GitHub pull requests and
+GitLab merge requests from committed Git changes. It works in Claude Code and
+OpenCode without OpenSpec. Review the complete title and description before
+publication; any push needs separate approval. Reinstall to retire managed
+`sai-pr` copies. Existing user `pr.md` documents and modified overrides are preserved.
+
 | Command | Purpose |
 |---------|---------|
 | `/sai-merge` | Integrate a branch with `Merge`, `Rebase`, or `Rebase with squash` — full conflict resolution, ADR/DDR collision repair, and automatic local finalization. Normal mode approves strategies; `--fast-track` applies them after presentation. Unavailable tests are reported, not counted as passing. |
@@ -319,7 +325,6 @@ These opencode defaults were chosen for good results at reasonable cost. Feel fr
   [x] ORCHESTRATOR  sai-commit                   Small    ↑           opencode-go/muse-spark-1.3-contributor (xhigh)
   [x] WORKER        sai-commit-worker            Small    ↑           opencode-go/muse-spark-1.3-contributor (xhigh)
 
-  [x] UTILITY       sai-pr                       Medium   ↑           opencode-go/muse-spark-1.3-contributor (xhigh)
   [x] UTILITY       sai-retire-docs              Large    ↑↑          opencode-go/muse-spark-1.3-contributor (xhigh)
   [x] UTILITY       sai-status                   Small    ↑           opencode-go/muse-spark-1.3-contributor (xhigh)
   [x] UTILITY       sai-worktree                 Small    ↑           opencode-go/muse-spark-1.3-contributor (xhigh)

@@ -1,6 +1,6 @@
 # Status Picker
 
-Dedicated instruction that resolves a missing OpenSpec change name for `sai-status` ONLY. It reuses the shared `change-picker.md` 0/1/N resolution machinery verbatim, adding a **"See all"** bulk-view option on the two-or-more-changes branch. No other `sai-*` command fetches this file — the 9 change-consuming commands (`sai-2-design`, `sai-3-implement`, `sai-4-apply`, `sai-5-review`, `sai-6-security`, `sai-7-performance`, `sai-8-accessibility`, `sai-archive`, `sai-pr`) use `change-picker.md`.
+Dedicated instruction that resolves a missing OpenSpec change name for `sai-status` ONLY. It reuses the shared `change-picker.md` 0/1/N resolution machinery verbatim, adding a **"See all"** bulk-view option on the two-or-more-changes branch. No other command fetches this file. The `to-pr` skill uses Git as its primary source and does not require change-name resolution.
 
 ## Envelope-only resolution source
 
