@@ -34,16 +34,22 @@ function mock(state = {}) {
     assert.equal(args[0], 'api');
     assert.equal(args[args.indexOf('--hostname') + 1], 'private.example:8443');
     const endpoint = args[1], method = args[args.indexOf('--method') + 1];
+    if (method === 'GET') {
+      assert.equal(args.includes('--header'), false);
+      assert.equal(args.includes('--input'), false);
+      assert.equal(input ?? '', '');
+    }
     const row = () => ({ id: 30, project_id: 14, iid: 7, web_url: reference, title: 'Old', description: 'Before', updated_at: 'version-1', state: 'opened', author: { id: 2 }, ...state.issue });
     if (endpoint === 'user') return JSON.stringify({ id: state.otherActor ? 3 : 2 });
     if (method !== 'GET') {
+      assert.equal(args[args.indexOf('--header') + 1], 'Content-Type: application/json');
       assert.deepEqual(args.slice(-2), ['--input', '-']);
       const body = JSON.parse(input);
       assert.deepEqual(Object.keys(body).sort(), ['description', 'title']);
       state.mutations = (state.mutations || 0) + 1;
       if (state.denyMutation) throw new Error('glab: permission denied');
       if (!state.ignoreMutation) {
-        state.issue = { ...row(), ...body, updated_at: 'version-2' };
+        state.issue = { ...row(), ...body, ...(state.emptyDescription ? { description: '' } : {}), updated_at: 'version-2' };
         if (method === 'POST') state.rows.push(state.issue);
       }
       if (state.loseResponse) throw new Error('response lost');
@@ -51,11 +57,15 @@ function mock(state = {}) {
     }
     if (endpoint.includes('/notes?')) {
       const page = Number(new URLSearchParams(endpoint.split('?')[1]).get('page'));
+      assert.equal(endpoint, `projects/14/issues/7/notes?per_page=100&page=${page}&sort=asc&order_by=id`);
       if (page === 2 && state.pageFailure) throw new Error('second page failed');
       return JSON.stringify(page === 1 ? Array.from({ length: state.manyNotes ? 100 : 2 }, (_, index) => ({ id: index + 1, body: ` exact ${index}\n`, author: index ? null : { username: 'author' }, system: index === 1 })) : [{ id: state.repeated ? 1 : 101, body: 'last', author: null, system: false }]);
     }
     if (endpoint.startsWith('projects/14/issues?')) {
       const page = Number(new URLSearchParams(endpoint.split('?')[1]).get('page'));
+      assert.equal(endpoint, `projects/14/issues?scope=all&state=all&per_page=100&page=${page}&order_by=created_at&sort=asc`);
+      if (page === state.issuePageFailure) throw new Error('issue page failed');
+      if (state.issuePages) return JSON.stringify(state.issuePages[page - 1]);
       return JSON.stringify(state.manyIssues ? page === 1 ? Array.from({ length: 100 }, (_, i) => ({ ...row(), id: i + 100, iid: i + 100, web_url: `${url}/-/issues/${i + 100}` })) : state.rows : state.rows);
     }
     assert.equal(endpoint, 'projects/14/issues/7');
@@ -156,9 +166,86 @@ test('exact confirmation precedes creation; JSON content remains data and result
   assert.equal(state.mutations, undefined);
   assert.equal(to.publish(request, io).status, 'complete');
   assert.equal(state.mutations, 1);
+  assert.equal(state.rows[0].title, text.title);
   assert.equal(state.rows[0].description, text.description);
+  const submission = state.calls.find(call => call.args.includes('POST'));
+  assert.equal(submission.input, JSON.stringify(text));
+  assert.ok(!submission.args.includes(text.title) && !submission.args.includes(text.description));
   assert.equal(to.publish(request, io).status, 'failure_before_publication');
   assert.equal(state.mutations, 1);
+});
+
+test('paginated issue baselines retain IDs regardless of their creation-time order', () => {
+  const rows = Array.from({ length: 101 }, (_, i) => ({ id: 500 - i, project_id: 14, iid: i + 100, web_url: `${url}/-/issues/${i + 100}`, title: text.title, description: text.description, author: { id: 2 } }));
+  const state = { issuePages: [rows.slice(0, 100), rows.slice(100)] };
+  const { io, request } = prepared(state);
+  // The POST reaches the host, but its response is lost. Existing matches
+  // across both pages must remain baseline entries, not recovery candidates.
+  state.loseResponse = true;
+  assert.equal(to.publish(request, io).status, 'uncertain');
+  assert.deepEqual(JSON.parse(fs.readFileSync(request.receipt)).baseline, rows.map(row => row.id));
+  const recovery = to.recover({ receipt: request.receipt, issueUrl: rows[100].web_url }, io);
+  assert.equal(recovery.status, 'uncertain');
+  assert.deepEqual(recovery.candidates, []);
+  assert.equal(state.mutations, 1);
+});
+
+test('invalid, repeated and failed issue pages stop before POST and pending receipt creation', () => {
+  const row = { id: 100, project_id: 14, iid: 100, web_url: `${url}/-/issues/100`, title: 'Existing', description: null, author: { id: 2 } };
+  const fullPage = Array.from({ length: 100 }, (_, i) => ({ ...row, id: i + 100, iid: i + 100, web_url: `${url}/-/issues/${i + 100}` }));
+  for (const listing of [
+    { issuePages: [{}] },
+    { issuePages: [[{ ...row, id: undefined }]] },
+    { issuePages: [[row, row]] },
+    { issuePages: [fullPage, [row]] },
+    { issuePages: [fullPage, null] },
+    { issuePageFailure: 1 },
+    { issuePages: [fullPage], issuePageFailure: 2 },
+  ]) {
+    const state = { ...listing };
+    const { io, request } = prepared(state);
+    const result = to.publish(request, io);
+    assert.equal(result.status, 'failure_before_publication');
+    assert.match(result.message, /Incomplete.*GitLab issue|repeated GitLab issue|issue page failed/);
+    assert.equal(fs.existsSync(request.receipt), false);
+    assert.equal(state.mutations, undefined);
+    assert.ok(state.calls.every(call => !call.args.includes('POST')));
+  }
+});
+
+test('uncertain creation keeps its receipt and recovery performs reads only', () => {
+  for (const behavior of [{ denyMutation: true }, { ignoreMutation: true, loseResponse: true }]) {
+    const state = { ...behavior };
+    const { io, request } = prepared(state);
+    assert.equal(to.publish(request, io).status, 'uncertain');
+    const originalReceipt = fs.readFileSync(request.receipt, 'utf8');
+    assert.equal(JSON.parse(originalReceipt).stage, 'creation_pending');
+    state.calls = [];
+    assert.equal(to.recover({ receipt: request.receipt, issueUrl: reference }, io).status, 'uncertain');
+    assert.equal(fs.readFileSync(request.receipt, 'utf8'), originalReceipt);
+    assert.ok(state.calls.every(call => call.args[0] === 'repo' || call.args.includes('GET')));
+    assert.equal(to.publish(request, io).status, 'failure_before_publication');
+    assert.equal(state.mutations, 1);
+  }
+});
+
+test('a correct title with an empty description is never verified or repaired', () => {
+  for (const loseResponse of [false, true]) {
+    const state = { emptyDescription: true, loseResponse };
+    const { io, request } = prepared(state);
+    assert.equal(to.publish(request, io).status, 'uncertain');
+    const originalReceipt = fs.readFileSync(request.receipt, 'utf8');
+    state.calls = [];
+    const recovered = to.recover({ receipt: request.receipt, issueUrl: reference }, io);
+    assert.equal(recovered.status, 'uncertain');
+    if (loseResponse) assert.deepEqual(recovered.candidates, []);
+    else assert.match(recovered.message, /approved content could not be verified/);
+    assert.equal(fs.readFileSync(request.receipt, 'utf8'), originalReceipt);
+    assert.equal(state.rows[0].title, text.title);
+    assert.equal(state.rows[0].description, '');
+    assert.equal(state.mutations, 1);
+    assert.ok(state.calls.every(call => call.args[0] === 'repo' || call.args.includes('GET')));
+  }
 });
 
 test('lost creation responses are verified before recovery and never cause duplicate creation', () => {
@@ -189,6 +276,12 @@ test('update lost responses distinguish applied, pending and divergent; recovery
     const state = { loseResponse: true, ignoreMutation };
     const { io, request } = prepared(state, 'update');
     assert.equal(to.update(request, io).status, ignoreMutation ? 'pending' : 'complete');
+    const submission = state.calls.find(call => call.args.includes('PUT'));
+    assert.equal(submission.input, JSON.stringify(text));
+    if (!ignoreMutation) {
+      assert.equal(state.issue.title, text.title);
+      assert.equal(state.issue.description, text.description);
+    }
     assert.equal(to['recover-update']({ receipt: request.receipt }, io).status, ignoreMutation ? 'pending' : 'complete');
     state.issue = { title: 'Other author edit', updated_at: 'version-3' };
     assert.equal(to['recover-update']({ receipt: request.receipt }, io).status, 'divergent');

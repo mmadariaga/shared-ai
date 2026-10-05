@@ -45,7 +45,7 @@ Creation query SHALL bind the canonical project URL, project identifier, hostnam
 
 ### Requirement: Non-creating GitLab creation recovery
 
-Creation recovery SHALL use the saved private receipt, recheck bound project and actor identity and visibility, and enumerate all issue pages before verifying the result. With no recorded created identity, it SHALL return candidates absent from the saved baseline that match exact approved content and authenticated author. It SHALL require a confirmed canonical issueUrl to select a candidate; matching content alone SHALL NOT establish which issue belongs to the attempt. Recovery SHALL report complete only after verifying recorded identity and exact content, SHALL remain uncertain when verification fails, and SHALL never create another issue.
+Creation recovery SHALL use the saved private receipt, recheck bound project and actor identity and visibility, and enumerate all issue pages before verifying the result. With no recorded created identity, it SHALL return candidates absent from the saved baseline that match exact approved content and authenticated author. It SHALL require a confirmed canonical issueUrl to select a candidate; matching content alone SHALL NOT establish which issue belongs to the attempt. Recovery SHALL report complete only after verifying recorded identity and exact content, SHALL remain uncertain when verification fails, and SHALL never create another issue. An uncertain creation outcome SHALL retain its receipt, and an existing receipt SHALL NOT authorize another creation attempt. Recovery SHALL perform remote reads only and SHALL NOT automatically complete, delete, replace, or otherwise repair an issue whose content cannot be verified.
 
 #### Scenario: Lost GitLab creation response
 
@@ -61,6 +61,21 @@ Creation recovery SHALL use the saved private receipt, recheck bound project and
 
 - **WHEN** actor, project, visibility, recorded issue identity, or approved issue content cannot be verified
 - **THEN** recovery retains uncertainty and performs no creation or corrective mutation.
+
+#### Scenario: A matching issue existed before publication
+
+- **WHEN** a matching issue identifier belongs to the saved creation baseline, including an identifier from a later page
+- **THEN** recovery excludes that issue from new-creation candidates regardless of its position in creation-time order.
+
+#### Scenario: Creation remains unverified
+
+- **WHEN** a creation attempt has an uncertain outcome and subsequent reads cannot verify its issue
+- **THEN** recovery retains the receipt unchanged, performs no remote mutation, and another publication using that receipt performs no new creation.
+
+#### Scenario: Matching title has an empty description
+
+- **WHEN** an issue has the approved title but an empty description instead of the approved nonempty description, whether or not the POST response was received
+- **THEN** recovery remains uncertain, retains the receipt unchanged, and neither reports verified publication nor automatically completes, deletes, replaces, or recreates the issue.
 
 ### Requirement: Baseline-bound restricted GitLab origin update
 
@@ -109,3 +124,41 @@ After update submission, including a failed or lost response, the adapter SHALL 
 
 - **WHEN** remote reads fail or bound project, actor, visibility, or issue identity changes
 - **THEN** the outcome remains uncertain and recovery performs no remote mutation.
+
+### Requirement: Explicit JSON media type for GitLab publication requests
+
+The shared GitLab API helper SHALL declare `Content-Type: application/json` whenever a request body is supplied. Issue creation by POST and origin update by PUT SHALL retain `--input -` and JSON serialization of the exact approved title and description on stdin, rather than passing that content as command arguments. Requests without a body SHALL receive neither the JSON header nor `--input -`.
+
+#### Scenario: Exact approved content is created
+
+- **WHEN** an approved GitLab issue creation submits a JSON body by POST
+- **THEN** the request declares `Content-Type: application/json` and supplies the exact approved title and description as serialized JSON on stdin, not as command arguments.
+
+#### Scenario: Exact approved content is updated
+
+- **WHEN** an approved GitLab originating-issue update submits a JSON body by PUT
+- **THEN** the request declares `Content-Type: application/json` and supplies the exact approved title and description as serialized JSON on stdin.
+
+#### Scenario: A read has no body
+
+- **WHEN** the shared helper constructs a bodyless GET request
+- **THEN** it supplies no JSON Content-Type header, no `--input -`, and no request-body stdin.
+
+### Requirement: Supported complete GitLab issue listing
+
+Issue enumeration for creation baselines and creation recovery SHALL request `scope=all`, `state=all`, `per_page=100`, consecutive page numbers beginning at one, `order_by=created_at`, and `sort=asc`. Enumeration SHALL continue until a page contains fewer than 100 issues. It SHALL retain issue identifiers independently of their numeric ordering and reject non-array pages, malformed issues, repeated identifiers, and failed page requests. A listing failure during creation preparation SHALL stop publication before POST and before creation of a pending receipt.
+
+#### Scenario: Multiple pages have nonascending identifiers
+
+- **WHEN** valid issue pages contain identifiers that do not increase with creation-time order
+- **THEN** enumeration preserves all identifiers across the pages and uses identifier membership, not listing position or identifier order, to establish the creation baseline.
+
+#### Scenario: A listing page is invalid or repeats an identifier
+
+- **WHEN** creation preparation receives a non-array page, a malformed issue, or an identifier already seen on the same or an earlier page
+- **THEN** it reports failure before publication, sends no POST, and creates no pending receipt.
+
+#### Scenario: A listing request fails
+
+- **WHEN** the first or a later issue-page request fails during creation preparation
+- **THEN** it reports failure before publication, sends no POST, and creates no pending receipt.
