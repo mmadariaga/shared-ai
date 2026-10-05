@@ -40,7 +40,7 @@ function query(request, io) {
 function list(proposal, io) {
   const result = [], seen = new Set();
   for (let page = 1; ; page++) {
-    const rows = source.api(proposal, `projects/${proposal.repositoryId}/issues?scope=all&state=all&per_page=100&page=${page}&order_by=id&sort=asc`, io);
+    const rows = source.api(proposal, `projects/${proposal.repositoryId}/issues?scope=all&state=all&per_page=100&page=${page}&order_by=created_at&sort=asc`, io);
     if (!Array.isArray(rows)) throw new Error('Incomplete GitLab issue list');
     for (const row of rows) {
       if (!Number.isSafeInteger(row?.id) || typeof row.title !== 'string' || (row.description !== null && typeof row.description !== 'string') || !Number.isSafeInteger(row.iid) || row.project_id !== proposal.repositoryId || typeof row.web_url !== 'string' || !Number.isSafeInteger(row.author?.id) || seen.has(row.id)) throw new Error('Incomplete or repeated GitLab issue');
