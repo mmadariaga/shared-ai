@@ -82,19 +82,66 @@ The apply coordinator SHALL retain ownership of both commit gates and SHALL use 
 
 ### Requirement: Every apply dispatch window is guarded and gates run between windows
 
-Each Step SHALL be one no-commit-guard window spanning its RED, GREEN, and green-exception dispatches and their same-worker continuations, recovery and replacement workers included. The coordinator SHALL run the guard's `snapshot` step immediately before the Step's first dispatch proceeds, holding the returned SHA as invocation-scoped `guard_base`, and its `verify` step before each boundary the no-commit-guard policy lists: before presenting any question to the user, before the Step's commit gate — whether that gate asks the user or the commit is pre-authorized by fast-track or session authorization — and before acting on a run-closing result. After a human turn the coordinator SHALL snapshot again before the answer reaches a worker. A progress event, a notice, and a RED terminal followed by the GREEN dispatch SHALL take no guard call. The commit gate SHALL close the window, and the next Step SHALL open a fresh one. On a `violation` verdict the coordinator SHALL remediate exactly as the no-commit-guard policy prescribes and continue the route. The coordinator's own `git add` and `git commit` operations at the two commit-authorization gates SHALL always run between windows and never inside one; no apply window carries `allow_commit`.
+Each Step SHALL be one no-commit-guard window spanning its RED, GREEN, and green-exception dispatches and their same-worker continuations, recovery and replacement workers included. The coordinator SHALL run the guard's `snapshot` step immediately before the Step's first dispatch proceeds, holding the returned SHA as invocation-scoped `guard_base`, and its `verify` step before each boundary the no-commit-guard policy lists: before presenting any question to the user, before the Step's commit gate — whether that gate asks the user or the commit is pre-authorized by fast-track or session authorization — and before acting on a run-closing result.
+
+After a human turn the coordinator SHALL snapshot again before the answer reaches a worker. A progress event, a notice, and a RED terminal followed by the GREEN dispatch SHALL take no guard call. The commit gate SHALL close the window, and the next Step SHALL open a fresh one. On a `violation` verdict the coordinator SHALL remediate exactly as the no-commit-guard policy prescribes and continue the route. The coordinator's own `git add` and `git commit` operations at the two commit-authorization gates SHALL always run between windows and never inside one; no apply window SHALL carry `allow_commit`.
+
+Every close mode, including dry-run and declined-commit mark-only, SHALL carry the current explicit guard reference. Authorized Step commits SHALL close the preceding window; the coordinator SHALL discard the old `guard_base` and obtain a fresh snapshot before any later worker. The immutable file baseline SHALL remain unchanged. An obsolete SHA SHALL not justify ignoring a possible violation.
+
+After the prescribed mixed-reset remediation, Apply's coordinator SHALL restore only initial unrelated index entries from the immutable baseline after verifying unchanged unrelated content. Restoration SHALL not rewrite working-tree bytes or capture a new baseline. Restoration failure SHALL stop with work preserved. A fresh HEAD snapshot SHALL precede subsequent worker work.
 
 #### Scenario: a Step dispatch closes its window before the scratch sweep
-
 - **WHEN** a RED or GREEN dispatch of a Step returns and the coordinator runs the scratch sweep and comparisons of its post-dispatch sequence
 - **THEN** those run inside the Step's running window with no guard call of their own, and the window is closed by a `verify` before the Step's next boundary — a question to the user or the Step's commit gate — with the coordinator's own `git add` and `git commit` running only between windows
 
 #### Scenario: RED and GREEN of one Step share one window
-
 - **WHEN** the RED worker returns its terminal result and the coordinator dispatches the GREEN worker for the same Step with no human turn in between
 - **THEN** no guard call runs between the two dispatches and the Step's single window stays open
 
 #### Scenario: the commit gate closes the Step window
-
 - **WHEN** a Step reaches its commit gate, whether asked or pre-authorized
 - **THEN** the coordinator verifies the Step's window before the gate, runs its own `git add` and `git commit` outside every window, and opens a fresh window for the next Step
+
+#### Scenario: Two Steps create authorized commits
+- **WHEN** the first Step commits and a second Step is about to dispatch a worker
+- **THEN** the coordinator opens a fresh HEAD window at the new HEAD while retaining the original immutable file baseline
+
+#### Scenario: Remediation preserves unrelated staging
+- **WHEN** the HEAD guard's mixed reset cleared initially unrelated staging and its working-tree content is unchanged
+- **THEN** the coordinator restores those initial index entries before opening a fresh HEAD window
+
+### Requirement: Coordinator owns execution preflight and immutable run provenance
+
+After planning modifications and branch selection settle and before the first worker, the coordinator SHALL require Apply preflight to exit zero with `ok: true`. Failure or incomplete checking SHALL stop before RED with located reasons.
+
+The coordinator SHALL derive one stable invocation-scoped run identity and capture one immutable baseline. Planning-input provenance SHALL come from the planning phase's changed-files union or explicit current-invocation evidence and SHALL be intersected with exact authorized active-change artifact paths. Presence under openspec/changes SHALL not establish ownership.
+
+The coordinator SHALL retain the same baseline and run identity across Steps, retries, replacements, and authorized fresh attempts. Lost or corrupt state SHALL block continuation. It SHALL not move, stash, discard, reset, or restage unrelated work merely to pass scope checks.
+
+#### Scenario: Planning input exists before execution
+- **WHEN** a planning phase supplied an authorized active-change artifact as a changed path
+- **THEN** the coordinator may record that exact artifact as a planning input without making other change-directory files owned
+
+#### Scenario: Retry loses its initial record
+- **WHEN** the original baseline cannot be recovered reliably
+- **THEN** the coordinator stops with work preserved rather than capturing a new baseline
+
+### Requirement: Coordinator retains dispatch and close receipts
+
+Before each worker's first write, including a replacement or fresh attempt, the coordinator SHALL run dispatch-check and retain its checkpoint. The same-worker recovery stretch SHALL retain that checkpoint. Every verify SHALL receive baseline and checkpoint references, and every close SHALL receive baseline and explicit current guard references.
+
+After close, the coordinator SHALL retain the settled receipt for later dispatch-check, verify, inspect, and close operations. Authorized coordinator plan-bookkeeping writes after passing verification SHALL receive a plan checkpoint supplied to close. A checkpoint SHALL not be used to hide failed worker verification or widen scope.
+
+#### Scenario: Same-worker recovery continues
+- **WHEN** a worker receives an in-scope recovery continuation
+- **THEN** verification retains the original dispatch checkpoint and run baseline
+
+### Requirement: Terminal documentation commits exclude initially protected paths
+
+Before selecting eligible terminal documentation paths, the coordinator SHALL require baseline-aware inspect to pass and exclude every initially protected path, including initially dirty documentation and glossary paths. This check SHALL not widen the existing eligible terminal set or make planning inputs Step-owned.
+
+An authorized terminal commit SHALL stage and commit only exact eligible paths using path-limited commit semantics and preserve unrelated staging. Missing or corrupt state or preservation errors SHALL stop before terminal staging.
+
+#### Scenario: Initial documentation edits are unrelated
+- **WHEN** documentation eligible by location already had unrelated modifications in the baseline
+- **THEN** the terminal gate excludes that path and preserves its content and staging

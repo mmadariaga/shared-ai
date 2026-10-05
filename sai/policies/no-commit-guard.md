@@ -143,7 +143,10 @@ stays in force.
   still preserves all content unstaged, and one incident line may aggregate
   commits from several workers of the same window.
 - Pre-existing staged content loses its staged state on remediation; the
-  content stays intact.
+  content stays intact. Apply is the bounded exception: its coordinator restores
+  initial unrelated index entries from its immutable file baseline under
+  `sai/commands/apply/coordinator.md` § No-commit guard. The HEAD guard still
+  performs the same mixed reset, and its next window requires a fresh snapshot.
 - Branch and tag creation, and a worker that commits and self-resets, are
   undetectable.
 - Hook side effects of a worker commit (CI, linters) are not remediable.

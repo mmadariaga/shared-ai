@@ -69,135 +69,121 @@ Where a signature appears in both `## Target State` and a `## Step N` section, t
 
 ### Requirement: File Manifest is a deterministic net fold over Files Affected
 
-The `### File Manifest` subsection SHALL be a flat, git-status-style list with exactly one line per file the change creates, modifies, deletes, or renames, produced by a deterministic **net fold** over the per-step `**Files Affected**` entries of the same change's `tasks.md` — the `A`/`M`/`D`/`R` tokens and the `R <src> -> <dst>` form defined by the `tasks-scaffold-format` capability. The manifest SHALL be a target-state view: one path, one line, never a concatenation of per-step entries for the same path.
+The `### File Manifest` subsection SHALL be a flat, git-status-style list produced by a deterministic net fold over the same change's per-Step Files Affected entries. Ordinary exact-file entries SHALL yield exactly one line per file the change creates, modifies, deletes, or renames, using the A/M/D/R tokens and R source-to-destination form defined by tasks-scaffold-format. One exact path SHALL have one net line rather than concatenated per-Step entries.
 
-The fold SHALL process `## Step N` sections in ascending step order and, within a step, its `**Files Affected**` entries in file order. State is keyed by path; each path accumulates a state of `(net token, touched steps)`, seeded empty — empty covering both paths never touched and paths whose earlier touches netted to ∅ — and SHALL transition exactly as the following table. A rename SHALL migrate the accumulator entry to the destination path key and SHALL leave on the source path key a moved-away marker recording whether the source path existed at the change baseline: a source whose state before the rename was `A`, or a prior rename's destination, did not exist at the baseline; a source whose state was `M` or (empty) existed at it. The marker decides the token a later resurrection of the source path folds to. A resurrection dissolves the rename line: the destination then emits `A <dst>` on its own arc, because no rename survives when the source path exists at target state:
+Bounded generated A families SHALL be the sole exception to the individual-file line contract. The manifest SHALL retain one derivative family line as `A <directory>/<prefix>*<suffix> — generated count=<positive integer> (Step <n>)`, preserving the declaration's directory, family, expected count, and attribution. This line SHALL not be an executable path or independently authorize writes. Apply SHALL resolve the authoritative task declaration to exact paths before close. Overlapping generated families and generated-family collisions recognized by the fold SHALL be rejected rather than silently merged.
+
+For ordinary exact paths, the fold SHALL process Step sections in ascending order and entries in file order. State SHALL be keyed by path, with net token and touched Steps seeded empty. Empty SHALL cover both untouched paths and paths whose earlier touches netted to ∅.
+
+A rename SHALL migrate the accumulator to the destination key and leave a moved-away marker at the source recording whether it existed at the change baseline. A source whose pre-rename state was A or a prior rename destination did not exist at that baseline; a source whose state was M or empty existed. A later resurrection SHALL use that marker and dissolve the rename, with the destination emitting its own A arc.
+
+Ordinary exact-path transitions SHALL remain:
 
 | prior net | incoming token | new net |
 |-----------|----------------|---------|
-| (empty, or ∅) | `A` | `A` |
-| (empty) | `M` | `M` |
-| (empty) | `D` | `D` |
-| (empty, or ∅) | `R` | `R <src> -> <dst>` — the rename merge; the destination is new to the change and the source is not resurrected later |
-| `A` | `M` | `A` |
-| `A` | `D` | ∅ — the path is omitted from the manifest |
-| `A` | `R` | `A <dst>` — the change-created file lives at the destination |
-| `M` | `M` | `M` |
-| `M` | `D` | `D` |
-| `M` | `R` | `R <src> -> <dst>` |
-| `D` | `A` | `M` — the path existed before the change and exists after it |
-| `D` | `R` (as destination) | no merge — the destination existed at the change baseline: the arcs emit `D <src>` and `M <dst>` |
-| `R` (moved away; source existed at baseline) | `A` | `M <src>`, and the rename dissolves into `A <dst>` |
-| `R` (moved away; source created by this change) | `A` | `A <src>`, and the rename dissolves into `A <dst>` |
-| `R` | `M` | `R <src> -> <dst>` (a target-state view records where the file lands; the extent of the content change is carried by the step's `**What Will Be Done**` prose, per the `R`-token convention of `tasks.md`) |
-| `R` | `D` | `D <src>` — the composite dissolves; the deletion of the baseline path is the only fact that survives |
-| `R` | `R` | `R <state src> -> <incoming dst>` — a second rename collapses to the existing state's source and the incoming token's destination; the intermediate path appears nowhere |
+| (empty, or ∅) | A | A |
+| (empty) | M | M |
+| (empty) | D | D |
+| (empty, or ∅) | R | R source -> destination, with a new destination and no later source resurrection |
+| A | M | A |
+| A | D | ∅ |
+| A | R | A destination |
+| M | M | M |
+| M | D | D |
+| M | R | R source -> destination |
+| D | A | M |
+| D | R as destination | D source and M destination; no rename merge |
+| R moved away, source existed at baseline | A | M source and A destination; rename dissolves |
+| R moved away, source created by this change | A | A source and A destination; rename dissolves |
+| R | M | R source -> destination |
+| R | D | D original source |
+| R | R | R original source -> final destination |
 
-The existence-based token derivation of `tasks-scaffold-format` constrains the reachable pairs to exactly the table above: a path absent at a step's baseline is touched only by `A` or as the destination of an `R`; a path present at a step's baseline is never `A` and is touched only by `M`, `D`, `R`, or as the source of an `R`.
+Existence-based ordinary token derivation SHALL retain the table's reachable pairs: a path absent at a Step's baseline is touched only by A or as an R destination; a present path is never A and is touched only by M, D, R, or as an R source. Content rewrites after R SHALL remain described by the Step prose rather than alter the rename token.
 
-A path whose **final** state is ∅ SHALL NOT appear in the manifest, even though it appears in `tasks.md`; an intermediate ∅ (created and deleted, later recreated or renamed onto) does not suppress the path's later line. The final-∅ case is the only asymmetry between the two surfaces: every other touched path appears in both.
+An exact path whose final state is ∅ SHALL be omitted even though it appears in tasks. Intermediate ∅ SHALL not suppress later recreation or renaming onto that path. Final ∅ SHALL remain the only omission asymmetry for ordinary exact entries; every other touched exact path SHALL appear in both surfaces. Generated declarations SHALL appear as bounded derivatives rather than individual unresolved paths.
 
-Every step whose entry folds into a line SHALL be recorded in that line's step-attribution list, in ascending step order — the list names every touching step, not only the step that fixes the net token, so a net-`M` path first touched in Step 2 and modified again in Step 5 reads `(Step 2, Step 5)`, never `(Step 5)` alone. A rename entry contributes its source arc to the source path's line and its destination arc to the destination path's line. When the rename dissolves or collapses, the surviving line(s) carry the rename entry's steps alongside the follow-on entry's steps: `R` + `D` emits `D <src>` carrying the rename step and the deletion step; `R` + `A` emits `A <dst>` carrying the rename step, and the resurrected-source line carries the source-arc steps other than the rename step; `R` + `R` collapses with every rename step carried.
+Every Step whose entry folds into a line SHALL appear in its attribution list in ascending order, including every touch rather than only the Step fixing the net token. A rename SHALL contribute source and destination arcs to their corresponding lines. Dissolved or collapsed renames SHALL retain the appropriate Steps: R then D carries both on D source; R then source A carries the rename Step on A destination and source-arc Steps other than the rename on the resurrected source; chained R carries all rename Steps.
 
-Each line SHALL use the form `<net token> <path> (Step <n>[, Step <n>]*)` — exactly one space between the token and the path, exactly one space before the opening parenthesis, comma-plus-space between step numbers — and a renamed line SHALL use `R <src> -> <dst> (Step <n>…)` with exactly one space on either side of the ` -> ` separator. Lines SHALL NOT be column-aligned or padded.
+Ordinary lines SHALL use `<net token> <path> (Step <n>[, Step <n>]*)`; renamed lines SHALL use `R <src> -> <dst> (Step <n>…)`. Generated derivative lines SHALL retain the count suffix before the attribution. Token/path and pre-parenthesis separators SHALL be single spaces; Step separators SHALL be comma-plus-space; R separators SHALL be single spaces around the arrow. Lines SHALL not be aligned or padded.
 
-Lines SHALL be sorted lexicographically by their path — for `R` lines, the destination path (the path right of the ` -> ` separator), reusing the destination-only convention of the routing derivation.
-
-The manifest SHALL be a concise derivative review surface, not a replacement for the authoritative per-step contracts: `tasks.md` remains authoritative for step attribution and per-step tokens, and no downstream phase SHALL parse the manifest as authoritative input.
+Lines SHALL be path-sorted, using R destination paths and generated declaration paths as their respective keys. The manifest SHALL remain a concise derivative review surface. Tasks SHALL remain authoritative for per-Step tokens, declarations, and attribution; downstream phases SHALL not parse the manifest as authoritative executable input.
 
 #### Scenario: a path touched by several steps yields one net line
-
-- **WHEN** `tasks.md` lists `A src/lib/util.ts` in Step 1 and `M src/lib/util.ts` in Step 3
-- **THEN** the manifest contains exactly one line, `A src/lib/util.ts (Step 1, Step 3)`
-- **AND** no per-step duplicate lines are emitted
+- **WHEN** tasks list `A src/lib/util.ts` in Step 1 and `M src/lib/util.ts` in Step 3
+- **THEN** the manifest contains exactly `A src/lib/util.ts (Step 1, Step 3)` without per-Step duplicate lines
 
 #### Scenario: a path created and later deleted is omitted
-
-- **WHEN** `tasks.md` lists `A docs/tmp.md` in Step 2 and `D docs/tmp.md` in Step 6
-- **THEN** the manifest contains no line for `docs/tmp.md`
-- **AND** this is the only case where a path present in `tasks.md` is absent from the manifest
+- **WHEN** tasks list `A docs/tmp.md` in Step 2 and `D docs/tmp.md` in Step 6
+- **THEN** the manifest contains no line for docs/tmp.md, retaining final cancellation as the ordinary exact-path omission case
 
 #### Scenario: a rename folds to the destination path
-
-- **WHEN** `tasks.md` lists `M src/lib/old.ts` in Step 2 and `R src/lib/old.ts -> src/lib/new.ts` in Step 5
-- **THEN** the manifest contains `R src/lib/old.ts -> src/lib/new.ts (Step 2, Step 5)`
-- **AND** no line is emitted for `src/lib/old.ts`
+- **WHEN** tasks list `M src/lib/old.ts` in Step 2 and `R src/lib/old.ts -> src/lib/new.ts` in Step 5
+- **THEN** the manifest contains `R src/lib/old.ts -> src/lib/new.ts (Step 2, Step 5)` without a separate old-path line
 
 #### Scenario: a path deleted and recreated folds to M
-
-- **WHEN** `tasks.md` lists `D src/lib/util.ts` in Step 2 and `A src/lib/util.ts` in Step 5
-- **THEN** the manifest contains `M src/lib/util.ts (Step 2, Step 5)`
-- **AND** the path is not shown as created, because it existed before the change and exists after it
+- **WHEN** tasks list `D src/lib/util.ts` in Step 2 and `A src/lib/util.ts` in Step 5
+- **THEN** the manifest contains `M src/lib/util.ts (Step 2, Step 5)` because the path exists before and after the change
 
 #### Scenario: a resurrected source path dissolves the rename
-
-- **WHEN** `tasks.md` lists `R a.md -> b.md` in Step 2 and `A a.md` in Step 5
-- **THEN** the manifest contains `A b.md (Step 2)` and `M a.md (Step 5)`
-- **AND** no `R` line is emitted — the repository never reaches a state where `a.md` moved away, because `a.md` exists at target state
+- **WHEN** tasks list `R a.md -> b.md` in Step 2 and `A a.md` in Step 5
+- **THEN** the manifest contains `A b.md (Step 2)` and `M a.md (Step 5)` without an R line
 
 #### Scenario: a change-created source resurrected after its rename folds to A
-
-- **WHEN** `tasks.md` lists `A a.md` in Step 1, `R a.md -> b.md` in Step 2, and `A a.md` in Step 5
-- **THEN** the manifest contains `A a.md (Step 1, Step 5)` and `A b.md (Step 2)`
-- **AND** no line is `M` — `a.md` did not exist at the change baseline
+- **WHEN** tasks list `A a.md` in Step 1, `R a.md -> b.md` in Step 2, and `A a.md` in Step 5
+- **THEN** the manifest contains `A a.md (Step 1, Step 5)` and `A b.md (Step 2)` with no M line
 
 #### Scenario: a rename followed by a deletion emits the baseline path
-
-- **WHEN** `tasks.md` lists `R a.md -> b.md` in Step 2 and `D b.md` in Step 5
-- **THEN** the manifest contains `D a.md (Step 2, Step 5)`
-- **AND** its sort key is `a.md`, and no line names `b.md`
+- **WHEN** tasks list `R a.md -> b.md` in Step 2 and `D b.md` in Step 5
+- **THEN** the manifest contains `D a.md (Step 2, Step 5)`, sorted by a.md, and no line names b.md
 
 #### Scenario: a second rename collapses to the original source and the final destination
-
-- **WHEN** `tasks.md` lists `R a.md -> b.md` in Step 2 and `R b.md -> c.md` in Step 4
-- **THEN** the manifest contains `R a.md -> c.md (Step 2, Step 4)`
-- **AND** no line mentions `b.md`
+- **WHEN** tasks list `R a.md -> b.md` in Step 2 and `R b.md -> c.md` in Step 4
+- **THEN** the manifest contains `R a.md -> c.md (Step 2, Step 4)` and no line mentions b.md
 
 #### Scenario: a move onto a path deleted earlier in the change dissolves the rename
-
-- **WHEN** `tasks.md` lists `D b.md` in Step 1 and `R a.md -> b.md` in Step 3
-- **THEN** the manifest contains `D a.md (Step 3)` and `M b.md (Step 1, Step 3)`
-- **AND** no `R` line is emitted — `b.md` existed at the change baseline, so the move is not a rename relative to the baseline
+- **WHEN** tasks list `D b.md` in Step 1 and `R a.md -> b.md` in Step 3
+- **THEN** the manifest contains `D a.md (Step 3)` and `M b.md (Step 1, Step 3)` without an R line because b.md existed at the change baseline
 
 #### Scenario: R lines are sorted by destination path
-
-- **WHEN** a change renames `z-old.ts` to `a-new.ts` and modifies `b-mid.ts`
-- **THEN** the `R` line sorts under `a-new.ts`, before the `M` line for `b-mid.ts`
-- **AND** the sort key is the destination path, not the source path
+- **WHEN** a change renames z-old.ts to a-new.ts and modifies b-mid.ts
+- **THEN** its R line sorts by a-new.ts before the M line for b-mid.ts rather than sorting by the source
 
 #### Scenario: step attribution lists every touching step
-
-- **WHEN** a path is touched in Steps 2 and 5 with net token `M`
-- **THEN** its line reads `(Step 2, Step 5)`
-- **AND** the Step 2 touch is not hidden by the Step 5 token
+- **WHEN** a path is touched in Steps 2 and 5 with net token M
+- **THEN** its attribution reads `(Step 2, Step 5)` without hiding the Step 2 touch
 
 #### Scenario: separators are single spaces, no alignment
-
-- **WHEN** two design agents emit the manifest for the same `tasks.md`
-- **THEN** both use the same single-space separators and no column padding
-- **AND** both produce byte-identical lines
+- **WHEN** two design agents emit the manifest for the same tasks
+- **THEN** both use single-space separators without column padding and produce byte-identical lines
 
 #### Scenario: the fold is reproducible from tasks.md alone
+- **WHEN** a second design agent receives the same tasks and normative fold rules
+- **THEN** it produces a byte-identical File Manifest
 
-- **WHEN** a second design agent is given the same `tasks.md` and this fold table
-- **THEN** it produces a byte-identical `### File Manifest`
+#### Scenario: Generated count remains a derivative declaration
+- **WHEN** Step 1 declares `A generated/migration-*.sql — generated count=2`
+- **THEN** the manifest contains `A generated/migration-*.sql — generated count=2 (Step 1)` rather than inventing filenames or authorizing wildcard staging
 
 ### Requirement: File Manifest has an independent None sentinel
 
-When the net fold produces no lines, `### File Manifest` SHALL carry the exact sentinel `None — no files affected` followed by a one-line reason. The empty fold is reachable only when the change nets to nothing: every `**Files Affected**` entry cancels to ∅ — each path the change touches is created and later deleted within the same change. A conforming reason line is `None — no files affected (every touched path is created and deleted within the change, so nothing remains at target state)`. The sentinel SHALL be independent of the whole `### Architecture Snapshot` inventory's shared `None — no planned public surfaces` sentinel and of either boundary block's empty rendering: a change that plans no public surfaces SHALL still emit its full manifest beneath the snapshot's shared sentinel, and the two subsections' sentinels SHALL NOT interact or suppress each other.
+When the net fold produces no lines, File Manifest SHALL carry the exact sentinel `None — no files affected` followed by a one-line reason. An empty fold SHALL be valid when every ordinary touched path cancels to ∅ or when recognized None declarations explicitly identify no affected files. Explicit empty declarations SHALL not be confused with missing declarations.
+
+For the cancellation case, a conforming reason SHALL remain `None — no files affected (every touched path is created and deleted within the change, so nothing remains at target state)`.
+
+The manifest sentinel SHALL remain independent of the whole Architecture Snapshot inventory's `None — no planned public surfaces` sentinel and each boundary block's empty rendering. A change without public surfaces but with affected files SHALL still emit its full manifest. Neither subsection's sentinel SHALL suppress the other.
 
 #### Scenario: docs-only change emits snapshot None and a full manifest
-
-- **WHEN** a change touches only documentation files and plans no externally consumable or internal public surfaces
-- **THEN** `### Architecture Snapshot` carries the shared `None — no planned public surfaces` sentinel
-- **AND** `### File Manifest` directly beneath it still carries the full folded list of the change's files
-- **AND** no empty boundary-block rendering is emitted when the whole snapshot inventory is empty
+- **WHEN** a change touches only documentation and plans no externally consumable or internal public surfaces
+- **THEN** the snapshot carries its shared no-public-surfaces sentinel without empty boundary blocks, and the File Manifest independently carries the full folded file list
 
 #### Scenario: empty fold emits the manifest sentinel
+- **WHEN** a change creates docs/tmp.md in Step 2, deletes it in Step 6, and touches no other file
+- **THEN** the manifest carries `None — no files affected (every touched path is created and deleted within the change, so nothing remains at target state)` regardless of snapshot content
 
-- **WHEN** a change creates `docs/tmp.md` in Step 2, deletes it in Step 6, and touches no other file
-- **THEN** `### File Manifest` carries `None — no files affected (every touched path is created and deleted within the change, so nothing remains at target state)`
-- **AND** the sentinel is emitted regardless of the Architecture Snapshot's content
+#### Scenario: Explicit None produces an intentional empty manifest
+- **WHEN** recognized task declarations explicitly identify no affected files
+- **THEN** the empty manifest carries its own no-files-affected sentinel and one-line reason independently of the snapshot
 
 ### Requirement: File Manifest glossary term
 

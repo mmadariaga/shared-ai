@@ -76,42 +76,16 @@ function parseArgs(argv) {
 // Parsing tasks.md
 // ---------------------------------------------------------------------------
 
-function cleanPath(raw) {
-  let v = raw.trim();
-  v = v.replace(/\s+—\s+.*$/, '');
-  v = v.replace(/^`+|`+$/g, '').trim();
-  return v;
-}
-
 /** Parse one entry text; returns {token, path, src?} or throws a message string. */
 function parseEntry(text) {
-  const v = text.trim().replace(/^[-*+]\s+/, '');
-  const m = v.match(/^(\S+)(?:\s+(.*))?$/);
-  if (!m) return { error: 'empty entry' };
-  const token = m[1];
-  if (!/^[AMDR]$/.test(token)) {
-    return { error: `unknown change-type token '${token}' (expected A, M, D, or R)` };
-  }
-  const rest = (m[2] || '').trim();
-  if (!rest) return { error: `missing path after token '${token}'` };
-  if (token === 'R') {
-    const parts = rest.split(/\s+->\s+/);
-    if (parts.length !== 2) return { error: 'rename entry must be `R <source> -> <destination>`' };
-    const src = cleanPath(parts[0]);
-    const dst = cleanPath(parts[1]);
-    if (!src || !dst) return { error: 'rename entry is missing a source or destination path' };
-    if (src === dst) return { error: 'rename source and destination are identical' };
-    return { token, src, path: dst };
-  }
-  const p = cleanPath(rest);
-  if (!p) return { error: `missing path after token '${token}'` };
-  return { token, path: p };
+  return require('./apply-step').parseDeclaration(text);
 }
 
 /** Extract ordered entries from tasks.md text. Returns {entries, errors}. */
 function extractEntries(text) {
   const entries = [];
   const errors = [];
+  let sentinels = 0;
   const lines = text.split(/\r?\n/);
   let step = null;
   let inFiles = false;
@@ -145,15 +119,16 @@ function extractEntries(text) {
       continue;
     }
     const t = entryText.trim();
-    if (!t || /^<!--.*-->$/.test(t) || /^None\b/i.test(t.replace(/^[-*+]\s+/, ''))) continue;
+    if (!t || /^<!--.*-->$/.test(t)) continue;
     const parsed = parseEntry(t);
+    if (parsed.sentinel) { sentinels += 1; continue; }
     if (parsed.error) {
       errors.push({ line: i + 1, step, message: parsed.error });
       continue;
     }
     entries.push({ ...parsed, step, line: i + 1 });
   }
-  return { entries, errors };
+  return { entries, errors, sentinels };
 }
 
 // ---------------------------------------------------------------------------
@@ -189,6 +164,13 @@ function fold(entries) {
     const p = e.path;
     const s = e.step;
     const st = get(p);
+
+    if (e.generated) {
+      for (const [key, previous] of states) if (previous.generated && require('./apply-step').declarationsOverlap(previous.generated, e.generated)) fail(e, `overlapping generated families: ${key} and ${p}`);
+      if (st.t !== 'E') fail(e, `generated family collides with affected path: ${p}`);
+      states.set(p, { t: 'A', steps: [s], generated: e.generated });
+      continue;
+    }
 
     if (e.token === 'A') {
       if (st.t === 'E') states.set(p, { t: 'A', steps: [s] });
@@ -286,7 +268,7 @@ function fold(entries) {
       .map((n) => `Step ${n}`)
       .join(', ');
     if (st.t === 'R') lines.push({ key, text: `R ${st.via.src} -> ${key} (${steps})` });
-    else lines.push({ key, text: `${st.t} ${key} (${steps})` });
+    else lines.push({ key, text: `${st.t} ${key}${st.generated ? ` — generated count=${st.generated.count}` : ''} (${steps})` });
   }
   lines.sort((a, b) => Buffer.compare(Buffer.from(a.key, 'utf8'), Buffer.from(b.key, 'utf8')));
   return { lines: lines.map((l) => l.text), errors };
@@ -350,10 +332,10 @@ function run(mode, changeName, cwd) {
   const tasks = readFile(tasksFile, 'tasks.md');
   const design = readFile(designFile, 'design.md');
 
-  const { entries, errors: parseErrors } = extractEntries(tasks);
+  const { entries, errors: parseErrors, sentinels } = extractEntries(tasks);
   const result = { mode, change: changeName, tasks: tasksFile, design: designFile };
   if (parseErrors.length > 0) return { ...result, ok: false, status: 'error', errors: parseErrors };
-  if (entries.length === 0) {
+  if (entries.length === 0 && sentinels === 0) {
     return {
       ...result,
       ok: false,

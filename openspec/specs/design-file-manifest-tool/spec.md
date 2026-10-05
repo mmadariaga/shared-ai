@@ -69,22 +69,29 @@ The `verify` sub-command SHALL compute the same fold without writing any file an
 
 ### Requirement: Invalid input fails with a located diagnostic and no write
 
-The tool SHALL report each malformed `**Files Affected**` entry (an unknown token or a missing path) and each illegal transition (for example `M` after `D`) with the `tasks.md` line and Step, SHALL fail with exit 1, and SHALL NOT write `design.md`. It SHALL fail the same way, with no write, when `tasks.md` has no `**Files Affected**` entries or when a missing manifest has no `## Target State` section in `design.md` to hold it. A usage or I/O error SHALL exit 2.
+The tool SHALL report each malformed `**Files Affected**` entry (an unknown token or a missing path) and each illegal transition (for example `M` after `D`) with the `tasks.md` line and Step, SHALL fail with exit 1, and SHALL NOT write `design.md`. Unsafe paths, invalid bounded generated declarations, overlapping generated families, and generated collisions recognized by the fold SHALL fail with the same located diagnostics and no write.
+
+It SHALL fail the same way when `tasks.md` has neither affected entries nor recognized `None` declarations, or when a missing manifest has no `## Target State` section in `design.md` to hold it. Recognized `None` declarations SHALL count as intentional empty input rather than absent input. A usage or I/O error SHALL exit 2.
 
 #### Scenario: malformed entries fail with line numbers
-
 - **WHEN** `tasks.md` contains the entries `X foo.md` and `M` with no path, and `fold` runs
 - **THEN** the tool exits 1 with one diagnostic per entry naming its `tasks.md` line, and `design.md` is unchanged
 
 #### Scenario: an illegal transition fails with its location
-
 - **WHEN** `tasks.md` lists `D a.md` in Step 1 and `M a.md` in Step 2
 - **THEN** the tool reports one error naming Step 2 and its line, and writes nothing
 
 #### Scenario: a usage error exits 2
-
 - **WHEN** the tool runs with no sub-command
 - **THEN** it exits 2
+
+#### Scenario: Declared empty affected set is intentional
+- **WHEN** tasks explicitly declare recognized None values and contain no affected paths
+- **THEN** fold accepts the intentional empty set instead of reporting missing declarations
+
+#### Scenario: Unsafe declaration fails without a write
+- **WHEN** tasks contain a parent-traversing path or unsupported recursive generated wildcard
+- **THEN** fold and verify fail with diagnostics and leave design.md unchanged
 
 ### Requirement: The tool is resolved and projected like every sai tool
 
@@ -121,3 +128,17 @@ Overview generation SHALL exclude the persisted design File Manifest and copy li
 #### Scenario: independent verify behavior remains unchanged
 - **WHEN** file-manifest verify is invoked independently of overview generation
 - **THEN** it retains its existing read-only match, divergence, and missing-manifest outcomes
+
+### Requirement: Manifest and Apply share affected-file declaration parsing
+
+File Manifest generation SHALL use Apply's parseDeclaration function rather than an independent affected-file parser. Exact entries, rename validation, recognized None declarations, unsafe-path rejection, and bounded generated syntax SHALL use that shared interpretation.
+
+Generated declarations SHALL retain their expected count in the derivative manifest line. Fold SHALL reject overlapping generated families and generated-family collisions reported by its fold state, with located diagnostics and no design write. Ordinary net-fold transitions, step attribution, ordering, idempotence, and verify behavior SHALL remain unchanged.
+
+#### Scenario: Generated declaration uses backticks
+- **WHEN** tasks declare a valid bounded family with backticked entry or path syntax
+- **THEN** Manifest and Apply interpret the same family and count
+
+#### Scenario: Generated manifest is verified
+- **WHEN** the persisted manifest contains the same generated family, expected count, and Step attribution as the fold
+- **THEN** verify reports a match without writing design.md

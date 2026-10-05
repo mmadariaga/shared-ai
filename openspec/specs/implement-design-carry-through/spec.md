@@ -80,3 +80,23 @@ The implement validation step SHALL verify that every `Existing Tests Broken` en
 
 - **WHEN** `tasks.md` lacks `Existing Tests Broken` or `design.md` lacks `Manual Verification` or `Migration Plan`
 - **THEN** validation treats the field as `None` and does not fail
+
+### Requirement: Implement delivery requires Apply-compatible preflight
+
+Implement's validation step SHALL resolve Apply's tool through the shared tool-resolution policy and run its read-only preflight before delivering the plan or emitting validation progress. Delivery SHALL require exit zero and `ok: true`.
+
+A missing tool, failed invocation, incomplete check, or unsupported required block, command, or path SHALL block delivery. Implement SHALL repair and rerun the shared check rather than substitute prose review or an independent parser. The existing implementation.md versioning policy SHALL remain unchanged.
+
+#### Scenario: Consumer parser rejects the generated plan
+- **WHEN** Apply preflight reports an unsupported plan instruction during Implement validation
+- **THEN** Implement repairs the plan and reruns preflight before delivery
+
+### Requirement: Existing-test carry-through is checked with semantic review
+
+Implement SHALL carry every identified consumer test and shared fixture into its owning RED block's Existing tests to update declaration using exact backticked paths and compile or runtime failure modes. It SHALL review Design's supporting analysis even when Existing Tests Broken is None. GREEN SHALL retain its test-file prohibition.
+
+Preflight SHALL check declared path and failure-mode carry-through but SHALL not guarantee the completeness of semantic impact review.
+
+#### Scenario: Runtime adaptation is declared
+- **WHEN** Design identifies an existing consumer test whose assertions must change
+- **THEN** Implement assigns its exact path and runtime mode to RED and verifies carry-through before delivery

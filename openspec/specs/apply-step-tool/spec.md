@@ -7,18 +7,26 @@ Defines the stateless `apply-step.js` tool that performs the `/sai-4-apply` post
 
 ### Requirement: apply-step.js verify runs the post-dispatch checks in one call
 
-After every RED or GREEN dispatch or continuation return, the apply coordinator SHALL run one `apply-step.js verify` call with `--change`, `--step`, `--dispatch red|green|green-direct|green-exception`, the report's field 8 paths on stdin, and `--parent-was-absent` when `.tmp/` did not exist before the Step's first dispatch. The tool SHALL, in order: sweep exactly `.tmp/{change-name}/`; run the Step test command verbatim, expecting failure after a RED dispatch and success otherwise; after a non-RED dispatch also run the backticked command of each runnable Automated item verbatim, and after a RED dispatch instead check that each plan-named retired file is absent; sweep again; and compare `git status` with the files allowed for the dispatch kind and with field 8. It SHALL return one JSON object carrying `ok`, `commands`, `failures`, `unjudged`, `retirements`, `sweep`, `out_of_allowed`, `unreported`, and `only_in_subagent`. `ok` SHALL be true only when no command failed, no retired file remains, and no path is out of the allowed set, unreported, or claimed only by the subagent. Scratch paths and the plan's own `implementation.md` SHALL be excluded from the comparison. The `.tmp/` parent SHALL be removed only when `--parent-was-absent` was passed and it is empty after the sweep, and a sweep that removes paths SHALL report the line `> Scratch cleanup: removed <paths>` in `sweep.lines`.
+After every RED or GREEN dispatch or continuation return, the apply coordinator SHALL run one `apply-step.js verify` call with `--change`, `--step`, `--dispatch red|green|green-direct|green-exception`, the immutable `--baseline` reference, the retained `--checkpoint` reference, the report's field 8 paths on stdin, and `--parent-was-absent` when `.tmp/` did not exist before the Step's first dispatch. Explicit `--baseline-only` MAY replace the dispatch checkpoint for cumulative compatibility verification but SHALL NOT omit the baseline.
+
+The tool SHALL validate retained records before proceeding. It SHALL, in order: sweep exactly `.tmp/{change-name}/`; run the Step test command verbatim, expecting failure after a RED dispatch and success otherwise; after a non-RED dispatch also run the backticked command of each runnable Automated item verbatim, and after a RED dispatch instead check that each plan-named retired file is absent; sweep again; resolve generated declarations; and compare observed execution changes with the files allowed for the dispatch kind and with field 8. Command deduplication SHALL distinguish different expected outcomes.
+
+Per-dispatch changes SHALL be measured against the retained dispatch checkpoint. Cumulative compatibility verification SHALL use the immutable baseline and retained settled state. Unchanged initial unrelated work SHALL remain visible but SHALL NOT become executed scope. Current-Step comparisons SHALL distinguish earlier RED writes from GREEN writes and unchanged previously closed owned work from current changes.
+
+The tool SHALL return one JSON object carrying `ok`, `commands`, `failures`, `unjudged`, `retirements`, `sweep`, `out_of_allowed`, `unreported`, and `only_in_subagent`, plus `unrelated`, `preservation_errors`, and `generated_errors`. `ok` SHALL be true only when no command failed, no retired file remains, no path is out of the allowed set, unreported, or claimed only by the subagent, and no preservation, planning, plan-write, or applicable generated discrepancy remains.
+
+Active-change scratch paths and the plan's own `implementation.md` SHALL be excluded from ordinary path comparisons, but worker plan edits SHALL remain preservation errors. Other changes' scratch SHALL receive no active-change scratch exemption. The `.tmp/` parent SHALL be removed only when `--parent-was-absent` was passed and it is empty after the sweep, and a sweep that removes paths SHALL report the line `> Scratch cleanup: removed <paths>` in `sweep.lines`.
 
 #### Scenario: GREEN dispatch passes verification
-- **WHEN** a GREEN dispatch returns, the Step test command and the runnable Automated commands exit as expected, and `git status` equals field 8 within the allowed files
+- **WHEN** a GREEN dispatch returns, its commands exit as expected, current dispatch changes equal field 8 within allowed files, and retained-state and generated checks pass
 - **THEN** `verify` returns `ok: true` with empty `failures`, `out_of_allowed`, `unreported`, and `only_in_subagent`
 
 #### Scenario: RED dispatch expects the Step test command to fail
-- **WHEN** a RED dispatch returns, the Step test command exits non-zero, and every plan-named retired file is absent
+- **WHEN** a RED dispatch returns, the Step test command exits non-zero, every plan-named retired file is absent, and its other applicable checks pass
 - **THEN** `verify` returns `ok: true` and does not count the failing Step test command as a failure
 
 #### Scenario: Undeclared change fails verification
-- **WHEN** `git status` shows a changed path that is absent from field 8
+- **WHEN** execution produces a changed path absent from field 8
 - **THEN** `verify` returns `ok: false` and lists that path in `unreported`
 
 #### Scenario: Path outside the allowed files fails verification
@@ -28,6 +36,18 @@ After every RED or GREEN dispatch or continuation return, the apply coordinator 
 #### Scenario: Scratch is swept and printed
 - **WHEN** a dispatch leaves files under `.tmp/{change-name}/`
 - **THEN** `verify` removes that directory, lists `> Scratch cleanup: removed .tmp/{change-name}/` in `sweep.lines`, and excludes the swept paths from the comparison
+
+#### Scenario: Preserved unrelated work does not block verification
+- **WHEN** unrelated staged and unstaged work equals its initial state and all current dispatch changes match allowed paths and field 8
+- **THEN** verify reports the unrelated paths and returns `ok: true` if its other checks pass
+
+#### Scenario: GREEN modifies a RED-owned test
+- **WHEN** GREEN changes a test file relative to its retained dispatch checkpoint
+- **THEN** verification reports the forbidden change even if RED previously created or changed that file
+
+#### Scenario: New out-of-scope change is preserved and rejected
+- **WHEN** execution adds, modifies, deletes, or renames an undeclared path
+- **THEN** verification fails without deleting, moving, or discarding the work found
 
 ### Requirement: Verify falls back and defers what it cannot judge
 
@@ -51,19 +71,37 @@ The coordinator SHALL invoke `apply-step.js close` only after a passing `verify`
 
 ### Requirement: apply-step.js close performs the Step close in one call
 
-`apply-step.js close` SHALL take `--change`, `--step`, `--guard-base <sha|n/a>`, optionally `--dry-run` or `--mark-only` (mutually exclusive), and on stdin the add-list, a `---` line, then the commit message. It SHALL run the no-commit guard `verify` against `--guard-base`, build the visibility report with its pinned status letter, mark the Step's Automated checkboxes `[x]` in `implementation.md` on disk, then run `git add` for exactly the add-list paths that exist in the working tree (a declared removal stages the deletion) and `git commit` with the message. It SHALL return one JSON object carrying `status_letter`, `report_text`, `guard`, `committed`, `sha`, `subject`, `reason`, `marked`, and `error`, and the coordinator SHALL print `report_text` verbatim. Functional checkboxes SHALL never be marked by `close`, and the tool SHALL never add a path outside the add-list. The marks SHALL be written to disk before the commit.
+`apply-step.js close` SHALL take `--change`, `--step`, immutable `--baseline`, explicit `--guard-base <sha|n/a>`, optionally `--dry-run` or `--mark-only` (mutually exclusive), and on ordinary or dry-run stdin the add-list, a `---` line, then the commit message. Mark-only SHALL take empty stdin. Explicit `n/a` SHALL mean an inactive guard; omission SHALL be an error.
+
+Every mode SHALL validate baseline and guard state and compare the plan with retained coordinator state before marking. Ordinary close SHALL build the visibility report with its pinned status letter, validate the authored message, reject unsafe add-list paths and scope or preservation discrepancies, mark the Step's Automated checkboxes `[x]` in `implementation.md` on disk, then run `git add` for exactly the literal add-list paths that exist in the working tree (a declared removal stages the deletion) and path-limited `git commit --only` with the message. Initial dirty paths and planning inputs SHALL not become Step-owned commit paths. Unrelated staged entries SHALL match their initial state and remain outside the commit.
+
+Ordinary close SHALL return one JSON object carrying `status_letter`, `report_text`, `guard`, `committed`, `sha`, `subject`, `reason`, `marked`, and `error` as applicable, and the coordinator SHALL print `report_text` verbatim. Successful committing close SHALL also return an immutable settled receipt and indicate that the guard window closed. Functional checkboxes SHALL never be marked by `close`, and the tool SHALL never add a path outside the add-list. The marks SHALL be written to disk before the commit.
+
+Dry-run SHALL check retained baseline, guard, and plan state and return the report without marking or committing. Mark-only SHALL additionally check scope, preservation, and generated declarations before marking Automated checkboxes, SHALL run no Git mutation, and SHALL return its settled receipt. Missing, corrupt, or mismatched retained state SHALL block continuation.
 
 #### Scenario: Close marks the Step and commits only the add-list
-- **WHEN** `close` runs with add-list `{src/feature.js}` while `src/unrelated.js` is also modified
+- **WHEN** verified `close` runs with authorized add-list `{src/feature.js}` while unrelated `src/unrelated.js` is also modified but unchanged from the baseline
 - **THEN** the Step's Automated checkboxes are `[x]` on disk, the commit contains only `src/feature.js`, and the result carries `committed: true`, the `sha`, and the `subject`
 
 #### Scenario: Close mark-only marks a declined Step
-- **WHEN** `close --mark-only` runs
-- **THEN** it marks the Step's Automated checkboxes `[x]` on disk, runs no guard, report, message check, `git add`, or `git commit`, and returns `reason: mark-only` with `marked`
+- **WHEN** `close --mark-only` runs with valid retained state and a passing guard, scope, preservation, and generated check
+- **THEN** it marks Automated checkboxes `[x]`, runs no report, message check, `git add`, or `git commit`, and returns `reason: mark-only`, `marked`, and the settled receipt
 
 #### Scenario: Close dry-run only reports
-- **WHEN** `close --dry-run` runs
-- **THEN** it runs only the guard and the report, marks no checkbox, makes no commit, and returns `reason: dry-run` with `report_text`
+- **WHEN** `close --dry-run` runs with valid baseline, guard, and retained plan state
+- **THEN** it returns the visibility report with `reason: dry-run`, marks no checkbox, and makes no commit
+
+#### Scenario: Step commit preserves unrelated staging
+- **WHEN** a verified Step closes with an exact owned add-list while unrelated staged and unstaged content remains unchanged from the baseline
+- **THEN** the commit contains only owned add-list paths and the unrelated content and index entries remain intact
+
+#### Scenario: Declined commit still checks the guard
+- **WHEN** mark-only receives a guard reference showing unauthorized HEAD movement
+- **THEN** it returns a guard violation before marking any checkbox
+
+#### Scenario: Commit isolation cannot be established
+- **WHEN** ordinary close detects unsafe paths, changed unrelated staging, or a scope discrepancy
+- **THEN** it refuses the commit before marking or staging those paths
 
 ### Requirement: Close call order follows session authorization
 
@@ -95,7 +133,9 @@ Under an active `session_commit_authorized` (including `/sai-build`) the coordin
 
 ### Requirement: The tool is stateless and the coordinator keeps the state machine
 
-`apply-step.js` SHALL read only git, the filesystem, and the change's `implementation.md` and `tasks.md`; it SHALL NOT read or write `sai-state`. The coordinator SHALL keep the `complete-step` emit, every `recovery-ledger@1` event, the guard remediation reset, and commit message authoring per `commit-rules`. Because `close` writes the checkbox marks before the commit, a failed `complete-step` emit after the commit SHALL recover by reseeding `apply-standalone@1` from the on-disk checkboxes.
+`apply-step.js` SHALL read Git, the filesystem, the change's `implementation.md` and `tasks.md`, and coordinator-owned immutable temporary records; it SHALL NOT read or write `sai-state`. Its temporary records SHALL preserve execution evidence without taking ownership of progress or recovery routing.
+
+The coordinator SHALL keep the `complete-step` emit, every `recovery-ledger@1` event, the guard remediation reset, authorization and receipt references, and commit message authoring per `commit-rules`. Because `close` writes the checkbox marks before the commit, a failed `complete-step` emit after the commit SHALL recover by reseeding `apply-standalone@1` from the on-disk checkboxes. This recovery SHALL retain the original run baseline rather than recapture initial state.
 
 #### Scenario: Emit fails after the commit
 - **WHEN** the `complete-step` emit fails after `close` committed the Step
@@ -108,3 +148,61 @@ The coordinator SHALL locate `apply-step.js` through `sai/policies/tool-resoluti
 #### Scenario: Tool is missing
 - **WHEN** the coordinator cannot resolve `apply-step.js`
 - **THEN** it stops the Step and does not reproduce the verification or the close in prose
+
+### Requirement: Executable-plan preflight uses Apply interpretation functions
+
+`apply-step.js preflight` SHALL read the selected change's plan and tasks using the same interpretation functions used by verify and close. It SHALL execute no tests and write no files. It SHALL report `ok`, recognized Steps, and errors containing Step, file, line, and reason.
+
+The check SHALL reject missing recognized Step headings, malformed Step headings, duplicate or invalid Step numbers, missing recognized Automated checklists or STOP & COMMIT markers, incomplete recognized RED/GREEN contracts, unsupported required instruction paths, incomplete command checks, conflicting expectations for the same command, incompatible RED/GREEN checklist commands, terminal full-suite commands in Step checklists, malformed affected-file declarations, and missing or incompatible existing-test carry-through. Semantic coverage SHALL remain explicitly agent-reviewed rather than guaranteed by preflight.
+
+#### Scenario: Invalid plan stops before execution
+- **WHEN** the plan has a required instruction that Apply cannot interpret
+- **THEN** preflight returns `ok: false` with a located reason and executes no test or file mutation
+
+#### Scenario: Existing-test adaptation is absent from RED
+- **WHEN** tasks declare an existing test with a failure mode but its RED update declaration is absent or incompatible
+- **THEN** preflight fails with the Step and tasks location
+
+### Requirement: Immutable execution records retain initial ownership evidence
+
+The baseline subcommand SHALL require a stable coordinator-supplied run identity and capture initial file content fingerprints, Git status, index entries, and HEAD in an immutable temporary record outside the repository and swept scratch directory. Planning input paths SHALL be exact authorized artifact paths of the active change. Pre-existing per-change scratch SHALL block capture.
+
+The capture registry SHALL refuse another capture for the same run identity, including after record loss. Record references SHALL include integrity evidence. Loading SHALL reject missing, corrupt, wrong-kind, wrong-project, wrong-change, or mismatched run records rather than capturing a replacement initial state.
+
+#### Scenario: Retry cannot hide earlier modifications
+- **WHEN** a run attempts baseline capture again using its retained run identity
+- **THEN** capture is refused and continuation requires the original retained reference
+
+#### Scenario: Initial record is unavailable
+- **WHEN** verification or close receives a missing or corrupt baseline reference
+- **THEN** the operation stops without recapturing initial state
+
+### Requirement: Dispatch checks protect initially dirty Step paths
+
+Before a worker can write, dispatch-check SHALL compare the dispatch's allowed exact paths and bounded generated families against initially dirty paths in the baseline. A conflict SHALL return `ok: false`, exact conflicts, and no checkpoint. A successful check SHALL return an immutable checkpoint tied to the baseline, run, Step, and dispatch kind.
+
+#### Scenario: Authorized path contains pre-existing work
+- **WHEN** an allowed Step file has unresolved modifications in the initial baseline
+- **THEN** dispatch-check rejects the dispatch before worker writes
+
+### Requirement: Settled and plan receipts distinguish authorized bookkeeping
+
+Close SHALL return immutable settled state after successful committing close or declined-commit marking. Later operations SHALL use that receipt to exclude unchanged previously closed owned work from the current Step's changes without changing the initial baseline.
+
+Cumulative verification and close SHALL reject plan changes relative to the initial or settled coordinator state before executing commands or marking checkboxes. The coordinator-only checkpoint-plan subcommand SHALL record already-authorized plan bookkeeping; close MAY receive that exact receipt. Missing, corrupt, or mismatched receipts SHALL block continuation.
+
+#### Scenario: Declined Step remains outside the next commit
+- **WHEN** a previously declined Step's owned files remain unchanged and a later Step uses the settled receipt
+- **THEN** those earlier files remain visible but do not become the later Step's execution changes or commit content
+
+#### Scenario: Worker changes the retained plan
+- **WHEN** cumulative verification or close observes an unapproved change to implementation.md
+- **THEN** it stops before command execution or checkbox marking
+
+### Requirement: Generated declarations resolve to bounded exact paths
+
+Apply SHALL resolve each declared generated family within its exact directory to regular files matching its literal basename prefix and suffix. GREEN verification and close SHALL reject missing or extra files, overlapping declarations, ambiguous exact paths, and declaration errors. RED MAY defer generated-count discrepancies while the outputs have not yet been implemented. Commits SHALL use resolved exact paths, not wildcard pathspecs.
+
+#### Scenario: Generated count differs
+- **WHEN** a declaration expects two matching generated files but GREEN or close finds one or three
+- **THEN** the generated discrepancy blocks completion or close

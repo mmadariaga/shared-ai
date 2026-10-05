@@ -45,10 +45,12 @@ A candidate qualifies only when it names a repository-level artifact, not a symb
 
 `openspec/changes/**`, `implementation.md`, the changed-files union, per-Step add-lists, and unrelated paths are outside the set. When the set is empty, skip the rest of this section: no message, no question.
 
+Before selecting that set, require `apply-step.js inspect --change {change-name} --baseline <baseline> --cwd <project-root> --json` to pass. Exclude every initial `protected` path, even under `docs/**` or at `GLOSSARY.md`; initial content and staging remain unrelated, not terminal-owned. Planning inputs are not Step-owned, and this filter does not widen the eligible set above. Missing/corrupt baseline state or preservation errors stop before any terminal staging. The immutable baseline is retained across terminal re-entry.
+
 1. **Visibility listing.** Print the eligible paths under `Will be committed` and every other working-tree path under `Will NOT be committed`. The listing never touches the index and uses no Step number, report, or plan cross-check.
 2. **Message.** Propose one per `@sai/policies/commit-rules.md`, describing only the eligible paths.
 3. **Authorization.** Ask through commit-rules § Authorization gate; an active `session_commit_authorized` skips only the ask.
-4. **Commit.** On authorization, `git add -- <eligible paths>` exactly, then `git commit`. Never `git add -A` or a broad fallback. On `no`, leave the files in the working tree, say what remains uncommitted, and continue without retrying.
+4. **Commit.** On authorization, `git add -- <eligible paths>` exactly, then `git commit --only -- <eligible paths>` with the authored message. Preserve unrelated staging; if exact-path isolation cannot be guaranteed, stop before committing. Never `git add -A` or a broad fallback. On `no`, leave the files in the working tree, say what remains uncommitted, and continue without retrying.
 
 ## 5. Print and stop
 
