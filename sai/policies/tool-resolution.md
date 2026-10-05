@@ -15,7 +15,7 @@ candidate below that exists**, copied **verbatim**, exactly as written.
 
 Substitute the concrete file name (for example `prereqs.js`,
 `change-picker.js`, `commit.js`, `check-delta-headers.js`,
-`worker-report-validator.js`, `pr.js`, `file-manifest.js`, `apply-step.js`) for `<name>` below.
+`worker-report-validator.js`, `to-pr.js`, `file-manifest.js`, `apply-step.js`) for `<name>` below.
 
 On **Claude Code**, in this order:
 
@@ -50,10 +50,10 @@ resolution. `<name>` below is the filename placeholder from the candidate
 lists; `<change-name>` is the separate CLI positional argument where a tool
 takes one — never substitute one for the other.
 
-- `commit.js` and `pr.js`: `node <tool-path> <subcommand> --json --cwd
-  <project-root>` plus the sub-command's required flags (`pr.js collect` also
-  takes `--change`; `pr.js apply` takes `--cwd` plus `--parent` where needed
-  and no `--json`, since `--json` and `--change` are `collect`-only).
+- `commit.js`: `node <tool-path> <subcommand> --json --cwd <project-root>`
+  plus the sub-command's required flags.
+- `to-pr.js`, `to-backlog.js`, `from-backlog.js`: the owning universal skill
+  defines the invocation.
 - `file-manifest.js`: `node <tool-path> <fold|verify> <change-name> --json
   --cwd <project-root>`.
 - `apply-step.js`: `node <tool-path> <verify|close> --change <change-name>

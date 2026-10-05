@@ -92,7 +92,7 @@ test('identifier allocation uses retained history rather than remaining-list len
 test('both drafting branches must load the same installed reference before drafting', () => {
   const prepare = skill.split('## 2. Prepare one item')[1].split('## 3. Review and confirm')[0];
   assert.match(prepare, /For both \*\*create\*\* and \*\*update\*\*, read `issue-format\.md`/);
-  assert.match(prepare, /same\s+installed skill directory selected in step 1 before drafting/);
+  assert.match(prepare, /from this skill's\s+directory before drafting/);
   assert.match(prepare, /final drafting checks pass/);
   assert.ok(prepare.indexOf('read `issue-format.md`') < prepare.indexOf('Draft only a title'));
   assert.match(skill, /Wait for an explicit answer/);

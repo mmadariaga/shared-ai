@@ -26,14 +26,12 @@ silently select creation. With an unambiguous origin, select **update**. With no
 origin, select **create**. An inaccessible origin remains an update blocker,
 never a reason to create a replacement issue.
 
-Locate this skill's installed directory: the active harness's project-local
-skills directory first, then its user-global skills directory (Claude Code:
-`.claude/skills/to-backlog`, `~/.claude/skills/to-backlog`; OpenCode:
-`.opencode/skills/to-backlog`, `~/.config/opencode/skills/to-backlog`). Use the
-registry `providers/registry.json` from that same directory. Locate
-`sai/tools/to-backlog.js` under the active harness's project-local root first,
-then user-global root. Use only those roots; keep paths as separate quoted
-arguments. The caller's working directory is the target repository directory.
+This skill's directory is the one holding this `SKILL.md`. Locate
+`sai/tools/to-backlog.js` per `sai/policies/tool-resolution.md` § `sai/tools/*.js`
+copies, read from the harness root that holds this skill's `skills/` directory.
+Use `providers/registry.json` from this skill's directory; keep paths as
+separate quoted arguments. The caller's working directory is the target
+repository directory.
 
 Resolution selects a registered provider; that provider may resolve its own
 destination through its read-only CLI. Load only the returned provider's
@@ -47,9 +45,8 @@ and its branch-specific prerequisites are satisfied before content extraction.
 
 ## 2. Prepare one item
 
-For both **create** and **update**, read `issue-format.md` from the same
-installed skill directory selected in step 1 before drafting. Apply its format
-and final drafting checks; on update, use its preservation boundary.
+For both **create** and **update**, read `issue-format.md` from this skill's
+directory before drafting. Apply its format and final drafting checks; on update, use its preservation boundary.
 
 Read the conversation, prioritizing recent messages while retaining earlier
 decisions that still apply. Draft only a title and description; Markdown is
