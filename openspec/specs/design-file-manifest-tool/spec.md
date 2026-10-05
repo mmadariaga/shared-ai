@@ -102,19 +102,22 @@ The tool SHALL report each malformed `**Files Affected**` entry (an unknown toke
 
 ### Requirement: The design steps delegate the manifest to the tool
 
-After `tasks.md` is fully written, `sai/commands/design/steps/tasks.md` SHALL direct the worker to run `file-manifest.js fold` and SHALL treat a non-zero exit as blocking until the `**Files Affected**` entries are corrected. The tasks step SHALL NOT carry the fold transition table in prose. `sai/commands/design/steps/design.md` SHALL NOT plan, author, or pre-fill manifest lines or a placeholder. `sai/commands/design/change-overview.md` SHALL validate the persisted manifest against the `file-manifest.js verify` verdict.
+After Tasks is fully written, `sai/commands/design/steps/tasks.md` SHALL direct the design worker to run `file-manifest.js fold` and treat a non-zero exit as blocking until Files Affected entries are corrected. The tasks step SHALL NOT carry the fold transition table in prose. The design step SHALL NOT plan, author, or pre-fill manifest lines or a placeholder.
+
+Overview generation SHALL exclude the persisted design File Manifest and copy literal per-Step Files Affected instead. It SHALL NOT require `file-manifest.js verify` for overview validation. This separation SHALL NOT change the tool's fold or verify semantics, design manifest generation, or design-step error handling.
 
 #### Scenario: the tasks step runs the tool
-
-- **WHEN** a design run finishes writing `tasks.md`
-- **THEN** the tasks step instructs running `fold` for the change and stopping on a non-zero exit
+- **WHEN** a design run finishes writing Tasks
+- **THEN** its tasks step instructs running fold and stopping on a non-zero exit
 
 #### Scenario: the design step does not pre-plan the manifest
-
-- **WHEN** the design step runs before any tasks exist
-- **THEN** `design.md` carries no hand-written manifest lines and no placeholder, and the manifest appears only after the tasks step runs the tool
+- **WHEN** the design step runs before Tasks exists
+- **THEN** design carries no handwritten manifest or placeholder and the manifest appears only after the tasks step runs the tool
 
 #### Scenario: overview validation uses the verify verdict
+- **WHEN** the overview generator validates a candidate
+- **THEN** it validates literal per-Step Files Affected and source correspondence without consuming a manifest verify verdict
 
-- **WHEN** the overview generator validates a candidate overview
-- **THEN** it treats a `file-manifest.js verify` divergence from the persisted `design.md` manifest as a blocking manifest contradiction
+#### Scenario: independent verify behavior remains unchanged
+- **WHEN** file-manifest verify is invoked independently of overview generation
+- **THEN** it retains its existing read-only match, divergence, and missing-manifest outcomes

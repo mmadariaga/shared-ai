@@ -65,20 +65,14 @@ test('apply is not gated on change-overview.md', () => {
   assert.ok(!applySection.includes('change-overview'), 'apply.requires must not list change-overview');
 });
 
-test('overview approval surface has exactly the nine top-level sections in order', () => {
+test('overview template groups sources and repeats a Step skeleton', () => {
   const template = artifact('openspec/schemas/sai-workflow/templates/change-overview.md');
   const headings = (template.match(/^## .+$/gm) || []).map(heading => heading.slice(3));
 
   assert.deepEqual(headings, [
-    'Change Proposal',
-    'Scope',
-    'Capabilities',
-    'Target Architecture',
-    'Key Contracts',
-    'File Manifest',
-    'Review Scenarios',
-    'Implementation Approach',
-    'Approval Summary',
+    'Proposal',
+    'Design',
+    'Step N: <!-- Tasks Step title; repeat for every Tasks Step in source order. -->',
   ]);
 });
 
@@ -100,87 +94,99 @@ test('overview approval surface excludes the forbidden legacy sections', () => {
   }
 });
 
-test('overview adapts architecture and centralizes the file manifest', () => {
+test('overview template selects Proposal fields and groups Interfaces before Tasks', () => {
   const template = artifact('openspec/schemas/sai-workflow/templates/change-overview.md');
-  const architectureIndex = template.indexOf('## Target Architecture');
-  const manifestIndex = template.indexOf('## File Manifest');
-  const nextSectionIndex = template.indexOf('\n## ', architectureIndex + 1);
-  const architecture = template.slice(architectureIndex, nextSectionIndex === -1 ? undefined : nextSectionIndex);
-
-  assert.ok(architectureIndex >= 0, 'overview should contain ## Target Architecture');
-  assert.ok(manifestIndex > architectureIndex, '## File Manifest should follow ## Target Architecture');
-  assert.match(architecture, /^### Snapshot$/m,
-    'architecture content should retain the fixed ### Snapshot subsection');
-  assert.doesNotMatch(architecture, /^### File Manifest$/m,
-    'the manifest should not be nested under ## Target Architecture');
-  assert.match(template, /^## File Manifest$/m, 'overview should contain ## File Manifest');
+  assert.deepEqual(template.match(/^### .+$/gm), [
+    '### Why', '### What Changes', '### Interfaces', '### Tasks',
+  ]);
+  assert.ok(template.indexOf('**Interfaces**:') < template.indexOf('**Test assertions**:'));
+  assert.ok(template.indexOf('**Test assertions**:') < template.indexOf('**Files Affected**:'));
+  assert.match(template, /no fixed Design section list/);
 });
 
-test('overview generation keeps signatures beside surviving manifest entries and omits net-empty paths', () => {
+test('overview joins every Tasks Step by number and preserves repeated file changes', () => {
   const instruction = artifact('sai/commands/design/change-overview.md');
 
-  assert.match(instruction, /public signature/i,
-    'generation contract should define public signature rendering');
-  assert.match(instruction, /(?:beside|alongside|next to)[\s\S]{0,180}(?:manifest|file entry)/i,
-    'public signatures should render beside their surviving manifest file entries');
-  assert.match(instruction, /net[- ]empty[\s\S]{0,180}(?:omit|omitted|exclude|excluded|not render)/i,
-    'signatures for net-empty paths should be omitted from the overview');
+  assert.match(instruction, /traverse every numbered[\s\S]*in source order, not sorted numerically/);
+  assert.match(instruction, /Join the corresponding[\s\S]*by Step number, never by position or title/);
+  assert.match(instruction, /Copy Files Affected literally, including repeated changes across Steps, deleted paths, and renames/);
+  assert.match(instruction, /only the complete `\*\*Interfaces\*\*` and `\*\*Test assertions\*\*` fields/);
+  assert.match(instruction, /exclude other fields/);
+  assert.match(instruction, /Non-Step Tasks sections and other Tasks fields are not copied/);
 });
 
-test('overview generation remains source-grounded and fails atomically on manifest contradiction', () => {
+test('overview preserves complete formatting and fails atomically on source contradictions', () => {
   const instruction = artifact('sai/commands/design/change-overview.md');
 
-  assert.match(instruction, /condens/i, 'generation contract should define condensed content');
-  assert.match(instruction, /source[- ]grounded/i,
-    'condensed content should remain source-grounded');
+  assert.match(instruction, /complete selected source content without summarizing, condensing, rewriting, or adding source content/);
+  for (const format of ['lists and their order', 'tables and all rows', 'emphasis', 'links', 'blockquotes', 'fenced and indented blocks', 'whitespace inside blocks']) {
+    assert.ok(instruction.includes(format));
+  }
+  assert.match(instruction, /heading-like text inside code blocks stays untouched/);
   assert.match(instruction, /source artifacts.*never modified|never modified.*source artifacts/i,
     'source artifacts should remain unchanged');
-  assert.match(instruction, /manifest contradiction/i,
-    'generation contract should define manifest contradiction handling');
+  assert.match(instruction, /Duplicate Step numbers in either source, an Interfaces Step number absent from Tasks/);
+  assert.match(instruction, /report both source locations and the one-line disagreement rather than correcting/);
   assert.match(instruction, /no partial output|without partial output|partial output.*(?:fail|suppress|none)/i,
     'a manifest contradiction should not leave partial output');
 });
 
-test('localized overview preserves structural anchors while allowing editorial subsection translation', () => {
+test('localized overview translates prose but preserves technical content and wrappers', () => {
   const instruction = artifact('sai/commands/design/change-overview.md');
 
   assert.match(instruction, /overview_language/);
   assert.match(instruction, /English/);
-  for (const heading of [
-    'Change Proposal',
-    'Scope',
-    'Capabilities',
-    'Target Architecture',
-    'Key Contracts',
-    'File Manifest',
-    'Review Scenarios',
-    'Implementation Approach',
-    'Approval Summary',
-  ]) assert.match(instruction, new RegExp(heading));
-  assert.match(instruction, /### Snapshot/,
-    'the fixed ### Snapshot heading should remain English');
+  for (const heading of ['## Proposal', '## Design', '## Step N:', '### Interfaces', '### Tasks']) {
+    assert.ok(instruction.includes(heading));
+  }
   for (const anchor of ['paths', 'commands', 'state values', 'source artifact names']) {
     assert.match(instruction, new RegExp(anchor));
   }
-  assert.match(instruction, /editorial.*(?:subsection|###).*translat|(?:subsection|###).*translat.*editorial/i,
-    'generator-authored editorial subsection headings may be translated');
-  assert.match(instruction, /## Capabilities[\s\S]{0,500}(?:editorial|###)[\s\S]{0,500}(?:translat|localiz)/i,
-    'localized capability subsections should preserve structural anchors');
-  assert.match(instruction, /## Target Architecture[\s\S]{0,500}(?:editorial|###)[\s\S]{0,500}(?:translat|localiz)/i,
-    'localized architecture subsections should preserve structural anchors');
+  assert.match(instruction, /already in `overview_language`, copy it verbatim/);
+  assert.match(instruction, /translate only natural-language prose, source headings, and descriptive labels/);
+  assert.match(instruction, /Keep code, public signatures, paths, identifiers, test expressions[\s\S]*unchanged, including inline code and code blocks/);
   assert.match(instruction, /result keys/);
   assert.match(instruction, /exactly five mandatory fields|five mandatory fields/);
   assert.match(instruction, /change-overview\.md/);
 });
 
-test('design target-state specification distinguishes the overview architecture adaptation', () => {
-  const specification = artifact('openspec/specs/design-target-state/spec.md');
+test('overview selects exactly Proposal fields and an open ordered Design selection', () => {
+  const instruction = artifact('sai/commands/design/change-overview.md');
+  assert.match(instruction, /copy only `## Why` and `## What Changes`[\s\S]*in source order/);
+  assert.match(instruction, /including any `WHAT` heading/);
+  assert.match(instruction, /copy all present sections[\s\S]*including additional sections not named in the template/);
+  assert.match(instruction, /Exclude sections named `Architecture Snapshot`, `File Manifest`, and `Context`, at any heading depth, with their complete subtrees/);
+  assert.match(instruction, /If `Target State` has no content left after exclusions, omit its heading too/);
+  assert.match(instruction, /retain it when selected prose or other subsections remain/);
+  assert.match(instruction, /no fixed allowlist of Design sections/);
+});
 
-  assert.match(specification,
-    /overview[\s\S]{0,240}renders an adapted ## Target Architecture[\s\S]{0,240}rather than[\s\S]{0,120}## Target State/i);
-  assert.match(specification, /Target State subsections remain exact in design\.md only/);
-  assert.match(specification,
-    /Target State remains authoritative in design\.md but is not projected into the overview/);
+test('overview omits absent content and preserves explanations without inventing contracts', () => {
+  const instruction = artifact('sai/commands/design/change-overview.md');
+  assert.match(instruction, /Omit absent selected sections or fields rather than filling placeholders/);
+  assert.match(instruction, /When the Step has no Interfaces block, emit only its Tasks wrapper and Files Affected/);
+  assert.match(instruction, /Preserve any source explanation of absence alongside the selected content/);
+  assert.match(instruction, /None — no step contracts[\s\S]*copy them once/);
+  assert.match(instruction, /Template placeholders are instructions, not output/);
+  assert.match(instruction, /against every source-mapping completion check and the faithful-copy rule/);
+});
+
+test('overview projects remaining Target State content without adapting its excluded architecture', () => {
+  const instruction = artifact('sai/commands/design/change-overview.md');
+
+  assert.match(instruction, /Keep remaining nested content in its source hierarchy, shifting source `##` headings to `###`/);
+  assert.match(instruction, /If `Target State` has no content left after exclusions, omit its heading too; retain it when selected prose or other subsections remain/);
+  assert.match(instruction, /Exclude sections named `Architecture Snapshot`, `File Manifest`, and `Context`, at any heading depth, with their complete subtrees/);
+  assert.doesNotMatch(instruction, /## Target Architecture|adapted.*architecture/i);
+});
+
+test('glossary overview mappings distinguish excluded design inventories from per-Step files', () => {
+  const glossary = artifact('GLOSSARY.md');
+  assert.match(glossary, /\*\*Change Overview\*\*: "[^\n]*faithful source-oriented[^\n]*joining Interfaces, Test assertions, and Files Affected by Step number/);
+  assert.match(glossary, /\*\*Architecture Snapshot\*\*: "[^\n]*excluded from `change-overview\.md`/);
+  assert.match(glossary, /\*\*File Manifest\*\*: "[^\n]*excluded from `change-overview\.md`[^\n]*copies Files Affected per Step without folding/);
+  assert.match(glossary, /\*\*Target State\*\*: "[^\n]*an empty Target State container is omitted/);
+  assert.doesNotMatch(glossary, /organized by capability and behavior|snapshot and manifest subsections are projected|sections it projects as its leading content|including its \*\*Architecture Snapshot\*\* and \*\*File Manifest\*\* subsections/);
 });
 
 test('interfaces.md keeps only step contracts', () => {
@@ -243,8 +249,8 @@ test('shared instruction is the generation contract', () => {
   assert.match(instruction, /writes ONLY/i, 'generation contract should limit writes to exactly one artifact');
   assert.match(instruction, /single-file/i, 'generation contract should name the single-file write scope');
 
-  assert.match(instruction, /organized by capability/i, 'generation contract should organize by capability');
-  assert.match(instruction, /capability and behavior/i, 'generation contract should organize capability and behavior');
+  assert.match(instruction, /Source mappings and completion checks/, 'generation contract should co-locate mappings and checks');
+  assert.match(instruction, /Proposal → Design → Tasks-ordered Step blocks/, 'generation contract should organize by source');
   assert.match(instruction, /validat/i, 'generation contract should contain a validation contract');
 
   assert.match(instruction, /failure_details/, 'result envelope should carry failure_details');
@@ -434,7 +440,7 @@ test('overview dispatch prompt stays minimal', () => {
   assert.match(dispatchBlock, /Fetch @sai\/commands\/design\/change-overview\.md/,
     'the dispatch prompt should carry the Fetch directive');
 
-  // The prompt does not enumerate the nine required sections or the forbidden sections.
+  // The prompt does not enumerate the shared contract's source mappings.
   // Section names are Proper-Noun titles (e.g. `## Requirements`); case-sensitive
   // matching detects the actual titles and excludes generic prose nouns such as
   // "content requirements", which the case-insensitive flag would false-match after "enumerate".
@@ -527,7 +533,7 @@ test('schema change-overview instruction is a non-empty informative reference on
   assert.doesNotMatch(overviewInstruction, /sai\/change-overview\.md/,
     'the instruction must not name the retired sai/change-overview.md path as the live contract');
 
-  // Does not enumerate any of the eight forbidden top-level sections as required content.
+  // Leaves source selection to the canonical generation contract.
   for (const forbidden of [
     'Target State', 'Requirements', 'Scenarios', 'Interfaces',
     'Assertions', 'File Changes', 'Delivery Steps', 'Traceability',
@@ -548,8 +554,25 @@ test('schema change-overview instruction is a non-empty informative reference on
     'the instruction must not restate the parent-versus-generator split');
 });
 
+test('schema and current generation consumers defer source organization without thematic conflicts', () => {
+  const schema = artifact('openspec/schemas/sai-workflow/schema.yaml');
+  const overviewEntry = schema.slice(schema.indexOf('id: change-overview'), schema.indexOf('id: implementation'));
+  assert.match(overviewEntry, /Faithful source-oriented review projection/);
+  assert.match(overviewEntry, /Content selection and organization belong to the shared generation contract/);
+  assert.match(overviewEntry, /requires: \[interfaces\]/);
+  for (const source of [
+    overviewEntry,
+    artifact('sai/commands/design/change-overview.md'),
+    artifact('sai/commands/design/steps/overview.md'),
+    artifact('sai/commands/design/worker.md'),
+    artifact('openspec/schemas/sai-workflow/templates/change-overview.md'),
+  ]) {
+    assert.doesNotMatch(source, /organized by capability and behavior|never as a concatenation of the source documents/);
+  }
+});
+
 test('schema and worker transport coverage is not satisfied by template-only section checks', () => {
-  // The overview template carries the nine-section shape, but that shape does not
+  // The overview template carries the source-oriented shape, but that shape does not
   // substitute for transport or schema-instruction coverage. This test asserts the
   // two production surfaces independently carry the coverage.
   const worker = artifact('sai/commands/design/worker.md') + '\n' + artifact('sai/commands/design/steps/overview.md');
@@ -817,12 +840,12 @@ test('localized Change Overview generation preserves structural anchors, source 
 
   assert.match(instruction, /overview_language/);
   assert.match(instruction, /English/);
-  assert.match(instruction, /free-text prose/);
+  assert.match(instruction, /natural-language prose/);
   for (const anchor of [
-    'section headings',
+    'source headings',
     'Architecture Snapshot',
-    'requirements',
-    'scenarios',
+    'public signatures',
+    'test expressions',
     'paths',
     'commands',
     'state values',
@@ -1460,19 +1483,17 @@ function assertArchitectureEmptinessContract(source, label) {
   }
 }
 
-test('Step 5: live design instructions and the overview contract use external-first nested boundary headings', () => {
+test('Step 5: live design instructions use external-first nested boundary headings', () => {
   for (const [label, relativePath] of [
     ['live design step', 'sai/commands/design/steps/design.md'],
-    ['overview contract', 'sai/commands/design/change-overview.md'],
   ]) {
     assertExternalFirstBoundaryHeadings(artifact(relativePath), label);
   }
 });
 
-test('Step 5: live design and overview contracts distinguish shared, block-specific, and File Manifest empty forms', () => {
+test('Step 5: live design distinguishes shared, block-specific, and File Manifest empty forms', () => {
   for (const [label, relativePath] of [
     ['live design step', 'sai/commands/design/steps/design.md'],
-    ['overview contract', 'sai/commands/design/change-overview.md'],
   ]) {
     assertArchitectureEmptinessContract(artifact(relativePath), label);
   }
@@ -1481,27 +1502,19 @@ test('Step 5: live design and overview contracts distinguish shared, block-speci
     'the shared whole-inventory sentinel should remain a fixed English literal');
 });
 
-test('Step 5: overview generation omits a source-only whole-inventory sentinel but retains one empty boundary block', () => {
+test('overview excludes Architecture Snapshot and its complete subtree', () => {
   const overview = artifact('sai/commands/design/change-overview.md');
 
-  assert.match(overview,
-    new RegExp(`source Architecture Snapshot[\\s\\S]{0,320}${escapeArchitectureLiteral(WHOLE_INVENTORY_EMPTY_SENTINEL)}[\\s\\S]{0,260}(?:omit|suppress|not render)`, 'i'),
-    'the overview contract should omit the source-only whole-inventory sentinel');
-  assert.match(overview,
-    /exactly one boundary is empty[\s\S]{0,320}retain the source-grounded block-specific sentinel[\s\S]{0,320}never replace it with the shared whole-inventory sentence/i,
-    'the overview contract should retain a block-specific sentinel when one boundary block is empty');
+  assert.match(overview, /Exclude sections named `Architecture Snapshot`[\s\S]*with their complete subtrees/);
+  assert.doesNotMatch(overview, /#### External Surfaces|#### Internal Public Surfaces/);
 });
 
-test('Step 5: overview structural boundary headings remain English regardless of overview_language', () => {
+test('overview wrappers stay English while source headings may translate', () => {
   const overview = artifact('sai/commands/design/change-overview.md');
 
   assert.match(overview, /overview_language/);
-  assert.match(overview,
-    /(?:nested|boundary|structural)[\s\S]{0,220}heading(?:s| labels?)[\s\S]{0,260}(?:always|remain|stay)[\s\S]{0,120}English|(?:always|remain|stay)[\s\S]{0,120}English[\s\S]{0,260}(?:nested|boundary|structural)[\s\S]{0,220}heading/i,
-    'nested boundary headings should remain English');
-  assert.match(overview,
-    /(?:regardless|independent|irrespective|does not depend)[\s\S]{0,180}overview_language|overview_language[\s\S]{0,180}(?:regardless|independent|irrespective|does not change)/i,
-    'overview_language should not translate structural boundary headings');
+  assert.match(overview, /Keep the structural wrappers[\s\S]*in English/);
+  assert.match(overview, /translate only natural-language prose, source headings/);
 });
 
 test('Step 5: unclear boundary classification falls back to external and File Manifest is a direct inventory', () => {

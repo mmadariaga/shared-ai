@@ -196,3 +196,27 @@ The `specs` template SHALL start with a `## Purpose` section whose comment limit
 #### Scenario: Schema instruction restricts Purpose to new capabilities
 - **WHEN** the `artifacts.specs` instruction in `openspec/schemas/sai-workflow/schema.yaml` is read
 - **THEN** it tells authors to start a new capability's `spec.md` with `## Purpose` and never to add `## Purpose` to a delta spec of an existing capability
+
+### Requirement: Overview schema and template project the source-oriented contract
+
+The sai-workflow overview artifact description SHALL identify a faithful source-oriented projection of selected Proposal, Design, and per-Step Interfaces and Tasks content. Its non-empty instruction SHALL identify the five source artifacts and delegate content selection and organization to `sai/commands/design/change-overview.md`, without imposing thematic organization or duplicating normative generation rules.
+
+The overview template SHALL scaffold Proposal with Why and What Changes, Design with a source-driven section insertion point, and a repeated Tasks-ordered Step wrapper containing Interfaces and Test assertions followed by Tasks Files Affected. It SHALL allow additional present Design sections rather than impose a fixed Design allowlist and SHALL point to the shared write-time contract.
+
+The existing artifact destination, dependency on Interfaces, apply requirements, opt-in language behavior, materialization lifecycle, and regeneration behavior SHALL remain unchanged.
+
+#### Scenario: schema description matches the generation contract
+- **WHEN** the overview artifact entry is read
+- **THEN** its description and instruction identify source-oriented projection and defer selection to the shared contract rather than require thematic synthesis
+
+#### Scenario: template scaffolds source groups
+- **WHEN** the overview template is read
+- **THEN** it contains Proposal Why and What Changes, an open Design insertion point, and a repeated Step skeleton with Interfaces and Test assertions before Tasks Files Affected
+
+#### Scenario: additional Design sections are permitted
+- **WHEN** source Design contains a non-excluded section absent from the template
+- **THEN** the template does not prohibit its faithful inclusion in source order
+
+#### Scenario: registration and lifecycle remain unchanged
+- **WHEN** the schema overview entry is compared with its prior registration
+- **THEN** its destination remains change-overview.md, its dependency remains Interfaces, and it does not become an apply prerequisite

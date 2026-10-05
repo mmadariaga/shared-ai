@@ -1,41 +1,33 @@
-## Change Proposal
+## Proposal
 
-<!-- Motivation narrative from proposal.md's Why; no purpose preamble, scope restatement, or capability restatement. -->
+### Why
 
-## Scope
+<!-- Selected source content from proposal.md. -->
 
-<!-- In-scope and out-of-scope boundaries derived from proposal.md and design.md. -->
+### What Changes
 
-## Capabilities
+<!-- Selected source content from proposal.md. -->
 
-<!-- Proposal-listed capabilities, corroborated by specs/**/*.md without synthesizing absent capabilities. -->
+## Design
 
-## Target Architecture
+<!-- Insert selected design.md sections in source order, including additional sections present in the source. The shared contract defines exclusions and empty-container handling; no fixed Design section list is imposed here. -->
 
-<!-- Adapted review rendering of design.md's Architecture Snapshot and relevant target-shape decisions. -->
+## Step N: <!-- Tasks Step title; repeat for every Tasks Step in source order. -->
 
-### Snapshot
+### Interfaces
 
-<!-- Retain concise source ASCII notation here when the Architecture Snapshot contains it. -->
+**Interfaces**:
 
-## Key Contracts
+<!-- Selected field from the interfaces.md block with the same Step number. -->
 
-<!-- Approval-relevant behavioral contracts grouped by concern; do not render public signatures or method-level assertions here. -->
+**Test assertions**:
 
-## File Manifest
+<!-- Selected field from that same interfaces.md block. Omit this entire Interfaces wrapper when no corresponding block exists; follow the shared contract for source explanations of absence. -->
 
-<!-- Deterministic tasks.md net fold validated against design.md's persisted File Manifest. Thematic subsections and related signatures live here. -->
+### Tasks
 
-## Review Scenarios
+**Files Affected**:
 
-<!-- Approval-relevant scenarios grouped by situation or outcome; condensation is allowed. -->
-
-## Implementation Approach
-
-<!-- Condensed ordered approach from design.md and tasks.md; omit step-level task prose blocks. -->
-
-## Approval Summary
-
-<!-- Source-grounded decisions, constraints, trade-offs, and review implications needed for approval. -->
+<!-- Selected field from this tasks.md Step. -->
 
 <!-- Write-time authority: sai/commands/design/change-overview.md defines generation, validation, localization, and the closed result envelope; the write-time contract preserves exactly the five generator fields and maps recovery classification outside that envelope. -->

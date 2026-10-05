@@ -3,7 +3,9 @@
 ## Purpose
 
 *To be determined — brief description of what this capability does and why it exists.*
+
 ## Requirements
+
 ### Requirement: Route the effective language to overview generation
 
 The design worker SHALL dispatch the budget-routed Change Overview generator only when the current design invocation carries an effective language selection: either an explicit `--overview-lang <language>` value or a language selected by `sai-explore` gate 9 and forwarded in the chained design envelope. When a language is present, the worker SHALL pass its exact value to the generator for the current initial materialization or regeneration attempt. When a direct design invocation has no flag, or an explore gate resolves do not create and therefore omits the flag from the chain, the worker SHALL not dispatch the generator, SHALL not manufacture an English generation value, and SHALL not start an overview generation-trigger continuation. The worker-owned value remains invocation-scoped and is not persisted. Whenever the generator is dispatched, its existing five-field result envelope SHALL remain unchanged.
@@ -37,17 +39,27 @@ The design worker SHALL dispatch the budget-routed Change Overview generator onl
 
 ### Requirement: Localize only the Change Overview projection
 
-The selected language SHALL apply only to free-text prose in the human-oriented `change-overview.md` projection. Section headings, the Architecture Snapshot, requirements, scenarios, paths, commands, state values, and generator result keys SHALL remain verbatim English or source values as required by the existing Change Overview contract. The proposal, specs, design, tasks, interfaces, configuration, and other normative artifacts SHALL remain English and SHALL not be rewritten as part of overview generation.
+The selected invocation language SHALL apply only to eligible natural-language content in the human-oriented `change-overview.md` projection. Selected prose, source headings, descriptive labels, and source Step titles SHALL be translated only when required, preserving their meaning, complete content, and Markdown formatting. Text already in the selected language SHALL be copied verbatim apart from permitted heading-depth adjustment.
+
+The structural wrappers Proposal, Design, Step N, Interfaces, and Tasks SHALL remain English. Code, public signatures, paths, identifiers, test expressions, commands, state values, source artifact names, result keys, and other technical literals SHALL remain unchanged, including inline code and code blocks.
+
+Proposal, specs, design, tasks, interfaces, configuration, and other normative artifacts SHALL remain English and SHALL NOT be rewritten by overview generation. Language selection SHALL remain invocation-scoped, with no persisted preference. Existing dispatch selection, five-field result, single-file scope, and re-selection rules SHALL remain unchanged.
 
 #### Scenario: Normative artifacts remain unchanged
-
 - **WHEN** overview generation is requested in a language other than English
-- **THEN** only the overview projection is eligible for localized prose and no normative artifact or persisted language preference is modified
+- **THEN** only eligible overview content is translated and no normative artifact or persisted language preference is modified
 
 #### Scenario: Overview fidelity is preserved
-
 - **WHEN** overview generation is requested in a language other than English
-- **THEN** section headings, the Architecture Snapshot, requirements, scenarios, paths, commands, state values, and generator result keys remain verbatim English or source values while only free-text prose may be localized
+- **THEN** selected prose, source headings, labels, and Step titles translate faithfully while English wrappers, code, signatures, paths, identifiers, test expressions, commands, state values, artifact names, and result keys remain unchanged
+
+#### Scenario: text already uses the selected language
+- **WHEN** selected source text already uses the effective overview language
+- **THEN** the generator copies it verbatim except for permitted Markdown heading-depth adjustment
+
+#### Scenario: technical code is embedded in translated prose
+- **WHEN** selected prose contains inline code or fenced or indented code blocks
+- **THEN** translation preserves their exact technical content and whitespace inside blocks
 
 ### Requirement: Re-select language for every generation attempt
 
