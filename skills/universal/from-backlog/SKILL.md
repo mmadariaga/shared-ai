@@ -17,12 +17,11 @@ change authentication.
 
 ## 1. Identify the reference
 
-Locate this skill's directory under the active harness's project-local skills
-root first, then its user-global root (Claude Code: `.claude/skills/from-backlog`,
-`~/.claude/skills/from-backlog`; opencode: `.opencode/skills/from-backlog`,
-`~/.config/opencode/skills/from-backlog`). Read `providers/registry.json` there.
-Locate `sai/tools/from-backlog.js` under that harness's project-local root first,
-then user-global root. Use only those roots and separate quoted arguments.
+This skill's directory is the one holding this `SKILL.md`. Locate
+`sai/tools/from-backlog.js` per `sai/policies/tool-resolution.md` § `sai/tools/*.js`
+copies, read from the harness root that holds this skill's `skills/` directory.
+Read `providers/registry.json` from this skill's directory; keep paths as
+separate quoted arguments.
 
 Resolution selects a registered provider; that provider may resolve the exact
 reference through its read-only CLI. Load only the returned provider's
