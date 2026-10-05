@@ -1004,7 +1004,7 @@ test('canonical manifest validates all historical retirements and excludes them 
     });
   }
   assert.equal(proxyRetirements.some(retirement => retirement.harnesses.includes('copilot')), false);
-  assert.ok(manifest.retirements.every(retirement => ['sai', 'skills', 'agents'].includes(retirement.destination.class)));
+  assert.ok(manifest.retirements.every(retirement => ['sai', 'skills', 'agents', 'commands'].includes(retirement.destination.class)));
   assert.ok(proxyRetirements.every(retirement => retirement.destination.class === 'skills'));
   assert.ok(proxyRetirements.every(retirement => retirement.managedHashes.length > 0 &&
     retirement.managedHashes.every(value => /^[0-9a-f]{64}$/.test(value))));
@@ -1396,7 +1396,6 @@ test('folded instruction templates project to their co-located and root destinat
     { source: 'sai/commands/accessibility/accessibility-report.template.md', destination: 'commands/accessibility/accessibility-report.template.md' },
     { source: 'sai/commands/implement/implementation-plan.template.md', destination: 'commands/implement/implementation-plan.template.md' },
     { source: 'sai/commands/performance/performance-report.template.md', destination: 'commands/performance/performance-report.template.md' },
-    { source: 'sai/commands/pr/pr-body.template.md', destination: 'commands/pr/pr-body.template.md' },
     { source: 'sai/commands/review/review-report.template.md', destination: 'commands/review/review-report.template.md' },
     { source: 'sai/commands/security/security-report.template.md', destination: 'commands/security/security-report.template.md' },
     { source: 'sai/commands/implement/adr-index.template.md', destination: 'commands/implement/adr-index.template.md' },
@@ -1430,7 +1429,7 @@ test('folded instruction templates project to their co-located and root destinat
       projectedCount += 1;
     }
   }
-  assert.equal(projectedCount, 16, 'eight folded templates across two harnesses should project to 16 paths');
+  assert.equal(projectedCount, 14, 'seven folded templates across two harnesses should project to 14 paths');
 });
 
 test('matrix worker bindings and agents are the sole worker inventory per harness', () => {
@@ -1492,7 +1491,7 @@ test('canonical manifest projects exactly one harness boot adapter and the utili
     config: path.join(os.tmpdir(), 'sai-adapter-config'),
     root: path.join(os.tmpdir(), 'sai-adapter-config'),
   };
-  const utilities = ['explore', 'pr', 'retire-docs', 'status', 'worktree'];
+  const utilities = ['explore', 'retire-docs', 'status', 'worktree'];
   const applyCards = ['coordinator.md', 'red-worker.md', 'green-worker.md', 'runner.md', 'invocation.md'];
   const commitCards = ['coordinator.md', 'worker.md'];
   const archiveCards = ['coordinator.md', 'worker.md'];

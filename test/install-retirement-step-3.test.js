@@ -48,6 +48,7 @@ function roots(base) {
 
 function retirementDestinationRoot(base) {
   return {
+    commands: path.join(base, 'commands'),
     sai: path.join(base, 'sai'),
     skills: path.join(base, 'skills'),
     agents: path.join(base, 'agents'),

@@ -424,7 +424,7 @@ test('E8e: Next resolves to /sai-5-review when audits missing', () => {
   assert.equal(result.next, '/sai-5-review');
 });
 
-test('E8f: Next resolves to /sai-pr when all audits present', () => {
+test('E8f: Next resolves to /to-pr when all audits present', () => {
   const statuses = {
     specs: { present: true },
     design: { present: true },
@@ -442,7 +442,7 @@ test('E8f: Next resolves to /sai-pr when all audits present', () => {
   const auditFlags = { review: false, security: false, performance: false, accessibility: false };
 
   const result = derivePanelCells(statuses, yaml, auditFlags, '3/3', true);
-  assert.equal(result.next, '/sai-pr');
+  assert.equal(result.next, '/to-pr');
 });
 
 test('E8g: N/A audits count as satisfied', () => {
