@@ -211,11 +211,13 @@ test('skill presents full content before approval, separates push approval and d
 test('both harnesses install to-pr and retire managed sai-pr copies while preserving modified and user documents', t => {
   const flow = require('../bin/install-flow');
   const capabilities = require('../bin/capabilities');
-  const old = JSON.parse(execFileSync('git', ['show', 'HEAD:sai/install-manifest.json'], { encoding: 'utf8' }));
+  // Pin to the last revision that still shipped sai-pr, so the test survives later commits.
+  const retired = execFileSync('git', ['log', '-1', '--diff-filter=D', '--format=%H', '--', 'commands/claude/sai-pr.md'], { encoding: 'utf8' }).trim();
+  const old = JSON.parse(execFileSync('git', ['show', `${retired}^:sai/install-manifest.json`], { encoding: 'utf8' }));
   for (const harness of ['claude', 'opencode']) {
     const directory = temporaryDirectory(t, 'to-pr-install-');
     fs.mkdirSync(path.join(directory, 'commands'), { recursive: true });
-    const original = execFileSync('git', ['show', `HEAD:commands/${harness}/sai-pr.md`], { encoding: 'utf8' });
+    const original = execFileSync('git', ['show', `${retired}^:commands/${harness}/sai-pr.md`], { encoding: 'utf8' });
     const file = path.join(directory, 'commands/sai-pr.md');
     fs.writeFileSync(file, capabilities.projectSource(original, old.capabilities, 'commands', 'sai-pr', harness));
     fs.writeFileSync(path.join(directory, 'pr.md'), 'User document');
