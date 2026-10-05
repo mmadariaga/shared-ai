@@ -110,3 +110,23 @@ If a subagent report omits field 8 (`Files modified`), the coordinator SHALL tre
 #### Scenario: One of a testable Step's two dispatches omits field 8
 - **WHEN** a testable Step's implementation dispatch returns a report with field 8 missing while the test-writer's field 8 is present
 - **THEN** the coordinator still treats the Step's pre-commit report as unreliable, surfaces which dispatch omitted field 8, and pauses for the user before proposing the commit message
+
+### Requirement: Visibility comparisons distinguish preserved initial work
+
+The pre-commit report SHALL use the immutable baseline and retained settled state to distinguish current execution changes from unchanged initial unrelated work, exact planning inputs, and unchanged earlier closed owned work.
+
+Preserved unrelated paths, planning leftovers other than the plan itself, and retained uncommitted owned paths SHALL remain visible under Will NOT be committed. They SHALL not enter current execution scope or worker-report mismatches solely because they remain present. Applicable generated declaration discrepancies SHALL contribute to deviation reporting. The existing status precedence SHALL remain MISMATCH, DEVIATION, WARN, then OK.
+
+#### Scenario: Unrelated staged file remains unchanged
+- **WHEN** a staged unrelated file and its unstaged content equal the baseline while the current Step's reported paths match
+- **THEN** the report shows that file under Will NOT be committed without making it a mismatch or current-Step scope error
+
+### Requirement: Previewed owned paths define isolated commit content
+
+On authorization, close SHALL stage only the exact previewed owned add-list and commit those paths with path-limited `git commit --only`. Pre-existing unrelated index entries SHALL remain unchanged. An initially dirty path, planning input, unsafe path, changed unrelated staging, unresolved generated declaration, or scope discrepancy SHALL block committing close before marking or staging.
+
+The report SHALL remain a forward-looking preview based on the add-list and working-tree content, not a list of everything already staged. Existing unrelated staging SHALL not imply an empty-index assumption or permission to include it.
+
+#### Scenario: Unrelated staging predates Apply
+- **WHEN** the current Step is authorized to commit and unrelated index entries equal their initial state
+- **THEN** the resulting commit contains only previewed owned paths and preserves those unrelated index entries

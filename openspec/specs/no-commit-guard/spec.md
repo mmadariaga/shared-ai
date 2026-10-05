@@ -120,3 +120,17 @@ The guard SHALL detect a violation when its window closes at the next boundary, 
 
 - **WHEN** a worker commits inside a window that spans several worker stretches and the window reaches its closing boundary
 - **THEN** the closing verify reports the violation, the mixed reset returns HEAD to the window's `guard_base` with all content preserved unstaged, and one incident line carries the evidence for every commit in the window
+
+### Requirement: Apply restores initial unrelated index entries after remediation
+
+Apply SHALL retain the existing HEAD-only guard and prescribed mixed-reset remediation. Its coordinator SHALL then use the immutable file baseline to restore only initial unrelated index entries after verifying that their working-tree content is unchanged.
+
+This bounded restoration SHALL not restore working-tree bytes, capture another baseline, or grant a worker Git authority. A restoration failure SHALL stop with work preserved. The next worker SHALL require a fresh HEAD snapshot. Other commands SHALL retain the existing remediation behavior.
+
+#### Scenario: Reset cleared unrelated staging
+- **WHEN** Apply's guard remediation resets HEAD and clears initial unrelated staging without changing unrelated content
+- **THEN** Apply's coordinator restores the initial unrelated index entries and opens a fresh guard window before further worker work
+
+#### Scenario: Unrelated content changed before restoration
+- **WHEN** initial unrelated content no longer equals the baseline
+- **THEN** restoration stops without rewriting that content or recapturing the baseline

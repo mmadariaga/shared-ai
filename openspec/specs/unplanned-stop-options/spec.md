@@ -7,11 +7,23 @@ TBD - created by archiving change stop-options. Update Purpose after archive.
 
 ### Requirement: Unplanned stops close with stop options
 
-An unplanned stop SHALL be a run, segment, or Step that halts on an error or an unexpected condition and leaves the next move to the user. Every SAI command SHALL close an unplanned stop with a stop report followed by two or three concrete, costed options, with the recommended option first and a one-line reason for the recommendation. Each option SHALL name one concrete action, its cost, and its effect.
+An unplanned stop SHALL be a run, segment, or Step that halts on an error or an unexpected condition and leaves the next move to the user. Every SAI command SHALL close an unplanned stop with its required stop report followed by two or three concrete, costed options, subject to the existing pinned-text, planned-stop, contract-defined-choice, and single-viable-path rules.
+
+Each option SHALL name one concrete action, its cost, its effect, the work the agent will execute, and the work or decisions remaining for the user. The recommendation SHALL prefer the safe, viable continuation requiring the least further human intervention, including agent-executed correction when existing scope, approvals, verification, and budgets permit it.
+
+A retry of a known cause SHALL be viable only when the cause is corrected or the option includes an authorized concrete correction. Predictable further user decisions SHALL count as human intervention. The recommended option SHALL appear first unless the owning contract pins the choice order, and the recommendation SHALL carry a one-line reason.
 
 #### Scenario: Run halts on an error with several viable paths
-- **WHEN** a run halts on an error or an unexpected condition and the evidence supports more than one viable path
+- **WHEN** a run halts on an error or an unexpected condition and the evidence supports more than one viable path without a contract-pinned choice order
 - **THEN** the closing message gives the stop report followed by two or three concrete, costed options with the recommended one first
+
+#### Scenario: Agent can safely correct the known cause
+- **WHEN** an existing authorized correction can resolve the cause and continue within applicable verification and recovery limits
+- **THEN** the stop recommendation prefers that continuation and identifies remaining user approvals or work
+
+#### Scenario: Retry would repeat an unresolved cause
+- **WHEN** another attempt would repeat a known cause without an authorized concrete correction
+- **THEN** the stopping surface does not recommend that repetition as unattended continuation
 
 ### Requirement: Planned stops get no stop options
 
@@ -31,11 +43,17 @@ When a contract pins the exact stop text (for example the prerequisite literals 
 
 ### Requirement: Contract-defined choice serves as the options
 
-When a contract already defines the choice for a stop (for example apply's exhausted Step: manual correction or one authorized fresh attempt), that choice SHALL be the options for that stop and no second question SHALL be added.
+When a contract already defines the choice for a stop (for example apply's exhausted Step: manual correction or one authorized fresh attempt), that choice SHALL be the options for that stop and no second question SHALL be added. Pinned labels, values, and order SHALL remain unchanged.
+
+The recommendation and agent/user work explanation SHALL precede the unchanged choice rather than reorder or rewrite it. Required approvals and recovery limits SHALL remain in force. The recommendation policy SHALL grant no new retry budget or mutation authority.
 
 #### Scenario: Apply Step exhausts its recovery budget
 - **WHEN** an unplanned stop falls on a stop whose contract already defines the user's choice
 - **THEN** the contract-defined choice is presented as the options and no second question is added
+
+#### Scenario: Recommendation preserves Apply retry authorization
+- **WHEN** the existing choice offers manual correction or one explicitly authorized fresh attempt
+- **THEN** the surface preserves that choice and its order while explaining the safe recommendation, proposed agent correction, required retry authorization, and any remaining user work
 
 ### Requirement: A single viable path is presented as the next step
 

@@ -95,3 +95,17 @@ The existing-tests-broken field SHALL name each affected test file by its exact 
 - **WHEN** a step declares a broken test with failure mode `runtime`
 - **THEN** the field names the test file and the failure mode
 - **AND** it does NOT restate the assertion values that will change
+
+### Requirement: Contract changes require semantic consumer and fixture review
+
+When a Step changes mandatory fields, constraints, or results of an existing contract, Design SHALL review current consumers and shared test fixtures, including runtime assertions rather than only compilation references.
+
+Testing Strategy SHALL record reviewed paths and explain required adaptations or continued compatibility. Existing Tests Broken SHALL name identified test-only adaptations by exact backticked repository-relative paths, fixtures before dependent tests, with compile or runtime modes. The adaptations SHALL be assigned to the same Step's RED work. None SHALL require supporting review when an existing contract changes. Semantic completeness SHALL remain agent-owned and SHALL not be claimed as a deterministic preflight guarantee.
+
+#### Scenario: Contract result changes
+- **WHEN** an existing contract changes a mandatory result consumed by tests or fixtures
+- **THEN** Design records its consumer review and declares identified adaptations for the same Step's RED work
+
+#### Scenario: Review finds no broken existing tests
+- **WHEN** a contract-changing Step declares Existing Tests Broken as None
+- **THEN** Testing Strategy records supporting consumer and fixture review rather than relying only on compilation success

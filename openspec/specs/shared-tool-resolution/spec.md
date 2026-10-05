@@ -2,7 +2,9 @@
 
 ## Purpose
 Keep SAI tool-copy selection deterministic across Claude Code and opencode while preserving each consuming gate's declared missing-tool behavior.
+
 ## Requirements
+
 ### Requirement: Shared tool resolution order
 
 The system SHALL resolve every `sai/tools/*.js` copy by taking the first existing candidate per harness, copied verbatim and never composed from a root string, with the opencode XDG fallback only when neither verbatim candidate exists. The first existing copy wins and defines the version. If no candidate exists the system SHALL name the tried candidates and stop with no prose fallback, except when the consuming instruction explicitly declares its gate optional on a missing tool; then only that gate is skipped, without replacing the check in prose.
@@ -25,3 +27,19 @@ The system SHALL keep each tool's own accepted flag set unchanged after resoluti
 
 - **WHEN** a resolved tool copy is invoked
 - **THEN** the invocation is byte-identical apart from the resolved path
+
+### Requirement: Extended Apply invocation preserves required execution references
+
+Shared tool-resolution instructions SHALL describe Apply's accepted preflight, baseline, dispatch-check, inspect, restore-unrelated-index, checkpoint-plan, verify, and close invocation forms for both Claude Code and opencode.
+
+Baseline SHALL require the coordinator's stable run identity and exact planning paths on stdin. Dispatch-check SHALL require baseline, Step, and dispatch kind. Verify SHALL require those references plus the retained checkpoint and field-8 paths, unless explicit baseline-only compatibility mode is used. Close SHALL require baseline and explicit guard-base even for dry-run or mark-only. Later calls SHALL carry settled state when present; close MAY carry the authorized coordinator plan checkpoint.
+
+These forms SHALL preserve existing per-harness copy resolution and one-JSON-object output. Resolution SHALL not relax required flags or change business-rule ownership.
+
+#### Scenario: Close authorization is declined
+- **WHEN** the coordinator invokes mark-only through the resolved tool
+- **THEN** the invocation still carries the immutable baseline and explicit current guard reference
+
+#### Scenario: Both harnesses invoke preflight
+- **WHEN** Claude Code or opencode resolves the installed Apply tool for plan validation
+- **THEN** it invokes the same read-only preflight form apart from the resolved tool path

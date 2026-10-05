@@ -158,3 +158,47 @@ test('sai-tools projection installs the tool for both harnesses without a new en
   assert.ok(!tools.includes('file-manifest'), 'no per-tool manifest entry is needed');
   assert.ok(fs.existsSync(TOOL));
 });
+
+test('generated families retain counts in fold/verify and share Apply backtick interpretation', () => {
+  for (const declaration of ['A generated/migration-*.sql — generated count=2', 'A `generated/migration-*.sql` — generated count=2', '`A generated/migration-*.sql — generated count=2`']) {
+    const tasks = `## Step 1: generated\n\n**Files Affected**:\n${declaration}\n`;
+    const { root, design } = project(tasks, DESIGN_WITH);
+    try {
+      assert.equal(run('fold', root).status, 0);
+      assert.match(fs.readFileSync(design, 'utf8'), /A generated\/migration-\*\.sql — generated count=2 \(Step 1\)/);
+      assert.equal(run('verify', root).status, 0);
+      const apply = require('../sai/tools/apply-step').parseFilesAffected(tasks, 1);
+      assert.equal(apply.generated[0].count, 2);
+      assert.deepEqual(apply.errors, []);
+    } finally { fs.rmSync(root, { recursive: true, force: true }); }
+  }
+});
+
+test('unsafe paths and overlapping generated families fail both fold and verify without writing', () => {
+  for (const lines of ['A ../escape.md', 'A generated/**/*.sql — generated count=2', 'A generated/migration-*.sql — generated count=2\nA generated/migration-long-*.sql — generated count=1']) {
+    const tasks = `## Step 1: generated\n\n**Files Affected**:\n${lines}\n`;
+    const { root, design } = project(tasks, DESIGN_WITH);
+    try {
+      for (const mode of ['fold', 'verify']) assert.equal(run(mode, root).status, 1);
+      assert.equal(fs.readFileSync(design, 'utf8'), DESIGN_WITH);
+      assert.ok(require('../sai/tools/apply-step').parseFilesAffected(tasks, 1).errors.length > 0);
+    } finally { fs.rmSync(root, { recursive: true, force: true }); }
+  }
+});
+
+test('fold and Apply preflight share the canonical case-sensitive None declaration', () => {
+  for (const sentinel of ['None', 'none', 'NONE']) {
+    const tasks = `## Step 1: unchanged\n\n**Files Affected**:\n${sentinel}\n`;
+    const { root, design } = project(tasks, DESIGN_WITH);
+    try {
+      const plan = '#### Step 1: unchanged\n\n##### Step 1 Verification Checklist\n\n**Automated:**\n- [ ] `node -e "process.exit(0)"` — exit 0\n\n#### Step 1 STOP & COMMIT\n';
+      fs.writeFileSync(path.join(root, 'openspec', 'changes', 'c', 'implementation.md'), plan);
+      const apply = require('../sai/tools/apply-step').preflight({ cwd: root, change: 'c' });
+      const folded = run('fold', root);
+      assert.equal(apply.ok, sentinel === 'None');
+      assert.equal(folded.status === 0, sentinel === 'None');
+      if (sentinel === 'None') assert.equal(run('verify', root).status, 0);
+      else assert.equal(fs.readFileSync(design, 'utf8'), DESIGN_WITH);
+    } finally { fs.rmSync(root, { recursive: true, force: true }); }
+  }
+});

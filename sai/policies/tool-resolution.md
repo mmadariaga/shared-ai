@@ -43,6 +43,8 @@ On **opencode**, in this order:
 
 ## Invocation
 
+Apply's coordinator-only `checkpoint-plan` subcommand takes `--change <change-name> --baseline <ref> --cwd <project-root>`, optional retained `--settled <ref>`, and no stdin. Its returned reference is supplied as `--plan-checkpoint <ref>` to close after an authorized coordinator plan write. Cumulative verification and close otherwise compare the plan with the original baseline or settled receipt; this flag is not a worker-write exemption.
+
 Whichever candidate wins, the invocation is byte-identical within one harness,
 so a single whitelist entry per root covers that harness's form. Keep each
 tool's own accepted flag set; do not change invocation semantics beyond path
@@ -56,13 +58,7 @@ takes one — never substitute one for the other.
   and no `--json`, since `--json` and `--change` are `collect`-only).
 - `file-manifest.js`: `node <tool-path> <fold|verify> <change-name> --json
   --cwd <project-root>`.
-- `apply-step.js`: `node <tool-path> <verify|close> --change <change-name>
-  --step <N> --cwd <project-root>` plus the sub-command's own flags (`verify`
-  takes `--dispatch red|green|green-direct|green-exception` and the add-list on
-  stdin; `close` takes `--guard-base <sha|n/a>`, optional `--dry-run`, and the
-  add-list, a `---` line, then the commit message on stdin via a quoted
-  heredoc; `close --mark-only` takes only `--change` and `--step`). It always
-  prints one JSON object; `--json` is accepted and changes nothing.
+- `apply-step.js`: all subcommands take `--change <change-name> --cwd <project-root>` and optional `--json` (one JSON object always). `preflight` has no stdin. `baseline` requires `--run-id <stable coordinator identity>` and exact planning-input paths on stdin. `dispatch-check` requires `--step <N> --dispatch red|green|green-direct|green-exception --baseline <ref>`. `verify` requires the same flags plus `--checkpoint <ref>` and the dispatch add-list on stdin; explicit `--baseline-only` is the cumulative compatibility mode for callers without per-dispatch snapshots, never a baseline exemption. `close` requires `--step <N> --baseline <ref> --guard-base <sha|n/a>` on every path, including `--dry-run` and `--mark-only`; ordinary/dry-run stdin holds the add-list, `---`, and message via quoted heredoc, while mark-only stdin is empty. `inspect` and coordinator-only `restore-unrelated-index` require `--baseline <ref>`, with no stdin. Pass retained `--settled <ref>` after a prior close; `verify` also accepts `--parent-was-absent`. Business rules remain in the owning command cards.
 - `check-delta-headers.js`: `node <tool-path> <change-name> [--json]
   [--root <dir>] [--delta-dir <dir>] [--specs-dir <dir>]`; it takes no
   `--cwd`.
