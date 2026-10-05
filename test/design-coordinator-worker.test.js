@@ -2237,19 +2237,17 @@ function assertArchitectureEmptinessContract(source, label) {
   }
 }
 
-test('Step 5: live design instructions and the overview contract use external-first nested boundary headings', () => {
+test('Step 5: live design instructions use external-first nested boundary headings', () => {
   for (const [label, relativePath] of [
     ['live design step', 'sai/commands/design/steps/design.md'],
-    ['overview contract', 'sai/commands/design/change-overview.md'],
   ]) {
     assertExternalFirstBoundaryHeadings(artifact(relativePath), label);
   }
 });
 
-test('Step 5: live design and overview contracts distinguish shared, block-specific, and File Manifest empty forms', () => {
+test('Step 5: live design distinguishes shared, block-specific, and File Manifest empty forms', () => {
   for (const [label, relativePath] of [
     ['live design step', 'sai/commands/design/steps/design.md'],
-    ['overview contract', 'sai/commands/design/change-overview.md'],
   ]) {
     assertArchitectureEmptinessContract(artifact(relativePath), label);
   }
@@ -2258,27 +2256,19 @@ test('Step 5: live design and overview contracts distinguish shared, block-speci
     'the shared whole-inventory sentinel should remain a fixed English literal');
 });
 
-test('Step 5: overview generation omits a source-only whole-inventory sentinel but retains one empty boundary block', () => {
+test('overview excludes Architecture Snapshot and its complete subtree', () => {
   const overview = artifact('sai/commands/design/change-overview.md');
 
-  assert.match(overview,
-    new RegExp(`source Architecture Snapshot[\\s\\S]{0,320}${escapeArchitectureLiteral(WHOLE_INVENTORY_EMPTY_SENTINEL)}[\\s\\S]{0,260}(?:omit|suppress|not render)`, 'i'),
-    'the overview contract should omit the source-only whole-inventory sentinel');
-  assert.match(overview,
-    /exactly one boundary is empty[\s\S]{0,320}retain the source-grounded block-specific sentinel[\s\S]{0,320}never replace it with the shared whole-inventory sentence/i,
-    'the overview contract should retain a block-specific sentinel when one boundary block is empty');
+  assert.match(overview, /Exclude sections named `Architecture Snapshot`[\s\S]*with their complete subtrees/);
+  assert.doesNotMatch(overview, /#### External Surfaces|#### Internal Public Surfaces/);
 });
 
-test('Step 5: overview structural boundary headings remain English regardless of overview_language', () => {
+test('overview wrappers stay English while source headings may translate', () => {
   const overview = artifact('sai/commands/design/change-overview.md');
 
   assert.match(overview, /overview_language/);
-  assert.match(overview,
-    /(?:nested|boundary|structural)[\s\S]{0,220}heading(?:s| labels?)[\s\S]{0,260}(?:always|remain|stay)[\s\S]{0,120}English|(?:always|remain|stay)[\s\S]{0,120}English[\s\S]{0,260}(?:nested|boundary|structural)[\s\S]{0,220}heading/i,
-    'nested boundary headings should remain English');
-  assert.match(overview,
-    /(?:regardless|independent|irrespective|does not depend)[\s\S]{0,180}overview_language|overview_language[\s\S]{0,180}(?:regardless|independent|irrespective|does not change)/i,
-    'overview_language should not translate structural boundary headings');
+  assert.match(overview, /Keep the structural wrappers[\s\S]*in English/);
+  assert.match(overview, /translate only natural-language prose, source headings/);
 });
 
 test('Step 5: unclear boundary classification falls back to external and File Manifest is a direct inventory', () => {

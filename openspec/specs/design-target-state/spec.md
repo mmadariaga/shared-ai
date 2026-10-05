@@ -8,61 +8,41 @@ Define the target-state design artifact and its derived Architecture Snapshot an
 
 ### Requirement: design.md opens with a Target State section
 
-`openspec/changes/{name}/design.md` SHALL begin with a `## Target State` section, authored and persisted by the design phase as the authoritative source for the change's finished-shape snapshot. The active design step at `sai/commands/design/steps/design.md` SHALL require that the `## Target State` section is emitted in `design.md` before the other design sections, SHALL require that its File Manifest is folded deterministically from task entries, and SHALL require that `openspec/changes/{name}/interfaces.md` begins directly with its first `## Step N` section — no `## Target State` section and no snapshot or manifest subsection SHALL be emitted in `interfaces.md`. The `change-overview.md` projection SHALL read the authoritative snapshot details from `design.md`; it SHALL render them under an adapted approval-oriented `## Target Architecture` section rather than project `## Target State`, and SHALL NOT author or synthesize source snapshot facts independently. The overview renders an adapted ## Target Architecture rather than ## Target State.
+Design SHALL begin with `## Target State`, authored and persisted as the authoritative finished-shape record before other design sections. Its File Manifest SHALL be folded deterministically from Tasks entries. Interfaces SHALL begin with its first numbered Step and SHALL NOT contain Target State, Architecture Snapshot, or File Manifest sections.
 
-`## Target State` SHALL present the finished shape the change converges on as **one concrete artifact** — not a per-step narrative and not a restatement of the change's motivation.
+Target State SHALL present one concrete finished artifact rather than a Step walkthrough or motivation restatement. For code changes this includes the final payload, signature, schema, layout, or configuration. For prose changes this includes the resulting document section and field structure. A reader SHALL be able to determine the finished shape without reading Steps. If no expressible finished shape exists, Target State SHALL carry explicit None and a one-line reason rather than be silently omitted.
 
-"Finished shape" SHALL be interpreted according to what the change produces:
+Target State SHALL contain exactly Architecture Snapshot followed by File Manifest as sibling subsections. Snapshot boundary blocks SHALL remain nested structure, not additional siblings. Existing independent absence sentinels and deterministic manifest rules SHALL remain unchanged.
 
-- For code changes — the resulting payload, public signature, schema, file layout, or config shape as it will exist after the last step.
-- For prose, instruction, or documentation changes — the resulting section and field structure of each document the change touches, as it will read after the last step.
-
-The section SHALL be written so a reader who reads only `## Target State` knows what the repository looks like when the change is complete, without reading any `## Step N` section.
-
-When a change genuinely produces no finished shape expressible under either interpretation, `## Target State` SHALL still be emitted with an explicit `None` and a one-line reason, matching the `None` provision of `design-manual-verification`. Silent omission of the section SHALL NOT occur.
-
-Directly beneath `## Target State`, `design.md` SHALL emit exactly the two sibling subsections required by the `Target State subsections remain exact in design.md only` requirement of the `change-overview-artifact` capability, in order: `### Architecture Snapshot` followed by `### File Manifest`. The `### Architecture Snapshot` subsection MAY contain the nested boundary blocks defined by the Architecture Snapshot requirements; those blocks are internal structure and SHALL NOT count as additional `###` siblings. No third `###` subsection SHALL be emitted inside `## Target State`. The `### File Manifest` subsection and its `None` sentinel are defined by the `File Manifest is a deterministic net fold over Files Affected` and `File Manifest has an independent None sentinel` requirements of this capability; the persisted manifest in `design.md` is authoritative, and the overview validates it against the recomputed fold per the `change-overview-artifact` capability's `Target State remains authoritative in design.md but is not projected into the overview` requirement.
+The overview SHALL not adapt the snapshot into Target Architecture or validate the manifest fold. It SHALL exclude Architecture Snapshot and File Manifest subtrees, retain any remaining selected Target State content, and omit the Target State heading if empty after exclusions.
 
 #### Scenario: Target State is the first section of design.md
-
-- **WHEN** the design phase completes for a change
-- **THEN** `design.md`'s first section is `## Target State`
-- **AND** every other design section appears after it, while `interfaces.md` contains no `## Target State` section
+- **WHEN** the design phase completes
+- **THEN** design starts with Target State, other design sections follow, and Interfaces contains no Target State section
 
 #### Scenario: Target State is one concrete artifact, not a step walkthrough
-
-- **WHEN** a change modifies a public function signature and the schema it serializes
-- **THEN** `## Target State` shows the final signature and the final schema as they will exist after the last step
-- **AND** it does NOT describe the intermediate shapes each step produces
+- **WHEN** a change modifies a public signature and serialized schema
+- **THEN** Target State shows their final shapes without describing intermediate Step shapes
 
 #### Scenario: prose change states its finished document structure
-
-- **WHEN** a change modifies instruction or documentation files rather than code
-- **THEN** `## Target State` shows the resulting section and field structure of each document the change touches, as it will read after the last step
-- **AND** the section is NOT omitted on the grounds that no payload, signature, or schema is involved
+- **WHEN** a change modifies instructions or documentation
+- **THEN** Target State states the finished section and field structures and is not omitted merely because no code payload or signature is involved
 
 #### Scenario: no expressible finished shape
-
-- **WHEN** a change produces no finished shape under either interpretation
-- **THEN** `## Target State` is emitted with `None` and a one-line reason
-- **AND** the section is NOT silently omitted
+- **WHEN** a change has no expressible finished shape
+- **THEN** design emits explicit None and a one-line reason in Target State instead of omitting the section
 
 #### Scenario: Target State is readable without the step sections
-
-- **WHEN** a reader reads `## Target State` alone
-- **THEN** the finished shape is fully determined from that section
-- **AND** no `## Step N` section is required to interpret it
+- **WHEN** a reader reads Target State alone
+- **THEN** the finished shape is determined without requiring a Step section
 
 #### Scenario: nested snapshot structure does not add a Target State sibling
-
-- **WHEN** `design.md` contains both Architecture Snapshot boundary blocks
-- **THEN** `## Target State` contains exactly `### Architecture Snapshot` followed by `### File Manifest`
-- **AND** the nested external-first/internal-second blocks do not become a third `###` subsection
+- **WHEN** design contains both snapshot boundary blocks
+- **THEN** Target State still has exactly Architecture Snapshot followed by File Manifest as its sibling subsections
 
 #### Scenario: target-state-folds-task-entries
-
 - **WHEN** the design worker generates Target State from task entries
-- **THEN** the resulting section contains the authoritative snapshot and a deterministic manifest derived from those entries.
+- **THEN** it contains the authoritative snapshot and deterministically derived manifest
 
 ### Requirement: Target State does not replace or duplicate per-step interfaces
 
@@ -221,29 +201,21 @@ When the net fold produces no lines, `### File Manifest` SHALL carry the exact s
 
 ### Requirement: File Manifest glossary term
 
-The `## Language` section of `GLOSSARY.md` at the project root SHALL contain exactly one `**File Manifest**` entry with a one-sentence definition stating what it IS — the flat `design.md` subsection under `## Target State` that lists every file the change creates, modifies, deletes, or renames, path-sorted and git-status-style with step attribution, derived by a deterministic net fold over the per-step `**Files Affected**` entries of `tasks.md`, and projected into `change-overview.md`. The entry SHALL carry an `*Avoid*` line rejecting the aliases "file list", "file inventory", and "change file list".
+The Language section of project-root GLOSSARY SHALL retain exactly one File Manifest entry defining the flat design subsection beneath Target State that lists net created, modified, deleted, or renamed files, sorted by path in Git-status form with Step attribution and derived by deterministic folding of Tasks Files Affected. The manifest SHALL remain distinct from the literal per-Step Files Affected selected by the overview; the overview SHALL exclude the manifest rather than project it.
 
-The `## Relationships` section of `GLOSSARY.md` SHALL contain an entry linking **File Manifest** to **Target State** and to **File Change Type** — the manifest is the file-level sibling of the **Architecture Snapshot** under one **Target State**, and its net fold consumes the per-step **File Change Type** tokens of `tasks.md`.
-
-The `## Flagged ambiguities` section of `GLOSSARY.md` SHALL contain an entry resolving the "Files Affected vs File Manifest" overload in favor of the split: **Files Affected** names the per-step `tasks.md` field, **File Manifest** names the aggregated `design.md` subsection.
+The entry SHALL retain its Avoid aliases for file list, file inventory, and change file list. Relationships SHALL link File Manifest to Target State and File Change Type, identifying it as the snapshot's file-level sibling and consumer of per-Step change-type tokens. Flagged ambiguities SHALL distinguish per-Step Files Affected from the aggregated design File Manifest.
 
 #### Scenario: File Manifest entry present in Language with Avoid aliases
-
-- **WHEN** `GLOSSARY.md` is read after the change lands
-- **THEN** `## Language` contains exactly one `**File Manifest**` entry
-- **AND** the entry carries an `*Avoid*` line rejecting "file list", "file inventory", and "change file list"
+- **WHEN** the glossary's File Manifest entry is read
+- **THEN** exactly one Language entry and its existing Avoid aliases identify the aggregated design subsection
 
 #### Scenario: File Manifest linked to Target State and File Change Type in Relationships
-
-- **WHEN** `GLOSSARY.md` is read after the change lands
-- **THEN** `## Relationships` contains an entry linking **File Manifest** to **Target State** and **File Change Type**
-- **AND** the relationship notes the manifest is the file-level sibling of the **Architecture Snapshot** under one **Target State**
+- **WHEN** glossary relationships are read
+- **THEN** they link File Manifest to Target State and File Change Type and identify its sibling relationship with Architecture Snapshot
 
 #### Scenario: Files Affected vs File Manifest ambiguity resolved in Flagged ambiguities
-
-- **WHEN** `GLOSSARY.md` is read after the change lands
-- **THEN** `## Flagged ambiguities` contains an entry resolving the per-step field vs the aggregated subsection overload
-- **AND** a rationale for the split is stated
+- **WHEN** the glossary distinction is read
+- **THEN** Files Affected denotes the per-Step Tasks field and File Manifest denotes the aggregated design subsection, not an overview file list
 
 ### Requirement: Architecture Snapshot is partitioned by caller boundary
 
@@ -308,30 +280,21 @@ When neither boundary has a planned public surface, `### Architecture Snapshot` 
 
 ### Requirement: Derived change-overview rendering preserves snapshot boundary order
 
-The `change-overview.md` generator SHALL derive Architecture Snapshot content only from `design.md` and, when it renders the snapshot under `## Target Architecture` and its fixed `### Snapshot` subsection, SHALL render exactly two nested headings when the source inventory has at least one surface: `#### External Surfaces` followed by `#### Internal Public Surfaces`. These two nested headings are structural anchors, not editorial subsections: they SHALL remain in English regardless of the invocation-scoped `overview_language` and SHALL NOT be translated. The external entries and their source-grounded prose SHALL appear under the first heading, and the internal entries and their source-grounded prose SHALL appear under the second. It MAY condense source prose under the existing overview fidelity rules, but it SHALL NOT flatten the two groups into an undifferentiated list, reverse their order, or invent a surface. When the source snapshot is entirely empty, the overview SHALL continue the existing projection rule that it does not emit the source public-surface `None — no planned public surfaces` sentinel or either nested boundary heading. When the source has one empty boundary block, the overview SHALL render both nested headings in the same order and SHALL retain the corresponding source-grounded block-specific empty sentinel under the correct heading rather than turning it into a public-surface sentinel.
+The overview generator SHALL exclude Architecture Snapshot at any heading depth with its complete subtree, including boundary headings, surfaces, and empty-inventory explanations. It SHALL NOT adapt that snapshot into Target Architecture, emit Snapshot boundary wrappers, or synthesize replacement snapshot facts from other sources.
+
+This overview exclusion SHALL NOT change authoritative design authoring: non-empty snapshots retain External Surfaces before Internal Public Surfaces, the conservative boundary classification, and the existing whole-inventory and block-specific absence rules.
 
 #### Scenario: non-empty division propagates to the overview
-
-- **WHEN** `design.md` contains external and internal Architecture Snapshot blocks
-- **THEN** the derived overview's `### Snapshot` contains `#### External Surfaces` followed by `#### Internal Public Surfaces`
-- **AND** the external surfaces are rendered under the first nested heading before the internal public surfaces under the second
-- **AND** both nested headings remain in English even when `overview_language` is non-English
-- **AND** the overview does not merge the groups or reverse their order
+- **WHEN** design contains external and internal snapshot boundary blocks
+- **THEN** the overview excludes both blocks with the snapshot subtree while design retains their external-first order
 
 #### Scenario: whole-inventory sentinel remains source-only
-
-- **WHEN** `design.md` contains only the shared `None — no planned public surfaces` sentence
-- **THEN** the overview's `### Snapshot` contains neither `#### External Surfaces` nor `#### Internal Public Surfaces`
-- **AND** the overview does not copy the shared sentinel as a rendered public-surface promise
-- **AND** it does not synthesize snapshot facts from the proposal, specs, tasks, or interfaces
+- **WHEN** the snapshot contains only its shared no-planned-public-surfaces sentence and reason
+- **THEN** the overview excludes that complete snapshot content without inventing replacement facts
 
 #### Scenario: one empty block remains distinguishable when projected
-
-- **WHEN** `design.md` contains one non-empty boundary block and one block-specific empty rendering
-- **THEN** the overview's `### Snapshot` contains `#### External Surfaces` followed by `#### Internal Public Surfaces`
-- **AND** the correct nested heading carries the source-grounded block-specific empty sentinel while external content remains before internal content
-- **AND** both nested headings remain in English even when `overview_language` is non-English
-- **AND** it does not replace the block-specific state with the shared whole-inventory sentinel
+- **WHEN** design contains one populated snapshot boundary and one block-specific empty rendering
+- **THEN** design retains that distinction and order while the overview excludes both with the snapshot subtree
 
 ### Requirement: Architecture Snapshot boundary terms are defined in the glossary
 
