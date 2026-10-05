@@ -18,7 +18,7 @@ function project(repository, io) {
 
 function api(target, endpoint, io, method = 'GET', body) {
   const args = ['api', endpoint, '--hostname', target.host, '--method', method];
-  if (body !== undefined) args.push('--input', '-');
+  if (body !== undefined) args.push('--header', 'Content-Type: application/json', '--input', '-');
   return JSON.parse(io.run('glab', args, body === undefined ? undefined : JSON.stringify(body)));
 }
 
