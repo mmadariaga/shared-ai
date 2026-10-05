@@ -28,6 +28,10 @@
 
 **Files Affected**:
 
-<!-- Selected field from this tasks.md Step. -->
+```text
+A path/to/<timestamp>/example.md
+```
+
+<!-- Replace this illustrative entry with the selected field's literal entries from this tasks.md Step; omit absent content under the shared contract. -->
 
 <!-- Write-time authority: sai/commands/design/change-overview.md defines generation, validation, localization, and the closed result envelope; the write-time contract preserves exactly the five generator fields and maps recovery classification outside that envelope. -->

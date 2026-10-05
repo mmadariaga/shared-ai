@@ -203,6 +203,8 @@ The sai-workflow overview artifact description SHALL identify a faithful source-
 
 The overview template SHALL scaffold Proposal with Why and What Changes, Design with a source-driven section insertion point, and a repeated Tasks-ordered Step wrapper containing Interfaces and Test assertions followed by Tasks Files Affected. It SHALL allow additional present Design sections rather than impose a fixed Design allowlist and SHALL point to the shared write-time contract.
 
+Beneath the English Files Affected label, the template SHALL demonstrate one fenced `text` block containing the literal illustrative entry `A path/to/<timestamp>/example.md`. A non-normative comment SHALL direct replacement of the illustrative entry with the selected Tasks Step's literal entries and omission of absent content under the shared contract.
+
 The existing artifact destination, dependency on Interfaces, apply requirements, opt-in language behavior, materialization lifecycle, and regeneration behavior SHALL remain unchanged.
 
 #### Scenario: schema description matches the generation contract
@@ -211,7 +213,7 @@ The existing artifact destination, dependency on Interfaces, apply requirements,
 
 #### Scenario: template scaffolds source groups
 - **WHEN** the overview template is read
-- **THEN** it contains Proposal Why and What Changes, an open Design insertion point, and a repeated Step skeleton with Interfaces and Test assertions before Tasks Files Affected
+- **THEN** it contains Proposal Why and What Changes, an open Design insertion point, and a repeated Step skeleton with Interfaces and Test assertions before Tasks Files Affected, whose literal timestamp-path example appears in one fenced text block beneath its English label
 
 #### Scenario: additional Design sections are permitted
 - **WHEN** source Design contains a non-excluded section absent from the template

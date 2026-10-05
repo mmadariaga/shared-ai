@@ -39,27 +39,29 @@ The design worker SHALL dispatch the budget-routed Change Overview generator onl
 
 ### Requirement: Localize only the Change Overview projection
 
-The selected invocation language SHALL apply only to eligible natural-language content in the human-oriented `change-overview.md` projection. Selected prose, source headings, descriptive labels, and source Step titles SHALL be translated only when required, preserving their meaning, complete content, and Markdown formatting. Text already in the selected language SHALL be copied verbatim apart from permitted heading-depth adjustment.
+The selected invocation language SHALL apply only to explanatory prose in the human-oriented `change-overview.md` projection. Explanatory prose SHALL be translated only when required, preserving its meaning, complete content, and Markdown formatting. Text already in the selected language SHALL be copied verbatim apart from permitted heading-depth adjustment and Files Affected block wrapping.
 
-The structural wrappers Proposal, Design, Step N, Interfaces, and Tasks SHALL remain English. Code, public signatures, paths, identifiers, test expressions, commands, state values, source artifact names, result keys, and other technical literals SHALL remain unchanged, including inline code and code blocks.
+All actual Markdown headings, including complete source Step titles, and structural field labels SHALL remain verbatim English regardless of the selected language. The structural wrappers Proposal, Design, Step N, Interfaces, and Tasks SHALL remain English. Structural field labels SHALL mean section or field names such as Goals, Provenance, Interfaces, Test assertions, and Files Affected, not every emphasized explanatory phrase. Heading-like text inside code SHALL remain code rather than be treated as a heading.
+
+Code, public signatures, paths, identifiers, test expressions, commands, state values, source artifact names, result keys, and other technical literals SHALL remain unchanged, including inline code and code blocks. Files Affected wrapper normalization SHALL preserve the entry contents exactly.
 
 Proposal, specs, design, tasks, interfaces, configuration, and other normative artifacts SHALL remain English and SHALL NOT be rewritten by overview generation. Language selection SHALL remain invocation-scoped, with no persisted preference. Existing dispatch selection, five-field result, single-file scope, and re-selection rules SHALL remain unchanged.
 
 #### Scenario: Normative artifacts remain unchanged
 - **WHEN** overview generation is requested in a language other than English
-- **THEN** only eligible overview content is translated and no normative artifact or persisted language preference is modified
+- **THEN** only eligible overview explanatory prose is translated and no normative artifact or persisted language preference is modified
 
 #### Scenario: Overview fidelity is preserved
 - **WHEN** overview generation is requested in a language other than English
-- **THEN** selected prose, source headings, labels, and Step titles translate faithfully while English wrappers, code, signatures, paths, identifiers, test expressions, commands, state values, artifact names, and result keys remain unchanged
+- **THEN** explanatory prose translates faithfully while all actual headings, complete Step titles, structural labels, wrappers, code, signatures, paths, identifiers, test expressions, commands, state values, artifact names, and result keys remain unchanged
 
 #### Scenario: text already uses the selected language
 - **WHEN** selected source text already uses the effective overview language
-- **THEN** the generator copies it verbatim except for permitted Markdown heading-depth adjustment
+- **THEN** the generator copies it verbatim except for permitted Markdown heading-depth adjustment and Files Affected block wrapping
 
 #### Scenario: technical code is embedded in translated prose
 - **WHEN** selected prose contains inline code or fenced or indented code blocks
-- **THEN** translation preserves their exact technical content and whitespace inside blocks
+- **THEN** translation preserves their exact technical content and whitespace inside blocks, including heading-like code text
 
 ### Requirement: Re-select language for every generation attempt
 

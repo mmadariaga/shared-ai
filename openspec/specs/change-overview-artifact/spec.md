@@ -22,15 +22,19 @@ The overview SHALL NOT replace or modify any source artifact. Existing invocatio
 
 ### Requirement: Overview is organized by approval-relevant capability and behavior
 
-The overview SHALL instead use source-oriented organization: `## Proposal`, `## Design`, followed by one `## Step N: <title>` block for every numbered Tasks Step in Tasks source order.
+The overview SHALL use source-oriented organization: `## Proposal`, `## Design`, followed by one `## Step N: <title>` block for every numbered Tasks Step in Tasks source order.
 
 Under Proposal, the generator SHALL copy only the complete Why and What Changes subtrees in their source order, nesting their headings at `###`; other Proposal sections, including a WHAT heading, SHALL be omitted.
 
 Under Design, the generator SHALL copy all present sections in source order, including additional sections not named in the template. Sections named Architecture Snapshot, File Manifest, and Context SHALL be excluded at any heading depth with their complete subtrees. Remaining hierarchy SHALL be preserved, shifting source `##` headings to `###`. An empty Target State container SHALL be omitted; one with remaining selected prose or subsections SHALL be retained.
 
-Tasks Steps SHALL be traversed in source order, not numerically sorted. Each Step SHALL use its Tasks number and title and join the corresponding Interfaces block by number, not title or position. If present, `### Interfaces` SHALL contain only the complete Interfaces and Test assertions fields in source order. `### Tasks` SHALL follow and contain only the complete Files Affected field. Other Tasks fields and non-Step sections SHALL be omitted.
+Tasks Steps SHALL be traversed in source order, not numerically sorted. Each Step SHALL use its Tasks number and complete English title and join the corresponding Interfaces block by number, not title or position. If present, `### Interfaces` SHALL contain only the complete Interfaces and Test assertions fields in source order. `### Tasks` SHALL follow and contain only the complete Files Affected field. Other Tasks fields and non-Step sections SHALL be omitted.
 
-Files Affected SHALL be copied literally, including repeated changes, deletions, renames, and paths that do not survive a net fold. The overview SHALL NOT replace these entries with a global manifest. Missing Interfaces blocks SHALL produce no invented interfaces or assertions. Source explanations of absence SHALL be preserved alongside selected content. A whole-file `None — no step contracts` sentinel and its reason SHALL be copied once immediately before the first Step without an added heading.
+Files Affected SHALL be copied literally, including repeated changes, deletions, renames, and paths that do not survive a net fold. The overview SHALL NOT replace these entries with a global manifest. For each Step with file entries, the English field label SHALL remain outside one fenced `text` block containing all entries. Entry content SHALL preserve exact change markers, paths including literals such as `<timestamp>`, whitespace, order, and repetitions.
+
+The generator SHALL reuse an existing single fenced block rather than nest or duplicate blocks. For bare entries, indented blocks, or multiple source blocks, it SHALL replace only the block wrappers with one text fence while preserving entry contents. The fence SHALL be long enough to contain any literal fence in an entry. Explanations of absence SHALL remain outside the file-entry block; absent entries SHALL NOT require an empty block or an invented list.
+
+Missing Interfaces blocks SHALL produce no invented interfaces or assertions. Source explanations of absence SHALL be preserved alongside selected content. A whole-file `None — no step contracts` sentinel and its reason SHALL be copied once immediately before the first Step without an added heading.
 
 #### Scenario: overview uses the exact approval section set
 - **WHEN** an overview is generated
@@ -46,7 +50,7 @@ Files Affected SHALL be copied literally, including repeated changes, deletions,
 
 #### Scenario: manifest appears once at the top level
 - **WHEN** design contains a File Manifest and Tasks contain per-Step Files Affected
-- **THEN** the overview excludes the design manifest and copies each Step's Files Affected under its Tasks wrapper without a top-level manifest
+- **THEN** the overview excludes the design manifest and copies each Step's literal Files Affected entries in one fenced text block under its Tasks wrapper without a top-level manifest
 
 #### Scenario: interface signatures are retained beside manifest file entries
 - **WHEN** an Interfaces Step contains signatures
@@ -67,6 +71,18 @@ Files Affected SHALL be copied literally, including repeated changes, deletions,
 #### Scenario: whole-file absence explanation is present
 - **WHEN** Interfaces contains the whole-file no-step-contracts sentinel and its reason
 - **THEN** the overview copies that explanation once immediately before the first Tasks Step
+
+#### Scenario: file entries contain Markdown-sensitive literals
+- **WHEN** a Step's Files Affected entries include `<timestamp>`, repeated paths, change markers, deletions, or renames
+- **THEN** one fenced text block preserves every entry literally in source order beneath the English field label
+
+#### Scenario: file entries already use block wrappers
+- **WHEN** selected Files Affected entries use a single fenced block, indented blocks, or multiple source blocks
+- **THEN** the overview emits one non-nested text block, reusing a single existing block where applicable and otherwise replacing only wrappers while preserving all entry contents with a sufficiently long fence
+
+#### Scenario: file entries are absent
+- **WHEN** selected source content explains that no file entries are present
+- **THEN** the explanation remains outside any file-entry block without an invented list or required empty block
 
 ### Requirement: Target State remains authoritative in design.md but is not projected into the overview
 
@@ -104,9 +120,11 @@ Overview generation SHALL exclude Architecture Snapshot and File Manifest subtre
 
 ### Requirement: Source artifacts remain authoritative and the overview permits editorial condensation
 
-Source artifacts SHALL remain authoritative. The overview SHALL transfer complete selected content without summarizing, condensing, rewriting, or adding source content. It SHALL preserve lists and order, tables and all rows, emphasis, links, blockquotes, fenced and indented blocks, and whitespace inside blocks. Only actual Markdown heading depth SHALL be adjusted to fit the containing structure; heading-like text inside code blocks SHALL remain untouched.
+Source artifacts SHALL remain authoritative. The overview SHALL transfer complete selected content without summarizing, condensing, rewriting, or adding source content. Complete transfer SHALL include every standalone paragraph, list item, table row, reference, identifier, test assertion, and selected field's complete content, including apparently redundant assertions.
 
-Selected text already in the effective overview language SHALL be copied verbatim apart from permitted heading adjustment. Other selected natural-language prose, source headings, and descriptive labels SHALL be translated without changing meaning or formatting. Code, signatures, paths, identifiers, test expressions, commands, state values, source artifact names, result keys, and other technical literals SHALL remain unchanged, including inline code and code blocks.
+The overview SHALL preserve lists and order, tables and all rows, emphasis, links, blockquotes, fenced and indented blocks, and whitespace inside blocks. The only formatting exceptions SHALL be adjusting actual Markdown heading depth to fit the containing structure and wrapping Files Affected entries in the specified single text block. Heading-like text inside code blocks SHALL remain untouched.
+
+Selected text already in the effective overview language SHALL be copied verbatim apart from those permitted formatting exceptions. Other selected natural-language explanatory prose SHALL be translated without changing meaning or formatting. All actual headings, complete Step titles, and structural field labels SHALL remain English. Code, signatures, paths, identifiers, test expressions, commands, state values, source artifact names, result keys, and other technical literals SHALL remain unchanged, including inline code and code blocks.
 
 The generator SHALL NOT modify source artifacts or invent source relationships, assertions, audit mappings, conclusions, or facts. Absent selected sections and fields SHALL be omitted rather than filled with placeholders; source explanations of absence SHALL be preserved.
 
@@ -128,15 +146,19 @@ The generator SHALL NOT modify source artifacts or invent source relationships, 
 
 #### Scenario: selected Markdown formatting remains intact
 - **WHEN** selected content contains ordered lists, tables, links, blockquotes, and code blocks
-- **THEN** the complete selected structures and their order remain intact, including all table rows and whitespace inside blocks
+- **THEN** the complete selected structures and their order remain intact, including all table rows and whitespace inside blocks, except for permitted heading-depth adjustment and Files Affected wrapper normalization
 
 #### Scenario: heading-like code stays untouched
 - **WHEN** a selected code block contains text that resembles Markdown headings
-- **THEN** heading-depth adjustment does not change that code text
+- **THEN** neither heading-depth adjustment nor the English-heading rule changes that code text
 
 #### Scenario: optional section is absent
 - **WHEN** a selected section or field is absent from the source
 - **THEN** the overview omits it without inventing content or rendering template placeholders
+
+#### Scenario: selected content appears redundant
+- **WHEN** selected source content includes standalone paragraphs, references, or apparently redundant test assertions
+- **THEN** the overview transfers every selected unit completely rather than treating redundancy as permission to omit it
 
 ### Requirement: Blocking contradictions are reported and missing audit mappings are not required
 
@@ -170,6 +192,12 @@ The generator SHALL validate the complete candidate against source selection, co
 
 Validation SHALL check the source-driven Design selection, excluded subtrees, omitted absent content, and empty Target State handling. It SHALL reject dropped or added selected content and source contradictions. It SHALL NOT impose a fixed Design allowlist or the obsolete thematic heading set.
 
+Before accepting generation or regeneration, the generator SHALL compare each selected source unit with its candidate counterpart. Every standalone paragraph, list item, table row, reference, identifier, test assertion, and complete field content SHALL be accounted for in source order. Translated prose SHALL preserve complete meaning, and technical literals SHALL match exactly. Section presence alone SHALL NOT establish completeness.
+
+Validation SHALL confirm that all actual headings, including complete Step titles, and structural field labels remain English while explanatory prose uses the selected overview language. Each Step with file entries SHALL have exactly one file-entry text block without duplicate or nested wrappers. Entry content SHALL preserve `<timestamp>` and other path literals, change markers, whitespace, order, and repetitions. All other Markdown formatting SHALL remain preserved except permitted heading-depth adjustment.
+
+Any missing selected unit or failed candidate fidelity or rendering check SHALL prevent acceptance and return `validation-failed` through the existing failure-record and result-envelope rules. Source contradictions SHALL remain `blocking-contradiction`, with both source locations and the one-line disagreement reported.
+
 Acceptance SHALL remain transactional: the complete candidate SHALL be validated before a single atomic write. Failed generation or regeneration SHALL NOT leave partially written or partially validated candidate output. Existing complete diagnostic-record behavior SHALL remain available for generator-run failures.
 
 #### Scenario: complete approval overview passes validation
@@ -182,11 +210,19 @@ Acceptance SHALL remain transactional: the complete candidate SHALL be validated
 
 #### Scenario: incomplete or unsourced overview is rejected
 - **WHEN** a candidate drops selected content, adds content, changes source order or Step correspondence, changes technical literals, or contains a source contradiction
-- **THEN** validation reports failure and does not leave a partially validated candidate as the overview
+- **THEN** validation reports `validation-failed` for candidate fidelity or rendering defects or `blocking-contradiction` for source contradictions, without leaving a partially validated candidate as the overview
 
 #### Scenario: additional Design section is present
 - **WHEN** Design contains a non-excluded section absent from the template's examples
 - **THEN** validation requires its complete content in source order rather than applying a fixed section allowlist
+
+#### Scenario: all headings exist but selected units are missing
+- **WHEN** a candidate contains all required headings but omits a selected standalone paragraph, citation, or apparently redundant assertion
+- **THEN** generation or regeneration fails with `validation-failed` before accepting the candidate
+
+#### Scenario: localized candidate or file-entry presentation is incorrect
+- **WHEN** a candidate translates a heading or structural label, loses explanatory meaning, changes literal file-entry content, or emits duplicate or nested file-entry wrappers
+- **THEN** validation returns `validation-failed` and prevents acceptance
 
 ### Requirement: Target State subsections remain exact in design.md only
 
@@ -206,15 +242,17 @@ Authoritative design Target State SHALL continue to contain exactly Architecture
 
 ### Requirement: Overview rendering preserves structural localization anchors
 
-The generator SHALL keep `## Proposal`, `## Design`, the `## Step N:` wrapper, `### Interfaces`, and `### Tasks` in English. The source Step title, selected source headings, descriptive labels, and natural-language prose SHALL be eligible for translation. Technical literals SHALL remain unchanged according to the faithful-copy rule. Existing invocation-language transport, projection-only scope, and language re-selection SHALL remain owned by localized-overview-generation.
+The generator SHALL keep all actual Markdown headings, including complete Step titles, selected source headings, and structural field labels English regardless of the selected overview language. The English wrappers SHALL include `## Proposal`, `## Design`, `## Step N: <title>`, `### Interfaces`, and `### Tasks`.
+
+Only natural-language explanatory prose SHALL be eligible for translation. Structural labels SHALL mean section or field names, not every emphasized explanatory phrase. Heading-like text inside code SHALL remain unchanged code. Technical literals SHALL remain unchanged according to the faithful-copy rule. Existing invocation-language transport, projection-only scope, and language re-selection SHALL remain owned by localized-overview-generation.
 
 #### Scenario: localized overview keeps the nine headings in English
 - **WHEN** a generator receives a non-English overview language
-- **THEN** it keeps the source-oriented structural wrappers in English rather than emitting the former nine thematic headings
+- **THEN** it keeps all source-oriented headings, including full Step titles, and structural labels English rather than emitting the former nine thematic headings
 
 #### Scenario: localized editorial subsections remain structurally valid
-- **WHEN** selected source content includes headings and descriptive labels
-- **THEN** those source headings and labels may translate faithfully while wrapper headings remain English and no editorial grouping is invented
+- **WHEN** selected source content includes headings and descriptive structural labels
+- **THEN** those headings and labels remain English while explanatory prose translates faithfully and no editorial grouping is invented
 
 #### Scenario: structural values remain stable under localization
 - **WHEN** selected content contains paths, commands, state values, source artifact names, signatures, identifiers, or test expressions

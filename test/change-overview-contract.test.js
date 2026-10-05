@@ -131,7 +131,7 @@ test('overview preserves complete formatting and fails atomically on source cont
     'a manifest contradiction should not leave partial output');
 });
 
-test('localized overview translates prose but preserves technical content and wrappers', () => {
+test('localized overview translates explanatory prose but keeps all headings and labels English', () => {
   const instruction = artifact('sai/commands/design/change-overview.md');
 
   assert.match(instruction, /overview_language/);
@@ -143,11 +143,53 @@ test('localized overview translates prose but preserves technical content and wr
     assert.match(instruction, new RegExp(anchor));
   }
   assert.match(instruction, /already in `overview_language`, copy it verbatim/);
-  assert.match(instruction, /translate only natural-language prose, source headings, and descriptive labels/);
+  assert.match(instruction, /All actual Markdown headings and structural field labels remain English regardless of `overview_language`, including complete Step titles/);
+  assert.match(instruction, /Keep source headings and labels verbatim in English/);
+  assert.match(instruction, /not every emphasized explanatory phrase/);
+  assert.match(instruction, /Only explanatory prose is translated/);
+  assert.match(instruction, /translate only natural-language explanatory prose/);
+  assert.doesNotMatch(instruction, /title is eligible for translation|translate only natural-language prose, source headings/);
   assert.match(instruction, /Keep code, public signatures, paths, identifiers, test expressions[\s\S]*unchanged, including inline code and code blocks/);
   assert.match(instruction, /result keys/);
   assert.match(instruction, /exactly five mandatory fields|five mandatory fields/);
   assert.match(instruction, /change-overview\.md/);
+});
+
+test('overview files use one literal text block, including timestamp paths and repeated changes', () => {
+  const instruction = artifact('sai/commands/design/change-overview.md');
+  const template = artifact('openspec/schemas/sai-workflow/templates/change-overview.md');
+
+  assert.match(instruction, /only formatting exceptions are adjusting actual Markdown heading depth[\s\S]*and wrapping Files Affected entries/);
+  assert.match(instruction, /English field label outside one fenced `text` block containing all file entries for that Step/);
+  assert.match(instruction, /Preserve entry content exactly: change markers, paths \(including literals such as `<timestamp>`\), whitespace, order, and repetitions/);
+  assert.match(instruction, /Reuse an existing single fenced block rather than nesting or duplicating blocks/);
+  assert.match(instruction, /bare, indented, or multiple source blocks[\s\S]*preserve the entry contents/);
+  assert.match(instruction, /fence long enough to contain any literal fence/);
+  assert.match(instruction, /explanation of absence outside[\s\S]*absent entries do not require an empty block or an invented list/);
+  const fileField = template.slice(template.indexOf('**Files Affected**:'));
+  assert.match(fileField, /\*\*Files Affected\*\*:\s+```text\nA path\/to\/<timestamp>\/example\.md\n```/);
+  assert.equal((fileField.match(/^```text$/gm) || []).length, 1);
+  assert.equal((fileField.match(/^```$/gm) || []).length, 1);
+});
+
+test('overview acceptance checks selected units, not just headings, on generation and regeneration', () => {
+  const instruction = artifact('sai/commands/design/change-overview.md');
+  const validation = instruction.split('## Validation before write')[1].split('## Closed result envelope')[0];
+
+  assert.match(instruction, /including apparently redundant test assertions/);
+  assert.match(validation, /Before accepting generation or regeneration, compare each selected source unit with its candidate counterpart/);
+  for (const unit of ['standalone paragraph', 'list item', 'table row', 'reference', 'identifier', 'test assertion', 'complete field content']) {
+    assert.ok(validation.includes(unit), `validation must account for every ${unit}`);
+  }
+  assert.match(validation, /accounted for in source order/);
+  assert.match(validation, /translated prose for complete meaning, and technical literals for exact equality/);
+  assert.match(validation, /an omitted paragraph, citation, or apparently redundant assertion fails validation even when all headings are present/);
+  assert.match(validation, /including full Step titles[\s\S]*structural field labels remain English/);
+  assert.match(validation, /exactly one file-entry text block[\s\S]*<timestamp>[\s\S]*order, and repetitions/);
+  assert.match(validation, /all other Markdown formatting is preserved/);
+  assert.match(validation, /Any missing selected unit or failed candidate fidelity\/rendering check prevents acceptance and returns `validation-failed`/);
+  assert.match(validation, /Source contradictions remain `blocking-contradiction`, with both source locations and the one-line disagreement/);
+  assert.match(validation, /only then write[\s\S]*single atomic write/);
 });
 
 test('overview selects exactly Proposal fields and an open ordered Design selection', () => {
@@ -840,7 +882,7 @@ test('localized Change Overview generation preserves structural anchors, source 
 
   assert.match(instruction, /overview_language/);
   assert.match(instruction, /English/);
-  assert.match(instruction, /natural-language prose/);
+  assert.match(instruction, /natural-language explanatory prose/);
   for (const anchor of [
     'source headings',
     'Architecture Snapshot',
@@ -1509,12 +1551,12 @@ test('overview excludes Architecture Snapshot and its complete subtree', () => {
   assert.doesNotMatch(overview, /#### External Surfaces|#### Internal Public Surfaces/);
 });
 
-test('overview wrappers stay English while source headings may translate', () => {
+test('overview wrappers and source headings stay English while explanatory prose translates', () => {
   const overview = artifact('sai/commands/design/change-overview.md');
 
   assert.match(overview, /overview_language/);
-  assert.match(overview, /Keep the structural wrappers[\s\S]*in English/);
-  assert.match(overview, /translate only natural-language prose, source headings/);
+  assert.match(overview, /Keep source headings and labels verbatim in English; use English structural wrappers/);
+  assert.match(overview, /translate only natural-language explanatory prose/);
 });
 
 test('Step 5: unclear boundary classification falls back to external and File Manifest is a direct inventory', () => {
