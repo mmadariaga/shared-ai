@@ -131,12 +131,22 @@ The system SHALL classify each conflicted file as specs, ADR/DDR, or code upon c
 
 ### Requirement: Region-scoped alternatives
 
-When every region of a file resolves to the same stage, the alternative SHALL come from git unchanged (`git-ours` or `git-theirs`). When regions resolve to different stages or need new text, the file SHALL be `authored`, with a region-scoped combination that keeps one owner per responsibility and one source per fact and is never built by concatenating fragments. A conflict without markers SHALL resolve to a git side or be escalated.
+When every region of a file resolves to the same stage, the alternative SHALL come from git unchanged (`git-ours` or `git-theirs`) only when the captured stage-checkout check establishes that this preserves Git-combined content outside the regions. Otherwise the file SHALL be `authored` with region splices preserving the captured working content, even when every region selects the same side. When regions resolve to different stages or need new text, the file SHALL be `authored`, with a region-scoped combination that keeps one owner per responsibility and one source per fact and is never built by concatenating fragments. A conflict without markers SHALL resolve to a git side or be escalated. Any changed representation SHALL appear in the complete strategy before application.
 
 #### Scenario: Mixed-side file is authored
 
 - **WHEN** a file's regions resolve to different stages
 - **THEN** the git shortcut is not used and the worker authors each region's replacement text
+
+#### Scenario: Same-side resolution preserves automatic combinations
+
+- **WHEN** all conflict regions choose one stage but whole-stage checkout would discard Git-combined content outside those regions
+- **THEN** the strategy uses authored region splices with the same intended decisions and preserves the captured outside-region content
+
+#### Scenario: Safe whole-stage alternative remains available
+
+- **WHEN** the captured stage-checkout check establishes that a same-stage alternative preserves the combined content
+- **THEN** the strategy may use the unchanged Git-sourced alternative for coordinator materialization
 
 ### Requirement: Global strategy gates resolution
 
@@ -154,7 +164,7 @@ The worker SHALL produce one prose strategy over the whole selected conflict set
 
 ### Requirement: Complete resolution payload validation
 
-Before staging, the coordinator SHALL atomically validate the `## Complete resolution payload`: exactly one record per conflicted file in the selected scope with the worker's path and category; `source` of `git-ours` / `git-theirs` with empty `regions` or `authored` with region entries; decisions matching those stated by the confirmed strategy; and no conflict marker, diff, hunk, or complete file in region text. Any failure SHALL reject the whole payload, leaving every conflict untouched and unstaged.
+Before staging, the coordinator SHALL atomically validate the original received worker result and its `## Complete resolution payload`: exactly one record per conflicted file in the selected scope with the worker's path and category; `source` of `git-ours` / `git-theirs` with empty `regions` or `authored` with complete captured region entries; decisions matching those stated by the confirmed strategy; and no conflict marker, diff, hunk, or complete file in region text. Obvious authored regions SHALL NOT require an invented semantic decision. The coordinator SHALL pass the original source bytes to validation rather than constructing a shortened substitute. Mechanical resolution checks SHALL validate the retained snapshot hash, immutable HEAD/index/operation identity, complete inventories, confirmed decisions, protected content, and unrelated content before checkout and before staging. Authored files SHALL equal the captured working file with only declared replacements; Git-sourced files SHALL remain untouched by the worker and SHALL equal the captured stage after coordinator checkout. Independent semantic review SHALL also pass before staging. Any failure SHALL reject the whole payload, leaving every conflict untouched by coordinator checkout and unstaged.
 
 #### Scenario: Fragmentary payload is rejected atomically
 
@@ -165,6 +175,26 @@ Before staging, the coordinator SHALL atomically validate the `## Complete resol
 
 - **WHEN** every record passes validation
 - **THEN** the coordinator materializes `git-ours` / `git-theirs` files with `git checkout --ours` / `--theirs`, leaves the worker-written `authored` files as written, and never reconstructs content from prose
+
+#### Scenario: Original envelope is required
+
+- **WHEN** resolution checking receives a reduced payload instead of the original worker result or the original result lacks a required field
+- **THEN** checking fails rather than validating a fabricated replacement envelope
+
+#### Scenario: Protected content differs
+
+- **WHEN** an authored result changes content outside captured replacement ranges or changes unrelated content
+- **THEN** mechanical checking rejects the result and no path is staged
+
+#### Scenario: Repository identity changes before review
+
+- **WHEN** HEAD, index entries, or operation identity no longer match the retained resolution snapshot
+- **THEN** the check reports stale evidence rather than accepting the resolution against a different state
+
+#### Scenario: Mechanical success does not replace semantic review
+
+- **WHEN** resolution checking succeeds
+- **THEN** the coordinator independently reviews the materialized tree against the confirmed strategy and stages only when both checks pass
 
 ### Requirement: Runtime resolution scope gate
 
@@ -186,7 +216,7 @@ The system SHALL detect the project's test suite from project metadata, run it a
 
 ### Requirement: Incremental ADR/DDR collision pass
 
-The system SHALL run the ADR/DDR collision pass on the final integration state using only source-introduced records that survive in it. The coordinator SHALL capture `target_sha`, `source_sha`, `merge_base`, and the added-only source record inventory before the launch and forward them unchanged. Candidate keys SHALL be `(family, numeric prefix)`, compared only against final-state bare and suffixed records; references SHALL be repaired only for affected family-aware identifiers.
+The system SHALL run the ADR/DDR collision pass on the final integration state using only source-introduced records that survive in it. The coordinator SHALL capture `target_sha`, `source_sha`, `merge_base`, and the added-only source record inventory before the launch and forward them unchanged. The source inventory SHALL include bare and alphabetically suffixed ADR/DDR record filenames while excluding indexes, renames, and copies. Candidate keys SHALL be `(family, numeric prefix)`, compared only against final-state bare and suffixed records; references SHALL be repaired only for affected family-aware identifiers. A mechanically verified empty introduced-record inventory SHALL yield `not-applicable` without grouping or reference searches. Uncertain survival, renames, or references SHALL return to worker judgment rather than an approximate non-applicability or repair decision.
 
 #### Scenario: Numeric collision repaired
 
@@ -207,6 +237,16 @@ The system SHALL run the ADR/DDR collision pass on the final integration state u
 
 - **WHEN** an affected reference matches no file after renaming
 - **THEN** it is reported as an orphan and left unmodified
+
+#### Scenario: Suffixed introductions remain applicable
+
+- **WHEN** the source introduces `docs/adr/0011a-new.md` or `docs/ddr/0011aa-new.md`
+- **THEN** that record remains in the source frontier and is compared against final-state records of the same family and numeric prefix
+
+#### Scenario: Uncertain survival requires judgment
+
+- **WHEN** an introduced record is missing at its captured path in the final state
+- **THEN** the mechanical result requests survival-or-rename reconciliation and the worker establishes its disposition without assuming no collision work exists
 
 ### Requirement: Explicit finalization authorization
 
@@ -349,3 +389,75 @@ The system SHALL compose the `rebase-squash` squash commit with the same informa
 #### Scenario: Plain rebase carries no list
 - **WHEN** the method is plain rebase or a finished rebase has nothing staged
 - **THEN** no inventory list applies
+
+### Requirement: Deterministic merge mechanical evidence
+
+The merge workflow SHALL obtain mechanical preflight, provenance, conflict, suite, verification, and collision facts through `sai/tools/merge.js`. Fact receipts SHALL identify their version, action, outcome, dependencies, captured state, and data. Results SHALL distinguish successful collection, failed assertions, and explicit non-applicability. Mechanical evidence SHALL NOT select semantic intentions, authorize mutations, replace independent review, or alter existing gates and correction budgets.
+
+#### Scenario: Preflight facts are collected together
+
+- **WHEN** the worker starts the preflight stage
+- **THEN** one engine call returns dirty paths, merge and rebase guards, the current branch, and authoritative unmerged local candidates sorted by full committer timestamp descending and exact branch name ascending
+
+#### Scenario: Captured launch provenance remains historical
+
+- **WHEN** the coordinator validates the selected exact source ref and prepares to launch integration
+- **THEN** it captures and validates provenance before launch or squash, recollects stale launch facts, and forwards the original captured SHAs and receipt unchanged after launch
+
+#### Scenario: Mechanical evidence does not authorize a resolution
+
+- **WHEN** an engine result establishes a repository fact
+- **THEN** semantic decisions remain worker responsibilities and approval, lifecycle validation, independent review, unrelated-change protection, HEAD checks, and Git mutations remain coordinator responsibilities
+
+#### Scenario: Collection errors remain failures
+
+- **WHEN** mechanical evidence is missing, malformed, incomplete, or cannot be collected
+- **THEN** the workflow reports the failure rather than inferring success or treating non-applicability as a passed test
+
+### Requirement: Protected merge snapshots and external records
+
+The coordinator SHALL capture the actual conflicted working file before resolution writes, including Git-combined content, ordered marker byte ranges, file modes, stage blob identifiers, and unrelated-content inventory. Snapshot and receipt records SHALL use unique external paths outside the target repository, SHALL NOT overwrite existing records, and SHALL remain available by exact reference and checksum through continuation, replacement, and closure. These records and validation inputs SHALL NOT enter the repository changed-files union or staging set. An authorized correction with new boundaries SHALL receive a separate snapshot of the exact current preimage and explicitly authorized ordered disjoint byte ranges; capturing a correction SHALL NOT broaden scope or replace the original protection evidence.
+
+#### Scenario: Snapshot captures automatic combinations
+
+- **WHEN** Git combines non-conflicting content from both branches around conflict regions
+- **THEN** the pre-write snapshot retains that combined working content as the reference for resolution checks
+
+#### Scenario: External evidence cannot silently change
+
+- **WHEN** a referenced snapshot is missing or its bytes do not match the retained checksum
+- **THEN** the workflow stops before writing, staging, or finalizing instead of overwriting or reconstructing the record
+
+#### Scenario: Validation inputs stay outside the repository
+
+- **WHEN** the coordinator stores the original worker result and confirmed semantic decisions for resolution checking
+- **THEN** it uses unique external files, retains their exact references and hashes, and excludes them from unrelated-content changes and staging candidates
+
+#### Scenario: Verification correction has explicit boundaries
+
+- **WHEN** an authorized fix requires different replacement ranges after staging
+- **THEN** the coordinator independently confirms boundaries within the affected path set, captures the exact preimage and ranges, and validates and reviews the correction before re-staging
+
+#### Scenario: Incorrect writes do not redefine protection
+
+- **WHEN** review rejects an initial resolution write
+- **THEN** correction retains the original protected snapshot rather than capturing the incorrect write as a new unrestricted baseline
+
+### Requirement: Reproducible merge efficiency evidence
+
+The mechanical comparison SHALL compare equivalent preflight facts against the same unchanged fixture, report model-facing collection calls separately from internal subprocesses, and identify the retained instruction-volume baseline by exact revision, source path, checksum, and byte count. Measurement documentation SHALL distinguish observed mechanical and instruction-volume results from unmeasured full-runtime latency and SHALL provide a paired runtime protocol for Claude Code and opencode that keeps models and configuration constant, separates automatic time from human waiting and test time, and checks correct resolution and preserved guarantees. No sub-five-minute threshold or attribution of all time outside tools to the model SHALL be inferred from the mechanical comparison.
+
+#### Scenario: Committing does not move the measurement baseline
+
+- **WHEN** the comparison runs after committing the implementation or in a shallow checkout
+- **THEN** its before-side instruction volume comes from the retained revision-identified fixture rather than moving HEAD or unavailable historical objects
+
+#### Scenario: Boundary reductions do not imply latency gains
+
+- **WHEN** fewer collection calls or smaller initial instruction disclosure are measured
+- **THEN** the report limits its conclusion to those observed metrics and identifies full-runtime latency as unmeasured until equivalent paired traces exist
+
+#### Scenario: Runtime comparison preserves configuration
+
+- **WHEN** a full-runtime comparison follows the documented protocol
+- **THEN** paired cases retain equivalent repository and model configuration, record human waiting and tool and test intervals separately, and verify correct resolution and preserved guarantees on both harnesses

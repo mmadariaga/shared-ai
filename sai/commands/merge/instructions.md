@@ -75,9 +75,15 @@ result `summary`, not in the question text.
 
 ## Workflow
 
+This is the authoritative section library, not an always-loaded worker task.
+`merge.js instructions --stage <stage>` selects the active sections. Return at
+each hand-off; the coordinator supplies the next stage. Mechanical collection
+commands below provide facts, not authorization.
+
 ### Step 1: Pre-merge environment checks
 
-Run in parallel:
+Run `node <merge-tool> preflight --json --cwd <project-root>` once and retain
+the receipt. It deterministically collects these authoritative checks:
 
 - `git status --porcelain` — dirty worktree;
 - `git rev-parse --verify -q MERGE_HEAD` — merge in progress;
@@ -121,7 +127,9 @@ In fast-track the method is `merge`.
 
 ### Step 3: Branch
 
-Run `git branch --no-merged HEAD --format='%(refname:short) %(committerdate:iso8601)'`
+Use the preflight receipt's `current_branch` and `candidates`, not another
+branch listing. The tool implements
+`git branch --no-merged HEAD --format='%(refname:short) %(committerdate:iso8601)'`
 and `git rev-parse --abbrev-ref HEAD`. The `--no-merged HEAD` filter is
 authoritative. Sort candidates by full committer timestamp, newest first, then
 by exact branch name ascending for equal timestamps.
@@ -190,13 +198,14 @@ post-launch `HEAD` or a moved ref.
 - `method` and `squash`;
 - the ordered **source-introduced records**: the exact `A` paths of
   `git diff --name-status --diff-filter=A --find-renames --find-copies --find-copies-harder <merge_base> <source_sha> -- docs/adr/ docs/ddr/`
-  that match `docs/adr/NNNN-*.md` or `docs/ddr/NNNN-*.md`, excluding the index
+  that match `docs/adr/NNNN-*.md`, `docs/ddr/NNNN-*.md`, or their
+  `NNNN[a-z]+-*.md` suffix variants, excluding the index
   paths `docs/adr/0000-INDEX.md` and `docs/ddr/0000-INDEX.md`. Renames and
   copies are not introductions; `--find-copies-harder` also catches copies
   whose unchanged source lies outside the diff;
 - the **governing rules** of each side, `target_rules` and `source_rules`: the
   `A` and `M` paths of
-  `git diff --name-status --diff-filter=A,M <merge_base> <target_sha|source_sha> -- openspec/specs/ docs/adr/ docs/ddr/`,
+  `git diff --name-status --diff-filter=AM <merge_base> <target_sha|source_sha> -- openspec/specs/ docs/adr/ docs/ddr/`,
   excluding `openspec/changes/archive/**`.
 
 ### Step 5: Conflict detection and classification
@@ -204,7 +213,8 @@ post-launch `HEAD` or a moved ref.
 When the outcome is clean (a merge stopped before its commit, or a finished
 rebase), go to Step 9.
 
-When the outcome is conflicted, list the conflicted files with
+When the outcome is conflicted, use the coordinator's complete `conflicts`
+receipt and exact snapshot reference/hash. The tool lists the conflicted files with
 `git diff --name-only --diff-filter=U`, read the three stages of each
 (`git show :1:<file>`, `:2:`, `:3:`, mapped through [Sides](#sides)), and
 classify each file:
@@ -213,6 +223,10 @@ classify each file:
 - **adr-ddr** — `docs/adr/**` or `docs/ddr/**`;
 - **code** — everything else. Without an `openspec/` directory, `openspec/`
   paths are code.
+
+Read needed stage content by its captured blob OID, not by repeatedly
+enumerating the index. Revalidate the snapshot before analysis or writing;
+changed paths/index/HEAD require a new coordinator capture and strategy.
 
 Return the closed nonterminal event:
 
@@ -297,6 +311,12 @@ For each conflicted file:
 - When every region resolves to the same stage, the alternative comes from git
   unchanged: `git-ours` or `git-theirs`, materialized by the coordinator with
   `git checkout --ours` / `--theirs`.
+- Use that whole-stage alternative only when the captured mechanical
+  `stage_checkout_preserves_combined_content` value for that stage is true.
+  Otherwise use `authored` region splices with the same intended decisions:
+  choosing one side inside a conflict does not discard Git's automatic
+  combinations outside it. A changed representation still appears in the
+  complete strategy before application.
 - When regions resolve to different stages, or any region needs new text, the
   file is `authored`: you write the replacement text of each region. A
   combined outcome keeps one owner for each responsibility, one authoritative
@@ -395,16 +415,26 @@ On the answer:
 
 #### Writing the resolution
 
+On a coordinator-authorized correction, use its protected `correction`
+snapshot's exact byte ranges and preimage instead of marker ranges. Splice
+only the named replacement into each range. Keep the original confirmed
+objective and return the same complete resolution payload for review and
+re-staging. A missing/stale reference or unauthorized path stops before a
+write; a new objective returns to strategy analysis.
+
 For each `authored` file, splice each region's text into its marked conflict
 region, in `conflict_id` order. Write nothing outside the agreed regions and
 nothing for `git-ours` / `git-theirs` files. When no complete marker-free
 outcome exists for an affected file, return `failed` and leave the conflict
 untouched.
 
-The completed `summary` holds, in order: `## Selected contextual decisions`
-(each semantic conflict and the decision the confirmed strategy states for it),
-`## Complete resolution payload` with exactly one JSON object, and the
-`## Conflict Analysis` block.
+The completed `summary` holds a concise application outcome (affected paths,
+confirmed strategy revision, new errors/escalations if any), then
+`## Complete resolution payload` with exactly one JSON object. The payload's
+decision inventory reuses the confirmed strategy. Its semantic explanation
+was delivered at presentation; omit another Conflict Analysis or selected-
+decision explanation here. Every new or revised strategy still receives the
+complete Step 7 presentation before any write.
 
 ```json
 {
@@ -453,7 +483,9 @@ Payload rules:
 The coordinator resumes you after it has validated, reviewed, and staged the
 resolution. A clean integration skips this step.
 
-Detect the suite from project metadata: `package.json` `scripts.test`
+Use `node <merge-tool> suite --json --cwd <project-root>` for suite detection
+and retain its receipt. The authoritative metadata mapping is:
+`package.json` `scripts.test`
 (npm/yarn/pnpm), `Cargo.toml` → `cargo test`, `go.mod` → `go test ./...`,
 `pyproject.toml` / `setup.py` / `setup.cfg` → `pytest`, `Makefile` →
 `make test`, `mix.exs` → `mix test`, `pom.xml` / `build.gradle` → `mvn test` /
@@ -464,7 +496,12 @@ and continue to Step 9 for a merge or Step 10 for a stopped rebase.
 Your next completed summary carries the notice: automated verification is
 unavailable, and the resolution has already been applied and staged.
 
-Run the suite and capture the exit code and output. The budget is three rounds
+Run `node <merge-tool> verify --json --cwd <project-root>` and retain its
+structured result: command, exit code/signal, full stdout/stderr, test duration,
+and state dependencies. A state change during a run invalidates a pass. Keep
+large failure evidence at an exact external reference with its hash; the
+summary carries the failure and proposed correction, not successful output.
+The budget is three rounds
 per conflict stop.
 
 - **Pass** — continue to Step 9 for a merge and to Step 10 for a stopped
@@ -493,6 +530,13 @@ has finished. An in-progress rebase skips it until the rebase finishes.
 A number collision is silent: distinct filenames merge cleanly. The pass is
 incremental: its frontier is the source-introduced records, not the repository
 history.
+
+First run `node <merge-tool> collision --json --cwd <project-root>` with the
+original complete provenance receipt on stdin. A verified
+`no-source-introduced-records` result is `not-applicable` without listing,
+grouping, or reference searches. Reuse valid final-state groups from this
+result. `needs-judgment` requires the semantic reconciliation and applicable
+procedure below, not an approximate repair or a claim of non-applicability.
 
 Reconcile the source-introduced records with the final state: drop a deleted
 record; keep a record renamed by conflict resolution only when that same record
@@ -637,9 +681,15 @@ A rebase that finished with nothing staged needs no operation: return
 `HEAD`.
 
 After the operation succeeds, return `completed` restating the exact
-finalization. After a `git rebase --continue` the coordinator reports the new
+finalization in a self-sufficient closure: method, target/source branches,
+actual operation and resulting HEAD, verification outcome, conflict/collision
+disposition, and any remaining escalations. Reuse the established decisions;
+do not explain the settled strategy again. After a `git rebase --continue` the coordinator reports the new
 outcome, and the run
 continues at Step 5 (a new conflicted commit) or Step 9 (the rebase finished).
 
 If the operation fails, report it as failed, with the exact repository state,
-through the existing error path.
+through the existing error path. Name completed partial operations, the failed
+operation and its error, current HEAD, staged and pending paths, merge/rebase
+state, and unresolved verification or collision findings. A shortened report
+never hides a partial operation or claims successful finalization.

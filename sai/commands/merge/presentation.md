@@ -62,6 +62,41 @@ never rereads an artifact to fill a missing field.
 
 ## Two channels
 
+### Report selection
+
+Select the stage's report before choosing a channel. Preserve the validated
+worker source unchanged; presentation selection never alters validation input.
+The `## Mechanical evidence` appendix is internal receipt hand-off data,
+retained and verified before presentation, not a repeated explanation. It is
+not part of the selected user-facing stage report. Terminal summaries contain
+only closure information; any new receipt is handed off before terminal
+navigation so the closing summary can still be printed verbatim.
+
+- **Strategy:** print the complete strategy and Conflict Analysis once per
+  conflict stop or revision, before application in either mode. A normal-mode
+  gate's `worker_context` is that same already-rendered strategy, not a second
+  print. Every new decision receives a complete new presentation.
+- **Application:** retain the full resolution payload as internal evidence.
+  Show only new errors, escalations or a changed state. Successful application
+  does not repeat Conflict Analysis, alternatives, or selected-decision prose.
+- **Verification/collision:** reuse established outcomes. Show new failures,
+  unavailability, repairs and escalations with enough evidence for action;
+  a mechanical non-applicability needs only its disposition, not a narrated
+  search that did not occur.
+- **Finalization:** show the compact pre-operation facts once, then the actual
+  outcome. Its worker result is internal input to this view, not another copy
+  of the same pre-operation report.
+- **Closure:** render the worker's self-sufficient closing summary verbatim:
+  method and branch direction, actual operation/SHA or exact pending state,
+  verification status, conflict/collision outcome, and unresolved matters.
+  Explain only new decisions, failures or state changes. On partial failure
+  name each completed operation, the failed operation, staged/pending paths,
+  current HEAD, and merge/rebase state; settled strategy explanations stay in
+  their earlier presentation.
+
+No arbitrary length cap replaces necessary evidence. A compact report still
+contains all errors, escalations and pending state that affect the next action.
+
 - **Ordinary conversation text** — worker-authored information: summaries,
   conflict notices, the global strategy, verification findings, collision
   results, and open requests, printed once in the worker's wording and
