@@ -241,12 +241,17 @@ For each parser-member command, `--fast-track` SHALL opt out of exactly the name
 
 ### Requirement: Merge fast-track bypasses only runtime scope
 
-When `/sai-merge` runs with `--fast-track`, it SHALL opt out of exactly two gates: the runtime resolution scope question, and the method-selection gate — the method SHALL be pinned to `merge` and no squash choice SHALL be shown in any mode. That method pinning is pre-existing behavior, recorded here as part of this command's fixed audited opt-out list so that this capability and `method-selection` agree rather than contradict each other. Fast-track SHALL still require conflict-triggered language selection, global strategy confirmation, complete-file payload validation, worker-owned verification, and final commit authorization.
+When `/sai-merge` runs with `--fast-track`, it SHALL pin the method to `merge`, present no squash choice, and apply every complete valid strategy automatically after coordinator validation and presentation. Normal mode SHALL retain apply/revise/decline strategy approval. Full resolution scope, continuation without a detected test suite while reporting verification as unavailable, and invocation-authorized local finalization SHALL be general merge behavior in both modes, not fast-track exemptions. Fast-track SHALL retain conflict-triggered language selection, payload validation, review and verification budgets, collision handling, unrelated questions, and safety checks. The flag SHALL NOT authorize push, destructive operations, bypassing Git checks, or unrelated changes.
 
 #### Scenario: Fast-track conflict retains strategy safety
 
 - **WHEN** a fast-track merge contains a semantically ambiguous conflict
-- **THEN** the command skips only scope selection and the method-selection gate, and still requires the contextual decision and every later validation and authorization boundary
+- **THEN** the command pins the method to merge, retains language selection and contextual analysis, validates and presents the complete strategy before automatic application, and preserves subsequent validation and safety boundaries
+
+#### Scenario: General unattended behavior is not flag-dependent
+
+- **WHEN** a merge runs without `--fast-track`
+- **THEN** it still uses full scope, reports missing verification and continues without a no-suite question, and finalizes locally without an approval question while retaining normal-mode strategy approval
 
 ### Requirement: Fast-track behavior is harness-agnostic and documented
 The `--fast-track` behavior SHALL be identical under Claude Code and opencode, achieved by single-sourcing the parse and gate branches in the shared body files, shared instructions, and routed cards. `argument-hint` is a Claude Code command field: the Claude wrappers document `--fast-track` there, and the opencode wrappers, whose command format has no argument-hint field, carry none and need no separate consistency marker. `AGENTS.md` SHALL name `--fast-track` and its seven affected commands under "Critical conventions", and `README.md` SHALL document the flag in the commands table.

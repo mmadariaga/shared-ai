@@ -40,20 +40,25 @@ The merge coordinator SHALL select the stage's report from the validated origina
 
 ### Requirement: Strategy confirmation controls mutation
 
-The seam SHALL validate that the strategy source covers the whole selected conflict set with Facts, Inferences, objectives, trade-offs, risks, contracts, and alternatives, SHALL print it before the confirmation question, and SHALL keep resolution writes, marker removal, staging, and commits unavailable until `apply-strategy` and a validated matching payload.
+The seam SHALL validate that the strategy source covers the whole affected conflict set with Facts, Inferences, objectives, trade-offs, risks, contracts, and alternatives, and SHALL print it before the mode-specific application hand-off. Normal mode SHALL require `apply-strategy` before resolution writes or marker removal. Fast-track SHALL present the complete validated strategy before the coordinator continues the same worker to apply it, without a picker or recorded user answer. Staging SHALL remain unavailable until a matching complete payload passes validation and post-resolution review. Strategies without a valid resolution SHALL stop or escalate in either mode.
 
 #### Scenario: Revision remains mutation-free
 
-- **WHEN** the user requests a strategy revision
-- **THEN** no write, marker removal, staging, or commit occurs until a rebuilt strategy is confirmed
+- **WHEN** the user requests a strategy revision in normal mode
+- **THEN** no write, marker removal, staging, or commit occurs during revision before the rebuilt strategy is approved
+
+#### Scenario: Fast-track presentation precedes resolution
+
+- **WHEN** the worker returns a complete strategy as a fast-track `completed` result
+- **THEN** the coordinator validates and prints it before issuing the same-worker application continuation, and the strategy-only result is not terminal navigation
 
 ### Requirement: Resolution-payload validation precedes staging
 
-The coordinator MUST NOT stage until the original received result and its payload pass atomic validation: one record per in-scope file, exact paths and categories, valid source and complete captured regions, decisions matching the confirmed strategy, no markers in authored text, valid snapshot identity, and preserved outside-region and unrelated content. The post-resolution independent review MUST also confirm the tree matches the confirmed strategy. Mechanical checks SHALL supplement rather than replace that review. Any selected public report SHALL remain separate from the original validation source.
+The coordinator MUST NOT stage until the original received result and its payload pass atomic validation: one record per affected conflicted file, exact paths and categories, valid source and complete captured regions, decisions matching the confirmed strategy, no markers in authored text, valid snapshot identity, and preserved outside-region and unrelated content. The post-resolution independent review MUST also confirm the tree matches the confirmed strategy. Mechanical checks SHALL supplement rather than replace that review. Any selected public report SHALL remain separate from the original validation source.
 
 #### Scenario: Invalid payload is rejected before review
 
-- **WHEN** any payload record is missing, duplicated, out of scope, miscategorized, has an invalid source, lacks required regions, holds a marker, or states a decision the strategy did not
+- **WHEN** any payload record is missing, duplicated, outside the affected file set, miscategorized, has an invalid source, lacks required regions, holds a marker, or states a decision the strategy did not
 - **THEN** the coordinator MUST reject the entire payload and leave every conflict untouched by coordinator checkout and unstaged
 
 #### Scenario: Divergence returns to the worker
@@ -77,21 +82,31 @@ The merge presentation seam MUST NOT dispatch or continue the worker, select an 
 
 ### Requirement: Compact authorization summary
 
-Immediately before the authorization picker, the seam SHALL render the method, target branch, source branch, verification status, conflict result, collision result, and staged-file count, keeping the staged paths in coordinator state for the refusal record.
+Immediately before the invocation-authorized local finalization operation, the seam SHALL render the method, target branch, source branch, verification status, conflict result, collision result, and staged-file count as ordinary text, keeping staged paths in coordinator state for staging and failure reporting. No finalization picker SHALL be presented. Missing automated verification SHALL be rendered as unavailable, not passed.
 
 #### Scenario: Authorization uses compact context
 
-- **WHEN** the authorization question is pending
-- **THEN** the user sees the compact summary and the `yes (Recommended)` / `no` options, not the staged-file list
+- **WHEN** a local finalization operation is ready after final staging
+- **THEN** the user sees the compact finalization summary without a staged-file list or approval options before the coordinator executes the operation
 
 ### Requirement: Adaptive merge TODO follows the TODO policy
 
-The coordinator MAY render the adaptive merge TODO after method and branch selection, following the canonical item ids, labels, order, route transitions, and panel ownership of `sai/policies/todo-structure.md` § Merge adaptive TODO. The TODO MUST NOT synthesize a worker progress plan or alter worker continuation or mutation ownership.
+The coordinator MAY render the adaptive merge TODO after method and branch selection, following the canonical item ids, labels, order, route transitions, and panel ownership of `sai/policies/todo-structure.md` § Merge adaptive TODO. A conflicted route SHALL use `contextual-analysis` and `resolve-full`, not a scope-selection or category-specific resolution item. Applicable local operations SHALL use `finalization` with `Finalize merge commit`, `Continue rebase`, or `Commit collision repair`; completion SHALL be marked only after the corresponding operation succeeds. Verification completion SHALL distinguish passed, unavailable, and cap-exhausted outcomes. The TODO MUST NOT synthesize a worker progress plan, authorize mutations, or alter worker continuation or mutation ownership.
 
 #### Scenario: Empty frontier removes collision work
 
 - **WHEN** no source-introduced record survives in the final integration state
 - **THEN** the coordinator records `not-applicable` and renders no collision item
+
+#### Scenario: Full-scope conflict progress is mode-independent
+
+- **WHEN** a conflicted route begins after the language hand-off in either mode
+- **THEN** contextual analysis is in progress with full resolution pending and no scope-selection item
+
+#### Scenario: Failed finalization is not completed work
+
+- **WHEN** the local finalization operation fails
+- **THEN** its task remains incomplete until terminal clearing and the exact repository state is retained for reporting
 
 ### Requirement: Terminal rendering follows finalization
 
@@ -141,12 +156,12 @@ The merge presentation seam SHALL update presentation state only after a validat
 
 ### Requirement: Harness-parity presentation contract
 
-The Claude Code and opencode projections MUST preserve the same worker-source fidelity, option values and order, strategy and revision behavior, payload validation boundary, TODO transitions, authorization summary, refusal handling, and terminal semantics; only the native question and task-list mechanisms differ.
+The Claude Code and opencode projections MUST preserve the same worker-source fidelity, remaining option values and order, mode-specific strategy and revision behavior, payload validation boundary, TODO transitions, compact finalization summary, unavailable-verification reporting, failure-state reporting, and terminal semantics; only the native question and task-list mechanisms differ.
 
 #### Scenario: Seam behavior is equivalent across harnesses
 
-- **WHEN** an identical worker result is routed through either projection
-- **THEN** both render the same decision content and gate semantics and preserve the same commit and terminal behavior
+- **WHEN** an identical worker result is routed through either projection in the same mode
+- **THEN** both render the same information and remaining decision content and preserve the same application, local finalization, and terminal behavior
 
 ### Requirement: Single-source merge strategy explanation
 
