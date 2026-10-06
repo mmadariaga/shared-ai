@@ -11,6 +11,8 @@
   validation seam.
   Fetch @sai/commands/merge/presentation.md and use it as the merge
   presentation seam.
+  Fetch @sai/commands/merge/mechanics.md and follow its deterministic evidence
+  and active-task delivery contract.
   Fetch @sai/adapters/claude/panel-render.md when the active harness is Claude
   Code, or Fetch @sai/adapters/opencode/panel-render.md when the active
   harness is opencode, and use that harness-native task-list binding for the
@@ -80,7 +82,12 @@
     ordered id-to-value answers in one continuation), an open-input answer
     unchanged, a coordinator-collected `branch_entry` for `sai:enter-branch` or
     picker free text, or an operation outcome together with
-    the merge provenance.
+    the merge provenance. After ready, prefix the first task and every later
+    continuation with the exact `Active stage:` pointer selected by
+    `mechanics.md` § Active task delivery. Include the complete current task
+    state and necessary valid receipts; deliver no future stage body. This
+    applies identically to Claude Code's and opencode's respective binding
+    continuation mechanisms; keep the same persistent worker.
   - `allowed_nonterminal_extensions` — the merge-only closed
     `conflict_detected` extension `{event: conflict_detected,
     summary: string, changed_files: string[], affected_files:
@@ -100,7 +107,16 @@
     `fast_track_active`, `branch_selection_source`, `branch_entry` when set,
     `working_language` once selected, the merge provenance, and the ordered
     duplicate-free changed-files union. A replacement worker reconstructs
-    only from these.
+    only from these plus `active_stage`, complete `affected_files` and
+    categories/region ids/stage OIDs, all receipt references and hashes,
+    the exact current strategy and revision/confirmation state, complete
+    selected semantic decisions, pending corrections, review and verification
+    round counters/outcomes/full failure references, collision applicability
+    and complete plan, owned/staged paths, operation history and exact current
+    outcome. Each inventory is exhaustive, never `and others; see earlier`.
+    Validate reconstruction and referenced records before continuing; missing
+    state stops before writing or finalizing. Do not send prior journals or
+    artifact contents; send exact external references with verified hashes.
   - `terminal_navigation` — hand the validated worker source and the
     presentation state to the seam's terminal renderer: it prints the
     worker-authored summary verbatim, then `Merge done.` only when
@@ -119,6 +135,17 @@
   fetched contracts and installed bindings are never target paths. Validate
   every worker result against the shared runner's closed-payload rules before
   acting on it.
+
+  Pass the received source bytes to validation, not a reconstructed envelope
+  with shortened summary or substituted fields. Keep the validated original
+  result and its exact external source reference/hash for resolution checking
+  and replacement; compact presentation is a separate view, not validator
+  input. Unknown fields keep the shared validator's existing treatment.
+  On a new `## Mechanical evidence` appendix, retain every exact receipt
+  reference/hash after verifying its complete file, action and dependencies.
+  Include the complete retained reference inventory in replacement state.
+  The appendix is evidence for the selected stage report, not another public
+  explanation; keep the original worker source untouched for validation.
 
   ## No-commit guard
 
@@ -201,6 +228,12 @@
   its notice as ordinary text and continue the same worker with the selected
   `working_language`; the language question runs once per run.
 
+  At each conflict stop, capture the complete pre-write conflict snapshot
+  through `merge.js conflicts` before disclosing `detect`. After the language
+  hand-off disclose `strategy` with that inventory and reference/hash. A new
+  conflict or strategy revision invalidates the old confirmation; repeat full
+  analysis/presentation before a new `apply` task in either mode.
+
   ## Coordinator-owned execution
 
   Each operation below runs after its lifecycle check and under
@@ -228,10 +261,14 @@
     arbitrary revisions, or create a local branch for an `origin/<branch>`
     entry. On a failure the worker returns a closing `completed` result stating
     that no integration started; do not capture provenance or launch on that
-    path. On success, capture the merge provenance exactly as
+    path. On success, use `merge.js provenance` to capture
+    the merge provenance exactly as
     `@sai/commands/merge/instructions.md` § Merge provenance defines it,
     using this exact `source_ref`; remain in the current branch state until
-    Launch.
+    Launch. Keep the complete receipt, and verify its current dependencies
+    immediately before the launch, before any squash mutation. Recollect if
+    stale; never reuse stale launch facts. Forward the captured immutable
+    data and original receipt after launch, never recapture historical SHAs.
 
   - **Informative messages.** A synthesized merge or squash message is an
     inventory of contained work, not a summary. Compose the subject as today
@@ -291,25 +328,45 @@
        `decisions` that agree with the decision records.
     3. `source` is `git-ours` or `git-theirs` with empty `regions`, or
        `authored` with at least one region, each region's `conflict_id` present
-       in the file's `decisions`. No region `text` holds a `<<<<<<<`,
+       in the captured region inventory; semantic regions also match the
+       file's `decisions` (obvious authored regions need no semantic decision).
+       No region `text` holds a `<<<<<<<`,
        `=======`, or `>>>>>>>` line, a diff, a hunk, or a complete file.
     4. Any missing or invalid record, decision, path, region, or source rejects
        the whole payload: touch no conflict and stage nothing.
+
+    Run `merge.js resolution --phase authored` with the exact original worker
+    source and retained pre-write snapshot, as specified in `mechanics.md`.
+    Reject on stale/changed snapshot, HEAD/index/operation mismatch, incomplete
+    inventory, region mismatch, or unrelated content change. The reference
+    for authored content is the file captured before writing, including
+    Git-combined content, not either stage's whole file.
 
     After every record passes, materialize `git-ours` / `git-theirs` files with
     `git checkout --ours` / `--theirs`; `authored` files are already written.
     Add each materialized path to the union after its checkout succeeds.
   - **Post-resolution review.** Compare the working tree with the confirmed
     strategy held in your context. A `git-ours` / `git-theirs` file is
-    byte-identical to its `git show :2:` / `:3:` stage. An `authored` file
-    matches its stage content outside the resolved regions and carries the
+    byte-identical to its captured `git show :2:` / `:3:` stage. An `authored`
+    file matches its captured pre-write working content outside the resolved
+    regions and carries the
     confirmed decisions inside them. No write lands outside the agreed regions
     or the affected file set. On a divergence (an unauthorized change, an unresolved
     region, an out-of-scope write, any deviation from the strategy), stage
     nothing and send the named divergence to the same worker as a correction,
     then review again. After three rounds without a match, stop without
     staging: report that the confirmed strategy could not be materialized
-    within the retry budget.
+    within the retry budget. Supplement this independent semantic review with
+    `merge.js resolution --phase materialized`; stage only when both pass.
+    Reuse valid checks during review and repeat only invalidated facts. A
+    correction retains the original protected-content snapshot, not a fresh
+    snapshot of the incorrect write. Verification fixes and review corrections
+    receive a new exact authorized-region snapshot before writing when their
+    regions differ; absent exact boundaries, stop rather than broaden scope.
+    Use `merge.js correction` for those explicit new boundaries, per
+    `mechanics.md`, then disclose `apply` and validate/review its original
+    result before re-staging. Keep the previous snapshot for evidence; a
+    correction capture authorizes only the named corrective ranges.
   - **Staging.** After the review passes, `git add` every resolved file. A
     file with an unresolved escalation is staged only with the escalation
     noted.

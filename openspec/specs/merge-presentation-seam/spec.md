@@ -26,12 +26,12 @@ The merge presentation seam SHALL keep three coordinator-local values apart — 
 
 ### Requirement: Coordinator-owned conflict presentation channels
 
-The merge coordinator SHALL route validated results through two channels: worker-authored information (summaries, conflict notices, the global strategy, verification findings, collision results) as ordinary conversation text, and closed `needs_input` results with non-empty `options` through the active native picker. An empty-options `needs_input` SHALL be printed once as ordinary text and answered with free-form input.
+The merge coordinator SHALL select the stage's report from the validated original source before routing it through two channels: selected worker-authored information as ordinary conversation text, and closed `needs_input` results with non-empty `options` through the active native picker. An empty-options `needs_input` SHALL be printed once as ordinary text and answered with free-form input. Conflict notices and complete strategies SHALL retain the worker's wording; internal mechanical appendices and resolution payloads SHALL remain available for validation without being repeated as public explanations. Report selection SHALL NOT alter questions, ordered options, answer values, or continuation semantics.
 
 #### Scenario: Worker information is rendered as text
 
 - **WHEN** the worker returns a conflict notice or global strategy
-- **THEN** the coordinator prints the exact worker-authored summary as ordinary text before any closed decision
+- **THEN** the coordinator prints the exact worker-authored conflict notice or complete strategy report as ordinary text before any closed decision, excluding only internal mechanical evidence hand-off data
 
 #### Scenario: Open correction is not a picker
 
@@ -49,17 +49,22 @@ The seam SHALL validate that the strategy source covers the whole selected confl
 
 ### Requirement: Resolution-payload validation precedes staging
 
-The coordinator MUST NOT stage until the payload passes atomic validation (one record per in-scope file, exact paths and categories, valid source and regions, decisions matching the confirmed strategy, no markers in authored text) and the post-resolution review confirms the tree matches the confirmed strategy.
+The coordinator MUST NOT stage until the original received result and its payload pass atomic validation: one record per in-scope file, exact paths and categories, valid source and complete captured regions, decisions matching the confirmed strategy, no markers in authored text, valid snapshot identity, and preserved outside-region and unrelated content. The post-resolution independent review MUST also confirm the tree matches the confirmed strategy. Mechanical checks SHALL supplement rather than replace that review. Any selected public report SHALL remain separate from the original validation source.
 
 #### Scenario: Invalid payload is rejected before review
 
 - **WHEN** any payload record is missing, duplicated, out of scope, miscategorized, has an invalid source, lacks required regions, holds a marker, or states a decision the strategy did not
-- **THEN** the coordinator MUST reject the entire payload and leave every conflict untouched and unstaged
+- **THEN** the coordinator MUST reject the entire payload and leave every conflict untouched by coordinator checkout and unstaged
 
 #### Scenario: Divergence returns to the worker
 
 - **WHEN** the post-resolution review finds the tree diverging from the confirmed strategy
 - **THEN** the coordinator returns the named divergence to the same worker for at most three rounds before staging
+
+#### Scenario: Compact display cannot weaken validation
+
+- **WHEN** presentation omits repeated explanations or internal resolution evidence
+- **THEN** the coordinator still validates the complete original source and independently reviews materialized content before staging
 
 ### Requirement: Presentation state cannot authorize mutations
 
@@ -142,3 +147,55 @@ The Claude Code and opencode projections MUST preserve the same worker-source fi
 
 - **WHEN** an identical worker result is routed through either projection
 - **THEN** both render the same decision content and gate semantics and preserve the same commit and terminal behavior
+
+### Requirement: Single-source merge strategy explanation
+
+The presentation seam SHALL select the active stage's user-facing report without modifying the original validated worker source. Each strategy or revision SHALL receive its complete strategy and Conflict Analysis presentation once before application in either mode. A normal-mode gate SHALL reuse that already-rendered strategy as context rather than print it again. Successful application SHALL retain the complete resolution payload internally without repeating Conflict Analysis, alternatives, or selected-decision explanations. Later reports SHALL explain new decisions, failures, escalations, repairs, unavailable verification, and state changes while reusing settled outcomes. Compactness SHALL NOT impose an arbitrary length cap or hide necessary evidence.
+
+#### Scenario: Normal strategy gate does not duplicate its context
+
+- **WHEN** the complete strategy has been presented and its normal-mode decision is requested
+- **THEN** the gate uses that existing presentation without printing the strategy a second time
+
+#### Scenario: Successful application retains evidence without repetition
+
+- **WHEN** the worker returns a successful resolution payload for the presented strategy
+- **THEN** the seam retains the full payload for validation and shows only new errors, escalations, or changed state instead of repeating semantic analysis
+
+#### Scenario: Revised strategy receives a complete presentation
+
+- **WHEN** a later conflict or new context produces a revised strategy
+- **THEN** the seam presents that strategy and its analysis completely before its application rather than treating earlier presentation as sufficient
+
+#### Scenario: Non-applicability does not invent a search report
+
+- **WHEN** mechanical evidence establishes that collision analysis is not applicable
+- **THEN** presentation carries its disposition without narrating grouping or reference searches that did not occur
+
+### Requirement: Merge evidence remains internal and original
+
+The coordinator SHALL retain and validate the original received worker source bytes, not a reconstructed envelope with a shortened summary or substituted fields. A newly reported `Mechanical evidence` appendix SHALL carry exact receipt action, record reference, and checksum entries for coordinator verification and retention; it SHALL remain internal evidence rather than part of the selected user-facing report. Replacement state SHALL carry the complete retained reference inventory. Presentation selection SHALL NOT change validation input or authorize a mutation.
+
+#### Scenario: Presentation is not validator input
+
+- **WHEN** the seam selects a compact application or verification report
+- **THEN** validation continues to use the untouched original worker result and exact evidence references rather than the selected display text
+
+#### Scenario: Receipt appendix is retained without public repetition
+
+- **WHEN** a worker first reports a new external receipt
+- **THEN** the coordinator verifies its complete record and checksum, retains its reference for reconstruction, and excludes the technical appendix from the selected public stage report
+
+### Requirement: Self-sufficient merge closure
+
+The closing worker summary SHALL identify method and branch direction, the actual operation and resulting HEAD or exact pending state, verification status, conflict and collision disposition, and unresolved matters. It SHALL explain new decisions, failures, and state changes without repeating settled strategy explanations. On a partial failure it SHALL identify completed operations, the failed operation and error, staged and pending paths, current HEAD, merge or rebase state, and unresolved verification or collision findings. New evidence hand-offs SHALL occur before terminal navigation so the closing summary can be forwarded verbatim.
+
+#### Scenario: Successful closure retains necessary outcomes
+
+- **WHEN** integration finalization succeeds
+- **THEN** the closing summary states its operation and resulting HEAD, branches, verification outcome, conflict and collision results, and remaining matters without repeating the strategy explanation
+
+#### Scenario: Partial failure reports exact repository state
+
+- **WHEN** a Git operation fails after earlier operations succeeded
+- **THEN** closure distinguishes completed and failed operations and reports current HEAD, staged and pending paths, operation state, and unresolved findings without claiming successful finalization

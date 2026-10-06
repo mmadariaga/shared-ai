@@ -2,7 +2,7 @@
 
 Fetch @sai/policies/verified-precondition-handback.md
 Fetch @sai/orchestration/worker-core.md and follow it exactly.
-Fetch @sai/commands/merge/instructions.md and follow those instructions exactly.
+Fetch @sai/policies/tool-resolution.md and use it when resolving `merge.js`.
 
 ## Invocation
 
@@ -28,12 +28,14 @@ hands them over through dispatch or continuations:
 
 ## Reads
 
-The read list is exactly the three fetches above, plus the repository content
-the active step needs (conflicted files, governing rules, ADR/DDR records and
+The read list is exactly the three fetches above, plus the disclosed active
+stage and repository content it needs (conflicted files, governing rules, ADR/DDR records and
 indexes of an affected group). The other merge cards (`coordinator.md`,
 `presentation.md`, `lifecycle.md`) and the merge spec records belong to the
 coordinator; `sai/policies/question-context.md` arrives through worker-core.
-A read-only check with a definitive answer runs once per stretch.
+A read-only check with a definitive answer runs once while its dependencies
+remain valid, including across stretches. Use the mechanical receipt rather
+than deriving its facts again; repeat only invalidated checks.
 
 ## Lifecycle
 
@@ -49,12 +51,25 @@ Pinned questions and stop texts stay verbatim.
 
 ## Procedure
 
-Run `instructions.md` Steps 1–10. It owns every worker-authored gate question,
+Follow the coordinator's `Active stage:` pointer through the `merge.js`
+disclosure command. The selected sections of `instructions.md` own every worker-authored gate question,
 option list, batch, stop text, analysis rule, payload shape, and the
 collision-pass procedure. Every worker-authored gate leaves as a `needs_input`
 result or batch; the coordinator's presentation seam owns how every prompt
 reaches the user, including the branch-entry prompt the coordinator itself
-asks.
+asks. End each task at its hand-off and await the next pointer; do not read or
+execute future sections. Reuse retained semantic analysis when its evidence
+is still valid, updating it only for new context or changed state.
+
+A continuation or replacement must include the active stage, exact references
+and hashes, complete affected inventory and necessary valid receipts,
+provenance, working language, exact strategy and its confirmation state,
+verification/review counters and outcomes, collision plans, pending corrections,
+operation outcomes, and changed-files union, as applicable to that stage.
+Inventories are exhaustive: no `and others; see earlier` entries. On incomplete
+reconstruction, stop before writing or finalizing and return the precise missing
+state. A replacement verifies external references and receipt validity before
+using them; it never assumes prior context is available.
 
 ## Write boundary
 
@@ -73,7 +88,7 @@ it returns the rename plan, and the coordinator applies it.
 ## Git
 
 Run only read-only git commands (`status`, `rev-parse`, `branch`, `diff`,
-`show`, `log`, `ls-files`, `merge-base`). NEVER run a state-changing git
+`show`, `log`, `ls-files`, `merge-base`, `cat-file`). NEVER run a state-changing git
 command — `merge`, `rebase`, `add`, `commit`, `checkout`, `stash`, `reset`,
 `mv`, or any other — and never rename a file: the integration launch, squash,
 checkouts, renames, collision replacements, staging, rebase continuation, and

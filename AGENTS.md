@@ -55,6 +55,7 @@ The pipeline depends on the OpenSpec CLI:
 | `sai/commands/commit/` | Routed-shaped commit cards: `coordinator.md` + `worker.md` (no `invocation.md`; no openspec dependency — the documented exemption). The coordinator owns the destructive surface (safe-operations) and executes the authorized `git commit`; the worker authors the message and never runs git mutations. |
 | `sai/commands/archive/` | Routed-shaped archive cards: `coordinator.md` + `worker.md` (no `invocation.md`). The worker owns the read-only pre-flight (classification, checkbox scan, delta-sync summary, collision check) and returns the unchecked-items gate as `needs_input`; the coordinator owns every mutation — `openspec archive <name> --yes --json` as the sole sync+move primitive, and the post-archive commit gate. |
 | `sai/commands/merge/` | Routed-shaped merge cards: `coordinator.md` + `worker.md` + `lifecycle.md` + `presentation.md` (no `invocation.md`; no openspec dependency — the documented exemption). The worker owns read-only conflict detection and analysis, returns the closed `conflict_detected` hand-off, then produces a complete global strategy with iterative context/correction support; the coordinator owns language selection, information/question presentation, every mutation, and the authorized commit. |
+| `sai/commands/merge/mechanics.md`, `sai/tools/merge.js` | Merge evidence and active-task delivery contract plus its deterministic engine. `merge.js instructions --stage <stage>` discloses selected authoritative sections of `instructions.md`, not the entire library. The engine collects preflight/provenance/conflict facts, dependency-validity receipts, protected pre-write snapshots, original-result resolution checks, verification outcomes, and collision-frontier applicability. Existing recursive tool and Markdown projections install both surfaces for Claude Code and opencode. |
 | `sai/commands/{explore,pr,retire-docs,status,worktree}/` | Utility cards: `body.md` is the complete command body. `explore`, `pr`, and `worktree` additionally carry an `instructions.md`; `retire-docs` and `status` are body-only. Explore also has a main-session `steps/` library and `direct-build-worker.md`. |
 | `sai/adapters/claude/boot.md` | Claude Code boot adapter — loads `@sai/orchestration/command-runner.md`, selects the requested card, owns Claude fetch/dispatch; paired non-worker panel runtime glue also lives under `sai/adapters/claude/`, including `panel-render.md` and `idea-list-render.md`. |
 | `sai/adapters/opencode/boot.md` | Opencode boot adapter — loads `@sai/orchestration/command-runner.md`, selects the requested card, owns opencode fetch/dispatch; paired non-worker panel runtime glue also lives under `sai/adapters/opencode/`, including `panel-render.md` and `idea-list-render.md`. |
@@ -164,6 +165,23 @@ Claude Code and opencode route `/sai-archive` through the routed-shaped archive 
 
 ### Merge coordinator and worker
 Claude Code and opencode route `/sai-merge` through `sai/commands/merge/coordinator.md` + `worker.md` and the managed `sai-merge-worker` binding. The adapter has no `progress_plan`, `recovery_policy`, or progress events; its closed `conflict_detected` extension hands the affected-file inventory to the coordinator before analysis. The coordinator owns fast-track parsing, language selection, presentation, lifecycle validation, every Git mutation, and post-resolution review. The worker owns analysis, resolution-content writes, verification, and collision planning. Strategy approval versus fast-track presentation-and-application is defined in `instructions.md` Step 7; with no detectable suite, verification records `unavailable` (Step 8) and the run continues. Invoking the command supplies only the local finalization authorization defined in `coordinator.md` § Command-local authorization. New conflicts repeat the same mode-specific strategy hand-off with the same language and worker. Both harnesses retain the same payloads, remaining questions, three-round review and verification budgets, collision ordering, Git checks, unrelated-change protection, and worker Git prohibition. Terminal navigation prints `Merge done.` only when finalized; an early stop or failure documents the exact repository state. No OpenSpec prerequisites are required.
+
+### Merge efficiency
+
+Merge efficiency preserves the same persistent worker. The coordinator sends
+an explicit active-stage disclosure command after ready and with every
+continuation, together with complete necessary state and valid receipts.
+Replacement reconstruction includes exact external references/hashes, the
+whole conflict inventory, strategy/confirmation state, correction counters,
+verification/collision outcomes and operation history; incomplete state stops
+before writing or finalizing. `sai/commands/merge/mechanics.md` owns the
+delivery and validity rules. Resolution protection uses the captured
+pre-write working file, including Git-combined content, rather than a stage's
+whole file. Mechanical checks supplement independent coordinator review and
+authorize no mutation. Strategy explanations appear once per strategy or
+revision; closure retains actual outcomes, failures and pending state. See
+`docs/merge-efficiency-measurements.md` for comparable measurement evidence
+and the separate full-runtime comparison protocol for both harnesses.
 
 ### Direct Build (unattended) selector option (crystallization-close)
 Direct Build (unattended) mutation ownership is the existing `sai-backfill-worker` and
