@@ -30,9 +30,9 @@ The merge branch selector SHALL sort candidates by full committer timestamp desc
 
 ### Requirement: Full-first conflict scope presentation
 
-When conflicts exist, the worker and presentation seam SHALL expose `Full scope (Recommended)` with value `full` first, followed only by applicable `Artifacts only (specs + ADR/DDR)` with value `artifacts` and `Code only` with value `code`.
+When conflicts exist, resolution SHALL cover every affected file in every mode. The worker and presentation seam SHALL NOT expose `Full scope (Recommended)`, `Artifacts only (specs + ADR/DDR)`, or `Code only` as scope-selection choices, and SHALL NOT derive eligible scope options or render scope-dependent deferred-file sections.
 
 #### Scenario: Scope categories are filtered and ordered
 
 - **WHEN** the conflict classification contains one or more categories
-- **THEN** the full scope option appears first and category-specific options appear afterward only when their categories are present, with stable values preserved.
+- **THEN** all affected files are retained for strategy analysis and resolution without a scope-selection picker or category-specific scope choices

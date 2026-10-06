@@ -15,10 +15,13 @@ Batch 1 SHALL present dirty (only when dirty), three-option method, and branch t
 - **THEN** the run discards method and branch answers and closes without mutation
 
 ### Requirement: Conflict Batch 2 batches language and scope in one trip
-Batch 2 SHALL present language (coordinator-owned canonical question) + scope (worker-provided eligible set, English/ambient wording) in normal mode and language only in fast-track with scope auto-full, with early three-version classification performed before the language hand-off only to filter scope options and the global strategy authored once for the chosen scope in the chosen language.
+
+Batch 2 SHALL present only the coordinator-owned canonical language question in both normal and fast-track modes. The worker SHALL perform three-version inspection and category classification before the language hand-off, and SHALL author the global strategy over every affected conflict file in the selected language. No scope item, eligible-scope set, or scope-selection answer SHALL be produced.
+
 #### Scenario: Batch 2 resolves in one trip
+
 - **WHEN** a conflict is detected and Batch 2 is presented
-- **THEN** language and scope answers arrive together in one same-worker continuation
+- **THEN** the language answer arrives in one same-worker continuation and analysis proceeds over the full affected conflict set without a scope answer
 
 ### Requirement: Batch v1 shape keeps singular valid
 A needs_input carrying questions:[{id, question, options}] SHALL be treated as a batch with stable ordered ids and closed questions only with no conditional items, while absence of questions SHALL keep the singular question/options form valid for backward compatibility.
@@ -39,10 +42,15 @@ When a batch exceeds the harness picker capacity the coordinator SHALL render it
 - **THEN** it renders as plain text with order and values intact
 
 ### Requirement: Strategy, squash, and authorization stay in own trips
-The global strategy confirmation and authorization SHALL each stay in their own trip, no squash gate SHALL exist in any mode, open requests SHALL run in their own rounds, and fast-track SHALL still require language and strategy confirmation while never auto-selecting ours, theirs, or synthesis.
+
+In normal mode, the global strategy confirmation SHALL remain its own trip with apply/revise/decline choices, and open revision requests SHALL run in their own rounds. No separate squash gate SHALL exist in any mode. Fast-track SHALL retain language selection but SHALL validate and present each complete strategy before automatic application without a strategy-confirmation trip or fabricated answer. Local finalization SHALL execute under command-local invocation authorization without an authorization trip in either mode.
+
 #### Scenario: No squash trip remains
+
 - **WHEN** a merge run completes Batch 1 with any method in any mode
-- **THEN** the flow proceeds without a squash trip and keeps strategy and authorization each in their own trip
+- **THEN** the flow proceeds without a squash trip or local-finalization approval trip, retaining a separate strategy-confirmation trip only in normal mode
+
 #### Scenario: Fast-track keeps language mandatory
+
 - **WHEN** fast-track is active on a conflicted merge
-- **THEN** Batch 2 carries language only with scope auto-full and strategy confirmation remains required
+- **THEN** Batch 2 carries language only, full resolution scope is fixed, and each validated complete strategy is presented before automatic application without a confirmation question
