@@ -190,9 +190,9 @@ On every later conflict stop, print the notice and keep the selected
 
 A conflict is a judgment point. Dispatch the worker when none is running
 (`coordinator.md` § Judgment-point dispatch); otherwise continue the same
-worker. Disclose `strategy` with the complete affected inventory, stage blob
-OIDs, the snapshot reference/hash, the provenance receipt, the method, and the
-working language.
+worker. Disclose `strategy` with the complete affected inventory, the snapshot
+reference/hash, the provenance receipt, the method, and the working language.
+The worker reads the conflicts through `merge.js bundle` on that reference.
 
 - **Strategy presentation and application.** Follow `instructions.md` Step 7
   for the mode-specific hand-off. In normal mode the strategy arrives as a
@@ -220,7 +220,9 @@ working language.
 
 ### Resolution validation
 
-The worker writes `authored` files after the Step 7 application hand-off and
+The worker places `authored` text through `merge.js write` after the Step 7
+application hand-off (the tool preserves each file's encoding, BOM, and line
+endings, and the `resolution` check below expects those same bytes) and
 returns the `## Complete resolution payload` JSON object defined in
 `instructions.md`. Surrounding prose is explanation, never file content.
 Validate the whole object at once:

@@ -181,7 +181,19 @@ hand-over, which includes exact external references/hashes, the
 whole conflict inventory, strategy/confirmation state, correction counters,
 verification/collision outcomes and operation history; incomplete state stops
 before writing or finalizing. `sai/commands/merge/mechanics.md` owns the
-delivery and validity rules. Resolution protection uses the captured
+delivery and validity rules. The worker receives each conflict prepared: one
+`merge.js bundle` call returns the conflict bundle, built from the captured
+snapshot record — every conflict region with its three decoded versions and
+bounded context, the conflict category, and each side's commit messages.
+Conflicts with no text to compare (binary, deleted on one side, renamed) and
+files whose encoding the tool cannot determine carry no regions and admit only
+a whole-side choice, which stays a coordinator checkout. Resolution writes are
+tool-owned: the worker sends a region identifier and resolved text to
+`merge.js write`, which splices it into conflict regions or coordinator-named
+correction ranges and takes encoding, BOM, and line endings from the pre-write
+snapshot; text with conflict markers or an unknown region is rejected and
+writes nothing. The write surface is unchanged and the `resolution` check
+validates every write. Resolution protection uses the captured
 pre-write working file, including Git-combined content, rather than a stage's
 whole file. Mechanical checks supplement independent coordinator review and
 authorize no mutation. Strategy explanations appear once per strategy or

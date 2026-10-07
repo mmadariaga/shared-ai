@@ -70,7 +70,7 @@ test('merge sides are mapped per method so ours and theirs follow the git stage'
   assert.match(sides, /\| `rebase` \| selected branch \(`source_sha`\), the new base \| current branch's replayed commit \(`target_sha`\) \|/);
   assert.match(sides, /always mean the git stage/);
   assert.match(sides, /Describe\s+alternatives to the human by branch and behavior/);
-  assert.match(instructions, /mapped through \[Sides\]\(#sides\)/);
+  assert.match(instructions, /are the git stages of \[Sides\]\(#sides\)/);
 });
 
 test('the coordinator detects conflicts itself; the worker hand-off is reserved for new problems', () => {
@@ -179,8 +179,8 @@ test('merge resolution payload is region-scoped and validated atomically by the 
   assert.match(strategy, /`source` is `git-ours`, `git-theirs`, or `authored`/);
   assert.match(strategy, /no `<<<<<<<`, `=======`, or\s+`>>>>>>>` line/);
   assert.match(strategy, /never built by concatenating fragments or\s+retyping untouched lines/);
-  assert.match(strategy, /A conflict with no markers \(delete\/modify, rename\/rename, rename\/delete\)/);
-  assert.match(worker, /the region splices of each `authored` file/);
+  assert.match(strategy, /A file the bundle marks `whole-side-only` \(a binary file, a deletion on one\s+side, a rename, an encoding the tool cannot determine\)/);
+  assert.match(worker, /the region text of each `authored` file/);
 
   assert.match(validation, /Validate the whole object at once/);
   assert.match(validation, /rejects\s+the whole payload: touch no conflict and stage nothing/);

@@ -110,7 +110,7 @@ not disclose them again.
 
 | Judgment point | Stage | Required current evidence |
 | --- | --- | --- |
-| a conflict stop, language answer, context, revision, new strategy | `strategy` | complete affected inventory, stage blob OIDs, snapshot reference/hash, original provenance, language, prior proposal and new evidence |
+| a conflict stop, language answer, context, revision, new strategy | `strategy` | complete affected inventory, snapshot reference/hash, original provenance, language, prior proposal and new evidence |
 | confirmed normal strategy or presented fast-track strategy; review correction; captured test correction | `apply` | complete exact confirmed strategy, semantic decisions, snapshot reference/hash, named correction if any; confirmation/presentation state |
 | a failed test round below three | `test-correction` | staged paths, review outcome, verification round and the failure record's reference/hash |
 | a `needs-judgment` collision receipt | `renumbering-plan` | original provenance; collision receipt reference/hash; verification outcome |
@@ -123,8 +123,18 @@ stage. A run that reaches no judgment point dispatches no worker.
 ## Mechanical calls
 
 All JSON commands take `--json --cwd <project-root>`. Each coordinator stage
-names its exact calls in its own text; the worker calls only `instructions`
-and `valid`.
+names its exact calls in its own text; the worker calls only `instructions`,
+`valid`, `bundle`, and `write`.
+
+`bundle` and `write` take the snapshot's `--record <reference>` and
+`--record-hash <sha256>`. `bundle` is read-only: it returns the conflict
+bundle (each region's three decoded versions with bounded context, the
+conflict category, and each side's commit messages). `write` is the worker's
+only way to change an affected file: it splices resolved text into conflict
+regions or coordinator-named correction ranges, takes encoding, BOM, and line
+endings from the pre-write snapshot, and writes nothing on a rejection. It
+keeps a ledger of placed text beside the record, as `<record>.writes.json`.
+The `resolution` check still validates every write.
 
 Completion: every stage was entered through its one call, every worker task
 carried its active pointer, complete necessary state, and valid supporting
