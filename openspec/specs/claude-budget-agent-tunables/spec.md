@@ -116,17 +116,22 @@ The Claude budget-explorer skill SHALL declare a single tool-call ceiling of 40 
 - **THEN** the stricter cap governs that dispatch while the 40-call ceiling stays default
 
 ### Requirement: Claude haiku-target customization materializes model-only overrides
-
-When a Claude customization run confirms a target whose selected model is `haiku`, the per-target local-override operation SHALL materialize the project-local override with the `model: haiku` line and without any `effort` line: an `effort` line the destination frontmatter holds SHALL be dropped, and no `effort` line SHALL be invented. After Haiku is selected on the model screen, the menu SHALL present an effort screen containing exactly `Default (no effort)`. This display option SHALL confirm the absence of effort and SHALL NOT offer or produce a concrete effort value, including `default`, because the catalog entry carries no efforts array. The user-global managed source file SHALL keep its own seeded tunables untouched, as declared in its agent source frontmatter.
-
-#### Scenario: haiku override drops the destination effort line
-- **WHEN** the local-override operation materializes a haiku target whose base frontmatter holds an `effort` line
-- **THEN** the resulting override frontmatter contains the `model: haiku` line and no `effort` line
-
+When a Claude customization run confirms a target whose selected model is `haiku`, the effort screen MUST offer exactly `low`, `medium`, `high`, `xhigh`, and `max` for the built-in catalog entry. Confirming one of those values MUST materialize the project-local override with `model: haiku` and the selected `effort`; the user-global managed source file MUST keep its own seeded tunables untouched. Existing saved or preset settings containing only `model: haiku` MUST remain valid through the separate legacy compatibility path and MUST materialize without adding an effort. Factory reset MUST restore the exact factory tunables, including an omitted effort when the global seed omits it.
+#### Scenario: Haiku budget-agent override persists explicit effort
+- **WHEN** a user selects built-in `haiku` and `high` for a Claude budget agent
+- **THEN** the project-local override SHALL contain `model: haiku` and `effort: high`
 #### Scenario: user-global seed stays untouched
-- **WHEN** the menu customizes a haiku target
-- **THEN** the user-global managed source file's `model` line and any declared `effort` line remain unchanged
-
+- **WHEN** the menu customizes a Haiku target backed by a managed Claude budget-agent source
+- **THEN** the user-global managed source file's `model` line and any declared `effort` line SHALL remain unchanged
+#### Scenario: Legacy model-only Haiku override remains model-only
+- **WHEN** an existing saved or preset setting contains `model: haiku` without `effort` and is materialized for a budget agent
+- **THEN** the resulting override SHALL contain `model: haiku` without an `effort` line and SHALL NOT convert it to `medium`
+#### Scenario: haiku override drops the destination effort line
+- **WHEN** a legacy model-only Haiku setting is materialized onto a destination frontmatter that already contains an `effort` line
+- **THEN** the resulting override SHALL contain no `effort` line while preserving the user-global source
 #### Scenario: Haiku confirms explicit absence of effort
-- **WHEN** the user selects `haiku` on the Claude model screen
-- **THEN** the effort screen SHALL offer only `Default (no effort)`, and confirming it SHALL return `{ model: 'haiku' }` with no `effort` property
+- **WHEN** an existing model-only Haiku setting is confirmed through the legacy compatibility path
+- **THEN** the returned setting SHALL contain `model: haiku` with no `effort` property
+#### Scenario: Factory reset preserves omitted effort
+- **WHEN** the managed global budget-agent source contains `model: haiku` without `effort` and a local override is reset
+- **THEN** reset SHALL restore the factory model-only setting without an effort line
