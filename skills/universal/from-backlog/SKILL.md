@@ -1,6 +1,6 @@
 ---
 name: from-backlog
-description: Load an existing PBI / Issue / Ticket into this conversation for discussion.
+description: Load an existing issue or Azure Boards work item into this conversation for discussion.
 disable-model-invocation: true
 ---
 
@@ -31,7 +31,10 @@ Run `node <tool> resolve <registry>` with JSON on stdin:
 `{"reference":"<exact invocation reference>"}`. With no reference, ask for a
 concrete PBI / Issue / Ticket reference and wait. On rejection, explain the
 returned error and request a supported complete reference; do not search or guess.
-After `resolved`, read the returned `instructions` relative to this skill's
+On `needs_input`, report the context ambiguity and ask for a complete
+link before retrieval. Azure DevOps references use organization and project,
+not a repository; supported formats and existing-context checks are provider-owned.
+Continue only when the status is `resolved`. Read the returned instructions relative to this skill's
 directory. **Complete when:** one provider and canonical item reference are
 resolved and that provider's mechanics are loaded.
 
@@ -51,7 +54,9 @@ lossless delivery of every part is possible or a delivery plan is agreed.
 
 ## 3. Incorporate with provenance
 
-Show the canonical source link, issue state, and repository archived state.
+Show the canonical source link and state. For repository-owned issues, show
+repository archived state. For Azure Boards, show organization, project, and
+work-item type instead; retain custom type and state values exactly.
 When this issue is the conversation's starting point, retain its canonical
 identity as the originating issue in conversation state, separately from later
 reference links. A later import does not silently replace that origin; resolve

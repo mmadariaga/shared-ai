@@ -70,13 +70,19 @@ In the configured project, start with `/sai-explore`. See [Installation](#instal
 
 ## How to use it
 
-**Load existing work:** `/from-backlog <reference>` imports a GitHub issue into
-the current conversation in Claude Code and opencode. Use
-`https://github.com/owner/repo/issues/123` or `/owner/repo/issues/123`
-(query parameters and fragments are accepted). Requires Node.js and readable
-GitHub access through `gh`. GitHub issues are the only supported items; pull
-requests and GitHub Enterprise hosts are not supported. See the installed
-`from-backlog` skill for import rules.
+**Load existing work:** `/from-backlog <reference>` imports a GitHub or GitLab
+issue, or an Azure DevOps Services work item, into the current conversation in
+Claude Code and opencode. GitHub accepts `https://github.com/owner/repo/issues/123`
+or `/owner/repo/issues/123`; GitLab accepts complete `/-/issues/N` links,
+including self-hosted destinations. Azure Boards accepts
+`https://dev.azure.com/organization/project/_workitems/edit/123` and legacy
+`https://organization.visualstudio.com/project/_workitems/edit/123` links.
+An isolated Azure ID requires unambiguous existing organization context.
+Requires Node.js and authorized `gh`, `glab`, or Azure CLI with its azure-devops
+extension, respectively. Import reads descriptions and all available comments;
+partial retrieval is reported explicitly. It changes no remote data and installs
+or configures nothing. Azure DevOps Server, GitHub Enterprise, and pull requests
+are not supported. See the installed `from-backlog` skill for import rules.
 
 **Capture work for later:** `/to-backlog` uses the current conversation in
 Claude Code and OpenCode to propose one title and Markdown description. If the
