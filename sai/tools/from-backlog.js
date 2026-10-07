@@ -16,21 +16,37 @@ function loadAdapter(entry) {
 function resolve(reference, registry, io = {}) {
   if (typeof reference !== 'string' || !reference.trim()) throw fault('invalid-reference', 'Supply a complete issue URL or /owner/repo/issues/123');
   const value = reference.trim();
-  let host, url;
+  let host, url, parseError;
   if (value.startsWith('/') && !value.startsWith('//')) host = null;
   else {
-    try { url = new URL(value); } catch { throw fault('invalid-reference', 'A complete issue reference is required; search and guessing are not supported'); }
-    host = url.hostname.toLowerCase();
+    try { url = new URL(value); host = url.hostname.toLowerCase(); }
+    catch { parseError = fault('invalid-reference', 'A complete issue reference is required; search and guessing are not supported'); }
   }
   const readable = registry.providers.filter(entry => entry.capabilities.includes('read'));
-  const hosted = readable.filter(entry => host ? entry.hosts?.includes(host) : entry.domainless);
-  const entries = hosted.length ? hosted : host ? readable.filter(entry => entry.resolution === 'provider') : [];
+  const adapters = new Map();
+  const getAdapter = entry => {
+    if (!adapters.has(entry)) adapters.set(entry, (io.loadAdapter || loadAdapter)(entry));
+    return adapters.get(entry);
+  };
+  const candidates = readable.map(entry => {
+    // Classification is pure; only the selected adapter may resolve context.
+    if (entry.classification === 'provider') {
+      const classification = getAdapter(entry).classify(value);
+      if (![null, 'match', 'fallback'].includes(classification)) throw fault('invalid-registry', 'Invalid provider classification');
+      return { entry, classification };
+    }
+    const match = !parseError && (host ? entry.hosts?.includes(host) : entry.domainless);
+    return { entry, classification: match ? 'match' : host && entry.resolution === 'provider' ? 'fallback' : null };
+  });
+  const matched = candidates.filter(candidate => candidate.classification === 'match');
+  const entries = (matched.length ? matched : candidates.filter(candidate => candidate.classification === 'fallback')).map(candidate => candidate.entry);
+  if (parseError && !entries.length) throw parseError;
   if (!entries.some(entry => entry.resolution === 'provider') && url && (url.protocol !== 'https:' || url.username || url.password || url.port)) throw fault('invalid-reference', 'Use an HTTPS issue URL without credentials or a custom port');
   if (entries.length !== 1) throw fault('unsupported-provider', readable.some(entry => entry.resolution === 'provider')
     ? 'The issue reference does not select exactly one registered provider; supply a supported, unambiguous reference'
     : 'Only github.com issues and /owner/repo/issues/123 are supported');
   const entry = entries[0];
-  const adapter = (io.loadAdapter || loadAdapter)(entry);
+  const adapter = getAdapter(entry);
   const resolved = entry.resolution === 'provider' ? adapter.resolve(value, io) : { status: 'resolved', ...adapter.normalize(value) };
   return { ...resolved, provider: entry.id, instructions: entry.instructions, adapter: entry.adapter };
 }
