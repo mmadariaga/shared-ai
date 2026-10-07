@@ -694,19 +694,112 @@ test('guard remediation restores initial unrelated staging without changing cont
   } finally { cleanup(parent); }
 });
 
-test('new out-of-scope modifications, deletes, renames and ignored outputs remain discrepancies', () => {
+const RED_REPORT = 'src/feature.js\ntest/feature.test.js\n';
+const redVerify = (repo, cp, report = RED_REPORT) => tool(['verify', '--change', 'demo', '--step', '1', '--dispatch', 'red', '--checkpoint', cp], repo, report);
+const exclude = (repo, pattern) => fs.appendFileSync(path.join(repo, '.git', 'info', 'exclude'), `${pattern}\n`);
+
+test('new out-of-scope modifications, deletes, renames and exclusion-file edits remain discrepancies', () => {
   const { parent, repo } = makeRepo();
   try {
     const cp = checkpoint(repo, 'red');
     writeFeature(repo, { passing: false });
     fs.renameSync(path.join(repo, 'test', 'legacy.test.js'), path.join(repo, 'test', 'renamed.test.js'));
     fs.writeFileSync(path.join(repo, '.gitignore'), 'ignored.txt\n');
-    fs.writeFileSync(path.join(repo, 'ignored.txt'), 'not an exemption\n');
-    const out = tool(['verify', '--change', 'demo', '--step', '1', '--dispatch', 'red', '--checkpoint', cp], repo, 'src/feature.js\ntest/feature.test.js\n');
+    fs.writeFileSync(path.join(repo, 'ignored.txt'), 'ignored\n');
+    fs.writeFileSync(path.join(repo, 'stray.txt'), 'visible\n');
+    const out = redVerify(repo, cp);
     assert.equal(out.payload.ok, false);
-    for (const p of ['test/legacy.test.js', 'test/renamed.test.js', '.gitignore', 'ignored.txt']) assert.ok(out.payload.out_of_allowed.includes(p), p);
-    assert.equal(fs.readFileSync(path.join(repo, 'ignored.txt'), 'utf8'), 'not an exemption\n');
-    fs.rmSync(cp.slice(0, cp.lastIndexOf('#')), { force: true });
+    for (const p of ['test/legacy.test.js', 'test/renamed.test.js', '.gitignore', 'stray.txt']) assert.ok(out.payload.out_of_allowed.includes(p), p);
+    assert.ok(!out.payload.out_of_allowed.includes('ignored.txt'));
+  } finally { cleanup(parent); }
+});
+
+test('an ignored file created after the checkpoint is no discrepancy', () => {
+  const { parent, repo } = makeRepo();
+  try {
+    exclude(repo, 'ignored.txt');
+    const cp = checkpoint(repo, 'red');
+    writeFeature(repo, { passing: false });
+    fs.writeFileSync(path.join(repo, 'ignored.txt'), 'build output\n');
+    const out = redVerify(repo, cp);
+    assert.ok(!out.payload.out_of_allowed.includes('ignored.txt'));
+    assert.equal(out.payload.ok, true, JSON.stringify(out.payload));
+    assert.equal(fs.readFileSync(path.join(repo, 'ignored.txt'), 'utf8'), 'build output\n');
+  } finally { cleanup(parent); }
+});
+
+test('a Step command that creates, changes and deletes ignored paths passes verification', () => {
+  const { parent, repo } = makeRepo();
+  try {
+    fs.writeFileSync(path.join(repo, '.gitignore'), 'bin/\n');
+    git(['add', '.gitignore'], repo);
+    git(['commit', '-m', 'chore: ignore bin'], repo);
+    fs.mkdirSync(path.join(repo, 'bin'));
+    fs.writeFileSync(path.join(repo, 'bin', 'old.txt'), 'old\n');
+    fs.writeFileSync(path.join(repo, 'bin', 'gone.txt'), 'gone\n');
+    replaceBaseline(repo);
+    const cp = checkpoint(repo, 'red');
+    writeFeature(repo, { passing: false });
+    fs.writeFileSync(path.join(repo, 'test', 'feature.test.js'), [
+      "const fs = require('fs');",
+      "fs.writeFileSync('bin/new.txt', 'new');",
+      "fs.appendFileSync('bin/old.txt', 'rebuilt');",
+      "fs.rmSync('bin/gone.txt', { force: true });",
+      "require('node:test')('f', () => { require('node:assert').strictEqual(require('../src/feature'), 2); });",
+      '',
+    ].join('\n'));
+    const out = redVerify(repo, cp);
+    assert.equal(out.payload.ok, true, JSON.stringify(out.payload));
+    assert.deepEqual(out.payload.out_of_allowed, []);
+    assert.ok(fs.existsSync(path.join(repo, 'bin', 'new.txt')));
+    assert.ok(!fs.existsSync(path.join(repo, 'bin', 'gone.txt')));
+  } finally { cleanup(parent); }
+});
+
+test('a tracked file matching an ignore pattern is still a discrepancy', () => {
+  const { parent, repo } = makeRepo();
+  try {
+    fs.writeFileSync(path.join(repo, '.gitignore'), '*.log\n');
+    fs.writeFileSync(path.join(repo, 'kept.log'), 'tracked\n');
+    git(['add', '.gitignore'], repo);
+    git(['add', '-f', 'kept.log'], repo);
+    git(['commit', '-m', 'chore: track a log'], repo);
+    replaceBaseline(repo);
+    const cp = checkpoint(repo, 'red');
+    writeFeature(repo, { passing: false });
+    fs.appendFileSync(path.join(repo, 'kept.log'), 'edited\n');
+    const out = redVerify(repo, cp);
+    assert.equal(out.payload.ok, false);
+    assert.ok(out.payload.out_of_allowed.includes('kept.log'), JSON.stringify(out.payload));
+  } finally { cleanup(parent); }
+});
+
+test('a file that becomes ignored between captures is a discrepancy', () => {
+  const { parent, repo } = makeRepo();
+  try {
+    fs.writeFileSync(path.join(repo, 'notes.txt'), 'visible\n');
+    replaceBaseline(repo);
+    const cp = checkpoint(repo, 'red');
+    writeFeature(repo, { passing: false });
+    exclude(repo, 'notes.txt');
+    const out = redVerify(repo, cp);
+    assert.equal(out.payload.ok, false);
+    assert.ok(out.payload.out_of_allowed.includes('notes.txt'), JSON.stringify(out.payload));
+  } finally { cleanup(parent); }
+});
+
+test('an ignored path declared by the plan is compared', () => {
+  const { parent, repo } = makeRepo();
+  try {
+    exclude(repo, 'src/feature.js');
+    const cp = checkpoint(repo, 'red');
+    writeFeature(repo, { passing: false });
+    const reported = redVerify(repo, cp);
+    assert.deepEqual(reported.payload.only_in_subagent, []);
+    assert.equal(reported.payload.ok, true, JSON.stringify(reported.payload));
+    const silent = redVerify(repo, cp, 'test/feature.test.js\n');
+    assert.equal(silent.payload.ok, false);
+    assert.ok(silent.payload.unreported.includes('src/feature.js'), JSON.stringify(silent.payload));
   } finally { cleanup(parent); }
 });
 

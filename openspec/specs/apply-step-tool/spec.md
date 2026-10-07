@@ -206,3 +206,43 @@ Apply SHALL resolve each declared generated family within its exact directory to
 #### Scenario: Generated count differs
 - **WHEN** a declaration expects two matching generated files but GREEN or close finds one or three
 - **THEN** the generated discrepancy blocks completion or close
+
+### Requirement: State capture excludes ignored paths unless the plan declares them
+
+Every state capture of `apply-step.js` (the baseline, each dispatch checkpoint, each settled receipt, and the current state compared by `dispatch-check`, `verify`, `close`, and `restore-unrelated-index`) SHALL fingerprint tracked files plus untracked files that git's standard exclusion rules do not ignore. An ignored path is an untracked file skipped by `.gitignore`, `.git/info/exclude`, or the user's global excludes file; a tracked file SHALL never be treated as ignored, even when it matches an ignore pattern.
+
+An ignored path SHALL be outside the capture, so creating, changing, or deleting it SHALL NOT produce an `out_of_allowed`, `unreported`, or `only_in_subagent` entry. Ignore status SHALL be evaluated at every capture, so a path whose visibility changes between two captures SHALL appear as a change. A tracked exclusion file such as `.gitignore` SHALL remain captured like any other tracked file.
+
+Every capture SHALL additionally include the exact paths that any Step of the change's `tasks.md` declares in `**Files Affected**`, together with the resolved files of declared generated families, whether or not git ignores them. A generated family that cannot be resolved SHALL NOT stop the capture; the capture SHALL keep that Step's exact declared paths. The verdict shape SHALL stay unchanged, with no field, option, or mode that restores the capture of ignored paths.
+
+#### Scenario: Ignored file created after the checkpoint
+- **WHEN** an ignored file is created after a RED dispatch checkpoint and the dispatch's declared files are the only other changes
+- **THEN** `verify` returns `ok: true` and does not list the ignored file in `out_of_allowed`
+
+#### Scenario: Step command regenerates ignored outputs
+- **WHEN** the Step test command creates, changes, and deletes files under an ignored directory during `verify`
+- **THEN** `verify` returns `ok: true` with an empty `out_of_allowed`
+
+#### Scenario: Tracked file matching an ignore pattern
+- **WHEN** a tracked file that matches an ignore pattern is changed outside the dispatch's allowed files
+- **THEN** `verify` returns `ok: false` and lists that file in `out_of_allowed`
+
+#### Scenario: Untracked visible file outside the Step scope
+- **WHEN** an untracked file that git does not ignore is created outside the dispatch's allowed files
+- **THEN** `verify` returns `ok: false` and lists that file in `out_of_allowed`
+
+#### Scenario: Exclusion file edited outside the Step scope
+- **WHEN** `.gitignore` is changed outside the dispatch's allowed files
+- **THEN** `verify` returns `ok: false` and lists `.gitignore` in `out_of_allowed`
+
+#### Scenario: File becomes ignored between captures
+- **WHEN** a file captured as visible at the checkpoint is ignored by a machine-local exclusion before `verify`
+- **THEN** `verify` returns `ok: false` and lists that file in `out_of_allowed`
+
+#### Scenario: Declared ignored path is written and reported
+- **WHEN** a worker writes a file that the plan declares in `**Files Affected**`, git ignores that file, and the report's field 8 names it
+- **THEN** `verify` returns `ok: true` with an empty `only_in_subagent`
+
+#### Scenario: Declared ignored path is written but not reported
+- **WHEN** a worker writes a plan-declared ignored file and the report's field 8 omits it
+- **THEN** `verify` returns `ok: false` and lists that file in `unreported`
