@@ -109,10 +109,10 @@ test('provider classification fallback preserves tier ambiguity and skips non-re
   assert.equal(resolutions, 1);
 });
 
-test('installed providers keep isolated IDs and legacy parse errors rejected before CLI reads', () => {
+test('installed providers keep legacy parse errors rejected before CLI reads', () => {
   const installed = require('../skills/universal/from-backlog/providers/registry.json');
   const io = { run() { assert.fail('Rejected reference must not read CLI context'); } };
-  for (const value of ['123', 'owner/repo', 'guess this ticket', '//github.com/owner/repo/issues/123']) {
+  for (const value of ['owner/repo', 'guess this ticket', '//github.com/owner/repo/issues/123']) {
     assert.throws(() => resolve(value, installed, io), error => error.reason === 'invalid-reference' && error.message === 'A complete issue reference is required; search and guessing are not supported');
   }
   assert.throws(() => resolve('', installed, io), error => error.reason === 'invalid-reference' && error.message === 'Supply a complete issue URL or /owner/repo/issues/123');

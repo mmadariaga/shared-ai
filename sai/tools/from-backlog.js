@@ -52,7 +52,21 @@ function resolve(reference, registry, io = {}) {
 }
 
 function run(command, args, input) {
-  const result = spawnSync(command, args, { input, encoding: 'utf8', shell: false, maxBuffer: 64 * 1024 * 1024 });
+  const azure = command === 'az';
+  // Invoke the MSI launcher's Python directly, without cmd.exe interpreting
+  // project names or continuation tokens as shell syntax.
+  if (process.platform === 'win32' && command === 'az') {
+    const located = spawnSync('where.exe', ['az'], { encoding: 'utf8', shell: false });
+    const launcher = located.stdout?.trim().split(/\r?\n/).find(file => /\.(?:exe|cmd)$/i.test(file));
+    if (!launcher) throw fault('tool-unavailable', 'Azure CLI executable not found');
+    if (/\.cmd$/i.test(launcher)) {
+      const python = path.resolve(path.dirname(launcher), '..', 'python.exe');
+      if (!fs.existsSync(python) || !/-IBm azure\.cli/.test(fs.readFileSync(launcher, 'utf8'))) throw fault('tool-unavailable', 'Unsupported Azure CLI launcher; a direct executable or standard Windows MSI installation is required');
+      command = python;
+      args = ['-IBm', 'azure.cli', ...args];
+    } else command = launcher;
+  }
+  const result = spawnSync(command, args, { input, encoding: 'utf8', shell: false, maxBuffer: 64 * 1024 * 1024, ...(azure ? { env: { ...process.env, AZURE_EXTENSION_USE_DYNAMIC_INSTALL: 'no' } } : {}) });
   if (result.error || result.status !== 0) throw fault('retrieval-failed', `${command}: ${result.error?.message || result.stderr || `exit ${result.status}`}. Content was not loaded completely.`);
   return result.stdout;
 }

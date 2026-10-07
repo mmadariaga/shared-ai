@@ -16,18 +16,28 @@ Claude Code and opencode SHALL provide `/from-backlog <reference>` through minim
 
 ### Requirement: Managed mirrored import installation
 
-The manifest-driven installation SHALL project the from-backlog skill, provider registry, GitHub and GitLab provider mechanics references, common import helper, GitHub and GitLab import adapters, and the appropriate command entry for both supported harnesses. Provider references SHALL be managed, content-tracked recursive projections. GitLab additions SHALL use the existing universal skill and sai-tools projections without requiring direct provider-CLI permission grants.
+The manifest-driven installation SHALL project the from-backlog skill, provider registry, GitHub, GitLab, and Azure DevOps provider mechanics references, common import helper, the three provider import adapters, and the appropriate command entry for both supported harnesses. Provider references SHALL be managed, content-tracked recursive projections. GitLab and Azure DevOps additions SHALL use the existing universal skill and sai-tools projections without requiring direct provider-CLI permission grants. The from-backlog command profile SHALL retain read-only access through the common Node helper.
 
 #### Scenario: Expand installation projections
 
 - **WHEN** installation projections are expanded for Claude Code or opencode
-- **THEN** the resulting surfaces include the from-backlog skill, registry, GitHub and GitLab mechanics, common helper, both provider adapters, and corresponding command entry.
+- **THEN** the resulting surfaces include the from-backlog skill, registry, GitHub, GitLab, and Azure DevOps mechanics, common helper, all three provider adapters, and corresponding command entry.
+
+#### Scenario: Azure additions retain bounded command access
+
+- **WHEN** the Azure provider is projected for either supported harness
+- **THEN** it uses the existing common-helper shell grant without write permission or a direct az grant.
 
 ### Requirement: Documented scope and simulated regression coverage
 
-The README SHALL document explicit invocation, supported full and domainless GitHub reference formats, query and fragment acceptance, required Node.js and readable gh access, and exclusion of pull requests and GitHub Enterprise hosts. Regression tests SHALL use simulated GitHub responses to cover reference validation, issue-type discrimination, state and error handling, original-text fidelity, comment pagination, incomplete retrieval, instruction authority boundaries, and mirrored installation.
+The README SHALL document explicit invocation, supported full and domainless GitHub reference formats, GitHub query and fragment acceptance, GitLab full links including self-hosted destinations, modern and legacy Azure DevOps Services work-item links, and the unambiguous existing organization-context condition for isolated Azure IDs. It SHALL document Node.js and the corresponding authorized gh, glab, or Azure CLI with azure-devops extension prerequisites, explicit partial retrieval, read-only behavior, and exclusions of pull requests, GitHub Enterprise hosts, and Azure DevOps Server. Regression tests SHALL use simulated GitHub responses to cover GitHub issue-type discrimination and SHALL use simulated responses to cover reference validation, provider selection, state and error handling, original-text fidelity, comment pagination, incomplete retrieval, instruction authority boundaries, and mirrored installation. Azure-specific tests SHALL cover organization ambiguity, custom types and states, malformed or repeated pagination data, distinct tool/extension/authentication/access failures, and Windows execution without shell interpretation or automatic extension installation.
 
 #### Scenario: Check import without live GitHub mutations
 
 - **WHEN** the from-backlog regression tests run
 - **THEN** simulated responses verify retrieval and installation behavior without requiring publication or executing imported source instructions.
+
+#### Scenario: Check Azure import and provider compatibility
+
+- **WHEN** Azure-specific simulated regression tests run
+- **THEN** they verify Services references, organization context, rich project-scoped content, pagination, failure outcomes, Windows safety, both harness projections, and existing GitHub and self-hosted GitLab provider selection without remote mutations.
