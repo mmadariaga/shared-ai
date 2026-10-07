@@ -447,11 +447,31 @@ function fileState(cwd, p) {
   } catch (err) { if (err.code === 'ENOENT') return null; throw err; }
 }
 
-function captureState(cwd) {
-  const list = git(['ls-files', '-z', '--cached', '--others'], cwd);
+/** Every path the plan declares in any Step's Files Affected, generated families resolved. */
+function declaredPaths(opts) {
+  const tasks = readIfExists(path.join(changeDir(opts.cwd, opts.change), 'tasks.md'));
+  if (!tasks) return [];
+  const out = [];
+  for (const m of tasks.matchAll(/^##\s+Step (\d+)\b/gm)) {
+    const files = parseFilesAffected(tasks, m[1]);
+    if (!files) continue;
+    let resolved = files;
+    // An unresolvable family is reported by verify/close; capture keeps the exact paths.
+    try { resolved = resolveGenerated(opts.cwd, files); } catch (err) { if (!(err instanceof ToolError)) throw err; }
+    out.push(...resolved.declared);
+  }
+  return unique(out).filter(safePath);
+}
+
+/**
+ * Tracked files plus untracked files git does not ignore. Ignored paths are
+ * outside the capture unless the plan declares them (`declared`).
+ */
+function captureState(cwd, declared = []) {
+  const list = git(['ls-files', '-z', '--cached', '--others', '--exclude-standard'], cwd);
   const index = git(['ls-files', '--stage', '-z'], cwd);
   if (list.status !== 0 || index.status !== 0) throw new ToolError('cannot capture Git state');
-  const paths = unique(list.stdout.split('\0').filter(Boolean).map(norm));
+  const paths = unique([...list.stdout.split('\0').filter(Boolean).map(norm), ...declared]);
   const contents = Object.fromEntries(paths.map((p) => [p, fileState(cwd, p)]));
   const staged = {};
   for (const line of index.stdout.split('\0').filter(Boolean)) {
@@ -502,7 +522,7 @@ function baseline(opts, stdin) {
   const dir = `openspec/changes/${opts.change}/`;
   const names = ['implementation.md', 'tasks.md', 'interfaces.md', 'proposal.md', 'design.md', 'change-overview.md', '.openspec.yaml'];
   for (const p of planning) if (!safePath(p) || !p.startsWith(dir) || (!names.includes(p.slice(dir.length)) && !/^specs\/[^/]+\/spec\.md$/.test(p.slice(dir.length)))) throw new ToolError(`planning provenance outside authorized planning input scope: ${p}`);
-  const record = { version: 1, kind: 'baseline', run_id: opts.runId, cwd: opts.cwd, change: opts.change, planning, state: captureState(opts.cwd) };
+  const record = { version: 1, kind: 'baseline', run_id: opts.runId, cwd: opts.cwd, change: opts.change, planning, state: captureState(opts.cwd, declaredPaths(opts)) };
   const reference = saveRecord(record);
   fs.writeFileSync(claim, reference);
   return { baseline: reference, run_id: record.run_id, capture_claim: claim };
@@ -530,13 +550,13 @@ function dispatchCheck(opts) {
     if (path.posix.dirname(p) === g.directory && path.posix.basename(p).startsWith(prefix) && p.endsWith(suffix)) conflicts.push(p);
   }
   if (conflicts.length) return { ok: false, conflicts: unique(conflicts), checkpoint: null };
-  const record = { version: 1, kind: 'checkpoint', run_id: base.run_id, cwd: opts.cwd, change: opts.change, baseline: opts.baseline, step: String(opts.step), dispatch: opts.dispatch, state: captureState(opts.cwd) };
+  const record = { version: 1, kind: 'checkpoint', run_id: base.run_id, cwd: opts.cwd, change: opts.change, baseline: opts.baseline, step: String(opts.step), dispatch: opts.dispatch, state: captureState(opts.cwd, declaredPaths(opts)) };
   return { ok: true, conflicts: [], checkpoint: saveRecord(record) };
 }
 
 function restoreUnrelatedIndex(opts) {
   const base = loadRecord(opts.baseline, opts, 'baseline');
-  const state = captureState(opts.cwd);
+  const state = captureState(opts.cwd, declaredPaths(opts));
   const protectedPaths = unique(base.state.entries.flatMap((e) => e.from ? [e.path, e.from] : [e.path])).filter((p) => !base.planning.includes(p));
   if (protectedPaths.some((p) => !safePath(p) || (state.contents[p] ?? null) !== (base.state.contents[p] ?? null))) throw new ToolError('unrelated content changed; index restoration blocked, work preserved');
   const entries = [];
@@ -554,7 +574,7 @@ function restoreUnrelatedIndex(opts) {
 
 function executionState(opts) {
   const base = loadRecord(opts.baseline, opts, 'baseline');
-  const current = captureState(opts.cwd);
+  const current = captureState(opts.cwd, declaredPaths(opts));
   const dirty = unique(base.state.entries.flatMap((e) => e.from ? [e.path, e.from] : [e.path]));
   const changedFromBase = delta(base.state, current);
   const unrelated = dirty.filter((p) => !base.planning.includes(p) && !changedFromBase.includes(p));
@@ -590,7 +610,7 @@ function checkpointPlan(opts) {
 function settleStep(opts, ownedPaths = null) {
   const state = executionState(opts);
   const owned = ownedPaths === null ? state.changed : state.changed.filter((p) => ownedPaths.includes(p));
-  const record = { version: 1, kind: 'settled', run_id: state.base.run_id, cwd: opts.cwd, change: opts.change, baseline: opts.baseline, paths: unique([...state.retainedOwned, ...owned]), state: captureState(opts.cwd) };
+  const record = { version: 1, kind: 'settled', run_id: state.base.run_id, cwd: opts.cwd, change: opts.change, baseline: opts.baseline, paths: unique([...state.retainedOwned, ...owned]), state: captureState(opts.cwd, declaredPaths(opts)) };
   return saveRecord(record);
 }
 
