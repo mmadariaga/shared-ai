@@ -429,8 +429,21 @@ function checkResolution(cwd, snapshot, source, confirmed, phase = 'authored') {
 }
 
 const METADATA = ['package.json', 'pnpm-lock.yaml', 'yarn.lock', 'Cargo.toml', 'go.mod', 'pyproject.toml', 'setup.py', 'setup.cfg', 'Makefile', 'mix.exs', 'pom.xml', 'build.gradle'];
+
+// .NET markers have no fixed name: every *.sln at the root or one level below,
+// else every *.csproj at the root.
+function dotnetMarkers(cwd) {
+  const list = directory => fs.readdirSync(directory, { withFileTypes: true }).sort((a, b) => compare(a.name, b.name));
+  const named = (entries, extension) => entries.filter(entry => entry.isFile() && entry.name.toLowerCase().endsWith(extension)).map(entry => entry.name);
+  const root = list(cwd);
+  const solutions = [...named(root, '.sln'), ...root.filter(entry => entry.isDirectory() && !entry.name.startsWith('.'))
+    .flatMap(directory => named(list(path.join(cwd, directory.name)), '.sln').map(name => `${directory.name}/${name}`))];
+  return solutions.length ? solutions : named(root, '.csproj');
+}
+
 function suite(cwd) {
-  return fact(cwd, 'suite', METADATA.map(name => `path:${name}`), () => {
+  const markers = dotnetMarkers(cwd);
+  return fact(cwd, 'suite', [...METADATA, ...markers].map(name => `path:${name}`), () => {
     const exists = name => fs.existsSync(localPath(cwd, name));
     if (exists('package.json')) {
       const pkg = JSON.parse(fs.readFileSync(localPath(cwd, 'package.json'), 'utf8'));
@@ -443,7 +456,10 @@ function suite(cwd) {
     const options = [['Cargo.toml', ['cargo', 'test']], ['go.mod', ['go', 'test', './...']],
       ['pyproject.toml', ['pytest']], ['setup.py', ['pytest']], ['setup.cfg', ['pytest']],
       ['Makefile', ['make', 'test']], ['mix.exs', ['mix', 'test']], ['pom.xml', ['mvn', 'test']], ['build.gradle', ['gradle', 'test']]];
-    return { command: options.find(([filename]) => exists(filename))?.[1] || null };
+    const listed = options.find(([filename]) => exists(filename))?.[1];
+    if (listed || !markers.length) return { command: listed || null };
+    // Several candidates give no single target to test: report them instead of choosing one.
+    return markers.length === 1 ? { command: ['dotnet', 'test', markers[0]] } : { command: null, ambiguous: markers };
   });
 }
 
@@ -465,28 +481,64 @@ function collision(cwd, captured) {
   return receipt;
 }
 
-function verify(cwd) {
-  const detected = suite(cwd);
+// cmd.exe reports an unknown command with exit 1 and a localized message, so
+// on Windows the command word is resolved against PATH instead.
+const CMD_BUILTINS = ['call', 'cd', 'chdir', 'echo', 'for', 'if', 'pushd', 'rem', 'set', 'setlocal', 'type'];
+function resolvable(cwd, line) {
+  const match = /^\s*(?:"([^"]+)"|(\S+))/.exec(line);
+  const word = match?.[1] || match?.[2];
+  if (!word || CMD_BUILTINS.includes(word.toLowerCase())) return true;
+  const extensions = ['', ...(process.env.PATHEXT || '.COM;.EXE;.BAT;.CMD').split(';').filter(Boolean)];
+  const directories = /[\\/]/.test(word) ? [cwd] : [cwd, ...(process.env.PATH || process.env.Path || '').split(path.delimiter).filter(Boolean)];
+  return directories.some(directory => extensions.some(extension => {
+    try { return fs.statSync(path.resolve(directory, word + extension)).isFile(); } catch { return false; }
+  }));
+}
+
+// The reason a command never started, or null when it ran: a run that started
+// and exited non-zero is a test failure, not a start failure.
+function startFailure(cwd, run, line, shell) {
+  if (['ENOENT', 'EACCES', 'EPERM'].includes(run.error?.code)) return run.error.message;
+  if (!shell || run.error || run.status === 0) return null;
+  if (process.platform !== 'win32') return [126, 127].includes(run.status) ? `shell exit ${run.status}: command not found or not executable` : null;
+  return run.status === 9009 || run.status === 1 && !resolvable(cwd, line) ? 'command not found on PATH' : null;
+}
+
+// `explicit` is the documented command line the coordinator fixed at run start;
+// `fixed` is the suite receipt captured at run start. With neither, the marker
+// list is read now.
+function verify(cwd, explicit, fixed) {
+  if (fixed && (fixed.action !== 'suite' || !fixed.data || !('command' in fixed.data))) throw new Error('captured suite receipt required');
+  const detected = explicit ? null : fixed || suite(cwd);
+  const chosen = explicit || detected.data.command;
   const dependencies = ['head', 'index', 'operations', 'tree'];
   const before = state(cwd, dependencies);
-  if (!detected.data.command) return { version: 1, action: 'verify', outcome: 'not-applicable', dependencies,
-    state: before, data: { verification_result: 'unavailable', command: null, exit_code: null, test_ms: 0 } };
-  const [command, ...args] = detected.data.command;
+  const unavailable = (reason, current, data) => ({ version: 1, action: 'verify', outcome: 'not-applicable', dependencies,
+    state: current, data: { verification_result: 'unavailable', unavailable_reason: reason, command: null, exit_code: null, test_ms: 0, ...data } });
+  if (!chosen) {
+    return detected.data.ambiguous
+      ? unavailable('ambiguous-suite', before, { detail: `several .NET candidates: ${detected.data.ambiguous.join(', ')}` })
+      : unavailable('no-suite', before);
+  }
   const start = performance.now();
   const options = { cwd, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024,
     env: { ...process.env, NODE_TEST_CONTEXT: undefined } };
-  // Windows package managers ship .cmd shims, which need a shell. The command
-  // and arguments come only from suite's fixed allowlist, never script content.
-  const run = process.platform === 'win32'
-    ? spawnSync([command, ...args].join(' '), { ...options, shell: true, windowsHide: true })
-    : spawnSync(command, args, options);
+  // A documented command is a shell line, and Windows package managers ship
+  // .cmd shims, which need a shell too. The line comes only from the
+  // coordinator's fixed choice or suite's allowlist, never from script content.
+  const shell = Boolean(explicit) || process.platform === 'win32';
+  const line = explicit || chosen.map(part => /[\s&|<>^()"]/.test(part) ? `"${part}"` : part).join(' ');
+  const run = shell ? spawnSync(line, { ...options, shell: true, windowsHide: true }) : spawnSync(chosen[0], chosen.slice(1), options);
   const elapsed = performance.now() - start;
   const after = state(cwd, dependencies);
+  const evidence = { command: chosen, command_source: explicit ? 'documented' : 'list', exit_code: run.status, signal: run.signal,
+    error: run.error?.message || null, test_ms: elapsed, stdout: run.stdout || '', stderr: run.stderr || '' };
+  const notStarted = startFailure(cwd, run, line, shell);
+  if (notStarted) return unavailable('not-runnable', after, { ...evidence, detail: notStarted });
   const changed = JSON.stringify(before) !== JSON.stringify(after);
-  return { version: 1, action: 'verify', outcome: run.status === 0 && !run.error && !changed ? 'success' : 'failure', dependencies,
-    state: after, data: { verification_result: run.status === 0 && !run.error && !changed ? 'passed' : 'failed',
-      command: detected.data.command, exit_code: run.status, signal: run.signal, error: run.error?.message || null,
-      state_changed_during_run: changed, test_ms: elapsed, stdout: run.stdout || '', stderr: run.stderr || '' } };
+  const passed = run.status === 0 && !run.error && !changed;
+  return { version: 1, action: 'verify', outcome: passed ? 'success' : 'failure', dependencies,
+    state: after, data: { verification_result: passed ? 'passed' : 'failed', ...evidence, state_changed_during_run: changed } };
 }
 
 function instructions(stage, reconstruct = false) {
@@ -543,7 +595,16 @@ function collect(action, cwd, opts, stdin) {
   else if (action === 'correction') result = saveSnapshot(cwd, correction(cwd, stdin()), opts.record);
   else if (action === 'valid') result = valid(cwd, stdin());
   else if (action === 'suite') result = suite(cwd);
-  else if (action === 'verify') result = verify(cwd);
+  else if (action === 'verify') {
+    if (opts.command && opts.suite) throw new Error('verify takes --command or --suite, not both');
+    let fixed;
+    if (opts.suite) {
+      const record = fs.readFileSync(opts.suite);
+      if (!opts['suite-hash'] || hash(record) !== opts['suite-hash']) throw new Error('missing or changed suite record hash');
+      fixed = JSON.parse(record);
+    }
+    result = verify(cwd, opts.command, fixed);
+  }
   else if (action === 'collision') result = collision(cwd, stdin());
   else if (action === 'resolution') {
     if (!['authored', 'materialized'].includes(opts.phase || 'authored')) throw new Error('invalid resolution phase');
@@ -574,7 +635,7 @@ function enter(stage, cwd, opts, stdin) {
 
 function main(argv) {
   const opts = { cwd: process.cwd() }; let action;
-  const flags = ['cwd', 'source-ref', 'method', 'squash', 'record', 'record-hash', 'source', 'confirmed', 'phase', 'stage'];
+  const flags = ['cwd', 'source-ref', 'method', 'squash', 'record', 'record-hash', 'source', 'confirmed', 'phase', 'stage', 'command', 'suite', 'suite-hash'];
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === '--json') continue;
@@ -585,6 +646,7 @@ function main(argv) {
         + 'instructions: --stage strategy|apply|test-correction|renumbering-plan [--reconstruct] (worker stage text), or a coordinator stage or messages (text only; Markdown output)\n'
         + 'provenance: --source-ref <full-ref> --method merge|rebase --squash yes|no|not-applicable (validates the ref, then captures)\n'
         + 'valid/collision: receipt JSON on stdin; conflicts/correction: --record <external-new-file>; correction: authorized region inventory on stdin\n'
+        + 'verify, enter --stage verify: --command <documented-test-command-line>, or --suite <suite-record-file> --suite-hash <sha256> (the outcome of `suite --record` captured at run start); with neither, the marker list is read now\n'
         + 'resolution: --record <snapshot-file> --record-hash <sha256> --source <original-worker-result-file> --confirmed <decision-json-file> [--phase authored|materialized]\n'
         + 'Exit: 0 success/non-applicability; 1 failed assertion; 2 usage/collection error.\n');
       return 0;

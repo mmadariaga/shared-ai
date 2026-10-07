@@ -388,6 +388,140 @@ test('verification distinguishes passed, failed and unavailable and retains fail
   assert.equal(changed.data.state_changed_during_run, true); assert.equal(changed.data.verification_result, 'failed');
 });
 
+test('a documented command runs instead of the detected suite, on every entry path', t => {
+  const { cwd, parent } = fixture(t);
+  fs.writeFileSync(path.join(cwd, 'package.json'), JSON.stringify({ scripts: { test: 'node -e "process.exit(3)"' } }));
+  const documented = 'node -e "console.log(\'documented ran\')"';
+  const passed = merge.verify(cwd, documented);
+  assert.equal(passed.data.verification_result, 'passed', passed.data.stderr);
+  assert.equal(passed.data.command, documented);
+  assert.equal(passed.data.command_source, 'documented');
+  assert.match(passed.data.stdout, /documented ran/);
+  const listed = merge.verify(cwd);
+  assert.equal(listed.data.verification_result, 'failed');
+  assert.equal(listed.data.command_source, 'list');
+  const failing = merge.verify(cwd, 'node -e "process.exit(4)"');
+  assert.equal(failing.data.verification_result, 'failed'); assert.equal(failing.data.exit_code, 4);
+  const stored = cli(cwd, ['verify', '--command', 'node --version', '--record', path.join(parent, 'documented.json')]);
+  assert.equal(stored.status, 0, stored.stdout);
+  assert.equal(stored.payload.data.verification_result, 'passed');
+  assert.equal(stored.payload.data.command, 'node --version');
+  const entered = enterCli(cwd, ['--stage', 'verify', '--command', 'node --version', '--record', path.join(parent, 'entered.json')]);
+  assert.equal(entered.status, 0, entered.stdout);
+  assert.equal(entered.facts.data.command_source, 'documented');
+});
+
+test('.NET markers resolve to dotnet test and several candidates are unavailable', t => {
+  const { cwd } = fixture(t);
+  const command = () => merge.suite(cwd).data;
+  fs.writeFileSync(path.join(cwd, 'App.csproj'), '<Project />');
+  assert.deepEqual(command(), { command: ['dotnet', 'test', 'App.csproj'] });
+  fs.mkdirSync(path.join(cwd, 'src', 'deep'), { recursive: true });
+  fs.writeFileSync(path.join(cwd, 'src', 'deep', 'TooDeep.sln'), '');
+  assert.deepEqual(command(), { command: ['dotnet', 'test', 'App.csproj'] }, 'two levels below is not a marker');
+  fs.writeFileSync(path.join(cwd, 'src', 'App.sln'), '');
+  assert.deepEqual(command(), { command: ['dotnet', 'test', 'src/App.sln'] }, 'a solution wins over a root project');
+  const receipt = merge.suite(cwd);
+  assert.ok(receipt.dependencies.includes('path:src/App.sln'));
+  fs.writeFileSync(path.join(cwd, 'Other.sln'), '');
+  assert.deepEqual(command(), { command: null, ambiguous: ['Other.sln', 'src/App.sln'] });
+  const ambiguous = merge.verify(cwd);
+  assert.equal(ambiguous.outcome, 'not-applicable');
+  assert.equal(ambiguous.data.verification_result, 'unavailable');
+  assert.equal(ambiguous.data.unavailable_reason, 'ambiguous-suite');
+  assert.match(ambiguous.data.detail, /Other\.sln, src\/App\.sln/);
+  fs.writeFileSync(path.join(cwd, 'Cargo.toml'), '');
+  assert.deepEqual(command(), { command: ['cargo', 'test'] }, 'the existing list keeps its precedence');
+  fs.rmSync(path.join(cwd, 'Cargo.toml')); fs.rmSync(path.join(cwd, 'Other.sln')); fs.rmSync(path.join(cwd, 'src'), { recursive: true });
+  fs.writeFileSync(path.join(cwd, 'Second.csproj'), '<Project />');
+  assert.deepEqual(command(), { command: null, ambiguous: ['App.csproj', 'Second.csproj'] });
+});
+
+test('a command that fails to start is unavailable with its reason, apart from failing tests', t => {
+  const { cwd, parent } = fixture(t);
+  assert.equal(merge.verify(cwd).data.unavailable_reason, 'no-suite');
+  const missing = merge.verify(cwd, 'sai-merge-no-such-tool --run');
+  assert.equal(missing.outcome, 'not-applicable');
+  assert.equal(missing.data.verification_result, 'unavailable');
+  assert.equal(missing.data.unavailable_reason, 'not-runnable');
+  assert.ok(missing.data.detail);
+  assert.equal(missing.data.command, 'sai-merge-no-such-tool --run');
+  const stored = cli(cwd, ['verify', '--command', 'sai-merge-no-such-tool', '--record', path.join(parent, 'not-runnable.json')]);
+  assert.equal(stored.status, 0, 'not runnable is not a failed test run');
+  assert.equal(stored.payload.data.unavailable_reason, 'not-runnable');
+  // A command that started and exited 1 stays a test failure.
+  assert.equal(merge.verify(cwd, 'node -e "process.exit(1)"').data.verification_result, 'failed');
+  // The list path: a listed tool that is not installed never starts either.
+  const source = fs.readFileSync(TOOL, 'utf8');
+  const loaded = { exports: {} };
+  const spawn = (command, args, options) => command === 'git' ? spawnSync(command, args, options)
+    : { status: null, signal: null, error: Object.assign(new Error('spawn cargo ENOENT'), { code: 'ENOENT' }) };
+  vm.runInNewContext(source, { module: loaded, __dirname: path.dirname(TOOL), process: { platform: 'linux', env: process.env },
+    require: name => name === 'node:child_process' ? { spawnSync: spawn } : createRequire(TOOL)(name) }, { filename: TOOL });
+  fs.writeFileSync(path.join(cwd, 'Cargo.toml'), '');
+  const uninstalled = loaded.exports.verify(cwd);
+  assert.equal(uninstalled.data.verification_result, 'unavailable');
+  assert.equal(uninstalled.data.unavailable_reason, 'not-runnable');
+  assert.match(uninstalled.data.detail, /ENOENT/);
+});
+
+test('the marker-list outcome captured at run start decides every later round', t => {
+  const { cwd, parent } = fixture(t);
+  // No marker at run start: a marker file added later starts no test.
+  const none = cli(cwd, ['suite', '--record', path.join(parent, 'suite-none.json')]);
+  assert.equal(none.status, 0, none.stdout);
+  assert.equal(none.payload.data.command, null);
+  const fixedNone = ['--suite', none.payload.record, '--suite-hash', none.payload.record_hash];
+  fs.writeFileSync(path.join(cwd, 'package.json'), JSON.stringify({ scripts: { test: 'node -e "process.exit(3)"' } }));
+  assert.equal(merge.verify(cwd).data.verification_result, 'failed', 'detection now would run the new marker');
+  const stillNone = cli(cwd, ['verify', ...fixedNone, '--record', path.join(parent, 'verify-none.json')]);
+  assert.equal(stillNone.status, 0, stillNone.stdout);
+  assert.equal(stillNone.payload.data.verification_result, 'unavailable');
+  assert.equal(stillNone.payload.data.unavailable_reason, 'no-suite');
+  // One command at run start: a marker file that would select another command changes nothing.
+  fs.writeFileSync(path.join(cwd, 'package.json'), JSON.stringify({ scripts: { test: 'node -e "console.log(1)"' } }));
+  const npm = cli(cwd, ['suite', '--record', path.join(parent, 'suite-npm.json')]);
+  assert.deepEqual(npm.payload.data.command, ['npm', 'test']);
+  const fixedNpm = ['--suite', npm.payload.record, '--suite-hash', npm.payload.record_hash];
+  fs.writeFileSync(path.join(cwd, 'pnpm-lock.yaml'), '');
+  assert.deepEqual(merge.suite(cwd).data.command, ['pnpm', 'test'], 'detection now would select another command');
+  const entered = enterCli(cwd, ['--stage', 'verify', ...fixedNpm, '--record', path.join(parent, 'verify-npm.json')]);
+  assert.deepEqual(entered.facts.data.command, ['npm', 'test']);
+  assert.equal(entered.facts.data.command_source, 'list');
+  assert.equal(entered.facts.data.verification_result, 'passed', JSON.stringify(entered.facts.data));
+  // An ambiguous outcome at run start stays unavailable with its reason.
+  fs.rmSync(path.join(cwd, 'package.json')); fs.rmSync(path.join(cwd, 'pnpm-lock.yaml'));
+  fs.writeFileSync(path.join(cwd, 'A.sln'), ''); fs.writeFileSync(path.join(cwd, 'B.sln'), '');
+  const ambiguous = merge.suite(cwd);
+  fs.rmSync(path.join(cwd, 'B.sln'));
+  assert.equal(merge.verify(cwd, undefined, ambiguous).data.unavailable_reason, 'ambiguous-suite');
+  // The record is used only unchanged, and only one source is named.
+  assert.equal(cli(cwd, ['verify', '--suite', npm.payload.record, '--suite-hash', none.payload.record_hash]).status, 2);
+  assert.equal(cli(cwd, ['verify', '--suite', npm.payload.record]).status, 2);
+  assert.equal(cli(cwd, ['verify', ...fixedNpm, '--command', 'node --version']).status, 2);
+  assert.throws(() => merge.verify(cwd, undefined, merge.preflight(cwd)), /captured suite receipt required/);
+});
+
+test('the coordinator fixes the test command once in preflight and reports a not-runnable command apart', () => {
+  assert.match(merge.instructions('preflight'), /suite --record <unique-external-file>/);
+  assert.match(merge.instructions('preflight'), /a marker file\s+the integration adds or removes later does not change it/);
+  assert.match(merge.instructions('verify'), /--suite <record> --suite-hash <record_hash>/);
+  assert.match(merge.instructions('verify'), /no round detects the command again/);
+  const preflight = merge.instructions('preflight');
+  const verification = merge.instructions('verify');
+  assert.ok(preflight.indexOf('### Test command') < preflight.indexOf('### Step 3:'), 'fixed before the launch');
+  assert.ok(preflight.indexOf('`AGENTS.md` at the project root') < preflight.indexOf('`README.md` at the project root'));
+  assert.ok(preflight.indexOf('`README.md` at the project root') < preflight.indexOf('`test_command: list`'));
+  assert.match(preflight, /names several test\s+commands, none clearly the general one, names none/);
+  assert.match(preflight, /Every verification round of\s+this run uses the value fixed here/);
+  assert.match(verification, /--command '<test_command>'/);
+  assert.match(verification, /`not-runnable` result is not a failing test: it uses no round/);
+  assert.match(verification, /\*\*Not runnable\*\*/);
+  const doc = fs.readFileSync(path.join(ROOT, 'docs/commands/sai-merge.md'), 'utf8');
+  assert.match(doc, /`AGENTS\.md`, then one in `README\.md`, then the merge tool's list/);
+  assert.match(doc, /cannot start[^.]+\.? is also reported as unavailable/);
+});
+
 const COORDINATOR_STAGES = ['preflight', 'conflicts', 'verify', 'collision', 'final'];
 const WORKER_STAGES = { strategy: '### Step 6: Intent reconstruction', apply: '#### Writing the resolution',
   'test-correction': '### Step 8: Test correction', 'renumbering-plan': '### Step 9: ADR/DDR renumbering plan' };

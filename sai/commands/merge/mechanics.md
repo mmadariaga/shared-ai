@@ -76,7 +76,10 @@ node <merge-tool> enter --stage <stage> --json --cwd <project-root> [--record <u
 
 The `preflight` entry also carries the presentation seam's rules once. A
 clean launch enters `collision`, never `verify`. A stopped rebase enters
-`final` after `verify` and enters `collision` only after finishing. The exit
+`final` after `verify` and enters `collision` only after finishing. Every
+`verify` call, the stage entry included, carries the test command fixed in
+preflight: `--command '<test_command>'` for an explicit command, else
+`--suite <record> --suite-hash <record_hash>` for the suite record. The exit
 code is that of the stage's mechanical action: a failed test run exits 1 and
 still returns the complete stage text.
 

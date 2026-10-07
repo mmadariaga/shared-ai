@@ -207,12 +207,17 @@ When conflicts exist and fast-track is inactive, the scope question SHALL ride B
 
 ### Requirement: Bounded verification loop
 
-The coordinator SHALL detect the project's test suite from project metadata and run it through the merge tool after a conflict stop's resolution is staged, for at most three rounds per conflict stop. A failed first or second round SHALL continue the worker for a test correction whose ranges the coordinator captures, validates, reviews, and re-stages before the next run. A missing suite SHALL be recorded as `unavailable` with a notice and SHALL NOT be a pass or a question. A clean integration SHALL skip verification.
+The coordinator SHALL fix the project's test command once in preflight, from the project's documentation or the merge tool's marker list, and SHALL run that fixed command through the merge tool after a conflict stop's resolution is staged, for at most three rounds per conflict stop. Every round SHALL use the command fixed in preflight, and only a test run that started SHALL use a round. A failed first or second round SHALL continue the worker for a test correction whose ranges the coordinator captures, validates, reviews, and re-stages before the next run. A missing suite, an ambiguous suite, or a test command that cannot start SHALL be recorded as `unavailable` with a notice and SHALL NOT be a pass or a question. A clean integration SHALL skip verification.
 
 #### Scenario: Suite failure exhausts the budget
 
-- **WHEN** the detected suite still fails after the third round
+- **WHEN** the fixed test command still fails after the third round
 - **THEN** the remaining failures are reported in the final summary and the resolved state stays staged and uncommitted while the run continues as on a pass
+
+#### Scenario: Unavailable verification continues the run
+
+- **WHEN** verification returns `unavailable` because no suite was detected, the suite is ambiguous, or the command cannot start
+- **THEN** the coordinator prints the matching notice, records `verification_result: unavailable`, and continues without a question and without claiming a pass
 
 ### Requirement: Incremental ADR/DDR collision pass
 
@@ -559,3 +564,104 @@ The merge efficiency documentation SHALL compare the same scenario before and af
 
 - **WHEN** the comparison reports the after-side worker stretches and merge-tool calls with no traced after-run
 - **THEN** it identifies them as contract-derived and reports the after-side token counts as unmeasured
+
+### Requirement: Test command resolution order
+
+The merge coordinator SHALL fix the test command once in preflight, before the integration launches, from the first source that names an explicit command, in this order: `AGENTS.md` at the project root, `README.md` at the project root, then the merge tool's marker list. An explicit command SHALL be a test invocation written literally in the document, copied exactly; a command that would have to be inferred SHALL NOT count. A document that names several test commands, none clearly the general one, SHALL count as naming none. When neither document names an explicit command, the coordinator SHALL capture the marker list's outcome in preflight with `suite --record` and SHALL retain the returned record reference and hash as the fixed value.
+
+#### Scenario: Command documented in AGENTS.md is chosen
+
+- **WHEN** `AGENTS.md` at the project root names one explicit test command
+- **THEN** the coordinator fixes that command exactly as written and consults neither `README.md` nor the marker list
+
+#### Scenario: README decides when AGENTS.md names none
+
+- **WHEN** `AGENTS.md` names no explicit test command and `README.md` at the project root names one
+- **THEN** the coordinator fixes the `README.md` command exactly as written
+
+#### Scenario: Several documented commands count as none
+
+- **WHEN** a document names several test commands and none is clearly the general one
+- **THEN** that document counts as naming none and the next source in the order decides
+
+#### Scenario: Marker list outcome is captured in preflight
+
+- **WHEN** neither `AGENTS.md` nor `README.md` names an explicit test command
+- **THEN** the coordinator records the marker list's outcome with `suite --record` before the launch and keeps the record reference and hash
+
+### Requirement: Verification runs the fixed test command
+
+The merge tool's `verify` action and `enter --stage verify` SHALL accept `--command <line>` for a documented command, or `--suite <record> --suite-hash <sha256>` for a suite record captured in preflight, and the coordinator SHALL pass one of the two on every verification call so that no round detects the command again. A documented command SHALL run instead of the marker list and its receipt SHALL carry `command_source: documented`; a marker-list command SHALL carry `command_source: list`. A captured suite record SHALL decide the command, or the absence of one, whatever marker files the integration later adds or removes. The tool MUST refuse with a usage or collection error a `--suite` without a matching `--suite-hash`, a record whose bytes do not match the hash, a record that is not a suite receipt, and `--command` together with `--suite`.
+
+#### Scenario: Documented command runs instead of the detected suite
+
+- **WHEN** `verify` receives `--command` in a repository whose marker list would select a different command
+- **THEN** the documented command runs and the receipt reports it with `command_source: documented`
+
+#### Scenario: Marker added after preflight starts no test
+
+- **WHEN** the suite record captured in preflight holds no command and a marker file appears before verification
+- **THEN** `verify --suite` with that record returns `unavailable` with `unavailable_reason: no-suite` and runs nothing
+
+#### Scenario: Marker changed after preflight keeps the fixed command
+
+- **WHEN** the suite record captured in preflight holds one command and a later marker file would select another
+- **THEN** `verify --suite` with that record runs the captured command with `command_source: list`
+
+#### Scenario: Changed suite record is refused
+
+- **WHEN** `verify --suite` is called without `--suite-hash` or with a hash that does not match the record
+- **THEN** the call exits 2 and runs no test
+
+#### Scenario: Two command sources are refused
+
+- **WHEN** `verify` receives both `--command` and `--suite`
+- **THEN** the call exits 2 and runs no test
+
+### Requirement: .NET marker detection
+
+The merge tool's marker list SHALL recognize .NET projects: every `*.sln` file at the project root or one level below it, outside dot-directories, and, only when no such solution exists, every `*.csproj` file at the project root. Exactly one candidate SHALL resolve to `dotnet test <candidate>`. The previously listed markers SHALL keep precedence over the .NET markers. Several candidates SHALL yield no command, SHALL be reported as ambiguous with the candidate list, and SHALL make verification `unavailable` with `unavailable_reason: ambiguous-suite`.
+
+#### Scenario: Single solution resolves to dotnet test
+
+- **WHEN** the only marker is one `*.sln` file at the root or one level below it
+- **THEN** the detected command is `dotnet test` with that solution's path
+
+#### Scenario: Root project resolves when no solution exists
+
+- **WHEN** no solution marker exists and exactly one `*.csproj` file is at the root
+- **THEN** the detected command is `dotnet test` with that project file
+
+#### Scenario: Solution two levels below is not a marker
+
+- **WHEN** the only `*.sln` file is two directory levels below the root
+- **THEN** it is not treated as a marker
+
+#### Scenario: Several candidates are unavailable
+
+- **WHEN** several solution candidates exist, or no solution exists and several root `*.csproj` files exist
+- **THEN** no command is selected and verification returns `unavailable` with `unavailable_reason: ambiguous-suite` and the candidates in `detail`
+
+#### Scenario: Existing markers keep precedence
+
+- **WHEN** a previously listed marker such as `Cargo.toml` exists beside .NET markers
+- **THEN** the previously listed marker's command is selected
+
+### Requirement: Not-runnable test command outcome
+
+When the fixed test command fails to start, the merge tool SHALL return `verification_result: unavailable` with `unavailable_reason: not-runnable` and the reason in `detail`, as a non-applicable outcome rather than a failed test run. A not-runnable result SHALL NOT use a verification round and SHALL NOT start a test correction, and the run SHALL continue. A command that started and exited non-zero SHALL remain `failed`. Every `unavailable` result SHALL carry `unavailable_reason` as one of `no-suite`, `ambiguous-suite`, or `not-runnable`. The coordinator SHALL print the not-runnable notice with the command and the reason, stating that no test ran and that it is neither a gate nor a test failure, and the final summary SHALL report the verification status as `unavailable (command not runnable: <reason>)`.
+
+#### Scenario: Unknown command is not runnable
+
+- **WHEN** the fixed test command names a tool that is not installed or a command that is unknown
+- **THEN** `verify` exits 0 with `verification_result: unavailable`, `unavailable_reason: not-runnable`, and a non-empty `detail`
+
+#### Scenario: Started command that fails stays a test failure
+
+- **WHEN** the fixed test command starts and exits with a non-zero code
+- **THEN** the result is `failed` and the round counts against the three-round budget
+
+#### Scenario: Not-runnable result uses no round
+
+- **WHEN** verification returns `unavailable` with `unavailable_reason: not-runnable`
+- **THEN** the coordinator prints the not-runnable notice, records `verification_result: unavailable`, starts no test correction, and continues without a question

@@ -43,6 +43,7 @@ working_language: unresolved | the selected language token
 conflict_files_by_category
 strategy_status: not-applicable | pending | revised | confirmed | declined
 strategy_revision, conflict_detection_round: non-negative integers
+test_command: unresolved | list (with the suite record reference and hash) | the explicit documented command
 verification_round: 0 | 1 | 2 | 3
 verification_result: pending | passed | unavailable | failed | cap-exhausted
 staged_files
@@ -285,7 +286,11 @@ Before launching, print the exact launch, naming the branch by its full
 
 - **No suite** — print as ordinary text that automated verification is
   unavailable, and that the resolution has already been applied and staged; it
-  is not a gate.
+  is not a gate. For `ambiguous-suite`, add the candidates from `detail`.
+- **Not runnable** — print as ordinary text that the test command could not
+  start, with the command and the reason from `detail`, that no test ran, and
+  that the resolution has already been applied and staged; it is not a gate
+  and not a test failure.
 - **Failed round** — print the worker's failure analysis and proposed fixes
   once; on the third failed round, state that verification failed through all
   three rounds, list the remaining failures, and note that the resolved state
@@ -312,7 +317,7 @@ as ordinary text; it is not a gate:
 Method: <merge | rebase (squash yes/no)>
 Target branch: <current branch>
 Source branch: <selected branch>
-Verification status: <passed | not required (clean integration) | unavailable (no detectable suite) | failed after round N>
+Verification status: <passed | not required (clean integration) | unavailable (no detectable suite) | unavailable (command not runnable: <reason>) | failed after round N>
 Conflict result: <clean | resolved (N files) | unresolved (N escalations)>
 Collision result: <not applicable | none detected | N repaired | N reported (N escalations)>
 Staged files: <N>
