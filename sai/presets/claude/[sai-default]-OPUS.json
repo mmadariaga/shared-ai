@@ -1,13 +1,14 @@
 {
   "agent:budget-executor": {
-    "model": "haiku"
+    "model": "haiku",
+    "effort": "medium"
   },
   "agent:budget-explorer": {
-    "model": "sonnet",
+    "model": "haiku",
     "effort": "medium"
   },
   "agent:budget-subagent": {
-    "model": "sonnet",
+    "model": "haiku",
     "effort": "medium"
   },
   "command:sai-explore": {

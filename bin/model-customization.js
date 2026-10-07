@@ -105,6 +105,11 @@ const CLAUDE_SETTINGS_CATALOG = Object.freeze({
     Object.freeze({ model: 'opus', efforts: Object.freeze(['low', 'medium', 'high', 'xhigh', 'max']) }),
     Object.freeze({ model: 'sonnet', efforts: Object.freeze(['low', 'medium', 'high', 'xhigh', 'max']) }),
     Object.freeze({ model: 'fable', efforts: Object.freeze(['low', 'medium', 'high', 'xhigh', 'max']) }),
+    Object.freeze({ model: 'haiku', efforts: Object.freeze(['low', 'medium', 'high', 'xhigh', 'max']) }),
+  ]),
+  // Existing saved settings may still omit Haiku effort. Keep this accepted
+  // configuration separate from the selectable menu catalog above.
+  legacySettings: Object.freeze([
     Object.freeze({ model: 'haiku' }),
   ]),
 });
@@ -738,11 +743,19 @@ function buildClaudeSettingsEntries(settingsCatalog) {
 function isClaudeSettingsPair(settingsCatalog, settings) {
   if (!settings || typeof settings.model !== 'string') return false;
   const hasEffort = Object.prototype.hasOwnProperty.call(settings, 'effort');
-  return buildClaudeSettingsEntries(settingsCatalog)
+  const isSelectable = buildClaudeSettingsEntries(settingsCatalog)
     .some(entry => entry.model === settings.model
       && (entry.effort === undefined
         ? !hasEffort
         : hasEffort && entry.effort === settings.effort));
+  if (isSelectable) return true;
+
+  const legacySettings = settingsCatalog && Array.isArray(settingsCatalog.legacySettings)
+    ? settingsCatalog.legacySettings
+    : [];
+  return !hasEffort && legacySettings.some(entry => entry
+    && entry.model === settings.model
+    && !Object.prototype.hasOwnProperty.call(entry, 'effort'));
 }
 
 async function selectClaudeSettings(subsetLabel, promptChoice, settingsCatalog) {

@@ -128,32 +128,28 @@ The customization logic SHALL resolve each target's `CONTEXT` and `DIFFICULTY` f
 - **THEN** its row SHALL display `Unknown` under both `CONTEXT` and `DIFFICULTY` while retaining its stable selection identity and effective setting
 
 ### Requirement: Shared settings selection
-
-After the target-selection checklist confirms a non-empty subset and before any local override is created, the flow SHALL invoke the selected harness's settings selector exactly once for the whole confirmed subset in that customization pass. The collected settings choices — a model followed by an effort or explicit no-effort confirmation for Claude Code, and a discovered model with an optional variant for OpenCode — SHALL be passed to the per-target local-override operation once for every selected target. Claude Code's two screens SHALL produce one shared settings result only after both selections are complete. A per-target skipped result means the operation was attempted but its source was unavailable; it SHALL not be treated as a settings-selector failure or prevent later targets from being attempted. In `All` scope, the selector SHALL run once and the same settings SHALL be passed to every marked target across all selected families, with no per-family differentiation within a pass. Because the model-customization checklist rejects empty confirmation, the settings selector SHALL never be invoked for an empty selection.
-
+After the target-selection checklist confirms a non-empty subset and before any local override is created, the flow SHALL invoke the selected harness's settings selector exactly once for the whole confirmed subset in that customization pass. The collected settings choices — a model followed by an effort or explicit no-effort confirmation for Claude Code, and a discovered model with an optional variant for OpenCode — SHALL be passed to the per-target local-override operation once for every selected target. A per-target skipped result means the operation was attempted but its source was unavailable; it SHALL not be treated as a settings-selector failure or prevent later targets from being attempted. In `All` scope, the selector SHALL run once and the same settings SHALL be passed to every marked target across all selected families, with no per-family differentiation within a pass. Injected Claude catalogs MAY continue to contain model-only entries and expose `Default (no effort)` for those entries; the built-in `haiku` catalog entry SHALL instead expose its five explicit efforts. Because the model-customization checklist rejects empty confirmation, the settings selector SHALL never be invoked for an empty selection.
 #### Scenario: Settings selector runs exactly once per customization pass
 - **WHEN** the target-selection checklist confirms a non-empty subset
 - **THEN** the flow SHALL invoke the settings selector exactly once for that customization pass
-
 #### Scenario: Local overrides run exactly once per selected target
 - **WHEN** the settings selector has returned the shared settings choices for the confirmed subset
 - **THEN** the local-override operation SHALL be attempted exactly once per selected target, including targets that ultimately report a non-fatal skip
-
 #### Scenario: Same settings applied to every selected target
 - **WHEN** the settings selector returns its settings choices for a confirmed subset of two or more targets
 - **THEN** every selected target's local override SHALL carry those identical settings choices, including the absence of `effort` when the chosen Claude model has no effort values and the user confirms `Default (no effort)`
-
 #### Scenario: All scope applies one settings pass across all families
 - **WHEN** the confirmed subset in `All` scope contains targets from multiple families and the settings selector returns its choices
 - **THEN** every marked target SHALL receive those identical settings choices in the single pass, with no per-family differentiation
-
 #### Scenario: Empty confirmation never reaches settings
 - **WHEN** the user attempts to confirm an empty model-customization checklist
 - **THEN** the checklist SHALL remain open and the settings selector SHALL NOT be invoked
-
 #### Scenario: Both Claude screens finish before persistence
 - **WHEN** the user has selected a Claude model but has not completed its effort or no-effort confirmation
 - **THEN** the selector SHALL NOT return completed settings or create or modify a local override for the current selection
+#### Scenario: Built-in Haiku selection uses explicit effort
+- **WHEN** the user selects the built-in Claude `haiku` entry and completes its effort screen
+- **THEN** the shared settings result SHALL contain `model: haiku` and one of the five supported effort values
 
 ### Requirement: Stable target identities and effective model annotations
 The target checklist SHALL keep stable family-prefixed selection values separate from display labels. Each display label SHALL render an aligned five-column table row separated by two-space gutters: TYPE SHALL carry the target's uppercase display family (`WORKER`, `AGENT`, `ORCHESTRATOR`, or `UTILITY`) padded to twelve characters; TARGET SHALL carry the target's name padded to the longest displayed target name of the current scope; CONTEXT and DIFFICULTY SHALL carry their respective estimates padded to their header widths; and SETTING SHALL carry the target's effective setting as plain text with no brackets and no ANSI styling. The setting SHALL use `provider/model (effort)` formatting, with Claude Code's `effort` and OpenCode's `variant` occupying the tuning position. Project-local overrides SHALL take precedence over installed or global sources; malformed or missing frontmatter SHALL produce a safe `unavailable` setting rendered as ordinary column text without breaking selection.
@@ -171,49 +167,39 @@ The target checklist SHALL keep stable family-prefixed selection values separate
 - **THEN** the SETTING column SHALL show `unavailable` as plain column text with no ANSI wrapper and the target SHALL remain selectable
 
 ### Requirement: Claude settings selection
-
-For every Claude Code customization run with a non-empty confirmed subset, the Claude Code adapter MUST present dependent navigable single-select screens in this order: `Model for <subset>:` followed by `Effort for <subset>:`. Model options MUST be unique model identifiers derived from valid entries in the adapter-owned static Claude settings catalog. The effort screen MUST offer only effort values belonging to the selected model; for a model entry without an `efforts` array, it MUST offer exactly one display option, `Default (no effort)`. The catalog MUST be the authoritative source for the available model identifiers and each model's effort values, MUST contain at least one valid model entry, and MUST contain no placeholder values such as `<model>` or `<effort>`. The selected result MUST contain only catalog members: `{ model, effort }` for an effort-bearing entry or `{ model }` with no `effort` property for a model-only entry. `Default (no effort)` MUST NOT become an effort value, and Haiku MUST NOT return `effort: default`.
-
+For every Claude Code customization run with a non-empty confirmed subset, the Claude Code adapter MUST present dependent navigable single-select screens in this order: `Model for <subset>:` followed by `Effort for <subset>:`. Model options MUST be unique model identifiers derived from valid entries in the adapter-owned static Claude settings catalog. The effort screen MUST offer only effort values belonging to the selected model; for a model entry without an `efforts` array, it MUST offer exactly one display option, `Default (no effort)`. The built-in catalog MUST contain `haiku` with exactly `low`, `medium`, `high`, `xhigh`, and `max`, so the built-in Haiku selection MUST NOT offer a model-only row or `Default (no effort)`. The catalog MUST be the authoritative source for the available model identifiers and each model's effort values, MUST contain at least one valid model entry, and MUST contain no placeholder values such as `<model>` or `<effort>`. The selected result MUST contain only catalog members: `{ model, effort }` for an effort-bearing entry or `{ model }` with no `effort` property for a model-only injected catalog entry. Legacy `{ model: 'haiku' }` settings are accepted separately for loading existing configurations and are not produced by the built-in Haiku selector. `Default (no effort)` MUST NOT become an effort value, and Haiku MUST NOT return `effort: default`.
 Back navigation from the effort screen MUST reopen the model screen. Selecting a model after navigating back MUST derive its effort options anew without retaining another model's effort selection. Back navigation from the model screen MUST return control to target selection. Cancellation on either screen MUST return the cancellation outcome without saving the current selection.
-
 If the catalog is unavailable or contains no valid model entries, or the selector returns a null or invalid setting, the post-setup menu SHALL return status `failed` with a diagnostic naming the cause and SHALL configure no target on that path. The selector MUST NOT perform Claude live model discovery, claim that end-to-end customization is fake, or perform OpenCode provider, model, or variant discovery. The collected values MUST be forwarded to the persistent local-override operation only after both screens complete. The OpenCode adapter MUST continue to use its existing dependent provider-to-model-to-variant selection rather than the Claude static catalog.
-
 #### Scenario: Static Claude catalog contains the current model and effort set
 - **WHEN** the Claude adapter loads its built-in settings catalog
-- **THEN** the catalog SHALL contain `opus` with efforts `low`, `medium`, `high`, `xhigh`, and `max`; `sonnet` with the same five efforts; `fable` with the same five efforts; and `haiku` with no `efforts` array
-
+- **THEN** the catalog SHALL contain `opus`, `sonnet`, `fable`, and `haiku`, each with efforts `low`, `medium`, `high`, `xhigh`, and `max`
 #### Scenario: Claude selection returns concrete model and effort
 - **WHEN** a non-empty Claude Code subset reaches settings selection and the user confirms `sonnet` on the model screen followed by `medium` on the effort screen
 - **THEN** the selector SHALL return exactly the concrete catalog values `{ model: 'sonnet', effort: 'medium' }`
-
 #### Scenario: Claude selection returns a model without effort
-- **WHEN** a non-empty Claude Code subset reaches settings selection and the user confirms `haiku` on the model screen followed by its only effort-screen option, `Default (no effort)`
-- **THEN** the selector SHALL return exactly `{ model: 'haiku' }` without a top-level `effort` property or an `effort: default` value
-
+- **WHEN** a non-empty Claude Code subset reaches settings selection with an injected catalog entry `plain` without an `efforts` array and the user confirms `plain` followed by `Default (no effort)`
+- **THEN** the selector SHALL return exactly `{ model: 'plain' }` without a top-level `effort` property or an `effort: default` value
+#### Scenario: Built-in Haiku selection returns concrete effort
+- **WHEN** a non-empty Claude Code subset reaches settings selection and the user confirms `haiku` followed by `xhigh`
+- **THEN** the selector SHALL return exactly `{ model: 'haiku', effort: 'xhigh' }`
 #### Scenario: Claude selection does not use placeholders
 - **WHEN** either Claude Code settings screen is rendered
 - **THEN** no selectable option SHALL use `<model>` or `<effort>` placeholder values, and `Default (no effort)` SHALL represent absence of effort rather than a fabricated effort value
-
 #### Scenario: Claude selection is bounded by per-model catalog entries
-- **WHEN** the Claude adapter-owned catalog contains model entries with model-specific effort arrays or no effort array
+- **WHEN** the adapter-owned catalog contains model entries with model-specific effort arrays or no effort array
 - **THEN** every displayed model and concrete effort and every returned Claude setting SHALL be derived from the selected catalog entry, with no effort accepted for a model-only entry and no effort borrowed from another model
-
 #### Scenario: Missing Claude settings catalog produces no settings
 - **WHEN** the Claude settings catalog is unavailable or contains no valid model entries
 - **THEN** the menu SHALL return status `failed` with a diagnostic naming the unavailable catalog and customization SHALL configure no target on that path
-
 #### Scenario: OpenCode does not use the Claude frame
 - **WHEN** OpenCode customization reaches settings selection
 - **THEN** the flow SHALL use the dependent provider, model, and optional variant screens and SHALL not present the Claude model and effort screens or use the Claude static catalog
-
 #### Scenario: Back from effort reopens model selection
 - **WHEN** the user presses left-arrow or Esc on the Claude effort screen
 - **THEN** the selector SHALL reopen model selection without persisting settings, and a subsequent model choice SHALL determine a fresh set of effort options
-
 #### Scenario: Back from model returns to target selection
 - **WHEN** the user presses left-arrow or Esc on the Claude model screen
 - **THEN** the selector SHALL return `BACK` to its caller without persisting settings so target selection can reopen
-
 #### Scenario: Invalid screen choices produce no settings
 - **WHEN** either Claude screen returns a choice absent from its displayed catalog-derived options
 - **THEN** the selector SHALL return no usable settings and SHALL NOT configure any target
@@ -347,44 +333,40 @@ Every model-customization harness, scope, target, and settings selection screen 
 - **THEN** each single-select screen SHALL announce back navigation while the menu retains its no-footer override and default bindings
 
 ### Requirement: Persistent local override
-For every traversed target, the selected harness adapter MUST invoke a local-override operation after settings selection, passing the collected settings for that target — the selected model and optional effort for Claude Code, and the selected model with optional variant for opencode. The operation MUST materialize the result as the target's project-local file and MUST report the result as persistent only after that file has been written successfully. Worker overrides MUST write under `.claude/agents/<worker>.md` and `.opencode/agents/<worker>.md` and MUST apply the project-local source, preservation, path, and failure rules defined by the `project-local-agent-overrides` capability. Command overrides MUST write under `.claude/commands/<command>.md` and `.opencode/commands/<command>.md`; when the project-local destination is absent, the operation MUST use the same-named installed global command as its source (`~/.claude/commands/<command>.md` for Claude Code or `~/.config/opencode/commands/<command>.md` for opencode), and MUST NOT substitute a repository-bundled command source or write the override into the global command directory. For commands, the operation MUST apply the same preservation, missing-source, and failure rules as the worker path: an existing project-local command is the file that is read and patched in place, preserving its body and non-tunable frontmatter; a selected command that is missing from the installed global root and has no project-local destination SHALL be reported as skipped with a diagnostic while the remaining targets continue; a target whose source file has no valid frontmatter block SHALL report a persistence failure without aborting the other targets. When a selected target's frontmatter lacks a tunable key that the settings selected (for example a command that ships with no `model` line), the operation SHALL add that key with the selected value; when the chosen Claude model has no effort list, the operation SHALL remove any existing top-level `effort` line from the target's frontmatter. When a command declares a model absent from the settings catalog, the operation SHALL replace that declared model with the selected catalog value.
-
+For every traversed target, the selected harness adapter MUST invoke a local-override operation after settings selection, passing the collected settings for that target — the selected model and optional effort for Claude Code, and the selected model with optional variant for opencode. The operation MUST materialize the result as the target's project-local file and MUST report the result as persistent only after that file has been written successfully. Worker overrides MUST write under `.claude/agents/<worker>.md` and `.opencode/agents/<worker>.md` and MUST apply the project-local source, preservation, path, and failure rules defined by the `project-local-agent-overrides` capability. Command overrides MUST write under `.claude/commands/<command>.md` and `.opencode/commands/<command>.md`; when the project-local destination is absent, the operation MUST use the same-named installed global command as its source and MUST NOT substitute a repository-bundled command source or write the override into the global command directory. Existing project-local files MUST be patched in place while preserving their body and non-tunable frontmatter. Missing installed sources SHALL be reported as skipped while remaining targets continue, and invalid frontmatter SHALL report a persistence failure without aborting other targets. When a selected target's frontmatter lacks a tunable key that the settings selected, the operation SHALL add that key with the selected value. When a selected Claude model is supplied by an injected catalog without an effort list, the operation SHALL remove any existing top-level `effort` line; when the built-in `haiku` selection supplies an explicit effort, the operation SHALL persist that effort. A legacy model-only Haiku setting loaded from an existing configuration SHALL preserve the omitted effort.
 #### Scenario: Selected Claude Code worker override is persisted
 - **WHEN** Claude Code settings have been selected for a traversed worker, with or without an effort value
 - **THEN** the local-override operation SHALL write the selected worker under `.claude/agents/<worker>.md` with the selected `model` and, only when selected, `effort`, and SHALL report a persistent result only after the write succeeds
-
 #### Scenario: Selected opencode worker override is persisted
 - **WHEN** opencode settings have been selected for a traversed worker
-- **THEN** the local-override operation SHALL write the selected worker under `.opencode/agents/<worker>.md` with the selected `model` and optional `variant`, and SHALL report a persistent result only after the write succeeds
-
+- **THEN** the local-override operation SHALL write the selected worker under `.opencode/agents/<worker>.md` with the selected model and optional variant, and SHALL report a persistent result only after the write succeeds
 #### Scenario: Selected Claude Code command override is persisted
 - **WHEN** Claude Code settings have been selected for a traversed command, with or without an effort value
 - **THEN** the local-override operation SHALL write the selected command under `.claude/commands/<command>.md` with the selected `model` and, only when selected, `effort`, and SHALL report a persistent result only after the write succeeds
-
 #### Scenario: Selected opencode command override is persisted
 - **WHEN** opencode settings have been selected for a traversed command
-- **THEN** the local-override operation SHALL write the selected command under `.opencode/commands/<command>.md` with the selected `model` and optional `variant`, and SHALL report a persistent result only after the write succeeds
-
+- **THEN** the local-override operation SHALL write the selected command under `.opencode/commands/<command>.md` with the selected model and optional variant, and SHALL report a persistent result only after the write succeeds
 #### Scenario: Command without tunable keys gains the selected ones
-- **WHEN** a selected command's frontmatter declares no `model` line (or no effort or variant line) and the settings selector returns a model (with effort or variant)
-- **THEN** the operation SHALL add the missing keys with the selected values, so a command that previously inherited the session's model becomes pinned
-
+- **WHEN** a selected command's frontmatter declares no `model` line or lacks a selected effort or variant line
+- **THEN** the operation SHALL add the missing keys with the selected values
 #### Scenario: Existing project-local command is patched in place
 - **WHEN** a project-local command override exists from an earlier run and the user selects different settings
 - **THEN** the operation SHALL read and patch that file, updating only the selected tunable lines and preserving the earlier body and non-tunable frontmatter
-
 #### Scenario: Out-of-catalog command model is normalized
 - **WHEN** a selected Claude Code command declares a `model` value absent from the settings catalog and the user confirms a catalog option
 - **THEN** the operation SHALL replace the declared model with the selected catalog value and SHALL report the override as persisted
-
 #### Scenario: Haiku removes an existing effort line
-- **WHEN** a selected target has an existing top-level `effort` line and the user confirms the `haiku` catalog entry, which has no effort list
+- **WHEN** a selected target uses an injected Claude catalog entry without an effort list and its frontmatter has an existing top-level `effort` line
 - **THEN** the operation SHALL remove that top-level `effort` line while preserving all non-tunable content
-
+#### Scenario: Explicit Haiku effort is retained
+- **WHEN** a selected target has an existing top-level `effort` line and the user confirms built-in `haiku` with `high`
+- **THEN** the operation SHALL persist `model: haiku` and `effort: high` while preserving all non-tunable content
+#### Scenario: Legacy model-only Haiku remains model-only
+- **WHEN** an existing model-only Haiku preset is loaded into a target
+- **THEN** the resulting override SHALL retain `model: haiku` without an `effort` line
 #### Scenario: Missing installed command source is a soft per-target failure
 - **WHEN** a selected command has no project-local destination and its installed global source is unavailable
 - **THEN** the operation SHALL report that command as skipped with a diagnostic, SHALL NOT create its project-local destination, and SHALL continue processing the remaining targets
-
 #### Scenario: Invalid frontmatter block fails without aborting other targets
 - **WHEN** a selected target's source file has no valid frontmatter block
 - **THEN** the operation SHALL report a persistence failure with a diagnostic for that target and SHALL continue processing the remaining targets
@@ -521,3 +503,15 @@ The model-customization flow SHALL expose `Ctrl+A` on both the active customizat
 #### Scenario: Bulk toggle remains limited to model target checklists
 - **WHEN** the user presses `Ctrl+A` in an ordinary installer checklist or a single-choice menu
 - **THEN** the navigator SHALL not apply toggle-all behavior or change the selected result
+
+### Requirement: Legacy model-only Haiku settings remain valid
+The Claude Code adapter MUST distinguish selectable settings from legacy accepted settings. Existing saved or restored settings containing `model: haiku` without an `effort` field MUST remain valid, MUST preserve the omitted effort when loaded or reset, and MUST NOT be rewritten as `medium` or another effort. New menu selections of the built-in Haiku entry MUST use an explicit supported effort.
+#### Scenario: Existing model-only Haiku configuration loads
+- **WHEN** a saved Claude configuration or preset contains `{ model: 'haiku' }` without `effort`
+- **THEN** the adapter MUST accept and materialize the model-only setting without adding an effort value
+#### Scenario: Factory reset preserves model-only Haiku
+- **WHEN** the installed factory source contains `model: haiku` without `effort` and a customized target is reset
+- **THEN** reset MUST restore the factory content without inventing an effort or rewriting it as `medium`
+#### Scenario: New Haiku selection requires effort
+- **WHEN** the Claude Code selector presents the built-in `haiku` entry for a new customization pass
+- **THEN** it MUST offer only `low`, `medium`, `high`, `xhigh`, and `max`
