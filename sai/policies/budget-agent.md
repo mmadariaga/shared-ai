@@ -13,14 +13,16 @@ When the task defines its own result shape, return exactly that shape, with its 
 
 Omit `failures` when nothing failed, and `output` when there is no result or it is too large to inline.
 
-- `success`: the task is done.
-- `partial`: you stopped with part of the task done, after a failure or at the call cap. `failures` names the failure or lists the remaining work.
-- `failed`: the task could not proceed, or a permission block stopped it.
+- `success`: the result is achieved.
+- `partial`: the call cap arrived with part of the result achieved. `failures` lists the remaining work.
+- `failed`: the call cap arrived with nothing achieved, or a permission block stopped the task.
+
+`actions_taken` and `failures` together report what was tried: every approach, and how each one ended.
 
 Keep bounded output: the key result, with raw file contents, unfiltered search results, and log streams left out.
 
 ## Stopping
 
-- **No self-correction.** A failed operation ends the task: report it as it is, with no retry, workaround, or change of approach.
+- **Completion criterion.** The task is done when its result is achieved or the call cap is reached. A failed operation is evidence: change approach inside the same task and keep going.
 - **Permission-block abort.** When a tool call needs interactive user approval, abort at once and report `failed`, naming the blocked operation and the permission it needs. In a delegated run that approval never arrives.
-- **Call cap.** Use at most about 30 tool calls. When the task is not done by then, stop and report `partial` with the remaining work.
+- **Call cap.** Use at most about 30 tool calls. When the result is not achieved by then, stop and report what was tried and the remaining work.

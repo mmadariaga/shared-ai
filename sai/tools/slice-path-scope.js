@@ -22,6 +22,11 @@
  * Sub-commands:
  *   snapshot    Record every path `git status` reports as modified, with its
  *               status and a content hash, plus HEAD. Report the reference.
+ *               With `--targets`, read target paths from stdin, one per line,
+ *               and also record the content of everything at or beneath each
+ *               one straight from the file system. `git status` hides ignored
+ *               paths; a target is watched whatever its ignore status, so
+ *               creating, modifying, or removing it is a change at verify.
  *   verify      Read the slice paths from stdin, one per line. An optional
  *               `---` line starts the covering list. Report `foreign` and
  *               `uncovered`.
@@ -36,7 +41,7 @@
  *               an `n/a` snapshot reference.
  *
  * Usage:
- *   node sai/tools/slice-path-scope.js snapshot [--json] [--cwd <dir>]
+ *   node sai/tools/slice-path-scope.js snapshot [--targets] [--json] [--cwd <dir>] [< targets]
  *   node sai/tools/slice-path-scope.js verify --snapshot <ref|n/a> [--json] [--cwd <dir>] < paths
  *
  * Exit codes: 0 = clean or n/a; 1 = mismatch; 2 = usage error or IO failure.
@@ -132,21 +137,40 @@ function scan(root) {
   return entries;
 }
 
+/**
+ * Content identity of everything at or beneath each target, read straight from
+ * the file system so that ignored paths are seen. An absent target contributes
+ * nothing, so its later creation shows up as new keys.
+ */
+function scanTargets(root, targets) {
+  const entries = {};
+  const visit = (relative) => {
+    const identity = contentHash(root, relative);
+    if (identity === null) return;
+    entries[relative] = identity;
+    if (identity !== 'dir') return;
+    for (const name of fs.readdirSync(path.join(root, relative)).sort()) visit(`${relative}/${name}`);
+  };
+  for (const target of targets) visit(target);
+  return entries;
+}
+
 function recordPath(ref) {
   return path.join(fs.realpathSync(os.tmpdir()), `sai-slice-path-scope-${ref}.json`);
 }
 
 /** Snapshot: record the modified paths and HEAD, and hand back the reference. */
-function snapshot(cwd) {
+function snapshot(cwd, targets = []) {
   const state = repoState(cwd);
   if (!state.root) {
-    return { action: 'snapshot', verdict: 'n/a', snapshot: N_A, reason: state.reason, modified: [] };
+    return { action: 'snapshot', verdict: 'n/a', snapshot: N_A, reason: state.reason, modified: [], targets };
   }
   const entries = scan(state.root);
-  const body = JSON.stringify({ root: state.root, head: state.head, entries });
+  const watched = scanTargets(state.root, targets);
+  const body = JSON.stringify({ root: state.root, head: state.head, entries, targets, watched });
   const ref = crypto.createHash('sha256').update(body).digest('hex');
   fs.writeFileSync(recordPath(ref), body);
-  return { action: 'snapshot', verdict: 'clean', snapshot: ref, reason: null, modified: Object.keys(entries).sort() };
+  return { action: 'snapshot', verdict: 'clean', snapshot: ref, reason: null, modified: Object.keys(entries).sort(), targets };
 }
 
 /** One repository-relative path in forward-slash form, without `./` or a trailing slash. */
@@ -157,6 +181,16 @@ function normalize(line) {
     throw new ToolError(`path must be repository-relative: ${line.trim()}`);
   }
   return value;
+}
+
+/** The target paths of `snapshot --targets`: one repository-relative path per line. */
+function parseTargets(text) {
+  const targets = [];
+  for (const line of String(text || '').split(/\r?\n/)) {
+    const value = normalize(line);
+    if (value !== null && !targets.includes(value)) targets.push(value);
+  }
+  return targets;
 }
 
 /** Split stdin into the slice paths and, after a `---` line, the covering list. */
@@ -198,6 +232,11 @@ function changedSince(record, state) {
     }
     for (const name of diff.stdout.split('\0')) if (name) changed.add(name);
   }
+  const before = record.watched || {};
+  const after = scanTargets(state.root, record.targets || []);
+  for (const key of new Set([...Object.keys(before), ...Object.keys(after)])) {
+    if (before[key] !== after[key]) changed.add(key);
+  }
   return [...changed].sort();
 }
 
@@ -230,7 +269,7 @@ function verify(ref, stdinText, cwd) {
 function usage() {
   return [
     'Usage:',
-    '  node sai/tools/slice-path-scope.js snapshot [--json] [--cwd <dir>]',
+    '  node sai/tools/slice-path-scope.js snapshot [--targets] [--json] [--cwd <dir>] [< targets]',
     '  node sai/tools/slice-path-scope.js verify --snapshot <ref|n/a> [--json] [--cwd <dir>] < paths',
     '',
     '  snapshot                  Record the paths that are already modified and',
@@ -242,6 +281,10 @@ function usage() {
     '                            slice paths) and uncovered (slice paths outside the',
     '                            covering list). Verdict clean, mismatch, or n/a.',
     '',
+    '  --targets                 snapshot only: read target paths from stdin, one per',
+    '                            line, and watch everything at or beneath each one',
+    '                            whatever its ignore status. verify then reports a',
+    '                            created, modified, or removed target as a change.',
     '  --snapshot <ref|n/a>      Reference returned by snapshot, or the literal n/a.',
     '  --json                    Emit the report as JSON on stdout.',
     '  --cwd <dir>               Project root to check (default: cwd).',
@@ -251,12 +294,13 @@ function usage() {
 }
 
 function parseArgs(argv) {
-  const opts = { command: null, positional: [], json: false, cwd: null, snapshot: null, help: false };
+  const opts = { command: null, positional: [], json: false, cwd: null, snapshot: null, targets: false, help: false };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === '--json') opts.json = true;
     else if (arg === '--cwd') opts.cwd = argv[++i];
     else if (arg === '--snapshot') opts.snapshot = argv[++i];
+    else if (arg === '--targets') opts.targets = true;
     else if (arg === '--help' || arg === '-h') opts.help = true;
     else if (arg.startsWith('--')) return { error: `unknown flag: ${arg}` };
     else if (opts.command === null) opts.command = arg;
@@ -312,6 +356,10 @@ function main(argv, stdinText) {
     process.stderr.write(`snapshot does not accept --snapshot\n${usage()}\n`);
     return 2;
   }
+  if (opts.command === 'verify' && opts.targets) {
+    process.stderr.write(`verify does not accept --targets\n${usage()}\n`);
+    return 2;
+  }
   if (opts.command === 'verify') {
     if (opts.snapshot === null || opts.snapshot === undefined) {
       process.stderr.write(`verify requires --snapshot <ref|n/a>\n${usage()}\n`);
@@ -330,9 +378,10 @@ function main(argv, stdinText) {
   }
 
   try {
+    const input = () => (stdinText === undefined ? readStdin() : stdinText);
     const payload = opts.command === 'snapshot'
-      ? snapshot(cwd)
-      : verify(opts.snapshot, stdinText === undefined ? readStdin() : stdinText, cwd);
+      ? snapshot(cwd, opts.targets ? parseTargets(input()) : [])
+      : verify(opts.snapshot, input(), cwd);
     render(payload, opts.json);
     return payload.verdict === 'mismatch' ? 1 : 0;
   } catch (err) {
@@ -345,4 +394,4 @@ if (require.main === module) {
   process.exitCode = main(process.argv.slice(2));
 }
 
-module.exports = { main, snapshot, verify, parseLists, within, usage, N_A, REF_RE, SEPARATOR };
+module.exports = { main, snapshot, verify, parseLists, parseTargets, within, usage, N_A, REF_RE, SEPARATOR };

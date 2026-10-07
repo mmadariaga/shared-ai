@@ -28,6 +28,6 @@ Give one task per spawn: what to do, the files or area it covers, and, when you 
 
 ## Task contract
 
-The agent fetches `@sai/policies/budget-agent.md`, which owns single-task scope, the result shape (the task's own when it defines one, else the structured completion report), bounded output, permission-block aborts, no self-correction, and the approximately 30-call soft limit.
+The agent fetches `@sai/policies/budget-agent.md`, which owns single-task scope, the result shape (the task's own when it defines one, else the structured completion report), bounded output, permission-block aborts, the completion criterion (result achieved or call cap reached, reporting what was tried), and the approximately 30-call soft limit.
 
 Fetch @sai/policies/budget-agent.md

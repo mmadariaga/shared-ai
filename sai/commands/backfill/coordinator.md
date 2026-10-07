@@ -196,9 +196,10 @@
   Forward only the byte-for-byte draft content and paths already returned by
   preparation; do not add new content or an unvalidated path. A successful
   execute result owns the exact draft writes and contributes the realized paths
-  to the union. A failed or cancelled execute result is terminal for this route: the
-  coordinator reports the worker's concrete partial state, never silently
-  retries or sends a second execute continuation, and never falls back to
+  to the union. A failed or cancelled execute result follows
+  `@sai/policies/unattended-runtime-recovery.md` § Execute orders: a new order
+  is issued only after the no-effect check passes; otherwise the coordinator
+  reports the worker's concrete partial state and stops. It never falls back to
   coordinator-side writes.
 
   ## Content assignment

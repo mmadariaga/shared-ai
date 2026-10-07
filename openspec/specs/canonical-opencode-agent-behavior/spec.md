@@ -2,7 +2,9 @@
 
 ## Purpose
 Single-source the behavior of the three generic agent roles (explorer, executor, budget subagent) in harness-neutral `sai/policies/*-agent.md` files that the agents of both supported harnesses fetch.
+
 ## Requirements
+
 ### Requirement: Canonical generic-agent behavior policies
 The repository SHALL provide behavior-only policy files at `sai/policies/budget-agent.md`, `sai/policies/executor-agent.md`, and `sai/policies/explore-agent.md`. Each file SHALL be the canonical source for the behavior of the correspondingly named generic-agent role of either supported harness — the opencode agents `agents/opencode/{explore,executor,budget}.md` and the Claude agents `agents/claude/{budget-explorer,budget-executor,budget-subagent}.md` — SHALL be independently fetchable through the `sai/policies/` namespace, and SHALL contain no agent frontmatter, model selection, installer logic, native harness import, or harness-specific registration.
 
@@ -22,7 +24,7 @@ The repository SHALL provide behavior-only policy files at `sai/policies/budget-
 - **THEN** it resolves its behavior from the same-named `sai/policies/` policy that the corresponding opencode role resolves
 
 ### Requirement: Budget behavior remains canonical
-The budget policy SHALL preserve the cost-controlled single-task contract: execute exactly one requested task, do not expand scope or self-correct after failure, minimize output, return the task's own result shape when the task defines one and otherwise the structured completion fields `status`, `actions_taken`, optional `failures`, and optional `output`, abort on an interactive permission block with a failed result, and stop after approximately 30 tool calls rather than expanding the task.
+The budget policy SHALL preserve the cost-controlled single-task contract: execute exactly one requested task, do not expand scope, treat the task as done when its result is achieved or the call cap is reached, change approach inside the same task after a failed operation, report what was tried, minimize output, return the task's own result shape when the task defines one and otherwise the structured completion fields `status`, `actions_taken`, optional `failures`, and optional `output`, abort on an interactive permission block with a failed result, and stop after approximately 30 tool calls rather than expanding the task.
 
 #### Scenario: budget work completes within the contract
 - **WHEN** the budget agent receives one file-operation, search, write, or code-analysis task without an interactive permission block
@@ -35,6 +37,10 @@ The budget policy SHALL preserve the cost-controlled single-task contract: execu
 - **THEN** the budget behavior stops immediately
 - **AND** it returns a failed result identifying the blocked operation and required permission
 - **AND** it does not wait or retry
+
+#### Scenario: budget work meets a failed operation
+- **WHEN** an operation fails before the result is achieved and the call cap is not reached
+- **THEN** the budget agent changes approach inside the same task and reports what was tried
 
 ### Requirement: Executor behavior remains canonical
 The executor policy SHALL preserve the execute-only command-runner contract: run exactly the requested command, do not retry or self-correct after failure, prefer narrow and low-output commands, run independent requested commands in parallel, and report failures with the exit code, one-line reason, and exact file and line locations when applicable. Test or build runs SHALL additionally report pass/fail tallies and per-failure details.
@@ -126,4 +132,3 @@ Each generic agent source of both harnesses SHALL retain its managed frontmatter
 - **THEN** the Fetch line remains present and still targets the canonical `sai/policies/<name>-agent.md` policy
 - **AND** the appended project-specific instructions remain intact after the Fetch line
 - **AND** the selected `model` and `effort` values remain unchanged
-

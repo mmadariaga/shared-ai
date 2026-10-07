@@ -134,3 +134,12 @@ This bounded restoration SHALL not restore working-tree bytes, capture another b
 #### Scenario: Unrelated content changed before restoration
 - **WHEN** initial unrelated content no longer equals the baseline
 - **THEN** restoration stops without rewriting that content or recapturing the baseline
+
+### Requirement: A recovery hand-off to the budget agent opens its own guard window
+
+A recovery hand-off to the budget agent, as defined by `sai/policies/unattended-runtime-recovery.md`, SHALL always open its own guard window and SHALL never carry `allow_commit`: the coordinator SHALL run a normal `verify` on any running window immediately before the hand-off, take a fresh `snapshot`, and run a normal `verify` when the agent's report returns, before acting on it.
+
+#### Scenario: a hand-off is isolated from the running window
+
+- **WHEN** the coordinator is about to hand a failed step off to the budget agent while a guard window is running
+- **THEN** it closes the running window with a normal `verify`, opens a fresh window from a new `snapshot`, and verifies that window without `--allow-commit` when the report returns

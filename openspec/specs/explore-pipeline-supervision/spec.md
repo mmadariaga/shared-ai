@@ -309,22 +309,27 @@ After a successful slice completion, explore SHALL preserve completed progress s
 
 ### Requirement: Direct Build - Unattended run state and failure handling
 
-Direct Build slice inventory (`set` / `active` / `done`) and TODO (`mode` plus `stage` cursor) SHALL be owned by `explore-slice@1` in sidecar-owned state. Remaining Direct Build run state SHALL remain conversation-only and SHALL preserve the fixed worker order, execution boundaries, owned-path staging, and pre-authorized local commit. A backfill execution failure with a partial mutation SHALL report the exact draft paths written before stopping and SHALL never refire any order onto the partially mutated state. An archive preparation or execution failure evaluated as a backfill-artifact error SHALL route the verbatim error to the same backfill worker that created those specs for correction and SHALL relaunch archive with the corrected artifacts. A repeated defect reported without progress after correction SHALL close as failed-retryable with the verbatim failure in view and no further automatic continuation. A late continuation after success SHALL be rejected without mutation. Repeated-defect and partial-mutation closures SHALL carry no finality and SHALL run new retries or changes only at explicit user request. An archive preparation or execution failure that is not a backfill-artifact error SHALL report the exact CLI, staging, or commit state and SHALL never commit a partial plan. CLI failure or invalid JSON that is not a backfill-artifact error SHALL stop before staging and commit. A backfill or archive worker failure before its closed order completes SHALL be evaluated by the resilience rule first, and the run SHALL stop only when the rule answers no; the one-shot limits above SHALL remain unchanged, so a sent execution order is never replayed and a partial mutation is never refired. Manual `/sai-archive` and `/sai-commit` guidance remains applicable after a non-clean archive outcome. Incomplete Archive SHALL NOT mark the slice done.
+Direct Build slice inventory (`set` / `active` / `done`) and TODO (`mode` plus `stage` cursor) SHALL be owned by `explore-slice@1` in sidecar-owned state. Remaining Direct Build run state SHALL remain conversation-only, SHALL include `order_snapshot` (the no-effect reference for the execute order in flight) and the attempt counters `diagnosis_rounds.direct_build` with the keys `direct-build`, `backfill`, and `archive`, and SHALL preserve the fixed worker order, execution boundaries, owned-path staging, and pre-authorized local commit. Every segment SHALL apply Bounded Recovery for the diagnosis record and its Cause Locus. Recovery itself — which agent corrects, the hand-off, the attempts, a failed execute order, and the stop — SHALL follow `sai/policies/unattended-runtime-recovery.md`. A backfill or archive worker failure SHALL be evaluated by the resilience rule first, and the run SHALL stop only when the rule answers no. A stop SHALL report the exact draft paths written or the exact CLI, staging, or commit state, and a partial plan SHALL never be committed. A failed execute order SHALL be issued again only after the no-effect check verifies that it changed nothing; no order SHALL be issued onto a completed, partial, or unknown state. A late continuation after success SHALL be rejected without mutation. A stopped slice SHALL carry no finality and SHALL run new retries or changes only at explicit user request. Manual `/sai-backfill`, `/sai-archive`, and `/sai-commit` guidance SHALL be reported as applicable. Incomplete Archive SHALL NOT mark the slice done.
 
 #### Scenario: Archive failure stops the unattended flow
 
-- **WHEN** the archive worker reports a CLI, staging, message-authoring, or commit failure
-- **THEN** the flow preserves the exact partial state, performs no retry or later mutation, and does not mark the slice complete
+- **WHEN** the archive worker reports a CLI, staging, message-authoring, or commit failure and the resilience rule answers no
+- **THEN** the flow preserves and reports the exact state, issues no order onto it, and does not mark the slice complete
 
 #### Scenario: Hands-worker failure stops clean
 
 - **WHEN** the backfill or archive worker returns a failure before completing its closed order and the resilience rule answers no
-- **THEN** the run stops before the next mutation stage, never replays a sent execution order, and manual `/sai-archive` and `/sai-commit` guidance is reported
+- **THEN** the run stops before the next mutation stage and manual `/sai-archive` and `/sai-commit` guidance is reported
 
 #### Scenario: Backfill partial-mutation failure stops before archive
 
 - **WHEN** the backfill worker reports an execution failure with a partial mutation
-- **THEN** the flow SHALL preserve the exact draft paths written and never refire any order onto the partially mutated state
+- **THEN** the flow SHALL preserve and report the exact draft paths written and issue no order onto the partially mutated state
+
+#### Scenario: A failed order without effect is corrected and issued again
+
+- **WHEN** a backfill or archive execute order fails, the no-effect check verifies that it changed nothing, and the scope has an attempt left
+- **THEN** the route corrects the cause through the recovery path and issues a new order to the step's owner
 
 ### Requirement: Direct Build - Unattended pre-dispatch compatibility refusal
 
@@ -385,7 +390,7 @@ The Direct Build - Unattended route's step-4 spec review SHALL run a MODIFIED-de
 
 ### Requirement: The Direct Build run has three guard windows
 
-Every dispatch of a Direct Build (unattended) run SHALL be guarded by the deterministic no-commit guard, in three windows: (1) the implementer window, opened by the Step 1 snapshot whose head is recorded as BOTH `base_sha` and the window's `guard_base`, verified after the implementer stretch closes — the fix loop converged or the cap exhausted, and the Step 2b suite gate green, skipped, or stopped — and before the Step 3 staging, or before the stop report when the suite gate stops the route; (2) the backfill window, opened by a fresh snapshot immediately before the Step 3 prepare dispatch — taken after the path-scoped staging, so the coordinator's `git add` runs outside every window — spanning the findings and execute continuations with no guard call between them, and verified after the Step 6 execute terminal before acting on it; (3) the archive window, opened by a fresh snapshot immediately before the Step 7 prepare dispatch and closed by a normal verify immediately before the Step 8 execute continuation, which carries `allow_commit` and therefore always opens its own isolated window from a fresh snapshot, verified with `--allow-commit` over that window only, because that continuation's validated closed order contains the one pre-authorized local commit. Progress events and notices inside a window SHALL take no guard call; a human turn inside any window (an escalated question) SHALL be a boundary per the no-commit-guard policy: verify before presenting it and snapshot again after the answer, before forwarding it. On a `violation` verdict the coordinator remediates exactly as the no-commit-guard policy prescribes, then continues the route.
+Every dispatch of a Direct Build (unattended) run SHALL be guarded by the deterministic no-commit guard, in three windows: (1) the implementer window, opened by the Step 1 snapshot whose head is recorded as BOTH `base_sha` and the window's `guard_base`, verified after the implementer stretch closes — the fix loop converged or the cap exhausted, and the Step 2b suite gate green, skipped, or stopped — and before the Step 3 staging, or before the stop report when the suite gate stops the route; (2) the backfill window, opened by a fresh snapshot immediately before the Step 3 prepare dispatch — taken after the path-scoped staging, so the coordinator's `git add` runs outside every window — spanning the findings and execute continuations with no guard call between them, and verified after the Step 6 execute terminal before acting on it; (3) the archive window, opened by a fresh snapshot immediately before the Step 7 prepare dispatch and closed by a normal verify immediately before the Step 8 execute continuation, which carries `allow_commit` and therefore always opens its own isolated window from a fresh snapshot, verified with `--allow-commit` over that window only, because that continuation's validated closed order contains the one pre-authorized local commit. Progress events and notices inside a window SHALL take no guard call; a human turn inside any window (an escalated question) SHALL be a boundary per the no-commit-guard policy: verify before presenting it and snapshot again after the answer, before forwarding it. A recovery hand-off to the budget agent SHALL take its own window per the no-commit-guard policy's recovery hand-off isolation. On a `violation` verdict the coordinator remediates exactly as the no-commit-guard policy prescribes, then continues the route.
 
 #### Scenario: the backfill prepare window opens after staging
 
@@ -412,6 +417,11 @@ Every dispatch of a Direct Build (unattended) run SHALL be guarded by the determ
 - **WHEN** the Step 2b suite gate ends green, skipped, or stopped
 - **THEN** the implementer window is verified once, before the Step 3 staging or before the stop report
 
+#### Scenario: a recovery hand-off takes its own window
+
+- **WHEN** the coordinator hands a failed step off to the budget agent during the run
+- **THEN** the hand-off runs in its own guard window without `allow_commit`
+
 ### Requirement: Direct Build slice-machine emits
 
 After a valid native picker answer for `Direct Build - Unattended` activates `route-choice`, Explore SHALL emit intent `direct-build` with no slice name and no pick to `explore-slice@1`; the machine starts only the first pending slice. On an automatically authorized start after a clean Direct Build finish, Explore SHALL instead emit intent `auto-continue`, with no slice name and no pick, only when the authoritative continuation resolves to `auto_continue`. If the response carries rejected `ALREADY_RUNNING`, including when Plan is already active, Explore SHALL acknowledge already running and dispatch nothing. If it carries rejected `PARKED_IN_OTHER_MODE`, Explore SHALL acknowledge that the first pending slice resumes only in its parked mode, with no later slice bypass or dispatch. If it carries rejected `NO_PENDING_SLICE`, Explore SHALL distinguish empty from exhausted inventory, dispatch nothing, and prompt block-first when the inventory is empty. After each high-level route item converges (Build/Implement, then Backfill, then Archive), Explore SHALL emit intent `complete`. Completing Archive is the machine done signal. Direct Build SHALL never emit `next-slice`. Every retryable non-clean ending SHALL emit intent `fail` without starting a later slice.
@@ -433,17 +443,17 @@ After a valid native picker answer for `Direct Build - Unattended` activates `ro
 
 ### Requirement: Direct Build archive failure correction routing
 
-The supervision SHALL evaluate an archive preparation or execution failure as a backfill-artifact error when the verbatim CLI error grounds in backfill drafts, SHALL route the verbatim error to the same backfill worker that created those specs for correction, and SHALL relaunch archive with the corrected artifacts. A repeated defect reported without progress after correction SHALL close as failed-retryable with the verbatim failure in view and no further automatic continuation. A late continuation after success SHALL be rejected without mutation. Repeated-defect and partial-mutation closures SHALL carry no finality and SHALL run new retries or changes only at explicit user request. An archive preparation or execution failure that is not a backfill-artifact error SHALL report the exact CLI, staging, or commit state and SHALL never commit a partial plan. Manual backfill, archive, and commit guidance SHALL be reported as applicable.
+The supervision SHALL route an archive preparation or execution failure through `sai/policies/unattended-runtime-recovery.md`: the coordinator continues the current subagent or hands off to the budget agent, within the three attempts of the `archive` scope. Before the Step 6 backfill execute continuation and before the Step 8 archive execute continuation, the coordinator SHALL take the `order_snapshot`. A failed execute order SHALL be issued again only under the policy's execute-order rule. A late continuation after success SHALL be rejected without mutation. A stop SHALL report the exact CLI, staging, or commit state and SHALL never commit a partial plan. A stopped slice SHALL carry no finality and SHALL run new retries or changes only at explicit user request. Manual backfill, archive, and commit guidance SHALL be reported as applicable.
 
 #### Scenario: Backfill-artifact archive failure relaunches after correction
 
-- **WHEN** an archive preparation or execution failure is evaluated as a backfill-artifact error
-- **THEN** the supervision SHALL route the verbatim error to the same backfill worker for correction and relaunch archive with the corrected artifacts
+- **WHEN** an archive execution fails on a backfill-artifact error, the no-effect check verifies that the order changed nothing, and the cause is corrected through the recovery path
+- **THEN** the supervision SHALL issue a new archive execute order with the corrected artifacts
 
 #### Scenario: Repeated defect without progress closes as failed-retryable
 
-- **WHEN** the same defect is reported without progress after correction
-- **THEN** the supervision SHALL close as failed-retryable with the verbatim failure in view and no further automatic continuation
+- **WHEN** the same diagnosis repeats after a correction or the three attempts are spent
+- **THEN** the supervision SHALL stop with the policy's stop notice and the verbatim failure in view, and the slice stays retryable at explicit user request
 
 ### Requirement: Plan slice-machine emits
 
@@ -479,7 +489,7 @@ The Plan - Unattended route SHALL load `sai/policies/unattended-runtime-recovery
 
 ### Requirement: Direct Build - Unattended activates the policy only for the full route
 
-The Direct Build - Unattended route SHALL load `sai/policies/unattended-runtime-recovery.md` only for the full `direct-build-unattended` flow and apply its resilience rule to every non-clean outcome after dispatch/startup handling, payload validation, and accepted-result Bounded Recovery. Where a step says to stop on a failure, the route SHALL stop only when the rule answers no, and it SHALL never use the rule to replay an execution order. The pinned `--no-specs` POC profile SHALL remain outside this policy.
+The Direct Build - Unattended route SHALL load `sai/policies/unattended-runtime-recovery.md` only for the full `direct-build-unattended` flow and apply its resilience rule to every non-clean outcome after dispatch/startup handling, payload validation, and accepted-result Bounded Recovery. Where a step says to stop on a failure, the route SHALL stop only when the rule answers no, and it SHALL issue an execute order again only under the policy's execute-order rule. The pinned `--no-specs` POC profile SHALL remain outside this policy.
 
 #### Scenario: Full Direct Build reaches runtime recovery
 
@@ -507,17 +517,17 @@ During Direct Build Steps 1–2, `sai-direct-build-worker` SHALL accept the poli
 
 ### Requirement: Direct Build mutation workers retain one-shot order boundaries
 
-Direct Build backfill and archive workers SHALL retain their role-specific validated preparation and execution contracts. Runtime recovery SHALL not create, alter, resend, or replay a backfill draft order or archive, staging, or commit operation over partial or unknown effects; a valid named backfill-artifact failure SHALL continue to use only the existing backfill correction and archive relaunch path.
+Direct Build backfill and archive workers SHALL retain their role-specific validated preparation and execution contracts. A successful order SHALL be consumed and never issued again. A new backfill draft order or archive order SHALL be issued only after the previous order failed and the no-effect check verified that it changed nothing; an order SHALL never be issued over completed, partial, or unknown effects. A backfill-artifact failure SHALL be corrected through the recovery path of `sai/policies/unattended-runtime-recovery.md`.
 
 #### Scenario: Archive mutation is incomplete
 
 - **WHEN** an archive preparation or execution order has partial or unknown mutation state
-- **THEN** the route reports the exact state and does not refire the order through runtime recovery
+- **THEN** the route reports the exact state and issues no new order
 
 #### Scenario: Backfill-artifact correction remains route-owned
 
 - **WHEN** a valid archive failure is identified as a backfill-artifact error
-- **THEN** the route forwards it through the existing backfill correction and archive relaunch path rather than the generic runtime-repair note
+- **THEN** the route corrects it through the recovery path, continuing the current subagent or handing off to the budget agent
 
 ### Requirement: Unattended runtime recovery preserves route gates
 

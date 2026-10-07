@@ -19,6 +19,7 @@ candidate wins:
 
 ```
 node <tool-path> snapshot --json --cwd <project-root>
+node <tool-path> snapshot --targets --json --cwd <project-root>
 node <tool-path> verify --snapshot <slice_snapshot> --json --cwd <project-root>
 ```
 
@@ -51,3 +52,31 @@ those paths to its owned paths and verify again.
 
 On an `n/a` verdict, print one conversation line naming `reason` and send the
 order.
+
+## Foreign changes
+
+After a recovery attempt, run `verify` with `slice_snapshot` and the slice
+paths, without a covering list. An empty `foreign` means every change since
+the slice started lies on the slice paths. A path in `foreign` is a repository
+file foreign to the slice that changed: the caller reports those exact paths.
+
+## No-effect check
+
+This check proves that a failed execute order changed nothing. Immediately
+before sending the order, take a `snapshot --targets`, with the order's
+**target paths** on standard input, one per line, and hold its reference as
+`order_snapshot`, conversation state like `slice_snapshot`. The target paths
+are every path the order may create, modify, move, or remove: each path it
+writes or stages, each directory it moves from and to, and each synced spec.
+The tool watches a target straight from the file system, whatever its
+git-ignore status, so list them all: a path left off the list is covered only
+while git reports it.
+
+When the order fails, run `verify` with `order_snapshot` and an empty standard
+input: with no slice paths, every change since that snapshot — a target
+created, modified, or removed, the working tree, the index, or HEAD — lands in
+`foreign`.
+
+- `clean` — the order had no effect.
+- `mismatch` — the order had an effect; `foreign` names it.
+- `n/a` — the effect is unknown.

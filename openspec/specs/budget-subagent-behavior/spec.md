@@ -5,6 +5,7 @@
 Define the harness-neutral behavior of the single-task budget subagent, single-sourced in `sai/policies/budget-agent.md` and fetched by the budget agent files and budget-subagent skills of both supported harnesses.
 
 ## Requirements
+
 ### Requirement: single-task scope
 The policy SHALL open by addressing the budget subagent as a single-task subagent, so a caller session that loads it reads the rules as the subagent's contract rather than its own. The subagent SHALL carry out exactly one task as the prompt describes it. Improvements, refactors, and related issues it notices stay with the caller, and the report leaves them out.
 
@@ -37,21 +38,19 @@ When the task defines no result shape, the subagent SHALL return:
       - <what failed>: <why, in one line>
     output: <key result, when small enough to inline>
 
-`failures` is omitted when nothing failed, and `output` when there is no result or it is too large to inline. `success` means the task is done; `partial` means the subagent stopped with part of the task done, after a failure or at the call cap, and `failures` names the failure or lists the remaining work; `failed` means the task could not proceed or a permission block stopped it.
+`failures` is omitted when nothing failed, and `output` when there is no result or it is too large to inline. `success` means the result is achieved; `partial` means the call cap arrived with part of the result achieved, and `failures` lists the remaining work; `failed` means the call cap arrived with nothing achieved, or a permission block stopped the task. `actions_taken` and `failures` together SHALL report what was tried: every approach, and how each one ended.
 
 #### Scenario: success report
-- **WHEN** the task completes without errors
-- **THEN** the report has `status: success`, a populated `actions_taken` list, no `failures` section, and an optional `output` field
+- **WHEN** the result is achieved
+- **THEN** the report has `status: success`, a populated `actions_taken` list, and an optional `output` field
 
 #### Scenario: partial completion report
-- **WHEN** some actions took effect before a failure stopped the task
-- **THEN** the report has `status: partial`, lists the completed actions in `actions_taken`, and names the failure in `failures`
+- **WHEN** the call cap arrives with part of the result achieved
+- **THEN** the report has `status: partial`, lists the completed actions in `actions_taken`, and lists the remaining work in `failures`
 
 #### Scenario: failure report
-- **WHEN** the task cannot proceed
+- **WHEN** the call cap arrives with nothing achieved or a permission block stops the task
 - **THEN** the report has `status: failed`, an `actions_taken` list reflecting what was attempted, and a populated `failures` section
-
----
 
 ### Requirement: bounded output
 The report SHALL carry the key result, with raw file contents, unfiltered search results, and log streams left out.
@@ -59,15 +58,6 @@ The report SHALL carry the key result, with raw file contents, unfiltered search
 #### Scenario: large file content suppressed
 - **WHEN** the task requires reading a 500-line file to extract a specific value
 - **THEN** the report contains only the extracted value, not the file contents
-
----
-
-### Requirement: no self-correction on failure
-A failed operation SHALL end the task: the subagent reports it as it is, with no retry, workaround, or change of approach.
-
-#### Scenario: read failure stops the task
-- **WHEN** a file read fails (e.g., file not found)
-- **THEN** the subagent reports the failure without trying alternative paths or retrying
 
 ---
 
@@ -81,8 +71,15 @@ When a tool call needs interactive user approval, the subagent SHALL abort at on
 ---
 
 ### Requirement: tool-call soft cap
-The subagent SHALL use at most about 30 tool calls. When the task is not done by then, it SHALL stop and report `partial` with the remaining work.
+The subagent SHALL use at most about 30 tool calls. When the result is not achieved by then, it SHALL stop and report what was tried and the remaining work.
 
 #### Scenario: cap triggers partial report
-- **WHEN** about 30 tool calls have been made and the task is not yet complete
-- **THEN** the subagent stops, reports `partial`, lists completed actions, and describes the remaining work
+- **WHEN** about 30 tool calls have been made and the result is not yet achieved
+- **THEN** the subagent stops and reports what was tried, the completed actions, and the remaining work
+
+### Requirement: completion criterion
+The task SHALL be done when its result is achieved or the call cap is reached. A failed operation SHALL be evidence: the subagent changes approach inside the same task and keeps going.
+
+#### Scenario: read failure leads to another approach
+- **WHEN** a file read fails (e.g., file not found) and the call cap is not reached
+- **THEN** the subagent changes approach inside the same task and continues toward the result

@@ -63,8 +63,8 @@ the ordinary route.
 
 ## Direct Build (unattended) execute continuation
 
-The coordinator validates the prepared plan and continues this worker once
-with an opaque payload whose first line is exactly `--direct-build-execute`.
+The coordinator validates the prepared plan and continues this worker with an
+opaque payload whose first line is exactly `--direct-build-execute`.
 The rest is a **closed execution order**, the only authority for mutation. It
 may contain only the resolved change name, the retirement declaration with the
 capabilities it retires, the exact date-prefixed archive destination, the exact
@@ -91,9 +91,8 @@ Execute exactly this order:
    step 1 does not run.
 1. **CLI archive** — `openspec archive <name> --yes --json`, the sole sync and
    move primitive. On failure or invalid JSON, return `failed` with the exact
-   error; there is no manual fallback and no retry here. A backfill-artifact
-   error is returned verbatim for the Direct Build supervision contract to
-   correct and relaunch.
+   error, verbatim, and end the order there; recovery belongs to the
+   coordinator.
 2. **Staging** — classify every approved path before staging any. A path is
    tracked (including a tracked deletion) when
    `git ls-files --error-unmatch -- <path>` succeeds, untracked on its exit 1,
@@ -118,7 +117,10 @@ The summary names every retired capability, as the prepare summary does.
 Record each realized path in `changed_files`, taking spec paths from the
 pre-flight inventory (the CLI's `specsUpdated` is not a path list). A
 successful execution consumes the order: any later execute continuation or
-replacement is rejected without mutation. A failure after a partial mutation
-returns `failed` with the exact completed state and failure class, setting
-`unrecoverable: true` only when the evidence shows continuing is unsafe; it
-never retries, continues to another action, or commits a partial plan.
+replacement is rejected without mutation. A failed order returns `failed` with
+the exact completed state and failure class, setting `unrecoverable: true`
+only when the evidence shows continuing is unsafe, and ends there: the worker
+leaves the state as it is for the coordinator to verify. A new execute order is
+accepted only after an order that failed before its first mutation; the
+coordinator issues one under `@sai/policies/unattended-runtime-recovery.md`
+§ Execute orders, and it is validated like the first.

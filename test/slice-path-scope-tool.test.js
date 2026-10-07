@@ -161,6 +161,156 @@ test('staging and committing since the snapshot are detected as changes', () => 
   }
 });
 
+/** A repository that ignores its change directories, like an order's draft targets. */
+function makeRepoIgnoringChanges() {
+  const root = makeRepo();
+  write(root, '.gitignore', 'openspec/changes/\n');
+  git(root, ['add', '.gitignore']);
+  git(root, ['commit', '-q', '-m', 'ignore change directories']);
+  write(root, 'openspec/changes/demo/proposal.md', 'proposal\n');
+  return root;
+}
+
+const NO_EFFECT_TARGETS = 'openspec/changes/demo\nopenspec/changes/archive/2026-01-01-demo\n';
+
+function orderSnapshot(root, targets = NO_EFFECT_TARGETS) {
+  const result = tool(['snapshot', '--targets', '--json', '--cwd', root], REPO_ROOT, targets);
+  assert.equal(result.status, 0);
+  assert.equal(result.payload.verdict, 'clean');
+  return result.payload;
+}
+
+function noEffect(root, ref) {
+  return tool(['verify', '--snapshot', ref, '--json', '--cwd', root], REPO_ROOT, '');
+}
+
+test('an ignored target left untouched verifies clean: the order had no effect (E6)', () => {
+  const root = makeRepoIgnoringChanges();
+  try {
+    const taken = orderSnapshot(root);
+    assert.deepEqual(taken.targets, ['openspec/changes/demo', 'openspec/changes/archive/2026-01-01-demo']);
+    assert.ok(!taken.modified.some((name) => name.startsWith('openspec/')), 'git status hides the ignored targets');
+    const result = noEffect(root, taken.snapshot);
+    assert.equal(result.status, 0);
+    assert.equal(result.payload.verdict, 'clean');
+    assert.deepEqual(result.payload.foreign, []);
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('creating an ignored target path is never a no-effect verdict (E6)', () => {
+  const root = makeRepoIgnoringChanges();
+  try {
+    const { snapshot: ref } = orderSnapshot(root);
+    write(root, 'openspec/changes/demo/specs/cap/spec.md', 'spec\n');
+    assert.equal(gitStatus(root), ' M notes.txt\n', 'git status does not see the ignored write');
+    const result = noEffect(root, ref);
+    assert.equal(result.status, 1);
+    assert.equal(result.payload.verdict, 'mismatch');
+    assert.ok(result.payload.foreign.includes('openspec/changes/demo/specs/cap/spec.md'));
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('modifying or removing an ignored target path is never a no-effect verdict (E6)', () => {
+  const root = makeRepoIgnoringChanges();
+  try {
+    const { snapshot: ref } = orderSnapshot(root);
+    write(root, 'openspec/changes/demo/proposal.md', 'proposal rewritten\n');
+    let result = noEffect(root, ref);
+    assert.equal(result.payload.verdict, 'mismatch');
+    assert.deepEqual(result.payload.foreign, ['openspec/changes/demo/proposal.md']);
+
+    write(root, 'openspec/changes/demo/proposal.md', 'proposal\n');
+    assert.equal(noEffect(root, ref).payload.verdict, 'clean', 'restored content is no effect again');
+
+    fs.rmSync(path.join(root, 'openspec/changes/demo/proposal.md'));
+    result = noEffect(root, ref);
+    assert.equal(result.status, 1);
+    assert.deepEqual(result.payload.foreign, ['openspec/changes/demo/proposal.md']);
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('moving an ignored change directory into an ignored archive destination is detected (E6)', () => {
+  const root = makeRepoIgnoringChanges();
+  try {
+    const { snapshot: ref } = orderSnapshot(root);
+    fs.mkdirSync(path.join(root, 'openspec/changes/archive'), { recursive: true });
+    fs.renameSync(path.join(root, 'openspec/changes/demo'), path.join(root, 'openspec/changes/archive/2026-01-01-demo'));
+    const result = noEffect(root, ref);
+    assert.equal(result.payload.verdict, 'mismatch');
+    for (const name of [
+      'openspec/changes/demo',
+      'openspec/changes/demo/proposal.md',
+      'openspec/changes/archive/2026-01-01-demo',
+      'openspec/changes/archive/2026-01-01-demo/proposal.md',
+    ]) {
+      assert.ok(result.payload.foreign.includes(name), `the move must report ${name}`);
+    }
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('an empty directory created at an ignored target is detected (E6)', () => {
+  const root = makeRepoIgnoringChanges();
+  try {
+    const { snapshot: ref } = orderSnapshot(root);
+    fs.mkdirSync(path.join(root, 'openspec/changes/demo/specs/cap'), { recursive: true });
+    const result = noEffect(root, ref);
+    assert.equal(result.payload.verdict, 'mismatch');
+    assert.ok(result.payload.foreign.includes('openspec/changes/demo/specs/cap'));
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('without --targets an ignored write stays invisible, which is why the order snapshot lists its targets', () => {
+  const root = makeRepoIgnoringChanges();
+  try {
+    const { snapshot: ref } = tool(['snapshot', '--json', '--cwd', root], REPO_ROOT).payload;
+    write(root, 'openspec/changes/demo/specs/cap/spec.md', 'spec\n');
+    assert.equal(noEffect(root, ref).payload.verdict, 'clean');
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('a watched target counts as a slice path when the slice lists it', () => {
+  const root = makeRepoIgnoringChanges();
+  try {
+    const { snapshot: ref } = orderSnapshot(root);
+    write(root, 'openspec/changes/demo/specs/cap/spec.md', 'spec\n');
+    const result = tool(['verify', '--snapshot', ref, '--json', '--cwd', root], REPO_ROOT, 'openspec/changes/demo\n');
+    assert.equal(result.payload.verdict, 'clean');
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('--targets is a snapshot flag with repository-relative paths only', () => {
+  const root = makeRepo();
+  try {
+    assert.equal(tool(['verify', '--snapshot', N_A, '--targets', '--json', '--cwd', root], REPO_ROOT).status, 2);
+    assert.equal(tool(['snapshot', '--targets', '--json', '--cwd', root], REPO_ROOT, '../outside\n').status, 2);
+    assert.match(tool(['--help'], REPO_ROOT).stdout, /--targets/);
+  } finally {
+    cleanup(root);
+  }
+});
+
+test('the policy lists the order targets for the no-effect check', () => {
+  const policy = fs.readFileSync(POLICY, 'utf8').replace(/\r\n/g, '\n').replace(/\s+/g, ' ');
+  assert.match(policy, /node <tool-path> snapshot --targets --json --cwd <project-root>/);
+  assert.match(policy, /take a `snapshot --targets`, with the order's \*\*target paths\*\* on standard input/);
+  assert.match(policy, /every path the order may create, modify, move, or remove/);
+  assert.match(policy, /whatever its git-ignore status/);
+});
+
 test('verify with no change and no list is clean', () => {
   const root = makeRepo();
   try {
