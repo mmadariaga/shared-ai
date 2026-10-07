@@ -108,7 +108,7 @@ finalization          terminal              local commit succeeded, or operation
 `instructions.md`; finalization authority comes only from `coordinator.md`
 § Command-local authorization.
 
-`verification_result` is `unavailable` when no suite is detected. A clean integration never passes through `verification`.
+`verification_result` is `unavailable` when no suite is detected or the test command cannot start. A clean integration never passes through `verification`.
 
 The worker is dispatched on the first entry to `contextual-analysis`, or on
 the first `adr-ddr` whose collision receipt is `needs-judgment`, whichever

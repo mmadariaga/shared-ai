@@ -57,6 +57,30 @@ launches nothing.
 Choosing text entry pre-authorizes exactly one `git fetch --prune origin`
 (Step 3), never an integration.
 
+### Test command
+
+Fix `test_command` here, once, before Step 3. Every verification round of
+this run uses the value fixed here, whatever the integration later changes in
+the documentation. Take the first source that names an explicit command:
+
+1. `AGENTS.md` at the project root — use the copy in your context; read the
+   file only when it is not there.
+2. `README.md` at the project root — one read.
+3. Neither — `test_command: list`. Capture the marker list's outcome now:
+
+   ```text
+   node <merge-tool> suite --record <unique-external-file> --json --cwd <project-root>
+   ```
+
+   Keep the returned `record` and `record_hash`. The outcome in that record —
+   one command, or none with its reason — is the fixed value: a marker file
+   the integration adds or removes later does not change it.
+
+An explicit command is a test invocation written literally in the document,
+such as `npm test` or `dotnet test src/App.sln`; copy it exactly. A command
+you would have to infer is not explicit. A document that names several test
+commands, none clearly the general one, names none: take the next source.
+
 ### Step 3: Branch validation and provenance
 
 Derive `source_ref` yourself from the unmodified answer and pass it to git as
@@ -296,18 +320,27 @@ closed (declined strategy, review budget exhausted, launch failure).
 
 Runs after a conflict stop's resolution is staged. The stage facts are the
 `verify` receipt: the detected command, exit code, `verification_result`, and
-the reference/hash of the full output. One call detects the test command from
-project metadata and runs it; the record retains full stdout/stderr, and the
-returned view carries only their hashes and `output_ref`. A state change
-during the test invalidates a pass. The budget is three rounds per conflict
-stop; each actual test run uses one round, and validating a receipt is not a
-run.
+the reference/hash of the full output. One call runs the `test_command` fixed
+in preflight: pass an explicit command on the stage entry and on every later
+`verify` as `--command '<test_command>'`; with `list`, pass the suite record
+captured in preflight as `--suite <record> --suite-hash <record_hash>`. Every
+round carries one of the two, so no round detects the command again. The
+record retains full
+stdout/stderr, and the returned view carries only their hashes and
+`output_ref`. A state change during the test invalidates a pass. The budget is
+three rounds per conflict stop; each test run that started uses one round, and
+validating a receipt is not a run.
 
 ### Step 8: Verification loop
 
-- **`unavailable`** — no suite was detected. Print the no-suite notice from
+- **`unavailable`** — no suite was detected, or the command could not start.
+  `unavailable_reason` names which: `no-suite`, `ambiguous-suite` (several
+  .NET candidates, listed in `detail`), or `not-runnable` (the command failed
+  to start; `detail` holds the reason). Print the matching notice from
   the verification texts, record `verification_result: unavailable` before proceeding
-  unprompted, and continue. It is not a pass and not a question.
+  unprompted, and continue. It is not a pass and not a question. A
+  `not-runnable` result is not a failing test: it uses no round and starts no
+  test correction.
 - **`passed`** — record it and continue.
 - **Fail in round 1 or 2** — a failing test is a judgment point. Continue the
   worker with the `test-correction` pointer, the round number, the staged
