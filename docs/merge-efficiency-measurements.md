@@ -2,19 +2,86 @@
 
 ## What is measured
 
-The implementation reduces model-facing mechanical collection calls and
-initial instruction disclosure. It does not change models, reasoning effort,
-approval, semantic resolution, independent review, finalization ownership, or
-the three-round correction budgets. Both Claude Code and opencode use the
-same shared engine and their existing worker bindings.
+Two changes are measured here. The first moved mechanical collection into one
+deterministic engine and disclosed the worker's instructions per stage. The
+second moved the mechanical stages themselves from the worker to the
+coordinator: the coordinator calls the engine directly, and the worker is
+dispatched only at the first judgment point (a conflict, or decision records
+in collision).
 
-The reported approximately 22-minute single-conflict run, approximately
-11 seconds of worker tools, and approximately 11 seconds of tests are useful
-motivation, not a controlled baseline. Time outside tool execution does not
-identify reasoning, generation, or provider latency. No sub-five-minute
-threshold or end-to-end speedup is claimed here.
+Neither change alters models, reasoning effort, approval, semantic
+resolution, independent review, finalization ownership, or the three-round
+correction budgets. Both Claude Code and opencode use the same shared engine
+and their existing worker bindings.
+
+Models are configured per role by the user, so speed and price vary by
+project and provider. The comparable figures are **model turns, tool calls,
+and tokens per run**. Minutes are context only.
+
+## Same scenario, before and after the role split
+
+Scenario: one opencode run of `/sai-merge`, a rebase onto `origin/main`, one
+conflict stop, four conflicted files (three OpenSpec documents, one C# file),
+no decision-record collision.
+
+The **before** column is one observed run. The provider was unusually slow
+that day: the run took 132 min 51 s in total, 110 min 43 s of it in the
+worker. The **after** column is derived from the contract for the same
+scenario; it is not an observed run. No after-run has been traced yet, so the
+after token counts are unmeasured.
+
+| Metric | Before (observed) | After (contract-derived) |
+| --- | ---: | ---: |
+| Worker stretches (model sessions resumed) | 8: startup, preflight, detection, strategy, apply, verification, collision, closure | 3: startup, strategy, apply |
+| Worker stretches that only relayed tool output | 5 | 0 |
+| Merge-tool calls by the coordinator | not separated | 8: `enter preflight`, `provenance`, `enter conflicts`, `resolution` ×2, `enter verify`, `enter collision`, `enter final` |
+| Coordinator shell calls, all kinds | 40 | unmeasured |
+| Coordinator tokens (input / cache read / output) | 246,779 / 7,162,891 / 48,341 | unmeasured |
+| Worker tokens (input / cache read / output) | 3,233,311 / 1,731,712 / 26,450 | unmeasured |
+
+The eight merge-tool calls are the floor the contract defines for this
+scenario. The coordinator also runs its Git operations (fetch, launch,
+checkouts, staging, `git rebase --continue`), the no-commit guard around each
+worker stretch, and the validation of each worker result; those are not
+merge-tool calls and are part of the unmeasured total.
+
+A failed test round adds two worker stretches (`test-correction`, then
+`apply`). A decision-record collision that needs judgment adds one
+(`renumbering-plan`). A clean merge or rebase with no such collision
+dispatches no worker, where the previous contract resumed it for startup,
+preflight, the collision pass, and closure.
+
+The coordinator does more work than before, so its token count is expected to
+rise while the worker's falls. Whether the run total falls is an open
+question until a paired run is traced with the protocol below. To keep the
+moved work from relocating the cost, the coordinator no longer loads its
+whole instruction set at start:
+
+| Coordinator merge instructions | Before | After |
+| --- | ---: | ---: |
+| Loaded at start (bytes) | 54,423 | 26,736 |
+| `preflight` stage, on entry | — | 18,344 |
+| `conflicts` stage, on entry | — | 10,544 |
+| `verify` stage, on entry | — | 2,602 |
+| `collision` stage, on entry | — | 2,646 |
+| `final` stage, on entry | — | 5,476 |
+
+Before, the start load was `coordinator.md`, `presentation.md`,
+`lifecycle.md`, and `mechanics.md`. After, it is `coordinator.md`,
+`lifecycle.md`, and `mechanics.md`; the rest arrives with the stage that
+uses it. Shared policies fetched by both versions are excluded. Bytes are
+source volume, not billed tokens. A run that reaches every stage loads about
+66,000 bytes of coordinator instructions in total, more than before: the
+saving is in the stages a run does not reach and in the worker sessions it
+no longer resumes.
 
 ## Reproducible mechanical comparison
+
+An earlier reported run of approximately 22 minutes with one conflict,
+approximately 11 seconds of worker tools, and approximately 11 seconds of
+tests is useful motivation, not a controlled baseline. Time outside tool
+execution does not identify reasoning, generation, or provider latency. No
+sub-five-minute threshold or end-to-end speedup is claimed here.
 
 Run from the repository root:
 
@@ -41,8 +108,9 @@ Observed sample on Linux, Node `v26.10.0`, with baseline source at
 | Worker contract plus initial task-library bytes | 34,316 | 14,737 |
 | Human waiting / test execution / corrections | 0 / 0 / 0 | 0 / 0 / 0 |
 
-The initial worker/task disclosure is approximately **57% smaller**, and
-collection crosses four fewer model/tool boundaries. The deterministic
+That sample predates the role split. At that time the initial worker/task
+disclosure was approximately **57% smaller**, and collection crossed four
+fewer model/tool boundaries. The deterministic
 engine is approximately 51 ms **slower** in this small fixture because it
 collects verifiable state and checks for races. These measurements demonstrate
 instruction-volume and boundary-count improvements, not a wall-clock model
@@ -54,23 +122,25 @@ so committing this change or using a shallow checkout does not change the
 before-side volume. Changing the baseline requires an explicit new measurement
 and provenance update; the diagnostic identifies the retained baseline.
 
-Ordinary active-stage disclosure sizes in the measured implementation:
+Since the role split, the preflight call is the coordinator's, and the
+diagnostic's `after_instruction_bytes` is the worker's first disclosure: its
+`strategy` stage in the `--reconstruct` form.
 
-| Stage | Bytes |
-| --- | ---: |
-| preflight (includes common evidence rules once) | 9,474 |
-| detect | 2,012 |
-| strategy | 8,513 |
-| apply | 2,912 |
-| verify | 2,520 |
-| collision | 7,825 |
-| final | 2,423 |
+Worker stage disclosure sizes in the current implementation:
 
-Each stage is disclosed only when reached. A replacement uses `--reconstruct`
-to include the common rules; the same persistent worker retains previously
-loaded context. Cumulative volume is a separate metric from initial/current
-disclosure; splitting does not erase prior context or promise a lower total
-for a run that reaches every branch.
+| Stage | Bytes | With `--reconstruct` |
+| --- | ---: | ---: |
+| strategy | 11,523 | 14,033 |
+| apply | 2,912 | 7,996 |
+| test-correction | 1,738 | 6,822 |
+| renumbering-plan | 9,489 | 11,999 |
+
+Each stage is disclosed only when reached. The first task of a worker and of
+a replacement uses `--reconstruct`, which adds the common evidence rules, the
+side mapping, and the provenance definition; the same persistent worker
+retains previously loaded context afterwards. Cumulative volume is a separate
+metric from initial/current disclosure; splitting does not erase prior context
+or promise a lower total for a run that reaches every branch.
 
 ## Correctness evidence
 
@@ -81,8 +151,9 @@ unrelated writes, changed index/HEAD/operation state, malformed original
 envelopes, incomplete inventories, and changed external snapshots. It also
 checks safe stage materialization, post-staging correction boundaries, diff3/
 CRLF marker parsing, linked-worktree guards, unavailable/failed/passed tests,
-family-aware collision frontiers, active-only instruction disclosure, and both
-harness projections. The existing merge semantic, approval, presentation and
+family-aware collision frontiers, active-only instruction disclosure for both
+roles, composite stage entry, a clean route that needs no worker stage, and
+both harness projections. The existing merge semantic, approval, presentation and
 collision tests remain in the comparison suite.
 
 The full-suite baseline had 2,025 tests (2,021 passed, four skipped, zero
@@ -110,14 +181,16 @@ instructions automatically loaded by `/sai-merge`.
    partial Git failure. Use controlled test repositories, never live branches.
 3. Use the harness's recorded dispatch/tool events or an external observer.
    Collect run start/close, every human-wait interval, test intervals,
-   non-test tool intervals, model-facing call counts, dispatched/disclosed
+   non-test tool intervals, model turns and worker stretches per role,
+   model-facing call counts, dispatched/disclosed
    instruction bytes (and actual tokens when the harness exposes them),
    strategy revisions, review/verification corrections and final state.
    Workers do not author clocks or add time fields to lifecycle payloads.
 4. Record each raw trace at an exact reference and checksum. Emit a row with:
    `case`, `harness`, `revision`, `configuration`, `wall_ms`,
    `human_wait_ms`, `automatic_ms`, `test_ms`, `non_test_tool_ms`,
-   `outside_tool_ms`, `tool_calls`, `instruction_bytes`, `corrections`,
+   `outside_tool_ms`, `model_turns`, `worker_stretches`, `tool_calls`,
+   `tokens`, `instruction_bytes`, `corrections`,
    `correct_resolution`, `preserved_guarantees`, `trace_ref`.
    Automatic time excludes human waiting. For overlapping intervals use their
    union; outside-tool time is automatic time minus the union of all tool/test

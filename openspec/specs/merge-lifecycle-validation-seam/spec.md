@@ -25,7 +25,7 @@ Before selecting each merge operation, the coordinator SHALL call `validate_tran
 
 ### Requirement: Exhaustive permitted-transition table
 
-The permitted-transition table MUST list every transition a real run takes, including early closures to `terminal` from any state when the worker returns a closing result, re-entry from `resolution` or `verification` to `contextual-analysis` on a `strategy-analysis` event, the rebase cycle `verification` → `authorization` → `merge-outcome`, and the finished-rebase closure `adr-ddr` → `terminal` when nothing is staged.
+The permitted-transition table MUST list every transition a real run takes, including early closures to `terminal` from any state when the run closes early (in-progress guard, dirty refusal, branch-resolution failure, declined strategy, exhausted review budget, or launch failure), re-entry from `resolution` or `verification` to `contextual-analysis` on a `strategy-analysis` event, the rebase cycle `verification` → `authorization` → `merge-outcome`, and the finished-rebase closure `adr-ddr` → `terminal` when nothing is staged.
 
 #### Scenario: Clean integration follows the clean path
 
@@ -44,7 +44,7 @@ The permitted-transition table MUST list every transition a real run takes, incl
 
 #### Scenario: Declined strategy closes the run
 
-- **WHEN** the worker closes the run after `decline-strategy`
+- **WHEN** the run closes after `decline-strategy`
 - **THEN** the transition to `terminal` is valid and `commit_executed` stays false
 
 ### Requirement: Merge gate preconditions are explicit
@@ -64,3 +64,17 @@ The lifecycle validation seam SHALL remain neutral for Claude Code and opencode 
 
 - **WHEN** the merge flow reaches conflict analysis or a coordinator-owned mutation boundary
 - **THEN** the seam validates lifecycle state while the worker keeps analysis and the coordinator keeps every mutation
+
+### Requirement: Lifecycle states map to stages and owners
+
+The merge lifecycle seam SHALL assign every state to exactly one stage (`preflight`, `conflicts`, `verify`, `collision`, or `final`) and SHALL name who works in it: the coordinator and the merge tool in every stage, and the worker only for conflict analysis and writing, correction of a failed test round, and planning a `needs-judgment` collision result. The worker SHALL be dispatched on the first entry to `contextual-analysis` or on the first `adr-ddr` whose collision receipt is `needs-judgment`, whichever comes first, and every later judgment point SHALL continue that same worker.
+
+#### Scenario: Run without judgment reaches terminal with no worker
+
+- **WHEN** the launch is clean and the collision check needs no judgment
+- **THEN** the run reaches `terminal` with no worker dispatched
+
+#### Scenario: Conflicted outcome requires a captured snapshot
+
+- **WHEN** the current state is `merge-outcome` and the outcome is conflicted
+- **THEN** the transition to `language-selection` or `contextual-analysis` is valid only after the conflict snapshot is captured

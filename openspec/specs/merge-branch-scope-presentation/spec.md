@@ -7,7 +7,7 @@ Defines the eligible, recency-ordered merge branch candidates and the full-first
 
 ### Requirement: Eligible source branch selection
 
-The merge branch-selection procedure SHALL enumerate local branches with `git branch --no-merged HEAD`, preserving exact branch names as option values and excluding branches whose commits are already reachable from the current branch.
+The merge tool's preflight SHALL enumerate local branches with `git branch --no-merged HEAD`, and the coordinator SHALL build the branch options from that receipt without another branch listing, preserving exact branch names as option values and excluding branches whose commits are already reachable from the current branch.
 
 #### Scenario: Already-contained branches are omitted
 
@@ -17,7 +17,7 @@ The merge branch-selection procedure SHALL enumerate local branches with `git br
 #### Scenario: No eligible source branches exist
 
 - **WHEN** the filtered branch list is empty
-- **THEN** the worker returns `No other local branches to merge.` and stops.
+- **THEN** the coordinator offers the branch-entry option as the only option and states that no local candidates exist and that text entry is still available.
 
 ### Requirement: Deterministic branch recency presentation
 

@@ -7,7 +7,7 @@ Defines the synchronized family-aware metadata the merge collision pass returns 
 
 ### Requirement: Collision plans preserve synchronized ADR and DDR labels
 
-During the read-only ADR/DDR collision pass, the merge worker MUST return the exact old path, new path, family, assigned identifier, suffix, commit date, old H1, new H1, old index label, new index label, every canonical reference replacement, introduction anchor, introduction path, introduction commit, and full introduction timestamp for each proposed rename. The coordinator MUST record those values before executing the rename and MUST use the same family-aware identifier for filename, H1, index label, relationship token, link, and structured metadata updates.
+When the coordinator's mechanical collision check returns `needs-judgment`, the merge worker MUST return, in its read-only ADR/DDR renumbering plan, the exact old path, new path, family, assigned identifier, suffix, commit date, old H1, new H1, old index label, new index label, every canonical reference replacement, introduction anchor, introduction path, introduction commit, and full introduction timestamp for each proposed rename. The coordinator MUST record those values before executing the rename and MUST use the same family-aware identifier for filename, H1, index label, relationship token, link, and structured metadata updates.
 
 #### Scenario: Coordinator executes a synchronized family-aware rename
 
@@ -32,4 +32,3 @@ When a proposed rename lacks a required family, identifier, path, H1, index-labe
 
 - **WHEN** a record's introduction event or surviving identity cannot be established from the captured references and index state
 - **THEN** the worker SHALL report an escalation and SHALL not invent a date, destination, or replacement identifier.
-

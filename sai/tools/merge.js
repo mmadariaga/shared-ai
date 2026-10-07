@@ -9,14 +9,28 @@ const { spawnSync } = require('node:child_process');
 const { performance } = require('node:perf_hooks');
 const { validateText, parsePayloadText } = require('./worker-report-validator');
 
+// Section libraries, sliced per stage as [library, start heading, end heading].
+// The coordinator runs the mechanical stages; the worker owns the judgment stages.
+const LIBRARIES = { stages: 'coordinator-stages.md', presentation: 'presentation.md', instructions: 'instructions.md' };
+const SIDES = ['instructions', '## Sides', '## Gate trips'];
+const PROVENANCE = ['instructions', '### Merge provenance', '### Step 6:'];
+const MESSAGES = ['stages', '## Informative messages', null];
 const STAGES = {
-  preflight: [['## Gate trips', '## Workflow'], ['### Step 1:', '#### Merge provenance']],
-  detect: [['### Step 5:', '### Step 6:']],
-  strategy: [['## Sides', '## Gate trips'], ['### Step 6:', '#### Writing the resolution']],
-  apply: [['#### Writing the resolution', '### Step 8:']],
-  verify: [['### Step 8:', '### Step 9:']],
-  collision: [['## Sides', '## Gate trips'], ['### Step 9:', '### Step 10:']],
-  final: [['### Step 10:', null]],
+  preflight: { owner: 'coordinator', facts: 'preflight', slices: [['presentation', '# Merge Presentation Seam', '## Preflight texts'],
+    ['stages', '## Stage: preflight', '## Stage: conflicts'], ['presentation', '## Preflight texts', '## Conflict texts']] },
+  conflicts: { owner: 'coordinator', facts: 'conflicts', slices: [['stages', '## Stage: conflicts', '## Stage: verify'],
+    ['presentation', '## Conflict texts', '## Verification texts']] },
+  verify: { owner: 'coordinator', facts: 'verify', slices: [['stages', '## Stage: verify', '## Stage: collision'],
+    ['presentation', '## Verification texts', '## Collision texts']] },
+  collision: { owner: 'coordinator', facts: 'collision', slices: [['stages', '## Stage: collision', '## Stage: final'],
+    ['presentation', '## Collision texts', '## Final texts']] },
+  final: { owner: 'coordinator', facts: 'status', slices: [['stages', '## Stage: final', '## Informative messages'], MESSAGES,
+    ['presentation', '## Final texts', null]] },
+  messages: { owner: 'coordinator', slices: [MESSAGES] },
+  strategy: { owner: 'worker', slices: [['instructions', '## Sides', '#### Writing the resolution']] },
+  apply: { owner: 'worker', slices: [['instructions', '#### Writing the resolution', '### Step 8:']] },
+  'test-correction': { owner: 'worker', slices: [['instructions', '### Step 8:', '### Step 9:']] },
+  'renumbering-plan': { owner: 'worker', slices: [SIDES, PROVENANCE, ['instructions', '### Step 9:', null]] },
 };
 const RECORD = /^docs\/(adr|ddr)\/(\d{4})([a-z]*)-(.+)\.md$/;
 const MARKER = /^(<{7,}|={7,}|>{7,}|\|{7,})(?: .*)?\r?$/m;
@@ -122,6 +136,23 @@ function valid(cwd, receipt) {
   return { outcome: changed.length ? 'failure' : 'success', changed_dependencies: changed };
 }
 
+function inProgress(cwd) {
+  const op = operations(cwd);
+  return { merge_in_progress: op.MERGE_HEAD !== null,
+    rebase_in_progress: op.REBASE_HEAD !== null || op['rebase-merge'] !== null || op['rebase-apply'] !== null };
+}
+
+// Closing facts: what is staged, what is still unmerged, and where HEAD stands.
+function status(cwd) {
+  return fact(cwd, 'status', ['head', 'index', 'operations'], () => ({
+    head: git(cwd, ['rev-parse', '--verify', 'HEAD']).trim(),
+    head_subject: git(cwd, ['log', '-1', '--format=%s']).trim(),
+    current_branch: git(cwd, ['rev-parse', '--abbrev-ref', 'HEAD']).trim(),
+    staged: split0(git(cwd, ['diff', '--cached', '--name-only', '-z'])).sort(compare),
+    unmerged: split0(git(cwd, ['diff', '--name-only', '--diff-filter=U', '-z'])).sort(compare),
+    ...inProgress(cwd) }));
+}
+
 function preflight(cwd) {
   return fact(cwd, 'preflight', ['head', 'index', 'refs', 'operations', 'tree'], () => {
     const entries = split0(git(cwd, ['status', '--porcelain=v1', '-z']));
@@ -136,10 +167,7 @@ function preflight(cwd) {
         const [name, timestamp] = line.split('\0');
         return { name, timestamp };
       }).sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp) || compare(a.name, b.name));
-    const op = operations(cwd);
-    return { current_branch: git(cwd, ['rev-parse', '--abbrev-ref', 'HEAD']).trim(), dirty, candidates,
-      merge_in_progress: op.MERGE_HEAD !== null,
-      rebase_in_progress: op.REBASE_HEAD !== null || op['rebase-merge'] !== null || op['rebase-apply'] !== null };
+    return { current_branch: git(cwd, ['rev-parse', '--abbrev-ref', 'HEAD']).trim(), dirty, candidates, ...inProgress(cwd) };
   });
 }
 
@@ -160,7 +188,9 @@ function provenance(cwd, sourceRef, method, squash) {
   if (!/^refs\/(heads|remotes\/origin)\/.+/.test(sourceRef) || sourceRef.includes('\0')) throw new Error('full branch source_ref required');
   if (!['merge', 'rebase'].includes(method) || !['yes', 'no', 'not-applicable'].includes(squash)
       || method === 'merge' && squash !== 'not-applicable' || method === 'rebase' && squash === 'not-applicable') throw new Error('invalid method/squash');
+  // One call validates the exact ref before capturing: format, existence, commit.
   git(cwd, ['check-ref-format', sourceRef]);
+  git(cwd, ['show-ref', '--verify', '--quiet', sourceRef]);
   return fact(cwd, 'provenance', ['head', 'refs', 'index', 'operations'], () => {
     const targetSha = git(cwd, ['rev-parse', '--verify', 'HEAD']).trim();
     const sourceSha = git(cwd, ['rev-parse', '--verify', `${sourceRef}^{commit}`]).trim();
@@ -236,10 +266,13 @@ function conflicts(cwd) {
       return { mode: match[1], oid: match[2], stage: Number(match[3]), path: match[4] };
     });
     const inventory = [...new Set(split0(git(cwd, ['ls-files', '-c', '-o', '--exclude-standard', '-z'])))].sort(compare);
-    return { unrelated: Object.fromEntries(inventory.filter(name => !names.includes(name)).map(name => [name, fileState(cwd, name)])), files: names.map(name => {
+    const categoryOf = name => /^(docs\/adr|docs\/ddr)\//.test(name) ? 'adr-ddr' : hasSpecs && name.startsWith('openspec/') ? 'specs' : 'code';
+    const categories = { specs: 0, 'adr-ddr': 0, code: 0 };
+    for (const name of names) categories[categoryOf(name)]++;
+    return { categories, operation: inProgress(cwd), unrelated: Object.fromEntries(inventory.filter(name => !names.includes(name)).map(name => [name, fileState(cwd, name)])), files: names.map(name => {
       const type = fileState(cwd, name).type;
       const bytes = type === 'file' ? fs.readFileSync(localPath(cwd, name)) : null;
-      const category = /^(docs\/adr|docs\/ddr)\//.test(name) ? 'adr-ddr' : hasSpecs && name.startsWith('openspec/') ? 'specs' : 'code';
+      const category = categoryOf(name);
       const file = { path: name, category, type, before: bytes?.toString('base64') ?? null,
         regions: bytes ? regions(bytes).map((region, i) => ({ ...region, conflict_id: `${category}:${name}#${i + 1}` })) : [],
         stages: index.filter(item => item.path === name) };
@@ -457,16 +490,29 @@ function verify(cwd) {
 }
 
 function instructions(stage, reconstruct = false) {
-  if (!STAGES[stage]) throw new Error(`unknown active stage: ${stage}`);
-  const source = fs.readFileSync(path.join(__dirname, '..', 'commands', 'merge', 'instructions.md'), 'utf8');
-  const mechanics = fs.readFileSync(path.join(__dirname, '..', 'commands', 'merge', 'mechanics.md'), 'utf8');
-  const common = mechanics.slice(mechanics.indexOf('## Evidence, not authority'), mechanics.indexOf('## Active task delivery')).trim();
-  return `# Active merge stage: ${stage}\n\nExecute only this disclosed stage. Return at its hand-off; the coordinator names the next stage. References to other steps identify destinations, not permission to execute them.\n\n`
-    + (stage === 'preflight' || reconstruct ? common + '\n\n' : '') + STAGES[stage].map(([start, end]) => {
-      const from = source.indexOf(start); const to = end ? source.indexOf(end, from + start.length) : source.length;
-      if (from < 0 || to < from) throw new Error(`missing instruction section: ${start}`);
-      return source.slice(from, to).trim();
-    }).join('\n\n') + '\n';
+  // Own-property lookup: a stage name such as "constructor" is unknown, not inherited.
+  if (!Object.hasOwn(STAGES, stage)) throw new Error(`unknown active stage: ${stage}`);
+  const { owner, slices } = STAGES[stage];
+  const directory = path.join(__dirname, '..', 'commands', 'merge');
+  const library = {};
+  const read = name => library[name] ??= fs.readFileSync(path.join(directory, LIBRARIES[name]), 'utf8').replace(/\r\n/g, '\n');
+  const mechanics = fs.readFileSync(path.join(directory, 'mechanics.md'), 'utf8').replace(/\r\n/g, '\n');
+  const common = mechanics.slice(mechanics.indexOf('## Evidence, not authority'), mechanics.indexOf('## Stage delivery')).trim();
+  // A worker starting or replaced at a judgment point saw no earlier stage:
+  // --reconstruct adds the common rules, the side mapping and the provenance definition.
+  const rebuild = reconstruct && owner === 'worker';
+  const slice = ([name, start, end]) => {
+    const source = read(name);
+    const from = source.indexOf(start); const to = end ? source.indexOf(end, from + start.length) : source.length;
+    if (from < 0 || to < from) throw new Error(`missing instruction section: ${start}`);
+    return source.slice(from, to).trim();
+  };
+  let body = slices.map(slice).join('\n\n');
+  if (rebuild) body = [SIDES, PROVENANCE].filter(([, start]) => !body.includes(start)).map(slice).concat(body).join('\n\n');
+  const lead = owner === 'worker'
+    ? 'Execute only this disclosed stage. Return at its hand-off; the coordinator names the next stage. References to other steps identify destinations, not permission to execute them.'
+    : 'Run this stage now and follow it to its exit. The lifecycle seam selects the next stage; references to other stages identify destinations, not text to act on yet.';
+  return `# Active merge stage: ${stage}\n\n${lead}\n\n` + (rebuild ? common + '\n\n' : '') + body + '\n';
 }
 
 function saveReceipt(cwd, result, filename) {
@@ -482,36 +528,16 @@ function saveReceipt(cwd, result, filename) {
 function saveSnapshot(cwd, result, filename) {
   const saved = saveReceipt(cwd, result, filename);
   return { ...saved,
-    data: { correction: result.data.correction || false, files: result.data.files.map(({ before, ...file }) => file) } };
+    data: { correction: result.data.correction || false, ...(result.data.categories ? { categories: result.data.categories } : {}),
+      ...(result.data.operation ? { operation: result.data.operation } : {}),
+      files: result.data.files.map(({ before, ...file }) => file) } };
 }
 
-function main(argv) {
-  const opts = { cwd: process.cwd() }; let action;
-  const flags = ['cwd', 'source-ref', 'method', 'squash', 'record', 'record-hash', 'source', 'confirmed', 'phase', 'stage'];
-  for (let i = 0; i < argv.length; i++) {
-    const arg = argv[i];
-    if (arg === '--json') continue;
-    if (arg === '--reconstruct') { opts.reconstruct = true; continue; }
-    if (arg === '--help') {
-      process.stdout.write('Usage: node merge.js <preflight|provenance|conflicts|correction|valid|resolution|suite|verify|collision|instructions> --cwd <root> [--json]\n'
-        + 'provenance: --source-ref <full-ref> --method merge|rebase --squash yes|no|not-applicable\n'
-        + 'valid/collision: receipt JSON on stdin; conflicts/correction: --record <external-new-file>; correction: authorized region inventory on stdin\n'
-        + 'resolution: --record <snapshot-file> --record-hash <sha256> --source <original-worker-result-file> --confirmed <decision-json-file> [--phase authored|materialized]\n'
-        + 'instructions: --stage preflight|detect|strategy|apply|verify|collision|final [--reconstruct] (Markdown output)\nExit: 0 success/non-applicability; 1 failed assertion; 2 usage/collection error.\n');
-      return 0;
-    }
-    if (arg.startsWith('--')) {
-      const name = arg.slice(2);
-      if (!flags.includes(name) || !argv[i + 1] || argv[i + 1].startsWith('--')) throw new Error(`invalid flag: ${arg}`);
-      opts[name] = argv[++i];
-    } else if (action) throw new Error(`unexpected argument: ${arg}`);
-    else action = arg;
-  }
-  const cwd = fs.realpathSync.native(opts.cwd);
-  const stdin = () => JSON.parse(fs.readFileSync(0, 'utf8'));
+// One mechanical action, with its receipt recorded when --record is given.
+function collect(action, cwd, opts, stdin) {
   let result;
-  if (action === 'instructions') { process.stdout.write(instructions(opts.stage, opts.reconstruct)); return 0; }
   if (action === 'preflight') result = preflight(cwd);
+  else if (action === 'status') result = status(cwd);
   else if (action === 'provenance') result = provenance(cwd, opts['source-ref'], opts.method, opts.squash);
   else if (action === 'conflicts') result = saveSnapshot(cwd, conflicts(cwd), opts.record);
   else if (action === 'correction') result = saveSnapshot(cwd, correction(cwd, stdin()), opts.record);
@@ -534,6 +560,51 @@ function main(argv) {
         stdout_hash: hash(stdout || ''), stderr_hash: hash(stderr || '') } };
     }
   }
+  return result;
+}
+
+// Composite stage entry for the coordinator: the stage text and its facts in one call.
+function enter(stage, cwd, opts, stdin) {
+  if (!Object.hasOwn(STAGES, stage) || !STAGES[stage].facts) throw new Error(`unknown coordinator stage: ${stage}`);
+  const action = STAGES[stage].facts;
+  if (['conflicts', 'verify', 'collision'].includes(action) && !opts.record) throw new Error(`stage ${stage} requires --record (new file outside the repository)`);
+  const result = collect(action, cwd, opts, stdin);
+  return { text: instructions(stage) + `\n## Stage facts\n\n\`\`\`json\n${JSON.stringify(result, null, 2)}\n\`\`\`\n`, result };
+}
+
+function main(argv) {
+  const opts = { cwd: process.cwd() }; let action;
+  const flags = ['cwd', 'source-ref', 'method', 'squash', 'record', 'record-hash', 'source', 'confirmed', 'phase', 'stage'];
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    if (arg === '--json') continue;
+    if (arg === '--reconstruct') { opts.reconstruct = true; continue; }
+    if (arg === '--help') {
+      process.stdout.write('Usage: node merge.js <enter|instructions|preflight|provenance|conflicts|correction|valid|resolution|suite|verify|collision|status> --cwd <root> [--json]\n'
+        + 'enter: --stage preflight|conflicts|verify|collision|final [--record <external-new-file>] (coordinator stage text plus its facts; Markdown output)\n'
+        + 'instructions: --stage strategy|apply|test-correction|renumbering-plan [--reconstruct] (worker stage text), or a coordinator stage or messages (text only; Markdown output)\n'
+        + 'provenance: --source-ref <full-ref> --method merge|rebase --squash yes|no|not-applicable (validates the ref, then captures)\n'
+        + 'valid/collision: receipt JSON on stdin; conflicts/correction: --record <external-new-file>; correction: authorized region inventory on stdin\n'
+        + 'resolution: --record <snapshot-file> --record-hash <sha256> --source <original-worker-result-file> --confirmed <decision-json-file> [--phase authored|materialized]\n'
+        + 'Exit: 0 success/non-applicability; 1 failed assertion; 2 usage/collection error.\n');
+      return 0;
+    }
+    if (arg.startsWith('--')) {
+      const name = arg.slice(2);
+      if (!flags.includes(name) || !argv[i + 1] || argv[i + 1].startsWith('--')) throw new Error(`invalid flag: ${arg}`);
+      opts[name] = argv[++i];
+    } else if (action) throw new Error(`unexpected argument: ${arg}`);
+    else action = arg;
+  }
+  const stdin = () => JSON.parse(fs.readFileSync(0, 'utf8'));
+  if (action === 'instructions') { process.stdout.write(instructions(opts.stage, opts.reconstruct)); return 0; }
+  const cwd = fs.realpathSync.native(opts.cwd);
+  if (action === 'enter') {
+    const entered = enter(opts.stage, cwd, opts, stdin);
+    process.stdout.write(entered.text);
+    return entered.result?.outcome === 'failure' ? 1 : 0;
+  }
+  const result = collect(action, cwd, opts, stdin);
   process.stdout.write(JSON.stringify(result, null, 2) + '\n');
   return result.outcome === 'failure' ? 1 : 0;
 }
@@ -542,4 +613,4 @@ if (require.main === module) {
   try { process.exitCode = main(process.argv.slice(2)); }
   catch (error) { process.stdout.write(JSON.stringify({ outcome: 'failure', error: error.message }) + '\n'); process.exitCode = 2; }
 }
-module.exports = { preflight, provenance, conflicts, correction, valid, regions, checkResolution, suite, verify, collision, instructions, state, main };
+module.exports = { preflight, provenance, conflicts, correction, valid, regions, checkResolution, suite, verify, collision, status, instructions, enter, STAGES, state, main };

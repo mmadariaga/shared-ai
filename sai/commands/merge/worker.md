@@ -14,24 +14,30 @@ that follow it, never from parent conversation history. There is no change
 resolution and no prerequisite check: `sai-merge` works in projects without
 openspec, and payloads never carry `resolved_change_name`.
 
+The coordinator runs the mechanical stages itself (preflight, conflict
+detection, the test run, the collision check, closure) and dispatches you at
+the first **judgment point**: a conflict to resolve or decision records in
+collision to renumber. You are the judgment session: you saw none of the
+earlier stages, so the task disclosure hands you their complete state.
+
 The coordinator holds invocation-scoped values outside `arguments_value` and
-hands them over through dispatch or continuations:
+hands them over in the task disclosure:
 
 - `fast_track_active` — declared at dispatch;
-- the **merge provenance** — defined in `instructions.md` § Merge provenance,
-  forwarded with every integration outcome;
-- `working_language` — forwarded after the first conflict hand-off and kept for
-  every later explanation, revision, verification re-entry, and new conflict.
-  A clean run never receives it.
-- `branch_entry` — the typed branch text, forwarded with the Batch 1 answers
-  when the user entered one (`instructions.md` Step 3).
+- the **merge provenance** — the complete receipt, defined in
+  `instructions.md` § Merge provenance;
+- `working_language` — selected at the first conflict and kept for every later
+  explanation, revision, test correction, and new conflict. A run dispatched
+  for a collision alone never receives it;
+- the conflict snapshot — the affected inventory with categories, region ids,
+  stage blob OIDs, and the record reference/hash.
 
 ## Reads
 
 The read list is exactly the three fetches above, plus the disclosed active
 stage and repository content it needs (conflicted files, governing rules, ADR/DDR records and
 indexes of an affected group). The other merge cards (`coordinator.md`,
-`presentation.md`, `lifecycle.md`) and the merge spec records belong to the
+`coordinator-stages.md`, `presentation.md`, `lifecycle.md`) and the merge spec records belong to the
 coordinator; `sai/policies/question-context.md` arrives through worker-core.
 A read-only check with a definitive answer runs once while its dependencies
 remain valid, including across stretches. Use the mechanical receipt rather
@@ -41,8 +47,9 @@ than deriving its facts again; repeat only invalidated checks.
 
 The phase declares no progress plan: emit no progress events and no design
 notice. Every stretch opens with `event: ready` before any expensive work. A
-conflicted integration then returns the declared nonterminal
-`event: conflict_detected` extension from worker-core, carrying no question or
+write or fix that exposes a new conflict returns the declared nonterminal
+`event: conflict_detected` extension from worker-core with
+`continuation_state: strategy-analysis`, carrying no question or
 options. Every stretch closes with exactly one terminal status — `completed`,
 `needs_input`, `failed`, or `cancelled` — in the closed worker-core shapes,
 with an ordered duplicate-free `changed_files` and a concrete summary, in
@@ -52,16 +59,17 @@ Pinned questions and stop texts stay verbatim.
 ## Procedure
 
 Follow the coordinator's `Active stage:` pointer through the `merge.js`
-disclosure command. The selected sections of `instructions.md` own every worker-authored gate question,
-option list, batch, stop text, analysis rule, payload shape, and the
-collision-pass procedure. Every worker-authored gate leaves as a `needs_input`
-result or batch; the coordinator's presentation seam owns how every prompt
-reaches the user, including the branch-entry prompt the coordinator itself
-asks. End each task at its hand-off and await the next pointer; do not read or
-execute future sections. Reuse retained semantic analysis when its evidence
+disclosure command. Your stages are `strategy`, `apply`, and the two
+conditional entries `test-correction` and `renumbering-plan`. The selected
+sections of `instructions.md` own the strategy gate question, its option
+list, every analysis rule, the payload shape, and the renumbering procedure.
+The strategy gate leaves as a `needs_input` result; the coordinator's
+presentation seam owns how every prompt reaches the user. End each task at
+its hand-off and await the next pointer; do not read or execute future
+sections. Reuse retained semantic analysis when its evidence
 is still valid, updating it only for new context or changed state.
 
-A continuation or replacement must include the active stage, exact references
+The first task, every continuation, and a replacement must include the active stage, exact references
 and hashes, complete affected inventory and necessary valid receipts,
 provenance, working language, exact strategy and its confirmation state,
 verification/review counters and outcomes, collision plans, pending corrections,
@@ -69,7 +77,10 @@ operation outcomes, and changed-files union, as applicable to that stage.
 Inventories are exhaustive: no `and others; see earlier` entries. On incomplete
 reconstruction, stop before writing or finalizing and return the precise missing
 state. A replacement verifies external references and receipt validity before
-using them; it never assumes prior context is available.
+using them; it never assumes prior context is available. The first task
+and a replacement arrive with the `--reconstruct` form of the pointer, which
+adds the common evidence rules, the side mapping, and the provenance
+definition.
 
 ## Write boundary
 
@@ -78,12 +89,13 @@ Your writes are content writes to the working tree:
 - after normal-mode `apply-strategy` or the coordinator's fast-track
   presentation-and-application continuation, the region splices of each `authored` file from the
   confirmed resolution payload;
-- the verification fixes the coordinator forwards, applied the same way;
+- the test corrections the coordinator authorizes, applied to its captured
+  correction ranges;
 - the named divergence corrections from the coordinator's post-resolution
   review.
 
-Report every written path in `changed_files`. The collision pass is read-only:
-it returns the rename plan, and the coordinator applies it.
+Report every written path in `changed_files`. The renumbering plan is
+read-only: it returns the rename plan, and the coordinator applies it.
 
 ## Git
 
@@ -94,6 +106,8 @@ command — `merge`, `rebase`, `add`, `commit`, `checkout`, `stash`, `reset`,
 checkouts, renames, collision replacements, staging, rebase continuation, and
 commits belong to the coordinator.
 
-Branch-entry refresh and validation also belong to the coordinator: pass
-`branch_entry` through as typed. Never run `git fetch --prune origin`,
-`git check-ref-format`, or `git show-ref` for branch selection.
+Branch selection, refresh, and validation finished before you were dispatched.
+Never run
+`git fetch --prune origin`, `git check-ref-format`, or `git show-ref`. The
+test run is the coordinator's too: read its failure record instead of running
+the suite.

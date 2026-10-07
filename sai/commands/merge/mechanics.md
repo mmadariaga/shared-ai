@@ -2,15 +2,17 @@
 
 Fetch @sai/policies/tool-resolution.md and resolve `merge.js` once for this
 invocation. Use that same installed copy for every call. Its sibling
-`commands/merge/instructions.md` is the authoritative section library; the
-`instructions` action returns only the named stage. Both Claude Code and
-opencode install these files through the existing `sai-tools` and
-`sai-commands` projections. No command-local executable or permission change
-is needed.
+`commands/merge/` files are the authoritative section libraries:
+`coordinator-stages.md` and `presentation.md` for the coordinator,
+`instructions.md` for the worker. The tool returns only the named stage.
+Both Claude Code and opencode install these files through the existing
+`sai-tools` and `sai-commands` projections. No command-local executable or
+permission change is needed.
 
 ## Evidence, not authority
 
-Mechanical results establish repository facts. The worker still reconstructs
+Mechanical results establish repository facts. The coordinator collects them
+through the merge tool. The worker still reconstructs
 intent and interprets genuine failures; the coordinator still owns approval,
 independent review, lifecycle validation, unrelated-change protection, HEAD
 checks, and every Git mutation. Keep the existing three-round review and
@@ -39,119 +41,89 @@ Never overwrite a conflict snapshot to make a failed comparison pass. Verify
 its retained `record_hash` before using it; missing or changed records stop
 before a write, staging, or finalization.
 
-Use `--record <unique-external-file>` when collecting a worker-owned receipt
-(`preflight`, `suite`, `verify`, `collision`) so replacement can recover it.
-The tool creates the complete record exclusively and returns its reference and
-hash. For verification the record retains full stdout/stderr; the returned
-view carries their hashes and `output_ref`, not another copy of successful
-test output. Read full failure evidence at that exact reference as needed.
-On the result that first reports a new receipt, include one technical
-`## Mechanical evidence` block in `summary` with a JSON array of
-`{action, record, record_hash}` entries. The coordinator verifies and retains
-those exact references, not a shortened reconstruction of the receipt. This
-is evidence inside the existing summary, not a new lifecycle field, a journal,
-or a time claim. Later reports reuse the retained references and need no
-repeated evidence block unless a new receipt replaces one.
+Use `--record <unique-external-file>` when collecting a `conflicts`,
+`verify`, or `collision` receipt, so a worker dispatch or replacement can
+read it. The tool creates the complete record exclusively and returns its
+reference and hash. For verification the record retains full stdout/stderr;
+the returned view carries their hashes and `output_ref`, not another copy of
+successful test output. The worker reads full failure evidence at that exact
+reference. Hand a receipt to the worker as its exact reference and hash, not
+as a shortened reconstruction.
 
-## Active task delivery
+## Stage delivery
 
-After ready, and on every continuation, the coordinator includes:
+Instructions arrive per stage, for both roles. A stage's text is in force from
+its entry to its exit; earlier stage text grants no authority to run a later
+stage.
+
+### Coordinator stages
+
+Enter a stage the first time with its composite call. One call returns the
+stage's instructions, its fixed presentation texts, and a `## Stage facts`
+JSON block holding the stage's receipt:
+
+```text
+node <merge-tool> enter --stage <stage> --json --cwd <project-root> [--record <unique-external-file>]
+```
+
+| Stage | Entered when | Stage facts | Later entries |
+| --- | --- | --- | --- |
+| `preflight` | the run starts | `preflight` receipt | none |
+| `conflicts` | a launch or `git rebase --continue` stops on conflicts | `conflicts` snapshot view (`--record`) | `conflicts --record <new file>` |
+| `verify` | a conflict stop's resolution is staged | `verify` receipt (`--record`) | `verify --record <new file>` |
+| `collision` | the integration is final: a clean launch, a verified merge, a finished rebase | `collision` receipt (provenance receipt on stdin, `--record`) | `collision --record <new file>` |
+| `final` | final staging is done, or a stopped rebase is verified | `status` receipt | `status` |
+
+The `preflight` entry also carries the presentation seam's rules once. A
+clean launch enters `collision`, never `verify`. A stopped rebase enters
+`final` after `verify` and enters `collision` only after finishing. The exit
+code is that of the stage's mechanical action: a failed test run exits 1 and
+still returns the complete stage text.
+
+`instructions --stage messages` returns the informative-message rules alone,
+for a `rebase-squash` launch; the `final` stage already includes them.
+
+### Worker stages
+
+At the first judgment point the coordinator dispatches the worker. After
+ready, and on every continuation, it includes:
 
 ```text
 Active stage: <stage> — run node <merge-tool> instructions --stage <stage>
 ```
 
 The pointer carries the exact resolved executable path. The worker executes
-that disclosure command and follows only its output. The section library is
+that disclosure command and follows only its output. Its section library is
 not fetched in full. Previously disclosed context remains in the persistent
 worker, but grants no authority to execute a later stage. This is section-level
 progressive disclosure, not a new worker per stage or a step machine.
-The initial `preflight` disclosure includes the common evidence rules once.
-For a replacement starting at another stage, append `--reconstruct` to its
-disclosure command to include those common rules. Ordinary same-worker
-continuations retain them and do not disclose them again.
 
-| Current task | Stage | Required current evidence |
+The first task of a worker, and the first task of a replacement, appends
+`--reconstruct` to the disclosure command. That form adds the common evidence
+rules, the side mapping, and the provenance definition, and the coordinator
+sends the complete reconstruction state with it: the worker saw none of the
+earlier stages. Ordinary same-worker continuations retain those rules and do
+not disclose them again.
+
+| Judgment point | Stage | Required current evidence |
 | --- | --- | --- |
-| initial Batch 1, its answers, integration proposal | `preflight` | preflight receipt; exact answers and branch entry |
-| coordinator launch/rebase outcome with conflicts | `detect` | outcome; original provenance; new conflict snapshot |
-| language answer, context, revision, new strategy | `strategy` | complete affected inventory, stage blob OIDs, snapshot reference/hash, original provenance, language, prior proposal and new evidence |
-| confirmed normal strategy or presented fast-track strategy; review correction | `apply` | complete exact confirmed strategy, semantic decisions, snapshot reference/hash, named correction if any; confirmation/presentation state |
-| staged resolution; verification correction/re-entry | `verify` | staged paths, review outcome, verification round/result and full failure evidence; authorized fixes if any |
-| final integration tree (clean merge or finished rebase) | `collision` | original provenance; verification outcome; surviving-record identity mapping if needed |
-| final staging or actual finalization outcome | `final` | exact owned/staged paths, conflict/collision/verification outcomes, escalations and actual Git outcome |
+| a conflict stop, language answer, context, revision, new strategy | `strategy` | complete affected inventory, stage blob OIDs, snapshot reference/hash, original provenance, language, prior proposal and new evidence |
+| confirmed normal strategy or presented fast-track strategy; review correction; captured test correction | `apply` | complete exact confirmed strategy, semantic decisions, snapshot reference/hash, named correction if any; confirmation/presentation state |
+| a failed test round below three | `test-correction` | staged paths, review outcome, verification round and the failure record's reference/hash |
+| a `needs-judgment` collision receipt | `renumbering-plan` | original provenance; collision receipt reference/hash; verification outcome |
 
-A clean launch enters `collision`; a stopped rebase enters `final` after
-verification and enters `collision` only after finishing. New conflicts enter
-`detect`, then `strategy`; a revision enters `strategy`, not `apply`. A strategy
-return, resolution return, verification return and collision return each end
-the active task; only the coordinator selects and discloses its next stage.
+New conflicts enter `strategy`; a revision enters `strategy`, not `apply`. A
+strategy return, resolution return, correction proposal and renumbering plan
+each end the active task; only the coordinator selects and discloses the next
+stage. A run that reaches no judgment point dispatches no worker.
 
-## Mechanical calls by owner
+## Mechanical calls
 
-All JSON commands take `--json --cwd <project-root>`.
+All JSON commands take `--json --cwd <project-root>`. Each coordinator stage
+names its exact calls in its own text; the worker calls only `instructions`
+and `valid`.
 
-- Worker `preflight`: `preflight` collects dirty paths, operation guards,
-  current branch and timestamp-sorted authoritative unmerged local candidates.
-  Read `data`; preserve the section library's questions, options and stops.
-- Coordinator, after exact branch validation and before launch: `provenance
-  --source-ref <full-ref> --method merge|rebase --squash yes|no|not-applicable`.
-  Retain its original complete receipt and validate it immediately before the
-  launch (before squash). Historical provenance is never recaptured later.
-- Coordinator, at each conflict stop and before any worker write: `conflicts
-  --record <unique-external-file>`. The tool captures the actual conflicted
-  working file, including Git-combined content, marker byte ranges, modes,
-  stage blob OIDs, and unrelated-content inventory. The returned compact
-  inventory carries the exact record reference/hash. Worker analysis reads
-  needed stage blobs through `git cat-file blob <oid>`; missing stages are
-  evidence of structural conflicts, not collection success for a missing side.
-- Coordinator, before checkout and again before staging: `resolution --record
-  <snapshot> --record-hash <retained-sha256> --source <original-worker-result-file> --confirmed
-  <semantic-decision-array-file> --phase authored|materialized`. Preserve the
-  received worker result byte-for-byte in `--source`, including its original
-  envelope, and validate it through the shared runner first. Do not construct
-  a reduced substitute or strip its fields. The confirmed array is separate
-  coordinator evidence derived from the exact confirmed strategy, never a
-  replacement worker result. On both Claude Code and opencode, create
-  `--source` and `--confirmed` inputs as unique files in the same
-  harness-approved temporary area outside the repository as `--record`.
-  Retain their exact references and hashes through same-worker continuations
-  and replacement until the owning invocation closes. These are ephemeral
-  validation inputs, not repository artifacts, `changed_files`, or staging
-  candidates; creating them inside the repository would contaminate the
-  unrelated-content check. Authored files must equal the captured file with
-  only the declared region replacements; Git-sourced files stay unchanged
-  until coordinator checkout, then equal the captured stage blob. The tool
-  checks complete inventories, decisions, unrelated content and HEAD/index/
-  operation identity. A successful result supplements, never replaces,
-  independent semantic review. A missing selected stage requires explicit
-  coordinator handling or escalation; never approximate it with a checkout.
-- Coordinator, for an authorized verification fix with new boundaries:
-  `correction --record <unique-external-file>` takes a complete JSON array on
-  stdin: `{path, category, before_hash, regions: [{start, end, conflict_id}]}`.
-  `before_hash` is SHA-256 of the current file; ranges are ordered, disjoint byte
-  offsets in that preimage. Confirm each boundary independently and restrict
-  paths to the current affected set before this call. This read-only capture
-  creates the same protected snapshot with explicit correction ranges, not
-  inferred markers. Continue `apply` with the authorized correction; it returns
-  the same complete resolution payload. Validate and independently review it
-  before re-staging and resuming `verify`. A correction that changes a confirmed
-  objective instead re-enters `strategy` and its normal mode-specific hand-off.
-- Worker `verify`: `suite` detects the command from metadata; `verify` runs
-  that command and returns exit code, signal, full stdout/stderr, elapsed test
-  time, and `passed|failed|unavailable`. Retain full failures at exact external
-  references when large. A state change during the test invalidates a pass.
-  Each actual run uses one of the existing three rounds; receipt validation
-  is not another run. Corrections still require coordinator-owned review and
-  re-staging before re-entry.
-- Worker `collision`: `collision` takes the original provenance receipt on
-  stdin. Verified absence of source-introduced records skips grouping and
-  reference searches. Otherwise it groups the final tracked/index frontier by
-  family and prefix. `needs-judgment` is not a collision disposition: the worker
-  reconciles survival/renames, dates records, and interprets references through
-  the disclosed collision instructions. Ambiguous identity or references
-  escalate; no approximate mechanical rule authorizes a repair.
-
-Completion: every transition has its active pointer, complete necessary state,
-and valid supporting receipts; no mechanical result substitutes for a gate,
-semantic decision, independent review, or coordinator mutation.
+Completion: every stage was entered through its one call, every worker task
+carried its active pointer, complete necessary state, and valid supporting
+receipts; no mechanical result substitutes for a gate, semantic decision,
+independent review, or coordinator mutation.

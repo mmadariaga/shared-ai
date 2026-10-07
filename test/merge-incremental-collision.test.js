@@ -24,7 +24,8 @@ test('merge provenance is defined once in the worker instructions and consumed b
   const instructions = read('sai/commands/merge/instructions.md');
   const coordinator = read('sai/commands/merge/coordinator.md');
   const worker = read('sai/commands/merge/worker.md');
-  const provenance = section(instructions, '#### Merge provenance', '### Step 5:');
+  const stages = read('sai/commands/merge/coordinator-stages.md');
+  const provenance = section(instructions, '### Merge provenance', '### Step 6:');
 
   for (const token of ['target_sha', 'source_ref', 'source_sha', 'merge_base', 'target_rules', 'source_rules']) {
     assert.match(provenance, new RegExp(token));
@@ -36,8 +37,10 @@ test('merge provenance is defined once in the worker instructions and consumed b
   assert.match(provenance, /never\s+recompute\s+them from\s+post-launch `HEAD`/);
   assert.match(provenance, /before the squash commit/);
 
-  assert.match(coordinator, /capture\s+the merge provenance exactly as\s+`@sai\/commands\/merge\/instructions\.md`\s+§ Merge provenance/);
-  assert.doesNotMatch(coordinator, /--find-copies-harder/, 'the coordinator points at the definition instead of restating it');
+  assert.match(stages, /Then run `merge\.js provenance` with this exact `source_ref`/);
+  for (const card of [coordinator, stages]) {
+    assert.doesNotMatch(card, /--find-copies-harder/, 'the coordinator captures through the tool instead of restating the definition');
+  }
   assert.match(worker, /§ Merge provenance/);
 });
 
@@ -74,10 +77,10 @@ test('merge collision dating uses captured refs, path following, and the method-
 });
 
 test('merge collision repair data flows from the worker plan to coordinator execution and presentation', () => {
-  const coordinator = read('sai/commands/merge/coordinator.md');
+  const coordinator = read('sai/commands/merge/coordinator-stages.md');
   const presentation = read('sai/commands/merge/presentation.md');
 
-  assert.match(coordinator, /first record its worker data in the\s+seam's `adr_ddr_renames`/);
+  assert.match(coordinator, /first record its\s+worker data in the seam's `adr_ddr_renames`/);
   assert.match(coordinator, /never rename onto a path\s+another final-state record occupies/);
   assert.match(coordinator, /Apply\s+only replacements the worker supplied/);
   for (const field of ['introduction_anchor', 'introduction_timestamp', 'old_h1', 'new_index_label', 'source_introduced_adr_ddr_records']) {
@@ -88,15 +91,13 @@ test('merge collision repair data flows from the worker plan to coordinator exec
 });
 
 test('collision repair finalizes automatically only after the final integration state', () => {
-  const instructions = read('sai/commands/merge/instructions.md');
-  const coordinator = read('sai/commands/merge/coordinator.md');
+  const coordinator = read('sai/commands/merge/coordinator-stages.md');
   const lifecycle = read('sai/commands/merge/lifecycle.md');
-  const finalization = section(instructions, '### Step 10:');
-  assert.match(finalization, /Return `completed`/);
+  const finalization = section(coordinator, '### Step 10:', '## Informative messages');
   assert.match(finalization, /rebase finished, collision repair staged \| local collision-repair commit/);
   assert.match(finalization, /A rebase that finished with nothing staged needs no operation/);
   assert.match(coordinator, /finished rebase with a staged repair[\s\S]+git commit -F -/);
-  assert.match(coordinator, /finished rebase goes to the\s+collision pass/);
+  assert.match(coordinator, /finished\s+rebase goes to the\s+collision pass/);
   assert.match(lifecycle, /adr-ddr\s+finalization\s+applicability resolved; repairs applied; final staging done/);
   assert.match(lifecycle, /adr-ddr\s+terminal\s+rebase finished with nothing staged/);
   assert.doesNotMatch(finalization, /needs_input|yes \(Recommended\)|On `no`/);

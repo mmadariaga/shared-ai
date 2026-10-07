@@ -7,7 +7,7 @@ Defines the merge worker's closed read list, its summary language before and aft
 
 ### Requirement: Merge worker closed read list
 
-The merge worker SHALL open only the fetches its contract names: the verified-precondition handback policy, the worker-core contract, and the tool-resolution policy, plus the instruction sections disclosed for its active stage. It SHALL NOT fetch the entire merge instruction library or proactively open any other file under `sai/commands/merge/`, explicitly including `coordinator.md`, `presentation.md`, and `lifecycle.md`. It SHALL NOT proactively open policy spec records for `sai-merge-command` or `question-context-policy`, while `sai/policies/question-context.md` stays required via `worker-core`. Affected repository content reads for conflicted specs and ADR/DDR records and indexes of the affected group are permitted only when the active stage requires them and carry no closed path list.
+The merge worker SHALL open only the fetches its contract names: the verified-precondition handback policy, the worker-core contract, and the tool-resolution policy, plus the instruction sections disclosed for its active stage. It SHALL NOT fetch the entire merge instruction library or proactively open any other file under `sai/commands/merge/`, explicitly including `coordinator.md`, `coordinator-stages.md`, `presentation.md`, and `lifecycle.md`. It SHALL NOT proactively open policy spec records for `sai-merge-command` or `question-context-policy`, while `sai/policies/question-context.md` stays required via `worker-core`. Affected repository content reads for conflicted specs and ADR/DDR records and indexes of the affected group are permitted only when the active stage requires them and carry no closed path list.
 
 #### Scenario: Proactive supervisor and spec reads are refused
 
@@ -64,12 +64,12 @@ The merge worker SHALL NOT repeat a read-only check with a definitive answer whi
 
 ### Requirement: Active-stage merge instruction disclosure
 
-After ready and on every continuation, the coordinator SHALL provide an exact `Active stage:` pointer naming the resolved `merge.js instructions --stage <stage>` command and the complete necessary current task state. The worker SHALL execute that disclosure command, follow only its selected authoritative instruction sections, return at the active stage's hand-off, and await the next pointer. Stages SHALL cover preflight, detection, strategy, application, verification, collision analysis, and finalization. Ordinary same-worker continuations SHALL NOT load the entire instruction library or future stage bodies. The same persistent worker SHALL retain previously disclosed context, which SHALL NOT authorize later work. Initial preflight disclosure SHALL include common evidence rules once; replacement disclosure at another stage SHALL use reconstruction delivery to include those rules.
+After ready and on every continuation, the coordinator SHALL provide an exact `Active stage:` pointer naming the resolved `merge.js instructions --stage <stage>` command and the complete necessary current task state. The worker SHALL execute that disclosure command, follow only its selected authoritative instruction sections, return at the active stage's hand-off, and await the next pointer. Worker stages SHALL be `strategy`, `apply`, `test-correction`, and `renumbering-plan`; preflight, conflict detection, the test run, the collision check, and closure are coordinator stages and SHALL NOT be disclosed to the worker as tasks. Ordinary same-worker continuations SHALL NOT load the entire instruction library or future stage bodies. The same persistent worker SHALL retain previously disclosed context, which SHALL NOT authorize later work. The first task of a worker and the first task of a replacement SHALL use reconstruction delivery, which adds the common evidence rules, the side mapping, and the provenance definition once.
 
 #### Scenario: Initial task follows ready
 
 - **WHEN** the worker returns ready and receives its first merge task
-- **THEN** it receives the preflight pointer and current task state without disclosure of future stage bodies
+- **THEN** it receives the pointer for the active judgment stage in its reconstruction form with the complete current state and without disclosure of future stage bodies
 
 #### Scenario: Strategy revision returns to analysis
 
@@ -78,17 +78,17 @@ After ready and on every continuation, the coordinator SHALL provide an exact `A
 
 #### Scenario: Active task ends at its hand-off
 
-- **WHEN** the worker completes a strategy, resolution, verification, or collision task
+- **WHEN** the worker completes a strategy, resolution, test-correction, or renumbering-plan task
 - **THEN** it returns that stage's result without executing an undisclosed later stage
 
 #### Scenario: Replacement receives common rules
 
-- **WHEN** a replacement worker starts at a stage other than preflight
+- **WHEN** a replacement worker starts at the active judgment stage
 - **THEN** its disclosure includes the reconstruction option and common evidence rules before it uses stage evidence
 
 ### Requirement: Complete merge continuation and replacement state
 
-Continuation and replacement disclosure SHALL carry complete stage-applicable state: the active stage, exact external references and hashes, affected paths with categories and region and stage identifiers, necessary valid receipts, original provenance, working language, exact strategy and revision and confirmation state, selected semantic decisions, pending corrections, review and verification counters and outcomes with full failure references, collision applicability and complete plans, owned and staged paths, operation history, current outcome, and the changed-files union. Inventories SHALL be exhaustive and SHALL NOT depend on abbreviated phrases such as `and others; see earlier`. Replacement SHALL reconstruct from supplied state and verified external references rather than a prior journal or assumed prior context. Missing reconstruction data or unverifiable required references SHALL stop execution before writing or finalizing.
+First-dispatch, continuation, and replacement disclosure SHALL carry complete stage-applicable state: the active stage, exact external references and hashes, affected paths with categories and region and stage identifiers, necessary valid receipts, original provenance, working language, exact strategy and revision and confirmation state, selected semantic decisions, pending corrections, review and verification counters and outcomes with full failure references, collision applicability and complete plans, owned and staged paths, operation history, current outcome, and the changed-files union. Inventories SHALL be exhaustive and SHALL NOT depend on abbreviated phrases such as `and others; see earlier`. A first dispatch and a replacement SHALL both start from supplied state and verified external references rather than a prior journal or assumed prior context, because the worker saw none of the earlier stages. Missing reconstruction data or unverifiable required references SHALL stop execution before writing or finalizing.
 
 #### Scenario: Replacement resumes from exact evidence
 
@@ -104,3 +104,22 @@ Continuation and replacement disclosure SHALL carry complete stage-applicable st
 
 - **WHEN** a failed verification result is carried into a continuation or replacement
 - **THEN** its exact external reference and checksum preserve the full command outcome and output needed for analysis
+
+### Requirement: Merge worker runs judgment stages only
+
+The merge worker SHALL work only at judgment points: resolving conflicts, correcting a failed test round, and planning decision-record renumbering. It SHALL NOT run the test suite, select, refresh, or validate a branch, or run any mechanical merge-tool action other than `instructions` and `valid`. A test correction SHALL be returned as exact correction ranges within the affected file set before any write, and the renumbering plan SHALL be read-only.
+
+#### Scenario: Failed round is corrected from the failure record
+
+- **WHEN** the coordinator continues the worker with `test-correction`, the round number, the staged paths, and the failure record's reference and hash
+- **THEN** the worker reads the failure evidence at that reference and returns its analysis and proposed correction ranges without running the suite
+
+#### Scenario: Correction is applied only to captured ranges
+
+- **WHEN** the coordinator continues the worker with `apply` and a captured correction snapshot
+- **THEN** the worker writes exactly those fixes inside the captured ranges and reports every written path in `changed_files`
+
+#### Scenario: Renumbering plan writes nothing
+
+- **WHEN** the worker completes a `renumbering-plan` task
+- **THEN** it returns the rename plan and the coordinator applies the renames and replacements

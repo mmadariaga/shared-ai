@@ -118,7 +118,7 @@ The coordinator MUST keep fetched contracts and installed harness bindings out o
 
 ### Requirement: Language handoff is coordinator-owned
 
-The coordinator SHALL ask the working-language question only after the first `conflict_detected` event, SHALL store `working_language` only in invocation-scoped state, and SHALL forward it unchanged through same-worker continuation.
+The coordinator SHALL ask the working-language question only at the first conflict stop it detects from the conflict snapshot, SHALL store `working_language` only in invocation-scoped state, and SHALL forward it unchanged in the worker's task disclosure and through same-worker continuation.
 
 #### Scenario: Clean integration skips language handoff
 
@@ -174,7 +174,7 @@ The presentation seam SHALL select the active stage's user-facing report without
 
 ### Requirement: Merge evidence remains internal and original
 
-The coordinator SHALL retain and validate the original received worker source bytes, not a reconstructed envelope with a shortened summary or substituted fields. A newly reported `Mechanical evidence` appendix SHALL carry exact receipt action, record reference, and checksum entries for coordinator verification and retention; it SHALL remain internal evidence rather than part of the selected user-facing report. Replacement state SHALL carry the complete retained reference inventory. Presentation selection SHALL NOT change validation input or authorize a mutation.
+The coordinator SHALL retain and validate the original received worker source bytes, not a reconstructed envelope with a shortened summary or substituted fields. The coordinator SHALL collect mechanical receipts itself through the merge tool, SHALL retain each exact record reference and checksum as internal evidence rather than part of the selected user-facing report, and SHALL hand a receipt to the worker as its exact reference and hash rather than a shortened reconstruction. Replacement state SHALL carry the complete retained reference inventory. Presentation selection SHALL NOT change validation input or authorize a mutation.
 
 #### Scenario: Presentation is not validator input
 
@@ -183,12 +183,12 @@ The coordinator SHALL retain and validate the original received worker source by
 
 #### Scenario: Receipt appendix is retained without public repetition
 
-- **WHEN** a worker first reports a new external receipt
-- **THEN** the coordinator verifies its complete record and checksum, retains its reference for reconstruction, and excludes the technical appendix from the selected public stage report
+- **WHEN** the coordinator collects a new external receipt
+- **THEN** it retains the record's exact reference and checksum for reconstruction and excludes that technical evidence from the selected public stage report
 
 ### Requirement: Self-sufficient merge closure
 
-The closing worker summary SHALL identify method and branch direction, the actual operation and resulting HEAD or exact pending state, verification status, conflict and collision disposition, and unresolved matters. It SHALL explain new decisions, failures, and state changes without repeating settled strategy explanations. On a partial failure it SHALL identify completed operations, the failed operation and error, staged and pending paths, current HEAD, merge or rebase state, and unresolved verification or collision findings. New evidence hand-offs SHALL occur before terminal navigation so the closing summary can be forwarded verbatim.
+The closing summary, written by the coordinator from the final texts' template, SHALL identify method and branch direction, the actual operation and resulting HEAD or exact pending state, verification status, conflict and collision disposition, and unresolved matters. It SHALL explain new decisions, failures, and state changes without repeating settled strategy explanations. On a partial failure it SHALL identify completed operations, the failed operation and error, staged and pending paths, current HEAD, merge or rebase state, and unresolved verification or collision findings. The closing summary SHALL be written before terminal navigation so the terminal renderer can print it unchanged.
 
 #### Scenario: Successful closure retains necessary outcomes
 
@@ -199,3 +199,17 @@ The closing worker summary SHALL identify method and branch direction, the actua
 
 - **WHEN** a Git operation fails after earlier operations succeeded
 - **THEN** closure distinguishes completed and failed operations and reports current HEAD, staged and pending paths, operation state, and unresolved findings without claiming successful finalization
+
+### Requirement: Seam holds the coordinator's fixed texts per stage
+
+The presentation seam SHALL hold the coordinator's fixed texts in stage-ordered sections: preflight texts (in-progress guard closings, the dirty, method, and branch items, the branch-entry prompt, the integration proposal, and the early closes), conflict texts, verification texts, collision texts, and final texts (the compact finalization summary and the final summary template). Pinned texts SHALL stay verbatim, and the merge tool SHALL serve each section with the coordinator stage that uses it.
+
+#### Scenario: Stage entry delivers only its own texts
+
+- **WHEN** the coordinator enters the `verify` stage
+- **THEN** the returned text holds the verification texts and holds neither the collision texts nor the final texts
+
+#### Scenario: Pre-language texts use the ambient language
+
+- **WHEN** the coordinator writes context around a pinned preflight text before a working language is selected
+- **THEN** the pinned text stays verbatim and the surrounding context is written in the ambient conversation language

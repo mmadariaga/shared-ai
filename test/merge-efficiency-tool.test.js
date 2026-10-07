@@ -388,30 +388,178 @@ test('verification distinguishes passed, failed and unavailable and retains fail
   assert.equal(changed.data.state_changed_during_run, true); assert.equal(changed.data.verification_result, 'failed');
 });
 
-test('active disclosures omit future bodies and keep required semantic and collision branches', () => {
-  const expected = { preflight: '### Step 1:', detect: '### Step 5:', strategy: '### Step 6:',
-    apply: '#### Writing the resolution', verify: '### Step 8:', collision: '### Step 9:', final: '### Step 10:' };
-  for (const [stage, heading] of Object.entries(expected)) {
+const COORDINATOR_STAGES = ['preflight', 'conflicts', 'verify', 'collision', 'final'];
+const WORKER_STAGES = { strategy: '### Step 6: Intent reconstruction', apply: '#### Writing the resolution',
+  'test-correction': '### Step 8: Test correction', 'renumbering-plan': '### Step 9: ADR/DDR renumbering plan' };
+
+function enterCli(cwd, args, input = '') {
+  const run = spawnSync(process.execPath, [TOOL, 'enter', ...args, '--json', '--cwd', cwd], { encoding: 'utf8', input });
+  const facts = /\n## Stage facts\n\n```json\n([\s\S]+)\n```\n$/.exec(run.stdout);
+  return { ...run, facts: facts ? JSON.parse(facts[1]) : null };
+}
+
+test('worker disclosures cover only the judgment stages and omit future bodies', () => {
+  for (const [stage, heading] of Object.entries(WORKER_STAGES)) {
     const output = merge.instructions(stage);
+    assert.equal(merge.STAGES[stage].owner, 'worker');
     assert.ok(output.includes(heading));
     assert.match(output, /Execute only this disclosed stage/);
-    for (const other of Object.values(expected)) if (other !== heading && !(stage === 'strategy' && other === '### Step 6:')) assert.ok(!output.includes(other), `${stage} disclosed ${other}`);
+    for (const other of Object.values(WORKER_STAGES)) if (other !== heading) assert.ok(!output.includes(other), `${stage} disclosed ${other}`);
+    assert.doesNotMatch(output, /## Stage: |## Preflight texts|### Step 10:/, `${stage} disclosed coordinator text`);
   }
   assert.match(merge.instructions('strategy'), /Contradicting rules/);
-  assert.match(merge.instructions('collision'), /Ambiguous reference/);
-  assert.doesNotMatch(merge.instructions('strategy'), /## Evidence, not authority/);
-  assert.match(merge.instructions('strategy', true), /## Evidence, not authority/);
+  assert.match(merge.instructions('renumbering-plan'), /Ambiguous reference/);
   assert.throws(() => merge.instructions('unknown'), /unknown active stage/);
+  assert.throws(() => merge.instructions('constructor'), /unknown active stage/);
+  for (const retired of ['detect']) assert.throws(() => merge.instructions(retired), /unknown active stage/);
   const worker = fs.readFileSync(path.join(ROOT, 'sai/commands/merge/worker.md'), 'utf8');
   assert.doesNotMatch(worker, /Fetch @sai\/commands\/merge\/instructions\.md/);
+  const library = fs.readFileSync(path.join(ROOT, 'sai/commands/merge/instructions.md'), 'utf8');
+  assert.doesNotMatch(library, /### Step (1|2|3|4|5|10):/, 'mechanical steps left the worker library');
 });
 
-test('existing projections install the tool and disclosure library for both harnesses', () => {
+test('a worker starting at a judgment point reconstructs the state it never saw', () => {
+  assert.doesNotMatch(merge.instructions('apply'), /## Evidence, not authority/);
+  for (const stage of Object.keys(WORKER_STAGES)) {
+    const output = merge.instructions(stage, true);
+    for (const heading of ['## Evidence, not authority', '## Sides', '### Merge provenance', WORKER_STAGES[stage]]) {
+      assert.equal(output.split(heading).length, 2, `${stage} --reconstruct holds ${heading} exactly once`);
+    }
+  }
+  const cards = name => fs.readFileSync(path.join(ROOT, 'sai/commands/merge', name), 'utf8');
+  const coordinator = cards('coordinator.md'); const mechanics = cards('mechanics.md');
+  assert.match(coordinator, /at the first judgment point, dispatch exactly one\s+`sai-merge-worker`/);
+  assert.match(coordinator, /usual ready handshake/);
+  assert.match(coordinator, /pointer in its `--reconstruct` form/);
+  assert.match(coordinator, /The first dispatch and a mid-run\s+replacement use this same hand-over/);
+  assert.match(coordinator, /missing state stops before writing or\s+finalizing/);
+  assert.match(coordinator, /keep the same\s+persistent worker across every conflict stop of a rebase/);
+  assert.match(coordinator, /A run with no conflict and no decision-record collision completes through\s+these stages alone: dispatch no worker/);
+  assert.match(mechanics, /A run that reaches no judgment point dispatches no worker/);
+  assert.match(cards('worker.md'), /you saw none of the\s+earlier stages/);
+  assert.match(cards('lifecycle.md'), /reaches `terminal` with no worker dispatched/);
+});
+
+test('the coordinator receives its instructions per stage instead of at start', () => {
+  const coordinator = fs.readFileSync(path.join(ROOT, 'sai/commands/merge/coordinator.md'), 'utf8');
+  assert.doesNotMatch(coordinator, /Fetch @sai\/commands\/merge\/(presentation|coordinator-stages|instructions)\.md/);
+  assert.doesNotMatch(coordinator, /Fetch @sai\/policies\/commit-rules\.md/);
+  assert.doesNotMatch(coordinator, /git merge --no-ff|### Post-resolution review|### Step d/);
+  const stageText = Object.fromEntries(COORDINATOR_STAGES.map(stage => [stage, merge.instructions(stage)]));
+  for (const stage of COORDINATOR_STAGES) {
+    assert.equal(merge.STAGES[stage].owner, 'coordinator');
+    assert.ok(stageText[stage].includes(`## Stage: ${stage}`));
+    assert.match(stageText[stage], /Run this stage now and follow it to its exit/);
+    for (const other of COORDINATOR_STAGES) if (other !== stage) assert.ok(!stageText[stage].includes(`## Stage: ${other}`), `${stage} disclosed ${other}`);
+    for (const heading of Object.values(WORKER_STAGES)) assert.ok(!stageText[stage].includes(heading), `${stage} disclosed worker text`);
+  }
+  // The seam's rules arrive once, with the first stage; each fixed text arrives with the stage that prints it.
+  assert.match(stageText.preflight, /## Three values/);
+  for (const stage of COORDINATOR_STAGES.slice(1)) assert.doesNotMatch(stageText[stage], /## Three values/);
+  assert.match(stageText.preflight, /Which integration\s+method do you want to use\?/);
+  assert.match(stageText.preflight, /Which branch do you want to operate on\?/);
+  assert.match(stageText.conflicts, /Which language should I use/);
+  assert.match(stageText.conflicts, /### Post-resolution review/);
+  assert.match(stageText.verify, /automated verification is\s+unavailable/);
+  assert.match(stageText.collision, /adr_ddr_renames/);
+  assert.match(stageText.final, /### Final summary/);
+  assert.match(stageText.final, /Fetch @sai\/policies\/commit-rules\.md/);
+  assert.doesNotMatch(stageText.preflight, /### Final summary|Which language should I use/);
+  assert.match(merge.instructions('messages'), /^# Active merge stage: messages[\s\S]+## Informative messages/);
+  assert.doesNotMatch(merge.instructions('messages'), /## Stage: /);
+  // --reconstruct is the worker's hand-over; it adds nothing to a coordinator stage.
+  assert.equal(merge.instructions('verify', true), stageText.verify);
+});
+
+test('each fixed coordinator sequence is one composite merge-tool call', t => {
+  const { cwd, parent } = fixture(t);
+  const start = enterCli(cwd, ['--stage', 'preflight']);
+  assert.equal(start.status, 0, start.stdout);
+  assert.match(start.stdout, /^# Active merge stage: preflight/);
+  assert.match(start.stdout, /## Stage: preflight/);
+  assert.equal(start.facts.action, 'preflight');
+  assert.deepEqual(start.facts.data.candidates.map(item => item.name), ['feature']);
+
+  // Branch validation and provenance are one call: format, existence, commit, capture.
+  const missing = cli(cwd, ['provenance', '--source-ref', 'refs/heads/absent', '--method', 'merge', '--squash', 'not-applicable']);
+  assert.equal(missing.status, 2);
+  assert.match(missing.payload.error, /show-ref|rev-parse/);
+  const captured = cli(cwd, ['provenance', '--source-ref', 'refs/heads/feature', '--method', 'merge', '--squash', 'not-applicable']);
+  assert.equal(captured.status, 0, captured.payload.error);
+  assert.equal(git(cwd, ['merge', '--no-ff', '--no-commit', 'refs/heads/feature'], true).status, 1);
+
+  assert.equal(enterCli(cwd, ['--stage', 'conflicts']).status, 2, 'a snapshot needs its external record');
+  const stop = enterCli(cwd, ['--stage', 'conflicts', '--record', path.join(parent, 'stop-1.json')]);
+  assert.equal(stop.status, 0, stop.stdout);
+  assert.match(stop.stdout, /## Stage: conflicts/);
+  assert.deepEqual(stop.facts.data.categories, { specs: 0, 'adr-ddr': 0, code: 1 });
+  assert.deepEqual(stop.facts.data.operation, { merge_in_progress: true, rebase_in_progress: false });
+  assert.equal(stop.facts.data.files[0].before, undefined);
+  assert.equal(stop.facts.record_hash, hash(fs.readFileSync(stop.facts.record)));
+
+  const snapshot = JSON.parse(fs.readFileSync(stop.facts.record));
+  writeAuthored(cwd, snapshot); git(cwd, ['add', 'f.txt']);
+  const verified = enterCli(cwd, ['--stage', 'verify', '--record', path.join(parent, 'verify-1.json')]);
+  assert.equal(verified.status, 0, verified.stdout);
+  assert.match(verified.stdout, /## Stage: verify/);
+  assert.equal(verified.facts.data.verification_result, 'unavailable');
+  fs.writeFileSync(path.join(cwd, 'package.json'), JSON.stringify({ scripts: { test: 'node -e "process.exit(3)"' } }));
+  const failed = enterCli(cwd, ['--stage', 'verify', '--record', path.join(parent, 'verify-2.json')]);
+  assert.equal(failed.status, 1, 'the composite keeps the exit code of its mechanical action');
+  assert.match(failed.stdout, /## Stage: verify/);
+  assert.equal(failed.facts.data.verification_result, 'failed');
+  assert.equal(failed.facts.data.stdout, undefined);
+  fs.rmSync(path.join(cwd, 'package.json'));
+
+  const collided = enterCli(cwd, ['--stage', 'collision', '--record', path.join(parent, 'collision.json')], JSON.stringify(captured.payload));
+  assert.equal(collided.status, 0, collided.stdout);
+  assert.match(collided.stdout, /## Stage: collision/);
+  assert.equal(collided.facts.data.applicability, 'not-applicable');
+
+  const closing = enterCli(cwd, ['--stage', 'final']);
+  assert.equal(closing.status, 0, closing.stdout);
+  assert.match(closing.stdout, /## Stage: final/);
+  assert.equal(closing.facts.action, 'status');
+  assert.deepEqual(closing.facts.data.staged, ['f.txt']);
+  assert.deepEqual(closing.facts.data.unmerged, []);
+  assert.equal(closing.facts.data.merge_in_progress, true);
+  assert.equal(closing.facts.data.head, captured.payload.data.target_sha);
+
+  for (const stage of ['strategy', 'renumbering-plan', 'messages', 'unknown']) {
+    const refused = spawnSync(process.execPath, [TOOL, 'enter', '--stage', stage, '--json', '--cwd', cwd], { encoding: 'utf8' });
+    assert.equal(refused.status, 2, `${stage} is not a coordinator stage entry`);
+  }
+});
+
+test('a clean integration reaches closure through the tool alone, skipping verification', t => {
+  const { cwd, parent } = fixture(t);
+  git(cwd, ['checkout', '-b', 'side', 'HEAD~1']);
+  fs.writeFileSync(path.join(cwd, 'side.txt'), 'side\n');
+  git(cwd, ['add', 'side.txt']); git(cwd, ['commit', '-m', 'side']); git(cwd, ['checkout', 'main']);
+  assert.equal(enterCli(cwd, ['--stage', 'preflight']).status, 0);
+  const captured = cli(cwd, ['provenance', '--source-ref', 'refs/heads/side', '--method', 'merge', '--squash', 'not-applicable']);
+  assert.equal(git(cwd, ['merge', '--no-ff', '--no-commit', 'refs/heads/side']).status, 0);
+  const collided = enterCli(cwd, ['--stage', 'collision', '--record', path.join(parent, 'collision.json')], JSON.stringify(captured.payload));
+  assert.equal(collided.facts.data.applicability, 'not-applicable');
+  const closing = enterCli(cwd, ['--stage', 'final']);
+  assert.deepEqual(closing.facts.data.staged, ['side.txt']);
+  // Every text this route loaded is coordinator text: no judgment stage was needed.
+  for (const output of [collided.stdout, closing.stdout]) {
+    for (const heading of Object.values(WORKER_STAGES)) assert.ok(!output.includes(heading));
+  }
+  const stages = fs.readFileSync(path.join(ROOT, 'sai/commands/merge/coordinator-stages.md'), 'utf8');
+  assert.match(stages, /A clean integration never enters `verify` and never\s+asks for a language/);
+  assert.match(stages, /\*\*`not-applicable` or `no-collision`\*\*[\s\S]{0,160}no\s+search ran/);
+  assert.match(stages, /\*\*`needs-judgment`\*\*[\s\S]{0,200}Dispatch the worker when none is running/);
+});
+
+test('existing projections install the tool and every stage library for both harnesses', () => {
   for (const harness of ['claude', 'opencode']) {
     const root = path.join(os.tmpdir(), `sai-merge-parity-${harness}`);
     const destinationRoot = Object.fromEntries(['commands', 'sai', 'skills', 'agents', 'config', 'root'].map(name => [name, path.join(root, name)]));
     const expanded = expandInstallManifest(loadInstallManifest(ROOT), { harness, repoRoot: ROOT, destinationRoot });
-    for (const name of ['tools/merge.js', 'commands/merge/mechanics.md', 'commands/merge/instructions.md']) {
+    for (const name of ['tools/merge.js', 'commands/merge/mechanics.md', 'commands/merge/instructions.md',
+      'commands/merge/coordinator-stages.md', 'commands/merge/presentation.md']) {
       assert.ok(expanded.some(item => item.harness === harness && item.destinationPath === path.join(destinationRoot.sai, name)), `${harness}: ${name}`);
     }
   }
@@ -437,7 +585,8 @@ test('equivalent preflight measurement separates tool execution from instruction
   assert.equal(baseline.instruction_bytes, 30208);
   assert.match(baseline.source_revision, /^[0-9a-f]{40}$/);
   assert.match(baseline.source_sha256, /^[0-9a-f]{64}$/);
-  const disclosed = Buffer.byteLength(merge.instructions('preflight'));
+  // The worker's first disclosure is now its judgment-point hand-over, not the preflight stage.
+  const disclosed = Buffer.byteLength(merge.instructions('strategy', true));
   assert.ok(disclosed < baseline.instruction_bytes);
   t.diagnostic(JSON.stringify({ case: 'same-clean-preflight', node: process.version,
     baseline_revision: baseline.source_revision, baseline_source_sha256: baseline.source_sha256,
