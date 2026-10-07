@@ -88,7 +88,7 @@ After ready and on every continuation, the coordinator SHALL provide an exact `A
 
 ### Requirement: Complete merge continuation and replacement state
 
-First-dispatch, continuation, and replacement disclosure SHALL carry complete stage-applicable state: the active stage, exact external references and hashes, affected paths with categories and region and stage identifiers, necessary valid receipts, original provenance, working language, exact strategy and revision and confirmation state, selected semantic decisions, pending corrections, review and verification counters and outcomes with full failure references, collision applicability and complete plans, owned and staged paths, operation history, current outcome, and the changed-files union. Inventories SHALL be exhaustive and SHALL NOT depend on abbreviated phrases such as `and others; see earlier`. A first dispatch and a replacement SHALL both start from supplied state and verified external references rather than a prior journal or assumed prior context, because the worker saw none of the earlier stages. Missing reconstruction data or unverifiable required references SHALL stop execution before writing or finalizing.
+First-dispatch, continuation, and replacement disclosure SHALL carry complete stage-applicable state: the active stage, exact external references and hashes, affected paths with categories and region identifiers, necessary valid receipts, original provenance, working language, exact strategy and revision and confirmation state, selected semantic decisions, pending corrections, review and verification counters and outcomes with full failure references, collision applicability and complete plans, owned and staged paths, operation history, current outcome, and the changed-files union. The disclosure SHALL NOT carry stage blob identifiers; the worker obtains conflict content through the merge tool's `bundle` action on the disclosed snapshot reference and hash. Inventories SHALL be exhaustive and SHALL NOT depend on abbreviated phrases such as `and others; see earlier`. A first dispatch and a replacement SHALL both start from supplied state and verified external references rather than a prior journal or assumed prior context, because the worker saw none of the earlier stages. Missing reconstruction data or unverifiable required references SHALL stop execution before writing or finalizing.
 
 #### Scenario: Replacement resumes from exact evidence
 
@@ -107,7 +107,7 @@ First-dispatch, continuation, and replacement disclosure SHALL carry complete st
 
 ### Requirement: Merge worker runs judgment stages only
 
-The merge worker SHALL work only at judgment points: resolving conflicts, correcting a failed test round, and planning decision-record renumbering. It SHALL NOT run the test suite, select, refresh, or validate a branch, or run any mechanical merge-tool action other than `instructions` and `valid`. A test correction SHALL be returned as exact correction ranges within the affected file set before any write, and the renumbering plan SHALL be read-only.
+The merge worker SHALL work only at judgment points: resolving conflicts, correcting a failed test round, and planning decision-record renumbering. It SHALL NOT run the test suite, select, refresh, or validate a branch, or run any mechanical merge-tool action other than `instructions`, `valid`, `bundle`, and `write`. It SHALL read conflicts through `bundle` and SHALL change an affected file only through `write`. A test correction SHALL be returned as exact correction ranges within the affected file set before any write, and the renumbering plan SHALL be read-only.
 
 #### Scenario: Failed round is corrected from the failure record
 
@@ -117,7 +117,7 @@ The merge worker SHALL work only at judgment points: resolving conflicts, correc
 #### Scenario: Correction is applied only to captured ranges
 
 - **WHEN** the coordinator continues the worker with `apply` and a captured correction snapshot
-- **THEN** the worker writes exactly those fixes inside the captured ranges and reports every written path in `changed_files`
+- **THEN** the worker sends exactly those fixes for the captured ranges through the merge tool's `write` action with the correction snapshot's reference and reports every path the tool wrote in `changed_files`
 
 #### Scenario: Renumbering plan writes nothing
 

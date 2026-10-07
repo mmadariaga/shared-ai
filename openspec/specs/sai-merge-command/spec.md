@@ -88,16 +88,16 @@ The worker SHALL map git stages to branches by method: for `merge`, stage 2 (`--
 
 ### Requirement: Coordinator-only mutation surface
 
-The system SHALL confine state-changing Git operations to the coordinator, including branch refresh with `git fetch --prune origin`, the launch and squash, `git checkout --ours/--theirs`, collision replacements and `git mv`, staging, `git rebase --continue`, and commits. The worker SHALL run only read-only Git commands and SHALL write only resolution content, and SHALL never run fetch or exact-ref validation for branch selection. For an authorized merge finalization or staged repair commit, the coordinator SHALL pass the complete informative message literally on standard input to `git commit -F -` under `sai/policies/command-execution.md`, using Bash or PowerShell 7 without `git commit -m`, a Bash-only heredoc, or the `/sai-commit` `commit.js` path.
+The system SHALL confine state-changing Git operations to the coordinator, including branch refresh with `git fetch --prune origin`, the launch and squash, `git checkout --ours/--theirs`, collision replacements and `git mv`, staging, `git rebase --continue`, and commits. The worker SHALL run only read-only Git commands and SHALL supply only resolution content, as resolved text handed to the merge tool's `write` action, which places it in the working tree; the worker SHALL NOT edit an affected file by any other means, and SHALL never run fetch or exact-ref validation for branch selection. For an authorized merge finalization or staged repair commit, the coordinator SHALL pass the complete informative message literally on standard input to `git commit -F -` under `sai/policies/command-execution.md`, using Bash or PowerShell 7 without `git commit -m`, a Bash-only heredoc, or the `/sai-commit` `commit.js` path.
 
 #### Scenario: Worker never executes git mutations
 
 - **WHEN** the worker analyzes conflicts, proposes resolutions, scans collisions, or verifies the suite
-- **THEN** it performs read-only inspection, writes authorized content to conflicted regions within scope, returns payloads, and leaves all Git state changes to the coordinator
+- **THEN** it performs read-only inspection, hands authorized content for conflicted regions within scope to the merge tool's `write` action, returns payloads, and leaves all Git state changes to the coordinator
 
 #### Scenario: Coordinator reviews materialized content before staging
 
-- **WHEN** the worker has written resolution content to the working tree
+- **WHEN** the merge tool has placed the worker's resolution content in the working tree
 - **THEN** the coordinator reviews it against the confirmed strategy and either stages it or returns the named divergence to the worker, for at most three rounds
 
 #### Scenario: Worker never validates branch entries
@@ -131,7 +131,7 @@ The system SHALL classify each conflicted file as specs, ADR/DDR, or code upon c
 
 ### Requirement: Region-scoped alternatives
 
-When every region of a file resolves to the same stage, the alternative SHALL come from git unchanged (`git-ours` or `git-theirs`) only when the captured stage-checkout check establishes that this preserves Git-combined content outside the regions. Otherwise the file SHALL be `authored` with region splices preserving the captured working content, even when every region selects the same side. When regions resolve to different stages or need new text, the file SHALL be `authored`, with a region-scoped combination that keeps one owner per responsibility and one source per fact and is never built by concatenating fragments. A conflict without markers SHALL resolve to a git side or be escalated. Any changed representation SHALL appear in the complete strategy before application.
+When every region of a file resolves to the same stage, the alternative SHALL come from git unchanged (`git-ours` or `git-theirs`) only when the captured stage-checkout check establishes that this preserves Git-combined content outside the regions. Otherwise the file SHALL be `authored` with region splices preserving the captured working content, even when every region selects the same side. When regions resolve to different stages or need new text, the file SHALL be `authored`, with a region-scoped combination that keeps one owner per responsibility and one source per fact and is never built by concatenating fragments. A file the conflict bundle marks `whole-side-only` — a conflict without markers, such as a binary file, a deletion on one side, or a rename, or a file whose encoding the tool cannot determine — SHALL resolve to a git side or be escalated. Any changed representation SHALL appear in the complete strategy before application.
 
 #### Scenario: Mixed-side file is authored
 
@@ -164,7 +164,7 @@ The worker SHALL produce one prose strategy over the whole selected conflict set
 
 ### Requirement: Complete resolution payload validation
 
-Before staging, the coordinator SHALL atomically validate the original received worker result and its `## Complete resolution payload`: exactly one record per conflicted file in the selected scope with the worker's path and category; `source` of `git-ours` / `git-theirs` with empty `regions` or `authored` with complete captured region entries; decisions matching those stated by the confirmed strategy; and no conflict marker, diff, hunk, or complete file in region text. Obvious authored regions SHALL NOT require an invented semantic decision. The coordinator SHALL pass the original source bytes to validation rather than constructing a shortened substitute. Mechanical resolution checks SHALL validate the retained snapshot hash, immutable HEAD/index/operation identity, complete inventories, confirmed decisions, protected content, and unrelated content before checkout and before staging. Authored files SHALL equal the captured working file with only declared replacements; Git-sourced files SHALL remain untouched by the worker and SHALL equal the captured stage after coordinator checkout. Independent semantic review SHALL also pass before staging. Any failure SHALL reject the whole payload, leaving every conflict untouched by coordinator checkout and unstaged.
+Before staging, the coordinator SHALL atomically validate the original received worker result and its `## Complete resolution payload`: exactly one record per conflicted file in the selected scope with the worker's path and category; `source` of `git-ours` / `git-theirs` with empty `regions` or `authored` with complete captured region entries; decisions matching those stated by the confirmed strategy; and no conflict marker, diff, hunk, or complete file in region text. Obvious authored regions SHALL NOT require an invented semantic decision. The coordinator SHALL pass the original source bytes to validation rather than constructing a shortened substitute. Mechanical resolution checks SHALL validate the retained snapshot hash, immutable HEAD/index/operation identity, complete inventories, confirmed decisions, protected content, and unrelated content before checkout and before staging. Authored files SHALL equal the captured working file with only declared replacements, each replacement stored with the line endings and byte-order mark of the captured pre-write file as the merge tool's `write` action places it; Git-sourced files SHALL remain untouched by the worker and SHALL equal the captured stage after coordinator checkout. Independent semantic review SHALL also pass before staging. Any failure SHALL reject the whole payload, leaving every conflict untouched by coordinator checkout and unstaged.
 
 #### Scenario: Fragmentary payload is rejected atomically
 
@@ -174,7 +174,7 @@ Before staging, the coordinator SHALL atomically validate the original received 
 #### Scenario: Git-sourced files are materialized by checkout
 
 - **WHEN** every record passes validation
-- **THEN** the coordinator materializes `git-ours` / `git-theirs` files with `git checkout --ours` / `--theirs`, leaves the worker-written `authored` files as written, and never reconstructs content from prose
+- **THEN** the coordinator materializes `git-ours` / `git-theirs` files with `git checkout --ours` / `--theirs`, leaves the `authored` files as the merge tool wrote them, and never reconstructs content from prose
 
 #### Scenario: Original envelope is required
 
@@ -516,12 +516,12 @@ At start the merge coordinator SHALL load only what every stage needs. Its stage
 
 ### Requirement: Judgment-point worker dispatch
 
-The coordinator SHALL dispatch exactly one merge worker at the first judgment point of a run: a conflict stop, or a collision receipt whose result is `needs-judgment`. It SHALL continue that same worker at every later judgment point, including later rebase stops and failed test rounds. A run that reaches no judgment point SHALL dispatch no worker and SHALL open no no-commit guard window. The dispatch SHALL use the ready handshake and SHALL then disclose the task with the `--reconstruct` form of the `Active stage:` pointer and the complete reconstruction state.
+The coordinator SHALL dispatch exactly one merge worker at the first judgment point of a run: a conflict stop, or a collision receipt whose result is `needs-judgment`. It SHALL continue that same worker at every later judgment point, including later rebase stops and failed test rounds. A run that reaches no judgment point SHALL dispatch no worker and SHALL open no no-commit guard window. The dispatch SHALL use the ready handshake and SHALL then disclose the task with the `--reconstruct` form of the `Active stage:` pointer and the complete reconstruction state. The `strategy` disclosure SHALL NOT carry stage blob OIDs: the worker SHALL read the conflicts through the merge tool's `bundle` action on the disclosed snapshot reference and hash.
 
 #### Scenario: First conflict dispatches the worker
 
 - **WHEN** the first conflict stop of a run is detected and no worker is running
-- **THEN** the coordinator dispatches one worker and discloses `strategy` with the affected inventory, stage blob OIDs, the snapshot reference and hash, the provenance receipt, the method, and the working language
+- **THEN** the coordinator dispatches one worker and discloses `strategy` with the affected inventory, the snapshot reference and hash, the provenance receipt, the method, and the working language
 
 #### Scenario: Collision alone dispatches the worker
 

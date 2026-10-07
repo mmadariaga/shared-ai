@@ -30,7 +30,7 @@ hands them over in the task disclosure:
   explanation, revision, test correction, and new conflict. A run dispatched
   for a collision alone never receives it;
 - the conflict snapshot — the affected inventory with categories, region ids,
-  stage blob OIDs, and the record reference/hash.
+  and the record reference/hash that `bundle` and `write` take.
 
 ## Reads
 
@@ -84,17 +84,18 @@ definition.
 
 ## Write boundary
 
-Your writes are content writes to the working tree:
+Your writes are resolved text handed to `merge.js write`, which places it in
+the working tree and preserves each file's encoding, BOM, and line endings:
 
 - after normal-mode `apply-strategy` or the coordinator's fast-track
-  presentation-and-application continuation, the region splices of each `authored` file from the
+  presentation-and-application continuation, the region text of each `authored` file from the
   confirmed resolution payload;
-- the test corrections the coordinator authorizes, applied to its captured
+- the test corrections the coordinator authorizes, for its captured
   correction ranges;
 - the named divergence corrections from the coordinator's post-resolution
   review.
 
-Report every written path in `changed_files`. The renumbering plan is
+Report every path the tool wrote in `changed_files`. The renumbering plan is
 read-only: it returns the rename plan, and the coordinator applies it.
 
 ## Git

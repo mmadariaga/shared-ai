@@ -77,11 +77,39 @@ Steps 6–7 (`strategy`, `apply`), Step 8 (`test-correction`), and Step 9
 (`renumbering-plan`).
 
 The coordinator's conflict snapshot names each affected file with its
-category (`specs`, `adr-ddr`, `code`), its region ids, and its stage blob
-OIDs. Read needed stage content by its captured blob OID
-(`git cat-file blob <oid>`), mapped through [Sides](#sides), not by
-enumerating the index. Revalidate the snapshot before analysis or writing;
-changed paths/index/HEAD require a new coordinator capture and strategy.
+category (`specs`, `adr-ddr`, `code`), its region ids, and the record
+reference/hash. Revalidate the snapshot before analysis or writing; changed
+paths/index/HEAD require a new coordinator capture and strategy.
+
+### Conflict bundle
+
+The **conflict bundle** is your reading of the conflicts. One call returns
+every affected file prepared:
+
+```text
+node <merge-tool> bundle --record <snapshot> --record-hash <retained-sha256> --json --cwd <project-root>
+```
+
+Each file carries:
+
+- `conflict_category` and `resolution`. `text` files admit region text or a
+  whole side. Every other category (`binary`, `deleted-on-one-side`,
+  `renamed`, `no-markers`, `encoding-undetermined`) is `whole-side-only` and
+  carries no regions: resolve it to `git-ours` or `git-theirs`, or escalate
+  it.
+- `regions`, each with its `conflict_id`, the decoded `ours`, `base`, and
+  `theirs` versions, and `context_before` / `context_after`. `ours` and
+  `theirs` are the git stages of [Sides](#sides). `base_from: mapped` marks a
+  base aligned by line from the ancestor file rather than written by Git:
+  treat it as close evidence, and as absent when `unavailable`.
+- `commits.ours` / `commits.theirs`: the messages of the commits that touched
+  the file on each side. `more: true` means older ones were left out.
+- `sides_present` and `whole_side_preserves_combined_content`, which bound the
+  whole-side alternatives of Step 7.
+
+The context is a few lines by design. Read more of a specific file, a
+governing rule, or a related change when a region's intent needs it; pass
+`--context <0-20>` for wider context on every region.
 
 ### Merge provenance
 
@@ -117,10 +145,11 @@ Analyze every file in `affected_files`; the strategy and payload cover them
 all.
 
 For every conflict region, reconstruct each side's intent before proposing
-anything. Read the governing rules that touch the conflicted set, at their
-captured SHAs: `git show <target_sha|source_sha>:<path>`. Inspect the base,
-both sides, the surrounding file, related branch changes, and auto-merged files
-that clarify the contract. Keep three kinds of evidence apart:
+anything, starting from the conflict bundle: its three versions and each
+side's commit messages. Read the governing rules that touch the conflicted
+set, at their captured SHAs: `git show <target_sha|source_sha>:<path>`. Read
+the surrounding file, related branch changes, and auto-merged files where they
+clarify the contract. Keep three kinds of evidence apart:
 
 - **Declared rules** — requirements from governing specs, ADRs, or DDRs. They
   are normative, outrank inferred objectives, and are reported as Facts with
@@ -178,9 +207,10 @@ For each conflicted file:
   source for each fact, and no duplicated gate or conflicting contract; it is
   scoped to the conflict regions and never built by concatenating fragments or
   retyping untouched lines.
-- A conflict with no markers (delete/modify, rename/rename, rename/delete) has
-  no region to write: resolve it to `git-ours` or `git-theirs`, or escalate it
-  when neither side is acceptable.
+- A file the bundle marks `whole-side-only` (a binary file, a deletion on one
+  side, a rename, an encoding the tool cannot determine) has no region to
+  write: resolve it to `git-ours` or `git-theirs`, or escalate it when neither
+  side is acceptable.
 
 Per category:
 
@@ -270,18 +300,36 @@ On the answer:
 
 #### Writing the resolution
 
-On a coordinator-authorized correction, use its protected `correction`
-snapshot's exact byte ranges and preimage instead of marker ranges. Splice
-only the named replacement into each range. Keep the original confirmed
+The tool places the bytes; you supply the text. Send every region of every
+`authored` file through one call, with the resolved text on standard input:
+
+```text
+node <merge-tool> write --record <snapshot> --record-hash <retained-sha256> --json --cwd <project-root>
+```
+
+Standard input is one `{"conflict_id": "<id>", "text": "<resolved text>"}`
+object, or an array of them. `text` is the region's complete replacement,
+final line ending included, and the same string the payload below carries for
+that region. The tool keeps the file's encoding, BOM, and line endings
+whatever your text arrives with, so write the text plainly and leave
+conversion to it.
+
+A call is whole: `outcome: failure` means nothing was written. The tool
+rejects text holding a conflict marker line, a `conflict_id` outside the
+snapshot, a file whose encoding is undetermined, and a file changed by
+anything but the tool. Correct the named input and call again; `pending`
+lists the regions of a written file still unresolved. Edit the affected files
+only through this command, and send nothing for `git-ours` / `git-theirs`
+files. When no complete marker-free outcome exists for an affected file,
+return `failed` and leave the conflict untouched.
+
+On a coordinator-authorized correction, pass the `correction` snapshot's
+reference/hash to the same command: its `conflict_id`s name the authorized
+byte ranges. To rewrite a region of the original snapshot, send its
+`conflict_id` again with the corrected text. Keep the original confirmed
 objective and return the same complete resolution payload for review and
 re-staging. A missing/stale reference or unauthorized path stops before a
 write; a new objective returns to strategy analysis.
-
-For each `authored` file, splice each region's text into its marked conflict
-region, in `conflict_id` order. Write nothing outside the agreed regions and
-nothing for `git-ours` / `git-theirs` files. When no complete marker-free
-outcome exists for an affected file, return `failed` and leave the conflict
-untouched.
 
 The completed `summary` holds a concise application outcome (affected paths,
 confirmed strategy revision, new errors/escalations if any), then
