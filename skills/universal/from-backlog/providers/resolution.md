@@ -19,8 +19,10 @@ Direct claims win over fallback candidates across both classification modes.
 Exactly one candidate in the winning tier is required before context resolution
 runs. Classification selects an adapter; it does not validate or resolve the
 reference. An adapter with provider-owned classification must validate its raw
-reference during resolution. No registered provider currently opts into this
-classification mode, so accepted references remain unchanged.
+reference during resolution. Azure DevOps uses direct claims for Services hosts
+and isolated positive IDs; GitHub paths and GitLab host fallback retain their
+existing selection. Azure DevOps resolves isolated IDs only with unambiguous
+existing organization context, otherwise returning `needs_input` for a full link.
 
 ## Context resolution
 

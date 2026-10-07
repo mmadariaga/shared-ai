@@ -1,6 +1,14 @@
 {
   "providers": [
     {
+      "id": "azuredevops",
+      "classification": "provider",
+      "resolution": "provider",
+      "capabilities": ["read"],
+      "instructions": "providers/azuredevops.md",
+      "adapter": "from-backlog-azuredevops.js"
+    },
+    {
       "id": "github",
       "hosts": ["github.com"],
       "domainless": true,
