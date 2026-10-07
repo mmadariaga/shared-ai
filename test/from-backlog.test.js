@@ -76,6 +76,49 @@ test('provider-owned resolution delegates unknown-host compatibility and retains
   assert.throws(() => resolve(value, { providers: [{ ...entry, adapter: '../escape.js' }] }), /Invalid provider reference/);
 });
 
+test('provider classification precedes URL parsing and selected resolution owns context', () => {
+  const entry = { id: 'example', classification: 'provider', resolution: 'provider', capabilities: ['read'], instructions: 'providers/example.md', adapter: 'from-backlog-example.js' };
+  const fallback = { id: 'fallback', resolution: 'provider', capabilities: ['read'] };
+  const calls = [];
+  const adapter = {
+    classify(value) { calls.push(['classify', value]); return value === '123' || /^https:\/\/[^/]+\.example\//.test(value) ? 'match' : null; },
+    resolve(value, io) { calls.push(['resolve', value]); assert.equal(io, context); return { status: 'resolved', number: 123, context: io.context }; },
+  };
+  const context = { context: 'existing context', loadAdapter(selected) { assert.equal(selected, entry); return adapter; }, run() { assert.fail('No dispatcher CLI reads'); } };
+  const extended = { providers: [...registry.providers, fallback, entry] };
+  for (const value of ['123', 'https://team.example/items/123']) {
+    calls.length = 0;
+    assert.deepEqual(resolve(` ${value} `, extended, context), { status: 'resolved', number: 123, context: context.context, provider: entry.id, instructions: entry.instructions, adapter: entry.adapter });
+    assert.deepEqual(calls, [['classify', value], ['resolve', value]]);
+  }
+  assert.equal(resolve(reference.url, extended, { loadAdapter: selected => selected === entry ? adapter : github }).provider, 'github');
+  assert.throws(() => resolve('unrecognized', extended, context), error => error.reason === 'invalid-reference');
+  assert.throws(() => resolve('123', { providers: [entry, { ...entry, id: 'other' }] }, { loadAdapter: () => adapter }), error => error.reason === 'unsupported-provider');
+  assert.throws(() => resolve('123', { providers: [entry] }, { loadAdapter: () => ({ classify: () => true }) }), error => error.reason === 'invalid-registry');
+});
+
+test('provider classification fallback preserves tier ambiguity and skips non-readable adapters', () => {
+  const entry = { id: 'example', classification: 'provider', resolution: 'provider', capabilities: ['read'], instructions: 'providers/example.md', adapter: 'from-backlog-example.js' };
+  let resolutions = 0;
+  const io = { loadAdapter: () => ({ classify: () => 'fallback', resolve: () => { resolutions++; return { status: 'needs_input', reason: 'context-ambiguous' }; } }) };
+  const outcome = resolve('123', { providers: [entry, { ...entry, capabilities: ['write'] }] }, io);
+  assert.equal(outcome.status, 'needs_input');
+  assert.equal(outcome.provider, entry.id);
+  assert.equal(resolutions, 1);
+  assert.throws(() => resolve('123', { providers: [entry, { ...entry, id: 'other' }] }, io), error => error.reason === 'unsupported-provider');
+  assert.equal(resolutions, 1);
+});
+
+test('installed providers keep isolated IDs and legacy parse errors rejected before CLI reads', () => {
+  const installed = require('../skills/universal/from-backlog/providers/registry.json');
+  const io = { run() { assert.fail('Rejected reference must not read CLI context'); } };
+  for (const value of ['123', 'owner/repo', 'guess this ticket', '//github.com/owner/repo/issues/123']) {
+    assert.throws(() => resolve(value, installed, io), error => error.reason === 'invalid-reference' && error.message === 'A complete issue reference is required; search and guessing are not supported');
+  }
+  assert.throws(() => resolve('', installed, io), error => error.reason === 'invalid-reference' && error.message === 'Supply a complete issue URL or /owner/repo/issues/123');
+  assert.throws(() => resolve('/not/an/issue', installed, io), error => error.reason === 'invalid-reference' && /Use https:\/\/github.com/.test(error.message));
+});
+
 test('delegated non-resolved outcomes retain metadata and read CLI never retrieves them', () => {
   const entry = { id: 'example', resolution: 'provider', capabilities: ['read'], instructions: 'providers/example.md', adapter: 'from-backlog-github.js' };
   const extended = { providers: [entry] };

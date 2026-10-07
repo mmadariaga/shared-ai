@@ -7,7 +7,7 @@ Resolve concrete GitHub issue references and retrieve complete original issue da
 
 ### Requirement: Registry-selected concrete GitHub references
 
-The common helper SHALL select a read-capable provider from the from-backlog registry and return its provider identifier, instruction reference, adapter, repository, number, and canonical URL on successful reference resolution. Registered host matches SHALL take precedence over provider-owned fallback candidates. A complete URL without a registered host match SHALL use providers declaring `resolution: provider` as fallback candidates, and selection SHALL require exactly one candidate. Domainless references SHALL require an explicit `domainless` registry declaration. The shipped registry SHALL support github.com and domainless `/owner/repo/issues/123` references through GitHub, and complete GitLab issue URLs through a GitLab entry declaring `resolution: provider` without a host catalogue. Host-based GitHub full URLs SHALL use HTTPS without credentials or custom ports; query parameters and fragments SHALL NOT change issue identity. Host-based GitHub incomplete paths, pull-request paths, and invalid issue numbers SHALL be rejected without search or guessing. A selected provider-owned resolver SHALL receive the trimmed raw reference and SHALL own protocol, credential, port, and issue-path compatibility validation.
+The common helper SHALL select a read-capable provider from the from-backlog registry and return its provider identifier, instruction reference, adapter, repository, number, and canonical URL on successful reference resolution. Entries without `classification: provider` SHALL retain default selection through registered `hosts` or an explicit `domainless` declaration. For default classification, a complete URL without a registered host match SHALL classify entries declaring `resolution: provider` as fallback candidates. Direct matches from either default classification or provider-owned classification SHALL take precedence over all fallback candidates, and selection SHALL require exactly one candidate in the winning tier. Domainless references under default classification SHALL require an explicit `domainless` registry declaration. The shipped registry SHALL support github.com and domainless `/owner/repo/issues/123` references through GitHub, and complete GitLab issue URLs through a GitLab entry declaring `resolution: provider` without a host catalogue. Host-based GitHub full URLs SHALL use HTTPS without credentials or custom ports; query parameters and fragments SHALL NOT change issue identity. Host-based GitHub incomplete paths, pull-request paths, and invalid issue numbers SHALL be rejected without search or guessing. A selected provider-owned resolver SHALL receive the trimmed raw reference and SHALL own protocol, credential, port, and issue-path compatibility validation. When shared URL parsing fails and no provider candidate claims the reference, the helper SHALL return the existing invalid-reference parse error.
 
 #### Scenario: Equivalent concrete references
 
@@ -38,6 +38,11 @@ The common helper SHALL select a read-capable provider from the from-backlog reg
 
 - **WHEN** a complete GitLab `/-/issues/N` URL has no registered host match
 - **THEN** the shipped registry selects GitLab's provider-owned resolver and returns its canonical issue provenance.
+
+#### Scenario: Installed providers reject isolated identifiers
+
+- **WHEN** the shipped registry receives `123`, `owner/repo`, `guess this ticket`, or `//github.com/owner/repo/issues/123`
+- **THEN** the helper returns `invalid-reference` with `A complete issue reference is required; search and guessing are not supported` without CLI context reads.
 
 ### Requirement: Conditional provider mechanics and separate import helpers
 
@@ -137,3 +142,47 @@ The GitLab read adapter SHALL resolve a complete HTTP or HTTPS `/-/issues/N` URL
 
 - **WHEN** glab cannot resolve or read the supplied project because of authentication, permissions, compatibility, or malformed responses
 - **THEN** import reports the concrete failure rather than searching for a different issue or substituting another provider.
+
+### Requirement: Provider-owned reference classification
+
+Read-capable registry entries declaring `classification: provider` SHALL classify the trimmed raw reference through their adapter's `classify(value)` operation, including references that shared URL parsing cannot interpret. The operation SHALL return exactly `match` for a direct claim, `fallback` for a compatibility candidate, or `null` to decline; the helper SHALL reject every other result as `invalid-registry`. Classification SHALL inspect only the reference and SHALL perform no CLI reads, context lookup, or side effects. Entries without read capability SHALL NOT participate in classification. The helper SHALL resolve context only through the uniquely selected adapter after applying direct-before-fallback selection. It SHALL reuse an adapter loaded for classification when dispatching the selected resolution operation. Classification SHALL NOT replace reference validation; an adapter owning classification SHALL validate its raw reference during resolution. The shipped registry SHALL remain unchanged by this preparatory seam and SHALL NOT gain new end-user reference acceptance.
+
+#### Scenario: Provider claims a non-URL reference
+
+- **WHEN** one read-capable provider-owned classifier returns `match` for the trimmed reference `123`
+- **THEN** the helper invokes that adapter's selected resolution operation with `123` and the supplied IO rather than rejecting it solely because shared URL parsing failed.
+
+#### Scenario: Provider claims an organization-specific host
+
+- **WHEN** one provider-owned classifier directly claims `https://team.example/items/123` while a default provider is a fallback candidate
+- **THEN** the helper selects the direct claimant and lets its resolver interpret the trimmed reference.
+
+#### Scenario: Multiple direct claims prevent context resolution
+
+- **WHEN** two read-capable provider-owned classifiers return `match` for the same reference
+- **THEN** the helper returns `unsupported-provider` without invoking either candidate's context resolver.
+
+#### Scenario: Unique fallback returns a delegated outcome
+
+- **WHEN** a single winning provider-owned classifier returns `fallback` and its selected resolver returns `needs_input`
+- **THEN** the helper preserves the delegated outcome and attaches the selected registry metadata.
+
+#### Scenario: Multiple fallbacks prevent context resolution
+
+- **WHEN** no classifier directly matches and two read-capable classifiers return `fallback`
+- **THEN** the helper returns `unsupported-provider` without invoking either candidate's context resolver.
+
+#### Scenario: Invalid classifier result
+
+- **WHEN** a provider-owned classifier returns `true` instead of `match`, `fallback`, or `null`
+- **THEN** the helper returns `invalid-registry` before context resolution.
+
+#### Scenario: Non-readable entry does not participate
+
+- **WHEN** an otherwise matching registry entry has only write capability
+- **THEN** the helper excludes that entry from classification and selection.
+
+#### Scenario: Selected adapter is reused
+
+- **WHEN** an adapter loaded for provider-owned classification becomes the uniquely selected provider
+- **THEN** the helper reuses that adapter for resolution instead of loading it again.
