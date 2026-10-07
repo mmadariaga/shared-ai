@@ -681,45 +681,45 @@ The selected Plan - Unattended and Direct Build - Unattended routes, and the Dir
 
 ### Requirement: Runtime repair requires verified same-worker safety
 
-An automatic correction SHALL be eligible only when the resilience rule answers yes: agreed content is unchanged, the correction stays inside the authorization envelope, it needs no unavailable information, the planned process continues, any one-shot operation with an unknown outcome has been verified, and the shared budget is unused and the diagnosis has not repeated. Whoever owns the cause SHALL correct it (the coordinator for input it authored, otherwise the worker through a continuation its contract accepts), and the correction SHALL carry a concrete verification check and be grounded in the observed error and verified state.
+An automatic correction SHALL be eligible only while the resilience rule answers yes: agreed content is unchanged, the correction stays inside the authorization envelope, writes land only on the slice paths, it needs no unavailable information, the planned process continues, and the failed step has an attempt left with a new diagnosis. The coordinator SHALL correct input it authored and re-dispatch; otherwise it SHALL continue the current subagent through a continuation its contract accepts, or hand off to the budget agent under the recovery-path criteria of `sai/policies/unattended-runtime-recovery.md`. The correction SHALL be grounded in the observed error and verified state, and its goal SHALL be the failed step's check.
 
 #### Scenario: A safe correction is available
 
-- **WHEN** a post-disclosure failure satisfies every limit of the resilience rule
-- **THEN** the owner of the cause corrects it, the route requires the named verification check, and the correction is logged
+- **WHEN** a post-disclosure failure satisfies every invariant of the resilience rule
+- **THEN** the correction goes to the current subagent or to the budget agent, the route runs the step check through the step's owner, and the attempt is logged
 
 #### Scenario: Recovery evidence is incomplete
 
-- **WHEN** any limit is unknown or false
+- **WHEN** any invariant is unknown or false
 - **THEN** the affected work stops without automatic correction and without a new authorization
 
 ### Requirement: Runtime repair consumes the shared diagnosis allowance
 
-An automatic correction SHALL charge the route's existing one-shot diagnosis allowance immediately before its continuation. Plan - Unattended SHALL charge the active phase's `diagnosis_rounds.spec` or `diagnosis_rounds.design`, Direct Build - Unattended SHALL charge `diagnosis_rounds.direct_build.direct-build` once across the implementer and functional-fix stretches of the active slice, and the Direct Build close of `/sai-5-review` and `/sai-review` SHALL allow one automatic correction per close, charged the same way, without adding a fix-loop round. A prior diagnosis or Bounded Recovery continuation for the same scope SHALL consume the same allowance.
+An attempt SHALL be charged on the route's existing counter immediately before it is sent, and each failed step SHALL allow three attempts shared between the two recovery paths. Plan - Unattended SHALL charge the active phase's `diagnosis_rounds.spec` or `diagnosis_rounds.design`. Direct Build - Unattended SHALL charge `diagnosis_rounds.direct_build` keyed by the failed step's scope: `direct-build` for the implementer across Steps 1–2, `backfill` across Steps 3–6, and `archive` across Steps 7–8. The Direct Build close of `/sai-5-review` and `/sai-review` SHALL count three attempts per close in conversation without adding a fix-loop round. A route diagnosis or Bounded Recovery continuation for the same scope SHALL be an attempt on the same counter.
 
 #### Scenario: A Plan phase uses its existing allowance
 
-- **WHEN** an automatic correction is selected for a Plan - Unattended spec or design worker whose phase diagnosis allowance is unused
-- **THEN** the continuation consumes that phase allowance rather than creating a second recovery budget
+- **WHEN** an attempt is selected for a Plan - Unattended spec or design worker
+- **THEN** the attempt is charged on that phase's existing counter rather than on a second recovery budget
 
 #### Scenario: A Direct Build implementer uses one slice allowance
 
-- **WHEN** an automatic correction is selected for a Direct Build implementer during Steps 1–2
-- **THEN** the implementation and functional-fix stretches share one charged allowance rather than receiving one allowance per step
+- **WHEN** an attempt is selected for a Direct Build implementer during Steps 1–2
+- **THEN** the implementation and functional-fix stretches share the three attempts of the `direct-build` key rather than receiving a counter per step
 
 #### Scenario: A spent allowance cannot stack
 
-- **WHEN** a diagnosis, Bounded Recovery continuation, automatic correction, delivery failure, repeated error, progress event, question answer, review round, transport retry, replacement, or step transition has already consumed the scope's allowance
-- **THEN** the route does not refund, reset, stack, or grant another automatic diagnosis, correction, or replacement for that scope
+- **WHEN** progress, a question answer, a continuation, a review round, a transport retry, a replacement, a step transition, a delivery failure, or a repeated error follows a charged attempt
+- **THEN** the route does not refund or reset the counter, and it grants no attempt beyond the three of that scope
 
 #### Scenario: The review close uses one correction
 
-- **WHEN** an automatic correction is selected during the Direct Build close of `/sai-5-review` or `/sai-review`
-- **THEN** it is the one correction allowed for that close and no fix-loop round is added
+- **WHEN** an attempt is selected during the Direct Build close of `/sai-5-review` or `/sai-review`
+- **THEN** it counts toward the three attempts of that close and no fix-loop round is added
 
 ### Requirement: Runtime repair uses worker-compatible continuations
 
-A correction SHALL reach a worker only through a continuation form that worker's contract already accepts. Plan - Unattended spec and design workers SHALL use the existing `continue_after_recovery` record, the Direct Build implementer SHALL use its verification-note contract, and every other worker SHALL use its ordinary fresh-result request or its route-defined correction feedback. Repair content SHALL be input to the worker, never a new result shape, and a correction SHALL never create, alter, resend, or replay a Direct Build execution order.
+A correction SHALL reach a worker only through a continuation form that worker's contract already accepts. Plan - Unattended spec and design workers SHALL use the existing `continue_after_recovery` record, the Direct Build implementer SHALL use its verification-note contract, and every other worker SHALL use its ordinary fresh-result request or its route-defined correction feedback. Repair content SHALL be input to the worker, never a new result shape or execute order. A Direct Build execute order that failed SHALL be issued again only after the no-effect check verifies that it changed nothing, and an order whose mutation completed or whose state is partial or unknown SHALL never be issued again.
 
 #### Scenario: A compatible Plan worker resumes
 
@@ -728,8 +728,13 @@ A correction SHALL reach a worker only through a continuation form that worker's
 
 #### Scenario: A one-shot worker cannot be replayed
 
-- **WHEN** a Direct Build backfill or archive execution order has been sent or its mutation state is partial or unknown
-- **THEN** the correction does not create, alter, resend, or replay that order
+- **WHEN** a Direct Build backfill or archive execute order completed its mutation or left a partial or unknown state
+- **THEN** no order is issued again and the route stops reporting the exact state
+
+#### Scenario: A failed order without effect is issued again
+
+- **WHEN** a Direct Build execute order fails and the no-effect check verifies that it changed nothing
+- **THEN** the cause is corrected through the recovery path and a new order is issued to the step's owner
 
 ### Requirement: Fresh repaired results gate ordinary progression
 
@@ -747,12 +752,12 @@ The active validator SHALL validate a fresh result exactly as received before th
 
 ### Requirement: Ineligible runtime repair stops without a routine question
 
-When the resilience rule answers no, a correction cannot be delivered, its fresh result is invalid or still failing, or its shared allowance is exhausted, the route SHALL preserve earlier validated work, keep the affected step or phase pending, and stop without a routine "how should I proceed?" question. The stop notice SHALL state what failed, what is done and what is pending including known partial effects and unverified state, which limit blocked the correction, and what the user must decide. It SHALL not roll back automatically, retry an unchecked action, dispatch another replacement, or claim completion.
+When the resilience rule answers no because an invariant blocks the correction, the attempts are spent, the diagnosis repeats, a foreign change appears, or an execute order left a completed, partial, or unknown state, the route SHALL preserve earlier validated work, keep the affected step or phase pending, and stop without a routine "how should I proceed?" question. The stop notice SHALL state what failed, what is done and what is pending including known partial effects and unverified state, which invariant blocked the correction, and what the user must decide. It SHALL not roll back automatically, retry an unchecked action, or claim completion.
 
 #### Scenario: Repair fails after the charge
 
-- **WHEN** a charged correction cannot be delivered or returns an invalid or still-failing result
-- **THEN** the route stops the affected work with its last validated state and does not fall through to another retry, diagnosis, or replacement
+- **WHEN** a charged attempt cannot be delivered or returns an invalid or still-failing result and the step's three attempts are spent
+- **THEN** the route stops the affected work with its last validated state
 
 #### Scenario: Existing gates remain required
 

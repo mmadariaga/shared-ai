@@ -110,9 +110,9 @@ The archive coordinator SHALL run the guard's `snapshot` step at each window ope
 
 ### Requirement: Direct Build backfill-artifact correction routing
 
-The Direct Build execute continuation SHALL stop staging and commit on any CLI failure. When the failure is evaluated as a backfill-artifact error under the Direct Build supervision contract, the coordinator SHALL return the verbatim error for same-worker backfill correction and archive relaunch and SHALL keep the classified content-fix loop ordinary-route only. A repeated defect reported without progress after correction SHALL close as failed-retryable with the verbatim failure in view and no further automatic continuation. A failure after some mutation executed SHALL report the exact partial state and SHALL never refire any order onto the partially mutated world. A late continuation after success SHALL be rejected without mutation. Both repeated-defect and partial-mutation closures SHALL carry no finality and SHALL run new retries or changes only at explicit user request.
+The Direct Build execute continuation SHALL stop staging and commit on any CLI failure. A CLI failure on this route SHALL follow the Direct Build supervision contract, whose recovery and execute-order re-issue rule is `sai/policies/unattended-runtime-recovery.md`, and the coordinator SHALL keep the classified content-fix loop ordinary-route only. A stop SHALL report the exact state. A late continuation after success SHALL be rejected without mutation. A stop SHALL carry no finality and SHALL run new retries only at explicit user request. The coordinator SHALL never fall back to the ordinary-route mutation surface.
 
 #### Scenario: Backfill-artifact CLI failure routes to correction
 
 - **WHEN** the Direct Build archive CLI fails with a backfill-artifact error
-- **THEN** the coordinator SHALL return the verbatim error for same-worker backfill correction and archive relaunch without staging or committing
+- **THEN** the coordinator SHALL follow the recovery policy for the correction and the execute-order re-issue, without staging or committing a partial plan

@@ -49,17 +49,22 @@ Authorized archive execution SHALL first, and only when the prepared plan record
 
 ### Requirement: Archive execution failure is explicit
 
-The worker MUST stop after a failed CLI invocation, classification, staging operation, message-authoring operation, or commit operation, report the exact completed and uncompleted state, and MUST NOT silently retry or continue to a later action. A CLI failure or invalid JSON MUST stop before staging and commit. A CLI failure evaluated as a backfill-artifact error SHALL return the verbatim error for same-worker backfill correction and archive relaunch under the Direct Build supervision contract, with a repeated defect without progress closing as failed-retryable and a late continuation after success rejected without mutation.
+The worker MUST stop after a failed CLI invocation, classification, staging operation, message-authoring operation, or commit operation, report the exact completed and uncompleted state with its failure class, and MUST NOT silently retry or continue to a later action. A CLI failure or invalid JSON MUST stop before staging and commit: the worker SHALL return `failed` with the exact error, verbatim, and end the order there, because recovery belongs to the coordinator. A failed order SHALL leave the state as it is for the coordinator to verify. A successful execution SHALL consume the order, and any later execute continuation or replacement SHALL be rejected without mutation. The worker SHALL accept a new execute order only after an order that failed before its first mutation; the coordinator issues one under `sai/policies/unattended-runtime-recovery.md` § Execute orders, and it SHALL be validated like the first.
 
 #### Scenario: CLI archive failure stops the order
 
 - **WHEN** the CLI exits unsuccessfully or emits invalid JSON
-- **THEN** the worker returns a closed failure describing the exact CLI failure and performs no staging, message authoring, retry, or commit, and when the CLI failure is evaluated as a backfill-artifact error the verbatim error is returned for same-worker backfill correction with archive relaunch under the Direct Build supervision contract
+- **THEN** the worker returns a closed failure carrying the exact CLI error verbatim and performs no staging, message authoring, retry, or commit
 
 #### Scenario: Non-ignore staging failure
 
 - **WHEN** classification or exact-path staging fails for a reason other than an ignored untracked path
 - **THEN** execution terminates without retrying, authoring a message, or creating a commit
+
+#### Scenario: A new order follows a failure before the first mutation
+
+- **WHEN** an execute order failed before its first mutation and the coordinator issues a new order under the recovery policy
+- **THEN** the worker validates the new order like the first and executes it
 
 ### Requirement: The execute continuation verify carries allow_commit
 

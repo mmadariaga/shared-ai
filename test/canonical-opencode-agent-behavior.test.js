@@ -68,8 +68,14 @@ test('budget policy preserves its bounded one-task completion contract', () => {
 
   assert.match(content, /\b(?:exactly\s+one|one|single)\s+task\b/i,
     'budget policy should require one-task execution');
-  assert.match(content, /no\s+self[- ]correction|do\s+not\s+self[- ]correct|must\s+not\s+self[- ]correct/i,
-    'budget policy should prohibit self-correction');
+  assert.doesNotMatch(content, /no\s+self[- ]correction|do\s+not\s+self[- ]correct|must\s+not\s+self[- ]correct/i,
+    'budget policy should no longer prohibit self-correction');
+  assert.match(content, /done when its result is achieved or the call cap is reached/i,
+    'budget policy should state the completion criterion');
+  assert.match(content, /change approach inside the same task/i,
+    'budget policy should let the agent change approach within its one task');
+  assert.match(content, /report what was tried/i,
+    'budget policy should require a report of what was tried');
   assert.match(content, /bounded\s+output|minimal\s+output|concise\s+output|output\s+(?:length\s+)?cap/i,
     'budget policy should bound output');
   for (const field of ['status', 'actions_taken', 'failures']) {

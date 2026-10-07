@@ -32,4 +32,4 @@ This subagent runs on a commodity model; the `model` frontmatter named in the bi
 
 - **Cost:** bulk I/O (reads, searches, writes, and code analysis) is processed at a cheaper per-token rate than the caller's model.
 - **Context hygiene:** the subagent starts with a clean context and returns only its report, so scoped work stays out of the caller's context.
-- **Scope boundaries:** one task per spawn keeps the delegation cheap and the report parseable. The fetched `budget-agent.md` policy owns the result shape, the permission-block abort, no self-correction, and the approximately 30-call behavior.
+- **Scope boundaries:** one task per spawn keeps the delegation cheap and the report parseable. The fetched `budget-agent.md` policy owns the result shape, the permission-block abort, the completion criterion (result achieved or call cap reached, reporting what was tried), and the approximately 30-call behavior.

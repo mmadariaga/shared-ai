@@ -156,7 +156,7 @@
   Validate the plan against the fresh worker findings and the implementer's
   changed-files union. After the existing gates and the Direct Build
   authorization resolve, and the order covers the slice per
-  `@sai/policies/slice-path-scope.md` § Commit coverage, continue the same worker exactly once with an opaque
+  `@sai/policies/slice-path-scope.md` § Commit coverage, continue the same worker with an opaque
   `--direct-build-execute` payload holding the validated closed execution
   order. That continuation is the execution authorization; it is never inferred
   from a completed prepare result, a fast-track notice, or a worker summary, and
@@ -164,12 +164,11 @@
 
   Add every worker-reported path to the union and print its summary verbatim.
   The classified content fix above is ordinary-route only; a CLI failure here
-  follows the Direct Build supervision contract. A defect repeated without
-  progress after correction closes as failed-retryable with the verbatim
-  failure in view. A failure after a partial mutation reports the exact partial
-  state and never refires an order onto it. A late continuation after success
-  is rejected without mutation. These closures carry no finality: new retries
-  run only at explicit user request. Never fall back to the ordinary-route
+  follows the Direct Build supervision contract, whose recovery and execute-order
+  re-issue rule is `@sai/policies/unattended-runtime-recovery.md`. A stop
+  reports the exact state. A late continuation after success is rejected
+  without mutation. A stop carries no finality: new retries run only at
+  explicit user request. Never fall back to the ordinary-route
   mutation surface.
 
 </TASK>

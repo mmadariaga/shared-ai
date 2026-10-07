@@ -86,6 +86,11 @@ coordinator acts on them with no guard call.
   preceding one: run a normal `verify` immediately before it, a fresh
   `snapshot`, and `verify --allow-commit` over that window only, so the flag
   cannot mask an unauthorized commit made by an earlier worker.
+- **Recovery hand-off isolation** — a recovery hand-off to the budget agent
+  (`@sai/policies/unattended-runtime-recovery.md` § Hand-off) opens its own
+  window the same way and never carries `allow_commit`: run a normal `verify`
+  on any running window immediately before it, a fresh `snapshot`, and a
+  normal `verify` when the agent's report returns, before acting on it.
 
 Because every coordinator git mutation is a boundary, coordinator-owned
 mutations (an apply commit gate, a merge launch, the archive post-archive

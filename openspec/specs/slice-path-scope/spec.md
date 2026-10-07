@@ -106,3 +106,36 @@ The tool SHALL emit exactly one of the verdicts `clean`, `mismatch`, or `n/a`. `
 
 - **WHEN** `sai/commands/explore/steps/pipeline-direct-build.md` and `sai/commands/archive/coordinator.md` are read
 - **THEN** each references `@sai/policies/slice-path-scope.md` § Commit coverage and neither names `slice-path-scope.js`
+
+### Requirement: Snapshot watches listed target paths
+
+With `--targets`, the `snapshot` sub-command SHALL read target paths from standard input, one repository-relative path per line, and SHALL also record the content of everything at or beneath each target straight from the file system, whatever its git-ignore status. `verify` SHALL then report a target that was created, modified, or removed since the snapshot as a change. `--targets` SHALL be a `snapshot` flag only: `verify` with `--targets` SHALL be a usage error with exit code 2.
+
+#### Scenario: An ignored target left untouched
+
+- **WHEN** `snapshot --targets` lists a git-ignored path and `verify` runs with empty standard input after nothing changed
+- **THEN** the verdict is `clean`
+
+#### Scenario: An ignored target is created
+
+- **WHEN** a git-ignored target path that was absent at `snapshot --targets` exists when `verify` runs with empty standard input
+- **THEN** `foreign` lists that path and the verdict is `mismatch`
+
+#### Scenario: Verify receives the targets flag
+
+- **WHEN** `verify` runs with `--targets`
+- **THEN** the exit code is 2 and no verdict is printed
+
+### Requirement: The policy defines the foreign-change check and the no-effect check
+
+`sai/policies/slice-path-scope.md` SHALL define two checks. The foreign-change check SHALL run `verify` with `slice_snapshot` and the slice paths, without a covering list, after a recovery attempt; a path in `foreign` is a repository file foreign to the slice that changed, and the caller reports those exact paths. The no-effect check SHALL take a `snapshot --targets` immediately before an execute order is sent, with every path the order may create, modify, move, or remove on standard input, and hold its reference as `order_snapshot` in conversation state; when the order fails, `verify` SHALL run with `order_snapshot` and empty standard input, where `clean` means the order had no effect, `mismatch` means it had an effect that `foreign` names, and `n/a` means the effect is unknown.
+
+#### Scenario: A failed order changed nothing
+
+- **WHEN** an execute order fails and `verify` with `order_snapshot` and empty standard input returns `clean`
+- **THEN** the order had no effect
+
+#### Scenario: A failed order changed a target
+
+- **WHEN** an execute order fails after it created, modified, or removed one of its target paths
+- **THEN** `verify` with `order_snapshot` returns `mismatch` and `foreign` names the changed path
