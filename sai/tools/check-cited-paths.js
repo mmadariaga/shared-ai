@@ -63,8 +63,8 @@ function usage() {
     '  --findings        Report mode for the explore review-loop: emit violations',
     '                     as an artifact-review findings block (High) and exit 0',
     '                     when the report itself was produced.',
-    '  --root <dir>      Project root for path resolution (default: repository',
-    '                     containing sai/).',
+    '  --root <dir>      Project root for path resolution (default: the working',
+    '                     directory).',
     '  --cwd <dir>       Alias for --root (same semantics); later flag wins.',
     '  --change-dir <dir>  Change directory holding the artifacts (default:',
     '                     <root>/openspec/changes/<name>).',
@@ -487,7 +487,7 @@ function main(argv) {
     return 2;
   }
 
-  const root = opts.root ? path.resolve(opts.root) : path.resolve(__dirname, '..', '..');
+  const root = opts.root ? path.resolve(opts.root) : process.cwd();
   const changeDir = opts.changeDir
     ? path.resolve(opts.changeDir)
     : path.join(root, 'openspec', 'changes', opts.name);

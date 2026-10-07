@@ -48,3 +48,17 @@ A merge worker stretch SHALL still close with exactly one terminal lifecycle sta
 
 - **WHEN** a conflicted merge completes after language selection and strategy confirmation
 - **THEN** the run closes with exactly one terminal `completed`, `failed`, or `cancelled` result for that stretch
+
+### Requirement: Worker turn ends with every started command finished
+
+The shared worker contract SHALL state that a worker's turn ends with its result: when the worker returns, every command it started has finished. A worker SHALL await a command that ends on its own and return once its outcome is known. A worker SHALL stop a process that never ends on its own, such as a development server started for the worker's own checks, before returning. The rule applies to nonterminal and terminal results alike and adds no result route.
+
+#### Scenario: Finite command is awaited
+
+- **WHEN** a worker has started a command that ends on its own and that command is still running
+- **THEN** the worker waits for it to finish and returns its result once the outcome is known
+
+#### Scenario: Long-lived process is stopped
+
+- **WHEN** a worker has started a process that never ends on its own for its own checks
+- **THEN** the worker stops that process before it returns its result

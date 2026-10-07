@@ -47,3 +47,27 @@ For every `sai-1` and `sai-2` review transaction the `review-loop` Review Engine
 #### Scenario: Review surfaces a hallucinated planned path as High
 - **WHEN** a reviewed change cites a non-existent planned path
 - **THEN** the review appends one `High` finding per violation and closes with the updated tally without writing any file
+
+### Requirement: Cited-path checker defaults its project root to the working directory
+
+The checker at `sai/tools/check-cited-paths.js` SHALL use the working directory as its project root when neither `--root` nor its `--cwd` alias is passed, and SHALL NOT derive that root from its own installed location. An explicit root SHALL take precedence over the working directory. The checker SHALL NOT search parent directories for a project root, and its help text SHALL name the working directory as the default root.
+
+#### Scenario: Default root is the working directory
+
+- **WHEN** the checker runs without `--root` from a project directory that differs from the checker's location
+- **THEN** it resolves the change directory and every cited path under that working directory
+
+#### Scenario: Explicit root wins over the working directory
+
+- **WHEN** the checker runs from an unrelated directory with `--root` naming the project
+- **THEN** it resolves the change directory and every cited path under the named root
+
+#### Scenario: Subdirectory is not searched upward
+
+- **WHEN** the checker runs without `--root` from a subdirectory of the project
+- **THEN** it exits 2 with its existing change directory not found error
+
+#### Scenario: Help text names the default root
+
+- **WHEN** the checker is run with `--help`
+- **THEN** the `--root` entry states that the default is the working directory

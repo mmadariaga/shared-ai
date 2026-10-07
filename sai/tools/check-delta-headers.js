@@ -100,7 +100,7 @@ function usage() {
     '',
     '  <change-name>   OpenSpec change whose delta specs are checked.',
     '  --json          Emit the report as JSON on stdout.',
-    '  --root <dir>    Project root (default: repository containing sai/).',
+    '  --root <dir>    Project root (default: the working directory).',
     '  --delta-dir <dir>  Delta specs root holding <capability>/spec.md files',
     '                  (default: <root>/openspec/changes/<name>/specs; use an',
     '                  OS-temp staging copy for pre-write draft checks).',
@@ -141,7 +141,7 @@ function main(argv) {
     return 2;
   }
 
-  const root = opts.root ? path.resolve(opts.root) : path.resolve(__dirname, '..', '..');
+  const root = opts.root ? path.resolve(opts.root) : process.cwd();
   const deltaDir = opts.deltaDir
     ? path.resolve(opts.deltaDir)
     : path.join(root, 'openspec', 'changes', opts.name, 'specs');

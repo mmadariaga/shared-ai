@@ -2,7 +2,9 @@
 
 ## Purpose
 TBD - created by archiving change fix-backfill-delta-headers. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: Delta headers classified per requirement by verbatim existence
 Each requirement SHALL be placed by verbatim existence of its exact Requirement heading in the matching main spec, never by per-file or per-capability guess. A requirement belongs under ADDED if and only if its verbatim heading is absent from openspec/specs/<capability>/spec.md; it belongs under MODIFIED or REMOVED only when that verbatim heading is present. Verbatim is exact: case, spacing, and punctuation are significant. One capability file MAY therefore carry ADDED requirements for new headings together with MODIFIED requirements for existing headings.
 
@@ -51,3 +53,31 @@ The change SHALL add only the new script under sai/tools plus the backfill and a
 - **WHEN** the staged diff is inspected for installer or projection changes
 - **THEN** only the new tool script plus backfill and archive card edits are present
 
+### Requirement: Header check script defaults its project root to the working directory
+
+The script at `sai/tools/check-delta-headers.js` SHALL use the working directory as its project root when no `--root` option is passed, and SHALL NOT derive that root from its own installed location. An explicit `--root` SHALL take precedence over the working directory. The script SHALL NOT search parent directories for a project root, and its help text SHALL name the working directory as the default root.
+
+#### Scenario: Default root is the working directory
+
+- **WHEN** the script runs without `--root` from a project directory that differs from the script's location
+- **THEN** it resolves the change's delta specs and the main specs under that working directory and exits 0 when every header is correctly classified
+
+#### Scenario: Default root resolves main specs for a staged delta directory
+
+- **WHEN** the script runs without `--root` and with `--delta-dir` pointing at a staging copy outside the project
+- **THEN** it compares the staged deltas against the main specs under the working directory
+
+#### Scenario: Explicit root wins over the working directory
+
+- **WHEN** the script runs from an unrelated directory with `--root` naming the project
+- **THEN** it resolves delta specs and main specs under the named root
+
+#### Scenario: Subdirectory is not searched upward
+
+- **WHEN** the script runs without `--root` from a subdirectory of the project
+- **THEN** it exits 2 with its existing delta specs directory not found error
+
+#### Scenario: Help text names the default root
+
+- **WHEN** the script is run with `--help`
+- **THEN** the `--root` line states that the default is the working directory
