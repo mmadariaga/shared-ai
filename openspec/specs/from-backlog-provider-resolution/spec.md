@@ -136,17 +136,63 @@ Provider-owned reference resolution SHALL use `io.run(command, args, input)` for
 
 ### Requirement: Structured GitLab issue and comment import
 
-The GitLab read adapter SHALL resolve a complete HTTP or HTTPS `/-/issues/N` URL through authenticated `glab repo view --output json`, reject credentials and invalid issue numbers, and use the resolved project identity and hostname for structured `glab api` reads. It SHALL verify issue identity and issue-only type, preserve title and description as data, represent a null description as empty, and return canonical provenance, issue state, and repository archived state. It SHALL read all note pages in ascending identifier order, exclude system activity notes, retain original user-comment text and source links, represent unknown authors explicitly, and reject malformed or repeated comments. Retrieval SHALL perform no remote mutation. Authentication, permission, compatibility, or pagination failures SHALL retain the same provider and destination; failures after issue retrieval SHALL return incomplete with all retrieved parts.
+The GitLab read adapter SHALL resolve a complete HTTP or HTTPS project-level `/-/issues/N` or `/-/work_items/N` URL through authenticated `glab repo view --output json` and use the resolved project identity and hostname for structured `glab api` reads. Query parameters and fragments SHALL NOT change project and issue-number identity. The adapter SHALL reject embedded credentials, unsupported reference routes, missing project or issue-number components, and numbers that are not positive safe integers before querying provider content. It SHALL verify that the resolved project destination matches the requested URL.
+
+The adapter SHALL verify a positive safe-integer issue ID, the expected project ID and issue number, and a response URL identifying the expected project destination and number through either supported route. It SHALL require an explicit `issue_type` value of `issue`; missing, invalid, or unsupported types SHALL prevent import. It SHALL validate title, description, and issue state and report the specific failed check rather than a combined inferred cause.
+
+The adapter SHALL preserve the issue URL returned by GitLab, title and description as data, represent a null description as empty, and return canonical provenance, issue state, and repository archived state. It SHALL request all note pages using supported ascending creation-time ordering and return user comments in ascending identifier order, including retained comments in incomplete outcomes. It SHALL exclude system activity notes, retain original user-comment text and source links, represent unknown authors explicitly, and reject malformed or repeated comments. Comment source links SHALL preserve the returned issue URL's destination, route, and query parameters while replacing any existing fragment with the corresponding note anchor.
+
+Retrieval SHALL perform no remote mutation. Authentication, permission, compatibility, or pagination failures SHALL retain the same provider and destination; failures after issue retrieval SHALL return incomplete with all retrieved parts.
 
 #### Scenario: Complete paginated GitLab import
 
 - **WHEN** glab returns a readable GitLab issue and multiple pages of notes, including system notes and unknown authors
-- **THEN** import returns the original issue content, canonical provenance and states, and every user comment in order without including system activity or performing a mutation.
+- **THEN** import returns the original issue content, canonical provenance and states, and every user comment in ascending identifier order without including system activity or performing a mutation.
+
+#### Scenario: Equivalent input and response routes
+
+- **WHEN** a complete project-level reference uses either supported route and the ordinary-issue response uses either supported route for the same project and number
+- **THEN** import accepts route equivalence, ignores query parameters and fragments for identity checks, and preserves the issue URL returned by GitLab.
+
+#### Scenario: Invalid or incomplete reference
+
+- **WHEN** a reference contains embedded credentials, an unsupported route, missing project or number components, or a number that is not a positive safe integer
+- **THEN** resolution reports the specific reference failure without querying provider content.
+
+#### Scenario: Project resolution changes the destination
+
+- **WHEN** the resolved project's URL does not match the requested project destination
+- **THEN** resolution rejects the destination mismatch instead of reading issue content from that project.
+
+#### Scenario: Response identity or content validation fails
+
+- **WHEN** an issue response fails its ID, project, number, response URL, title, description, or state check
+- **THEN** retrieval reports the specific failed validation and does not expose the response as a verified imported issue.
+
+#### Scenario: Ordinary-issue type cannot be verified
+
+- **WHEN** a response has a missing or invalid issue_type or identifies a task, incident, epic, or another non-issue type
+- **THEN** retrieval rejects import with the concrete type-verification or unsupported-type explanation regardless of the display route.
+
+#### Scenario: Creation-time order differs from identifier order
+
+- **WHEN** paginated notes arrive in creation-time order with user-comment identifiers out of order across pages
+- **THEN** retrieval requests supported creation-time ordering and returns every retrieved user comment sorted by identifier with original text and author data intact.
+
+#### Scenario: Comment provenance contains an existing query and fragment
+
+- **WHEN** GitLab returns an issue URL containing query parameters and an existing fragment
+- **THEN** the issue retains that URL and each comment link retains the query parameters while replacing the fragment with its note anchor.
 
 #### Scenario: Later GitLab comment page fails
 
 - **WHEN** a note-page request fails after the issue and earlier comments have been retrieved
-- **THEN** import reports incomplete with the concrete error and preserves the issue and already retrieved comments without switching provider or destination.
+- **THEN** import reports incomplete with the concrete error and preserves the issue and already retrieved comments in ascending identifier order without switching provider or destination.
+
+#### Scenario: Issue has no comments
+
+- **WHEN** the verified issue's first notes page is empty
+- **THEN** import returns complete with the original issue and an empty comments collection.
 
 #### Scenario: GitLab project resolution fails
 
