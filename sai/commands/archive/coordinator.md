@@ -155,7 +155,8 @@
 
   Validate the plan against the fresh worker findings and the implementer's
   changed-files union. After the existing gates and the Direct Build
-  authorization resolve, continue the same worker exactly once with an opaque
+  authorization resolve, and the order covers the slice per
+  `@sai/policies/slice-path-scope.md` § Commit coverage, continue the same worker exactly once with an opaque
   `--direct-build-execute` payload holding the validated closed execution
   order. That continuation is the execution authorization; it is never inferred
   from a completed prepare result, a fast-track notice, or a worker summary, and
