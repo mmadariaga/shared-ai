@@ -194,6 +194,11 @@ writes into its own session â€” reasoning, status lines, a rendered YAML block â
 never reaches the coordinator and never marks a progress step. "Emit" therefore
 always means "return".
 
+The turn ends with the result: when the worker returns, every command it
+started has finished. Await a command that ends on its own and return once its
+outcome is known. Stop a process that never ends on its own, such as a
+development server started for the worker's own checks, before returning.
+
 A nonterminal result is returned exactly like a terminal status: the worker
 returns the closed payload and its turn ends there. The coordinator resumes the
 same worker with the matching acknowledgement (`continue_after_progress`,

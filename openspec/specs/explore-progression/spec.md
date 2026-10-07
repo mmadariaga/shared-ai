@@ -50,3 +50,22 @@ The system SHALL never fire or record agreement on mere containment of `next-ste
 
 - **WHEN** a turn merely contains, negates, defers, quotes, or discusses `next-step`, or requests `crystallize` before agreement
 - **THEN** no agreement is recorded and no advancement occurs on that token alone
+
+### Requirement: List-stage agreement and advancement are two ordered events
+
+The explore step instructions SHALL state that, at the `Review edge cases` and `Implementation details` stages, recording the agreed list and advancing the progression are two separate events to `explore-idea@1`, sent in that order within the same turn. The recording event SHALL leave the stage unchanged, and the advancement event SHALL return the `next.follow` pointer that names the next step. Every description of same-turn confirmation in those instructions SHALL be consistent with this two-event sequence.
+
+#### Scenario: Semantic confirmation sends two events in order
+
+- **WHEN** the user semantically confirms the proposed list at a list stage
+- **THEN** the session sends the event that records the agreed list and then the advancement event within the same turn
+
+#### Scenario: Bare next-step sends the same two events
+
+- **WHEN** the turn at a list stage with a non-empty list is a bare `next-step`
+- **THEN** the session records the current ordered list as agreed and then advances, as the same two events within the same turn
+
+#### Scenario: Recording alone does not advance
+
+- **WHEN** only the event that records the agreed list has been sent
+- **THEN** the stage is unchanged until the advancement event is sent
