@@ -18,10 +18,39 @@ The from-backlog skill SHALL run only on explicit user invocation and SHALL decl
 
 The main skill SHALL own reference identification, content retrieval, incorporation with provenance, and completion in that order. Each step SHALL declare a checkable completion criterion. Provider references SHALL supply retrieval mechanics rather than duplicate the common incorporation flow.
 
+Reference identification SHALL use the helper's result as the authority for compatibility and explain its specific failed check. The skill SHALL ask only for reference components the helper identifies as missing and SHALL present a complete incompatible reference as a provider limitation rather than asking the user to repair missing components that are already present. A needs_input outcome SHALL be explained as a context ambiguity requiring the missing components before retrieval.
+
+On retrieval failure, the skill SHALL explain the helper's established failed check or error. When the helper does not establish a cause, the skill SHALL state that uncertainty rather than infer authentication, access, tool, compatibility, or other causes. Reference resolution SHALL continue through the helper without searching or guessing. Incomplete retrieval SHALL identify retrieved and missing parts and obtain the user's decision whether to retry or stop.
+
 #### Scenario: Follow the main skill
 
 - **WHEN** an import is performed
 - **THEN** its four common steps remain authoritative and their completion criteria distinguish completed work from pending work.
+
+#### Scenario: Helper identifies a missing reference component
+
+- **WHEN** the helper identifies a missing component or returns a context ambiguity requiring components before retrieval
+- **THEN** the skill explains the established missing information and asks only for those components before continuing.
+
+#### Scenario: Complete reference is incompatible
+
+- **WHEN** the helper rejects a complete reference because the provider does not support it
+- **THEN** the skill explains the specific incompatibility as a provider limitation rather than requesting components already present in the reference.
+
+#### Scenario: Established response validation failure
+
+- **WHEN** retrieval reports a specific identity, destination, type, or content validation failure
+- **THEN** the skill explains that failed check without substituting an inferred cause.
+
+#### Scenario: Failure cause is unknown
+
+- **WHEN** the helper reports a failure without establishing its cause
+- **THEN** the skill communicates that uncertainty without guessing a cause or searching for another item.
+
+#### Scenario: Retrieval is incomplete
+
+- **WHEN** retrieval returns only part of the original issue or conversation content
+- **THEN** the skill reports the retrieved and missing parts and agrees with the user whether to retry or stop without claiming completion.
 
 ### Requirement: Faithful source-of-truth incorporation
 

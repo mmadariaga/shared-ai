@@ -201,6 +201,13 @@ test('E4–E8 instruction contract covers trust, capacity, conversation and no p
   const skill = fs.readFileSync(path.join(root, 'skills/universal/from-backlog/SKILL.md'), 'utf8');
   for (const pattern of [/disable-model-invocation: true/, /Source of truth — title and description/, /Unverified content — brainstorming/, /Description missing/, /not authority to act/, /execute none/, /contradictions with the prior conversation/, /contradictions with the title or description/, /remaining capacity and output limits/, /Never silently truncate, summarize/, /partial\/chunked delivery explicitly pending/, /provider and local files unchanged/, /stage unchanged/, /do not run its boot/, /start implementation/]) assert.match(skill, pattern);
   assert.equal((skill.match(/\*\*Complete when:\*\*/g) || []).length, 4);
+  assert.match(skill, /specific failed check/);
+  assert.match(skill, /Ask only for components it identifies as missing/);
+  assert.match(skill, /complete incompatible reference as a provider limitation/);
+  assert.match(skill, /cause unknown, state that uncertainty/);
+  const gitlab = fs.readFileSync(path.join(root, 'skills/universal/from-backlog/providers/gitlab.md'), 'utf8');
+  assert.match(gitlab, /adapter result as the authority/);
+  assert.doesNotMatch(gitlab, /\/-\/(?:issues|work_items)\/N/);
   for (const harness of ['claude', 'opencode']) {
     const wrapper = fs.readFileSync(path.join(root, `commands/${harness}/from-backlog.md`), 'utf8');
     assert.match(wrapper, /current conversation/);

@@ -39,7 +39,7 @@ function mock(state = {}) {
       assert.equal(args.includes('--input'), false);
       assert.equal(input ?? '', '');
     }
-    const row = () => ({ id: 30, project_id: 14, iid: 7, web_url: reference, title: 'Old', description: 'Before', updated_at: 'version-1', state: 'opened', author: { id: 2 }, ...state.issue });
+    const row = () => ({ id: 30, project_id: 14, iid: 7, web_url: reference, issue_type: 'issue', title: 'Old', description: 'Before', updated_at: 'version-1', state: 'opened', author: { id: 2 }, ...state.issue });
     if (endpoint === 'user') return JSON.stringify({ id: state.otherActor ? 3 : 2 });
     if (method !== 'GET') {
       assert.equal(args[args.indexOf('--header') + 1], 'Content-Type: application/json');
@@ -56,9 +56,12 @@ function mock(state = {}) {
       return JSON.stringify(state.issue);
     }
     if (endpoint.includes('/notes?')) {
-      const page = Number(new URLSearchParams(endpoint.split('?')[1]).get('page'));
-      assert.equal(endpoint, `projects/14/issues/7/notes?per_page=100&page=${page}&sort=asc&order_by=id`);
+      const params = new URLSearchParams(endpoint.split('?')[1]);
+      if (params.get('order_by') === 'id') throw new Error('glab: HTTP 400: order_by does not have a valid value');
+      const page = Number(params.get('page'));
+      assert.equal(endpoint, `projects/14/issues/7/notes?per_page=100&page=${page}&sort=asc&order_by=created_at`);
       if (page === 2 && state.pageFailure) throw new Error('second page failed');
+      if (state.notePages) return JSON.stringify(state.notePages[page - 1]);
       return JSON.stringify(page === 1 ? Array.from({ length: state.manyNotes ? 100 : 2 }, (_, index) => ({ id: index + 1, body: ` exact ${index}\n`, author: index ? null : { username: 'author' }, system: index === 1 })) : [{ id: state.repeated ? 1 : 101, body: 'last', author: null, system: false }]);
     }
     if (endpoint.startsWith('projects/14/issues?')) {
@@ -102,6 +105,67 @@ test('GitLab resolves through glab without host catalogue; GitHub priority and m
   assert.equal(importRouter.resolve('/a/b/issues/7', readRegistry, io).provider, 'github');
   assert.throws(() => to.query(text, io), /destination/);
   assert.throws(() => importRouter.resolve('7', readRegistry, io));
+});
+
+test('both GitLab display routes import ordinary issues with API provenance intact', () => {
+  for (const inputRoute of ['issues', 'work_items']) {
+    for (const responseRoute of ['issues', 'work_items']) {
+      const returnedURL = `${url}/-/${responseRoute}/7?display=1#details`;
+      const state = { issue: { web_url: returnedURL, title: text.title, description: text.description } };
+      const io = mock(state);
+      const resolved = importRouter.resolve(`${url}/-/${inputRoute}/7?view=1#note_2`, readRegistry, io);
+      const result = from.read(resolved, io);
+      assert.equal(result.status, 'complete');
+      assert.equal(result.item.url, returnedURL);
+      assert.equal(result.item.title, text.title);
+      assert.equal(result.item.description, text.description);
+      assert.equal(result.comments[0].body, ' exact 0\n');
+      assert.equal(result.comments[0].url, `${url}/-/${responseRoute}/7?display=1#note_1`);
+      assert.ok(state.calls.every(call => call.args[0] === 'repo' || call.args.includes('GET')));
+    }
+  }
+});
+
+test('GitLab invalid and incomplete references fail before provider queries with specific causes', () => {
+  for (const [input, reason, message] of [
+    [`${url}/-/issues/0`, 'invalid-reference', /positive safe integer/],
+    [`${url}/-/work_items/999999999999999999`, 'invalid-reference', /positive safe integer/],
+    [`${url}/-/issues/nope`, 'invalid-reference', /positive safe integer/],
+    [`${url}/-/issues/`, 'incomplete-reference', /number is missing/],
+    ['https://private.example/-/issues/7', 'incomplete-reference', /project path is missing/],
+    ['https://user:secret@private.example/group/repo/-/issues/7', 'invalid-reference', /credentials/],
+    [`${url}/-/epics/7`, 'unsupported-reference', /route is not supported/],
+  ]) {
+    const state = {};
+    assert.throws(() => importRouter.resolve(input, readRegistry, mock(state)), error => error.reason === reason && message.test(error.message));
+    assert.deepEqual(state.calls, []);
+  }
+});
+
+test('GitLab response validation names the failed identity, URL, type or content check', () => {
+  for (const [issue, message] of [
+    [{ id: 0 }, /issue ID/], [{ project_id: 15 }, /project ID/], [{ iid: 8 }, /issue number/],
+    [{ web_url: `${url}/-/work_items/8` }, /URL.*number/],
+    [{ web_url: 'https://other.example/group/nested/repo/-/issues/7' }, /URL.*destination/],
+    [{ web_url: `${url}-other/-/issues/7` }, /URL.*destination/],
+    [{ web_url: `${url}/-/epics/7` }, /URL.*route/],
+    [{ web_url: `https://user@private.example:8443/group/nested/repo/-/issues/7` }, /URL.*credentials/],
+    ...['task', 'incident', 'epic'].map(issue_type => [{ issue_type }, /Unsupported GitLab item type/]),
+    ...[undefined, null, ''].map(issue_type => [{ issue_type }, /issue type cannot be verified/]),
+    [{ title: null }, /title/], [{ description: 5 }, /description/], [{ state: 'unknown' }, /state/],
+  ]) {
+    const result = from.read({ url: reference }, mock({ issue }));
+    assert.equal(result.status, 'error');
+    assert.match(result.message, message);
+    assert.equal(result.item, undefined);
+  }
+  const io = mock();
+  const redirected = { run(command, args, input) {
+    const result = JSON.parse(io.run(command, args, input));
+    if (args[0] === 'repo') result.web_url = `${url}-other`;
+    return JSON.stringify(result);
+  } };
+  assert.throws(() => from.resolve(reference, redirected), /project destination/);
 });
 
 test('recognized issue-enablement signals preserve boolean and access-level-only responses', () => {
@@ -148,6 +212,33 @@ test('complete paginated comments preserve text, unknown authors and canonical p
   assert.ok(state.calls.every(call => !call.args.includes('POST') && !call.args.includes('PUT')));
 });
 
+test('supported note ordering keeps ascending user identifiers across pages and partial failures', () => {
+  const note = id => ({ id, body: ` original ${id} ñ\n\u0060code\u0060\n`, author: { username: 'writer' }, system: false });
+  // Provider creation-time order need not equal identifier order, including
+  // across page boundaries. System notes still count toward page length.
+  const first = Array.from({ length: 100 }, (_, index) => note(300 - index));
+  first[10].system = true;
+  const last = [note(5), note(400), note(150)];
+  const received = `${url}/-/work_items/7?display=1#details`;
+  for (const pageFailure of [false, true]) {
+    const state = { notePages: [first, last], pageFailure, issue: { web_url: received, ...text } };
+    const result = from.read({ url: received }, mock(state));
+    assert.equal(result.status, pageFailure ? 'incomplete' : 'complete');
+    assert.equal(result.item.url, received);
+    assert.equal(result.item.title, text.title);
+    assert.equal(result.item.description, text.description);
+    const expected = [...first, ...(pageFailure ? [] : last)].filter(row => !row.system).sort((a, b) => a.id - b.id);
+    assert.deepEqual(result.comments, expected.map(row => ({ id: row.id, body: row.body, author: 'writer', url: `${url}/-/work_items/7?display=1#note_${row.id}` })));
+    const requests = state.calls.filter(call => call.args[1]?.includes('/notes?'));
+    assert.equal(requests.length, 2);
+    assert.ok(requests.every(call => call.args.includes('GET') && call.args[1].endsWith('&sort=asc&order_by=created_at')));
+    if (pageFailure) assert.match(result.message, /second page failed/);
+  }
+  const empty = from.read({ url: received }, mock({ notePages: [[]], issue: { web_url: received } }));
+  assert.equal(empty.status, 'complete');
+  assert.deepEqual(empty.comments, []);
+});
+
 test('partial comment retrieval keeps title, description and already retrieved comments', () => {
   const result = from.read({ url: reference }, mock({ manyNotes: true, pageFailure: true }));
   assert.equal(result.status, 'incomplete'); assert.equal(result.comments.length, 99);
@@ -157,6 +248,37 @@ test('partial comment retrieval keeps title, description and already retrieved c
     assert.match(from.read({ url: reference }, mock({ failure })).message, new RegExp(failure));
     assert.throws(() => to.query({ repository: url, ...text }, mock({ failure })), new RegExp(failure));
   }
+});
+
+test('partial work_items import preserves API provenance and already retrieved source text', () => {
+  const received = `${url}/-/work_items/7`;
+  const result = from.read({ url: received }, mock({ manyNotes: true, pageFailure: true, issue: { web_url: received, ...text } }));
+  assert.equal(result.status, 'incomplete');
+  assert.equal(result.item.url, received);
+  assert.equal(result.item.description, text.description);
+  assert.equal(result.comments.length, 99);
+  assert.match(result.message, /second page failed/);
+});
+
+test('work_items update uses exact approval and route drift does not normalize authorization or recovery', () => {
+  const received = `${url}/-/work_items/7`;
+  const state = { issue: { web_url: received } };
+  const { io, request } = prepared(state, 'update');
+  assert.equal(to.update({ ...request, description: 'unapproved' }, io).status, 'failure_before_publication');
+  assert.equal(state.mutations, undefined);
+  assert.equal(to.update(request, io).status, 'complete');
+  state.issue.web_url = reference;
+  const recovered = to['recover-update']({ receipt: request.receipt }, io);
+  assert.equal(recovered.status, 'uncertain');
+  assert.match(recovered.message, /identity or destination changed/);
+  assert.equal(state.mutations, 1);
+
+  const drift = { issue: { web_url: reference } };
+  const approved = prepared(drift, 'update');
+  drift.issue.web_url = received;
+  assert.equal(to.update(approved.request, approved.io).status, 'failure_before_publication');
+  assert.equal(drift.mutations, undefined);
+  assert.equal(fs.existsSync(approved.request.receipt), false);
 });
 
 test('exact confirmation precedes creation; JSON content remains data and results are verified', () => {
@@ -329,6 +451,15 @@ test('CLI dispatch uses simulated glab with literal JSON stdin and no shell inte
   assert.equal(invoke('to-backlog', 'publish', { ...request, confirmation: ready.confirmation, receipt: receipt() }).status, 'complete');
   const imported = invoke('from-backlog', 'read', { reference });
   assert.equal(imported.item.description, text.description);
+  const saved = JSON.parse(fs.readFileSync(stateFile));
+  saved.issue.web_url = `${url}/-/work_items/7`;
+  fs.writeFileSync(stateFile, JSON.stringify(saved));
+  for (const inputRoute of ['issues', 'work_items']) {
+    const importedEquivalent = invoke('from-backlog', 'read', { reference: `${url}/-/${inputRoute}/7?view=1#details` });
+    assert.equal(importedEquivalent.status, 'complete');
+    assert.equal(importedEquivalent.item.url, saved.issue.web_url);
+    assert.equal(importedEquivalent.item.description, text.description);
+  }
   const current = invoke('to-backlog', 'read-update', { provider: 'gitlab', reference });
   const updateRequest = { provider: 'gitlab', reference, baseline: current.baseline, title: 'Refined', description: text.description };
   const updateReady = invoke('to-backlog', 'query-update', updateRequest);
