@@ -207,12 +207,12 @@ When conflicts exist and fast-track is inactive, the scope question SHALL ride B
 
 ### Requirement: Bounded verification loop
 
-The system SHALL detect the project's test suite from project metadata, run it after resolutions are staged, and iterate proposed fixes for at most three rounds per conflict stop before surfacing the remaining failures. A missing suite with code in scope SHALL be an explicit decision.
+The coordinator SHALL detect the project's test suite from project metadata and run it through the merge tool after a conflict stop's resolution is staged, for at most three rounds per conflict stop. A failed first or second round SHALL continue the worker for a test correction whose ranges the coordinator captures, validates, reviews, and re-stages before the next run. A missing suite SHALL be recorded as `unavailable` with a notice and SHALL NOT be a pass or a question. A clean integration SHALL skip verification.
 
 #### Scenario: Suite failure exhausts the budget
 
 - **WHEN** the detected suite still fails after the third round
-- **THEN** the remaining failures are reported and the resolved state stays staged and uncommitted for the authorization decision
+- **THEN** the remaining failures are reported in the final summary and the resolved state stays staged and uncommitted while the run continues as on a pass
 
 ### Requirement: Incremental ADR/DDR collision pass
 
@@ -260,20 +260,20 @@ The system SHALL finalize only after explicit authorization, with a method- and 
 #### Scenario: Completion literal follows finalization
 
 - **WHEN** the run ends with the merge commit executed, or with the rebase finished and any repair committed
-- **THEN** the terminal prints the worker summary followed by `Merge done.`; every other closure omits it
+- **THEN** the terminal prints the coordinator-written final summary followed by `Merge done.`; every other closure omits it
 
 ### Requirement: Conflict-triggered language hand-off
 
-Clean integrations SHALL never ask for a working language or strategy. On the first conflict the worker SHALL read the three stages, classify each file, and return `event: conflict_detected` with `continuation_state: language-selection`, `changed_files: []`, the `affected_files` inventory, and the `Categories:` / `Eligible scope:` summary lines; the coordinator SHALL then ask the language (and scope outside fast-track) in Batch 2 before any semantic analysis. Later conflicts SHALL use `continuation_state: strategy-analysis` and reuse the selected language.
+Clean integrations SHALL never ask for a working language or strategy. On the first conflict stop the coordinator SHALL detect the conflict itself from the conflict snapshot, print one concise notice with the affected paths and no semantic analysis, and ask the working language in Batch 2 before any worker analysis. The language question SHALL run once per run. The worker SHALL return `event: conflict_detected` only with `continuation_state: strategy-analysis`, `changed_files: []`, and the current `affected_files` inventory, when a write or a test correction exposes a new problem, and later conflicts SHALL reuse the selected language.
 
 #### Scenario: Clean integration needs no language
 
 - **WHEN** an integration completes without conflicts
-- **THEN** the run proceeds to the collision pass without a language question or strategy
+- **THEN** the run proceeds to the collision check without a language question or strategy
 
 #### Scenario: New problem re-enters strategy analysis
 
-- **WHEN** resolution application or verification exposes a new conflict or inconsistent contract
+- **WHEN** resolution application or a test correction exposes a new conflict or inconsistent contract
 - **THEN** the same worker rebuilds the strategy in the selected language and a fresh confirmation is required before the next write
 
 ### Requirement: Fast-track changes only method and scope
@@ -392,11 +392,11 @@ The system SHALL compose the `rebase-squash` squash commit with the same informa
 
 ### Requirement: Deterministic merge mechanical evidence
 
-The merge workflow SHALL obtain mechanical preflight, provenance, conflict, suite, verification, and collision facts through `sai/tools/merge.js`. Fact receipts SHALL identify their version, action, outcome, dependencies, captured state, and data. Results SHALL distinguish successful collection, failed assertions, and explicit non-applicability. Mechanical evidence SHALL NOT select semantic intentions, authorize mutations, replace independent review, or alter existing gates and correction budgets.
+The merge workflow SHALL obtain mechanical preflight, provenance, conflict, suite, verification, collision, and closing status facts through `sai/tools/merge.js`, and the coordinator SHALL collect them. Fact receipts SHALL identify their version, action, outcome, dependencies, captured state, and data. Results SHALL distinguish successful collection, failed assertions, and explicit non-applicability. Mechanical evidence SHALL NOT select semantic intentions, authorize mutations, replace independent review, or alter existing gates and correction budgets.
 
 #### Scenario: Preflight facts are collected together
 
-- **WHEN** the worker starts the preflight stage
+- **WHEN** the coordinator enters the preflight stage
 - **THEN** one engine call returns dirty paths, merge and rebase guards, the current branch, and authoritative unmerged local candidates sorted by full committer timestamp descending and exact branch name ascending
 
 #### Scenario: Captured launch provenance remains historical
@@ -461,3 +461,101 @@ The mechanical comparison SHALL compare equivalent preflight facts against the s
 
 - **WHEN** a full-runtime comparison follows the documented protocol
 - **THEN** paired cases retain equivalent repository and model configuration, record human waiting and tool and test intervals separately, and verify correct resolution and preserved guarantees on both harnesses
+
+### Requirement: Coordinator-run mechanical merge stages
+
+The merge coordinator SHALL run the mechanical stages `preflight`, `conflicts`, `verify`, `collision`, and `final` itself through `sai/tools/merge.js`. Its own tool use SHALL be read-only except for the Git mutations it already owns. Conflict analysis, resolution content, test correction, and decision-record renumbering plans SHALL remain worker work, and the coordinator SHALL review what the worker wrote as a separate session.
+
+#### Scenario: Clean integration completes through the tool alone
+
+- **WHEN** a merge or rebase launches without conflicts and the collision receipt is `not-applicable` or `no-collision`
+- **THEN** the run enters `collision` and then `final`, never enters `verify`, and closes with no worker dispatched
+
+#### Scenario: Failed launch without conflicts closes the run
+
+- **WHEN** a launch fails and the conflict snapshot holds an empty inventory
+- **THEN** the coordinator surfaces the Git error and closes the run with the exact repository state instead of treating it as a conflict
+
+### Requirement: Composite stage entry
+
+The merge tool SHALL provide `enter --stage <stage>` for the coordinator stages `preflight`, `conflicts`, `verify`, `collision`, and `final`. One call SHALL return that stage's instructions, its fixed presentation texts, and a `## Stage facts` JSON block holding the stage's receipt. Entry to `conflicts`, `verify`, and `collision` SHALL require `--record` naming a new file outside the repository. The exit code SHALL be that of the stage's mechanical action. A stage name outside the coordinator stages SHALL be rejected as a usage error.
+
+#### Scenario: Failed test run still returns the stage text
+
+- **WHEN** the coordinator enters `verify` and the detected suite fails
+- **THEN** the call exits 1 and still returns the complete stage text with the verification receipt
+
+#### Scenario: Recorded stage without a record file is refused
+
+- **WHEN** `enter --stage conflicts` is called without `--record`
+- **THEN** the tool reports a usage error and collects nothing
+
+#### Scenario: Later entry runs the bare action
+
+- **WHEN** the coordinator re-enters a stage whose text it already holds, such as a second rebase stop or a second test round
+- **THEN** it runs only that stage's bare mechanical action with a new record file
+
+### Requirement: Stage-gated coordinator instructions
+
+At start the merge coordinator SHALL load only what every stage needs. Its stage instructions in `sai/commands/merge/coordinator-stages.md` and the fixed texts in `sai/commands/merge/presentation.md` SHALL arrive from the merge tool when a stage starts, and the coordinator SHALL NOT fetch either file whole. A stage's text SHALL be in force from its entry to its exit and SHALL grant no authority to run a later stage.
+
+#### Scenario: Preflight entry carries the seam rules once
+
+- **WHEN** the coordinator enters `preflight`
+- **THEN** the returned text holds the presentation seam's rules, the preflight stage instructions, and the preflight texts, and holds no later stage body
+
+#### Scenario: Squash launch reads the message rules alone
+
+- **WHEN** a `rebase-squash` launch needs the informative-message rules before the `final` stage
+- **THEN** `instructions --stage messages` returns those rules alone
+
+### Requirement: Judgment-point worker dispatch
+
+The coordinator SHALL dispatch exactly one merge worker at the first judgment point of a run: a conflict stop, or a collision receipt whose result is `needs-judgment`. It SHALL continue that same worker at every later judgment point, including later rebase stops and failed test rounds. A run that reaches no judgment point SHALL dispatch no worker and SHALL open no no-commit guard window. The dispatch SHALL use the ready handshake and SHALL then disclose the task with the `--reconstruct` form of the `Active stage:` pointer and the complete reconstruction state.
+
+#### Scenario: First conflict dispatches the worker
+
+- **WHEN** the first conflict stop of a run is detected and no worker is running
+- **THEN** the coordinator dispatches one worker and discloses `strategy` with the affected inventory, stage blob OIDs, the snapshot reference and hash, the provenance receipt, the method, and the working language
+
+#### Scenario: Collision alone dispatches the worker
+
+- **WHEN** a clean integration's collision receipt is `needs-judgment` and no worker is running
+- **THEN** the coordinator dispatches one worker and discloses `renumbering-plan` without asking for a working language
+
+#### Scenario: Later rebase stop reuses the worker
+
+- **WHEN** `git rebase --continue` stops on a new conflicted commit
+- **THEN** the coordinator captures a fresh snapshot and continues the same worker with the language already selected
+
+### Requirement: Coordinator-authored preflight and closure
+
+The coordinator SHALL build Batch 1, the in-progress guard closings, the integration proposal, and the final summary from the fixed texts the merge tool serves with each stage. It SHALL take the preflight facts from the `preflight` receipt and the closing facts from the `status` receipt rather than listing branches or re-running status checks itself.
+
+#### Scenario: In-progress guard closes without a question
+
+- **WHEN** the `preflight` receipt reports a merge or rebase in progress
+- **THEN** the coordinator prints the matching pinned closing text and closes the run with no question and no launch
+
+#### Scenario: Final summary is written from the final texts
+
+- **WHEN** no finalization operation remains
+- **THEN** the coordinator writes the final summary from the final texts' template and hands it to terminal navigation
+
+### Requirement: Provenance capture validates the exact source ref
+
+The merge tool's `provenance` action SHALL check the source ref's format, its existence, and its commit before capturing the merge provenance, in one call. A ref that fails any check SHALL produce no provenance receipt.
+
+#### Scenario: Missing ref produces no receipt
+
+- **WHEN** `provenance` receives a well-formed ref that does not exist
+- **THEN** the call fails and the coordinator closes the run with the branch-failure text without launching
+
+### Requirement: Role-split efficiency comparison
+
+The merge efficiency documentation SHALL compare the same scenario before and after the role split in model turns, tool calls, and tokens per run, and SHALL treat minutes as context only. It SHALL label the after column as derived from the contract and SHALL mark every figure without an observed after-run as unmeasured.
+
+#### Scenario: Contract-derived figures are not presented as observed
+
+- **WHEN** the comparison reports the after-side worker stretches and merge-tool calls with no traced after-run
+- **THEN** it identifies them as contract-derived and reports the after-side token counts as unmeasured

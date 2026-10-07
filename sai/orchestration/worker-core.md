@@ -182,9 +182,9 @@ continuation_state: language-selection|strategy-analysis
 `affected_files` is the read-only inventory of paths that Git reports as
 conflicted; it is not a worker write report and is never inferred from or
 substituted for `changed_files`. `continuation_state` is coordinator-visible
-route state: `language-selection` is used for the first conflict hand-off and
-`strategy-analysis` is used when application or verification exposes a new
-problem. The event carries no `question` or `options`, and it runs after the
+route state. The merge worker returns `strategy-analysis` when a write or a
+test correction exposes a new problem; `language-selection` names the first
+conflict of a run, which the merge coordinator detects itself. The event carries no `question` or `options`, and it runs after the
 ready return, never before or instead of it.
 
 ## Nonterminal Result Transport

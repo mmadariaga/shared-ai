@@ -21,4 +21,4 @@ The system SHALL route rebase conflicts through the same existing resolution, ve
 The system SHALL render the TODO as Rebase target onto source for method rebase, require method-aware authorization Finalize the rebase onto selected-branch?, and finalize via git rebase --continue until completion with HEAD SHA and subject shown.
 #### Scenario: Authorize rebase finalization
 - **WHEN** the incremental collision pass completes and all renames and reference updates are staged
-- **THEN** the worker returns the rebase finalization question with method, squash choice, target, source target, verification, conflict, collision, and staged-file count
+- **THEN** the coordinator presents the rebase finalization summary with method, squash choice, target, source target, verification, conflict, collision, and staged-file count

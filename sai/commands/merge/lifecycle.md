@@ -5,6 +5,20 @@ permitted transitions, and the check the coordinator runs before selecting each
 next operation. It is harness-neutral and read-only toward the worker: it
 dispatches nothing, answers nothing, and runs no git.
 
+Each state belongs to one stage. The coordinator runs the mechanical stages
+through the merge tool; the worker is dispatched only at a judgment point.
+
+| stage | states | who works |
+| --- | --- | --- |
+| `preflight` | `preflight` … `merge-outcome` | coordinator and tool |
+| `conflicts` | `language-selection`, `contextual-analysis`, `resolution` | coordinator and tool detect, review, and stage; the worker analyzes and writes |
+| `verify` | `verification` | coordinator and tool run the suite; the worker only corrects a failed round |
+| `collision` | `adr-ddr` | coordinator and tool check; the worker only plans a `needs-judgment` result |
+| `final` | `finalization`, `terminal` | coordinator and tool |
+
+A run whose launch is clean and whose collision check needs no judgment
+reaches `terminal` with no worker dispatched.
+
 ## States
 
 | state | holds when |
@@ -17,8 +31,8 @@ dispatches nothing, answers nothing, and runs no git.
 | `language-selection` | the first conflict is detected; the working language is being chosen |
 | `contextual-analysis` | the global strategy is being analyzed, revised, or confirmed |
 | `resolution` | the confirmed resolution is being written, reviewed, and staged |
-| `verification` | the suite runs within its three-round budget |
-| `adr-ddr` | the collision pass runs on the final integration state, or is skipped |
+| `verification` | the coordinator runs the suite within its three-round budget |
+| `adr-ddr` | the collision check runs on the final integration state, or is skipped |
 | `finalization` | the authorized local finalization operation is ready or running |
 | `terminal` | the run is closed and its final state recorded |
 
@@ -67,12 +81,12 @@ method-selection      branch-selection      method stored (merge | rebase | reba
 branch-selection      branch-selection      entry sentinel selected; dirty answer is not no; open branch-entry prompt only
 branch-selection      branch-validation     branch-entry text received; method and squash resolved
 branch-selection      merge-outcome         listed local branch selected; provenance captured; no fetch; method and squash resolved
-branch-selection      terminal              listed local ref no longer resolves; worker returned a closing result; no fetch or integration
+branch-selection      terminal              listed local ref no longer resolves; run closed; no fetch or integration
 branch-validation     merge-outcome         fetch succeeded; exact ref resolves to a commit; provenance captured; method and squash resolved
-branch-validation     terminal              fetch failed or exact ref is unusable; worker returned a closing result; no integration started
+branch-validation     terminal              fetch failed or exact ref is unusable; run closed; no integration started
 merge-outcome         adr-ddr               outcome clean (merge stopped before commit, or rebase finished)
-merge-outcome         language-selection    outcome conflicted; working_language unresolved
-merge-outcome         contextual-analysis   outcome conflicted; working_language already selected
+merge-outcome         language-selection    outcome conflicted; conflict snapshot captured; working_language unresolved
+merge-outcome         contextual-analysis   outcome conflicted; conflict snapshot captured; working_language already selected
 language-selection    contextual-analysis   working_language is a non-empty token; full affected set retained
 contextual-analysis   resolution            strategy_status = confirmed; completed payload validated
 resolution            contextual-analysis   a write or review exposed a new conflict (strategy-analysis event)
@@ -85,9 +99,9 @@ adr-ddr               finalization          applicability resolved; repairs appl
 adr-ddr               terminal              rebase finished with nothing staged
 finalization          merge-outcome         rebase stopped; command-local authority; git rebase --continue ran
 finalization          terminal              local commit succeeded, or operation failed and exact state recorded
-<any>                 terminal              the worker returned a closing result (in-progress guard,
-                                            dirty=no, branch-resolution failure, decline-strategy,
-                                            review budget exhausted)
+<any>                 terminal              the run closed early (in-progress guard, dirty=no,
+                                            branch-resolution failure, decline-strategy,
+                                            review budget exhausted, launch failure)
 ```
 
 `strategy_status = confirmed` is defined by the Step 7 hand-off in
@@ -95,6 +109,10 @@ finalization          terminal              local commit succeeded, or operation
 § Command-local authorization.
 
 `verification_result` is `unavailable` when no suite is detected. A clean integration never passes through `verification`.
+
+The worker is dispatched on the first entry to `contextual-analysis`, or on
+the first `adr-ddr` whose collision receipt is `needs-judgment`, whichever
+comes first; every later judgment point continues that same worker.
 
 `commit_executed` is true when the run ends finalized: the merge commit
 succeeded, or the rebase finished and its collision repair (if any) was

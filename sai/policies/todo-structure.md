@@ -153,7 +153,7 @@ replace a canonical label with a question, summary, or worker finding.
   make it `in_progress` while the local operation runs. Mark it `completed`
   only after success. On failure, preserve the exact repository-state summary
   and leave the operation incomplete until terminal clearing.
-- **Terminal closure:** after recording the final worker result, clear the
+- **Terminal closure:** after recording the final state, clear the
   merge-owned TODO surface. A successful commit retains the completed state
   until this clear; an early stop or failed finalization never leaves an
   actionable finalization item.

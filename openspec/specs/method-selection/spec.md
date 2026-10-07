@@ -12,7 +12,7 @@ The system SHALL ask exactly `Which integration method do you want to use?` with
 - **THEN** the flow records `method=rebase` with `squash=yes` and proceeds to branch selection without any standalone squash gate
 #### Scenario: Ask method before branch
 - **WHEN** a merge invocation starts in normal mode with a clean worktree and no integration in progress
-- **THEN** the worker returns the method question before any branch question and advances only on a merge, rebase, or rebase-squash answer
+- **THEN** the coordinator presents the method question before any branch question and advances only on a merge, rebase, or rebase-squash answer
 
 ### Requirement: Fast-track method pinning
 The system SHALL pin the method to `merge` without asking and SHALL show no squash choice when fast-track is active.

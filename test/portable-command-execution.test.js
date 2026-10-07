@@ -82,7 +82,7 @@ test('archive and commit surfaces preserve operation gates without Bash-only for
   const archiveGate = read('sai/commands/archive/archive-commit-gate.instructions.md');
   const retirement = read('sai/commands/archive/retirement-declaration.md');
   const commit = read('sai/commands/commit/coordinator.md');
-  const merge = read('sai/commands/merge/coordinator.md');
+  const merge = read('sai/commands/merge/coordinator-stages.md');
   const explore = read('sai/commands/explore/steps/pipeline-direct-build.md');
   const metaReview = read('sai/commands/meta-review/direct-build-close.md');
 

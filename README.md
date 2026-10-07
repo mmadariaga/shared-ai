@@ -131,8 +131,9 @@ Claude Code and opencode route these core phases through a coordinator and a man
 
 Full unnumbered reference in [docs/on-demand-commands.md](docs/on-demand-commands.md).
 
-Merge uses dependency-checked mechanical facts and active-stage instruction
-disclosure for the same persistent worker. Strategy explanations are presented
+Merge runs its mechanical stages in the coordinator through one tool call per
+stage and dispatches its worker only when a conflict or a decision-record
+collision needs judgment. Strategy explanations are presented
 once per decision; safety, independent review and verification budgets remain
 unchanged. [Measurement evidence and comparison protocol](docs/merge-efficiency-measurements.md)
 distinguish instruction/tool-call reductions from unmeasured model latency.

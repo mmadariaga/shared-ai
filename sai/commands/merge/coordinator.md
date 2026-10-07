@@ -2,31 +2,32 @@
 
   Fetch @sai/policies/verified-precondition-handback.md
   Fetch @skills/safe-operations/SKILL.md and use it
-  Fetch @sai/policies/commit-rules.md and follow its message and safety rules;
-  § Command-local authorization below replaces its Authorization gate.
   Fetch @sai/policies/command-execution.md and follow it exactly.
   Fetch @sai/policies/remember.md
   Fetch @sai/policies/question-context.md
   Fetch @sai/commands/merge/lifecycle.md and use it as the merge lifecycle
   validation seam.
-  Fetch @sai/commands/merge/presentation.md and use it as the merge
-  presentation seam.
   Fetch @sai/commands/merge/mechanics.md and follow its deterministic evidence
-  and active-task delivery contract.
+  and stage delivery contract.
   Fetch @sai/adapters/claude/panel-render.md when the active harness is Claude
   Code, or Fetch @sai/adapters/opencode/panel-render.md when the active
   harness is opencode, and use that harness-native task-list binding for the
   merge TODO.
 
+  These fetches are everything every stage needs. The presentation seam
+  (`presentation.md`) and your stage instructions (`coordinator-stages.md`)
+  arrive from the merge tool when a stage starts (§ Stages); fetch neither file
+  whole.
+
   ## OpenSpec independence
 
   `sai-merge` operates on git state only and needs no `openspec` binary,
   `openspec/` directory, or `schema: sai-workflow`. Without `openspec/`, the
-  worker classifies spec paths as code.
+  merge tool classifies spec paths as code.
 
   ## Fast-track parse
 
-  Before dispatch, inspect the boot-provided `arguments_value` for the
+  Before the first stage, inspect the boot-provided `arguments_value` for the
   positional token `--fast-track`:
   - If the token is present anywhere in `arguments_value`:
     1. Set the in-conversation boolean `fast_track_active` to true.
@@ -56,48 +57,81 @@
   hook bypass, destructive operation, or unrelated change. All remaining
   safety confirmations and error paths stay in force.
 
-  ## Merge phase adapter
+  ## Roles
 
-  You are the user-facing merge coordinator. The worker owns the read-only
-  analysis and the gate data (`@sai/commands/merge/instructions.md`) plus the
-  resolution-content writes. You own the presentation seam, the lifecycle
-  check, the working-language question, the adaptive TODO, the
-  post-resolution review, and every git mutation: branch refresh with
-  `git fetch --prune origin`, the launch and squash,
-  `git checkout --ours/--theirs`, collision replacements and `git mv`,
-  staging, `git rebase --continue`, and commits. Route every validated worker
-  result through the presentation seam before presenting it or moving on.
-  Leave the analysis to the worker; confine the worker to its write boundary.
+  You are the user-facing merge coordinator. Three parties share the run:
+
+  - **The merge tool** (`sai/tools/merge.js`) computes every mechanical
+    result: preflight facts, provenance, the conflict snapshot, the test run,
+    the collision frontier, and the closing repository state.
+  - **You** run the mechanical stages through the tool, author the Batch 1
+    questions and the final summary from the seam's fixed texts, and own the
+    presentation seam, the lifecycle check, the working-language question, the
+    adaptive TODO, the post-resolution review, and every git mutation: branch
+    refresh with `git fetch --prune origin`, the launch and squash,
+    `git checkout --ours/--theirs`, collision replacements and `git mv`,
+    staging, `git rebase --continue`, and commits.
+  - **The worker** is the judgment session. It reconstructs intent, proposes
+    and writes the resolution, corrects failing tests, and plans decision-record
+    renumbering (`@sai/commands/merge/instructions.md`, delivered to it by
+    stage). Conflict file contents stay in its context, and you review what it
+    wrote as a separate session.
+
+  Your own tool use is read-only except for the git mutations above. Leave
+  conflict analysis and resolution content to the worker; confine the worker
+  to its write boundary.
+
+  ## Stages
+
+  The run is a sequence of mechanical stages — `preflight`, `conflicts`,
+  `verify`, `collision`, `final` — selected by the lifecycle seam. Enter each
+  stage the first time with its one composite call from `mechanics.md`
+  § Stage delivery: it returns that stage's instructions, its fixed
+  presentation texts, and its mechanical facts together. Follow the returned
+  stage text until its exit. On a later entry to a stage whose text you already
+  hold (a second rebase stop, a second test round), run only the stage's bare
+  mechanical action.
+
+  A run with no conflict and no decision-record collision completes through
+  these stages alone: dispatch no worker.
+
+  ## Judgment-point dispatch
+
+  A **judgment point** is the first moment that needs a decision the tool
+  cannot compute: a conflict to resolve, a failing test to correct, or
+  decision records in collision to renumber. The first judgment point of a run
+  is always a conflict or a collision.
 
   Declare the minimal phase-adapter field set:
   - `original_envelope` — the fast-track-cleaned `arguments_value`, one opaque
     string; the stripped token survives only in `fast_track_active`.
-  - `dispatch_operation` — dispatch exactly one `sai-merge-worker` through the
-    active merge-worker binding
+  - `dispatch_operation` — at the first judgment point, dispatch exactly one
+    `sai-merge-worker` through the active merge-worker binding
     (`Fetch @sai/orchestration/workers/bindings/merge-worker.md`) with the
-    original envelope, declaring `fast_track_active` beside it as session
-    state, never as an envelope key.
+    usual ready handshake, declaring `fast_track_active` beside the envelope as
+    session state, never as an envelope key. After ready, disclose the task
+    with the `Active stage:` pointer in its `--reconstruct` form and the
+    complete state of `replacement_reconstruction_fields`: the worker saw none
+    of the earlier stages.
   - `continuation_operation` — continue the same worker through the binding's
-    continuation mechanism, forwarding the answer value (for a batch, the
-    ordered id-to-value answers in one continuation), an open-input answer
-    unchanged, a coordinator-collected `branch_entry` for `sai:enter-branch` or
-    picker free text, or an operation outcome together with
-    the merge provenance. After ready, prefix the first task and every later
-    continuation with the exact `Active stage:` pointer selected by
-    `mechanics.md` § Active task delivery. Include the complete current task
-    state and necessary valid receipts; deliver no future stage body. This
-    applies identically to Claude Code's and opencode's respective binding
-    continuation mechanisms; keep the same persistent worker.
+    continuation mechanism at every later judgment point, forwarding the
+    answer value, an open-input answer unchanged, a named correction, or an
+    operation outcome. Prefix every continuation with the exact
+    `Active stage:` pointer selected by `mechanics.md` § Stage delivery.
+    Include the complete current task state and necessary valid receipts;
+    deliver no future stage body. This applies identically to Claude Code's
+    and opencode's respective binding continuation mechanisms; keep the same
+    persistent worker across every conflict stop of a rebase.
   - `allowed_nonterminal_extensions` — the merge-only closed
     `conflict_detected` extension `{event: conflict_detected,
     summary: string, changed_files: string[], affected_files:
     string[], continuation_state: language-selection|strategy-analysis}`.
     It is the only nonterminal extension, not a worker status or a progress
-    event, and it arrives after ready.
+    event, and it arrives after ready. The worker returns it only with
+    `strategy-analysis`; you detect the first conflict yourself.
   - `extension_handlers` — for `conflict_detected`, validate the payload,
     record `affected_files` as the conflict inventory (never as a worker
-    write), read the `Categories:` summary line, and
-    route per § Conflict hand-off.
+    write), and route per the `conflicts` stage's new-problem rule.
     This adapter declares NO worker `progress_plan`: no progress event exists
     and no acknowledgement literal is defined. The merge TODO is separate
     coordinator state; it never travels in the envelope.
@@ -106,21 +140,22 @@
     including any coordinator-owned open branch-entry answer),
     `fast_track_active`, `branch_selection_source`, `branch_entry` when set,
     `working_language` once selected, the merge provenance, and the ordered
-    duplicate-free changed-files union. A replacement worker reconstructs
-    only from these plus `active_stage`, complete `affected_files` and
-    categories/region ids/stage OIDs, all receipt references and hashes,
-    the exact current strategy and revision/confirmation state, complete
-    selected semantic decisions, pending corrections, review and verification
-    round counters/outcomes/full failure references, collision applicability
-    and complete plan, owned/staged paths, operation history and exact current
-    outcome. Each inventory is exhaustive, never `and others; see earlier`.
-    Validate reconstruction and referenced records before continuing; missing
-    state stops before writing or finalizing. Do not send prior journals or
-    artifact contents; send exact external references with verified hashes.
-  - `terminal_navigation` — hand the validated worker source and the
-    presentation state to the seam's terminal renderer: it prints the
-    worker-authored summary verbatim, then `Merge done.` only when
-    `commit_executed` is true, and stops.
+    duplicate-free changed-files union, plus `active_stage`, complete
+    `affected_files` and categories/region ids/stage OIDs, all receipt
+    references and hashes, the exact current strategy and
+    revision/confirmation state, complete selected semantic decisions, pending
+    corrections, review and verification round counters/outcomes/full failure
+    references, collision applicability and complete plan, owned/staged paths,
+    operation history and exact current outcome. Each inventory is exhaustive,
+    never `and others; see earlier`. The first dispatch and a mid-run
+    replacement use this same hand-over: the worker starts at the active
+    judgment point from these fields alone. Validate the state and its
+    referenced records before sending; missing state stops before writing or
+    finalizing. Do not send prior journals or artifact contents; send exact
+    external references with verified hashes.
+  - `terminal_navigation` — hand the final summary and the presentation state
+    to the seam's terminal renderer: it prints the summary, then `Merge done.`
+    only when `commit_executed` is true, and stops.
   - NO `recovery_policy` is declared: this adapter runs a minimal lifecycle
     without bounded recovery. Do not fetch `@sai/policies/bounded-recovery.md`,
     keep no recovery ledger, and perform no recovery continuations.
@@ -134,18 +169,14 @@
   worker wrote or you materialized, renamed, or updated, in first-seen order;
   fetched contracts and installed bindings are never target paths. Validate
   every worker result against the shared runner's closed-payload rules before
-  acting on it.
+  acting on it, and route it through the presentation seam before presenting
+  it or moving on.
 
   Pass the received source bytes to validation, not a reconstructed envelope
   with shortened summary or substituted fields. Keep the validated original
   result and its exact external source reference/hash for resolution checking
   and replacement; compact presentation is a separate view, not validator
   input. Unknown fields keep the shared validator's existing treatment.
-  On a new `## Mechanical evidence` appendix, retain every exact receipt
-  reference/hash after verifying its complete file, action and dependencies.
-  Include the complete retained reference inventory in replacement state.
-  The appendix is evidence for the selected stage report, not another public
-  explanation; keep the original worker source untouched for validation.
 
   ## No-commit guard
 
@@ -154,7 +185,8 @@
   invocation-scoped `guard_base`, and `verify` closes it before each boundary. On a `violation` verdict,
   remediate exactly as the policy prescribes, then continue the route. Your
   own git mutations always run between guard windows, never inside one. No
-  merge window carries `allow_commit`.
+  merge window carries `allow_commit`. A run that dispatches no worker opens no
+  window.
 
   ## Lifecycle check
 
@@ -162,262 +194,14 @@
   with the current state, the state the operation enters, and its context.
   Proceed on `valid`; on `invalid`, halt as the seam prescribes.
 
-  ## Gates
-
-  Route each worker `needs_input` through the seam's `render_gate` when
-  `options` is non-empty and `render_open_input` when it is empty. Present
-  closed options through the native picker per "Closed-choice prompts" in
-  `@sai/policies/remember.md`, append each exact answer to the opaque input
-  history, and forward the exact value to the same worker. Open input goes back
-  unchanged; build no options for it and interpret nothing.
-
-  Resolve Batch 1's answers in this order, then forward them to the worker in
-  one continuation. An abandoned batch forwards nothing.
-
-  1. **`dirty` is `no`** — forward the batch as answered, ignoring any branch
-     text; the worker closes the run with no fetch, validation, or mutation.
-  2. **Classify the `branch` answer the picker returns**, in this order. A
-     picker may return an option's label instead of its value: an answer
-     equal to the exact value or the exact label of a listed candidate or of
-     the sentinel option is that option's selection, mapped to its value
-     before classification. Only an answer matching no option's value or
-     label is picker free text.
-     - an exact listed candidate value sets `branch_selection_source: listed`,
-       including picker free text that exactly matches a listed value;
-     - the branch-entry sentinel `sai:enter-branch` (a routing choice, never a
-       Git ref) prints the seam's branch-entry prompt through
-       `render_open_input`; record the typed answer in input history as
-       `{id: branch-entry, question, options: [], answer_value}`;
-     - any other non-empty answer is picker free text: the typed answer
-       itself, with no second prompt; its Batch 1 history pair already
-       records it, so add no `branch-entry` pair;
-     - an empty or whitespace-only answer is not a branch: repeat the branch
-       question, with no fetch.
-
-     Both text paths set `branch_selection_source: free-text`. On the sentinel
-     path the typed text wins even when it matches a listed candidate.
-  3. **Typed text** — the exact typed value is `branch_entry`. Validate the
-     `branch-selection` → `branch-validation` transition, then forward
-     `branch_entry` with the ordered Batch 1 answers.
-
-  Choosing text entry pre-authorizes exactly one `git fetch --prune origin`
-  (§ Branch validation), never an integration.
-
-  ## Conflict hand-off
-
-  `working_language` starts unresolved; a clean run never asks for it.
-
-  On `conflict_detected` with `continuation_state: language-selection`, print
-  one concise notice as ordinary text (conflicts detected, the affected paths,
-  the unresolved integration, and that a working language is needed), with no
-  semantic analysis. Then present Batch 2 in one trip through the active
-  harness-native question mechanism (`AskUserQuestion` on Claude Code,
-  `question` on opencode):
-
-  - `language` — the canonical question **"Which language should I use for the
-    conflict explanation and resolution strategy?"**, rendered in the ambient
-    conversation language. Options are `English` and the current conversation
-    language (once, when they coincide), plus the harness's free-text path when
-    it has one. Labels may be localized; each value is the exact language
-    token.
-  Store the language answer as invocation-scoped `working_language`, outside
-  `arguments_value`, artifacts, configuration, and worker payload
-  persistence, and forward the ordered batch answers in one continuation.
-
-  On `conflict_detected` with `continuation_state: strategy-analysis`, print
-  its notice as ordinary text and continue the same worker with the selected
-  `working_language`; the language question runs once per run.
-
-  At each conflict stop, capture the complete pre-write conflict snapshot
-  through `merge.js conflicts` before disclosing `detect`. After the language
-  hand-off disclose `strategy` with that inventory and reference/hash. A new
-  conflict or strategy revision invalidates the old confirmation; repeat full
-  analysis/presentation before a new `apply` task in either mode.
-
-  ## Coordinator-owned execution
-
-  Each operation below runs after its lifecycle check and under
-  safe-operations; presentation-state updates follow the operation outcome.
-
-  - **Branch validation.** A worker's Step 4 `completed` result is only the
-    integration proposal; do not render it as terminal output until branch
-    validation and launch resolve. Derive `source_ref` yourself from the
-    unmodified answer and pass it to git as one literal argument:
-    - **Listed candidate** — `refs/heads/<value>`; do not fetch. Resolve it
-      with `git rev-parse --verify <source_ref>^{commit}`; if it no longer
-      resolves, continue the worker with a branch-resolution failure.
-    - **`branch_entry`** — the route is already in `branch-validation`. An
-      entry beginning with the exact prefix `origin/` maps to
-      `refs/remotes/origin/<remainder>`; every other entry maps to
-      `refs/heads/<value>`. Run `git fetch --prune origin` first; if it fails,
-      check nothing further. After a successful fetch, run
-      `git check-ref-format <source_ref>`, then
-      `git show-ref --verify --quiet <source_ref>`, then
-      `git rev-parse --verify <source_ref>^{commit}`. If fetch or any check
-      fails, continue the worker with the exact entry and the failure outcome.
-
-    The ref is exactly this derived value: do not interpolate the user's text
-    into shell syntax, use any ref from the worker's proposal, resolve
-    arbitrary revisions, or create a local branch for an `origin/<branch>`
-    entry. On a failure the worker returns a closing `completed` result stating
-    that no integration started; do not capture provenance or launch on that
-    path. On success, use `merge.js provenance` to capture
-    the merge provenance exactly as
-    `@sai/commands/merge/instructions.md` § Merge provenance defines it,
-    using this exact `source_ref`; remain in the current branch state until
-    Launch. Keep the complete receipt, and verify its current dependencies
-    immediately before the launch, before any squash mutation. Recollect if
-    stale; never reuse stale launch facts. Forward the captured immutable
-    data and original receipt after launch, never recapture historical SHAs.
-
-  - **Informative messages.** A synthesized merge or squash message is an
-    inventory of contained work, not a summary. Compose the subject as today
-    and keep it within 50 characters (squash creation per
-    `@sai/policies/commit-rules.md`; merge finalization by applying
-    `sai/commands/commit/instructions.md` Steps 1–5 under
-    `@sai/policies/commit-rules.md`), then append a body listing every
-    contained commit. Enumerate the range with
-    `git log --reverse --format=%s <range>` and emit one `- <first line>` body
-    line per output line, in that order, literal, with no reformat,
-    translation, or hash, all commits, no truncation (huge messages accepted), keeping each bullet on
-    one line even past 72 characters with no rewrap or trim, with a blank line
-    between subject and list. Ranges: merge finalization uses
-    `merge_base..source_sha`; squash creation uses `merge_base..HEAD` (the
-    current-branch uniques before the soft reset). With no contained commits
-    emit the subject alone with no list; one contained commit still yields one
-    bullet, never folded into the subject. The list reflects only contained
-    commits; conflict resolution adds or removes no bullets. Plain rebase and
-    a finished rebase with nothing staged carry no list.
-
-  - **Launch.** After branch validation succeeds (or a listed local branch is
-    selected without fetch), keep the captured provenance from the unchanged
-    refs invocation-scoped, outside `arguments_value`, and forward it unchanged
-    with every outcome. Before launching, validate the lifecycle transition to
-    `merge-outcome`: from `branch-selection` for a listed candidate (provenance
-    captured, no fetch) or from `branch-validation` for a free-text entry
-    (fetch succeeded and the exact ref resolves). Then call `render_progress`
-    to render the first TODO and launch by method:
-    - `merge` — `git merge --no-ff --no-commit <source_ref>`;
-    - `rebase` — `git rebase <source_ref>`;
-    - `rebase-squash` — when `merge_base` differs from `target_sha`,
-      `git reset --soft <merge_base>` then one `git commit` holding the
-      squashed change, with its informative message per **Informative messages**
-      (`merge_base..HEAD`); then `git rebase <source_ref>`.
-
-    Record the outcome — `clean` or `conflicted`, and for a rebase `stopped` or
-    `finished` — report it with the provenance to the worker, and reconcile the
-    TODO to the actual route.
-  - **Strategy presentation and application.** Follow `instructions.md` Step 7
-    for the mode-specific hand-off. In normal mode the strategy arrives as a
-    gate and the user's `apply-strategy` sets `strategy_status: confirmed`. For
-    a fast-track strategy `completed` result, validate its completeness through
-    the presentation seam, print the complete strategy, set
-    `strategy_status: confirmed`, then continue the same worker, unprompted,
-    with an instruction to apply that presented strategy under invocation
-    authority. Repeat for every new conflict or strategy revision, including later rebase
-    stops. This strategy-only result is not terminal navigation.
-  - **Resolution validation.** The worker writes `authored` files after the
-    Step 7 application hand-off and returns the `## Complete resolution payload` JSON
-    object defined in `@sai/commands/merge/instructions.md`. Surrounding prose
-    is explanation, never file content. Validate the whole object at once:
-    1. `selected_contextual_decisions` holds exactly one `ours`, `theirs`, or
-       `synthesis` per semantic conflict, each matching the decision the
-       confirmed strategy states for it.
-    2. `files` holds exactly one record per affected conflicted path,
-       with no duplicate or unexpected path, the worker's category, and
-       `decisions` that agree with the decision records.
-    3. `source` is `git-ours` or `git-theirs` with empty `regions`, or
-       `authored` with at least one region, each region's `conflict_id` present
-       in the captured region inventory; semantic regions also match the
-       file's `decisions` (obvious authored regions need no semantic decision).
-       No region `text` holds a `<<<<<<<`,
-       `=======`, or `>>>>>>>` line, a diff, a hunk, or a complete file.
-    4. Any missing or invalid record, decision, path, region, or source rejects
-       the whole payload: touch no conflict and stage nothing.
-
-    Run `merge.js resolution --phase authored` with the exact original worker
-    source and retained pre-write snapshot, as specified in `mechanics.md`.
-    Reject on stale/changed snapshot, HEAD/index/operation mismatch, incomplete
-    inventory, region mismatch, or unrelated content change. The reference
-    for authored content is the file captured before writing, including
-    Git-combined content, not either stage's whole file.
-
-    After every record passes, materialize `git-ours` / `git-theirs` files with
-    `git checkout --ours` / `--theirs`; `authored` files are already written.
-    Add each materialized path to the union after its checkout succeeds.
-  - **Post-resolution review.** Compare the working tree with the confirmed
-    strategy held in your context. A `git-ours` / `git-theirs` file is
-    byte-identical to its captured `git show :2:` / `:3:` stage. An `authored`
-    file matches its captured pre-write working content outside the resolved
-    regions and carries the
-    confirmed decisions inside them. No write lands outside the agreed regions
-    or the affected file set. On a divergence (an unauthorized change, an unresolved
-    region, an out-of-scope write, any deviation from the strategy), stage
-    nothing and send the named divergence to the same worker as a correction,
-    then review again. After three rounds without a match, stop without
-    staging: report that the confirmed strategy could not be materialized
-    within the retry budget. Supplement this independent semantic review with
-    `merge.js resolution --phase materialized`; stage only when both pass.
-    Reuse valid checks during review and repeat only invalidated facts. A
-    correction retains the original protected-content snapshot, not a fresh
-    snapshot of the incorrect write. Verification fixes and review corrections
-    receive a new exact authorized-region snapshot before writing when their
-    regions differ; absent exact boundaries, stop rather than broaden scope.
-    Use `merge.js correction` for those explicit new boundaries, per
-    `mechanics.md`, then disclose `apply` and validate/review its original
-    result before re-staging. Keep the previous snapshot for evidence; a
-    correction capture authorizes only the named corrective ranges.
-  - **Staging.** After the review passes, `git add` every resolved file. A
-    file with an unresolved escalation is staged only with the escalation
-    noted.
-  - **Verification.** Resume the worker to run the suite. For each failed
-    round below three, the worker applies its fixes; re-stage the corrected
-    files and resume it. On cap exhaustion the resolution stays staged and the
-    run continues. When the worker reports no suite, present its notice and
-    record `verification_result: unavailable` before proceeding unprompted,
-    per Step 8. A new conflict or inconsistency arrives as a
-    `strategy-analysis` event: route it per § Conflict hand-off, then repeat
-    the Step 7 mode-specific strategy hand-off before the next resolution write.
-  - **Collision repair.** When the worker's collision plan is
-    `repair-required`, for each rename first record its worker data in the
-    seam's `adr_ddr_renames`, then apply exactly the worker's replacements —
-    `old_h1` → `new_h1`, `old_index_label` → `new_index_label` in its index,
-    and every listed reference update — and then `git mv <old> <new>`. Apply
-    only replacements the worker supplied, and never rename onto a path
-    another final-state record occupies. Orphan, ambiguous, and delete/modify
-    escalations are reported, never modified. Add renamed and updated paths to
-    the union.
-  - **Final staging.** `git add` exactly the union.
-  - **Finalization.** On the worker's Step 10 `completed` report, build and
-    present `compact_finalization_summary`, then directly execute the operation
-    unprompted under § Command-local authorization.
-    This pre-operation report is not terminal navigation:
-    - merge in progress, or a finished rebase with a staged repair — pass the
-      informative message defined by **Informative messages**
-      (`merge_base..source_sha`) literally on standard input to
-      `git commit -F -`, using `@sai/policies/command-execution.md`; show the
-      resulting SHA and subject, then continue the worker with the actual
-      success outcome for its closing summary;
-    - rebase stopped — `GIT_EDITOR=true git rebase --continue`, then report
-      the new outcome to the worker: a new conflicted commit re-enters
-      § Conflict hand-off as `strategy-analysis`; a finished rebase goes to the
-      collision pass.
-
-    Record the actual outcome in `finalization_status`. On a Git failure,
-    preserve the current state, surface the error, and follow the existing
-    error path without bypassing checks or claiming success. Finalize only
-    integration-owned staged content: retain unrelated working-tree changes,
-    and stop if unrelated staged content would enter a commit. A finished
-    rebase with nothing pending to commit creates no extra commit.
-
   ## Content assignment
 
-  `@sai/commands/merge/instructions.md` is the worker's: read-only analysis,
-  gate data, the strategy and payload, verification analysis, the collision
-  plan, and resolution-content writes. `@sai/commands/merge/presentation.md`
-  and `@sai/commands/merge/lifecycle.md` are yours: rendering, channels, TODO,
-  and the state machine. Every git mutation and the post-resolution review are
-  yours alone.
+  `@sai/commands/merge/instructions.md` is the worker's: intent
+  reconstruction, the strategy and payload, resolution-content writes, test
+  correction, and the renumbering plan. `coordinator-stages.md`,
+  `presentation.md`, and `@sai/commands/merge/lifecycle.md` are yours: the
+  mechanical stages, rendering, fixed texts, channels, TODO, and the state
+  machine. Every git mutation and the post-resolution review are yours alone.
 
 </TASK>
 

@@ -1,11 +1,17 @@
 ## Role
 
-You are the **merge analysis and resolution worker**. You inspect the
-repository with read-only git commands, author the gate data the coordinator
-presents, analyze conflicts, write resolution content into conflict regions,
-run the verification suite, and plan ADR/DDR collision repairs. Every
-state-changing git command, file rename, collision replacement, and staging
-operation belongs to the coordinator.
+You are the **merge judgment worker**. The coordinator runs the mechanical
+stages itself and dispatches you at the first judgment point: a conflict to
+resolve, a failing test to correct, or decision records in collision to
+renumber. You inspect the repository with read-only git commands, reconstruct
+intent, propose one strategy, write resolution content into conflict regions,
+propose test corrections, and plan ADR/DDR renumbering. Every state-changing
+git command, file rename, collision replacement, staging operation, and test
+run belongs to the coordinator.
+
+You start without having seen the earlier stages: the task disclosure carries
+the complete state you need. When a value this stage requires is missing,
+return the precise missing state before writing.
 
 A **semantic conflict** is a conflict between intended behavior or
 architecture, not between text ranges: explain the intent you can observe and
@@ -49,23 +55,11 @@ this table, never by the stage token.
 
 ## Gate trips
 
-Closed decisions travel in as few user trips as their dependencies allow:
-
-| trip | when | items |
-| --- | --- | --- |
-| Batch 1 | always | `dirty` (only when dirty), `method` (not in fast-track), `branch` |
-| Batch 2 | first conflict of the run | `language` (coordinator-owned) |
-| Strategy | every conflict stop in normal mode | the global strategy confirmation |
-
-A batch is a `needs_input` carrying `questions: [{id, question, options}]`,
-one stable `id` per item; without `questions` a `needs_input` carries the
-singular `question` / `options`. Batches hold closed questions only, with no
-item conditional on another item's answer. Worker-authored open requests (a
-strategy revision or other free-form context) run as their own singular
-`needs_input` with an empty `options` list. You author Batch 1; the
-coordinator assembles Batch 2 from your `conflict_detected` event. The coordinator returns a batch's answers together,
-in item order, in one continuation. A `dirty` answer of `no` closes the run:
-return `completed` stating that no merge was performed.
+You author one closed gate, the normal-mode strategy confirmation of Step 7,
+as a `needs_input` carrying the singular `question` / `options`. An open
+request (a strategy revision or other free-form context) is its own singular
+`needs_input` with an empty `options` list. The coordinator authors and
+presents every other question.
 
 Every question you author complies with the five-element anatomy of
 `@sai/policies/question-context.md`, and carries its detailed context in the
@@ -77,114 +71,23 @@ result `summary`, not in the question text.
 
 This is the authoritative section library, not an always-loaded worker task.
 `merge.js instructions --stage <stage>` selects the active sections. Return at
-each hand-off; the coordinator supplies the next stage. Mechanical collection
-commands below provide facts, not authorization.
+each hand-off; the coordinator supplies the next stage. Steps 1–5 and 10 of
+the merge workflow are the coordinator's mechanical stages; your stages are
+Steps 6–7 (`strategy`, `apply`), Step 8 (`test-correction`), and Step 9
+(`renumbering-plan`).
 
-### Step 1: Pre-merge environment checks
+The coordinator's conflict snapshot names each affected file with its
+category (`specs`, `adr-ddr`, `code`), its region ids, and its stage blob
+OIDs. Read needed stage content by its captured blob OID
+(`git cat-file blob <oid>`), mapped through [Sides](#sides), not by
+enumerating the index. Revalidate the snapshot before analysis or writing;
+changed paths/index/HEAD require a new coordinator capture and strategy.
 
-Run `node <merge-tool> preflight --json --cwd <project-root>` once and retain
-the receipt. It deterministically collects these authoritative checks:
-
-- `git status --porcelain` — dirty worktree;
-- `git rev-parse --verify -q MERGE_HEAD` — merge in progress;
-- `git rev-parse --verify -q REBASE_HEAD`, plus the existence of
-  `.git/rebase-merge` or `.git/rebase-apply` — rebase in progress.
-
-Close the run with a `completed` result whose summary is exactly:
-
-- when a merge is in progress: **"Merge already in progress. Resolve or abort
-  the current merge first (`git merge --continue` or `git merge --abort`)."**
-- otherwise, when a rebase is in progress: **"Rebase already in progress.
-  Resolve or abort the current rebase first (`git rebase --continue` or
-  `git rebase --abort`)."**
-
-When the worktree is dirty, Batch 1 includes the `dirty` item: **"Working tree
-has uncommitted changes. Continue anyway?"** with ordered options `yes` / `no`,
-and the summary lists the dirty paths.
-
-### Step 2: Method
-
-Outside fast-track, Batch 1 includes the `method` item: **"Which integration
-method do you want to use?"** with ordered options:
-
-- `{label: "Merge", value: "merge"}`;
-- `{label: "Rebase", value: "rebase"}`;
-- `{label: "Rebase with squash", value: "rebase-squash"}`.
-
-`rebase-squash` is a presentation shortcut for `method=rebase` + `squash=yes`;
-`rebase` alone means `squash=no`, and `merge` means `squash=not-applicable`.
-The summary states the current branch and what each method does:
-
-- `Merge` integrates the selected branch into the current branch; the coordinator
-  finalizes it automatically under its command-local authorization.
-- `Rebase` replays the current branch's commits onto the selected branch one by
-  one, so conflicts may appear at each commit.
-- `Rebase with squash` first unifies the current branch's unique commits
-  (`merge_base..HEAD`) into one local commit, so conflicts appear at most once,
-  then rebases that commit.
-
-In fast-track the method is `merge`.
-
-### Step 3: Branch
-
-Use the preflight receipt's `current_branch` and `candidates`, not another
-branch listing. The tool implements
-`git branch --no-merged HEAD --format='%(refname:short) %(committerdate:iso8601)'`
-and `git rev-parse --abbrev-ref HEAD`. The `--no-merged HEAD` filter is
-authoritative. Sort candidates by full committer timestamp, newest first, then
-by exact branch name ascending for equal timestamps.
-
-Batch 1 includes the `branch` item with the canonical English question
-**"Which branch do you want to operate on?"**; it is neutral because Batch 1
-renders before the method is answered. Its options are every candidate in
-sorted order, then the branch-entry option last:
-
-- For each candidate, `value` is the exact local branch name and `label` is
-  `<branch> — last commit <YYYY-MM-DD HH:mm>` (timezone omitted).
-- `{label: "Enter a branch name", value: "sai:enter-branch"}` — the branch-entry
-  sentinel, a routing choice. The colon makes this value invalid as a Git ref,
-  so it cannot collide with a valid branch.
-
-With no candidates, the branch-entry option is the only option. Choosing it
-makes the coordinator collect one local branch name or `origin/<branch>`
-reference; a branch typed directly into the picker is taken as-is instead.
-Either way the text reaches you as `branch_entry` in the same continuation as
-the Batch 1 answers; a present `branch_entry` is the selected branch text. The
-coordinator classifies the answer; you only receive the value.
-
-The summary carries the current branch, the direction (the selected branch is
-the merge source for `merge` and the new base for `rebase`), every candidate's
-full timestamp, why a branch is needed, and that entering a name makes the
-coordinator run `git fetch --prune origin` (which can prune stale `origin`
-tracking refs) before checking it. With no candidates, say so plainly and
-explain that text entry is still available.
-
-### Step 4: Propose the integration
-
-After Batch 1 is answered, and after any `branch_entry` text has been received,
-return `completed` whose summary restates the exact launch the coordinator will
-run, naming the branch by its full `source_ref` (§ Merge provenance), never a
-shorthand Git could resolve as another kind of revision:
-
-- `merge` — `git merge --no-ff --no-commit <source_ref>`, so every merge, clean
-  or conflicted, stops before its commit;
-- `rebase` — `git rebase <source_ref>`;
-- `rebase-squash` — `git reset --soft <merge_base>` plus one `git commit`
-  holding the squashed change, then `git rebase <source_ref>`. When `merge_base`
-  equals `target_sha` there is nothing to squash and the plain rebase runs.
-  Rewriting already-pushed commits stays the user's responsibility.
-
-The coordinator resolves a listed branch or validates a free-text branch before
-launch. If it returns a branch-resolution failure, close with `completed`
-stating that no integration was started and naming the failed fetch or exact
-branch reference. On success, the coordinator captures the merge provenance
-below, launches, and resumes you with the outcome and provenance.
-
-#### Merge provenance
+### Merge provenance
 
 The coordinator captures these values from the unchanged refs before the launch
-(before the squash commit for `rebase-squash`) and forwards them with every
-outcome report. Read the forwarded values; never recompute them from
+(before the squash commit for `rebase-squash`) and hands you the complete
+receipt at dispatch. Read the forwarded values; never recompute them from
 post-launch `HEAD` or a moved ref.
 
 - `target_sha` — `git rev-parse --verify HEAD`;
@@ -207,54 +110,6 @@ post-launch `HEAD` or a moved ref.
   `A` and `M` paths of
   `git diff --name-status --diff-filter=AM <merge_base> <target_sha|source_sha> -- openspec/specs/ docs/adr/ docs/ddr/`,
   excluding `openspec/changes/archive/**`.
-
-### Step 5: Conflict detection and classification
-
-When the outcome is clean (a merge stopped before its commit, or a finished
-rebase), go to Step 9.
-
-When the outcome is conflicted, use the coordinator's complete `conflicts`
-receipt and exact snapshot reference/hash. The tool lists the conflicted files with
-`git diff --name-only --diff-filter=U`, read the three stages of each
-(`git show :1:<file>`, `:2:`, `:3:`, mapped through [Sides](#sides)), and
-classify each file:
-
-- **specs** — `openspec/**`;
-- **adr-ddr** — `docs/adr/**` or `docs/ddr/**`;
-- **code** — everything else. Without an `openspec/` directory, `openspec/`
-  paths are code.
-
-Read needed stage content by its captured blob OID, not by repeatedly
-enumerating the index. Revalidate the snapshot before analysis or writing;
-changed paths/index/HEAD require a new coordinator capture and strategy.
-
-Return the closed nonterminal event:
-
-```yaml
-event: conflict_detected
-summary: string
-changed_files: []
-affected_files: string[]
-continuation_state: language-selection
-```
-
-`continuation_state` is `language-selection` on the run's first conflict and
-`strategy-analysis` on every later one (a rebase stopping at a new commit, or a
-new problem from application or verification). The `summary` is a concise state
-report: conflicts detected, the integration still unresolved, and one
-classification line the coordinator parses:
-
-```text
-Categories: specs=<n>, adr-ddr=<n>, code=<n>
-```
-
-The event carries no semantic analysis, proposal, question, or options.
-`affected_files` is the conflict inventory, never part of your
-`changed_files`.
-
-On a `language-selection` event the coordinator asks Batch 2 and forwards the
-`language` answer. On a `strategy-analysis` event the coordinator continues you
-with the language already selected.
 
 ### Step 6: Intent reconstruction
 
@@ -478,50 +333,37 @@ Payload rules:
   states it. `decisions` is empty for a file whose regions were all obvious;
   `selected_contextual_decisions` holds one record per semantic conflict.
 
-### Step 8: Verification loop
+### Step 8: Test correction
 
-The coordinator resumes you after it has validated, reviewed, and staged the
-resolution. A clean integration skips this step.
+The coordinator runs the suite after it has validated, reviewed, and staged
+the resolution. It continues you here only when round 1 or 2 failed, with the
+round number, the staged paths, and the failure record's exact
+reference/hash. Read the full failure evidence at that reference.
 
-Use `node <merge-tool> suite --json --cwd <project-root>` for suite detection
-and retain its receipt. The authoritative metadata mapping is:
-`package.json` `scripts.test`
-(npm/yarn/pnpm), `Cargo.toml` → `cargo test`, `go.mod` → `go test ./...`,
-`pyproject.toml` / `setup.py` / `setup.cfg` → `pytest`, `Makefile` →
-`make test`, `mix.exs` → `mix test`, `pom.xml` / `build.gradle` → `mvn test` /
-`gradle test`.
+Return `completed` with the failure analysis and the proposed fixes within the
+affected file set. State each fix as a correction range the coordinator can
+protect before you write:
 
-When no suite is detected, record `verification_result: unavailable`, not passed,
-and continue to Step 9 for a merge or Step 10 for a stopped rebase.
-Your next completed summary carries the notice: automated verification is
-unavailable, and the resolution has already been applied and staged.
+```json
+[{"path": "src/output.js", "category": "code", "before_hash": "<sha256 of the current file>",
+  "regions": [{"start": 120, "end": 164, "conflict_id": "code:src/output.js#1"}]}]
+```
 
-Run `node <merge-tool> verify --json --cwd <project-root>` and retain its
-structured result: command, exit code/signal, full stdout/stderr, test duration,
-and state dependencies. A state change during a run invalidates a pass. Keep
-large failure evidence at an exact external reference with its hash; the
-summary carries the failure and proposed correction, not successful output.
-The budget is three rounds
-per conflict stop.
-
-- **Pass** — continue to Step 9 for a merge and to Step 10 for a stopped
-  rebase.
-- **Fail in round 1 or 2** — return `completed` with the failure analysis and
-  the proposed fixes within the affected file set. The coordinator continues you;
-  apply exactly those fixes and re-run.
-- **Fail in round 3** — return `completed` stating that verification failed
-  through all three rounds, listing the remaining failures, and noting that the
-  resolved state stays staged and uncommitted. The run continues as on a pass;
-  the finalization summary carries the failure.
+`start` and `end` are ordered, disjoint byte offsets in the current file. The
+coordinator captures those ranges and continues you with the `apply` stage
+and that correction snapshot; apply exactly those fixes there.
 
 When a fix would change a confirmed objective or introduce a new contract-level
-alternative, or when a write, marker check, staging check, test run, or fix
-exposes a new conflict or an inconsistent contract, the current strategy no
-longer holds: return `conflict_detected` with `continuation_state:
-strategy-analysis` and the current `affected_files`, then rebuild and
-re-propose the strategy (Steps 6–7) in the same working language.
+alternative, or when a write, marker check, or fix exposes a new conflict or an
+inconsistent contract, the current strategy no longer holds: return
+`conflict_detected` with `continuation_state: strategy-analysis`, a concise
+state `summary`, an empty `changed_files`, and the current `affected_files`.
+The coordinator then continues you with `strategy` in the same working
+language. The event carries no semantic analysis, proposal, question, or
+options, and `affected_files` is the conflict inventory, never part of your
+`changed_files`.
 
-### Step 9: ADR/DDR collision pass
+### Step 9: ADR/DDR renumbering plan
 
 Run this pass on the **final integration state**: the tracked tree and index
 after a clean merge, after a conflicted merge's resolution, or after a rebase
@@ -531,11 +373,10 @@ A number collision is silent: distinct filenames merge cleanly. The pass is
 incremental: its frontier is the source-introduced records, not the repository
 history.
 
-First run `node <merge-tool> collision --json --cwd <project-root>` with the
-original complete provenance receipt on stdin. A verified
-`no-source-introduced-records` result is `not-applicable` without listing,
-grouping, or reference searches. Reuse valid final-state groups from this
-result. `needs-judgment` requires the semantic reconciliation and applicable
+The coordinator ran the mechanical `collision` check and continues you here
+only on its `needs-judgment` result, with that receipt and the original
+provenance receipt. Reuse the valid final-state groups from the receipt.
+`needs-judgment` requires the semantic reconciliation and applicable
 procedure below, not an approximate repair or a claim of non-applicability.
 
 Reconcile the source-introduced records with the final state: drop a deleted
@@ -543,7 +384,7 @@ record; keep a record renamed by conflict resolution only when that same record
 survives at the resolved path, with its original provenance. When no
 source-introduced record survives, or neither `docs/adr/` nor `docs/ddr/`
 exists, the applicability is `not-applicable`: skip the pass entirely (no
-listing, grouping, or reference search) and carry the value into Step 10.
+listing, grouping, or reference search) and return `completed` with that value.
 
 Otherwise:
 
@@ -649,47 +490,5 @@ collision was detected and claims no repository-wide scan):
 
 `commit date` is rendered from the selected introduction event after ordering.
 
-### Step 10: Finalization report
-
-The coordinator resumes you after final staging: at each resolved rebase stop,
-or after applying every collision repair on the final integration state.
-Return `completed` whose summary holds only these facts
-(no staged-file list):
-
-- **Method** — `merge`, or `rebase` with `squash: yes|no`;
-- **Target branch** — the current branch;
-- **Source branch** — the selected branch;
-- **Verification status** — passed, not required (clean integration),
-  unavailable (no detectable suite), or failed after round N;
-- **Conflict result** — clean, resolved (N files), or unresolved (N
-  escalations);
-- **Collision result** — not applicable, none detected, N repaired, or N
-  reported (N escalations), with the `collision_applicability` value;
-- **Staged files** — the count.
-
-The coordinator selects the automatic local operation from the integration
-state under its command-local authorization:
-
-| state | coordinator operation |
-| --- | --- |
-| merge in progress | local merge commit |
-| rebase stopped at a resolved commit | `git rebase --continue` |
-| rebase finished, collision repair staged | local collision-repair commit |
-
-A rebase that finished with nothing staged needs no operation: return
-`completed` reporting the new `HEAD`, and that `target_sha` is the pre-rebase
-`HEAD`.
-
-After the operation succeeds, return `completed` restating the exact
-finalization in a self-sufficient closure: method, target/source branches,
-actual operation and resulting HEAD, verification outcome, conflict/collision
-disposition, and any remaining escalations. Reuse the established decisions;
-do not explain the settled strategy again. After a `git rebase --continue` the coordinator reports the new
-outcome, and the run
-continues at Step 5 (a new conflicted commit) or Step 9 (the rebase finished).
-
-If the operation fails, report it as failed, with the exact repository state,
-through the existing error path. Name completed partial operations, the failed
-operation and its error, current HEAD, staged and pending paths, merge/rebase
-state, and unresolved verification or collision findings. A shortened report
-never hides a partial operation or claims successful finalization.
+The pass is read-only: the coordinator applies the renames and replacements
+you return.

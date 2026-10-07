@@ -15,10 +15,13 @@ Batch 1 SHALL present dirty (only when dirty), three-option method, and branch t
 - **THEN** the run discards method and branch answers and closes without mutation
 
 ### Requirement: Conflict Batch 2 batches language and scope in one trip
-Batch 2 SHALL present language (coordinator-owned canonical question) + scope (worker-provided eligible set, English/ambient wording) in normal mode and language only in fast-track with scope auto-full, with early three-version classification performed before the language hand-off only to filter scope options and the global strategy authored once for the chosen scope in the chosen language.
+
+Batch 2 SHALL present the coordinator-owned canonical language question in one trip, in every mode, after the coordinator detects the first conflict stop from the conflict snapshot and prints its conflict notice. No worker classification SHALL precede the language hand-off: the conflict categories come from the snapshot. The coordinator SHALL hand the selected language to the worker with the strategy task, and the global strategy SHALL be authored once in the chosen language.
+
 #### Scenario: Batch 2 resolves in one trip
-- **WHEN** a conflict is detected and Batch 2 is presented
-- **THEN** language and scope answers arrive together in one same-worker continuation
+
+- **WHEN** the first conflict stop is detected and Batch 2 is presented
+- **THEN** the language answer arrives in one trip and is handed to the worker with its strategy task
 
 ### Requirement: Batch v1 shape keeps singular valid
 A needs_input carrying questions:[{id, question, options}] SHALL be treated as a batch with stable ordered ids and closed questions only with no conditional items, while absence of questions SHALL keep the singular question/options form valid for backward compatibility.
