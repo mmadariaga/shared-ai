@@ -69,7 +69,7 @@ Written in step 4 of the Step loop, only after the coordinator's verification pa
 
 ### Plan vs Final Implementation
 
-One block per field-5 deviation and one per plan amendment (`steps/plan-amendment.md`, which titles its blocks `### Step N — Plan amended: <path>`); a Step with neither adds nothing:
+One block per field-5 deviation, one per plan amendment (`steps/plan-amendment.md`, which titles its blocks `### Step N — Plan amended: <path>`), and one per already-satisfied close (`steps/already-satisfied.md`, titled `### Step N — Already satisfied: <behavior>`); a Step with none adds nothing:
 
 ```markdown
 ### Step N — <Short title of the deviation>
@@ -90,7 +90,7 @@ Every Step's `STOP & COMMIT` marker runs this gate through `apply-step.js close`
 Call order. Under `session_commit_authorized` (including `/sai-build`): one `close` call, the report printing before the commit. Without it: `close --dry-run` (guard and report only: no marking, no commit), print `report_text`, then step 3's question, then `close`. Each call takes `--change {change-name} --step N --guard-base <guard_base>` and the add-list, a `---` line, then the message on stdin through a quoted heredoc. `close` is invoked only after a passing verify (coordinator § Post-dispatch sequence); the tool keeps no such state.
 
 1. **Visibility report.** Printed before proposing a message; never skipped. It previews the commit: built from `git status` (tracked, untracked, deleted) and the add-list, never reading or changing the index. In order:
-   1. Header: change name, `Step N`, and one status letter: `OK`, `WARN`, `MISMATCH`, or `DEVIATION`. The letter has a pinned precedence: `MISMATCH` (block 7 is not in sync) over `DEVIATION` (block 6 lists `Missing` or `Extra`) over `WARN` (block 5 is non-empty) over `OK`. A cross-check that is `not available` never raises the letter. The coordinator reasons only on a non-`OK` letter or a failed verify. A `DEVIATION` after a passing verify is a plan finding: fetch @sai/commands/apply/steps/plan-amendment.md before step 2.
+   1. Header: change name, `Step N`, and one status letter: `OK`, `WARN`, `MISMATCH`, or `DEVIATION`. The letter has a pinned precedence: `MISMATCH` (block 7 is not in sync) over `DEVIATION` (block 6 lists `Missing` or `Extra`) over `WARN` (block 5 is non-empty) over `OK`. A cross-check that is `not available` never raises the letter. The coordinator reasons only on a non-`OK` letter or a failed verify. A `DEVIATION` after a passing verify is a plan finding: fetch @sai/commands/apply/steps/plan-amendment.md before step 2, except in an already-satisfied close, where it means a production file changed (`steps/already-satisfied.md`).
    2. One status line explaining the letter.
    3. `Will be committed`: each add-list path with `+N -M` against `HEAD`; an untracked path counts all its lines as insertions; a claimed path with no change shows `+0 -0`. A rename is one line: `R  <new-path>  (renamed from <old-path>, +N -M)`.
    4. `Totals: <N> files, +<ins> -<del>` over the add-list.
@@ -108,5 +108,5 @@ Call order. Under `session_commit_authorized` (including `/sai-build`): one `clo
    - `empty-add-list` or `nothing-to-stage`: no commit; the Step continues.
    - `commit-failed` or `git-add-failed`: report the `error` tail and decide per recovery.
    - `invalid-message`: fix the message and call `close` again.
-   - A file discrepancy (`DEVIATION` with `Extra` or `Missing`, including its `scope-blocked` refusal): `steps/plan-amendment.md`.
+   - A file discrepancy (`DEVIATION` with `Extra` or `Missing`, including its `scope-blocked` refusal): `steps/plan-amendment.md`, or `steps/already-satisfied.md` for an already-satisfied close.
 6. **Continue.** Either way, go to step 6 of the Step loop.

@@ -1174,3 +1174,92 @@ test('a run-start amendment declared at baseline commits with the first Step tha
     assert.ok(committedPaths(repo).includes(TASKS_REL));
   } finally { cleanup(parent); }
 });
+
+// Already-satisfied mode: the human-confirmed close of a Step whose RED returned `passes`.
+function satisfiedRepo() {
+  const made = makeRepo();
+  const { repo } = made;
+  fs.mkdirSync(path.join(repo, 'src'), { recursive: true });
+  fs.writeFileSync(path.join(repo, 'src', 'feature.js'), 'module.exports = 1;\n');
+  git(['add', '.'], repo);
+  git(['commit', '-m', 'feat: existing behavior'], repo);
+  replaceBaseline(repo);
+  const cp = checkpoint(repo, 'red');
+  fs.writeFileSync(
+    path.join(repo, 'test', 'feature.test.js'),
+    "const { test } = require('node:test');\nconst assert = require('node:assert');\ntest('f', () => { assert.strictEqual(require('../src/feature'), 1); });\n",
+  );
+  return { ...made, cp };
+}
+const satisfiedVerify = (repo, cp, extra = []) => tool(['verify', '--change', 'demo', '--step', '1', '--dispatch', 'red', '--checkpoint', cp, ...extra], repo, 'test/feature.test.js\n');
+
+test('already-satisfied verify accepts a passing test with untouched production files; plain red verify does not', () => {
+  const { parent, repo, cp } = satisfiedRepo();
+  try {
+    assert.equal(satisfiedVerify(repo, cp).payload.ok, false);
+    const out = satisfiedVerify(repo, cp, ['--already-satisfied']);
+    assert.equal(out.payload.ok, true, JSON.stringify(out.payload));
+    assert.equal(out.payload.already_satisfied, true);
+    assert.deepEqual(out.payload.out_of_allowed, []);
+    assert.ok(out.payload.untouched.includes('src/feature.js'));
+    assert.ok(out.payload.commands.some((c) => c.label === 'step-test-command' && c.expect === 'pass' && c.exit === 0));
+    assert.ok(out.payload.commands.some((c) => c.label === 'automated'));
+    fs.rmSync(cp.slice(0, cp.lastIndexOf('#')), { force: true });
+  } finally { cleanup(parent); }
+});
+
+test('already-satisfied verify still fails a failing Automated item and any production change', () => {
+  const { parent, repo, cp } = satisfiedRepo();
+  try {
+    fs.appendFileSync(path.join(repo, 'src', 'feature.js'), '// touched\n');
+    const out = tool(['verify', '--change', 'demo', '--step', '1', '--dispatch', 'red', '--checkpoint', cp, '--already-satisfied'], repo, 'test/feature.test.js\nsrc/feature.js\n');
+    assert.equal(out.payload.ok, false);
+    assert.ok(out.payload.out_of_allowed.includes('src/feature.js'));
+    fs.rmSync(cp.slice(0, cp.lastIndexOf('#')), { force: true });
+  } finally { cleanup(parent); }
+});
+
+test('already-satisfied close reports untouched production files without DEVIATION and commits tests only', () => {
+  const { parent, repo, planPath, cp } = satisfiedRepo();
+  try {
+    assert.equal(satisfiedVerify(repo, cp, ['--already-satisfied']).payload.ok, true);
+    const head = git(['rev-parse', 'HEAD'], repo).trim();
+    const dry = tool(['close', '--change', 'demo', '--step', '1', '--dry-run', '--already-satisfied', '--guard-base', head], repo, closeInput('test/feature.test.js\n', ''));
+    assert.equal(dry.payload.status_letter, 'OK', dry.payload.report_text);
+    assert.match(dry.payload.report_text, /Already-satisfied close, production files left untouched: src\/feature.js/);
+    assert.deepEqual(dry.payload.untouched.includes('src/feature.js'), true);
+    const closed = tool(['close', '--change', 'demo', '--step', '1', '--already-satisfied', '--guard-base', head], repo, closeInput('test/feature.test.js\n', 'test: cover existing feature\n\nBody.\n'));
+    assert.equal(closed.payload.committed, true, JSON.stringify(closed.payload));
+    assert.equal(git(['show', '--name-only', '--pretty=format:', 'HEAD'], repo).trim(), 'test/feature.test.js');
+    assert.match(fs.readFileSync(planPath, 'utf8'), /- \[x\] GREEN verified/);
+    fs.rmSync(cp.slice(0, cp.lastIndexOf('#')), { force: true });
+  } finally { cleanup(parent); }
+});
+
+test('without already-satisfied mode the same untouched production file is a DEVIATION, and a production change stays one in it', () => {
+  const { parent, repo, cp } = satisfiedRepo();
+  try {
+    const head = git(['rev-parse', 'HEAD'], repo).trim();
+    const plain = tool(['close', '--change', 'demo', '--step', '1', '--dry-run', '--guard-base', head], repo, closeInput('test/feature.test.js\n', ''));
+    assert.equal(plain.payload.status_letter, 'DEVIATION');
+    fs.appendFileSync(path.join(repo, 'src', 'feature.js'), '// touched\n');
+    const add = 'test/feature.test.js\nsrc/feature.js\n';
+    const dry = tool(['close', '--change', 'demo', '--step', '1', '--dry-run', '--already-satisfied', '--guard-base', head], repo, closeInput(add, ''));
+    assert.equal(dry.payload.status_letter, 'DEVIATION');
+    const blocked = tool(['close', '--change', 'demo', '--step', '1', '--already-satisfied', '--guard-base', head], repo, closeInput(add, 'test: cover existing feature\n\nBody.\n'));
+    assert.equal(blocked.payload.reason, 'scope-blocked');
+    assert.equal(blocked.payload.committed, false);
+    assert.equal(git(['rev-parse', 'HEAD'], repo).trim(), head);
+    fs.rmSync(cp.slice(0, cp.lastIndexOf('#')), { force: true });
+  } finally { cleanup(parent); }
+});
+
+test('already-satisfied mode is a usage error outside red verify and close, and for a Step without a RED block', () => {
+  const { parent, repo } = makeRepo();
+  try {
+    assert.equal(tool(['verify', '--change', 'demo', '--step', '1', '--dispatch', 'green', '--already-satisfied'], repo, '').status, 2);
+    assert.equal(tool(['preflight', '--change', 'demo', '--already-satisfied'], repo).status, 2);
+    const head = git(['rev-parse', 'HEAD'], repo).trim();
+    assert.equal(tool(['close', '--change', 'demo', '--step', '2', '--dry-run', '--already-satisfied', '--guard-base', head], repo, closeInput('src/other.js\n', '')).status, 2);
+  } finally { cleanup(parent); }
+});

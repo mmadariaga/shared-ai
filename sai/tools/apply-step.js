@@ -27,6 +27,11 @@
  *            Step test command and the Step's Automated commands verbatim,
  *            sweeps again, and compares `git status` with the files allowed for
  *            the dispatch kind and with field 8 (the add-list, on stdin).
+ *   Already-satisfied mode (`--already-satisfied`, `verify --dispatch red` and `close`):
+ *            the human-confirmed close of a Step whose RED returned `passes`. The Step test
+ *            command is expected to pass, every Automated item runs, the allowed files are the
+ *            Step's test files only, and the Step's declared production files must stay
+ *            untouched: they do not yield `DEVIATION`, while any production change still does.
  *   close    Run the guard verify, build the visibility report with its
  *            pinned status letter, mark the Step's Automated checkboxes on
  *            disk, then `git add` + `git commit`. The add-list is the stdin
@@ -38,10 +43,10 @@
  * Usage:
  *   node sai/tools/apply-step.js verify --change <name> --step <N>
  *        --dispatch red|green|green-direct|green-exception
- *        --baseline <ref> [--checkpoint <ref>]
+ *        --baseline <ref> [--checkpoint <ref>] [--already-satisfied]
  *        [--parent-was-absent] [--json] [--cwd <dir>]        (add-list on stdin)
  *   node sai/tools/apply-step.js close --change <name> --step <N>
- *        --baseline <ref> --guard-base <sha|n/a> [--dry-run | --mark-only] [--json] [--cwd <dir>]
+ *        --baseline <ref> --guard-base <sha|n/a> [--dry-run | --mark-only] [--already-satisfied] [--json] [--cwd <dir>]
  *        (add-list, a `---` line, then the message on stdin; nothing for
  *        --mark-only)
  *
@@ -795,6 +800,17 @@ function allowedFor(dispatch, info, files) {
   return allowed;
 }
 
+/** Files a Step may change across all of its dispatches: test files only in already-satisfied mode. */
+function stepScope(info, files, alreadySatisfied) {
+  return alreadySatisfied ? info.testPaths : allowedFor('green-exception', info, files);
+}
+
+/** Already-satisfied mode needs the split-flow shape: a RED block whose tests the RED worker wrote. */
+function requireAlreadySatisfiedStep(opts, info) {
+  if (!opts.alreadySatisfied) return;
+  if (!info.hasRedBlock || info.testPaths.length === 0) throw new ToolError('--already-satisfied requires a Step with a RED block that names test files');
+}
+
 function verify(opts, stdin) {
   loadRecord(opts.baseline, opts, 'baseline');
   if (!opts.checkpoint && opts.baselineOnly !== true) throw new ToolError('--checkpoint is required (or explicit --baseline-only cumulative compatibility verification)');
@@ -803,6 +819,10 @@ function verify(opts, stdin) {
   if (planText === null) throw new ToolError(`implementation.md not found for change '${change}'`);
   const info = parseStep(planText, step);
   if (!info) throw new ToolError(`Step ${step} not found in implementation.md`);
+  const alreadySatisfied = opts.alreadySatisfied === true;
+  if (alreadySatisfied && dispatch !== 'red') throw new ToolError('--already-satisfied applies to --dispatch red only');
+  requireAlreadySatisfiedStep(opts, info);
+  const redMode = dispatch === 'red' && !alreadySatisfied;
   let files = parseFilesAffected(readIfExists(path.join(changeDir(cwd, change), 'tasks.md')), step);
   const addList = parseAddList(stdin);
   const before = opts.baseline ? executionState(opts) : null;
@@ -831,7 +851,7 @@ function verify(opts, stdin) {
   };
 
   if (info.stepTestCommand) {
-    runOnce(info.stepTestCommand, dispatch === 'red' ? 'fail' : 'pass', 'step-test-command');
+    runOnce(info.stepTestCommand, redMode ? 'fail' : 'pass', 'step-test-command');
   }
 
   const retirements = [];
@@ -841,7 +861,8 @@ function verify(opts, stdin) {
       retirements.push({ path: retired, absent });
       if (!absent) failures.push(`retired file still present: ${retired}`);
     }
-  } else {
+  }
+  if (!redMode) {
     for (const item of info.automated) {
       const verdict = classifyAutomated(item.text);
       if (verdict.kind === 'run') runOnce(verdict.command, verdict.expect, 'automated');
@@ -860,13 +881,13 @@ function verify(opts, stdin) {
   const amendable = amendablePaths(change);
   const changed = checkpoint ? dispatchDelta.filter((p) => p !== plan && !amendable.includes(p))
     : state ? state.changed : unique(entries.flatMap((e) => (e.from ? [e.path, e.from] : [e.path]))).filter((p) => p !== plan);
-  const allowed = allowedFor(dispatch, info, files);
+  const allowed = alreadySatisfied ? stepScope(info, files, true) : allowedFor(dispatch, info, files);
   const allowedAvailable = allowed.length > 0;
   const outOfAllowed = allowedAvailable
     ? unique([...changed, ...addList]).filter((p) => !allowed.includes(p) && (changed.includes(p) || addList.includes(p)))
     : unique([...changed, ...addList]);
   if (state) {
-    const stepAllowed = allowedFor('green-exception', info, files);
+    const stepAllowed = stepScope(info, files, alreadySatisfied);
     outOfAllowed.push(...state.changed.filter((p) => !stepAllowed.includes(p) && !outOfAllowed.includes(p)));
   }
   const unreported = changed.filter((p) => !addList.includes(p));
@@ -881,6 +902,8 @@ function verify(opts, stdin) {
   return {
     ok,
     dispatch,
+    already_satisfied: alreadySatisfied,
+    ...(alreadySatisfied && files ? { untouched: files.declared.filter((p) => !info.testPaths.includes(p) && !changed.includes(p)) } : {}),
     step,
     commands: commands.map((c) => ({ command: c.command, exit: c.exit, tail: c.tail, expect: c.expect, label: c.label })),
     failures,
@@ -942,6 +965,8 @@ function buildReport(opts, addList) {
   const renamedFrom = new Map(entries.filter((e) => e.from).map((e) => [e.from, e.path]));
   const state = opts.baseline ? executionState(opts) : null;
   const changed = state ? state.changed : unique(entries.flatMap((e) => (e.from ? [e.path, e.from] : [e.path])));
+  const stepInfo = opts.alreadySatisfied ? parseStep(readIfExists(path.join(changeDir(cwd, change), 'implementation.md')) || '', step) : null;
+  if (opts.alreadySatisfied && !stepInfo) throw new ToolError(`Step ${step} not found in implementation.md`);
   // Registered plan amendments ride in the Step's commit and sit outside the file comparison.
   const amended = state ? state.amended : [];
   const commitList = unique([...addList, ...amended]);
@@ -980,8 +1005,18 @@ function buildReport(opts, addList) {
   let crossCheck;
   let missing = [];
   let extra = [];
+  let untouched = [];
+  // A generated output the Step never produces is expected in already-satisfied mode, as during RED.
+  const fileErrors = files ? (opts.alreadySatisfied ? files.errors.filter((e) => !e.reason.startsWith('generated ')) : files.errors) : [];
   if (!files) {
     crossCheck = 'not available';
+  } else if (opts.alreadySatisfied) {
+    // Only the Step's test files may change; declared production files stay untouched by design.
+    const tests = stepInfo.testPaths;
+    missing = files.declared.filter((p) => tests.includes(p) && !changed.includes(p));
+    extra = changed.filter((p) => !files.declared.includes(p) || !tests.includes(p));
+    untouched = files.declared.filter((p) => !tests.includes(p) && !changed.includes(p));
+    crossCheck = null;
   } else {
     missing = files.declared.filter((p) => !changed.includes(p));
     extra = changed.filter((p) => !files.declared.includes(p));
@@ -993,7 +1028,7 @@ function buildReport(opts, addList) {
   const onlyInGit = changed.filter((p) => !addList.includes(p));
   const mismatch = onlyInSubagent.length > 0 || onlyInGit.length > 0;
 
-  const deviation = files ? missing.length > 0 || extra.length > 0 || files.errors.length > 0 : false;
+  const deviation = files ? missing.length > 0 || extra.length > 0 || fileErrors.length > 0 : false;
   const letter = statusLetter({ mismatch, deviation, warn: notCommitted.length > 0 });
 
   const explain = {
@@ -1023,13 +1058,14 @@ function buildReport(opts, addList) {
   out.push('Plan cross-check:');
   if (crossCheck) {
     out.push(`  ${crossCheck}`);
-  } else if (missing.length === 0 && extra.length === 0 && files.errors.length === 0) {
+  } else if (missing.length === 0 && extra.length === 0 && fileErrors.length === 0) {
     out.push('  No deviations');
   } else {
     if (missing.length) out.push(`  Missing: ${missing.join(', ')}`);
     if (extra.length) out.push(`  Extra: ${extra.join(', ')}`);
-    for (const e of files.errors) out.push(`  Generated/declaration: ${e.reason}`);
+    for (const e of fileErrors) out.push(`  Generated/declaration: ${e.reason}`);
   }
+  if (opts.alreadySatisfied && untouched.length) out.push(`  Already-satisfied close, production files left untouched: ${untouched.join(', ')}`);
   out.push('');
   out.push('Subagent ↔ git:');
   if (!mismatch) {
@@ -1047,7 +1083,8 @@ function buildReport(opts, addList) {
     files: countedFiles,
     insertions: totalIns,
     deletions: totalDel,
-    discrepancies: files?.errors || [],
+    discrepancies: fileErrors,
+    untouched,
   };
 }
 
@@ -1087,13 +1124,18 @@ function close(opts, stdin) {
   if (initialGuard.verdict === 'violation') return { committed: false, reason: 'guard-violation', guard: initialGuard, marked: 0 };
   assertPlanUnchanged(opts, executionState(opts));
   const { cwd, change, step } = opts;
+  if (opts.alreadySatisfied) {
+    const planInfo = parseStep(readIfExists(path.join(changeDir(cwd, change), 'implementation.md')) || '', step);
+    if (!planInfo) throw new ToolError(`Step ${step} not found in implementation.md`);
+    requireAlreadySatisfiedStep(opts, planInfo);
+  }
   const { addList, message } = splitCloseInput(stdin);
   if (opts.markOnly) {
     if (opts.baseline) {
       const state = executionState(opts);
       const info = parseStep(readIfExists(path.join(changeDir(cwd, change), 'implementation.md')) || '', step);
       const files = resolveGenerated(cwd, parseFilesAffected(readIfExists(path.join(changeDir(cwd, change), 'tasks.md')), step));
-      const allowed = info ? allowedFor('green-exception', info, files) : [];
+      const allowed = info ? stepScope(info, files, opts.alreadySatisfied) : [];
       if (state.preservationErrors.length || state.planningErrors.length || files?.errors.length || state.changed.some((p) => !allowed.includes(p))) throw new ToolError('scope discrepancy blocks checkbox marking');
     }
     const marked = markAutomated(cwd, change, step).marked;
@@ -1121,6 +1163,10 @@ function close(opts, stdin) {
   const report = buildReport(opts, addList);
   result.status_letter = report.letter;
   result.report_text = report.text;
+  if (opts.alreadySatisfied) {
+    result.already_satisfied = true;
+    result.untouched = report.untouched;
+  }
 
   if (opts.dryRun) {
     result.reason = 'dry-run';
@@ -1137,7 +1183,7 @@ function close(opts, stdin) {
     const state = executionState(opts);
     const info = parseStep(readIfExists(path.join(changeDir(cwd, change), 'implementation.md')) || '', step);
     const files = resolveGenerated(cwd, parseFilesAffected(readIfExists(path.join(changeDir(cwd, change), 'tasks.md')), step));
-    const allowed = info ? allowedFor('green-exception', info, files) : [];
+    const allowed = info ? stepScope(info, files, opts.alreadySatisfied) : [];
     const dirty = state.base.state.entries.flatMap((e) => e.from ? [e.path, e.from] : [e.path]);
     const unsafe = addList.filter((p) => !safePath(p) || !allowed.includes(p) || dirty.includes(p) || state.base.planning.includes(p));
     if (unsafe.length || state.preservationErrors.length || state.planningErrors.length || report.discrepancies.length || ['MISMATCH', 'DEVIATION'].includes(report.letter)) {
@@ -1213,8 +1259,8 @@ function usage() {
     '  node sai/tools/apply-step.js checkpoint-plan --change <name> --baseline <ref> [--settled <ref>] (coordinator only, after authorized plan bookkeeping or plan amendment; returns plan_checkpoint and the registers list)',
     '  node sai/tools/apply-step.js restore-unrelated-index --change <name> --baseline <ref> (coordinator only, after guard remediation)',
     '  node sai/tools/apply-step.js verify --change <name> --step <N> --dispatch red|green|green-direct|green-exception',
-    '       --baseline <ref> --checkpoint <ref> [--parent-was-absent] [--json] [--cwd <dir>]   (add-list on stdin; explicit --baseline-only replaces checkpoint for cumulative compatibility)',
-    '  node sai/tools/apply-step.js close --change <name> --step <N> --baseline <ref> --guard-base <sha|n/a> [--dry-run | --mark-only]',
+    '       --baseline <ref> --checkpoint <ref> [--already-satisfied] [--parent-was-absent] [--json] [--cwd <dir>]   (add-list on stdin; explicit --baseline-only replaces checkpoint for cumulative compatibility)',
+    '  node sai/tools/apply-step.js close --change <name> --step <N> --baseline <ref> --guard-base <sha|n/a> [--dry-run | --mark-only] [--already-satisfied]',
     '       [--json] [--cwd <dir>]   (add-list, a `---` line, then the commit message on stdin)',
     '',
     'Output is always one JSON object; --json is accepted and changes nothing.',
@@ -1239,6 +1285,7 @@ function parseArgs(argv) {
     else if (arg === '--run-id') opts.runId = argv[++i];
     else if (arg === '--plan-checkpoint') opts.planCheckpoint = argv[++i];
     else if (arg === '--baseline-only') opts.baselineOnly = true;
+    else if (arg === '--already-satisfied') opts.alreadySatisfied = true;
     else if (arg === '--dry-run') opts.dryRun = true;
     else if (arg === '--mark-only') opts.markOnly = true;
     else if (arg === '--parent-was-absent') opts.parentWasAbsent = true;
@@ -1277,6 +1324,12 @@ function main(argv) {
     opts.cwd = path.resolve(opts.cwd || process.cwd());
     if (opts.command === 'verify' && !DISPATCHES.includes(opts.dispatch)) {
       throw new ToolError(`--dispatch must be one of ${DISPATCHES.join('|')}`);
+    }
+    if (opts.alreadySatisfied && opts.command !== 'verify' && opts.command !== 'close') {
+      throw new ToolError('--already-satisfied applies to verify and close only');
+    }
+    if (opts.alreadySatisfied && opts.command === 'verify' && opts.dispatch !== 'red') {
+      throw new ToolError('--already-satisfied applies to --dispatch red only');
     }
     if (opts.markOnly && (opts.command !== 'close' || opts.dryRun)) {
       throw new ToolError('--mark-only applies to close only and excludes --dry-run');

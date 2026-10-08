@@ -439,3 +439,40 @@ The apply coordinator SHALL treat `authorize-step-retry` as a one-time grant for
 
 - **WHEN** a fresh authorized Step invocation begins
 - **THEN** it SHALL reselect routing, open a fresh no-commit-guard window, verify the Step, and run the ordinary commit and advancement gates
+
+### Requirement: Verify and close accept an already-satisfied mode
+
+`sai/tools/apply-step.js` SHALL accept an `--already-satisfied` flag on `verify --dispatch red` and on `close`, including `close --dry-run` and `close --mark-only`. In this mode:
+
+- the Step test command SHALL be expected to pass, and every Automated item SHALL run;
+- the allowed files and the add-list scope SHALL be the Step's test files only;
+- declared production files left untouched SHALL NOT yield `DEVIATION` and SHALL be reported as `untouched`;
+- any change to a production file SHALL still yield `DEVIATION` and block the commit as `scope-blocked`;
+- a generated output the Step never produces SHALL NOT count as a declaration discrepancy.
+
+The flag SHALL be a usage error on any other command, on a `verify` dispatch other than `red`, and for a Step without a RED block that names test files.
+
+#### Scenario: Passing test with untouched production files verifies in already-satisfied mode
+
+- **WHEN** `verify --dispatch red --already-satisfied` runs on a Step whose test passes, whose Automated items pass, and whose production files are untouched
+- **THEN** it returns `ok: true` with `already_satisfied: true` and lists the untouched production files, while the same call without the flag fails because the test does not fail
+
+#### Scenario: Already-satisfied mode still rejects failures and production changes
+
+- **WHEN** an Automated item fails or a production file changed during an already-satisfied verify
+- **THEN** the verify returns `ok: false`
+
+#### Scenario: Already-satisfied close commits tests only
+
+- **WHEN** `close --already-satisfied` runs with only the Step's test files changed
+- **THEN** the report shows no `DEVIATION`, names the untouched production files, and the commit contains only the test files
+
+#### Scenario: Production change in already-satisfied close stays a deviation
+
+- **WHEN** `close --already-satisfied` runs after a production file changed
+- **THEN** the status letter is `DEVIATION` and no commit is made
+
+#### Scenario: Flag misuse is a usage error
+
+- **WHEN** `--already-satisfied` is passed to a command other than `verify` or `close`, to a non-red `verify` dispatch, or for a Step without a RED block naming test files
+- **THEN** the tool exits with a usage error

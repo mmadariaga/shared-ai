@@ -23,7 +23,7 @@ When apply finds that the verified work is right and a planning artifact is wron
 
 ### Requirement: Amendment triggers name their qualifying evidence
 
-An amendment SHALL start only from one of three triggers. At run start: a preflight error in `tasks.md` whose reason starts `Files Affected omits a path the plan names`. At verify: every Step command passes, `failures`, `unreported`, `only_in_subagent`, and `preservation_errors` are empty, and every `out_of_allowed` path is a production file the worker reported that the Step needs and that neither `implementation.md` nor `tasks.md` names. At close: a `DEVIATION` letter after a passing verify whose cross-check lists `Extra` or `Missing` paths. Every other finding SHALL follow its ordinary handling. An amendment MUST NOT legitimize what a worker's role forbids.
+An amendment SHALL start only from one of three triggers. At run start: a preflight error in `tasks.md` whose reason starts `Files Affected omits a path the plan names`. At verify: every Step command passes, `failures`, `unreported`, `only_in_subagent`, and `preservation_errors` are empty, and every `out_of_allowed` path is a production file the worker reported that the Step needs and that neither `implementation.md` nor `tasks.md` names. At close: a `DEVIATION` letter after a passing verify whose cross-check lists `Extra` or `Missing` paths. An already-satisfied close is excluded from the close trigger: there a `DEVIATION` or `scope-blocked` refusal means a production file changed, and it goes to Known-False Report Recovery. Every other finding SHALL follow its ordinary handling. An amendment MUST NOT legitimize what a worker's role forbids.
 
 #### Scenario: GREEN worker touched a test file
 - **WHEN** a GREEN dispatch's verify lists a test file in `out_of_allowed`
@@ -32,6 +32,10 @@ An amendment SHALL start only from one of three triggers. At run start: a prefli
 #### Scenario: Omitted production file found at verify
 - **WHEN** verify fails only because a reported production file the Step needs is named by neither `implementation.md` nor `tasks.md`
 - **THEN** the coordinator amends the plan and spends no recovery attempt
+
+#### Scenario: Deviation in an already-satisfied close is not amended
+- **WHEN** `close --already-satisfied` returns `DEVIATION` because a production file changed
+- **THEN** the coordinator makes no amendment and runs Known-False Report Recovery on that result
 
 ### Requirement: Amendment authority follows the fast-track signal
 
