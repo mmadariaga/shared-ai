@@ -81,7 +81,7 @@ When the coordinator selects an eligible in-scope RED diagnosis, the RED worker 
 
 ### Requirement: green-worker-contract
 
-The GREEN worker contract (`sai/commands/apply/green-worker.md`) SHALL define the implementation worker: it executes a Step's implementation body (or the GREEN side of a split Step) and verifies GREEN, for Steps whose plan-level file scope contains at least one production file. It SHALL be FORBIDDEN from creating or modifying any test file — an absolute prohibition. It SHALL iterate on GREEN within bounded attempts confined to non-test files and SHALL STOP with a GREEN-conflict report when passing would require editing a test file or the declared interface, or when iteration makes no progress. A non-testable Step with no production surface SHALL NOT be dispatched to the GREEN worker; it routes to the RED worker under the green-exception.
+The GREEN worker contract (`sai/commands/apply/green-worker.md`) SHALL define the implementation worker: it executes a Step's implementation body (or the GREEN side of a split Step) and verifies GREEN, for Steps whose plan-level file scope contains at least one production file. It SHALL be FORBIDDEN from creating or modifying any test file — an absolute prohibition. The contract SHALL state the prohibition's reason as ownership: the worker's write surface is the Step's production files, test files belong to the Step's RED owner and the worker never receives their contents, and when passing needs a test change the worker returns `blocking-contradiction` with the evidence for the coordinator to route. It SHALL iterate on GREEN within bounded attempts confined to non-test files and SHALL STOP with a GREEN-conflict report when passing would require editing a test file or the declared interface, or when iteration makes no progress. A non-testable Step with no production surface SHALL NOT be dispatched to the GREEN worker; it routes to the RED worker under the green-exception.
 
 On `continue_after_recovery`, the GREEN worker SHALL resume the same session and apply only the authorized correction within its existing production-file boundary. It SHALL never treat a coordinator-owned `implementation.md` plan-artifact repair as permission to edit production or test files. If it reaches an unpassable GREEN STOP — because passing would require a test/interface edit, because the implementation and test/interface sources are contradictory, or because bounded implementation-only iteration makes no progress — it SHALL return `status: failed` with `failure_class: blocking-contradiction` and a boolean `unrecoverable`. The worker SHALL set `unrecoverable: true` only when its own concrete evidence establishes that continuation is unsafe; otherwise it SHALL return `unrecoverable: false` so the coordinator can apply the shared Cause Locus eligibility rule. The failed summary SHALL contain concrete, non-raw evidence naming the Step, relevant artifact and concrete point, verification command or assertion, and observed failure boundary. Its apply report SHALL set `GREEN result = fail` and `STOP reached? = yes` with the exact existing STOP marker. The worker SHALL leave all test and interface files untouched and SHALL not claim a recoverable GREEN result for this STOP.
 
@@ -112,6 +112,12 @@ On `continue_after_recovery`, the GREEN worker SHALL resume the same session and
 
 - **WHEN** a Step's plan-level file scope contains no production file
 - **THEN** it is never dispatched to the GREEN worker; it routes to the RED worker under the green-exception
+
+#### Scenario: The GREEN contract states the prohibition reason as RED ownership
+
+- **WHEN** a reader consults the GREEN worker contract's allowed-files section
+- **THEN** it states that test files belong to the Step's RED owner, that GREEN never receives their contents, and that a needed test change is returned as `blocking-contradiction` with evidence
+- **AND** it keeps the sentence forbidding any test-file creation or modification absolutely, including during recovery and even when GREEN believes the test is wrong
 
 ### Requirement: Apply worker lifecycle payloads stay timeless
 
