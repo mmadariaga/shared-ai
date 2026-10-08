@@ -78,3 +78,17 @@ The merge lifecycle seam SHALL assign every state to exactly one stage (`preflig
 
 - **WHEN** the current state is `merge-outcome` and the outcome is conflicted
 - **THEN** the transition to `language-selection` or `contextual-analysis` is valid only after the conflict snapshot is captured
+
+### Requirement: Early failed verification continuation
+
+The lifecycle validation seam SHALL accept the coordinator-only verification result `failed-no-correction` when Step 8 closes failed verification without an applied correction or a concrete repeat reason. For `method=merge`, this result SHALL permit `verification` to `adr-ddr`; for a stopped rebase, it SHALL permit `verification` to `finalization`. These transitions SHALL use the same integration continuation as `cap-exhausted` without treating verification as passed or claiming that all three rounds were consumed.
+
+#### Scenario: Early failed merge verification reaches collision handling
+
+- **WHEN** Step 8 records `failed-no-correction` for a merge
+- **THEN** the lifecycle permits the transition from `verification` to `adr-ddr` with failed verification status
+
+#### Scenario: Early failed rebase verification reaches finalization
+
+- **WHEN** Step 8 records `failed-no-correction` at a stopped rebase
+- **THEN** the lifecycle permits the transition from `verification` to `finalization` without representing the result as a pass or exhausted budget

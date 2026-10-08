@@ -92,8 +92,8 @@ contextual-analysis   resolution            strategy_status = confirmed; complet
 resolution            contextual-analysis   a write or review exposed a new conflict (strategy-analysis event)
 resolution            verification          review passed; resolution staged
 verification          contextual-analysis   a fix or run exposed a new conflict (strategy-analysis event)
-verification          adr-ddr               method=merge; verification_result ∈ {passed, unavailable, cap-exhausted}
-verification          finalization          rebase stopped; verification_result ∈ {passed, unavailable, cap-exhausted}
+verification          adr-ddr               method=merge; verification_result ∈ {passed, unavailable, failed-no-correction, cap-exhausted}
+verification          finalization          rebase stopped; verification_result ∈ {passed, unavailable, failed-no-correction, cap-exhausted}
 adr-ddr               finalization          applicability resolved; repairs applied; final staging done;
                                             a merge in progress, or a finished rebase with staged repair
 adr-ddr               terminal              rebase finished with nothing staged
@@ -109,6 +109,11 @@ finalization          terminal              local commit succeeded, or operation
 § Command-local authorization.
 
 `verification_result` is `unavailable` when no suite is detected or the test command cannot start. A clean integration never passes through `verification`.
+
+`failed-no-correction` is coordinator-only failed verification closed by
+Step 8 without an applied correction or concrete repeat reason. It permits
+the same integration continuation as `cap-exhausted`, not a passing result
+or a claim that all three rounds were consumed.
 
 The worker is dispatched on the first entry to `contextual-analysis`, or on
 the first `adr-ddr` whose collision receipt is `needs-judgment`, whichever
