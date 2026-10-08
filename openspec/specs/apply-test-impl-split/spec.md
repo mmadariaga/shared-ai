@@ -17,7 +17,7 @@ When all three parts hold, the coordinator SHALL dispatch two managed workers in
 
 A Step that is **testable but not divisible** — its plan-level file scope contains no production file, so a GREEN implementation dispatch would have an empty allowed-files list — SHALL NOT be split: the coordinator SHALL route it to the RED worker under the green-exception (see `apply-step-routing-tree`), exactly as the routing decision tree dictates. "Testable" (the RED block) and "divisible" (production surface) are distinct properties: a RED block alone never licenses the two-worker flow, because a GREEN dispatch with an empty allowed-files list cannot perform its side of the split. The part-3 test is absence-based: it asks whether at least one production file exists in the Step's plan-level file scope, never whether every file is a test — a Step scoped solely to test files and a Step scoped solely to declared interfaces both have no production file, both derive an empty GREEN allowed-files list, and both route to the RED green-exception.
 
-If a RED result is non-clean, the coordinator SHALL inspect its cause before dispatching GREEN. A clear, safe, current-Step cause inside the RED worker's authorized test or RED-stub scope SHALL enter the shared bounded same-worker RED continuation for either the split-flow RED dispatch or the green-exception RED dispatch; the ordinary green-exception dispatch remains terminal when no continuation is selected. An out-of-scope cause, a missing or ambiguous contract, an unpassable RED STOP with `unrecoverable: true`, or an unpassable RED STOP whose Cause Locus is out-of-scope or unresolved SHALL spend zero recovery attempts and SHALL halt or use its owner-authorized route. An unpassable RED STOP with `unrecoverable: false` and a clear safe in-scope cause SHALL follow the shared eligibility rule and may spend one new diagnosis slot. Only a coordinator-verified valid RED permits the GREEN dispatch in the split flow. The RED continuation SHALL not reveal the GREEN implementation body or permit production edits.
+If a RED result is non-clean, the coordinator SHALL inspect its cause before dispatching GREEN. A clear, safe, current-Step cause inside the RED worker's authorized test or RED-stub scope SHALL enter the shared bounded same-worker RED continuation for either the split-flow RED dispatch or the green-exception RED dispatch; the ordinary green-exception dispatch remains terminal when no continuation is selected. An out-of-scope cause, a missing or ambiguous contract, an unpassable RED STOP with `unrecoverable: true`, or an unpassable RED STOP whose Cause Locus is out-of-scope or unresolved SHALL spend zero recovery attempts and SHALL halt or use its owner-authorized route. An unpassable RED STOP with `unrecoverable: false` and a clear safe in-scope cause SHALL follow the shared eligibility rule and may spend one new diagnosis slot. Only a coordinator-verified valid RED permits the GREEN dispatch in the split flow. A RED result `passes` is the exception to this cause inspection: it SHALL enter the human-confirmed already-satisfied stop instead of Known-False Report Recovery, and it SHALL never unlock GREEN. The RED continuation SHALL not reveal the GREEN implementation body or permit production edits.
 
 #### Scenario: Coordinator processes a testable, divisible Step
 
@@ -37,7 +37,7 @@ If a RED result is non-clean, the coordinator SHALL inspect its cause before dis
 
 #### Scenario: RED worker does not verify a valid RED
 
-- **WHEN** the RED worker's report indicates RED result `passes` or `wrong-failure`
+- **WHEN** the RED worker's report indicates RED result `wrong-failure`
 - **THEN** the coordinator treats the result as a non-clean closure and inspects its cause
 - **AND** it either uses the bounded same-RED-worker continuation for an eligible in-scope correction or surfaces the zero-attempt human STOP for an out-of-scope, unresolved, vetoed, or otherwise unsafe cause
 - **AND** it does not dispatch the GREEN worker before a valid RED is verified
@@ -53,6 +53,12 @@ If a RED result is non-clean, the coordinator SHALL inspect its cause before dis
 - **WHEN** a split-flow RED worker returns `RED result = valid` with tests intentionally failing by assertion
 - **THEN** the coordinator runs the RED Verification Checklist to confirm the expected failure and allowed-file boundary
 - **AND** it dispatches GREEN only after that independent confirmation, without treating the RED result as final Step completion
+
+#### Scenario: RED worker reports passes
+
+- **WHEN** the RED worker's report indicates RED result `passes`
+- **THEN** the coordinator SHALL enter the already-satisfied stop instead of Known-False Report Recovery
+- **AND** it does not dispatch the GREEN worker for that result
 
 ### Requirement: RED worker is blind to the implementation body
 
@@ -198,3 +204,27 @@ The apply runner SHALL classify a cause that sits in a test file by ownership an
 
 - **WHEN** the ownership routing rule is applied to a test-located cause
 - **THEN** GREEN SHALL retain its absolute test-file prohibition and RED SHALL retain its production-file prohibition
+
+### Requirement: RED passes stops for a human-confirmed completion choice
+
+When a split-flow RED return reports `RED result: passes`, the `sai-4-apply` coordinator SHALL stop for the human before any GREEN dispatch, in standalone `/sai-4-apply`, in the apply segment of `/sai-build`, and under `--fast-track`. The stop SHALL show the test files the RED worker wrote, the Step test command with its result, and the Step's production files that stay untouched. It SHALL offer exactly two options through the native picker: the behavior already exists (already-satisfied close), or the test checks nothing real (vacuous test). The coordinator SHALL NOT auto-select either option, and an answer that names neither option SHALL authorize nothing. A RED result `passes` SHALL NOT unlock GREEN under either answer. When the evidence verify disproves the `passes` report or finds a production change, the stop SHALL NOT apply and the result SHALL go to Known-False Report Recovery.
+
+#### Scenario: RED passes stops even under fast-track
+
+- **WHEN** a RED return reports `passes` during `/sai-build` or a `--fast-track` apply run
+- **THEN** the coordinator shows the written tests, the Step test command, and its result, and waits for the human's choice without auto-selecting
+
+#### Scenario: Human confirms the behavior already exists
+
+- **WHEN** the human answers that the behavior already exists
+- **THEN** the coordinator closes the Step through the normal `apply-step.js verify` and `close` in already-satisfied mode with no GREEN dispatch, committing the RED tests, leaving the production files untouched, and recording an `ALREADY SATISFIED` notice plus a `Plan vs Final Implementation` entry
+
+#### Scenario: Human marks the test as vacuous
+
+- **WHEN** the human answers that the test checks nothing real
+- **THEN** the coordinator continues the same RED worker with `continue_after_recovery` to harden the test, spending one worker budget attempt, and an exhausted budget leads to the exhausted-Step choice
+
+#### Scenario: Evidence verify disproves the passes report
+
+- **WHEN** the already-satisfied evidence verify returns `ok: false`
+- **THEN** the coordinator does not present the choice and runs Known-False Report Recovery on that result

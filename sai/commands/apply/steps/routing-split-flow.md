@@ -10,7 +10,9 @@ Task disclosure: the `## Step N` contract and the testing slice (framework and a
 
 Every RED return is intermediate until the coordinator has itself established `RED result: valid`. Only a valid RED result permits the subsequent GREEN dispatch, whether it comes from the first dispatch or from a same-worker recovery continuation. `passes`, `wrong-failure`, failed, vetoed, unresolved, out-of-scope, duplicate, exhausted, and STOP results never unlock GREEN.
 
-When a RED return is non-clean, run coordinator § Known-False Report Recovery before any GREEN dispatch:
+RED result `passes` → Fetch @sai/commands/apply/steps/already-satisfied.md; it takes the place of the ordinary post-dispatch verify and the recovery below for that result.
+
+When any other RED return is non-clean, run coordinator § Known-False Report Recovery before any GREEN dispatch:
 
 - An eligible in-scope diagnosis continues the **same RED worker** with `continue_after_recovery`, keeping its blind `test-authoring → red-verification` plan.
 - Any other diagnosis hands the Step back or stops for a human with the concrete artifact and point when known; GREEN is not dispatched.
