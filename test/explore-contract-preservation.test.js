@@ -105,9 +105,9 @@ test('contract preservation: all reachable step files exist and are mentioned', 
     .filter(file => file.endsWith('.md'))
     .sort();
 
-  // E3: All fifteen files should exist, including the follow-loaded stage, slice, POC lane, and route selector steps
-  assert.equal(stepsFiles.length, 15,
-    `Expected 15 step files, found ${stepsFiles.length}: ${stepsFiles.join(', ')}`);
+  // E3: All sixteen files should exist, including the follow-loaded stage, slice, POC lane, and route selector steps
+  assert.equal(stepsFiles.length, 16,
+    `Expected 16 step files, found ${stepsFiles.length}: ${stepsFiles.join(', ')}`);
 
   // Verify the specific expected files exist
   const expectedFiles = [
@@ -117,6 +117,7 @@ test('contract preservation: all reachable step files exist and are mentioned', 
     'crystallization-protocol.md',
     'idea-list.md',
     'implementation-details.md',
+    'open-decisions.md',
     'pipeline-direct-build.md',
     'pipeline-plan-unattended.md',
     'pipeline-selector.md',
@@ -146,4 +147,30 @@ test('contract preservation: route names stay English while route guidance is lo
   assert.match(selector, /\*\*Manual\*\*/);
   assert.match(selector, /The route explanation renders in the user's language[\s\S]{0,180}fixed route names remain exactly `Plan - Unattended`, `Direct Build - Unattended`, and `Manual`/i);
   assert.match(languageGate, /post-block route guide, later-turn clarification, and post-Manual handoff prose follow the selected crystallization language[\s\S]{0,220}route names remain the fixed English literals `Plan - Unattended`, `Direct Build - Unattended`, and `Manual`/i);
+});
+
+test('open decisions: the step pins one notice, a closed-choice question per decision, and two outcomes', () => {
+  const step = fs.readFileSync(path.join(stepsDir, 'open-decisions.md'), 'utf8');
+  assert.match(step, /complete when every open decision is answered or explicitly left open/);
+  assert.match(step, /show this notice once per idea/);
+  assert.equal(step.match(/^> Some decisions are still open\./gm).length, 1, 'the notice text is pinned once');
+  assert.match(step, /will be asked during planning or implementation, and that question stops an unattended route/);
+  assert.match(step, /Ask each open decision once, one decision per question, as a closed-choice prompt through the native picker/);
+  assert.match(step, /sai\/policies\/remember\.md/);
+  assert.match(step, /@sai\/policies\/question-context\.md/);
+  assert.match(step, /followed by `Leave it open` as the last option/);
+  assert.match(step, /write it with its rationale to `Decisions & Rationale`, and rewrite the `Edge Cases` or `Implementation Details` item/);
+  assert.match(step, /both agreed lists stay agreed with no second review/);
+  assert.match(step, /Write it to `Request Additional Notes` in the `Undecided:` form/);
+  assert.match(step, /ask that same decision again/);
+  assert.match(step, /follows \*\*Material change\*\* in `common\.md`/);
+  assert.match(step, /attribute each answered decision and each `Undecided:` entry to the block of the change it belongs to/);
+  assert.match(step, /ask only the open decisions that have no outcome yet, without repeating the notice/);
+});
+
+test('open decisions: the step adds no stage, event, or panel entry to explore-idea@1', () => {
+  const step = fs.readFileSync(path.join(stepsDir, 'open-decisions.md'), 'utf8');
+  assert.match(step, /`explore-idea@1` receives no event for this step and the panel gains no entry/);
+  assert.doesNotMatch(source('sai-state/machines/explore-idea.js'), /open-decision/);
+  assert.deepEqual(ideaMachine.STAGES, ['explore-change', 'poc-lane', 'review-edge-cases', 'implementation-details', 'crystallize']);
 });

@@ -294,3 +294,12 @@ With fast_track_active true, sai-3-implement SHALL always escalate defects in sa
 #### Scenario: Ambiguous sai-2 defect escalates without writes
 - **WHEN** fast-track implement encounters a sai-2 defect with multiple preserving corrections
 - **THEN** it escalates for ambiguity without writing any sai-2 artifact
+
+### Requirement: Explore fast-track never skips the open-decision reconfirmation
+
+`sai-explore`'s open-decision reconfirmation at `Crystallize` entry (`sai/commands/explore/steps/open-decisions.md`) SHALL run unchanged under `--fast-track`: the notice SHALL be shown and every open decision SHALL be asked, and each outcome — answered or left open — SHALL be the user's own choice. `sai/policies/fast-track-flag.md` SHALL state this rule, and the `sai-explore` entry of the fast-track list in `AGENTS.md` SHALL state that the reconfirmation always runs.
+
+#### Scenario: Fast-track run still asks every open decision
+
+- **WHEN** `sai-explore` runs with `--fast-track` and enters `Crystallize` with an open decision
+- **THEN** the notice is shown and every open decision is asked before any block is printed

@@ -104,3 +104,17 @@ The Ready to Propose block's `**Key constraints**` field SHALL carry constraints
 
 - **WHEN** a line states a constraint or non-goal of the change's own behavior or scope
 - **THEN** it is emitted under `**Key constraints**` and not as a process statement
+
+### Requirement: Request Additional Notes is the single carrier of open decisions
+
+An open decision is a behavior the exploration left undefined. The `**Request Additional Notes**` rule in `sai/policies/ready-to-propose-format.md` SHALL declare that field the single place of the `Ready to Propose` block where an open decision travels. Each open decision SHALL be its own `Undecided:` sentence that states the undefined behavior and names the `E<n>` or `I<n>` item it affects, when one exists. Every other field SHALL state decided behavior only. The block SHALL gain no field for open decisions.
+
+#### Scenario: Left-open decision travels as an Undecided sentence
+
+- **WHEN** a block is emitted for an idea with one decision the user left open
+- **THEN** that decision appears under `**Request Additional Notes**` as its own `Undecided:` sentence and in no other field
+
+#### Scenario: Other fields state decided behavior only
+
+- **WHEN** a block is emitted after the open-decision reconfirmation completed
+- **THEN** no `**Edge Cases**` or `**Implementation Details**` item states an undefined behavior
