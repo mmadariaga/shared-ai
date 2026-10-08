@@ -110,7 +110,7 @@ The shared worker lifecycle payloads (`sai/orchestration/worker-core.md` closed 
 
 ### Requirement: Apply retires the Execution Telemetry appendix and field 9
 
-The apply report SHALL carry no `Attempts per phase` field, and the `/sai-4-apply` coordinator SHALL NOT write a `## Appendix: Execution Telemetry` section into `implementation.md`. The only appendix apply writes is `## Appendix: Plan vs Final Implementation`, created once on its first entry. A plan that already carries `## Appendix: Execution Telemetry` SHALL keep that section untouched: apply neither migrates nor deletes it.
+The apply report SHALL carry no `Attempts per phase` field, and the `/sai-4-apply` coordinator SHALL NOT write a `## Appendix: Execution Telemetry` section into `implementation.md`. The only appendix apply writes is `## Appendix: Plan vs Final Implementation`, created once on its first entry. It SHALL hold one block per field-5 deviation and one block per plan amendment, the latter titled `### Step N — Plan amended: <path>`. A plan that already carries `## Appendix: Execution Telemetry` SHALL keep that section untouched: apply neither migrates nor deletes it.
 
 #### Scenario: Worker report has no field 9
 - **WHEN** a RED or GREEN worker finishes a Step
@@ -118,7 +118,7 @@ The apply report SHALL carry no `Attempts per phase` field, and the `/sai-4-appl
 
 #### Scenario: Apply writes no telemetry table
 - **WHEN** the coordinator closes a Step in a plan with no `## Appendix: Execution Telemetry` section
-- **THEN** `implementation.md` gains no such section, and only a field-5 deviation may add an entry to `## Appendix: Plan vs Final Implementation`
+- **THEN** `implementation.md` gains no such section, and only a field-5 deviation or a plan amendment may add an entry to `## Appendix: Plan vs Final Implementation`
 
 #### Scenario: In-flight plan keeps its existing telemetry section
 - **WHEN** a plan already contains `## Appendix: Execution Telemetry` when apply runs

@@ -35,7 +35,7 @@ A completed non-final implement segment SHALL communicate its summary and change
 - **THEN** apply activates immediately and no standalone `/sai-4-apply` invitation is printed
 
 ### Requirement: Apply fast-track is injected and composition-owned
-Both implement and apply SHALL receive fast-track true as invocation-scoped state on activation, outside their request envelopes. The build coordinator SHALL print `> FAST-TRACK MODE ACTIVE` exactly once at implement activation, not at apply activation. Injected fast-track SHALL retain bounded lookup authorization, commit pre-authorization, non-detached branch auto-stay, and all safe-operations and other non-removable stops; detached HEAD SHALL retain its three-option branch prompt. Functional-check handling SHALL remain unchanged.
+Both implement and apply SHALL receive fast-track true as invocation-scoped state on activation, outside their request envelopes. The build coordinator SHALL print `> FAST-TRACK MODE ACTIVE` exactly once at implement activation, not at apply activation. Injected fast-track SHALL retain bounded lookup authorization, commit pre-authorization, non-detached branch auto-stay, plan amendment without asking, and all safe-operations and other non-removable stops; detached HEAD SHALL retain its three-option branch prompt. Functional-check handling SHALL remain unchanged.
 
 #### Scenario: Implement activation prints one banner
 - **WHEN** build activates implement, with or without an explicit `--fast-track` token
@@ -60,7 +60,7 @@ Both implement and apply SHALL receive fast-track true as invocation-scoped stat
 
 #### Scenario: Injected fast-track keeps only its two opt-outs
 - **WHEN** build activates apply with fast-track injected
-- **THEN** commit pre-authorization and branch auto-stay apply (the two apply-segment opt-outs) while functional checks follow the ordinary terminal functional review path with no deferred combined list
+- **THEN** commit pre-authorization, branch auto-stay, and amendment of a defective planning artifact without asking apply (the apply-segment opt-outs) while functional checks follow the ordinary terminal functional review path with no deferred combined list
 - **AND** bounded lookup approval for the implement segment is covered by the companion scenario above
 
 ### Requirement: Phase-one failure blocks apply
