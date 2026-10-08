@@ -7,9 +7,9 @@
  *
  * Folds every `## Step N` section's `**Files Affected**` entries of a change's
  * `tasks.md` into the target-state `### File Manifest` subsection of the same
- * change's `design.md`. The fold reproduces the net-fold transition table of
- * the `design-target-state` capability exactly; it is a move from prose to
- * code, not a semantic change.
+ * change's `design.md`. The fold applies the net-fold transition rules the
+ * design step previously applied in prose; it is a move from prose to code,
+ * not a semantic change.
  *
  * Sub-commands:
  *   fold    Compute the manifest and write it into design.md's

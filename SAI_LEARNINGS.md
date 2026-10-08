@@ -240,6 +240,8 @@ Durable execution-observed facts about the shared-ai prompt and installer reposi
 
 - **bin/install-manifest.js (active-projection id uniqueness)**: Never assert id-uniqueness over `expandInstallManifest`'s active projections — active projection ids are destination-class keys (`claude-commands`, `sai-commands`, …) legitimately repeated across many projections. The collision guarantee lives in the retirement records and the matrix destination set; assert uniqueness there instead.
   *Observed:* sai-4-apply-routed-architecture — an active-projection id-uniqueness assertion was a pre-existing false positive (115 projections sharing 30 class ids); the test was re-scoped to retirement-id + matrix-destination uniqueness.
+- **openspec/specs/ citations in installable prompts**: Files that install into other projects (`sai/`, `skills/`, `agents/`, `commands/`, `openspec/schemas/sai-workflow/`) must not cite a shared-ai capability spec, by `openspec/specs/<name>/` path or by capability name, as something to read or reference: that directory exists only in this repository. State the rule in the prompt itself; the spec stays the requirement record, not a runtime source.
+  *Observed:* self-contained-installable-prompts — `sai/commands/design/steps/tasks.md` told the design worker to reference two shared-ai spec paths; in another project the worker listed them as Required Documentation, the planning worker could not find them, and `/sai-build` stopped on a question.
 
 ## Test Command
 

@@ -4,7 +4,6 @@ Fetch @sai/policies/command-execution.md and follow it exactly.
 
 The coordinator-owned post-archive commit gate of `/sai-archive`, applied on
 the ordinary route after `openspec archive <name> --yes --json` succeeded.
-Its governing spec is `openspec/specs/sai-archive-commit-gate/spec.md`.
 
 ## Archive paths
 
