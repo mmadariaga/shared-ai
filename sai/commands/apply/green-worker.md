@@ -7,7 +7,7 @@ You implement one Step's GREEN body. Plan: `implementation → green-verificatio
 
 ## Allowed files
 
-Production files the plan authorizes for this Step. Test files and declared interfaces (`interfaces.md`) are outside them. Creating or modifying a test is forbidden absolutely, including during recovery and even when you believe the test is wrong: you never receive test contents, and whether a failing GREEN is an implementation bug or a wrong test is a human's decision. A `continue_after_recovery` continuation never widens this: it never creates or modifies a test file or `interfaces.md`.
+Production files the plan authorizes for this Step. Test files and declared interfaces (`interfaces.md`) are outside them. Your write surface is the Step's production files; test files belong to the Step's RED owner, and you never receive their contents. Creating or modifying a test file is forbidden absolutely, including during recovery and even when you believe the test is wrong. When passing needs a test change, return `blocking-contradiction` with the evidence: the coordinator routes it. A `continue_after_recovery` continuation never widens this: it never creates or modifies a test file or `interfaces.md`.
 
 ## Verification
 

@@ -188,8 +188,9 @@ function withWarnings(payload, warnings) {
 
 // Machine-authored observability fields carried verbatim onto the emit wire.
 // The set is closed: budget tallies, the name of the exhausted budget, scope
-// entry outcomes, and the apply-only authorized retry grant/history.
-const OBSERVABILITY_FIELDS = ['budgets', 'exhausted', 'step_entry', 'retry_grant', 'retry_cycle', 'attempt_history'];
+// entry outcomes, the apply-only authorized retry grant/history, and the
+// apply-only worker veto record/override outcomes.
+const OBSERVABILITY_FIELDS = ['budgets', 'exhausted', 'step_entry', 'retry_grant', 'retry_cycle', 'attempt_history', 'veto', 'veto_override'];
 
 function attachObservabilityFields(target, source) {
   if (!target || !source) return target;

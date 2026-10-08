@@ -12,6 +12,12 @@
 // after a correction keeps its already spent budgets (E9). An explicit,
 // human-authorized retry after exhaustion archives the exhausted cycle before
 // granting one fresh pair for that same Step.
+// A worker `unrecoverable: true` veto is tracked here, not left to prose: the
+// coordinator records it with a `veto` event for the active Step, and only an
+// explicitly user-authorized `authorized-veto-override` lifts that one veto.
+// The override changes neither budgets nor history; it is rejected when no
+// veto is active for the Step. Renewing budgets stays exclusive to
+// `authorized-step-retry`.
 // Every outcome reports both budgets, and an exhaustion names the budget that
 // ran out, so what was spent on each is readable from the store response.
 
@@ -28,6 +34,8 @@ const initialState = Object.freeze({
   entered_steps: [],       // Step identifiers already entered in this scope
   active_step: '',         // Current Step identifier, when this is a Step scope
   attempt_history: [],     // Exhausted Step cycles archived by an authorized retry
+  veto_active: '',         // Step whose worker veto is active and not yet lifted
+  veto_lifts: [],          // Step identifiers whose veto an authorized override lifted, in order
 });
 
 // Normalize diagnosis key components per spec item 5:
@@ -124,6 +132,10 @@ function cloneState(state) {
     entered_steps: enteredSteps,
     active_step: activeStep,
     attempt_history: attemptHistory,
+    veto_active: typeof src.veto_active === 'string' ? src.veto_active : '',
+    veto_lifts: Array.isArray(src.veto_lifts)
+      ? src.veto_lifts.filter((entry) => typeof entry === 'string')
+      : [],
   };
 }
 
@@ -136,6 +148,8 @@ function snapshotOf(current) {
     entered_steps: (current.entered_steps || []).slice(),
     active_step: current.active_step || '',
     attempt_history: cloneState({ attempt_history: current.attempt_history }).attempt_history,
+    veto_active: current.veto_active || '',
+    veto_lifts: (current.veto_lifts || []).slice(),
   };
 }
 
@@ -183,6 +197,8 @@ function transition(state, signal) {
       entered_steps: current.entered_steps.slice(),
       active_step: current.active_step,
       attempt_history: cloneState({ attempt_history: current.attempt_history }).attempt_history,
+      veto_active: current.veto_active,
+      veto_lifts: current.veto_lifts.slice(),
     },
     snapshot: {
       state: snapshotOf(Object.assign({}, current, { stage: '' })),
@@ -216,7 +232,54 @@ function transition(state, signal) {
     result.state.coordinator_attempts = 0;
     result.state.entered_steps = current.entered_steps.concat([stepId]);
     result.state.active_step = stepId;
+    result.state.veto_active = '';
     result.step_entry = 'first';
+    return finish(result, result.state);
+  }
+
+  // A veto event records a worker `unrecoverable: true` for the active Step.
+  // It grants and spends nothing; it makes the veto visible to the ledger so a
+  // later override can be accepted or rejected against it.
+  if (sig.kind === 'veto') {
+    const stepId = normalizeStepId(sig.step);
+    if (!stepId) {
+      result.rejected = 'unidentified Step';
+      return finish(result, result.state);
+    }
+    if (current.active_step !== stepId || current.entered_steps.indexOf(stepId) === -1) {
+      result.rejected = 'Step is not active';
+      return finish(result, result.state);
+    }
+    result.state.veto_active = stepId;
+    result.veto = 'recorded';
+    return finish(result, result.state);
+  }
+
+  // The user's explicit authorization lifts exactly one active veto. It makes
+  // the Step recovery-eligible within its remaining budget and nothing more:
+  // budgets and attempt history are untouched, and a rejected event changes
+  // no state at all.
+  if (sig.kind === 'authorized-veto-override') {
+    const stepId = normalizeStepId(sig.step);
+    if (sig.authorized !== true) {
+      result.rejected = 'explicit authorization required';
+      return finish(result, result.state);
+    }
+    if (!stepId) {
+      result.rejected = 'unidentified Step';
+      return finish(result, result.state);
+    }
+    if (current.active_step !== stepId || current.entered_steps.indexOf(stepId) === -1) {
+      result.rejected = 'Step is not active';
+      return finish(result, result.state);
+    }
+    if (current.veto_active !== stepId) {
+      result.rejected = 'no active veto';
+      return finish(result, result.state);
+    }
+    result.state.veto_active = '';
+    result.state.veto_lifts = current.veto_lifts.concat([stepId]);
+    result.veto_override = 'granted';
     return finish(result, result.state);
   }
 

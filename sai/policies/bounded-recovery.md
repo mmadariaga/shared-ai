@@ -175,7 +175,10 @@ A recovery attempt is eligible only when all of these hold:
 - the machine accepts the key as new in the scope's ledger — duplicates are
   rejected before dispatch;
 - a slot remains;
-- the worker did not set `unrecoverable: true`; and
+- the worker did not set `unrecoverable: true`, or that veto was lifted by an
+  accepted `authorized-veto-override` (the user's explicit authorization, one
+  veto per event, recorded in the ledger; it changes neither budgets nor
+  history); and
 - the diagnosis carries enough evidence for an authorized correction and its
   verification.
 

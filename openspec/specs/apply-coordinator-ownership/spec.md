@@ -40,7 +40,16 @@ The coordinator SHALL keep an invocation-scoped ordered duplicate-free union of 
 - **THEN** the union contains no scratch path and the pre-commit add-list cannot target scratch
 
 ### Requirement: coordinator-owns-human-gates
-The apply user-facing gates SHALL stay in the coordinator (main session): the commit authorization gates (per-Step STOP & COMMIT and the terminal documentation commit) and the GREEN-conflict escalation. Apply SHALL have no per-Step Human Verification gate and no fast-track deferred combined list. No worker SHALL present a gate to the user or decide a gate outcome, and no worker SHALL mark a checkbox or edit `implementation.md`.
+The apply user-facing gates SHALL stay in the coordinator (main session): the commit authorization gates (per-Step STOP & COMMIT and the terminal documentation commit), the GREEN-conflict escalation, and the worker veto hand-back. Apply SHALL have no per-Step Human Verification gate and no fast-track deferred combined list. No worker SHALL present a gate to the user or decide a gate outcome, and no worker SHALL mark a checkbox or edit `implementation.md`.
+
+When a RED or GREEN worker returns `unrecoverable: true` for the active Step, at any attempt, in standalone `/sai-4-apply` or in the apply segment of `/sai-build`, the coordinator SHALL take these steps from a disclosed branch file reached by a one-line pointer on its card:
+- Record the veto in `recovery-ledger@1`.
+- Show the worker's non-raw evidence, the worker role, the blocked Step, the affected path, and both budget tallies. State that the Step stays unmarked, uncommitted, and unadvanced.
+- Ask through the native picker with exactly two options in order: `Lift the veto` and `I will correct it manually`. The lift SHALL never be auto-selected: neither `--fast-track` nor `session_commit_authorized` supplies it. A question, silence, or an off-option answer SHALL authorize nothing and re-present the same choice.
+- On the lift, send `authorized-veto-override`. When the ledger accepts it, resume the same worker that vetoed with `continue_after_recovery` only for an eligible diagnosis, preserving RED blindness, the allowed files, and every worker prohibition.
+- On decline or a rejected event, keep the manual-correction stop with the same evidence and stopping reason.
+
+When a budget is also exhausted, the exhausted-Step choice SHALL follow the lift as a separate authorization. A veto that coordinator evidence disproves SHALL stay recovery-eligible without this hand-back. The lift SHALL leave the assertion-weakening, contract-redefinition, and safe-operations stops, `apply-step.js verify`, and the commit gates unchanged.
 
 #### Scenario: Human Verification stays in the coordinator
 - **WHEN** a Step's Functional section contains at least one `- [ ]` checkbox
@@ -49,6 +58,22 @@ The apply user-facing gates SHALL stay in the coordinator (main session): the co
 #### Scenario: commit authorization stays in the coordinator
 - **WHEN** a STOP & COMMIT marker is reached
 - **THEN** the coordinator prints the pre-commit file visibility report, proposes the message, and asks through the closed-choice picker — the worker never stages or commits
+
+#### Scenario: The veto hand-back offers lift or manual correction
+- **WHEN** a RED or GREEN worker returns `unrecoverable: true` for the active Step
+- **THEN** the coordinator records the veto, shows the worker's evidence, and asks through the native picker with `Lift the veto` and `I will correct it manually` in that order
+
+#### Scenario: Fast-track never selects the lift
+- **WHEN** the veto hand-back is reached with `--fast-track` active or with `session_commit_authorized` set
+- **THEN** the coordinator still waits for the user's explicit choice and selects nothing on its own
+
+#### Scenario: Declining keeps the manual-correction stop
+- **WHEN** the user selects `I will correct it manually`, or the ledger rejects the override
+- **THEN** the Step stays blocked with the same evidence and stopping reason
+
+#### Scenario: A veto with an exhausted budget asks twice
+- **WHEN** the lift is accepted while the Step's worker or coordinator budget is already exhausted
+- **THEN** the exhausted-Step choice follows with its separate `authorized-step-retry` authorization
 
 ### Requirement: coordinator-owns-commit
 
