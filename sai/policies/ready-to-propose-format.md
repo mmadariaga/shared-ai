@@ -81,6 +81,8 @@ Sections follow the block order above; `**Overview language**` is the last line 
 
   A non-goal and its detail are two facts. The non-goal is a binding exclusion of this change and goes to `**Key constraints**`; its detail (how the excluded behavior should work later) is context and goes here. The pair is not duplication. Likewise, a requirement that describes future behavior outside this change goes here as future context; an obligation of this change goes to `**Edge Cases**`, `**Implementation Details**`, or `**Key constraints**`.
 
+  **Open decisions.** An open decision is a behavior the exploration left undefined. This field is the single place of the block where an open decision travels: each one is its own `Undecided:` sentence that states the undefined behavior and names the `E<n>` or `I<n>` item it affects, when one exists. Every other field states decided behavior only.
+
   **Emission sweep**, run before the block is printed: the sweep is complete when every discussed-and-excluded topic whose detail goes beyond its non-goal in `**Key constraints**` has that detail in `**Request Additional Notes**`, and every `**Key constraints**` line constrains the change. When no content meets this criterion or the definition above, omit the field.
 
   Guardrails, each with its target:

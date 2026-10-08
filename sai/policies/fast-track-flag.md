@@ -69,3 +69,7 @@ These divergences are intentional and stay byte-stable; do not "unify" them:
   through 4 is a user request, not a stop: fast-track neither triggers it nor
   suppresses it. Fast-track bypasses only the crystallization language
   gate and the overview-language ask, never the POC lane machinery.
+- `sai-explore`'s open-decision reconfirmation at `Crystallize` entry
+  (`sai/commands/explore/steps/open-decisions.md`) runs unchanged under
+  `--fast-track`: the notice is shown and every open decision is asked, and
+  each outcome — answered or left open — is the user's own choice.

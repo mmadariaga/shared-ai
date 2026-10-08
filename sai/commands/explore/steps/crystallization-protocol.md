@@ -1,3 +1,5 @@
+**Open decisions first.** An open decision is a behavior the exploration left undefined, whether it sits in an edge case, an implementation detail, or the conversation. As the first action of this file, check the agreed `E1`…`En` and `I1`…`In` lists and the conversation for open decisions of the current idea that are neither answered nor explicitly left open. Only when at least one exists, Fetch @sai/commands/explore/steps/open-decisions.md and complete that step before loading anything below. With none, continue below and show nothing about this check.
+
 Fetch @sai/commands/explore/steps/slicing-assessment.md
 Fetch @sai/commands/explore/steps/artifact-review-language-gate.md
 Fetch @sai/commands/explore/steps/crystallization-language-gates.md

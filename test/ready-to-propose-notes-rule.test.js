@@ -42,3 +42,11 @@ test('notes rule keeps a generic illustrative example and the unchanged consumer
   assert.match(rule, /Illustrative example/);
   assert.match(rule, /Consumers treat it as informative context only: no requirement, scenario, or mandatory scope derives from it\./);
 });
+
+test('notes rule is the single carrier of open decisions, in the Undecided form', () => {
+  const rule = notesRule();
+  assert.match(rule, /This field is the single place of the block where an open decision travels/);
+  assert.match(rule, /each one is its own `Undecided:` sentence/);
+  assert.match(rule, /Every other field states decided behavior only/);
+  assert.match(rule, /Undecided: whether an administrator can restore an archived report/);
+});

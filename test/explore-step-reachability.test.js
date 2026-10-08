@@ -127,6 +127,23 @@ test('crystallization-protocol.md fetches assessment and language gates', () => 
     'crystallization-protocol.md should fetch crystallization-language-gates.md');
 });
 
+test('crystallization-protocol.md detects open decisions before loading the slicing assessment', () => {
+  const protocol = fs.readFileSync(path.join(explorerStepsDir, 'crystallization-protocol.md'), 'utf8');
+  const fetches = findFetchDirectives(path.join(explorerStepsDir, 'crystallization-protocol.md'));
+  assert.equal(fetches[0], 'open-decisions.md', 'the open-decision step is the first fetch of the file');
+  assert.ok(protocol.indexOf('open-decisions.md') < protocol.indexOf('slicing-assessment.md'),
+    'detection precedes the slicing assessment load');
+  assert.match(protocol, /Only when at least one exists, Fetch @sai\/commands\/explore\/steps\/open-decisions\.md and complete that step before loading anything below/);
+  assert.match(protocol, /With none, continue below and show nothing about this check/);
+
+  const slicing = fs.readFileSync(path.join(explorerStepsDir, 'slicing-assessment.md'), 'utf8');
+  assert.match(slicing, /first run the open-decision reconfirmation when an open decision exists[\s\S]{0,80}then run the slicing assessment \(size and friction\)/);
+  for (const file of ['common.md', 'slicing-assessment.md']) {
+    assert.ok(!findFetchDirectives(path.join(explorerStepsDir, file)).includes('open-decisions.md'),
+      file + ' must not fetch open-decisions.md');
+  }
+});
+
 test('follow-load is driven by next.follow with no whitelist and a stop-on-failure rule', () => {
   const instructions = fs.readFileSync(nucleusFile, 'utf8');
   const policy = fs.readFileSync(path.join(__dirname, '..', 'sai', 'policies', 'stage-machine.md'), 'utf8');
