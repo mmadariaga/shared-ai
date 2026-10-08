@@ -273,6 +273,9 @@ All agents MUST think and reason internally in English, regardless of the user's
 - **User-facing chat:** respond in the language the user writes in (default English if unclear).
 - **Generated artifacts** (`implementation.md`, `review.md`, `security.md`, `performance.md`, `accessibility.md`, commit messages, PR bodies, code): written in English unless the user explicitly requests otherwise.
 
+### Attribution prohibition
+Never include `Generated with Claude Code` or any equivalent Claude Code attribution anywhere: not in commits, pull requests, generated artifacts, source files, comments, or other output.
+
 ### Cost Discipline (research subagents)
 Cards that spawn budget-tier helpers fetch `@skills/budget/SKILL.md` (explore `body.md`, apply `invocation.md`, backfill `worker.md`, and `steps/common.md` for design/implement; spec/review/security/performance/accessibility fetch `@skills/budget-ro/SKILL.md`, explorer-only). Wrappers do not fetch budget skills. The main agent reasons and synthesizes. Subagents do I/O. Key rules:
 - Claude Code dispatches a single explorer tier through the matching `budget-explorer` agent file — `Agent(subagent_type: budget-explorer, run_in_background: true, prompt: <prompt>)` with no per-spawn model; the resolved `budget-explorer.md` agent file's `model` and `effort` frontmatter (user-owned) selects the model, and the tool-call ceiling is 40 per execution segment.

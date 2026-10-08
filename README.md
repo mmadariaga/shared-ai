@@ -310,7 +310,7 @@ This chart may help you identify which models to test. The intelligence axis is 
 
 The x-axis (cost) is usually more reliable, but again, do your own tests. Note that costs can vary depending on the provider — the same model may be priced differently across API providers, subscriptions, and regions.
 
-![Intelligence vs Cost (Sep 2026)](Intelligence-vs-Cost-(29-Sep-'26).png)
+![Intelligence vs Cost (Sep 2026)](Intelligence-vs-Cost-(8-Oct-'26).png)
 [+ Info](https://artificialanalysis.ai/?models=claude-sonnet-5-5-medium%2Cgpt-6-1-sol-xhigh%2Cmimo-v2-6-flash%2Cglm-5-3-flash%2Cgpt-6-luna-xhigh%2Cmimo-v2-6-pro%2Cclaude-sonnet-5-5-high%2Cclaude-opus-5-5%2Cgpt-6-1-sol-high%2Cgpt-6-luna%2Cqwen3-8-flash-next%2Cgpt-6-1-sol-medium%2Cqwen3-8-27b%2Cgpt-6-1-sol%2Cgrok-4-6%2Cglm-5-3%2Cmuse-spark-1-3-xhigh%2Cdeepseek-v4-1-flash%2Cclaude-opus-5-5-xhigh%2Cgpt-6-1-sol-low%2Cclaude-opus-5-5-medium%2Cclaude-opus-5-5-high%2Ckimi-k3%2Cgrok-4-7&coding-agents=execution-time&intelligence=agentic-index&intelligence-efficiency=cost-per-task&total-cost=intelligence-vs-total-cost&cost=intelligence-vs-cost-per-task)
 
 Other rankings that can help you choose:
