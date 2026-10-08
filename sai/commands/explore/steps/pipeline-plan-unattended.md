@@ -107,6 +107,8 @@
 
       `DesignMachineFeedbackAdapter` uses the canonical artifact-feedback and review-evidence rules already defined above; it does not create a second per-item or `Continue` contract. A completed third design round with `High` findings closes the bound as cap exhaustion; a round with no `High` findings ends design convergence. A converged round with an empty findings result and cap exhaustion both use the same conditional `Continue` branch below, exactly once; neither may switch from the selected language branch or repeat the action.
 
+      **Scope observations (both phases)**: Every supervised spec and design round classifies by `sai/policies/artifact-review-contract.md` § Scope observations, which is the single source of the classification and of the report line form. Hold each scope observation in conversation for the whole run, together with every scope observation the design worker's terminal `summary` names. At every ending of the run, print them under `Scope observations` after the review outcome and the autonomy audit, before the successful close or the phase-guidance line; print no such section when there is none.
+
   **Cap exhaustion report (design phase)**: Design cap exhaustion completes the supervised run as a non-failure outcome: after applying every finding of the capped third round, dispatch no further round, emit exactly one line containing the last round's exact base-form tally, then present the design artifact gate at iteration 0 with `artifacts = design.md, tasks.md, interfaces.md`, `proceed-label = Continue`, `next-action = the conditional overview-generation or no-generation supervised-terminal branch below`, and `mode = supervised`:
 
      ```text

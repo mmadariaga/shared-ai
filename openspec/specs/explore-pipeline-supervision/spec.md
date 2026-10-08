@@ -542,3 +542,19 @@ Runtime recovery SHALL preserve Plan's approval and review stop and Direct Build
 
 - **WHEN** a Direct Build runtime repair returns a valid result before artifact execution or the local commit
 - **THEN** the route still requires its existing selected scope, validated order, and one-local-commit authorization state
+
+### Requirement: Direct Build - Unattended reports scope observations
+
+The Direct Build - Unattended route SHALL classify every observation of its functional fix loop and of its spec review by the `Scope observations` section of `sai/policies/artifact-review-contract.md`, and SHALL hold each scope observation for the terminal report. The terminal report's execution details SHALL carry a `Scope observations` record that lists every scope observation of the run in the contract's line form, and SHALL omit that record when there is none.
+
+#### Scenario: the fix loop forms a scope observation
+- **WHEN** the functional fix loop forms an observation whose fix requires behavior the `Ready to Propose` block does not ask for
+- **THEN** the coordinator holds it for the terminal report and does not send it to the implementer as a finding
+
+#### Scenario: the run ends with scope observations
+- **WHEN** a Direct Build - Unattended run reaches its terminal report with at least one scope observation held
+- **THEN** the execution details list each one under `Scope observations` in the contract's line form
+
+#### Scenario: the run ends with no scope observation
+- **WHEN** a Direct Build - Unattended run reaches its terminal report with no scope observation held
+- **THEN** the terminal report omits the `Scope observations` record

@@ -74,3 +74,19 @@ The autonomy audit log and worker-question escalation SHALL remain in force acro
 - **WHEN** the phase worker returns `needs_input` and the question is below threshold or ungrounded
 - **THEN** the pipeline escalates the exact question and options to the user unchanged
 - **AND** it continues the same worker only with the user's answer
+
+### Requirement: scope-observations-in-the-final-report
+
+Every supervised spec and design review round of the Plan - Unattended run SHALL classify its observations by the `Scope observations` section of `sai/policies/artifact-review-contract.md`, the single source of the classification and of the report line form. The coordinator SHALL hold each scope observation in conversation for the whole run, together with every scope observation the design worker's terminal `summary` names. At every ending of the run the coordinator SHALL print them under `Scope observations` after the review outcome and the autonomy audit and before the successful close or the phase-guidance line, and SHALL print no such section when there is none.
+
+#### Scenario: a run ends with scope observations from a review round
+- **WHEN** a Plan - Unattended run ends and a supervised round produced at least one scope observation
+- **THEN** the final report prints them under `Scope observations` after the review outcome and the autonomy audit
+
+#### Scenario: the design worker names a scope observation
+- **WHEN** the design worker's terminal `summary` names a scope observation
+- **THEN** the final report of the run lists that scope observation under `Scope observations`
+
+#### Scenario: a run ends with no scope observation
+- **WHEN** a Plan - Unattended run ends and no scope observation was held
+- **THEN** the final report prints no `Scope observations` section

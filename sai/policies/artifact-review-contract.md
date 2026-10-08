@@ -1,6 +1,6 @@
 # Artifact Review Contract (shared finding format)
 
-The single source of the artifact review finding format: severity, finding shape and layout, identifiers, and the closing summary tally. Consuming surfaces cite this file instead of restating it.
+The single source of the artifact review finding format: severity, finding shape and layout, identifiers, the closing summary tally, and the scope observation rule. Consuming surfaces cite this file instead of restating it.
 
 ## Scope
 
@@ -12,9 +12,26 @@ The audit commands `sai-5-review`, `sai-6-security`, `sai-7-performance`, and `s
 
 Every finding carries exactly one severity from the closed set `High`, `Medium`, or `Low` — never another value such as `Critical`:
 
-- **`High`** — a defect that, left uncorrected, would allow a materially incorrect, incomplete, or out-of-scope implementation, violate an explicit constraint, preserve a normative contradiction, or leave required behavior too untestable to implement reliably.
+- **`High`** — a defect that, left uncorrected, would allow a materially incorrect, incomplete, or out-of-scope implementation, violate an explicit constraint, preserve a normative contradiction, or leave required behavior too untestable to implement reliably. "Incomplete" is measured against the approved scope (§ Scope observations): an artifact is incomplete when it omits something the approved scope asks for.
 - **`Medium`** — a material clarity, coverage, consistency, or testability weakness that does not, on the reviewed evidence, prevent a bounded correct implementation or violate explicit scope.
 - **`Low`** — a precision, readability, or maintainability improvement with no material effect on implementation correctness or scope.
+
+## Scope observations
+
+The **approved scope** is what the reviewed artifacts were asked to deliver: for `proposal.md` and `specs/**`, what the `Ready to Propose` block asks for; for `design.md`, `tasks.md`, and `interfaces.md`, what the approved `proposal.md` and `specs/**` ask for; for a Direct Build diff or draft, what its `Ready to Propose` block asks for.
+
+A **scope observation** is a true observation whose fix requires behavior the approved scope does not ask for. Classify every observation against the approved scope before assigning a severity:
+
+- The artifact omits or contradicts something the approved scope asks for, or adds behavior the approved scope does not ask for: a finding, with its severity per § Severity.
+- The fix requires behavior the approved scope does not ask for: a scope observation.
+
+A scope observation carries no severity and no identifier. It stays outside the findings block and outside the `Summary:` counts, so a review whose only results are scope observations has no findings: it extends no review round, hands the worker nothing to correct, and raises no user question.
+
+The surface that ran the review lists every scope observation in its final report under the label `Scope observations`, one line each in this form, and prints no such section when there is none:
+
+```
+- <observation> — consequence: <what stays true of the change without the unrequested behavior>
+```
 
 ## Finding shape
 
