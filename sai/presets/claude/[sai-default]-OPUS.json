@@ -16,8 +16,8 @@
     "effort": "medium"
   },
   "worker:sai-direct-build-worker": {
-    "model": "opus",
-    "effort": "medium"
+    "model": "sonnet",
+    "effort": "high"
   },
   "command:sai-1-spec": {
     "model": "sonnet",
@@ -32,8 +32,8 @@
     "effort": "high"
   },
   "worker:sai-2-design-worker": {
-    "model": "opus",
-    "effort": "medium"
+    "model": "sonnet",
+    "effort": "high"
   },
   "command:sai-build": {
     "model": "opus",
@@ -52,12 +52,12 @@
     "effort": "medium"
   },
   "worker:sai-4-red-worker": {
-    "model": "sonnet",
+    "model": "haiku",
     "effort": "medium"
   },
   "worker:sai-4-green-worker": {
-    "model": "sonnet",
-    "effort": "medium"
+    "model": "haiku",
+    "effort": "xhigh"
   },
   "command:sai-review": {
     "model": "opus",
@@ -72,7 +72,7 @@
     "effort": "medium"
   },
   "worker:sai-review-fix-worker": {
-    "model": "sonnet",
+    "model": "haiku",
     "effort": "medium"
   },
   "command:sai-6-security": {
@@ -112,7 +112,7 @@
     "effort": "high"
   },
   "worker:sai-archive-worker": {
-    "model": "sonnet",
+    "model": "haiku",
     "effort": "medium"
   },
   "command:sai-merge": {
@@ -128,11 +128,11 @@
     "effort": "high"
   },
   "worker:sai-commit-worker": {
-    "model": "sonnet",
+    "model": "haiku",
     "effort": "medium"
   },
   "utility:sai-pr": {
-    "model": "sonnet",
+    "model": "haiku",
     "effort": "medium"
   },
   "utility:sai-retire-docs": {
@@ -140,11 +140,11 @@
     "effort": "medium"
   },
   "utility:sai-status": {
-    "model": "sonnet",
+    "model": "haiku",
     "effort": "medium"
   },
   "utility:sai-worktree": {
-    "model": "sonnet",
+    "model": "haiku",
     "effort": "medium"
   }
 }

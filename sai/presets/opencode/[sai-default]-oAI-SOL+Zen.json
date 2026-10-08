@@ -56,8 +56,8 @@
     "variant": "max"
   },
   "worker:sai-4-green-worker": {
-    "model": "openai/gpt-6.1-sol",
-    "variant": "medium"
+    "model": "openai/gpt-6-luna",
+    "variant": "max"
   },
   "command:sai-review": {
     "model": "openai/gpt-6.1-sol",
