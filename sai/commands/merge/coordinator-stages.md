@@ -348,10 +348,33 @@ validating a receipt is not a run.
   worker with the `test-correction` pointer, the round number, the staged
   paths, and the failure record's reference/hash. It returns the failure
   analysis and its proposed fixes as exact correction ranges within the
-  affected file set. Capture them per the `conflicts` stage's § Correction
-  capture, validate and review the returned payload as in that stage,
-  re-stage the corrected files, and run
-  `node <merge-tool> verify --record <new file> --json --cwd <project-root>`.
+  affected file set. Then choose exactly one branch before another execution:
+  - **Applied correction** — capture proposed ranges per the `conflicts`
+    stage's § Correction capture, validate and independently review the
+    returned payload as in that stage, and re-stage the corrected files.
+    Count a correction only when tool evidence confirms changed bytes in
+    authorized files against this round's pre-write snapshot and the
+    corresponding independent review passed. A proposal, report, no-op write,
+    or cumulative `changed_files` union is not proof of a correction in this
+    round. After that proof and review, repeat verification within the budget.
+  - **Concrete repeat reason** — without an applied correction, record the
+    evidence and why another execution can provide useful new information
+    before executing it. A started run interrupted by the execution timeout
+    may justify increasing that timeout; speculation about intermittent
+    failures does not justify a repeat. This grants neither environment
+    changes nor scope expansion.
+  - **Neither** — when failure analysis completes without an applied correction
+    and without a concrete repeat reason, record coordinator-only
+    `verification_result: failed-no-correction` and close verification now.
+    Proposed but unapplied corrections take this branch. Retain the consumed
+    round count and every remaining failure; unused rounds are not exhausted.
+    Continue integration through the same navigation as `cap-exhausted`,
+    with failed status, not a pass.
+  A permitted repeat runs
+  `node <merge-tool> verify --record <new file> --json --cwd <project-root>`
+  with the same fixed command or suite arguments above. Each started
+  execution, including one that reaches the execution timeout, consumes a
+  round. Increasing the timeout does not reset the maximum of three.
 - **Fail in round 3** — record `cap-exhausted`. The resolved state stays
   staged and uncommitted, the run continues as on a pass, and the final
   summary carries the remaining failures.
@@ -360,7 +383,13 @@ A fix that would change a confirmed objective, or a worker
 `conflict_detected` with `strategy-analysis`, returns to the `conflicts`
 stage's new-problem rule before the next resolution write.
 
-Exit: `verification_result` is `passed`, `unavailable`, or `cap-exhausted` —
+Keep the consumed rounds for this conflict stop on re-entry, including after
+a new-problem strategy correction. Each new rebase conflict stop gets fresh
+verification and its own three-round budget; retain earlier unresolved
+failures for the final summary. Retry decisions and `failed-no-correction`
+belong only to coordinator state, not the stateless tool or worker fields.
+
+Exit: `verification_result` is `passed`, `unavailable`, `failed-no-correction`, or `cap-exhausted` —
 enter `collision` for a merge, or `final` for a stopped rebase.
 
 ## Stage: collision

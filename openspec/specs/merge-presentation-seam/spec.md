@@ -190,6 +190,8 @@ The coordinator SHALL retain and validate the original received worker source by
 
 The closing summary, written by the coordinator from the final texts' template, SHALL identify method and branch direction, the actual operation and resulting HEAD or exact pending state, verification status, conflict and collision disposition, and unresolved matters. It SHALL explain new decisions, failures, and state changes without repeating settled strategy explanations. On a partial failure it SHALL identify completed operations, the failed operation and error, staged and pending paths, current HEAD, merge or rebase state, and unresolved verification or collision findings. The closing summary SHALL be written before terminal navigation so the terminal renderer can print it unchanged.
 
+For failed verification, the closing summary SHALL preserve the actual closure reason, consumed rounds, and every remaining failure, including unresolved failures from earlier rebase stops even if a later stop passed. Successful integration SHALL NOT convert a failed verification result into a pass.
+
 #### Scenario: Successful closure retains necessary outcomes
 
 - **WHEN** integration finalization succeeds
@@ -199,6 +201,16 @@ The closing summary, written by the coordinator from the final texts' template, 
 
 - **WHEN** a Git operation fails after earlier operations succeeded
 - **THEN** closure distinguishes completed and failed operations and reports current HEAD, staged and pending paths, operation state, and unresolved findings without claiming successful finalization
+
+#### Scenario: Successful integration retains early failed verification
+
+- **WHEN** integration succeeds after verification closed as `failed-no-correction`
+- **THEN** the closing summary preserves failed verification, its actual closure reason, consumed rounds, and every remaining failure rather than reporting a pass
+
+#### Scenario: Later passing rebase stop does not erase earlier failures
+
+- **WHEN** a later rebase stop passes verification while earlier stops retain unresolved verification failures
+- **THEN** the closing summary includes those earlier failures and their actual closure reasons and consumed rounds
 
 ### Requirement: Seam holds the coordinator's fixed texts per stage
 
@@ -213,3 +225,24 @@ The presentation seam SHALL hold the coordinator's fixed texts in stage-ordered 
 
 - **WHEN** the coordinator writes context around a pinned preflight text before a working language is selected
 - **THEN** the pinned text stays verbatim and the surrounding context is written in the ambient conversation language
+
+### Requirement: Early failed verification notice
+
+The presentation seam SHALL admit `failed-no-correction` as a coordinator verification result. Its verification notice SHALL state that verification failed and stopped because no correction was applied and no concrete repeat reason exists. The notice SHALL report the actual consumed rounds out of three, list every remaining failure, and state that integration continues with the resolved state staged and uncommitted. It SHALL NOT call unused rounds exhausted or claim verification passed.
+
+The compact finalization summary SHALL distinguish early failed closure from a failed third round: early closure SHALL identify the lack of an applied correction or concrete repeat reason and the actual consumed rounds out of three; budget exhaustion SHALL identify round three and three out of three consumed rounds.
+
+#### Scenario: Early closure explains why verification stopped
+
+- **WHEN** verification closes as `failed-no-correction` after one or two started executions
+- **THEN** the verification notice reports the no-correction and no-repeat-reason closure, the actual consumed rounds out of three, every remaining failure, and continued integration with the resolved state staged and uncommitted
+
+#### Scenario: Compact summary distinguishes unused budget
+
+- **WHEN** the coordinator presents the compact finalization summary after early failed closure
+- **THEN** its verification status identifies the actual consumed rounds and lack of an applied correction or concrete repeat reason without claiming budget exhaustion or a pass
+
+#### Scenario: Third-round failure identifies exhausted budget
+
+- **WHEN** verification closes as `cap-exhausted` after a failed third execution
+- **THEN** the compact finalization summary identifies failed verification after round three with three out of three rounds consumed and budget exhaustion

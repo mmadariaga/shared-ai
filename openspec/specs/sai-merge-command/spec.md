@@ -207,17 +207,66 @@ When conflicts exist and fast-track is inactive, the scope question SHALL ride B
 
 ### Requirement: Bounded verification loop
 
-The coordinator SHALL fix the project's test command once in preflight, from the project's documentation or the merge tool's marker list, and SHALL run that fixed command through the merge tool after a conflict stop's resolution is staged, for at most three rounds per conflict stop. Every round SHALL use the command fixed in preflight, and only a test run that started SHALL use a round. A failed first or second round SHALL continue the worker for a test correction whose ranges the coordinator captures, validates, reviews, and re-stages before the next run. A missing suite, an ambiguous suite, or a test command that cannot start SHALL be recorded as `unavailable` with a notice and SHALL NOT be a pass or a question. A clean integration SHALL skip verification.
+The coordinator SHALL fix the project's test command once in preflight, from the project's documentation or the merge tool's marker list, and SHALL run that fixed command through the merge tool after a conflict stop's resolution is staged, for at most three started executions per conflict stop. Every round SHALL use the command fixed in preflight. Each started execution, including one that reaches the execution timeout, SHALL consume a round; increasing the timeout SHALL NOT reset the budget.
+
+After a failed first or second round, the coordinator SHALL continue the worker for failure analysis and SHALL choose exactly one retry-or-close branch before another execution:
+- An applied correction SHALL permit a repeat only after tool evidence confirms changed bytes in authorized files against the current round's pre-write snapshot, the correction passes independent review, and the corrected files are re-staged. A proposal, report, no-op write, or cumulative `changed_files` union SHALL NOT establish a current-round applied correction.
+- Without an applied correction, a repeat SHALL require a concrete, evidence-backed reason recorded before execution that explains how another execution can provide useful new information. Speculation about intermittent failures SHALL NOT qualify. A started run interrupted by the execution timeout MAY justify increasing that timeout within the same budget. This reason SHALL authorize neither environment changes nor scope expansion.
+- When failure analysis completes without an applied correction and without a concrete repeat reason, the coordinator SHALL record `verification_result: failed-no-correction` and close verification immediately. Proposed but unapplied corrections SHALL follow this branch. The coordinator SHALL retain the consumed rounds and every remaining failure, SHALL NOT describe unused rounds as exhausted, and SHALL continue integration through the same navigation as `cap-exhausted` with failed status rather than a pass.
+
+A failed third round SHALL record `cap-exhausted`. Re-entry to the same conflict stop, including after a new-problem strategy correction, SHALL retain consumed rounds. Each new rebase conflict stop SHALL receive fresh verification and its own three-round budget; earlier unresolved failures SHALL remain available for the final summary. Retry decisions and `failed-no-correction` SHALL remain coordinator state rather than stateless-tool retry management or worker response fields.
+
+A missing suite, an ambiguous suite, or a test command that cannot start SHALL be recorded as `unavailable` with a notice and SHALL NOT be a pass or a question. A command that cannot start SHALL consume no round. A clean integration SHALL skip verification.
 
 #### Scenario: Suite failure exhausts the budget
 
 - **WHEN** the fixed test command still fails after the third round
-- **THEN** the remaining failures are reported in the final summary and the resolved state stays staged and uncommitted while the run continues as on a pass
+- **THEN** the coordinator records `cap-exhausted`, reports the remaining failures in the final summary, and continues as on a pass while the resolved state stays staged and uncommitted without claiming verification passed
 
 #### Scenario: Unavailable verification continues the run
 
 - **WHEN** verification returns `unavailable` because no suite was detected, the suite is ambiguous, or the command cannot start
 - **THEN** the coordinator prints the matching notice, records `verification_result: unavailable`, and continues without a question and without claiming a pass
+
+#### Scenario: No correction or repeat reason closes verification early
+
+- **WHEN** failure analysis after a failed first or second round completes without an applied correction and without a concrete repeat reason
+- **THEN** the coordinator records `failed-no-correction`, stops verification without consuming another round, retains the actual round count and failures, and continues through the exhausted-budget navigation with failed status
+
+#### Scenario: Proposed but unapplied correction does not justify a retry
+
+- **WHEN** failure analysis proposes a correction but no correction is applied and no concrete repeat reason exists
+- **THEN** verification closes as `failed-no-correction` rather than repeating the suite or reporting budget exhaustion
+
+#### Scenario: Current-round correction permits a bounded repeat
+
+- **WHEN** tool evidence confirms changed bytes in authorized files against this round's pre-write snapshot and the corresponding independent review passes
+- **THEN** the coordinator re-stages the corrected files and repeats the fixed verification command only within the remaining three-round budget
+
+#### Scenario: Reports and earlier changes do not prove a correction
+
+- **WHEN** the offered correction evidence consists only of a proposal, report, no-op write, or cumulative changed-file list
+- **THEN** the coordinator does not count it as an applied correction for the current round
+
+#### Scenario: Concrete evidence permits a repeat without correction
+
+- **WHEN** no correction was applied but the coordinator records evidence before execution that another run can provide useful new information
+- **THEN** another execution may use the remaining budget with the same fixed command without authorizing environment changes or scope expansion
+
+#### Scenario: Timeout consumes an attempt
+
+- **WHEN** a started verification execution reaches the execution timeout and a longer timeout justifies another run
+- **THEN** the timed-out execution remains counted and any repeat consumes another round within the same maximum of three
+
+#### Scenario: Same-stop re-entry retains attempts
+
+- **WHEN** verification re-enters the same conflict stop after a new-problem strategy correction
+- **THEN** the coordinator retains that stop's consumed rounds rather than resetting its verification budget
+
+#### Scenario: New rebase stop receives fresh verification
+
+- **WHEN** rebase continuation reaches a new conflict stop
+- **THEN** that stop receives fresh verification with its own three-round budget while earlier unresolved failures remain reportable
 
 ### Requirement: Incremental ADR/DDR collision pass
 

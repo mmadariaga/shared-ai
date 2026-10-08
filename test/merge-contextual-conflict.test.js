@@ -339,10 +339,66 @@ test('no suite is unavailable verification, not a question, refusal, or passing 
   assert.match(presentation, /already been applied and staged/);
   assert.doesNotMatch(verification, /needs_input|Continue\?|code fusion was not performed|On `no`/);
   assert.match(verification, /record `verification_result: unavailable` before proceeding/);
-  assert.match(presentation, /verification_result: pending \| passed \| unavailable \| failed \| cap-exhausted/);
-  assert.match(lifecycle, /method=merge; verification_result ∈ \{passed, unavailable, cap-exhausted\}/);
-  assert.match(lifecycle, /rebase stopped; verification_result ∈ \{passed, unavailable, cap-exhausted\}/);
+  assert.match(presentation, /verification_result: pending \| passed \| unavailable \| failed \| failed-no-correction \| cap-exhausted/);
+  assert.match(lifecycle, /method=merge; verification_result ∈ \{passed, unavailable, failed-no-correction, cap-exhausted\}/);
+  assert.match(lifecycle, /rebase stopped; verification_result ∈ \{passed, unavailable, failed-no-correction, cap-exhausted\}/);
   assert.doesNotMatch(lifecycle, /no-suite=no/);
+});
+
+test('merge verification closes failed without correction instead of consuming unused rounds', () => {
+  const { stages, lifecycle, presentation } = cards();
+  const verification = section(stages, '### Step 8:', '## Stage: collision');
+  const earlyClosure = section(verification, '- **Neither**', 'A permitted repeat');
+  assert.match(earlyClosure, /failure analysis completes without an applied correction\s+and without a concrete repeat reason/);
+  assert.match(earlyClosure, /verification_result: failed-no-correction` and close verification now/);
+  assert.match(earlyClosure, /Proposed but unapplied corrections take this branch/);
+  assert.match(earlyClosure, /unused rounds are not exhausted/);
+  assert.match(earlyClosure, /same navigation as `cap-exhausted`,\s+with failed status, not a pass/);
+  assert.match(verification, /Exit: `verification_result` is[^\n]+`failed-no-correction`/);
+  for (const target of ['adr-ddr', 'finalization']) {
+    assert.match(lifecycle, new RegExp(`verification\\s+${target}[^\\n]+failed-no-correction`));
+  }
+  assert.match(presentation, /actual consumed rounds out of three, list every\s+remaining failure/);
+  assert.match(presentation, /no applied correction or concrete repeat reason; N\/3 rounds consumed/);
+});
+
+test('merge verification retries only after current-round applied and reviewed correction evidence', () => {
+  const { stages } = cards();
+  const correction = section(stages, '- **Applied correction**', '- **Concrete repeat reason**');
+  assertInOrder(correction, [
+    'Correction capture', 'independently review', 're-stage',
+    'tool evidence confirms changed bytes', 'this round\'s pre-write snapshot',
+    'independent review passed', 'repeat verification within the budget',
+  ]);
+  assert.match(correction, /authorized files/);
+  assert.match(correction, /proposal, report, no-op write,[\s\S]+cumulative `changed_files` union is not proof/);
+});
+
+test('merge repeat without correction requires recorded evidence and keeps the execution budget', () => {
+  const { stages } = cards();
+  const verification = section(stages, '## Stage: verify', '## Stage: collision');
+  const reason = section(verification, '- **Concrete repeat reason**', '- **Neither**');
+  assertInOrder(reason, ['record the', 'evidence', 'before executing it']);
+  assert.match(reason, /started run interrupted by the execution timeout\s+may justify increasing that timeout/);
+  assert.match(reason, /speculation about intermittent\s+failures does not justify a repeat/);
+  assert.match(reason, /neither environment\s+changes nor scope expansion/);
+  assert.match(verification, /same fixed command or suite arguments/);
+  assert.match(verification, /Each started\s+execution, including one that reaches the execution timeout, consumes a\s+round/);
+  assert.match(verification, /Increasing the timeout does not reset the maximum of three/);
+  assert.match(verification, /`not-runnable` result[^\n]+[\s\S]*uses no round/);
+  assert.match(verification, /Fail in round 3[^\n]+record `cap-exhausted`/);
+  assert.match(verification, /Retry decisions and `failed-no-correction`\s+belong only to coordinator state, not the stateless tool or worker fields/);
+});
+
+test('merge verification preserves attempts on re-entry and failures across fresh rebase stops', () => {
+  const { stages, presentation } = cards();
+  const verification = section(stages, '## Stage: verify', '## Stage: collision');
+  assert.match(verification, /Keep the consumed rounds for this conflict stop on re-entry, including after\s+a new-problem strategy correction/);
+  assert.match(verification, /Each new rebase conflict stop gets fresh\s+verification and its own three-round budget/);
+  assert.match(verification, /retain earlier unresolved\s+failures for the final summary/);
+  assert.match(verification, /`conflict_detected` with `strategy-analysis`, returns to the `conflicts`/);
+  assert.match(presentation, /unresolved failures from earlier rebase\s+stops even if a later stop passed/);
+  assert.match(presentation, /Successful integration does not change a\s+failed verification result into a pass/);
 });
 
 test('automatic local finalization preserves safety, remaining questions, and retry budgets', () => {

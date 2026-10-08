@@ -45,7 +45,7 @@ strategy_status: not-applicable | pending | revised | confirmed | declined
 strategy_revision, conflict_detection_round: non-negative integers
 test_command: unresolved | list (with the suite record reference and hash) | the explicit documented command
 verification_round: 0 | 1 | 2 | 3
-verification_result: pending | passed | unavailable | failed | cap-exhausted
+verification_result: pending | passed | unavailable | failed | failed-no-correction | cap-exhausted
 staged_files
 compact_finalization_summary
 unresolved_escalations
@@ -295,6 +295,12 @@ Before launching, print the exact launch, naming the branch by its full
   once; on the third failed round, state that verification failed through all
   three rounds, list the remaining failures, and note that the resolved state
   stays staged and uncommitted.
+- **No correction** — for `failed-no-correction`, state that verification
+  failed and stopped because no correction was applied and no concrete repeat
+  reason exists. Report the actual consumed rounds out of three, list every
+  remaining failure, and note that integration continues with the resolved
+  state staged and uncommitted. Do not call unused rounds exhausted or claim
+  verification passed.
 
 ## Collision texts
 
@@ -317,7 +323,7 @@ as ordinary text; it is not a gate:
 Method: <merge | rebase (squash yes/no)>
 Target branch: <current branch>
 Source branch: <selected branch>
-Verification status: <passed | not required (clean integration) | unavailable (no detectable suite) | unavailable (command not runnable: <reason>) | failed after round N>
+Verification status: <passed | not required (clean integration) | unavailable (no detectable suite) | unavailable (command not runnable: <reason>) | failed after round N (no applied correction or concrete repeat reason; N/3 rounds consumed) | failed after round 3 (budget exhausted; 3/3 rounds consumed)>
 Conflict result: <clean | resolved (N files) | unresolved (N escalations)>
 Collision result: <not applicable | none detected | N repaired | N reported (N escalations)>
 Staged files: <N>
@@ -334,6 +340,11 @@ finalization in a self-sufficient closure: method, target/source branches,
 actual operation and resulting HEAD, verification outcome, conflict/collision
 disposition, and any remaining escalations. Reuse the established decisions;
 do not explain the settled strategy again.
+
+For failed verification, preserve the actual closure reason, consumed rounds,
+and every remaining failure, including unresolved failures from earlier rebase
+stops even if a later stop passed. Successful integration does not change a
+failed verification result into a pass.
 
 A rebase that finished with nothing staged needs no operation: report the new
 `HEAD`, and that `target_sha` is the pre-rebase `HEAD`.
