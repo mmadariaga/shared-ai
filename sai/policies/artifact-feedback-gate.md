@@ -77,7 +77,7 @@ Apply feedback **selectively per item** — never as an all-or-nothing turn:
 1. Split the user's feedback into individual items.
 2. Evaluate each item independently. An item is **illegitimate** when it:
    - contradicts the change's Why/scope or the artifact's purpose;
-   - would violate an established constraint (`artifact-only-scope`, Isolation Mode, atomic-commit planning, etc.);
+   - would violate an established constraint (the step's artifact-only scope, Isolation Mode, atomic-commit planning, etc.);
    - is factually contradicted by the just-written artifacts or the codebase;
    - is out of phase for the step (e.g. a design decision requested during the spec-only sai-1 phase);
    - is internally contradictory, or would remove a testable requirement without replacement.

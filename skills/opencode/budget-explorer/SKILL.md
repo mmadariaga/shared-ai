@@ -22,7 +22,7 @@ Every spawn prompt states the **goal** and the **output contract**: exact respon
 
 ## Dispatch mode
 
-The opencode `task` tool has no `run_in_background` parameter; this binding runs synchronously by default. The dispatch-safety invariant defined in `openspec/specs/dispatch-safety-invariant/spec.md` is the containing rule for this case.
+The opencode `task` tool has no `run_in_background` parameter; this binding runs synchronously by default. The dispatch-safety invariant is the containing rule for this case: a background child is dispatched only from a dispatcher that outlives it and awaits its result, and synchronous dispatch satisfies this.
 
 ## Model resolution
 

@@ -6,7 +6,7 @@ For each audit artifact that exists, read it and apply the **Judgment Rubric for
 
 ### Judgment Rubric for Audit Findings
 
-The rubric is defined normatively in `openspec/specs/audit-artifact-ingestion/spec.md`; this section is its operational restatement. This step applies it once per run; the plan-generation step appends from the resulting classification.
+This step applies the rubric once per run; the plan-generation step appends from the resulting classification.
 
 For every finding in an existing audit artifact (`review.md`, `security.md`, `performance.md`, `accessibility.md`), evaluate all five criteria and classify the finding as **Apply**, **Discard**, or **Escalate**:
 

@@ -37,7 +37,7 @@
   - **Current branch non-empty:** choose option 2 "Stay on current branch" without presenting the prompt and without loading `branch-selection.md`, create or switch no branch, and print exactly `> Fast-track: staying on current branch "{current-branch}"`.
   - **Detached HEAD:** fetch `branch-selection.md` and present the prompt as usual, with no announcement.
 
-  Option 2 already skips the branch-base sub-prompt. Every other gate stays in force. The rule lives in apply because only apply resolves fast-track (`docs/adr/0059-fast-track-auto-stay-branch-rule-in-apply.md`); exact behavior: `openspec/specs/sai-fast-track-flag/spec.md`.
+  Option 2 already skips the branch-base sub-prompt. Every other gate stays in force. The rule lives in apply because only apply resolves fast-track (`docs/adr/0059-fast-track-auto-stay-branch-rule-in-apply.md`).
 
   ## Run-Start Step Projection
   Derive one unique invocation-scoped stable run identity from the harness session, Apply segment, and invocation nonce before capture; retain it on retry and replacement, and pass it as `--run-id <identity>` to baseline. The capture registry refuses a second capture for that identity, including when the original record is missing; resume only with the retained original reference. A new run identity is not a recovery mechanism.

@@ -15,7 +15,7 @@
   strictly in list order through the shared Result Loop:
   - position 0 — implementation phase adapter (`sai/commands/implement/coordinator.md`)
   - position 1 — existing apply phase adapter (`sai/commands/apply/coordinator.md`
-    chained-activation path from `apply-phase-adapter-extraction`)
+    chained-activation path)
 
   Position 1 is the existing apply adapter. Build does not re-declare RED/GREEN dispatch. After position 1 activates, the apply adapter remains the sole owner
   of `sai-4-red-worker` / `sai-4-green-worker` selection. Build does not introduce

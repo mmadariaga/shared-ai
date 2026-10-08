@@ -6,7 +6,7 @@ The generator receives the Fetch directive for `@sai/commands/design/change-over
 
 ## Overview generation (design-worker-owned lifecycle)
 
-The worker owns the change's overview lifecycle for `change-overview.md` per `specs/change-overview-synchronization/spec.md` and `specs/change-overview-generation-routing/spec.md`:
+The worker owns the change's overview lifecycle for `change-overview.md`:
 
 - **Language transport** — pass the current invocation's selected `overview_language` to every initial generation or regeneration dispatch only when `--overview-lang` is present and valid.
 - The generator localizes only eligible free-text prose in `change-overview.md`.
@@ -16,7 +16,7 @@ The worker owns the change's overview lifecycle for `change-overview.md` per `sp
 - The absent-token route closes without generation at `Continue`: it does not enter `materializing`, dispatch or continue a generator, emit `overview` progress, or create/clear failure metadata solely because generation was skipped.
 - Existing overviews are retained. A source-modifying invocation still marks a previously current overview stale at the first effective source write; a no-write invocation leaves its prior state intact.
 - The detailed first-materialization dispatch rules below apply only to a valid opted-in route.
-- **Diagnostic reset and durable carrier** — the worker owns `overview.state`, `overview.failure_kind`, and `overview.failure_details` in `openspec/changes/{change-name}/.openspec.yaml`.
+- **Diagnostic reset and durable carrier** — the worker owns `overview.state`, `overview.failure_kind`, and `overview.failure_details` in `openspec/changes/{change-name}/.openspec.yaml`. `overview.state` holds exactly one of `unmaterialized`, `materializing`, `failed`, `current`, or `stale`; on a non-backfilled change an absent key reads as `unmaterialized`.
 - At the conservative source-write transition (the `Stale-before-first-write` boundary), clear both diagnostic keys before any post-materialization source write.
 - Immediately before every first-materialization or regeneration dispatch, clear both keys again so an older attempt cannot be reused.
 - Whenever any of the three overview keys is written, include `.openspec.yaml` in the outer worker `changed_files` union.
