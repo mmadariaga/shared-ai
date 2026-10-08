@@ -124,3 +124,51 @@ Every finding SHALL render as five list lines labelled exactly `- Identifier: `,
 
 - **WHEN** a findings block has no `Summary:` line
 - **THEN** the validator reports `MISSING_SUMMARY`
+
+### Requirement: Artifact reviews classify observations against the approved scope
+
+The shared artifact review contract at `sai/policies/artifact-review-contract.md` SHALL define the approved scope of each reviewed artifact set: for `proposal.md` and `specs/**`, what the `Ready to Propose` block asks for; for `design.md`, `tasks.md`, and `interfaces.md`, what the approved `proposal.md` and `specs/**` ask for; for a Direct Build diff or draft, what its `Ready to Propose` block asks for. The contract SHALL define a scope observation as a true observation whose fix requires behavior the approved scope does not ask for, and every artifact review SHALL classify each observation against the approved scope before assigning a severity.
+
+#### Scenario: the fix needs unrequested behavior
+- **WHEN** a review forms a true observation whose fix requires behavior the approved scope does not ask for
+- **THEN** the review classifies it as a scope observation and not as a finding
+
+#### Scenario: the artifact omits or contradicts requested behavior
+- **WHEN** a reviewed artifact omits or contradicts something the approved scope asks for
+- **THEN** the review reports a finding with its severity per the contract's severity criteria
+
+#### Scenario: the artifact adds unrequested behavior
+- **WHEN** a reviewed artifact adds behavior the approved scope does not ask for
+- **THEN** the review reports a finding with its severity per the contract's severity criteria
+
+### Requirement: Scope observations carry no severity and stay outside the findings
+
+A scope observation SHALL carry no severity and no identifier. It SHALL stay outside the findings block and outside the `Summary:` counts. A review whose only results are scope observations SHALL have no findings: it extends no review round, hands the worker nothing to correct, and raises no user question. The closed severity vocabulary, the five-field finding shape, the identifier scheme, and the `Summary: High=<count> Medium=<count> Low=<count>` tally form SHALL remain as defined.
+
+#### Scenario: a review yields only scope observations
+- **WHEN** a completed artifact review produces scope observations and no finding
+- **THEN** the review closes with a tally of zero findings, extends no review round, hands the worker nothing to correct, and raises no user question
+
+#### Scenario: a review yields findings and scope observations
+- **WHEN** a completed artifact review produces both findings and scope observations
+- **THEN** the findings block and the `Summary:` counts contain only the findings
+
+### Requirement: High incompleteness is measured against the approved scope
+
+The `High` severity definition of the shared contract SHALL state that "incomplete" is measured against the approved scope: an artifact is incomplete when it omits something the approved scope asks for.
+
+#### Scenario: an artifact lacks behavior that nothing requested
+- **WHEN** a reviewed artifact lacks a behavior that the approved scope does not ask for
+- **THEN** the review does not assign `High` for incompleteness on that ground
+
+### Requirement: Review surfaces list scope observations in the final report
+
+The surface that ran an artifact review SHALL list every scope observation in its final report under the label `Scope observations`, one line each in the form `- <observation> — consequence: <what stays true of the change without the unrequested behavior>`. The surface SHALL print no such section when there is no scope observation. Consuming surfaces SHALL cite the contract's `Scope observations` section by reference and SHALL NOT restate its definition.
+
+#### Scenario: a Review Engine transaction has scope observations
+- **WHEN** a `sai-1` or `sai-2` review transaction of the explore review loop completes with at least one scope observation
+- **THEN** its final report prints a separate `Scope observations` list after the findings block in the contract's line form
+
+#### Scenario: a review has no scope observation
+- **WHEN** an artifact review completes with no scope observation
+- **THEN** its final report prints no `Scope observations` section

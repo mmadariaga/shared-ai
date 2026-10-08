@@ -4,7 +4,11 @@ Active step: design. Write `design.md`, then report the `design` progress event 
 
 ## Spec-problem handling during design
 
-While generating design artifacts, if you discover a problem in `proposal.md` or any `specs/**/*.md` (for example: a requirement that contradicts the codebase, a missing or wrong scenario, an internally inconsistent spec, or a spec-vs-source contradiction), classify your clarity on the fix before proceeding:
+While generating design artifacts, if you discover a problem in `proposal.md` or any `specs/**/*.md` (for example: a requirement that contradicts the codebase, a missing or wrong scenario, an internally inconsistent spec, or a spec-vs-source contradiction), classify the problem first, then your clarity on the fix.
+
+Fetch @sai/policies/artifact-review-contract.md and apply its § Scope observations, with the approved `proposal.md` and `specs/**` as the approved scope. A scope observation is recorded in `design.md` `## Goals / Non-Goals` as a non-goal of the form "out of scope: X — revisit when Y" and named in your terminal `summary` in the report line form of § Scope observations; design continues from the specs as approved, with no question. This holds in every run, supervised or not.
+
+Every other problem is a spec defect and takes the clarity path:
 
 - **Clarity present** — you can state the exact text to change and the exact replacement, grounded in the proposal, the specs, and any codebase facts already gathered. Present to the user: (1) the discovered problem, (2) the concrete diff to `proposal.md` and/or the affected `specs/**/*.md` file(s), and (3) a closed-choice offer between applying the patch **in place** and routing to `/sai-1-spec`, per the closed-choice-prompts convention in `sai/policies/remember.md`. Never apply the amendment by default; wait for the user's explicit selection.
   - If the user selects **in place**: apply exactly the presented patch, then write `approval.specs.amendment.{at, notes}` to `openspec/changes/{resolved_change_name}/.openspec.yaml`, merging into the existing file content and preserving all prior top-level keys (including `schema:`, `created:`, `approval.specs.approved_at`, and `approval.specs.notes`) verbatim — do NOT truncate or rewrite the whole file. Then continue generating design artifacts from the amended specs.

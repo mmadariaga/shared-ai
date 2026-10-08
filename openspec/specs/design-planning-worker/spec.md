@@ -386,3 +386,19 @@ Validation of `--overview-lang` form is worker-owned and unconditional, because 
 - **WHEN** the coordinator receives an envelope whose `--overview-lang` occurrence is malformed
 - **THEN** it selects the opted-in plan from raw token presence without inspecting the value
 - **AND** it forwards the envelope unchanged for the worker to validate
+
+### Requirement: The design worker classifies spec problems against the approved scope
+
+When the design worker discovers a problem in `proposal.md` or any `specs/**/*.md` while generating design artifacts, it SHALL classify the problem first, by the `Scope observations` section of `sai/policies/artifact-review-contract.md`, with the approved `proposal.md` and `specs/**` as the approved scope. It SHALL record a scope observation in `design.md` under `## Goals / Non-Goals` as a non-goal of the form "out of scope: X — revisit when Y", name it in its terminal `summary` in the contract's report line form, and continue design from the specs as approved with no question. This SHALL hold in every run, supervised or not. Every other problem SHALL be treated as a spec defect and take the existing clarity path. The design worker's result union SHALL gain no scope observation field.
+
+#### Scenario: the discovered gap is unrequested behavior
+- **WHEN** the design worker discovers a gap whose fix requires behavior the approved `proposal.md` and `specs/**` do not ask for
+- **THEN** it records the gap as an "out of scope: X — revisit when Y" non-goal in `design.md`, names it in its terminal `summary`, and asks no question
+
+#### Scenario: the discovered problem is a spec defect
+- **WHEN** the design worker discovers a problem that is not a scope observation, such as a contradiction in the specs
+- **THEN** it follows the existing clarity path for spec problems
+
+#### Scenario: an unsupervised run meets a scope observation
+- **WHEN** the design worker classifies a discovered problem as a scope observation in a run that is not supervised
+- **THEN** it applies the same non-goal record and asks no question
