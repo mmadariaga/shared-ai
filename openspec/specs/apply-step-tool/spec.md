@@ -65,9 +65,15 @@ A plan without a `**Step test command:**` line SHALL make `verify` use the comma
 
 The coordinator SHALL invoke `apply-step.js close` only after a passing `verify` and after judging every `unjudged` item and the RED failure class; the tool SHALL keep no such state. A failed `verify` (`ok: false`, a failed command, `out_of_allowed`, `unreported`, or a retired file still present) SHALL mark no checkbox and propose no commit, SHALL be classified `validation-failed` before any `continue_after_recovery`, and SHALL follow the bounded-recovery flow; the coordinator SHALL read project files only then, to write the diagnosis.
 
+One failed `verify` SHALL be a plan finding instead, with no recovery attempt spent: every command passes and the only finding is production files the worker reported that neither `implementation.md` nor `tasks.md` names. The coordinator SHALL then follow `sai/commands/apply/steps/plan-amendment.md`. It SHALL still mark no checkbox and propose no commit until a repeated `verify` passes.
+
 #### Scenario: Failed verify blocks the close
 - **WHEN** `verify` returns `ok: false` for a Step
 - **THEN** the coordinator marks no checkbox, makes no commit, and enters bounded recovery before any further action on that Step
+
+#### Scenario: Omitted production file is a plan finding
+- **WHEN** `verify` returns `ok: false` only because a reported production file is named by neither `implementation.md` nor `tasks.md`
+- **THEN** the coordinator spends no recovery attempt and follows the plan-amendment branch
 
 ### Requirement: apply-step.js close performs the Step close in one call
 
@@ -75,7 +81,9 @@ The coordinator SHALL invoke `apply-step.js close` only after a passing `verify`
 
 Every mode SHALL validate baseline and guard state and compare the plan with retained coordinator state before marking. Ordinary close SHALL build the visibility report with its pinned status letter, validate the authored message, reject unsafe add-list paths and scope or preservation discrepancies, mark the Step's Automated checkboxes `[x]` in `implementation.md` on disk, then run `git add` for exactly the literal add-list paths that exist in the working tree (a declared removal stages the deletion) and path-limited `git commit --only` with the message. Initial dirty paths and planning inputs SHALL not become Step-owned commit paths. Unrelated staged entries SHALL match their initial state and remain outside the commit.
 
-Ordinary close SHALL return one JSON object carrying `status_letter`, `report_text`, `guard`, `committed`, `sha`, `subject`, `reason`, `marked`, and `error` as applicable, and the coordinator SHALL print `report_text` verbatim. Successful committing close SHALL also return an immutable settled receipt and indicate that the guard window closed. Functional checkboxes SHALL never be marked by `close`, and the tool SHALL never add a path outside the add-list. The marks SHALL be written to disk before the commit.
+A registered plan amendment is the one exception: a `tasks.md`, `interfaces.md`, `proposal.md`, or `design.md` of the active change that the coordinator registered through a plan-checkpoint receipt, or declared at the baseline as a run-start amendment, SHALL be staged and committed with the Step, SHALL appear in the report's `Will be committed` block, and SHALL be excluded from the file comparison, so the add-list stays the worker's reported set.
+
+Ordinary close SHALL return one JSON object carrying `status_letter`, `report_text`, `guard`, `committed`, `sha`, `subject`, `reason`, `marked`, and `error` as applicable, and the coordinator SHALL print `report_text` verbatim. Successful committing close SHALL also return an immutable settled receipt and indicate that the guard window closed. Functional checkboxes SHALL never be marked by `close`, and the tool SHALL never add a path outside the add-list and the registered plan amendments. The marks SHALL be written to disk before the commit.
 
 Dry-run SHALL check retained baseline, guard, and plan state and return the report without marking or committing. Mark-only SHALL additionally check scope, preservation, and generated declarations before marking Automated checkboxes, SHALL run no Git mutation, and SHALL return its settled receipt. Missing, corrupt, or mismatched retained state SHALL block continuation.
 
@@ -102,6 +110,10 @@ Dry-run SHALL check retained baseline, guard, and plan state and return the repo
 #### Scenario: Commit isolation cannot be established
 - **WHEN** ordinary close detects unsafe paths, changed unrelated staging, or a scope discrepancy
 - **THEN** it refuses the commit before marking or staging those paths
+
+#### Scenario: Registered amendment commits with the Step
+- **WHEN** a Step changed `src/extra.js` that its `Files Affected` omitted, the coordinator amended `tasks.md`, and `close` receives the plan-checkpoint receipt that registers it
+- **THEN** the result carries `committed: true` with status letter `OK`, and the commit contains `src/extra.js` and the amended `tasks.md` but not `implementation.md`
 
 ### Requirement: Close call order follows session authorization
 
@@ -155,6 +167,10 @@ The coordinator SHALL locate `apply-step.js` through `sai/policies/tool-resoluti
 
 The check SHALL reject missing recognized Step headings, malformed Step headings, duplicate or invalid Step numbers, missing recognized Automated checklists or STOP & COMMIT markers, incomplete recognized RED/GREEN contracts, unsupported required instruction paths, incomplete command checks, conflicting expectations for the same command, incompatible RED/GREEN checklist commands, terminal full-suite commands in Step checklists, malformed affected-file declarations, and missing or incompatible existing-test carry-through. Semantic coverage SHALL remain explicitly agent-reviewed rather than guaranteed by preflight.
 
+The check SHALL also reject, with file `tasks.md` and a reason starting `Files Affected omits a path the plan names`, every path that `implementation.md` names in a Step's RED or GREEN instructions and that the Step's `**Files Affected**` does not declare. A retired test file SHALL NOT count as a named work path, and a declared generated family SHALL cover its members.
+
+The malformed Step heading check SHALL ignore every line under `## Appendix: Plan vs Final Implementation` up to the next second-level heading. A malformed Step heading anywhere else SHALL still be an error.
+
 #### Scenario: Invalid plan stops before execution
 - **WHEN** the plan has a required instruction that Apply cannot interpret
 - **THEN** preflight returns `ok: false` with a located reason and executes no test or file mutation
@@ -162,6 +178,18 @@ The check SHALL reject missing recognized Step headings, malformed Step headings
 #### Scenario: Existing-test adaptation is absent from RED
 - **WHEN** tasks declare an existing test with a failure mode but its RED update declaration is absent or incompatible
 - **THEN** preflight fails with the Step and tasks location
+
+#### Scenario: Plan names a path the file list omits
+- **WHEN** a Step's GREEN instructions in `implementation.md` name `src/extra.js` and that Step's `**Files Affected**` does not declare it
+- **THEN** preflight returns one error for that Step with file `tasks.md`, a positive line, and a reason naming `src/extra.js`
+
+#### Scenario: Appendix entries from an earlier run
+- **WHEN** `implementation.md` carries `### Step 1 — Extra file` under `## Appendix: Plan vs Final Implementation`
+- **THEN** preflight reports no `unrecognized Step heading` error for that line
+
+#### Scenario: Stray Step heading outside the appendix
+- **WHEN** `implementation.md` carries `### Step 9 — stray` under another second-level section
+- **THEN** preflight reports an `unrecognized Step heading` error
 
 ### Requirement: Immutable execution records retain initial ownership evidence
 
@@ -191,6 +219,8 @@ Close SHALL return immutable settled state after successful committing close or 
 
 Cumulative verification and close SHALL reject plan changes relative to the initial or settled coordinator state before executing commands or marking checkboxes. The coordinator-only checkpoint-plan subcommand SHALL record already-authorized plan bookkeeping; close MAY receive that exact receipt. Missing, corrupt, or mismatched receipts SHALL block continuation.
 
+The same receipt SHALL be the only way an edit of the active change's `tasks.md`, `interfaces.md`, `proposal.md`, or `design.md` becomes acceptable. `checkpoint-plan` SHALL accept the retained `--settled` reference and SHALL return, beside the receipt, a `registers` list naming exactly those artifacts whose content differs from the settled or initial state. `verify` and `close` SHALL accept the receipt as `--plan-checkpoint`. An edit of one of those artifacts that no receipt, settled receipt, or baseline declaration carries SHALL be an error: `verify` SHALL report it under `preservation_errors` and `close` SHALL refuse with `scope-blocked`, including when the Step's own `**Files Affected**` declares the artifact. An amendment committed with a Step SHALL stay accepted for later Steps through the settled receipt.
+
 #### Scenario: Declined Step remains outside the next commit
 - **WHEN** a previously declined Step's owned files remain unchanged and a later Step uses the settled receipt
 - **THEN** those earlier files remain visible but do not become the later Step's execution changes or commit content
@@ -198,6 +228,18 @@ Cumulative verification and close SHALL reject plan changes relative to the init
 #### Scenario: Worker changes the retained plan
 - **WHEN** cumulative verification or close observes an unapproved change to implementation.md
 - **THEN** it stops before command execution or checkbox marking
+
+#### Scenario: Receipt names the artifacts it registers
+- **WHEN** the coordinator edited only `tasks.md` and runs `checkpoint-plan`
+- **THEN** the result carries `registers` equal to the single path of that `tasks.md`
+
+#### Scenario: Unregistered edit of a planning artifact
+- **WHEN** `tasks.md` differs from the retained state and `close` receives no receipt that registers it
+- **THEN** `close` returns `reason: scope-blocked` with an error naming `tasks.md`
+
+#### Scenario: Edit after the receipt
+- **WHEN** `tasks.md` changes again after the receipt was captured and `verify` runs with that receipt
+- **THEN** `verify` returns `ok: false` and lists `tasks.md` under `preservation_errors`
 
 ### Requirement: Generated declarations resolve to bounded exact paths
 
@@ -246,3 +288,15 @@ Every capture SHALL additionally include the exact paths that any Step of the ch
 #### Scenario: Declared ignored path is written but not reported
 - **WHEN** a worker writes a plan-declared ignored file and the report's field 8 omits it
 - **THEN** `verify` returns `ok: false` and lists that file in `unreported`
+
+### Requirement: Baseline declares run-start plan amendments
+
+The baseline subcommand SHALL accept stdin lines of the form `amended: <path>` beside the planning input paths. Each such path SHALL be one of the active change's `tasks.md`, `interfaces.md`, `proposal.md`, or `design.md`; any other path SHALL be rejected as an error with no capture result. A declared path SHALL be recorded as a planning input and as a run-start amendment, and the first Step that closes while the artifact is still uncommitted SHALL commit it.
+
+#### Scenario: Run-start amendment commits with the first closing Step
+- **WHEN** the baseline is captured with `amended: openspec/changes/demo/tasks.md` and Step 1 then closes
+- **THEN** the Step 1 commit contains `openspec/changes/demo/tasks.md`
+
+#### Scenario: Amended line names a non-amendable artifact
+- **WHEN** the baseline stdin carries `amended: openspec/changes/demo/implementation.md`
+- **THEN** the subcommand exits with an error

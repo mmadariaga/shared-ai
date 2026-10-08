@@ -930,3 +930,247 @@ test('explicit coordinator plan checkpoint permits authorized bookkeeping; settl
     assert.match(bad.stderr, /implementation.md changed/);
   } finally { cleanup(parent); }
 });
+
+const GREEN_LINE = '- [ ] Copy and paste code below into `src/feature.js`:';
+const EXTRA_PLAN = PLAN.replace(GREEN_LINE, `${GREEN_LINE}\n- [ ] Copy and paste code below into \`src/extra.js\`:`).replace('- [ ] Output reads sensibly — judge it\n', '');
+
+function planWithExtra(repo, planPath) {
+  fs.writeFileSync(planPath, EXTRA_PLAN);
+  replaceBaseline(repo, 'openspec/changes/demo/implementation.md\n');
+}
+
+function tasksPathOf(repo) {
+  return path.join(repo, 'openspec', 'changes', 'demo', 'tasks.md');
+}
+
+const EXTRA_ADD = `${ADD}src/extra.js\n`;
+const WITH_EXTRA_TASKS = TASKS.replace('A src/feature.js', 'A src/feature.js\nA src/extra.js');
+
+function writeExtra(repo) {
+  writeFeature(repo, { passing: true });
+  fs.appendFileSync(path.join(repo, 'test', 'legacy.test.js'), '// edit\n');
+  fs.writeFileSync(path.join(repo, 'src', 'extra.js'), 'module.exports = 2;\n');
+}
+
+function committedPaths(repo) {
+  return git(['show', '--name-only', '--pretty=format:', 'HEAD'], repo).split('\n').filter(Boolean);
+}
+
+test('preflight reports a path the plan names for a Step that its Files Affected omits', () => {
+  const { parent, repo, planPath } = makeRepo();
+  try {
+    fs.writeFileSync(planPath, EXTRA_PLAN);
+    const bad = tool(['preflight', '--change', 'demo'], repo);
+    const found = bad.payload.errors.filter((e) => e.file === 'tasks.md' && e.step === 1 && e.reason.includes('src/extra.js'));
+    assert.equal(found.length, 1, JSON.stringify(bad.payload.errors));
+    assert.ok(found[0].line > 0);
+    fs.writeFileSync(tasksPathOf(repo), WITH_EXTRA_TASKS);
+    assert.equal(tool(['preflight', '--change', 'demo'], repo).payload.ok, true);
+  } finally { cleanup(parent); }
+});
+
+test('preflight treats a retirement as metadata and a generated family as covering its members', () => {
+  const { parent, repo, planPath } = makeRepo();
+  try {
+    fs.writeFileSync(planPath, EXTRA_PLAN.replace('`src/extra.js`', '`db/mig-a.sql`'));
+    fs.writeFileSync(tasksPathOf(repo), TASKS.replace('A src/feature.js', 'A src/feature.js\nA db/mig-*.sql — generated count=1'));
+    const out = tool(['preflight', '--change', 'demo'], repo);
+    assert.equal(out.payload.ok, true, JSON.stringify(out.payload.errors));
+  } finally { cleanup(parent); }
+});
+
+test('preflight ignores the headings apply writes under its own appendix and still rejects a stray Step heading', () => {
+  const { parent, repo, planPath } = makeRepo();
+  try {
+    const valid = PLAN.replace('- [ ] Output reads sensibly — judge it\n', '');
+    const appendix = '\n## Appendix: Plan vs Final Implementation\n\n### Step 1 — Extra file\n\n**Plan:** a\n**Final:** b\n**Reason:** c\n';
+    fs.writeFileSync(planPath, valid + appendix);
+    assert.equal(tool(['preflight', '--change', 'demo'], repo).payload.ok, true);
+    fs.writeFileSync(planPath, valid.replace('#### Step 2: Next', '### Step 2 — Next') + appendix);
+    assert.ok(tool(['preflight', '--change', 'demo'], repo).payload.errors.some((e) => e.reason === 'unrecognized Step heading'));
+    fs.writeFileSync(planPath, `${valid}\n## Notes\n\n### Step 9 — stray\n`);
+    assert.ok(tool(['preflight', '--change', 'demo'], repo).payload.errors.some((e) => e.reason === 'unrecognized Step heading'));
+  } finally { cleanup(parent); }
+});
+
+test('an extra file refuses close; a registered tasks.md amendment lets the same Step commit with it', () => {
+  const { parent, repo, planPath } = makeRepo();
+  try {
+    planWithExtra(repo, planPath);
+    writeExtra(repo);
+    const refused = tool(['close', '--change', 'demo', '--step', '1'], repo, closeInput(EXTRA_ADD, MSG));
+    assert.equal(refused.payload.reason, 'scope-blocked');
+    assert.equal(refused.payload.status_letter, 'DEVIATION');
+    fs.writeFileSync(tasksPathOf(repo), WITH_EXTRA_TASKS);
+    const unregistered = tool(['close', '--change', 'demo', '--step', '1'], repo, closeInput(EXTRA_ADD, MSG));
+    assert.equal(unregistered.payload.reason, 'scope-blocked');
+    assert.match(unregistered.payload.error, /tasks\.md/);
+    const receipt = tool(['checkpoint-plan', '--change', 'demo'], repo);
+    assert.deepEqual(receipt.payload.registers, ['openspec/changes/demo/tasks.md']);
+    const closed = tool(['close', '--change', 'demo', '--step', '1', '--plan-checkpoint', receipt.payload.plan_checkpoint], repo, closeInput(EXTRA_ADD, MSG));
+    assert.equal(closed.payload.committed, true, JSON.stringify(closed.payload));
+    assert.equal(closed.payload.status_letter, 'OK');
+    assert.match(closed.payload.report_text, /openspec\/changes\/demo\/tasks\.md/);
+    assert.ok(committedPaths(repo).includes('openspec/changes/demo/tasks.md'));
+    assert.ok(committedPaths(repo).includes('src/extra.js'));
+    assert.doesNotMatch(committedPaths(repo).join('\n'), /implementation\.md/);
+    assert.equal(git(['status', '--porcelain', '--', 'openspec/changes/demo/tasks.md'], repo), '');
+  } finally { cleanup(parent); }
+});
+
+test('a registered removal of a declared file that did not change lets the Step commit', () => {
+  const { parent, repo } = makeRepo();
+  try {
+    writeFeature(repo, { passing: true });
+    const add = 'src/feature.js\ntest/feature.test.js\n';
+    const refused = tool(['close', '--change', 'demo', '--step', '1'], repo, closeInput(add, MSG));
+    assert.equal(refused.payload.reason, 'scope-blocked');
+    assert.match(refused.payload.report_text, /Missing: test\/legacy\.test\.js/);
+    fs.writeFileSync(tasksPathOf(repo), TASKS.replace('M test/legacy.test.js\n', ''));
+    const receipt = tool(['checkpoint-plan', '--change', 'demo'], repo);
+    const closed = tool(['close', '--change', 'demo', '--step', '1', '--plan-checkpoint', receipt.payload.plan_checkpoint], repo, closeInput(add, MSG));
+    assert.equal(closed.payload.committed, true, JSON.stringify(closed.payload));
+    assert.deepEqual(committedPaths(repo).sort(), ['openspec/changes/demo/tasks.md', 'src/feature.js', 'test/feature.test.js']);
+  } finally { cleanup(parent); }
+});
+
+test('an omitted production file passes verify once its amendment is registered, and a later edit is an error again', () => {
+  const { parent, repo } = makeRepo();
+  try {
+    writeFeature(repo, { passing: true });
+    const cp = checkpoint(repo, 'green-exception');
+    fs.writeFileSync(path.join(repo, 'src', 'omitted.js'), 'module.exports = 3;\n');
+    const add = 'src/omitted.js\ntest/legacy.test.js\n';
+    fs.appendFileSync(path.join(repo, 'test', 'legacy.test.js'), '// edit\n');
+    const before = tool(['verify', '--change', 'demo', '--step', '1', '--dispatch', 'green-exception', '--checkpoint', cp], repo, add);
+    assert.equal(before.payload.ok, false);
+    assert.deepEqual(before.payload.out_of_allowed, ['src/omitted.js']);
+    fs.writeFileSync(tasksPathOf(repo), TASKS.replace('A src/feature.js', 'A src/feature.js\nA src/omitted.js'));
+    const receipt = tool(['checkpoint-plan', '--change', 'demo'], repo);
+    const args = ['verify', '--change', 'demo', '--step', '1', '--dispatch', 'green-exception', '--checkpoint', cp, '--plan-checkpoint', receipt.payload.plan_checkpoint];
+    const after = tool(args, repo, add);
+    assert.equal(after.payload.ok, true, JSON.stringify(after.payload));
+    assert.deepEqual(after.payload.preservation_errors, []);
+    fs.appendFileSync(tasksPathOf(repo), '\nunregistered\n');
+    const edited = tool(args, repo, add);
+    assert.equal(edited.payload.ok, false);
+    assert.ok(edited.payload.preservation_errors.includes('openspec/changes/demo/tasks.md'));
+    fs.rmSync(cp.slice(0, cp.lastIndexOf('#')), { force: true });
+  } finally { cleanup(parent); }
+});
+
+test('a worker edit of a planning artifact is an error even when the Step declares it, and every artifact is covered', () => {
+  const { parent, repo } = makeRepo();
+  try {
+    const names = ['tasks.md', 'interfaces.md', 'proposal.md', 'design.md'];
+    const dir = path.join(repo, 'openspec', 'changes', 'demo');
+    for (const name of names.slice(1)) fs.writeFileSync(path.join(dir, name), `# ${name}\n`);
+    git(['add', '.'], repo);
+    git(['commit', '-m', 'chore: planning'], repo);
+    replaceBaseline(repo);
+    writeFeature(repo, { passing: true });
+    fs.appendFileSync(path.join(repo, 'test', 'legacy.test.js'), '// edit\n');
+    for (const name of names) fs.appendFileSync(path.join(dir, name), '\nworker\n');
+    const declared = names.map((n) => `openspec/changes/demo/${n}`);
+    const verified = tool(['verify', '--change', 'demo', '--step', '1', '--dispatch', 'green-exception'], repo, `${ADD}${declared.join('\n')}\n`);
+    assert.equal(verified.payload.ok, false);
+    assert.deepEqual([...verified.payload.preservation_errors].sort(), [...declared].sort());
+    const refused = tool(['close', '--change', 'demo', '--step', '1'], repo, closeInput(ADD, MSG));
+    assert.equal(refused.payload.reason, 'scope-blocked');
+    const receipt = tool(['checkpoint-plan', '--change', 'demo'], repo);
+    assert.deepEqual([...receipt.payload.registers].sort(), [...declared].sort());
+  } finally { cleanup(parent); }
+});
+
+test('an amendment committed with a Step stays accepted for later Steps and cannot be edited by their workers', () => {
+  const { parent, repo, planPath } = makeRepo();
+  try {
+    planWithExtra(repo, planPath);
+    writeExtra(repo);
+    fs.writeFileSync(tasksPathOf(repo), WITH_EXTRA_TASKS);
+    const receipt = tool(['checkpoint-plan', '--change', 'demo'], repo);
+    const closed = tool(['close', '--change', 'demo', '--step', '1', '--plan-checkpoint', receipt.payload.plan_checkpoint], repo, closeInput(EXTRA_ADD, MSG));
+    assert.equal(closed.payload.committed, true, JSON.stringify(closed.payload));
+    fs.writeFileSync(path.join(repo, 'src', 'other.js'), 'next\n');
+    const ok = tool(['verify', '--change', 'demo', '--step', '2', '--dispatch', 'green-direct', '--settled', closed.payload.settled], repo, 'src/other.js\n');
+    assert.equal(ok.payload.ok, true, JSON.stringify(ok.payload));
+    fs.appendFileSync(tasksPathOf(repo), '\nlate worker edit\n');
+    const bad = tool(['verify', '--change', 'demo', '--step', '2', '--dispatch', 'green-direct', '--settled', closed.payload.settled], repo, 'src/other.js\n');
+    assert.equal(bad.payload.ok, false);
+    assert.ok(bad.payload.preservation_errors.includes('openspec/changes/demo/tasks.md'));
+  } finally { cleanup(parent); }
+});
+
+const IMPL = 'openspec/changes/demo/implementation.md';
+const TASKS_REL = 'openspec/changes/demo/tasks.md';
+
+// /sai-1-spec and /sai-2-design never commit: the planning artifacts reach apply untracked.
+function untrackedPlanning(repo, planPath) {
+  const dir = path.join(repo, 'openspec', 'changes', 'demo');
+  for (const name of ['interfaces.md', 'proposal.md', 'design.md']) fs.writeFileSync(path.join(dir, name), `# ${name}\n`);
+  git(['rm', '--cached', '-q', TASKS_REL], repo);
+  git(['commit', '-m', 'chore: untrack tasks'], repo);
+  fs.writeFileSync(planPath, EXTRA_PLAN);
+  fs.writeFileSync(path.join(repo, 'notes.txt'), 'unrelated\n');
+}
+
+for (const [label, planning] of [
+  ['not supplied as planning inputs', `${IMPL}\n`],
+  ['supplied as planning inputs', `${IMPL}\n${TASKS_REL}\nopenspec/changes/demo/design.md\n`],
+]) {
+  test(`an amendment of an untracked planning artifact (${label}) commits with the Step; unregistered edits and unrelated work stay protected`, () => {
+    const { parent, repo, planPath } = makeRepo();
+    try {
+      untrackedPlanning(repo, planPath);
+      replaceBaseline(repo, planning);
+      writeExtra(repo);
+      fs.writeFileSync(tasksPathOf(repo), WITH_EXTRA_TASKS);
+      const designPath = path.join(repo, 'openspec', 'changes', 'demo', 'design.md');
+      fs.appendFileSync(designPath, '\nworker edit\n');
+      const bad = tool(['verify', '--change', 'demo', '--step', '1', '--dispatch', 'green-exception'], repo, EXTRA_ADD);
+      assert.equal(bad.payload.ok, false);
+      assert.ok(bad.payload.preservation_errors.includes('openspec/changes/demo/design.md'));
+      fs.writeFileSync(designPath, '# design.md\n');
+      const receipt = tool(['checkpoint-plan', '--change', 'demo'], repo);
+      assert.deepEqual(receipt.payload.registers, [TASKS_REL]);
+      const args = ['--plan-checkpoint', receipt.payload.plan_checkpoint];
+      const verified = tool(['verify', '--change', 'demo', '--step', '1', '--dispatch', 'green-exception', ...args], repo, EXTRA_ADD);
+      assert.equal(verified.payload.ok, true, JSON.stringify(verified.payload));
+      assert.deepEqual(verified.payload.preservation_errors, []);
+      const closed = tool(['close', '--change', 'demo', '--step', '1', ...args], repo, closeInput(EXTRA_ADD, MSG));
+      assert.equal(closed.payload.committed, true, JSON.stringify(closed.payload));
+      assert.ok(committedPaths(repo).includes(TASKS_REL));
+      assert.doesNotMatch(committedPaths(repo).join('\n'), /notes\.txt|design\.md|interfaces\.md|implementation\.md/);
+      assert.equal(fs.readFileSync(path.join(repo, 'notes.txt'), 'utf8'), 'unrelated\n');
+      assert.match(git(['status', '--porcelain'], repo), /notes\.txt/);
+    } finally { cleanup(parent); }
+  });
+}
+
+test('a run-start amendment declared at baseline commits with the first Step that closes', () => {
+  const { parent, repo, planPath } = makeRepo();
+  try {
+    untrackedPlanning(repo, planPath);
+    fs.writeFileSync(tasksPathOf(repo), WITH_EXTRA_TASKS);
+    assert.equal(tool(['baseline', '--change', 'demo'], repo, `${IMPL}\namended: ${IMPL}\n`).status, 2);
+    replaceBaseline(repo, `${IMPL}\namended: ${TASKS_REL}\n`);
+    assert.equal(tool(['preflight', '--change', 'demo'], repo).payload.ok, true);
+    writeExtra(repo);
+    const verified = tool(['verify', '--change', 'demo', '--step', '1', '--dispatch', 'green-exception'], repo, EXTRA_ADD);
+    assert.equal(verified.payload.ok, true, JSON.stringify(verified.payload));
+    const closed = tool(['close', '--change', 'demo', '--step', '1'], repo, closeInput(EXTRA_ADD, MSG));
+    assert.equal(closed.payload.committed, true, JSON.stringify(closed.payload));
+    assert.ok(committedPaths(repo).includes(TASKS_REL));
+    assert.equal(git(['status', '--porcelain', '--', TASKS_REL], repo), '');
+    // A later mid-run amendment of the same artifact is registered and committed with its own Step.
+    fs.writeFileSync(path.join(repo, 'src', 'other.js'), 'next\n');
+    fs.writeFileSync(tasksPathOf(repo), WITH_EXTRA_TASKS + '\n**What Will Be Done**: amended\n');
+    const unregistered = tool(['verify', '--change', 'demo', '--step', '2', '--dispatch', 'green-direct', '--settled', closed.payload.settled], repo, 'src/other.js\n');
+    assert.equal(unregistered.payload.ok, false);
+    const receipt = tool(['checkpoint-plan', '--change', 'demo', '--settled', closed.payload.settled], repo);
+    assert.deepEqual(receipt.payload.registers, [TASKS_REL]);
+    const second = tool(['close', '--change', 'demo', '--step', '2', '--settled', closed.payload.settled, '--plan-checkpoint', receipt.payload.plan_checkpoint], repo, closeInput('src/other.js\n', 'feat: other\n\nBody.\n'));
+    assert.equal(second.payload.committed, true, JSON.stringify(second.payload));
+    assert.ok(committedPaths(repo).includes(TASKS_REL));
+  } finally { cleanup(parent); }
+});

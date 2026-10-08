@@ -303,3 +303,15 @@ With fast_track_active true, sai-3-implement SHALL always escalate defects in sa
 
 - **WHEN** `sai-explore` runs with `--fast-track` and enters `Crystallize` with an open decision
 - **THEN** the notice is shown and every open decision is asked before any block is printed
+
+### Requirement: Apply fast-track amends a defective planning artifact without asking
+
+When the apply fast-track signal is active, including every `/sai-build` run, the coordinator SHALL amend a defective planning artifact on its own through `sai/commands/apply/steps/plan-amendment.md` and SHALL leave the amendment notice. When the signal is inactive, the coordinator SHALL ask the user before amending. This is apply's third fast-track opt-out, beside session commit authorization and the branch auto-stay; safe-operations confirmations and every unnamed gate SHALL remain in force.
+
+#### Scenario: Fast-track run reaches a plan defect
+- **WHEN** the fast-track signal is active and a Step's changed files differ from its `Files Affected` after a passing verify
+- **THEN** the coordinator amends the plan without asking and prints a `> PLAN AMENDED:` line
+
+#### Scenario: Ordinary run reaches a plan defect
+- **WHEN** the fast-track signal is inactive and the same discrepancy occurs
+- **THEN** the coordinator asks `Amend the plan as shown?` before any edit

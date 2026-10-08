@@ -7,7 +7,7 @@ Defines the coordinator's pre-commit file visibility and staging report.
 
 ### Requirement: Staged set equals the previewed add-list
 
-The report's truthfulness depends on the commit staging exactly what the report previewed. The coordinator SHALL therefore stage exactly the add-list shown in the report's `Will be committed` block — the same subagent field-8 set (union of both dispatches for a testable Step) — when it proceeds to commit on `yes` / `Allow on this session`. The previewed set and the staged set SHALL share one definition (the field-8 add-list), so the preview cannot diverge from the resulting commit.
+The report's truthfulness depends on the commit staging exactly what the report previewed. The coordinator SHALL therefore stage exactly the add-list shown in the report's `Will be committed` block — the same subagent field-8 set (union of both dispatches for a testable Step) — when it proceeds to commit on `yes` / `Allow on this session`. The previewed set and the staged set SHALL share one definition (the field-8 add-list), so the preview cannot diverge from the resulting commit. Registered plan amendments SHALL extend both sides equally: the `Will be committed` block SHALL list them and the commit SHALL stage them, while the add-list itself stays the worker's field-8 set.
 
 This pins only the **staged file set**, not staging timing or authorization: staging remains deferred to the commit-time `git add` after the authorization ask (Design B), and commit authorization is unchanged. The coordinator SHALL NOT stage paths outside the previewed add-list at this gate, and SHALL NOT improvise the add set from `git status` or the working tree.
 
@@ -18,6 +18,10 @@ This pins only the **staged file set**, not staging timing or authorization: sta
 #### Scenario: Coordinator does not improvise the add set
 - **WHEN** the previewed add-list is `{src/foo.ts}` but the working tree also contains an unrelated modified file `src/other.ts`
 - **THEN** on authorization the coordinator stages only `src/foo.ts` (the previewed add-list) and leaves `src/other.ts` unstaged, matching the report's `Will NOT be committed` leftovers block
+
+#### Scenario: Registered amendment is previewed and staged
+- **WHEN** the coordinator registered an amendment of the change's `tasks.md` and the Step closes with add-list `{src/foo.ts}`
+- **THEN** the report's `Will be committed` block lists `src/foo.ts` and that `tasks.md`, and the commit contains both
 
 ### Requirement: Mandatory pre-commit file visibility report at every STOP & COMMIT
 
@@ -123,10 +127,14 @@ Preserved unrelated paths, planning leftovers other than the plan itself, and re
 
 ### Requirement: Previewed owned paths define isolated commit content
 
-On authorization, close SHALL stage only the exact previewed owned add-list and commit those paths with path-limited `git commit --only`. Pre-existing unrelated index entries SHALL remain unchanged. An initially dirty path, planning input, unsafe path, changed unrelated staging, unresolved generated declaration, or scope discrepancy SHALL block committing close before marking or staging.
+On authorization, close SHALL stage only the exact previewed owned add-list and commit those paths with path-limited `git commit --only`. Pre-existing unrelated index entries SHALL remain unchanged. An initially dirty path, planning input, unsafe path, changed unrelated staging, unresolved generated declaration, or scope discrepancy SHALL block committing close before marking or staging. A planning artifact registered as a plan amendment SHALL NOT block close: it SHALL be staged and committed with the Step, including when it was untracked or dirty at the baseline, while an unregistered edit of a planning artifact SHALL still block.
 
 The report SHALL remain a forward-looking preview based on the add-list and working-tree content, not a list of everything already staged. Existing unrelated staging SHALL not imply an empty-index assumption or permission to include it.
 
 #### Scenario: Unrelated staging predates Apply
 - **WHEN** the current Step is authorized to commit and unrelated index entries equal their initial state
 - **THEN** the resulting commit contains only previewed owned paths and preserves those unrelated index entries
+
+#### Scenario: Untracked planning artifact is amended
+- **WHEN** the change's `tasks.md` was untracked at the baseline, the coordinator registered its amendment, and an unrelated `notes.txt` is also untracked
+- **THEN** the Step's commit contains `tasks.md` and does not contain `notes.txt` or any other planning artifact

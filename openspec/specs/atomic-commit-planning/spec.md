@@ -5,6 +5,7 @@
 TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
 
 ## Requirements
+
 ### Requirement: Buildable commit boundaries
 
 Every step in `tasks.md` MUST represent a state where the repository compiles, typechecks, and builds successfully. No step SHALL be planned as a commit point if it would leave the repository in a state where a full typecheck or build fails.
@@ -99,3 +100,15 @@ The `compile` / `runtime` distinction declared per step by the `tasks-existing-t
 - **WHEN** a step removes an exported symbol that no production file imports but existing test files do
 - **THEN** those test files are treated as affected files exactly as production callers would be
 - **AND** the step is not a valid commit boundary until they are updated within it
+
+### Requirement: Files Affected lists every file a step changes
+
+In `tasks.md`, a step's `**Files Affected**` SHALL list every file the step creates, modifies, or deletes, tests included: the production and test files its RED and GREEN work will write, the files it retires, and the existing test files that reference a contract the step changes. `/sai-4-apply` compares each step's changed files with this list, and `/sai-3-implement` reports any path its plan names that the list omits.
+
+#### Scenario: Step writes a new test file
+- **WHEN** a step's RED work creates a test file and its GREEN work creates a production file
+- **THEN** both files are listed under that step's `**Files Affected**`
+
+#### Scenario: Step retires a file
+- **WHEN** a step deletes an obsolete test file
+- **THEN** that file is listed under the step's `**Files Affected**`

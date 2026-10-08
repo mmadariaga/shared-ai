@@ -13,9 +13,14 @@
  * emits, the guard remediation, and message authoring.
  *
  * Sub-commands:
- *   preflight Read-only delivery/execution compatibility checks using the same parser.
+ *   preflight Read-only delivery/execution compatibility checks using the same parser,
+ *            including a Step's named paths against its Files Affected.
  *   baseline  Capture immutable initial file/index state outside the repository.
  *   dispatch-check Refuse initially dirty owned paths; capture a dispatch checkpoint.
+ *   checkpoint-plan Coordinator-only receipt for authorized plan bookkeeping and for amendments
+ *            of tasks.md, interfaces.md, proposal.md, design.md; pass it to verify and close
+ *            as --plan-checkpoint. An amendment is accepted only through that receipt; close
+ *            commits it with the Step and keeps it out of the file comparison.
  *   inspect   Read-only preservation and owned-change inventory.
  *   restore-unrelated-index Coordinator-only staging restoration after guard reset.
  *   verify   After every RED/GREEN return. Sweeps `.tmp/<change>/`, runs the
@@ -341,6 +346,19 @@ function resolveGenerated(cwd, files) {
   return { ...files, declared: unique(declared), errors };
 }
 
+const APPENDIX_HEADING = '## Appendix: Plan vs Final Implementation';
+
+/** Paths the plan names in a Step's RED and GREEN instructions; retirements are metadata, not instructions. */
+function namedWorkPaths(info) {
+  const retired = new Set(info.retirements);
+  return unique([...info.redPaths.filter((p) => !retired.has(p)), ...info.instructionPaths]);
+}
+
+function coversGenerated(g, p) {
+  const [prefix, suffix] = g.family.split('*');
+  return path.posix.dirname(p) === g.directory && path.posix.basename(p).startsWith(prefix) && p.endsWith(suffix);
+}
+
 /** Read-only: use exactly the interpretation routines used by verify/close. */
 function preflight(opts) {
   const plan = readIfExists(path.join(changeDir(opts.cwd, opts.change), 'implementation.md'));
@@ -396,6 +414,12 @@ function preflight(opts) {
     }
     const files = parseFilesAffected(tasks, n);
     if (files) for (const e of files.errors) fail(n, e.line, e.reason, 'tasks.md');
+    if (files && files.errors.length === 0) {
+      const at = tasks.split('\n').findIndex((l) => new RegExp(`^## Step ${n}\\b`).test(l));
+      for (const p of namedWorkPaths(info)) {
+        if (!files.declared.includes(p) && !files.generated.some((g) => coversGenerated(g, p))) fail(n, at + 1, `Files Affected omits a path the plan names for this Step: ${p}`, 'tasks.md');
+      }
+    }
     if (tasks) {
       const taskLines = tasks.split('\n');
       const at = taskLines.findIndex((l) => new RegExp(`^## Step ${n}\\b`).test(l));
@@ -417,7 +441,13 @@ function preflight(opts) {
     }
   }
   if (steps.length === 0) fail(null, 1, 'no recognized Step headings');
-  for (let i = 0; i < lines.length; i++) if (/^#{3,5}\s+Step\s/.test(lines[i]) && !/^#### Step \d+(?::| STOP & COMMIT)/.test(lines[i]) && !/^##### Step \d+ Verification Checklist/.test(lines[i])) fail(null, i + 1, 'unrecognized Step heading');
+  let inAppendix = false;
+  for (let i = 0; i < lines.length; i++) {
+    // Apply writes its own `### Step N — …` entries under the appendix; they are not plan headings.
+    if (/^## /.test(lines[i])) inAppendix = lines[i].trim() === APPENDIX_HEADING;
+    if (inAppendix) continue;
+    if (/^#{3,5}\s+Step\s/.test(lines[i]) && !/^#### Step \d+(?::| STOP & COMMIT)/.test(lines[i]) && !/^##### Step \d+ Verification Checklist/.test(lines[i])) fail(null, i + 1, 'unrecognized Step heading');
+  }
   return { ok: errors.length === 0, steps, errors, semantic_coverage: 'agent-reviewed, not guaranteed by preflight' };
 }
 
@@ -518,11 +548,15 @@ function baseline(opts, stdin) {
   try { fs.writeFileSync(claim, 'capture reserved; resume requires original reference', { flag: 'wx', mode: 0o600 }); }
   catch (err) { throw new ToolError(`run identity already captured or unavailable; recapture blocked: ${err.code}`); }
   if (fs.existsSync(path.join(opts.cwd, '.tmp', opts.change))) throw new ToolError('pre-existing Step scratch must be preserved; baseline capture blocked');
-  const planning = parseAddList(stdin);
+  // `amended: <path>` lines declare run-start plan amendments: planning inputs the first closing Step commits.
+  const stdinLines = stdin.split('\n');
+  const amendedAtStart = parseAddList(stdinLines.filter((l) => /^amended:/.test(l)).map((l) => l.replace(/^amended:\s*/, '')).join('\n'));
+  for (const p of amendedAtStart) if (!amendablePaths(opts.change).includes(p)) throw new ToolError(`run-start amendment outside the amendable planning artifacts: ${p}`);
+  const planning = unique([...parseAddList(stdinLines.filter((l) => !/^amended:/.test(l)).join('\n')), ...amendedAtStart]);
   const dir = `openspec/changes/${opts.change}/`;
   const names = ['implementation.md', 'tasks.md', 'interfaces.md', 'proposal.md', 'design.md', 'change-overview.md', '.openspec.yaml'];
   for (const p of planning) if (!safePath(p) || !p.startsWith(dir) || (!names.includes(p.slice(dir.length)) && !/^specs\/[^/]+\/spec\.md$/.test(p.slice(dir.length)))) throw new ToolError(`planning provenance outside authorized planning input scope: ${p}`);
-  const record = { version: 1, kind: 'baseline', run_id: opts.runId, cwd: opts.cwd, change: opts.change, planning, state: captureState(opts.cwd, declaredPaths(opts)) };
+  const record = { version: 1, kind: 'baseline', run_id: opts.runId, cwd: opts.cwd, change: opts.change, planning, amended: amendedAtStart, state: captureState(opts.cwd, declaredPaths(opts)) };
   const reference = saveRecord(record);
   fs.writeFileSync(claim, reference);
   return { baseline: reference, run_id: record.run_id, capture_claim: claim };
@@ -557,7 +591,8 @@ function dispatchCheck(opts) {
 function restoreUnrelatedIndex(opts) {
   const base = loadRecord(opts.baseline, opts, 'baseline');
   const state = captureState(opts.cwd, declaredPaths(opts));
-  const protectedPaths = unique(base.state.entries.flatMap((e) => e.from ? [e.path, e.from] : [e.path])).filter((p) => !base.planning.includes(p));
+  const amendable = amendablePaths(opts.change);
+  const protectedPaths = unique(base.state.entries.flatMap((e) => e.from ? [e.path, e.from] : [e.path])).filter((p) => !base.planning.includes(p) && !(amendable.includes(p) && (state.contents[p] ?? null) !== (base.state.contents[p] ?? null)));
   if (protectedPaths.some((p) => !safePath(p) || (state.contents[p] ?? null) !== (base.state.contents[p] ?? null))) throw new ToolError('unrelated content changed; index restoration blocked, work preserved');
   const entries = [];
   for (const p of protectedPaths) {
@@ -572,6 +607,26 @@ function restoreUnrelatedIndex(opts) {
   return { ok: true, restored: protectedPaths };
 }
 
+const AMENDABLE = ['tasks.md', 'interfaces.md', 'proposal.md', 'design.md'];
+
+/** The planning artifacts only the coordinator may amend, and only through a plan-checkpoint receipt. */
+function amendablePaths(change) {
+  return AMENDABLE.map((name) => `openspec/changes/${change}/${name}`);
+}
+
+function planCheckpointRecord(opts, base) {
+  if (!opts.planCheckpoint) return null;
+  const record = loadRecord(opts.planCheckpoint, opts, 'plan-checkpoint');
+  if (record.baseline !== opts.baseline || record.run_id !== base.run_id) throw new ToolError('coordinator plan checkpoint belongs to another run');
+  return record;
+}
+
+function settledRecord(opts, base) {
+  const settled = opts.settled ? loadRecord(opts.settled, opts, 'settled') : null;
+  if (settled && (settled.baseline !== opts.baseline || settled.run_id !== base.run_id || !Array.isArray(settled.paths))) throw new ToolError('settled record belongs to another run');
+  return settled;
+}
+
 function executionState(opts) {
   const base = loadRecord(opts.baseline, opts, 'baseline');
   const current = captureState(opts.cwd, declaredPaths(opts));
@@ -579,32 +634,40 @@ function executionState(opts) {
   const changedFromBase = delta(base.state, current);
   const unrelated = dirty.filter((p) => !base.planning.includes(p) && !changedFromBase.includes(p));
   const preservedDirty = dirty.filter((p) => !base.planning.includes(p));
-  const preservationErrors = preservedDirty.filter((p) => changedFromBase.includes(p));
+  // Planning artifacts are policed by planningErrors against the receipt that registers them, not as unrelated work.
+  const amendable = amendablePaths(opts.change);
+  const preservationErrors = preservedDirty.filter((p) => changedFromBase.includes(p) && !amendable.includes(p));
   const visible = unique(current.entries.flatMap((e) => e.from ? [e.path, e.from] : [e.path]));
-  const frozenInputs = unique([...base.planning, ...['tasks.md', 'interfaces.md', 'proposal.md', 'design.md'].map((name) => `openspec/changes/${opts.change}/${name}`)]);
-  const planningErrors = frozenInputs.filter((p) => p !== planRelPath(opts.change) && changedFromBase.includes(p));
-  const changed = unique([...visible, ...changedFromBase]).filter((p) => !unrelated.includes(p) && !base.planning.includes(p) && p !== planRelPath(opts.change) && !isScratch(p, opts.change));
+  const settled = settledRecord(opts, base);
+  // A planning input may differ from the run baseline only where the coordinator registered the edit
+  // (the plan-checkpoint receipt) or an earlier Step's settled receipt already carries it.
+  const reference = settled || base;
+  const checkpoint = planCheckpointRecord(opts, base);
+  const registered = checkpoint ? amendable.filter((p) => delta(reference.state, checkpoint.state).includes(p)) : [];
+  const frozenInputs = unique([...base.planning, ...amendable]).filter((p) => p !== planRelPath(opts.change));
+  const planningErrors = frozenInputs.filter((p) => delta((registered.includes(p) ? checkpoint : reference).state, current).includes(p));
+  const changed = unique([...visible, ...changedFromBase]).filter((p) => !unrelated.includes(p) && !base.planning.includes(p) && !amendable.includes(p) && p !== planRelPath(opts.change) && !isScratch(p, opts.change));
   // Earlier authorized commits are clean now and must not become this Step's changes.
   const uncommitted = changed.filter((p) => visible.includes(p));
-  const settled = opts.settled ? loadRecord(opts.settled, opts, 'settled') : null;
-  if (settled && (settled.baseline !== opts.baseline || settled.run_id !== base.run_id || !Array.isArray(settled.paths))) throw new ToolError('settled record belongs to another run');
   const retainedOwned = settled ? settled.paths.filter((p) => !delta(settled.state, current).includes(p)) : [];
-  return { base, current, settled, unrelated, retainedOwned, preservationErrors, planningErrors, changed: uncommitted.filter((p) => !retainedOwned.includes(p)), allChanged: changed };
+  // Run-start amendments and receipt-registered ones ride in the commit of the Step that closes while still uncommitted.
+  const amended = unique([...(base.amended || []), ...registered]).filter((p) => visible.includes(p));
+  return { base, current, settled, unrelated, retainedOwned, preservationErrors, planningErrors, amended, changed: uncommitted.filter((p) => !retainedOwned.includes(p)), allChanged: changed };
 }
 
 function assertPlanUnchanged(opts, state) {
   let expected = state.settled || state.base;
-  if (opts.planCheckpoint) {
-    expected = loadRecord(opts.planCheckpoint, opts, 'plan-checkpoint');
-    if (expected.baseline !== opts.baseline || expected.run_id !== state.base.run_id) throw new ToolError('coordinator plan checkpoint belongs to another run');
-  }
+  const checkpoint = planCheckpointRecord(opts, state.base);
+  if (checkpoint) expected = checkpoint;
   if (delta(expected.state, state.current).includes(planRelPath(opts.change))) throw new ToolError('implementation.md changed outside the retained coordinator state; verification/marking blocked before commands');
 }
 
 function checkpointPlan(opts) {
   const state = executionState(opts);
   const record = { version: 1, kind: 'plan-checkpoint', run_id: state.base.run_id, cwd: opts.cwd, change: opts.change, baseline: opts.baseline, state: state.current };
-  return { plan_checkpoint: saveRecord(record) };
+  // Planning artifacts this receipt will register as amendments, so the coordinator sees exactly what it approves.
+  const registers = amendablePaths(opts.change).filter((p) => delta((state.settled || state.base).state, state.current).includes(p));
+  return { plan_checkpoint: saveRecord(record), registers };
 }
 
 function settleStep(opts, ownedPaths = null) {
@@ -794,7 +857,8 @@ function verify(opts, stdin) {
   const plan = planRelPath(change);
   const state = opts.baseline ? executionState(opts) : null;
   const dispatchDelta = checkpoint ? delta(checkpoint.state, state.current).filter((p) => !isScratch(p, change)) : null;
-  const changed = checkpoint ? dispatchDelta.filter((p) => p !== plan)
+  const amendable = amendablePaths(change);
+  const changed = checkpoint ? dispatchDelta.filter((p) => p !== plan && !amendable.includes(p))
     : state ? state.changed : unique(entries.flatMap((e) => (e.from ? [e.path, e.from] : [e.path]))).filter((p) => p !== plan);
   const allowed = allowedFor(dispatch, info, files);
   const allowedAvailable = allowed.length > 0;
@@ -878,13 +942,16 @@ function buildReport(opts, addList) {
   const renamedFrom = new Map(entries.filter((e) => e.from).map((e) => [e.from, e.path]));
   const state = opts.baseline ? executionState(opts) : null;
   const changed = state ? state.changed : unique(entries.flatMap((e) => (e.from ? [e.path, e.from] : [e.path])));
+  // Registered plan amendments ride in the Step's commit and sit outside the file comparison.
+  const amended = state ? state.amended : [];
+  const commitList = unique([...addList, ...amended]);
 
   // Will be committed
   const willLines = [];
   let totalIns = 0;
   let totalDel = 0;
   const consumedOld = new Set();
-  for (const p of addList) {
+  for (const p of commitList) {
     if (consumedOld.has(p)) continue;
     const entry = byPath.get(p);
     if (entry && entry.from) {
@@ -896,7 +963,7 @@ function buildReport(opts, addList) {
       consumedOld.add(entry.from);
       continue;
     }
-    if (renamedFrom.has(p) && addList.includes(renamedFrom.get(p))) continue;
+    if (renamedFrom.has(p) && commitList.includes(renamedFrom.get(p))) continue;
     const untracked = Boolean(entry && entry.code === '??');
     const n = entry ? numstat(cwd, p, untracked) : { ins: 0, del: 0 };
     willLines.push(`${p}  +${n.ins} -${n.del}`);
@@ -906,7 +973,7 @@ function buildReport(opts, addList) {
   const countedFiles = willLines.length;
 
   // Will NOT be committed
-  const notCommitted = unique([...changed.filter((p) => !addList.includes(p)), ...(state?.unrelated || []), ...(state?.retainedOwned || []).filter((p) => entries.some((e) => e.path === p)), ...(state?.base.planning || []).filter((p) => p !== plan && entries.some((e) => e.path === p))]);
+  const notCommitted = unique([...changed.filter((p) => !commitList.includes(p)), ...(state?.unrelated || []), ...(state?.retainedOwned || []).filter((p) => entries.some((e) => e.path === p)), ...(state?.base.planning || []).filter((p) => p !== plan && !commitList.includes(p) && entries.some((e) => e.path === p))]);
 
   // Plan cross-check
   const files = resolveGenerated(cwd, parseFilesAffected(readIfExists(path.join(changeDir(cwd, change), 'tasks.md')), step));
@@ -975,7 +1042,8 @@ function buildReport(opts, addList) {
   return {
     letter,
     text: out.join('\n'),
-    stageable: addList.filter((p) => changed.includes(p) || renamedFrom.has(p)),
+    stageable: commitList.filter((p) => changed.includes(p) || renamedFrom.has(p) || amended.includes(p)),
+    amended,
     files: countedFiles,
     insertions: totalIns,
     deletions: totalDel,
@@ -1079,7 +1147,7 @@ function close(opts, stdin) {
     }
     const staged = git(['diff', '--cached', '--name-only', '-z'], cwd);
     if (staged.status !== 0) throw new ToolError('cannot inspect staging');
-    const unrelatedStaged = staged.stdout.split('\0').filter(Boolean).filter((p) => !addList.includes(p));
+    const unrelatedStaged = staged.stdout.split('\0').filter(Boolean).filter((p) => !addList.includes(p) && !report.amended.includes(p));
     if (unrelatedStaged.some((p) => (state.current.staged[p] ?? null) !== (state.base.state.staged[p] ?? null))) {
       result.reason = 'scope-blocked'; result.error = 'new unrelated staging'; return result;
     }
@@ -1139,10 +1207,10 @@ function usage() {
   return [
     'Usage:',
     '  node sai/tools/apply-step.js preflight --change <name> [--cwd <dir>] [--json]',
-    '  node sai/tools/apply-step.js baseline --change <name> --run-id <stable-id> [--cwd <dir>] (exact planning input paths on stdin)',
+    '  node sai/tools/apply-step.js baseline --change <name> --run-id <stable-id> [--cwd <dir>] (exact planning input paths on stdin; `amended: <path>` marks a run-start plan amendment)',
     '  node sai/tools/apply-step.js dispatch-check --change <name> --step <N> --dispatch <kind> --baseline <ref>',
     '  node sai/tools/apply-step.js inspect --change <name> --baseline <ref>',
-    '  node sai/tools/apply-step.js checkpoint-plan --change <name> --baseline <ref> (coordinator only, after authorized plan bookkeeping)',
+    '  node sai/tools/apply-step.js checkpoint-plan --change <name> --baseline <ref> [--settled <ref>] (coordinator only, after authorized plan bookkeeping or plan amendment; returns plan_checkpoint and the registers list)',
     '  node sai/tools/apply-step.js restore-unrelated-index --change <name> --baseline <ref> (coordinator only, after guard remediation)',
     '  node sai/tools/apply-step.js verify --change <name> --step <N> --dispatch red|green|green-direct|green-exception',
     '       --baseline <ref> --checkpoint <ref> [--parent-was-absent] [--json] [--cwd <dir>]   (add-list on stdin; explicit --baseline-only replaces checkpoint for cumulative compatibility)',

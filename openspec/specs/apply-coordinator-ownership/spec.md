@@ -112,11 +112,11 @@ After the prescribed mixed-reset remediation, Apply's coordinator SHALL restore 
 
 ### Requirement: Coordinator owns execution preflight and immutable run provenance
 
-After planning modifications and branch selection settle and before the first worker, the coordinator SHALL require Apply preflight to exit zero with `ok: true`. Failure or incomplete checking SHALL stop before RED with located reasons.
+After planning modifications and branch selection settle and before the first worker, the coordinator SHALL require Apply preflight to exit zero with `ok: true`. Failure or incomplete checking SHALL stop before RED with located reasons. The one exception is a `Files Affected omits a path the plan names` error in `tasks.md`: the coordinator SHALL follow `sai/commands/apply/steps/plan-amendment.md`, amend before the baseline capture, and run preflight again.
 
-The coordinator SHALL derive one stable invocation-scoped run identity and capture one immutable baseline. Planning-input provenance SHALL come from the planning phase's changed-files union or explicit current-invocation evidence and SHALL be intersected with exact authorized active-change artifact paths. Presence under openspec/changes SHALL not establish ownership.
+The coordinator SHALL derive one stable invocation-scoped run identity and capture one immutable baseline. Planning-input provenance SHALL come from the planning phase's changed-files union or explicit current-invocation evidence, plus one `amended: <path>` line for each artifact a run-start plan amendment changed, and SHALL be intersected with exact authorized active-change artifact paths. Presence under openspec/changes SHALL not establish ownership.
 
-The coordinator SHALL retain the same baseline and run identity across Steps, retries, replacements, and authorized fresh attempts. Lost or corrupt state SHALL block continuation. It SHALL not move, stash, discard, reset, or restage unrelated work merely to pass scope checks.
+The coordinator SHALL retain the same baseline and run identity across Steps, retries, replacements, and authorized fresh attempts. Lost or corrupt state SHALL block continuation. It SHALL not move, stash, discard, reset, or restage unrelated work merely to pass scope checks. A plan amendment SHALL never recapture the baseline.
 
 #### Scenario: Planning input exists before execution
 - **WHEN** a planning phase supplied an authorized active-change artifact as a changed path
@@ -125,6 +125,10 @@ The coordinator SHALL retain the same baseline and run identity across Steps, re
 #### Scenario: Retry loses its initial record
 - **WHEN** the original baseline cannot be recovered reliably
 - **THEN** the coordinator stops with work preserved rather than capturing a new baseline
+
+#### Scenario: Omitted path reported at run start
+- **WHEN** the run-start preflight fails with a `Files Affected omits a path the plan names` error in `tasks.md`
+- **THEN** the coordinator amends the plan before the baseline capture and runs preflight again instead of stopping
 
 ### Requirement: Coordinator retains dispatch and close receipts
 

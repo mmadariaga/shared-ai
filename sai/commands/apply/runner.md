@@ -69,7 +69,7 @@ Written in step 4 of the Step loop, only after the coordinator's verification pa
 
 ### Plan vs Final Implementation
 
-One block per field-5 deviation; a Step with none adds nothing:
+One block per field-5 deviation and one per plan amendment (`steps/plan-amendment.md`, which titles its blocks `### Step N — Plan amended: <path>`); a Step with neither adds nothing:
 
 ```markdown
 ### Step N — <Short title of the deviation>
@@ -90,7 +90,7 @@ Every Step's `STOP & COMMIT` marker runs this gate through `apply-step.js close`
 Call order. Under `session_commit_authorized` (including `/sai-build`): one `close` call, the report printing before the commit. Without it: `close --dry-run` (guard and report only: no marking, no commit), print `report_text`, then step 3's question, then `close`. Each call takes `--change {change-name} --step N --guard-base <guard_base>` and the add-list, a `---` line, then the message on stdin through a quoted heredoc. `close` is invoked only after a passing verify (coordinator § Post-dispatch sequence); the tool keeps no such state.
 
 1. **Visibility report.** Printed before proposing a message; never skipped. It previews the commit: built from `git status` (tracked, untracked, deleted) and the add-list, never reading or changing the index. In order:
-   1. Header: change name, `Step N`, and one status letter: `OK`, `WARN`, `MISMATCH`, or `DEVIATION`. The letter has a pinned precedence: `MISMATCH` (block 7 is not in sync) over `DEVIATION` (block 6 lists `Missing` or `Extra`) over `WARN` (block 5 is non-empty) over `OK`. A cross-check that is `not available` never raises the letter. The coordinator reasons only on a non-`OK` letter or a failed verify.
+   1. Header: change name, `Step N`, and one status letter: `OK`, `WARN`, `MISMATCH`, or `DEVIATION`. The letter has a pinned precedence: `MISMATCH` (block 7 is not in sync) over `DEVIATION` (block 6 lists `Missing` or `Extra`) over `WARN` (block 5 is non-empty) over `OK`. A cross-check that is `not available` never raises the letter. The coordinator reasons only on a non-`OK` letter or a failed verify. A `DEVIATION` after a passing verify is a plan finding: fetch @sai/commands/apply/steps/plan-amendment.md before step 2.
    2. One status line explaining the letter.
    3. `Will be committed`: each add-list path with `+N -M` against `HEAD`; an untracked path counts all its lines as insertions; a claimed path with no change shows `+0 -0`. A rename is one line: `R  <new-path>  (renamed from <old-path>, +N -M)`.
    4. `Totals: <N> files, +<ins> -<del>` over the add-list.
@@ -103,5 +103,10 @@ Call order. Under `session_commit_authorized` (including `/sai-build`): one `clo
 3. **Authorization.** Ask `Ready to commit Step N. May I create commit with message: '<subject>'?` through commit-rules § Authorization gate. When `session_commit_authorized` is active, skip only this ask.
 4. **Commit.** On authorization, `close` verifies the guard, marks the Step's Automated checkboxes on disk, then runs `git add -- <add-list>` exactly (a declared removal stages the deletion) and explicit `git commit --only -- <add-list>` with the authored message, never adding a path from `git status` that is not in the add-list, and returns `committed`, `sha`, and `subject`. Report the SHA and subject. On `no`, run `close --mark-only` (`--change {change-name} --step N --baseline <baseline> --guard-base <guard_base>`, retained `--settled` when present, nothing on stdin), which verifies the guard before marking the Step's Automated checkboxes and touches no git state, then print "Commit not authorized. The changes are: <summary>. Run `git commit` yourself when ready."
    Every call receives the coordinator's immutable `--baseline` reference. Unchanged unrelated work is displayed under `Will NOT be committed` but excluded from scope discrepancies and worker-report comparison. Planning inputs require established provenance and exact authorized paths; there is no blanket change-directory exemption. Generated families must resolve to their declared count of exact, non-overlapping paths before close. A mismatch, undeclared change, changed unrelated content/staging, or unresolved generated declaration blocks close before marking or staging. The commit uses explicit literal owned paths only, with a path-limited commit that preserves pre-existing unrelated staging. If this isolation cannot be established, stop before committing; never clear the index or include unrelated paths to make it pass.
-5. **Failures.** `reason: guard-violation` (the tool only reports it): run the guard policy's remediation (reset to `guard_base`, the pinned incident line), then call `close` again. `empty-add-list` or `nothing-to-stage`: no commit; the result says so, and the Step continues. `commit-failed` or `git-add-failed`: the tool made no retry and never used `--no-verify`, and it reverted its checkbox marks; report the `error` tail and decide per recovery. `invalid-message`: fix the message and call `close` again.
+5. **Failures.** When `close` returns `committed: false`, the default for every `reason` is to report the `reason` and `error` and stop with the stop report: the tool made no retry, never used `--no-verify`, and left no Automated checkbox marked. The reasons below differ:
+   - `guard-violation`: run the guard policy's remediation (reset to `guard_base`, the pinned incident line), then call `close` again.
+   - `empty-add-list` or `nothing-to-stage`: no commit; the Step continues.
+   - `commit-failed` or `git-add-failed`: report the `error` tail and decide per recovery.
+   - `invalid-message`: fix the message and call `close` again.
+   - A file discrepancy (`DEVIATION` with `Extra` or `Missing`, including its `scope-blocked` refusal): `steps/plan-amendment.md`.
 6. **Continue.** Either way, go to step 6 of the Step loop.
