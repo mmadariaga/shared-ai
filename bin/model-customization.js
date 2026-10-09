@@ -706,6 +706,7 @@ function enumerateCommands(packageRoot, loadManifest, harness) {
     for (const entry of fs.readdirSync(sourceDir, { withFileTypes: true })) {
       if (!entry.isFile() || !matchesIncludePattern(entry.name, include)) continue;
       const name = path.basename(entry.name, '.md');
+      if (!name.startsWith('sai-')) continue;
       if (!seen.has(name)) {
         seen.add(name);
         names.push(name);

@@ -86,17 +86,45 @@ OpenCode and Claude Code MUST be represented by independent adapters. Each adapt
 - **THEN** the flow MUST call the Claude Code adapter's operations and MUST NOT call OpenCode adapter operations
 
 ### Requirement: Derived target families
+
 The model-customization menu SHALL derive target families from the canonical worker matrix and current wrapper inventory. The command family MUST include the active `sai-*` wrappers only and MUST exclude `budget` after the standalone wrapper is removed. Worker and agent families remain independently derived, so an available `budget` agent remains an agent target. `sai-merge-worker` SHALL remain a routed worker and `sai-merge` SHALL remain a command on both adapters. `sai-commit-worker` SHALL remain a routed worker and `sai-commit` SHALL remain a command on both adapters, with `utility:sai-commit` absent. An existing project-local override for sai-commit SHALL keep resolving without migration because both families resolve to the same commands directory.
+
+Both Claude Code and opencode adapters SHALL restrict their shared command enumeration to manifest-projected Markdown wrappers whose names begin with `sai-`, before command-versus-utility classification. Non-SAI wrappers, including `from-backlog`, `from-next-backlog-item`, `to-backlog`, and `to-pr`, MUST NOT become customization command targets in Orchestrators or All scopes. Enumeration SHALL leave wrapper contents unchanged. Supported SAI command targets, independently derived worker and agent targets, and separate utility classification SHALL remain available. A missing target profile or unavailable effective setting MUST NOT exclude an otherwise eligible SAI target.
+
 #### Scenario: Merge targets appear in the menu
 
 - **WHEN** the customization menu enumerates configurable targets on either adapter
 - **THEN** the merge worker and command are present in their routed/command families with the updated counts asserted by the suite
+
 #### Scenario: Budget remains an agent but not a command
+
 - **WHEN** the All scope enumerates targets for a harness with a budget agent
-- **THEN** it includes `agent:budget` and excludes `command:budget`.
+- **THEN** it includes `agent:budget` and excludes `command:budget`
+
 #### Scenario: Commit appears as an orchestrator with its worker
+
 - **WHEN** the menu enumerates targets for either harness
 - **THEN** sai-commit SHALL appear as command:sai-commit in the command family and sai-commit-worker SHALL remain a routed worker, with utility:sai-commit absent
+
+#### Scenario: Shared enumeration excludes every non-SAI wrapper
+
+- **WHEN** either harness adapter enumerates manifest-projected command wrappers containing supported `sai-*` names, the four reported non-SAI wrappers, and another wrapper without the `sai-` prefix
+- **THEN** enumeration SHALL return only supported `sai-*` wrapper names and SHALL leave every wrapper's contents unchanged
+
+#### Scenario: Orchestrators excludes non-SAI commands in both harnesses
+
+- **WHEN** a user opens the Orchestrators customization scope in Claude Code or opencode
+- **THEN** the checklist and its default selection SHALL exclude non-SAI command wrappers while retaining supported SAI command targets
+
+#### Scenario: All retains independent families and utilities
+
+- **WHEN** a user opens the All customization scope in Claude Code or opencode
+- **THEN** the checklist and its default selection SHALL exclude non-SAI command wrappers while retaining supported SAI commands, independently derived workers and agents, and separately classified utilities
+
+#### Scenario: Unknown or unavailable does not determine eligibility
+
+- **WHEN** an eligible `sai-*` command has no mapped target profile and its effective setting is unavailable on either harness
+- **THEN** it SHALL remain in the Orchestrators and All checklists with Unknown profile columns and an unavailable setting
 
 ### Requirement: Checklist rows expose context and difficulty
 The model-customization checklist and the reset and save/load preset previews SHALL render columns in the order `TYPE`, `TARGET`, `CONTEXT`, `DIFFICULTY`, and `SETTING` for every target in both OpenCode and Claude Code flows, with headers, separators, and rows aligned and setting text preserved.
