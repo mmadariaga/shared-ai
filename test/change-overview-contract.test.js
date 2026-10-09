@@ -1447,6 +1447,8 @@ test('RED skeleton oracle pins the single-source design artifact contracts', () 
     'documentation-review.md must mention the — separator and path/URL extraction');
   assert.doesNotMatch(docReviewFile, /line ranges/,
     'documentation-review.md must not read line ranges: Required Documentation lists whole files');
+  assert.match(docReviewFile, /Planning Evidence rule in `steps\/common\.md`/,
+    'documentation-review.md must defer to the Planning Evidence rule in steps/common.md');
 
   assert.match(interfaces, /^\*\*Interfaces\*\*/m,
     'interfaces.md must contain the **Interfaces** marker');

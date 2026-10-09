@@ -11,56 +11,15 @@ Active step: plan-generation. Generate the full `implementation.md` plan, then r
 
 <research_task>
 
-Run this research before generating. Confirm conventions WITHOUT fresh codebase exploration. `tasks.md`'s `## Required Documentation`
+Run this research before generating. Confirm conventions from the supplied material and gap-driven research per the Planning Evidence rule in `steps/common.md`; `tasks.md`'s `## Required Documentation`
 and `## Implementation Context` are the primary source of truth.
 
-1. Codebase Verification (bounded)
-   - Use ONLY the file paths listed in `tasks.md` `## Required Documentation` to confirm
-      existing conventions (layout, naming, error handling, logging, testing patterns,
-      permission boundaries).
-   - If a convention is needed for code generation but is not nailed down by `tasks.md`
-      (Expertise Profile silent AND no neighbour file in Required Documentation
-      demonstrates it), apply the §2 bounded batch permission first; a gap
-      denied under §2 becomes a `needs_input` question about that convention. Do NOT run repo-wide
-      Grep/Glob yourself to guess the convention — that is `tasks.md`'s job, and
-      path discovery belongs to `budget-explorer` under §2.
+1. Codebase Verification
+   - Use the files from `## Required Documentation` that your Steps need, and the files `tasks.md` or `interfaces.md` name as affected, to confirm existing conventions (layout, naming, error handling, logging, testing patterns, permission boundaries).
+   - If a convention needed for code generation is not nailed down by the supplied material, it is a gap: resolve it as `steps/common.md` Planning Evidence prescribes.
    - Build/test/run commands come from the Expertise Profile or AGENTS.md if listed.
 
-2. Bounded batch permission (sole exception to the closed allowlist)
-    - When one or more gaps from §1 exist, request scoped project lookups in ONE
-       batch permission before stopping, returned as one `needs_input` with a
-       `lookup_request` object of type `bounded-project-lookup` and an ordered
-       `items` array (`id: lookup-1` through `lookup-5`, `area`, `reason`, positive
-       `step` number). Include matching ordered `questions` with the same ids,
-       each offering `yes` and `no` values in that order. One question per gap
-       in the fixed canonical form
-      `Request lookup of <area> in the project for <reason> (Step N)`, localized
-      to the user's input language when presented, where `<area>` is always a
-      functional area or concept (never an exact path — if the exact path were
-      known it would already be in Required Documentation) and `<reason>` is the
-       Step-linked reason. Cap the batch at ≤5 areas. Areas and reasons are
-       single-line concepts, not paths, glob patterns, or repo-wide requests.
-       Do not label an unrelated question as a lookup request.
-   - On approval, delegate area-to-file resolution to `budget-explorer` ONLY —
-      the worker never broadens scope itself and never runs Grep/Glob itself.
-      `budget-explorer` returns ONLY bounded verbatim `path:start-end` citations
-      (the `path:startLine-endLine` citation form of
-      `sai/policies/ready-to-propose-format.md`; path literals stay English) with no summary:
-      ≤3 citations per area, ≤20 lines per citation, project-root confined,
-      read-only.
-   - Later full reads stay limited to the approved returned files; never open a
-      new file outside that approval. A denied item becomes a `needs_input`
-      question about that convention (no guessing, no broad search); approved
-      items proceed on their citations.
-    - The worker never auto-approves this permission, even under fast-track.
-       Await the coordinator's ordered explicit `lookup_decisions` for every
-       item before any lookup. Accept only decisions matching the request ids
-       with `answer_value: yes|no`; a missing or mismatched decision stops
-       safely. On replacement reconstruct the pending request and decisions
-       from the coordinator's typed lookup history without requesting approval
-       a second time. The same area, evidence, and cap bounds always apply.
-
-3. Domain Language
+2. Domain Language
    - Read the project-root `GLOSSARY.md` (`./GLOSSARY.md`) if it exists — this is its single canonical location; do not fall back to `openspec/changes/{name}/`. Interpret its structure (Language, Relationships, Example dialogue, Flagged ambiguities) per `@sai/policies/glossary-format.md`, fetched by `steps/common.md`.
    - Use its canonical terms for all new identifiers (classes, functions, files, variables) in the generated plan.
    - If the spec introduces a term not in `GLOSSARY.md`, use the exact term from the spec and do not invent synonyms.

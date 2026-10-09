@@ -23,7 +23,14 @@ Convert the OpenSpec change artifacts into `openspec/changes/{change-name}/imple
 
 `## Implementation Context` in `tasks.md` (**Stack**, **Conventions**, **Avoid**, **Test Command**) is the complete Expertise Profile and a non-negotiable contract; a missing optional subsection is acceptable. If the section is absent, return `failed` with the summary: "Implementation Context missing from tasks.md for '{change-name}'. Re-run /sai-2-design or add the section manually before /sai-3-implement."
 
-Take stack and convention facts only from the profile and from the documents in `tasks.md`'s `## Required Documentation`. The sole scoped-lookup path beyond them is the bounded batch permission in `sai/commands/implement/steps/plan-generation.md` research_task §2 (`budget-explorer` only, per-item approval).
+## Planning Evidence
+
+`/sai-2-design` already researched the project, and repeating that research costs tokens, so start from the **supplied material**: the change artifacts (`proposal.md`, `specs/**`, `design.md`, `tasks.md`, `interfaces.md`) plus what `tasks.md` lists under `## Required Documentation` and `## Implementation Context`. The Required Documentation list says where to look first, not where looking must stop. Read from it only what your Steps need: skip an entry marked context-only or irrelevant to every Step, and read a listed URL directly when it is relevant. A file that `tasks.md` or `interfaces.md` names as affected by a Step is supplied material too, so read it directly.
+
+A **gap** is evidence indispensable to plan one specific Step that is missing from the supplied material or contradictory within it; a listed entry that no longer exists on disk is a gap only when a Step needs it. Close a gap with a `budget-explorer` dispatch (the `budget-explorer` agent on Claude Code, the `explore` keyword on opencode) whose goal names the Step and the gap, and end the research as soon as that gap is resolved. Looking for web documentation that is not listed is gap research too.
+When the explorer reaches its ceiling or does not find the evidence, neither substitute your own repository reading nor invent the evidence: return `needs_input` with a question that names the Step and the gap. When the explorer shows that `design.md`, `tasks.md`, or `interfaces.md` contradict the real code, follow the defective-`sai-2` route in the plan-generation step; research never authorizes departing from specs or interfaces.
+
+Name every researched gap in the terminal `summary`, one line per gap in the form `Researched gap: Step N — <gap>`. When the supplied material was enough, dispatch no explorer and add no such line.
 
 ## Hard Rules
 
