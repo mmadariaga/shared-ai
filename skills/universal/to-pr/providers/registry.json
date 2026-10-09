@@ -1,6 +1,7 @@
 {
   "providers": [
     { "id": "github", "hosts": ["github.com"], "capabilities": ["publish"], "instructions": "providers/github.md", "adapter": "to-pr-github.js" },
-    { "id": "gitlab", "hosts": ["gitlab.com"], "resolution": "provider", "capabilities": ["publish"], "instructions": "providers/gitlab.md", "adapter": "to-pr-gitlab.js" }
+    { "id": "gitlab", "hosts": ["gitlab.com"], "resolution": "provider", "capabilities": ["publish"], "instructions": "providers/gitlab.md", "adapter": "to-pr-gitlab.js" },
+    { "id": "azuredevops", "hosts": ["dev.azure.com", "ssh.dev.azure.com"], "classification": "provider", "resolution": "provider", "capabilities": ["publish"], "instructions": "providers/azuredevops.md", "adapter": "to-pr-azuredevops.js" }
   ]
 }

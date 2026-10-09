@@ -7,7 +7,7 @@ Resolve the hosting platform, repository, remote, and branch destination for pro
 
 ### Requirement: Ordered provider and repository resolution
 
-The to-pr system SHALL resolve provider and repository using explicit input, optional `.to-pr.json` configuration, and Git remotes in that precedence order, following the shared backlog resolution patterns. The initial unknown-host check SHALL derive recognized hosts from the supplied provider registry rather than a separate fixed host list. Unknown hosts without explicit provider selection SHALL require clarification rather than being assumed to be GitLab. Self-hosted GitLab SHALL support explicit provider selection and complete repository URLs. Unsupported providers SHALL fail without publication.
+The to-pr system SHALL resolve provider and repository using explicit input, optional `.to-pr.json` configuration, and Git remotes in that precedence order, following the shared backlog resolution patterns. Organization and project fields SHALL be passed to providers that require them. The initial unknown-host check SHALL derive recognized hosts and positive pure provider classification from the supplied provider registry rather than a separate fixed host list. Unknown addresses without positive classification or explicit or configured provider selection SHALL require clarification rather than being assumed to be GitLab. Self-hosted GitLab SHALL support explicit provider selection and complete repository URLs. Unsupported providers SHALL fail without publication.
 
 #### Scenario: Destination is ambiguous
 - **WHEN** provider or repository cannot be determined unambiguously
@@ -22,8 +22,12 @@ The to-pr system SHALL resolve provider and repository using explicit input, opt
 - **THEN** resolution uses that entry and returns its provider identifier, adapter reference, and instruction reference without requiring a separate provider enumeration.
 
 #### Scenario: Unknown host requires clarification
-- **WHEN** an address has a host absent from the supplied registry and neither explicit input nor configuration selects a provider
+- **WHEN** an address has a host absent from the supplied registry, no provider classifier positively identifies it, and neither explicit input nor configuration selects a provider
 - **THEN** resolution returns provider-ambiguous input with the unknown host before provider or publication operations.
+
+#### Scenario: Azure legacy address is positively classified
+- **WHEN** the supplied registry's Azure classifier identifies a supported legacy cloud repository address
+- **THEN** resolution recognizes that provider without an unknown-host question or a separate fixed hostname list.
 
 ### Requirement: Provider-specific adapters and conditional instructions
 
@@ -55,7 +59,7 @@ The universal skill SHALL load only the selected provider's returned instruction
 
 ### Requirement: Unambiguous branch and remote destination
 
-Destination selection SHALL establish one platform, repository, matching fetch/push remote, source branch, and target branch. Source and target branches SHALL differ. Ambiguous remotes, cross-repository branches, and uncertain target intent SHALL require clarification. A provider default branch SHALL be treated as a suggestion rather than proof of a stacked branch's intended target.
+Destination selection SHALL establish one platform, repository, matching fetch/push remote, source branch, and target branch. A selected adapter's repository-equivalence operation SHALL be used when supplied; Azure equivalence SHALL compare normalized organization, project, and repository across supported HTTPS and SSH forms. Source and target branches SHALL differ. Ambiguous remotes, cross-repository branches, and uncertain target intent SHALL require clarification. A provider default branch SHALL be treated as a suggestion rather than proof of a stacked branch's intended target.
 
 #### Scenario: Fetch and push destinations do not match
 - **WHEN** no unambiguous remote has fetch and push URLs matching the selected repository
@@ -64,6 +68,10 @@ Destination selection SHALL establish one platform, repository, matching fetch/p
 #### Scenario: Intended target is uncertain
 - **WHEN** available evidence cannot safely determine the intended target branch
 - **THEN** the skill asks for target confirmation before publishing.
+
+#### Scenario: Equivalent Azure fetch and push forms
+- **WHEN** supported HTTPS and SSH URLs identify the same Azure organization, project, and repository
+- **THEN** destination validation treats them as the same repository rather than comparing their raw URL strings.
 
 ### Requirement: Bounded registry adapter and instruction references
 

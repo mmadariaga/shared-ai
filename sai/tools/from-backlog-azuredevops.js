@@ -122,4 +122,4 @@ function read(reference, io) {
   }
 }
 
-module.exports = { classify, resolve, read };
+module.exports = { classify, resolve, read, address, segment };

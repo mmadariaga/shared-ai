@@ -2,8 +2,10 @@
 
 ## Origin reading — before extraction
 
-Select the registry provider whose hosts match the originating issue reference;
-otherwise use its sole provider-owned resolver for a complete URL.
+Run the common helper's `resolve-origin` with `{reference,provider?}`; omit
+provider unless supplied. It selects from the same registry using hosts and
+pure provider classification. On `needs_input` ask which registered provider
+owns the origin; do not guess among provider-owned resolvers.
 A partial URL such as `/owner/repo/issues/123` uses the currently supported
 GitHub provider. Read that entry's `updateInstructions` relative to this skill's
 directory. If provider or reference components are missing, ask for them without

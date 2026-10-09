@@ -43,7 +43,7 @@ The system SHALL query open requests for the selected source repository, source 
 
 ### Requirement: Complete presentation and exact publication approval
 
-The skill SHALL show the operation, platform, repository, visibility, source branch, target branch, existing request URL when updating, and complete proposed title and description before asking for publication approval. Updates SHALL also show their baseline and changes, preserving unrelated description content unless replacement is explicitly approved. Public destinations SHALL receive an explicit warning. Invocation, unattended mode, and general prior grants SHALL NOT authorize publication. Changed content, destination, baseline, or HEAD SHALL require renewed review and approval.
+The skill SHALL show the operation, platform, repository, visibility, source branch, target branch, existing request URL when updating, and complete proposed title and description before asking for publication approval. Updates SHALL also show their baseline and changes, preserving unrelated description content unless replacement is explicitly approved. Any proposal concurrency warning SHALL be shown verbatim before approval. For Azure updates, the warning SHALL disclose that the interval between reread and PATCH is not protected against concurrent edits; rereading SHALL NOT be described as atomic protection. Public destinations SHALL receive an explicit warning. Invocation, unattended mode, and general prior grants SHALL NOT authorize publication. Changed content, destination, baseline, or HEAD SHALL require renewed review and approval.
 
 #### Scenario: Approve publication
 - **WHEN** the complete proposal has been presented
@@ -56,6 +56,10 @@ The skill SHALL show the operation, platform, repository, visibility, source bra
 #### Scenario: Cancel publication
 - **WHEN** the user cancels at the publication approval question
 - **THEN** the skill ends without publication.
+
+#### Scenario: Azure update concurrency limitation
+- **WHEN** an Azure update proposal is presented for approval
+- **THEN** the skill shows its exact concurrency warning before the question and the approval token binds that proposal and baseline.
 
 ### Requirement: Independent non-force push authorization
 
@@ -91,7 +95,7 @@ Publication SHALL record its proposal in a new receipt outside the repository be
 
 ### Requirement: Verified publication and read-only uncertain-outcome recovery
 
-The system SHALL verify published content by reading the selected destination after mutation. An uncertain response SHALL NOT authorize repeated creation. Recovery SHALL perform reads only, verify repository identity, and check requests for the selected source and target and the exact approved content. An unverifiable result SHALL report uncertainty and the receipt location. An unapplied update SHALL require reconciliation and fresh approval before retrying.
+The system SHALL verify published content by reading the selected destination after mutation. An uncertain response SHALL NOT authorize repeated creation. Recovery SHALL perform reads only, verify repository identity, and check requests for the selected source and target and the exact approved content. An unverifiable result SHALL report uncertainty and the receipt location. An unapplied update SHALL require reconciliation and fresh approval before retrying. Azure publication SHALL save private destination, approved content, branches, commit, and pre-publication request IDs before mutation and retain a verified write-response identity when available. Azure recovery SHALL verify project, repository, authenticated identity, visibility, branches, commit, and full content. Without a write-response identity, a creation candidate SHALL also match the author, be absent from saved IDs, and have its actual URL confirmed by the user. A coincident title SHALL NOT establish publication evidence. Zero or ambiguous eligible candidates SHALL require clarification, not repeated creation. Confirmed write rejection SHALL remain distinct from uncertainty; failed readback after a write SHALL remain uncertain even when the read itself is rejected.
 
 #### Scenario: Creation response is lost
 - **WHEN** creation may have succeeded but its response is uncertain
@@ -104,3 +108,39 @@ The system SHALL verify published content by reading the selected destination af
 #### Scenario: Recovery cannot verify the outcome
 - **WHEN** the request content or destination identity cannot be verified
 - **THEN** the system reports a concrete blocker or uncertainty instead of claiming success or repeating creation.
+
+#### Scenario: Azure creation identity needs confirmation
+- **WHEN** the Azure creation response is lost and compatible candidates are found through queries
+- **THEN** recovery remains uncertain until the actual created URL identifies one eligible candidate and never creates another request.
+
+#### Scenario: Azure candidate commit differs
+- **WHEN** an Azure recovery candidate has the approved title and description but a different source commit
+- **THEN** recovery does not claim completion.
+
+#### Scenario: Azure write readback is rejected
+- **WHEN** an Azure write returned successfully but its verification read is forbidden or fails
+- **THEN** the outcome remains uncertain with the saved receipt rather than being reported as a confirmed write rejection.
+
+### Requirement: Azure Repos Services publication adapter
+
+The shipped provider registry SHALL include an Azure DevOps Services adapter and conditional provider reference for to-pr. It SHALL verify organization, project, repository, authenticated identity, and source and target branches before publication, and reject Server or incompatible destinations. Queries SHALL identify active requests by repository and both branches, block multiple matches, and retain Markdown descriptions. Creation SHALL supply the exact source and target refs; updates SHALL change only title and description. Existing complete publication approval and independent non-force branch-push approval SHALL apply unchanged. Azure execution SHALL reuse the existing authenticated runner without installation, login, credential changes, or global-default changes.
+
+#### Scenario: Azure creation is selected
+- **WHEN** destination resolution selects a valid Azure Repos Services repository with no matching active request
+- **THEN** preparation loads only the Azure provider reference and prepares exact repository, branches, title, and Markdown description for explicit publication approval.
+
+#### Scenario: Azure update is selected
+- **WHEN** exactly one active Azure request matches the repository and both branches
+- **THEN** preparation selects that request for a title-and-description-only update rather than duplicate creation.
+
+#### Scenario: Azure branch needs publication
+- **WHEN** the remote source branch does not contain the approved commit
+- **THEN** publication remains blocked until the separate non-force push approval and remote verification are completed.
+
+#### Scenario: Azure access is unavailable
+- **WHEN** CLI, installed extension, authentication, repository access, or compatible destination identity is unavailable
+- **THEN** preparation reports a concrete blocker without publishing or altering the environment.
+
+#### Scenario: Azure adapter is installed on both harnesses
+- **WHEN** installation projections expand for Claude Code and opencode
+- **THEN** both include the Azure provider reference, adapter, and shared transport tools under managed content tracking without new direct Azure CLI or push permission grants.

@@ -1,13 +1,13 @@
 ---
 name: to-pr
-description: Prepare, create or update a GitHub pull request or GitLab merge request from committed Git changes, after explicit approval.
+description: Prepare, create or update a registered provider's pull or merge request from committed Git changes, after explicit approval.
 disable-model-invocation: true
 ---
 
 # Publish a PR/MR
 
 A PR/MR is a request to incorporate committed branch changes: a pull request on
-GitHub or a merge request on GitLab. Invocation permits preparation only.
+GitHub or Azure Repos, or a merge request on GitLab. Invocation permits preparation only.
 Load `safe-operations`. Use Claude Code's `AskUserQuestion` or OpenCode's
 `question` for closed choices; use conversation text for open clarification.
 Stop with the draft and concrete blocker if required access, CLI or authentication
@@ -28,7 +28,7 @@ into executable shell text.
 Run `collect` with `{}`; distinguish committed HEAD from `pending` staged,
 unstaged and untracked files. The request covers committed HEAD only: if `pending`
 is non-empty, tell the user those files stay out of the request and continue.
-Run `resolve` with `{explicit:{provider,repository}}`, omitting unspecified
+Run `resolve` with `{explicit:{provider,repository,organization?,project?}}`, omitting unspecified
 fields. Resolution follows explicit input, optional `.to-pr.json`, then Git
 remotes. Ask and repeat on `needs_input`; for `unknownHosts`, ask the user to pick
 the provider. Once resolved, load only the returned `instructions` reference,
@@ -68,6 +68,8 @@ proposal, current baseline if updating, and the `publish token`.
 Show the operation (create or update), platform, repository, visibility, source,
 target, and existing request URL if updating. Show the complete proposed title and
 description, not a summary. For update also show the baseline and what changes.
+Before approval show any `proposal.concurrency_warning` verbatim: a reread does
+not protect the interval before a provider's update request.
 Warn explicitly if public. Then ask: "Publish this exact title and description
 to this destination?" Offer approve, edit, cancel and wait. Cancellation ends
 without publication. Any content, destination or baseline change returns to
