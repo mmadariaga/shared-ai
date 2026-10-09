@@ -137,3 +137,75 @@ The accessibility close step SHALL challenge the in-memory draft before saving t
 #### Scenario: Adversarial check filters accessibility draft
 - **WHEN** the in-memory accessibility draft contains findings
 - **THEN** the worker runs one bounded adversary and saves only kept findings with recomputed Summary tally
+
+### Requirement: Mapping step records five results with a checkable completion criterion
+
+The `map-ui-framework` step SHALL be complete only when it has recorded five results: `UI files in scope`, `frameworks detected`, `component types`, `design tokens`, and `accepted trade-offs`, each as a list or `none`. Component types SHALL use the checklist trigger vocabulary `forms`, `media`, and `dynamic content`. Interactive widgets, navigation, and static content SHALL be identified as component types that trigger no checklist. Framework detection SHALL cover React, Astro, Tailwind, Vue (`.vue`), Svelte (`.svelte`), plain HTML/templates, and any other framework the UI files use.
+
+#### Scenario: Mapping finds no design tokens
+- **WHEN** the mapping step completes over a scope with UI files but no design tokens
+- **THEN** it records all five results, with `design tokens` recorded as `none`
+
+#### Scenario: Vue or Svelte file is in scope
+- **WHEN** the selected scope contains a `.vue` or `.svelte` file
+- **THEN** the mapping step records it in `UI files in scope` and its framework in `frameworks detected`, and the file is audited like any other UI file
+
+### Requirement: Static-audit checklists declare triggers named by mapping results
+
+Each static-audit checklist in `sai/commands/accessibility/steps/resolve-static-audit.md` SHALL open with a `Trigger:` line naming one mapping result. Semantics & Structure, ARIA & Naming, and Keyboard & Focus SHALL be `Trigger: always.`. Forms, Media & Non-Text Content, and Dynamic Content & SPA SHALL trigger when `component types` include `forms`, `media`, or `dynamic content` respectively. Visual Design SHALL trigger when `UI files in scope` include a CSS file or `design tokens` is not `none`. The `resolve-static-audit` step SHALL be complete only when every component in `component types` has been evaluated against every triggered checklist and, when Visual Design is triggered, every CSS file and design token as well. Every component type named in a `Trigger:` line MUST appear in the mapping step's component type list, and a structural test SHALL enforce that.
+
+#### Scenario: CSS-only change triggers Visual Design
+- **WHEN** the UI files in scope contain only a CSS file
+- **THEN** the Visual Design checklist is triggered and the static audit is not complete until every CSS file and design token in scope has been evaluated
+
+#### Scenario: No forms in scope
+- **WHEN** the mapping step's `component types` do not include `forms`
+- **THEN** the Forms checklist is not triggered, while the three always-triggered checklists still apply
+
+#### Scenario: Trigger vocabulary drifts from the mapping list
+- **WHEN** a `Trigger: component types include ...` line names a type absent from the mapping step's component type list
+- **THEN** `test/accessibility-coordinator-worker.test.js` fails
+
+### Requirement: Remediation and self-critique follow the detected frameworks
+
+Every accessibility finding's remediation SHALL be aligned with the `frameworks detected` by the mapping step. The close step's "Framework idiom respected" self-critique check SHALL require fixes to follow the idioms of the `frameworks detected`, rather than naming React, Astro, or Tailwind only.
+
+#### Scenario: Svelte component finding
+- **WHEN** a finding is reported against a component in a `.svelte` file
+- **THEN** its remediation and the self-critique evaluate the fix against Svelte idioms
+
+### Requirement: Screen-reader statements are written as inferences
+
+The worker SHALL write every statement about what a screen reader will announce or do as an inference prefixed `Inferred:`. The rule SHALL carry no exception for runtime observation.
+
+#### Scenario: Finding describes a screen-reader announcement
+- **WHEN** a finding states what a screen reader will announce for an element
+- **THEN** that statement is prefixed `Inferred:`
+
+### Requirement: Zero active changes returns an exact failure literal
+
+When change resolution finds zero active changes, the accessibility worker SHALL return `failed` with exactly: No active changes found. Run `/sai-1-spec` to create one.
+
+#### Scenario: No active changes exist
+- **WHEN** `arguments_value` supplies no change name and `openspec list --json` reports zero changes
+- **THEN** the worker returns `failed` with exactly: No active changes found. Run `/sai-1-spec` to create one.
+
+### Requirement: Component-bearing markdown is defined in the accessibility common step file
+
+`sai/commands/accessibility/steps/common.md` SHALL define component-bearing markdown once, beside the UI file list, as `.mdx` files plus `.md` files containing an HTML element or a capitalized component tag such as `<Button>`. A `.md` file containing neither SHALL NOT be a UI file.
+
+#### Scenario: Plain markdown file in the diff
+- **WHEN** the selected scope contains a `.md` file with no HTML element and no capitalized component tag
+- **THEN** the worker does not treat it as a UI file
+
+#### Scenario: Markdown file with a component tag
+- **WHEN** the selected scope contains a `.md` file containing `<Button>`
+- **THEN** the worker treats it as a UI file
+
+### Requirement: Accessibility findings stay within the selected scope
+
+The accessibility audit SHALL report findings only within the selected scope, and the worker instructions SHALL carry no rule for adding one-line notes about out-of-scope risks.
+
+#### Scenario: Risk outside the selected diff
+- **WHEN** the auditor notices an accessibility risk in a file outside the selected scope
+- **THEN** the report contains no finding or note for that file
