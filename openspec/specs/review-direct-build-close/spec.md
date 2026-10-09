@@ -115,3 +115,17 @@ The shared close at `sai/commands/meta-review/direct-build-close.md` SHALL load 
 
 - **WHEN** the fix worker returns a failed result or malformed payload that the rule answers no
 - **THEN** the close stops with the stop notice, stages and commits nothing, and runs `decline-close`
+
+### Requirement: Fix-loop policies load only after the fix is chosen
+
+The shared close at `sai/commands/meta-review/direct-build-close.md` SHALL load `sai/policies/command-execution.md` and `sai/policies/unattended-runtime-recovery.md` inside its fix loop, after the user chooses to fix, and SHALL run its selector without them. The decision to offer the fix SHALL stay inside the close. Because `/sai-5-review` and `/sai-review` fetch the same close, both MUST get the same delayed loads with the same behavior.
+
+#### Scenario: The user declines the fix
+
+- **WHEN** the close presents its selector and the user selects the decline option
+- **THEN** the close runs `decline-close` without loading `command-execution.md` or `unattended-runtime-recovery.md`
+
+#### Scenario: The user chooses to fix
+
+- **WHEN** the user selects the Direct Build option in the close selector
+- **THEN** the close loads `command-execution.md` and `unattended-runtime-recovery.md` at the start of the fix loop and applies them to the fix loop as before

@@ -1,8 +1,5 @@
 # Direct Build Close
 
-Fetch @sai/policies/command-execution.md and follow it exactly.
-Fetch @sai/policies/unattended-runtime-recovery.md and use it in the Fix loop's failure handling.
-
 A findings-driven close: fix the remaining findings, then land the fix
 in one local commit. The calling coordinator supplies `input` (the findings
 files), `direct-label`, `decline-label`, and `decline-close` (the text that
@@ -27,6 +24,9 @@ before that selection.
    it returns no selected findings, run `decline-close` without a dispatch.
 
 ## Fix loop
+
+Fetch @sai/policies/command-execution.md and follow it exactly.
+Fetch @sai/policies/unattended-runtime-recovery.md and use it in the failure handling below.
 
 Guard the fix loop below per `@sai/policies/no-commit-guard.md` § Window
 pairing: `snapshot` when its window opens and `verify` before the staging

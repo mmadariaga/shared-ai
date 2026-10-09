@@ -109,7 +109,7 @@ The `/sai-build` implement segment SHALL open its own post-ready task disclosure
 
 ### Requirement: The first-pointer rule is single-sourced and phase-neutral
 
-The first-pointer rule SHALL be stated once, with no per-phase exception, in three places: `sai/orchestration/command-runner.md` § Step-gated pointer delivery (coordinator side), `sai/policies/stage-machine.md` § Step machines, and `sai/orchestration/worker-core.md` § Step-machine task disclosure (worker side). Phase coordinators, workers, and `steps/common.md` files SHALL reference it. The step ids and step files of the seven machines SHALL stay unchanged, including `prereqs-and-change` and `prereqs-resolution`.
+The first-pointer rule SHALL be stated once, with no per-phase exception, in three places: `sai/orchestration/command-runner.md` § Step-gated pointer delivery (coordinator side), `sai/policies/stage-machine.md` § Step machines, and `sai/orchestration/worker-core.md` § Step-machine task disclosure (worker side). Phase coordinators and workers SHALL reference it; the `steps/common.md` files of spec, design, implement, security, performance, and accessibility SHALL also reference it, while the review worker references it from its worker contract and `sai/commands/review/steps/common.md` does not repeat it. The step ids and step files of the seven machines SHALL stay unchanged, including `prereqs-and-change` and `prereqs-resolution`.
 
 #### Scenario: step ids are unchanged
 

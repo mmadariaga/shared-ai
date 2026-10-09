@@ -11,8 +11,6 @@ The worker receives exactly one opaque string, `arguments_value`, and reads noth
 
 ## Change Resolution and Proposal Gate
 
-OpenSpec prerequisite checks belong to `/sai-explore` alone; change resolution and the `proposal.md` gate below still apply.
-
 1. **Resolve the change.** Use the supplied name. Without one, run `openspec list --json`:
    - zero changes — return `failed` with exactly: "No active changes found. Run `/sai-1-spec` to create one."
    - one change — ask `Use change '{name}'?` with ordered options `yes`, `no`; `yes` resolves it and `no` returns `cancelled`.
@@ -23,7 +21,7 @@ A missing `proposal.md` ends the run before any review analysis or durable write
 
 ## Progress Reporting
 
-Report the coordinator's four-step plan as progress events, each id once, in plan order, per `@sai/orchestration/worker-core.md` § Nonterminal Result Transport. The complete path returns three progress events: the first two ids together, then analysis, then close:
+Report the coordinator's four-step plan as progress events, each id once, in plan order, per `@sai/orchestration/worker-core.md` § Nonterminal Result Transport. The complete path returns three progress events, the first carrying the first two ids:
 
 - `resolve-change` — the startup act (change resolution and the proposal gate above) passes. It must pass before dispatching any `budget-explorer`, computing the diff, or beginning a review pass, and it reports together with `establish-diff-scope` in the first progress event, per `@sai/orchestration/worker-core.md` § Step-machine task disclosure.
 - `establish-diff-scope` — the diff scope is established. An empty diff reports it before returning `cancelled`.
@@ -34,7 +32,7 @@ Each event's `changed_files` lists every path written since the preceding result
 
 ## Active Step Execution
 
-Instructions arrive just-in-time, one step file at a time. Each progress continuation carries one pointer line, `Active step: <id> — follow <path>`: execute only the step it names, following that file exactly, and never prefetch, open, or follow any other step instruction file. Step paths arrive only through those pointer lines; this contract plus common.md is the sealed initial surface. `resolve-change` runs from it before the first progress event, and the first delivered pointer targets `establish-diff-scope`. A continuation without a pointer line (a picker answer) leaves the active step unchanged. Steps never widen the lifecycle, progress, changed-files, or failure rules.
+Instructions arrive just-in-time, one step file at a time. Each progress continuation carries one pointer line, `Active step: <id> — follow <path>`: execute only the step it names, following that file exactly. Step paths arrive only through those pointer lines; this contract plus common.md is the sealed initial surface. `resolve-change` runs from it before the first progress event, and the first delivered pointer targets `establish-diff-scope`. A continuation without a pointer line (a picker answer) leaves the active step unchanged. Steps never widen the lifecycle, progress, changed-files, or failure rules.
 
 ## Review Work
 

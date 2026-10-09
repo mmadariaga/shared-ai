@@ -16,7 +16,7 @@ The review worker SHALL own envelope parsing, change resolution, the required `p
 
 ### Requirement: Technical workflow is loaded through the review step library
 
-The routed review worker SHALL load its technical workflow step-gated. The worker contract plus `sai/commands/review/steps/common.md` SHALL form the sealed initial surface loaded at dispatch, carrying the boundaries that outlive any single step (`budget-ro` skill, glossary format, and remember-policy loads, input paths, communication mode, change resolution and proposal gate, collaboration style, hard rules), and all remaining instruction mass SHALL arrive just-in-time via coordinator `Active step:` pointer lines naming the files under `sai/commands/review/steps/`. The worker contract SHALL NOT restate step-file content. The former monolithic `sai/commands/review/instructions.md` and the invocation core `sai/commands/review/invocation.md` are retired: the step library is the only review instruction surface, and the install manifest retires installed copies of both.
+The routed review worker SHALL load its technical workflow step-gated. The worker contract plus `sai/commands/review/steps/common.md` SHALL form the sealed initial surface loaded at dispatch, carrying the boundaries that outlive any single step (`budget-ro` skill and remember-policy loads, input paths, communication mode, change resolution and proposal gate, collaboration style, hard rules), and all remaining instruction mass SHALL arrive just-in-time via coordinator `Active step:` pointer lines naming the files under `sai/commands/review/steps/`. The glossary format SHALL load only when pass 9 is reached and `GLOSSARY.md` exists at the repo root. The worker contract SHALL NOT restate step-file content. The former monolithic `sai/commands/review/instructions.md` and the invocation core `sai/commands/review/invocation.md` are retired: the step library is the only review instruction surface, and the install manifest retires installed copies of both.
 
 #### Scenario: Routed worker starts technical review
 - **WHEN** the routed review worker begins technical work
@@ -25,6 +25,10 @@ The routed review worker SHALL load its technical workflow step-gated. The worke
 #### Scenario: Monolith is retired
 - **WHEN** the step-gated review delivery is in force
 - **THEN** neither `sai/commands/review/instructions.md` nor `sai/commands/review/invocation.md` exists, and the install manifest carries a retirement for each installed copy
+
+#### Scenario: Project without a glossary
+- **WHEN** the review reaches pass 9 in a project with no `GLOSSARY.md` at the repo root
+- **THEN** the worker does not load `sai/policies/glossary-format.md` at any point of the run
 
 ### Requirement: Prerequisite failures stop technical work
 
@@ -188,3 +192,35 @@ The security, performance and accessibility triage passes SHALL decide `surface 
 - **WHEN** the diff touches an authentication path
 - **THEN** the security triage records `Surface touched: Yes` with no file list
 - **AND** the completed summary recommends `/sai-6-security`
+
+### Requirement: Review severity definitions are stated once in the step library common file
+
+The review step library SHALL define the five severities once, in `sai/commands/review/steps/common.md` § Severity, because both the analysis step and the close step assign severity. `sai/commands/review/steps/close-review-outcome.md` SHALL assign severity by pointing to that section and MUST NOT restate the definitions. The definitions SHALL keep their existing wording.
+
+#### Scenario: The close step classifies a finding
+- **WHEN** the close step classifies a finding
+- **THEN** it applies the severity definitions of `steps/common.md` § Severity
+
+### Requirement: One blatant-defect rule governs the triage passes
+
+`sai/commands/review/steps/resolve-review-analysis.md` SHALL state once, before passes 3 to 5, that audit recommendations come only from those passes, followed by one blatant-defect rule: a defect in the pass's domain obvious from the diff alone SHALL also be raised as an individual finding, `Critical` for security and `High` or `Critical` for performance and accessibility, with a note that the dedicated audit covers the rest. The rule SHALL keep one calibrating example per domain: a literal hardcoded password (security), a `SELECT *` inside a per-row loop (performance), and an `<img>` without `alt` (accessibility). Passes 3 to 5 SHALL close with their audit recommendation only, and the resilience pass SHALL carry no audit-recommendation sentence of its own.
+
+#### Scenario: Blatant security defect
+- **WHEN** the diff adds a literal hardcoded password
+- **THEN** the review recommends `/sai-6-security` and raises a `Critical` finding noting that the dedicated audit covers the rest
+
+#### Scenario: Resilience finding
+- **WHEN** pass 11 raises a resilience finding
+- **THEN** the finding produces no audit recommendation, because recommendations come only from passes 3 to 5
+
+### Requirement: Each review worker rule is stated once beside the step that uses it
+
+The review worker contract `sai/commands/review/worker.md` SHALL state the active-step pointer rule positively (execute only the step the pointer names), the joint first progress event, and the write scope, and `sai/commands/review/steps/common.md` MUST NOT repeat them. The worker contract SHALL carry no sentence about OpenSpec prerequisite checks. The delegated review-mode instructions, including the per-group `budget-explorer` output contract, SHALL be stated in `sai/commands/review/steps/establish-diff-scope.md`, and the analysis step SHALL inspect the file groups that step recorded, as that step directs. The 500-line threshold, the shared cap of eight dispatches per review, the eleven passes, and the fixed stop texts SHALL stay unchanged.
+
+#### Scenario: Delegated review mode
+- **WHEN** the diff totals more than 500 changed lines
+- **THEN** the scope step partitions the changed files into at most eight groups and names the output contract `file:line` + pass category + ≤80 words per finding for the analysis step's per-group `budget-explorer`
+
+#### Scenario: Common file carries no worker rule
+- **WHEN** `sai/commands/review/steps/common.md` is read
+- **THEN** it contains no step-delivery pointer rule, no joint first progress event rule, and no write-scope statement
