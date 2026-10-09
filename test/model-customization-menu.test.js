@@ -1410,16 +1410,16 @@ test('an empty scope prints the no-targets notice, returns to the scope picker, 
 
 // --- Step 4: command enumeration from the manifest's commands-class projections ---
 
-const SHIPPED_COMMANDS = [...OPENCODE_COMMANDS, 'to-backlog', 'from-backlog', 'to-pr'];
+const SHIPPED_COMMANDS = [...OPENCODE_COMMANDS, 'to-backlog', 'from-backlog', 'from-next-backlog-item', 'to-pr'];
 
-test('opencode enumerateCommands returns exactly the manifest-declared commands including both backlog commands', () => {
+test('opencode enumerateCommands returns exactly the manifest-declared commands including all three backlog commands', () => {
   const adapter = createOpencodeAdapter({ repoRoot: REPO_ROOT });
   const commands = adapter.enumerateCommands();
   assert.equal(commands.length, SHIPPED_COMMANDS.length);
   assert.deepEqual([...commands].sort(), [...SHIPPED_COMMANDS].sort());
 });
 
-test('claude enumerateCommands returns exactly the same manifest-declared commands including both backlog commands', () => {
+test('claude enumerateCommands returns exactly the same manifest-declared commands including all three backlog commands', () => {
   const adapter = createClaudeAdapter({ repoRoot: REPO_ROOT });
   const commands = adapter.enumerateCommands();
   assert.equal(commands.length, SHIPPED_COMMANDS.length);

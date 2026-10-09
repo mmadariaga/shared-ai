@@ -7,12 +7,30 @@ Load existing backlog work into the active conversation without granting action 
 
 ### Requirement: Explicit conversation-preserving import
 
-The from-backlog skill SHALL run only on explicit user invocation and SHALL declare `disable-model-invocation: true`. It SHALL retain the current conversation and any active sai-explore stage without running its boot sequence, starting implementation, modifying the selected provider, or creating local files. Missing required access SHALL be reported without installing tools or changing authentication.
+The from-backlog skill SHALL run only on explicit user invocation or as the
+one import continuation authorized by the user's explicit
+`/from-next-backlog-item` invocation after that selector supplies a complete
+selected reference. Autonomous invocation SHALL remain forbidden, and the
+skill SHALL declare `disable-model-invocation: true`. It SHALL retain the
+current conversation and any active sai-explore stage without running its boot
+sequence, starting implementation, modifying the selected provider, or creating
+local files. Missing required access SHALL be reported without installing
+tools or changing authentication.
 
 #### Scenario: Import during exploration
 
 - **WHEN** the user invokes from-backlog in an active sai-explore conversation
 - **THEN** import retains the existing context and stage and performs no action beyond read-only import and its required clarification.
+
+#### Scenario: Explicit selector authorizes one continuation
+
+- **WHEN** an explicitly invoked `/from-next-backlog-item` selector supplies a complete selected reference
+- **THEN** from-backlog accepts that one same-conversation import continuation while retaining its read-only and stage-preservation boundaries.
+
+#### Scenario: No explicit invocation authorizes import
+
+- **WHEN** neither explicit from-backlog invocation nor its authorized selector continuation is present
+- **THEN** autonomous invocation remains forbidden.
 
 ### Requirement: Ordered import flow with completion criteria
 

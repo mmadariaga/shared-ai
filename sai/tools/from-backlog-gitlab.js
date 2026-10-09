@@ -93,4 +93,4 @@ function read(reference, io) {
   }
 }
 
-module.exports = { project, api, resolve, issue, readIssue, read };
+module.exports = { project, api, issueURL, resolve, issue, readIssue, read };

@@ -84,6 +84,17 @@ partial retrieval is reported explicitly. It changes no remote data and installs
 or configures nothing. Azure DevOps Server, GitHub Enterprise, and pull requests
 are not supported. See the installed `from-backlog` skill for import rules.
 
+**Load the next item:** `/from-next-backlog-item` takes no arguments in Claude
+Code and opencode. It asks only for missing provider/pile context, selects the
+first item in manual backlog order, and continues the same `from-backlog` import
+in the current conversation. Supported piles are GitHub Projects in project-wide
+position order, GitLab project issue lists (with supported filters) in relative
+position order, and Azure team backlog levels using their configured rank field.
+View-specific order or filters that cannot be verified stay pending rather than
+falling back to date, identifier, priority, or another pile. Empty piles, access
+failures, unsupported first items, and cancellation never trigger an import.
+Choices stay in the conversation; execution writes no files or provider data.
+
 **Capture work for later:** `/to-backlog` uses the current conversation in
 Claude Code and OpenCode to propose one title and Markdown description. If the
 conversation started from an existing issue (via `/from-backlog` or a directly
