@@ -60,17 +60,20 @@ function az(options = {}) {
   } };
 }
 test('E1 missing provider and provider context remain pending without guessing', () => {
-  assert.equal(select({}).options.length, 3);
+  const noRemotes = { run(command, args) { assert.equal(command, 'git'); assert.deepEqual(args, ['remote', '-v']); return ''; } };
+  assert.equal(select({}, noRemotes).options.length, 3);
   for (const provider of ['github', 'gitlab', 'azuredevops']) {
-    assert.equal(select({ provider }, { run() { assert.fail('No unresolved-context query'); } }).status, 'pending');
+    assert.equal(select({ provider }, noRemotes).status, 'pending');
   }
   assert.equal(select({ ...github, project: undefined }, gh()).options[0].value, 1);
-  assert.equal(select({ ...gitlab, pile: undefined }, gl()).options[0].value, 'issues');
+  assert.equal(select({ ...gitlab, pile: undefined }, gl()).status, 'candidates');
   assert.equal(select({ ...azure, backlog: undefined }, az()).options[0].value, 'requirements');
   assert.equal(select({ ...azure, backlog: 'unknown' }, az()).status, 'pending');
 });
 test('E2 and E5 first manual position produces complete import references for every provider', () => {
-  const outcomes = [select(github, gh()), select(gitlab, gl()), select(azure, az())];
+  const gitlabResult = select(gitlab, gl());
+  assert.equal(gitlabResult.status, 'candidates');
+  const outcomes = [select(github, gh()), { ...gitlabResult, status: 'selected', reference: gitlabResult.candidates[0].reference }, select(azure, az())];
   for (const outcome of outcomes) { assert.equal(outcome.status, 'selected', JSON.stringify(outcome)); assert.match(outcome.reference, /(?:issues\/8|edit\/8)$/); }
   assert.equal(resolve(outcomes[0].reference, registry).url, outcomes[0].reference);
   assert.equal(resolve(outcomes[1].reference, registry, gl()).url, outcomes[1].reference);
@@ -79,8 +82,6 @@ test('E2 and E5 first manual position produces complete import references for ev
 });
 test('E2 unavailable ranks, top ties, partial responses, and unsupported views stay pending', () => {
   assert.equal(select(github, gh({ partial: true })).status, 'pending');
-  assert.equal(select(gitlab, gl([issue(1, null)])).status, 'pending');
-  assert.equal(select(gitlab, gl([issue(1, 1), issue(2, 1)])).reason, 'order-ambiguous');
   assert.equal(select(gitlab, gl([], { partial: true })).status, 'pending');
   assert.equal(select(azure, az({ missingRank: true })).status, 'pending');
   assert.equal(select(azure, az({ tie: true })).reason, 'order-ambiguous');
@@ -91,7 +92,7 @@ test('E2 unavailable ranks, top ties, partial responses, and unsupported views s
 test('E2 GitLab filters and complete pagination determine membership before manual selection', () => {
   const members = Array.from({ length: 101 }, (_, i) => issue(i + 1, 200 - i));
   const result = select({ ...gitlab, filters: { labels: 'ready', state: 'opened' } }, gl(members, { check(endpoint) { assert.match(endpoint, /labels=ready/); assert.match(endpoint, /state=opened/); } }));
-  assert.match(result.reference, /issues\/101$/);
+  assert.deepEqual(result.candidates.map(item => item.reference), [issue(101, 100).web_url]);
   assert.equal(select({ ...gitlab, filters: { order_by: 'created_at' } }, gl()).status, 'pending');
 });
 test('E3 only complete empty results establish an empty pile', () => {
@@ -99,6 +100,84 @@ test('E3 only complete empty results establish an empty pile', () => {
   assert.equal(select(gitlab, gl([])).status, 'empty');
   assert.equal(select(azure, az({ empty: true })).status, 'empty');
   assert.equal(select(github, gh({ empty: true, more: true })).status, 'pending');
+});
+test('Git remotes resolve provider and GitLab project before any question', () => {
+  for (const remote of ['git@gitlab.com:group/repo.git', 'https://gitlab.com/group/repo.git', 'ssh://git@gitlab.example/group/repo.git']) {
+    const host = remote.includes('example') ? 'gitlab.example' : 'gitlab.com';
+    const target = `https://${host}/group/repo`;
+    const reader = gl();
+    const calls = [];
+    const result = select({}, { run(command, args) {
+      calls.push(command);
+      if (command === 'git') { assert.deepEqual(args, ['remote', '-v']); return `origin\t${remote} (fetch)\norigin\t${remote} (push)\n`; }
+      const data = JSON.parse(reader.run(command, args));
+      if (args[0] === 'repo') return JSON.stringify({ ...data, web_url: target });
+      return JSON.stringify(data.map(item => ({ ...item, web_url: item.web_url.replace('gitlab.com', host) })));
+    } });
+    assert.equal(calls[0], 'git');
+    assert.equal(result.status, 'candidates', JSON.stringify(result));
+    assert.equal(result.pile, target);
+    assert.ok(result.candidates.every(item => item.reference.startsWith(`${target}/-/issues/`)));
+  }
+});
+test('explicit destination and filters win without consulting Git', () => {
+  const result = select({ project: gitlab.project, filters: { state: 'closed', labels: 'ready', milestone: 'v1', assignee_id: '7' } }, gl(undefined, { check(endpoint) {
+    const params = new URL(`https://unused/${endpoint}`).searchParams;
+    assert.equal(params.get('state'), 'closed');
+    assert.equal(params.get('labels'), 'ready');
+    assert.equal(params.get('milestone'), 'v1');
+    assert.equal(params.get('assignee_id'), '7');
+  } }));
+  assert.equal(result.status, 'candidates');
+  assert.equal(result.pile, gitlab.project);
+  assert.equal(select({ ...gitlab, board: 'board' }, gl()).reason, 'order-unavailable');
+  assert.equal(select({ ...gitlab, pile: 'other' }, gl()).reason, 'missing-pile');
+});
+test('equivalent Git remotes and explicit provider constraints do not require a destination question', () => {
+  for (const [request, remotes] of [
+    [{}, 'origin\tgit@gitlab.com:group/repo.git (fetch)\norigin\thttps://gitlab.com/group/repo.git (push)\n'],
+    [{ provider: 'gitlab' }, 'origin\tgit@gitlab.com:group/repo.git (fetch)\nother\tgit@github.com:owner/repo.git (fetch)\n'],
+  ]) {
+    const reader = gl();
+    const result = select(request, { run(command, args) {
+      if (command === 'git') return remotes;
+      return reader.run(command, args);
+    } });
+    assert.equal(result.status, 'candidates', JSON.stringify(result));
+    assert.equal(result.pile, gitlab.project);
+  }
+});
+test('GitLab defaults to open issues and returns only equally highest available priority', () => {
+  const fixtures = [
+    { items: [issue(1, null), issue(2, 0), issue(3, 0), issue(4, 9)], allowed: [2, 3] },
+    { items: [issue(1, null), issue(2, undefined), issue(3, -1), issue(4, '2'), issue(5, Number.MAX_SAFE_INTEGER + 1)], allowed: [1, 2, 3, 4, 5] },
+    { items: [issue(1, null), issue(2, 4), issue(3, 9)], allowed: [2] },
+  ];
+  for (const { items, allowed } of fixtures) {
+    const result = select({ provider: 'gitlab', project: gitlab.project }, gl(items, { check(endpoint) { assert.match(endpoint, /state=opened/); } }));
+    assert.equal(result.status, 'candidates');
+    const references = new Set(allowed.map(id => issue(id).web_url));
+    assert.equal(result.candidates.length, references.size);
+    for (const candidate of result.candidates) {
+      assert.ok(references.has(candidate.reference));
+      assert.equal(resolve(candidate.reference, registry, gl()).url, candidate.reference);
+    }
+  }
+});
+test('unresolved remotes retain known provider; conflicting explicit identities remain pending', () => {
+  const io = { run(command) { assert.equal(command, 'git'); return 'origin\tgit@gitlab.com:group/a.git (fetch)\nother\tgit@gitlab.com:group/b.git (fetch)\n'; } };
+  const result = select({}, io);
+  assert.equal(result.status, 'pending');
+  assert.equal(result.selection.provider, 'gitlab');
+  assert.equal(result.reason, 'repository-ambiguous');
+  assert.equal(result.options, undefined);
+  assert.equal(select({ provider: 'github', repository: gitlab.project }, io).reason, 'provider-destination-conflict');
+});
+test('GitLab candidate validation does not skip non-importable or incompatible priority members', () => {
+  assert.equal(select(gitlab, gl([issue(1, 1), issue(2, 1, 'incident')])).reason, 'non-importable');
+  assert.equal(select(gitlab, gl([{ ...issue(1, 1), web_url: 'https://gitlab.com/other/repo/-/issues/1' }])).status, 'pending');
+  assert.equal(select(gitlab, gl([{ ...issue(1, 1), project_id: 2 }])).status, 'pending');
+  assert.equal(select(gitlab, gl([issue(1, 1), issue(1, 2)])).status, 'pending');
 });
 test('E4 unsupported first items are not skipped; Azure importer supports custom types', () => {
   for (const type of ['PullRequest', 'DraftIssue']) assert.equal(select(github, gh({ type })).reason, 'non-importable');
