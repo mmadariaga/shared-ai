@@ -1,6 +1,6 @@
 # Review Step — Close Review Outcome
 
-Active step: close-review-outcome. The step is done when `review.md` is saved and verified per the worker contract and `completed` is returned with the summary below.
+Active step: close-review-outcome. The step is done when `review.md` is saved, passes the verification in step 4, and `completed` is returned with the summary below.
 
 Fetch @sai/commands/review/review-report.template.md
 
@@ -32,7 +32,7 @@ You have the last word: accept or reject each verdict on its own. The report sho
 
 ## 4. Save and return
 
-Save the report to `openspec/changes/{change-name}/review.md`, with the closing `Summary:` tally counted over the kept findings at final severity. Verify it per the worker contract, then return `completed`. Its `summary` carries the severity counts, the top three Critical findings when present, the report path, the parent-branch statement, and this block verbatim, with every line resolved from the triage passes:
+Save the report to `openspec/changes/{change-name}/review.md`, with the closing `Summary:` tally counted over the kept findings at final severity. Before returning `completed`, verify that `review.md` exists, is non-empty, and carries an identifier on every finding, the three `Surface touched` lines, and a closing `Summary:` tally whose counts match its findings. Then return `completed`. Its `summary` carries the severity counts, the top three Critical findings when present, the report path, the parent-branch statement, and this block verbatim, with every line resolved from the triage passes:
 
 ```
 ## Recommended Audits

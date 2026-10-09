@@ -42,11 +42,4 @@ Write only `openspec/changes/{change-name}/review.md`; `changed_files` holds onl
 
 Return `needs_input` for picker questions, `cancelled` for a deliberate decline or an empty diff, and `failed` for blockers.
 
-Before returning `completed`, verify that `review.md` exists, is non-empty, and contains:
-
-- a severity-prefixed identifier (`C1`/`H1`/`M1`/`L1`/`Q1`) on every finding, when there are any;
-- the severity roll-up and coverage notes, including a `Resilience:` outcome and relevant notes even when no resilience surface exists;
-- all three audit recommendations;
-- a closing `Summary:` tally line whose counts match the report's findings.
-
-The close step composes the `completed` summary.
+The close step verifies the report before `completed` and composes the `completed` summary.
