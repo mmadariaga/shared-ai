@@ -109,7 +109,8 @@ test('build coordinator preserves re-entry, stops, completion, and changed-files
 
 test('apply retry choice remains the same single Step grant inside build on both harnesses', () => {
   const build = readRequired(coordinatorPath);
-  const apply = readRequired(applyCoordinatorPath);
+  const apply = `${readRequired(applyCoordinatorPath)}
+${readRequired('sai/commands/apply/steps/exhausted-step.md')}`;
 
   assert.match(apply, /Authorize one fresh attempt/);
   assert.match(apply, /manual-correction/);

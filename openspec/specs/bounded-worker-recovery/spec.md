@@ -113,7 +113,7 @@ Standalone spec and design recovery SHALL use the shared segment-scoped ledger o
 
 ### Requirement: Bounded same-worker recovery
 
-For an opted-in adapter, the coordinator SHALL use one recovery-scope-scoped ledger of at most three distinct diagnosis slots. The recovery scope SHALL be the Step for a Step-executing adapter and the composition segment for an adapter that executes no Steps; every reference to the segment ledger SHALL mean the ledger of the active recovery scope. The three-attempt cap is a derived consequence of one attempt per slot, not a separate counter. An eligible in-scope non-clean closure SHALL be continued only on the still-live worker, using the active binding's normal continuation operation and the fixed shared protocol acknowledgement `continue_after_recovery`. The route SHALL carry exactly one of the shared routing diagnoses — `worker-authored failure`, `coordinator rejection`, or `continuation/transport loss` — together with the coordinator's `Cause Locus`. Recovery SHALL never dispatch a replacement worker; this prohibition is scoped to the recovery path, while ordinary non-recovery continuation failures SHALL retain the existing replacement-worker fallback. An out-of-scope cause SHALL spend zero attempts and SHALL not be made recoverable by rewriting its worker failure class. Recovery SHALL never reset the changed-file union, and SHALL return to the existing terminal hand-back when the recovery path stops without a completed result.
+For an opted-in adapter, the coordinator SHALL use one recovery-scope-scoped ledger of at most three distinct diagnosis slots. The recovery scope SHALL be the Step for a Step-executing adapter and the composition segment for an adapter that executes no Steps; every reference to the segment ledger SHALL mean the ledger of the active recovery scope. The three-attempt cap is a derived consequence of one attempt per slot, not a separate counter. An eligible in-scope non-clean closure SHALL be continued only on the still-live worker, using the active binding's normal continuation operation and the fixed shared protocol acknowledgement `continue_after_recovery`. The route SHALL carry exactly one of the shared routing diagnoses — `worker-authored failure`, `coordinator rejection`, or `continuation/transport loss` — together with the coordinator's `Cause Locus`. Recovery SHALL never dispatch a replacement worker unless the phase card declares an exception for a corrective dispatch; apply declares one, a fresh RED worker for a test-located cause in a Step that had no RED dispatch. This prohibition is scoped to the recovery path, while ordinary non-recovery continuation failures SHALL retain the existing replacement-worker fallback. An out-of-scope cause SHALL spend zero attempts and SHALL not be made recoverable by rewriting its worker failure class. Recovery SHALL never reset the changed-file union, and SHALL return to the existing terminal hand-back when the recovery path stops without a completed result.
 
 #### Scenario: A recoverable failure gets a same-worker continuation
 
@@ -182,6 +182,11 @@ For an opted-in adapter, the coordinator SHALL use one recovery-scope-scoped led
 
 - **WHEN** an opted-in adapter that executes no Steps crosses a composition-segment boundary
 - **THEN** the coordinator SHALL reset the ledger at that segment boundary exactly as before
+
+#### Scenario: A phase-declared corrective dispatch is the only replacement in recovery
+
+- **WHEN** an apply Step that had no RED dispatch fails with a cause located in a test
+- **THEN** the coordinator SHALL dispatch a fresh RED worker for that correction under apply's declared exception, and no other recovery path dispatches a replacement worker
 
 ### Requirement: Recovery may re-dispatch overview generation within the pool
 For an eligible overview-generation `validation-failed`, `generation-error`, or `dispatch-failed`, the same worker MAY re-dispatch the overview generator during a recovery continuation when worker-side diagnosis establishes that retry is safe. Such a nested generation dispatch SHALL be part of the existing recovery attempt, SHALL not start a new source-modifying transaction, and SHALL be exempt from the ordinary one-regeneration-per-effective-transaction limit. For `envelope-contract-violation`, the worker SHALL verify overview soundness before its first failed return: a sound overview SHALL remain eligible only for in-place reporting repair, while an unsound overview SHALL set `unrecoverable: true` and receive zero recovery attempts. The three-attempt invocation pool SHALL be the only retry bound; a recovery re-dispatch SHALL not create an additional regeneration budget or replacement worker.
@@ -449,7 +454,7 @@ The coordinator SHALL add every `changed_files` path reported by the original re
 
 ### Requirement: Same-harness lifecycle parity
 
-Claude Code and opencode routed adapters that declare `recovery_policy` SHALL expose identical non-clean-closure diagnosis categories, cause-locus semantics, zero-attempt exceptions, recovery budget, continuation acknowledgement, event and cancellation boundaries, changed-file union, and terminal reporting. Neither harness SHALL dispatch a replacement worker for the recovery path. Harness-specific binding mechanics MAY differ.
+Claude Code and opencode routed adapters that declare `recovery_policy` SHALL expose identical non-clean-closure diagnosis categories, cause-locus semantics, zero-attempt exceptions, recovery budget, continuation acknowledgement, event and cancellation boundaries, changed-file union, and terminal reporting. Neither harness SHALL dispatch a replacement worker for the recovery path, except for a corrective dispatch that the phase card declares as an exception, which SHALL be identical on both harnesses. Harness-specific binding mechanics MAY differ.
 
 #### Scenario: Both supported harnesses recover identically
 

@@ -1,0 +1,60 @@
+> **⚠ POST-HOC RECORD** — This proposal was backfilled after implementation against a user-supplied statement of intent. It describes a decision already made, not one being proposed.
+
+## Why
+
+The `/sai-4-apply` coordinator card was 167 lines and about 33 KB. Its recovery section loaded on every run although only a failing Step uses it. It restated budget rules that the `recovery-ledger@1` machine enforces, described internals of `apply-step.js`, and carried two write rules that read as contradictory. Originating issue: https://github.com/mmadariaga/shared-ai/issues/51.
+
+## What Changes
+
+- Recovery guidance moves out of `sai/commands/apply/coordinator.md` into `sai/commands/apply/steps/recovery.md`, loaded only after a failed `apply-step.js verify`, a `failed` or STOP worker result, or a `completed` report the coordinator's evidence disproves.
+- The exhausted-Step choice moves into `sai/commands/apply/steps/exhausted-step.md`, loaded only when the ledger reports a budget `exhausted`. The picker question, its two options, and their machine values are unchanged; the four fixed term definitions and the example phrases are removed, and the message must still define each term it uses.
+- Recovery is written as a goal, six invariants, and one completion criterion. Budgets, Step entry, key normalization, and rejections are left to the ledger; diagnosis, Cause Locus, eligibility, and the hand-back are left to `sai/policies/bounded-recovery.md`.
+- The card states the coordinator write boundary once, in its role block: plan artifacts, and after an unpassable RED, test scaffolding that lives outside test files. Tests, assertions, and expected values go to the RED worker; production code goes to the GREEN worker.
+- The Post-dispatch sequence keeps the one `verify` call, the fields it returns, and three judgments the tool cannot make. The numbered description of what `verify` does and the sweep internals are removed.
+- The Coverage Signature becomes one invariant in one place; the seven-field tuple procedure is removed.
+- The last-resort scaffolding repair no longer lists `unrecoverable` as a trigger. A cause inside a test file the RED worker may not write stops for the user.
+- Apply declares its fresh-RED dispatch for a GREEN-only Step as an exception to the policy's no-replacement rule, and the policy admits a phase-declared exception in one sentence.
+- `sai/commands/apply/runner.md`, `steps/plan-amendment.md`, and `steps/routing-split-flow.md` point to the new files.
+- ADR 0192 amends ADR 0161a and records the sentence-by-sentence equivalence table and the size before and after (card: 167 lines / 33779 bytes to 121 lines / 22273 bytes).
+- Tests in three files are rewritten to check structure: each pointer with its condition, unchanged picker literals, and each failure-only rule in exactly one apply file.
+
+Known limitations accepted: recovery rules sit behind pointers, so a missed load would lose them; the Coverage Signature check still depends on coordinator judgment; a broken setup inside an existing test file the plan does not name still stops for the user; equivalence is argued sentence by sentence with no runtime comparison.
+
+## Capabilities
+
+### New Capabilities
+
+None.
+
+### Modified Capabilities
+
+- `apply-coordinator-verification`: the Coverage Signature is an invariant instead of a seven-field record list; the enumerated stops gain the unwritable test cause; new requirements cover the write boundary, the coordinator judgments after `verify`, and recovery stated as a goal with invariants.
+- `last-resort-fix`: the scaffolding repair keeps its at-most-one-per-segment cap; `unrecoverable` is no longer a trigger, the scaffolding lives outside test files, and a cause inside a test file the RED worker may not write stops for the user.
+- `bounded-worker-recovery`: the no-replacement rule admits an exception a phase card declares for a corrective dispatch.
+- `apply-steps-library`: two failure-triggered step files hold recovery and the exhausted-Step choice.
+
+## Impact
+
+New files:
+- `sai/commands/apply/steps/recovery.md`
+- `sai/commands/apply/steps/exhausted-step.md`
+- `docs/adr/0192-apply-recovery-is-disclosed-on-failure-with-a-coverage-signature-invariant.md`
+
+Modified files:
+- `sai/commands/apply/coordinator.md`
+- `sai/commands/apply/runner.md`
+- `sai/commands/apply/steps/plan-amendment.md`
+- `sai/commands/apply/steps/routing-split-flow.md`
+- `sai/policies/bounded-recovery.md`
+- `docs/adr/0000-INDEX.md`
+- `test/apply-coordinator-verification.test.js`
+- `test/apply-routed-architecture.test.js`
+- `test/build-coordinator.test.js`
+
+Untouched: `sai-state/machines/recovery-ledger.js`, `sai/tools/apply-step.js`, the RED and GREEN worker cards, `sai/commands/apply/steps/veto-override.md`, the command wrappers, and `sai/install-manifest.json`. Both harnesses share the card and the new files.
+
+Out of scope: design.md, tasks.md, implementation.md — not generated by /sai-backfill
+
+## Request Additional Notes
+
+Follow-up work agreed but excluded from this change: mechanizing the Coverage Signature comparison in `sai/tools/apply-step.js`, which would make the one coordinator write that can weaken a verification mechanically checked; and evaluating whether apply recovery should converge on the unattended runtime recovery model. If the E5 stop turns out to be frequent, that is the argument for reopening the rejected widening of the RED contract. Not evaluated: the fixed per-Step protocol cost on trivial Steps. Research found nine recovery changes in the cited window rather than seven, six of them answering observed failures; the rules tied to those are the RED-owner retry, the routing of test-located causes, and the diagnosis key with the ledger.

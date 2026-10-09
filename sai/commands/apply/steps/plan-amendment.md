@@ -2,7 +2,7 @@
 
 Loaded only when apply finds a plan defect: the work is right and a planning artifact is wrong. The plan stays the authority, and the coordinator corrects it. The file comparison of `verify` and `close` is a detector, not a gate: its finding ends here, in an amendment, never in a worker retry and never in a closed Step with the deviation merely recorded.
 
-**Amendable artifacts.** `tasks.md`, `interfaces.md`, `proposal.md`, `design.md` of the active change. Delta specs, `change-overview.md`, `.openspec.yaml` stay out of reach. `implementation.md` changes only through the Appendix entry below and § Plan-artifact repair of `coordinator.md`.
+**Amendable artifacts.** `tasks.md`, `interfaces.md`, `proposal.md`, `design.md` of the active change. Delta specs, `change-overview.md`, `.openspec.yaml` stay out of reach. `implementation.md` changes only through the Appendix entry below and § Plan-artifact repair of `steps/recovery.md`.
 
 ## Triggers
 

@@ -149,6 +149,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0171c — Single-string invocation envelope across active SAI surfaces](./0171c-single-string-invocation-envelope.md) — Supersedes 0166, **Reframes** 0159b, Refs 0136, Refs ddr:0114
 - [0183 — Apply self-gating via standalone state machine](./0183-apply-self-gating-via-standalone-state-machine.md) — Refs 0172c
 - [0186 — Gate order after a Step worker report, without a per-Step human gate](./0186-gate-order-without-per-step-human-gate.md) — Supersedes 0019, Refs 0018
+- [0192 — Apply recovery is disclosed on failure, and the Coverage Signature is an invariant](./0192-apply-recovery-is-disclosed-on-failure-with-a-coverage-signature-invariant.md) — **Amends** 0161a, Refs 0160a, Refs 0172c
 
 ### `/sai-5-review`
 
@@ -503,6 +504,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0159a — Recovery budget is a three-slot distinct-diagnosis ledger](./0159a-three-slot-distinct-diagnosis-ledger.md) — **Amends** 0150a
 - [0160a — Apply Known-False Report Recovery branches by locus with five-part recovery content](./0160a-known-false-report-recovery-branches-by-locus.md) — Refs 0159a, Refs 0161a
 - [0161a — Bounded coordinator-owned plan-artifact repair with Coverage Signature](./0161a-bounded-plan-artifact-repair-coverage-signature.md) — Refs 0160a
+- [0192 — Apply recovery is disclosed on failure, and the Coverage Signature is an invariant](./0192-apply-recovery-is-disclosed-on-failure-with-a-coverage-signature-invariant.md) — **Amends** 0161a, Refs 0160a, Refs 0172c
 - [0162a — Unpassable RED/GREEN STOP maps to failed blocking-contradiction with evidence-backed veto](./0162a-unpassable-stop-failed-blocking-contradiction.md) — Refs ddr:0151b, Refs ddr:0152
 - [0165 — Dual coordinator inspection channels — verifying vs phase-static](./0165-dual-coordinator-inspection-channels.md) — Refs ddr:0151b, Refs ddr:0152
 - [0166b — Dual-channel exclusivity is per cause surface](./0166b-per-cause-surface-dual-channel-exclusivity.md) — **Amends** 0165
@@ -629,6 +631,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 | [0190](./0190-review-keeps-analysis-without-mutation-execution.md) | supersedes | [0012](./0012-mutation-analysis-as-dedicated-protocol-section.md) |
 | [0190](./0190-review-keeps-analysis-without-mutation-execution.md) | amends | [0107b](./0107b-unified-audit-severity-vocabulary.md) |
 | [0191](./0191-spec-restatements-need-a-record-or-an-observed-failure.md) | amends | [0172c](./0172c-step-gated-instruction-delivery.md) |
+| [0192](./0192-apply-recovery-is-disclosed-on-failure-with-a-coverage-signature-invariant.md) | amends | [0161a](./0161a-bounded-plan-artifact-repair-coverage-signature.md) |
 | [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0033](./archive/0033-echo-line-format-and-placement.md) |
 | [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0034](./archive/0034-resolution-precedence-wrapper-echo-first.md) |
 | [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0035](./archive/0035-harness-specific-adapter-carve-out.md) |

@@ -40,3 +40,22 @@ The terminal-lifecycle file SHALL preserve the complete sequence and logic of ap
 #### Scenario: Terminal paths remain distinct from implementation paths
 - **WHEN** the terminal documentation set is evaluated
 - **THEN** only changed `docs/**`, root `SAI_LEARNINGS.md` (if promotion wrote it), and changed `GLOSSARY.md` are eligible; `openspec/changes/**` and `implementation.md` remain excluded.
+
+### Requirement: Recovery and the exhausted-Step choice load from failure-triggered step files
+
+The apply step library SHALL hold the rules that apply only after a Step fails in two files: `sai/commands/apply/steps/recovery.md` and `sai/commands/apply/steps/exhausted-step.md`. The coordinator card SHALL keep one pointer line per file with its condition: it SHALL fetch `recovery.md` before any recovery attempt when `apply-step.js verify` fails, when a worker result is `failed` or carries a STOP, or when its evidence disproves a `completed` report; and it SHALL fetch `exhausted-step.md` when a `recovery-ledger@1` response reports a budget `exhausted`. A run with no failure SHALL load neither file. Each failure-only rule SHALL live in exactly one apply file; another file that needs the rule SHALL cite it. The same files SHALL serve standalone `/sai-4-apply` and the apply segment of `/sai-build`, on Claude Code and opencode alike.
+
+#### Scenario: A run without failures loads no recovery text
+
+- **WHEN** every `apply-step.js verify` passes and every worker result is clean during an apply run
+- **THEN** the coordinator fetches neither `sai/commands/apply/steps/recovery.md` nor `sai/commands/apply/steps/exhausted-step.md`
+
+#### Scenario: A failed Step loads the recovery file first
+
+- **WHEN** `apply-step.js verify` returns `ok: false` for a Step
+- **THEN** the coordinator fetches `sai/commands/apply/steps/recovery.md` before it runs any recovery attempt
+
+#### Scenario: An exhausted budget loads the exhausted-Step file
+
+- **WHEN** a `recovery-ledger@1` response reports a budget `exhausted`
+- **THEN** the coordinator fetches `sai/commands/apply/steps/exhausted-step.md` and presents the unchanged picker question `How do you want to proceed with Step N?` with the options `Authorize one fresh attempt` and `I will correct it manually`
