@@ -1410,16 +1410,17 @@ test('an empty scope prints the no-targets notice, returns to the scope picker, 
 
 // --- Step 4: command enumeration from the manifest's commands-class projections ---
 
-const SHIPPED_COMMANDS = [...OPENCODE_COMMANDS, 'to-backlog', 'from-backlog', 'from-next-backlog-item', 'to-pr'];
+const SHIPPED_COMMANDS = OPENCODE_COMMANDS;
+const NON_SAI_COMMANDS = ['to-backlog', 'from-backlog', 'from-next-backlog-item', 'to-pr'];
 
-test('opencode enumerateCommands returns exactly the manifest-declared commands including all three backlog commands', () => {
+test('opencode enumerateCommands returns exactly the supported SAI commands', () => {
   const adapter = createOpencodeAdapter({ repoRoot: REPO_ROOT });
   const commands = adapter.enumerateCommands();
   assert.equal(commands.length, SHIPPED_COMMANDS.length);
   assert.deepEqual([...commands].sort(), [...SHIPPED_COMMANDS].sort());
 });
 
-test('claude enumerateCommands returns exactly the same manifest-declared commands including all three backlog commands', () => {
+test('claude enumerateCommands returns exactly the same supported SAI commands', () => {
   const adapter = createClaudeAdapter({ repoRoot: REPO_ROOT });
   const commands = adapter.enumerateCommands();
   assert.equal(commands.length, SHIPPED_COMMANDS.length);
@@ -1429,7 +1430,7 @@ test('claude enumerateCommands returns exactly the same manifest-declared comman
 test('command enumeration reads the manifest-declared package source directory, never the installed global command directory', () => {
   const decoyNames = ['decoy-command', 'decoy-other'];
   for (const harness of ['opencode', 'claude']) {
-    const fixture = makeEnumerationFixture(harness, SHIPPED_COMMANDS, decoyNames);
+    const fixture = makeEnumerationFixture(harness, [...SHIPPED_COMMANDS, ...NON_SAI_COMMANDS], decoyNames);
     try {
       const createAdapter = harness === 'opencode' ? createOpencodeAdapter : createClaudeAdapter;
       const adapter = createAdapter({
@@ -1438,7 +1439,7 @@ test('command enumeration reads the manifest-declared package source directory, 
       });
       const commands = adapter.enumerateCommands();
       assert.equal(commands.length, SHIPPED_COMMANDS.length,
-        `${harness}: the fixture package source should enumerate every command the fixture manifest declares`);
+        `${harness}: the fixture package source should enumerate only supported SAI commands`);
       assert.ok(commands.includes('sai-worktree'),
         `${harness}: a package-source command absent from the decoy installed directory still enumerates`);
       assert.ok(!commands.includes('decoy-command'),
@@ -1447,6 +1448,67 @@ test('command enumeration reads the manifest-declared package source directory, 
         `${harness}: the enumerated set should be exactly the fixture package-source command set`);
     } finally {
       fs.rmSync(fixture.root, { recursive: true, force: true });
+    }
+  }
+});
+
+test('both harnesses exclude non-SAI wrappers in Orchestrators and All without hiding unknown SAI targets', async () => {
+  for (const [harness, label, factoryName, createAdapter, agents] of [
+    ['opencode', 'OpenCode', 'createOpencodeAdapter', createOpencodeAdapter, OPENCODE_AGENTS],
+    ['claude', 'Claude Code', 'createClaudeAdapter', createClaudeAdapter, CLAUDE_AGENTS],
+  ]) {
+    const excluded = [...NON_SAI_COMMANDS, 'another-command'];
+    const fixture = makeEnumerationFixture(harness, [...SHIPPED_COMMANDS, ...excluded, 'sai-unmapped'], []);
+    const before = snapshotTree(fixture.packageRoot);
+    const adapter = createAdapter({
+      packageRoot: fixture.packageRoot,
+      projectPath: fixture.root,
+      globalAgentRoot: fixture.decoyDir,
+      globalCommandRoot: fixture.decoyDir,
+    });
+    const restore = patchFactory(factoryName, () => adapter);
+    try {
+      assert.deepEqual(adapter.enumerateCommands(), [...SHIPPED_COMMANDS, 'sai-unmapped'].sort());
+      const targets = adapter.enumerateTargets();
+      assert.deepEqual(targets.utility, UTILITY_COMMANDS);
+      assert.deepEqual([...targets.agent, ...targets.worker].sort(), [...agents].sort());
+      for (const scope of ['Orchestrators', 'All']) {
+        const calls = [];
+        const answers = ['Customize models', label, scope];
+        await runPostSetupMenu({
+          projectPath: fixture.root,
+          isTTY: true,
+          promptChoice: async () => answers.shift(),
+          promptChecklist: async (...args) => {
+            calls.push(args);
+            return { status: 'cancelled' };
+          },
+        });
+        assert.equal(calls.length, 1);
+        const [items, defaults, , , options] = calls[0];
+        for (const name of excluded) {
+          assert.ok(!items.includes(`command:${name}`), `${harness}/${scope}: excludes ${name}`);
+          assert.ok(!defaults.includes(`command:${name}`));
+        }
+        for (const name of SHIPPED_COMMANDS.filter(name => !UTILITY_COMMANDS.includes(name))) {
+          assert.ok(defaults.includes(`command:${name}`), `${harness}/${scope}: retains ${name}`);
+        }
+        const unknownRow = items.indexOf('command:sai-unmapped');
+        assert.ok(unknownRow >= 0);
+        assert.match(options.displayOptions[unknownRow], /Unknown\s+Unknown\s+unavailable$/);
+        if (scope === 'All') {
+          for (const name of agents) {
+            const family = targets.agent.includes(name) ? 'agent' : 'worker';
+            assert.ok(defaults.includes(`${family}:${name}`));
+          }
+          for (const name of UTILITY_COMMANDS) assert.ok(defaults.includes(`utility:${name}`));
+        } else {
+          assert.ok(defaults.every(value => value.startsWith('command:')));
+        }
+      }
+      assert.deepEqual(snapshotTree(fixture.packageRoot), before, 'enumeration leaves every wrapper unchanged');
+    } finally {
+      restore();
     }
   }
 });
