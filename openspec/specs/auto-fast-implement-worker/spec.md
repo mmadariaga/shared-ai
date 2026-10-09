@@ -92,3 +92,27 @@ When the block carries `**Request Additional Notes**`, the Direct Build implemen
 
 - **WHEN** the implementer receives a block that carries Request Additional Notes content
 - **THEN** it implements only from Capabilities in scope, Key constraints, Implementation Details, and Edge Cases, and treats the notes as context that adds no scope
+
+### Requirement: Implementer reads the learnings file as repository context
+
+When the root `SAI_LEARNINGS.md` exists, the Direct Build implementer SHALL read it once as context about the repository: it records how the repository builds, tests, and behaves. The file SHALL add no requirement, scope, or file to the implementation, and when an entry contradicts the block the block SHALL prevail. The implementer SHALL ignore an entry that cites paths that no longer exist, SHALL NOT correct such an entry, and SHALL NOT write `SAI_LEARNINGS.md`. When the file does not exist, the implementer SHALL proceed from the block alone with no error and no notice.
+
+#### Scenario: Learnings file present
+
+- **WHEN** the implementer starts in a repository whose root contains `SAI_LEARNINGS.md`
+- **THEN** it reads the file once and uses it as repository context, while implementing only what the block lists
+
+#### Scenario: Entry contradicts the block
+
+- **WHEN** an entry of the learnings file contradicts the block
+- **THEN** the implementer follows the block
+
+#### Scenario: Entry cites a path that no longer exists
+
+- **WHEN** an entry of the learnings file cites a path that is no longer in the repository
+- **THEN** the implementer ignores the entry and leaves `SAI_LEARNINGS.md` unchanged
+
+#### Scenario: Learnings file absent
+
+- **WHEN** the repository has no root `SAI_LEARNINGS.md`
+- **THEN** the implementer proceeds from the block alone, with no error and no notice

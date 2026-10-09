@@ -30,7 +30,7 @@ The coordinator SHALL process Steps strictly in order and SHALL NOT skip any Ste
 - **THEN** the coordinator dispatches a subagent for Step 3, not for any earlier or later Step
 
 ### Requirement: Subagent receives the Step text plus execution rules
-When dispatching a subagent, the coordinator SHALL provide the full text of the Step, the RED→GREEN handling rules, and the read-before-write rule from `apply.md`, plus any technical learnings the coordinator deems relevant (per `apply-technical-learnings-memory`). The subagent SHALL execute the Step's implementation body: write the RED test, run it, write the GREEN implementation, and iterate until GREEN passes.
+When dispatching a subagent, the coordinator SHALL provide the full text of the Step, the RED→GREEN handling rules, and the read-before-write rule from `apply.md`, plus the writing profile (the Stack, Conventions, and Avoid fields of `tasks.md` `## Implementation Context`) when one exists. The coordinator SHALL NOT add technical learnings it accumulated during the run. The subagent SHALL execute the Step's implementation body: write the RED test, run it, write the GREEN implementation, and iterate until GREEN passes.
 
 #### Scenario: Step with a RED block is dispatched
 - **WHEN** the coordinator dispatches a Step that contains a RED block

@@ -360,7 +360,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - **Continuation/Transport Loss** spends zero additional recovery attempts and never dispatches a replacement from the recovery path.
 - A **Backfilled Change** is archived via `/sai-archive` (the same command that archives non-backfilled changes).
 - A **Backfilled Change** is produced only by `/sai-backfill`; no other `sai-*` command writes `backfilled: true`.
-- A **RED Worker** precedes a **GREEN Worker** for every **Split-Routed Step**; the two never communicate directly — only the `/sai-4-apply` coordinator relays learnings between them.
+- A **RED Worker** precedes a **GREEN Worker** for every **Split-Routed Step**; the two never communicate directly — the `/sai-4-apply` coordinator hands each the same writing profile from `tasks.md` and relays nothing between them.
 - A **GREEN Conflict** is raised by a **GREEN Worker** and is resolved only by a human via the coordinator, never by the worker editing the test or interface.
 - A **Phase Policy** extends the **Orchestration Core** for exactly one planning phase without adding that phase's rules to the shared lifecycle contract.
 - A **Progress Plan** belongs to one routed command invocation and is declared by that phase's adapter, never by the worker.

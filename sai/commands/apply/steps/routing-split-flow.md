@@ -4,7 +4,7 @@ RED block present, exact `## Step N` contract, at least one production file in s
 
 ## RED dispatch
 
-Task disclosure: the `## Step N` contract and the testing slice (framework and assertion libraries, the Step test command of coordinator § Verification commands). Never the Step's GREEN implementation body: the RED worker is blind to it.
+Task disclosure: the `## Step N` contract, the testing slice (framework and assertion libraries, the Step test command of coordinator § Verification commands), and the coordinator § Dispatch writing profile. Never the Step's GREEN implementation body: the RED worker is blind to it.
 
 ## RED gate
 
@@ -21,7 +21,7 @@ When any other RED return is non-clean, run coordinator § Known-False Report Re
 
 ## GREEN dispatch
 
-Dispatch GREEN only after a valid RED result. Task disclosure is the Step's GREEN body, its production allowed files, and the same Step test command RED received. Never the test files the RED worker wrote, and never declared interfaces.
+Dispatch GREEN only after a valid RED result. Task disclosure is the Step's GREEN body, its production allowed files, the same Step test command RED received, and the same writing profile. Never the test files the RED worker wrote, and never declared interfaces.
 
 An unpassable GREEN (a failed result with `STOP reached?: yes`) goes through coordinator § Known-False Report Recovery. When no eligible correction exists it is the GREEN-conflict STOP: the Step halts for a human, with no checkbox, commit, or advance, even under an active session commit grant. Present the halt per `@sai/policies/question-context.md`: what is being decided (implementation, test, or interface fault), why it matters, the conflict's essential state, and the options in plain language.
 

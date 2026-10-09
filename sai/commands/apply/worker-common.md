@@ -12,6 +12,10 @@ The request carries only `arguments_value`, set to the resolved change name. The
 
 Emit progress events in the closed shape `{event: progress, step_ids: string[], changed_files: string[]}`, marking only ids of the dispatch-local plan, and close with exactly one terminal lifecycle status.
 
+## Writing profile
+
+A task disclosure may carry a `Writing profile`: the project's Stack, Conventions, and Avoid for this change. It says how to write, not what to write. Follow it when writing code or tests. When it contradicts the Step, the Step prevails. It never widens your allowed files and never lifts a prohibition of your role. A disclosure without a profile is complete as it is.
+
 ## Scratch
 
 - Your scratch path is `.tmp/{change-name}/`. It is outside your allowed files.

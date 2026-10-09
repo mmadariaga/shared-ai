@@ -31,7 +31,7 @@ The pass SHALL NOT be performed per Step, SHALL NOT be delegated to a Step-execu
 
 The promotion pass SHALL take its candidate entries from the `## Appendix: Plan vs Final Implementation` section of `openspec/changes/{change-name}/implementation.md` — the appendix the coordinator itself wrote from subagent report field 5. This is the primary source.
 
-The coordinator's in-context technical-learnings memory, accumulated from subagent report field 6, MAY be used as a supplementary source for the same run. It SHALL NOT be the sole source of a promoted entry when the deviations appendix is present.
+The technical learnings that the run's workers reported in report field 6 MAY be used as a supplementary source for the same run. They SHALL NOT be the sole source of a promoted entry when the deviations appendix is present. The coordinator keeps no learnings memory beyond those reports and SHALL NOT disclose pre-seeded keys, because nothing pre-seeds.
 
 The criterion "the fact was observed during execution, not inferred from the plan" SHALL be treated as satisfied by construction for appendix-sourced candidates: a deviation is by definition something execution surfaced. No separate observation check SHALL be imposed on them.
 

@@ -174,7 +174,7 @@ This per-dispatch plan reconciles with `sai/orchestration/command-runner.md`'s `
 
 ### Requirement: apply-coordinator-centric-execution
 
-The apply coordinator SHALL remain the executing main-session driver: it performs change resolution, the run-start step projection, scratch sweeps, coordinator verification, checkbox marking, appendices, learnings memory, the per-Step and terminal commit gates, terminal visibility reporting, exact-path staging, and commits itself. It SHALL perform the once-per-run learnings promotion after the Final sweep and SHALL evaluate the terminal documentation commit immediately afterward. It SHALL NOT delegate these coordinator responsibilities to a worker. The thin-coordinator routed model SHALL NOT be adopted for apply.
+The apply coordinator SHALL remain the executing main-session driver: it performs change resolution, the run-start step projection, the run-start read of the writing profile, scratch sweeps, coordinator verification, checkbox marking, appendices, the per-Step and terminal commit gates, terminal visibility reporting, exact-path staging, and commits itself. It SHALL perform the once-per-run learnings promotion after the Final sweep and SHALL evaluate the terminal documentation commit immediately afterward. It SHALL NOT delegate these coordinator responsibilities to a worker. The thin-coordinator routed model SHALL NOT be adopted for apply.
 
 #### Scenario: coordinator executes the terminal responsibilities
 

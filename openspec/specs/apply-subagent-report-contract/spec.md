@@ -14,7 +14,7 @@ When a RED or GREEN Step-execution worker finishes (or stops), it SHALL return, 
 3. **RED result** — one of: valid / passes / wrong-failure / `n/a`, including the error type when applicable.
 4. **GREEN result** — pass / fail / `n/a`.
 5. **Deviations** — a list of `{plan, final, reason}` entries for the appendix; empty if none.
-6. **Technical learnings / friction** — reusable, self-contained, actionable facts discovered during execution; empty if none (per `apply-technical-learnings-memory`).
+6. **Technical learnings / friction** — reusable, self-contained, actionable facts discovered during execution; empty if none.
 7. **STOP reached?** — yes/no, with the exact marker message when yes.
 8. **Files modified** — non-scratch paths written, created, or removed by the worker during this Step, relative to the repo root, one path per entry; a plan-named retired test file removed under the bounded retirement exception is declared here by its exact repository-relative path; paths under `.tmp/{change-name}/` SHALL be excluded even when the worker created or modified them; empty list if no non-scratch files were touched.
 

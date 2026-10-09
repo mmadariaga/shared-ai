@@ -53,3 +53,12 @@ The `tasks` artifact instruction in `openspec/schemas/sai-workflow/schema.yaml` 
 
 - **WHEN** `openspec instructions tasks --change <name>` is run
 - **THEN** the returned `instruction` field references the `## Required Documentation` section and explains that it must be populated from design-phase research findings, not left empty
+
+### Requirement: Required Documentation omits the learnings file
+
+`/sai-2-design` SHALL NOT list `SAI_LEARNINGS.md` in `## Required Documentation`, even when it consulted the file, because the `## Implementation Context` profile is the delivery channel for its content. The merge of the learnings file into `## Implementation Context` and the cap of five **Conventions** bullets SHALL remain unchanged.
+
+#### Scenario: Design consulted the learnings file
+
+- **WHEN** `/sai-2-design` reads `SAI_LEARNINGS.md` while authoring `tasks.md`
+- **THEN** `## Required Documentation` lists the proposal, the specs, and the other consulted resources, and does not list `SAI_LEARNINGS.md`

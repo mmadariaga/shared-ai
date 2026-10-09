@@ -5,6 +5,7 @@
 TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
 
 ## Requirements
+
 ### Requirement: Canonical location and namespaced filename
 
 The durable learnings artifact SHALL live at exactly one place: the project root, named exactly `SAI_LEARNINGS.md`. This is the single canonical location — every SAI phase that reads or writes it does so there. No SAI instruction or spec SHALL place the canonical learnings file inside `openspec/changes/{name}/` or any other directory.
@@ -152,4 +153,9 @@ A repository that has never run `/sai-4-apply`, or whose runs have produced no q
 #### Scenario: sai-4-apply starts in a repo with no learnings file
 
 - **WHEN** `/sai-4-apply` begins a run in a repository with no `SAI_LEARNINGS.md`
-- **THEN** its Technical Learnings Memory starts empty as it does today, and the run proceeds without a prompt or halt
+- **THEN** it reads nothing from the project root for learnings, delivers the writing profile from `tasks.md` as usual, and the run proceeds without a prompt or halt
+
+#### Scenario: Direct Build implementer runs in a repo with no learnings file
+
+- **WHEN** the Direct Build implementer starts in a repository with no `SAI_LEARNINGS.md`
+- **THEN** it proceeds from the block alone, with no error and no notice
