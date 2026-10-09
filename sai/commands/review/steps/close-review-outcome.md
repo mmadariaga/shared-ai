@@ -6,15 +6,7 @@ Fetch @sai/commands/review/review-report.template.md
 
 ## 1. Classify
 
-Assign each finding one severity:
-
-- **Critical** — must be fixed before merge: bugs, security holes, broken builds, contract violations, contradictions of the change artifacts.
-- **High** — should be fixed before merge: significant maintainability, performance, or test-coverage issues that will hurt soon.
-- **Medium** — a moderate maintainability, performance, or test-coverage concern that leaves merge-readiness intact but should be addressed soon.
-- **Low** — nice to fix: naming, small refactors, low-impact polish.
-- **Question** — genuine uncertainty that needs the user's input; reserve it for that.
-
-Resilience findings take the severity rule of pass 11 in the analysis step.
+Assign each finding its severity per `common.md` § Severity.
 
 ## 2. Draft
 

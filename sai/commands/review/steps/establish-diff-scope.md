@@ -8,4 +8,4 @@ Active step: establish-diff-scope. The step is done when the parent branch, the 
 4. **Change artifacts.** Read them per `common.md` § Change artifacts and extract the feature goal, the accepted and discarded decisions, the architecture decisions and trade-offs, the per-capability acceptance criteria, and the technologies, standards, and quality bar in scope.
 5. **Review mode.**
    - **Direct** (total ≤ 500 changed lines) — load the full diff with `git diff {parent-branch}...HEAD`.
-   - **Delegated** (total > 500) — keep the full diff out of your context. Partition the changed files into at most eight logical groups; the analysis step inspects each group through one `budget-explorer`.
+   - **Delegated** (total > 500) — keep the full diff out of your context. Partition the changed files into at most eight logical groups. The analysis step inspects each group through one **`budget-explorer`** with the output contract `file:line` + pass category + ≤80 words per finding.

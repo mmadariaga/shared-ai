@@ -56,7 +56,7 @@ test('existing dependency work remains installed without expanding review/audit 
   for (const phase of ['review', 'security', 'performance', 'accessibility']) {
     assert.match(read(`sai/commands/${phase}/steps/common.md`), /Fetch @skills\/budget-ro\/SKILL\.md/);
     const worker = read(`sai/commands/${phase}/worker.md`);
-    if (phase !== 'security') assert.match(worker, /OpenSpec prerequisite checks belong to `\/sai-explore` alone/);
+    if (phase !== 'review' && phase !== 'security') assert.match(worker, /OpenSpec prerequisite checks belong to `\/sai-explore` alone/);
     assert.doesNotMatch(worker, /Fetch @sai\/policies\/prereqs-check\.md|prereqs\.js/);
   }
   assert.match(read('sai/commands/meta-review/coordinator.md'), /runs no OpenSpec prerequisite check/);

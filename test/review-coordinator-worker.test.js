@@ -177,6 +177,11 @@ test('zero-audit fixes retain explicit selection, existing rounds and local-comm
   assert.match(close, /nothing is dispatched\s+before that selection/);
   assert.match(close, /pre-authorizes exactly one local commit/);
   assert.match(close, /loop is capped at three rounds/);
+  const header = close.slice(0, close.indexOf('## Selector'));
+  assert.doesNotMatch(header, /command-execution\.md|unattended-runtime-recovery\.md/);
+  const fixLoop = close.slice(close.indexOf('## Fix loop'));
+  assert.match(fixLoop, /Fetch @sai\/policies\/command-execution\.md/);
+  assert.match(fixLoop, /Fetch @sai\/policies\/unattended-runtime-recovery\.md/);
   assert.match(close, /no push, no amend, no retry, no other path staged/);
 });
 
@@ -335,8 +340,9 @@ test('step-gated: the review worker loads steps/common.md at dispatch and execut
   assert.match(worker, /this contract plus common\.md is the sealed initial surface/);
   assert.match(worker, /`resolve-change` runs from it before the first progress event/,
     'the fileless first step should run from the sealed surface before the first pointer');
-  assert.match(worker, /never prefetch, open, or follow any other step instruction file/,
+  assert.match(worker, /execute only the step it names, following that file exactly/,
     'the worker must execute only the coordinator-named step');
+  assert.doesNotMatch(worker, /never prefetch, open, or follow/, 'the pointer rule is stated positively');
   assert.doesNotMatch(worker, /Fetch @sai\/commands\/review\/invocation\.md/,
     'the wholesale invocation fetch chain must be replaced by active-step execution');
   assert.doesNotMatch(worker, /gated stage|resolve-mutation-analysis/,
@@ -391,7 +397,14 @@ test('review executes eleven passes, preserves alignment and resilience, and wri
   assert.match(analysis, /An uncovered goal or acceptance criterion is a finding/);
   assert.match(analysis, /scope creep is a `Question`/);
   assert.match(analysis, /A pass with nothing to report stays silent/);
-  assert.match(analysis, /Its findings are ordinary findings in Findings/);
+  assert.match(analysis, /Audit recommendations come only from passes 3 to 5/);
+  assert.doesNotMatch(analysis, /adds no audit recommendation|Its findings are ordinary findings/);
+  assert.equal((analysis.match(/blatant defect/g) || []).length, 1, 'one blatant-defect rule');
+  assert.match(analysis, /Only when `GLOSSARY\.md` exists at the repo root: Fetch @sai\/policies\/glossary-format\.md/);
+  assert.doesNotMatch(artifact('sai/commands/review/steps/common.md'), /glossary-format/);
+  assert.match(artifact('sai/commands/review/steps/common.md'), /## Severity[\s\S]*\*\*Critical\*\* — must be fixed before merge/);
+  assert.doesNotMatch(close, /\*\*Critical\*\* —/);
+  assert.doesNotMatch(worker, /OpenSpec prerequisite/);
   assert.doesNotMatch(analysis, /Coverage Notes|record the pass as skipped/);
   assert.doesNotMatch(worker, /coverage notes|`Resilience:`/);
   assert.match(close, /the three `Surface touched` lines, and a closing `Summary:` tally/);
