@@ -269,19 +269,19 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Supervised Review Round**: "One complete in-session **Artifact Review** of a supervised phase's artifacts — the explore coordinator invoking the **Explore Review Engine** once over the phase's freshly read artifact set, plus the phase worker's consuming and applying every external finding that invocation returns — counted once however many per-finding steps it takes, with at most three rounds per phase."
 *Avoid*: supervised review pass, auto review round, pipeline review pass
 
-**Routing Complexity**: "One of the three tokens (`low`, `medium`, `high`) on a step's `**Routing**` line that describes the coarse effort or risk of the step as judged at design time — refined freely by `sai-3-implement` without re-tagging `tasks.md`."
-*Avoid*: routing tier, effort estimate, step complexity
+**Routing Category**: "One of the seven tokens (`frontend-ui`, `frontend-code`, `backend`, `data`, `infra`, `docs`, `other`) on a step's `**Routing**` line naming the kind of work the step performs, judged by its purpose; `other` is used only when no category fits and carries a parenthetical note."
+*Avoid*: routing layer, routing discipline, step layer
+
+**Routing Context**: "One of the three tokens (`small`, `medium`, `large`) on a step's `**Routing**` line stating how much the implementer must load: instructions, files to read or touch, and prior information."
+*Avoid*: context window, step size, routing scope
 
 **Routing Diagnosis**: "Exactly one of the three coordinator routing labels for a non-clean closure — `worker-authored failure`, `coordinator rejection`, or `continuation/transport loss` — distinct from worker **Failure Class**."
 *Avoid*: routing cause, diagnosis class, failure class
 
-**Routing Discipline**: "One of the five tokens (`ui-ux`, `app-code`, `service`, `data`, `config`) on a step's `**Routing**` line that describes the type of thinking or agent specialty the step requires, orthogonal to its layer and derived from `**Files Affected**` path patterns."
-*Avoid*: routing kind, work type, step discipline, commit-verb (e.g. add/modify/refactor/fix)
+**Routing Difficulty**: "One of the three tokens (`low`, `medium`, `high`) on a step's `**Routing**` line stating how hard the step is for the implementer to finish from its plan, its tests, and its `interfaces.md` contract; `sai-3-implement` uses it to decide how much production code to write, and an unsure design chooses the higher value."
+*Avoid*: routing complexity, effort estimate, step complexity
 
-**Routing Layer**: "One of the four tokens (`frontend`, `backend`, `infra`, `cross-cutting`) on a step's `**Routing**` line that describes the architectural location a step touches — `cross-cutting` is the escape hatch for steps that span layers in a non-trivial way."
-*Avoid*: routing domain, step layer, agent domain, frontend-split (e.g. fe-ui/fe-code)
-
-**Routing Line**: "The per-step `**Routing**: layer=<layer> · discipline=<discipline> · complexity=<complexity>` keyword line on `tasks.md` (key=value tagged, not positional) that captures descriptive routing metadata at design time so a future orchestrator can dispatch each step without re-deriving routing cues from the step body or binding to a specific agent roster."
+**Routing Line**: "The per-step `**Routing**: category=<category> · context=<context> · difficulty=<difficulty>` keyword line on `tasks.md` (key=value tagged, not positional) that records the step's kind of work, the context the implementer must load, and how hard the step is for the implementer, judged by purpose at design time."
 *Avoid*: routing metadata, dispatch hint, step routing, positional routing tuple
 
 **Scope Drift**: "Work evidenced by a selected diff that is absent from the user's supplied statement of intent during **Intent Reconciliation**."
@@ -398,11 +398,10 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - A **Verified Precondition Hand-back** is permitted only after the cited file and key have been read and the destination command has been confirmed as their writer; otherwise the coordinator asks the user instead.
 - **Schema Template Authority** covers the four report artifacts plus implementation — each schema scaffold points at its matching command-owned write-time contract under `sai/commands/**` without content-parity equality.
 - A **Tracked Crystallized Set** gains a name only when a crystallization turn emits one, ignores duplicate later emissions, and starts empty in every new chat.
-- A **Routing Line** contains exactly one **Routing Layer**, one **Routing Discipline**, and one **Routing Complexity** token, in that order, each emitted as a `key=value` pair separated by middle dots.
+- A **Routing Line** contains exactly one **Routing Category**, one **Routing Context**, and one **Routing Difficulty** token, in that order, each emitted as a `key=value` pair separated by middle dots.
 - An **Unrecoverability Veto** belongs to one failed outcome and stops the remaining bounded recovery attempts without changing the failure's **Failure Class**.
-- A **File Change Type** prefixes every `**Files Affected**` entry of a step; the paths of those entries also derive the step's **Routing Layer** and **Routing Discipline** (an `R` entry contributes its destination path), with the change-type token ignored by the derivation.
-- A **Routing Layer** is derived from the step's `**Files Affected**` paths; **Routing Discipline** is derived from the same paths against a parallel pattern set, and is orthogonal to **Routing Layer** (e.g. `(frontend, ui-ux)` vs `(frontend, app-code)` discriminate agents within the same layer); **Routing Complexity** is a coarse design-time judgment.
-- A **Routing Line** is descriptive, not prescriptive — a future orchestrator maps the three tokens to its own agent roster at dispatch time, and `sai-3-implement` may refine the **Routing Complexity** (or split the step) without re-tagging `tasks.md`.
+- A **File Change Type** prefixes every `**Files Affected**` entry of a step; an `R` entry names its source and destination paths.
+- A **Routing Line** is judged by purpose, not derived from paths; its **Routing Difficulty** is measured against the implementer, and each `tasks.md` step corresponds one-to-one to an `implementation.md` Step.
 - A **Target State** belongs to the same `design.md` artifact as the design decisions, appearing once as the leading section; its snapshot and manifest subsections are excluded from `change-overview.md`. A **Step Contract** belongs to the same `interfaces.md` artifact as the other per-step sections, appearing once per step.
 - A **Change Overview** is derived from the five sai-2 source artifacts of one change — `proposal.md`, `specs/**`, `design.md`, `tasks.md`, and `interfaces.md` — and is generated once after the sai-2 initial feedback loop closes.
 - A **Change Overview** copies Proposal's Why and What Changes, then all present Design sections in source order except **Architecture Snapshot**, **File Manifest**, and Context, then every Tasks Step with corresponding selected **Step Contract** fields and literal Files Affected. **Target State** is retained only when content remains after exclusions; `interfaces.md` carries only **Step Contract** sections.
