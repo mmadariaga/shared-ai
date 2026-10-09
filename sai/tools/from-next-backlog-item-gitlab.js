@@ -6,10 +6,10 @@ function select(r, io, { pending, check, positive, text }) {
   if (r.board || r.list || r.view) return pending('order-unavailable', 'Board/list membership and order cannot be established by this issue-list adapter. Keep selection pending; do not substitute the project issue list.');
   const target = project(r.project, io);
   if (!target.issues_enabled) return pending('inaccessible-pile', 'GitLab project issues are disabled.');
-  if (!r.pile || r.pile !== 'issues') return pending('missing-pile', 'Choose the project issue list or supply another pile.', { options: [{ label: `${target.url}/-/issues — manual relative-position order`, value: 'issues' }] });
+  if (r.pile !== undefined && r.pile !== 'issues') return pending('missing-pile', 'Choose the project issue list or supply another pile.', { options: [{ label: `${target.url}/-/issues — manual relative-position order`, value: 'issues' }] });
   const filters = r.filters || {};
   check(typeof filters === 'object' && !Array.isArray(filters), 'Invalid filters.');
-  const params = new URLSearchParams({ per_page: '100', order_by: 'relative_position', sort: 'asc' });
+  const params = new URLSearchParams({ per_page: '100', state: 'opened', order_by: 'relative_position', sort: 'asc' });
   for (const [key, value] of Object.entries(filters)) {
     check(['state', 'labels', 'milestone', 'assignee_id'].includes(key) && text(value), 'Unsupported or invalid issue-list filter; membership cannot be established.');
     params.set(key, value);
@@ -26,14 +26,17 @@ function select(r, io, { pending, check, positive, text }) {
     if (batch.length < 100) break;
   }
   if (!items.length) return { status: 'empty' };
-  check(items.every(item => Number.isSafeInteger(item.relative_position) && item.relative_position >= 0), 'Manual position is unavailable for one or more members.');
-  items.sort((a, b) => a.relative_position - b.relative_position);
-  if (items.length > 1 && items[0].relative_position === items[1].relative_position) return pending('order-ambiguous', 'Several items share the first manual position.');
-  const first = items[0];
-  check(text(first.issue_type), 'First item type is unavailable.');
-  if (first.issue_type !== 'issue') return pending('non-importable', `First GitLab item type: ${first.issue_type}. Choose how to continue; no item was skipped.`);
-  const parsed = issueURL(first.web_url);
-  check(parsed.destination === target.url && parsed.number === first.iid, 'First item reference does not match pile membership.');
-  return { status: 'selected', provider: 'gitlab', reference: first.web_url, pile: target.url, order: 'relative_position ASC' };
+  const positioned = items.filter(item => Number.isSafeInteger(item.relative_position) && item.relative_position >= 0);
+  const priority = positioned.reduce((minimum, item) => Math.min(minimum, item.relative_position), Infinity);
+  const highest = positioned.length ? positioned.filter(item => item.relative_position === priority) : items;
+  const candidates = [];
+  for (const item of highest) {
+    check(text(item.issue_type), 'Candidate item type is unavailable.');
+    if (item.issue_type !== 'issue') return pending('non-importable', `Highest-priority GitLab item type: ${item.issue_type}. Choose how to continue; no item was skipped.`);
+    const parsed = issueURL(item.web_url);
+    check(positive(item.iid) && parsed.destination === target.url && parsed.number === item.iid, 'Candidate reference does not match pile membership.');
+    candidates.push({ reference: item.web_url, type: item.issue_type, relative_position: positioned.length ? priority : null });
+  }
+  return { status: 'candidates', provider: 'gitlab', candidates, pile: target.url, order: 'relative_position ASC, unpositioned last' };
 }
 module.exports = { select };
