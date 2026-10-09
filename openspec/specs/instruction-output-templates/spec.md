@@ -31,7 +31,7 @@ The implementation plan template SHALL preserve the current headings, placeholde
 
 Each audit SHALL load only its command-owned template and retain its artifact path, shared severity vocabulary, identifiers, evidence requirements, and tally. Review SHALL use C/H/M/L/Q findings and close with `Summary: Critical=<count> High=<count> Medium=<count> Low=<count> Questions=<count>`. Its top-level sections SHALL be Summary, Security Surface Triage, Performance Surface Triage, Accessibility Surface Triage, Findings, and Coverage Notes, in that order. Summary SHALL record goal coverage and scope creep in one or two lines without repeating findings. Domain Alignment analysis SHALL remain, including decision contradictions as findings. Coverage Notes SHALL retain files reviewed/skipped, test inspection, and a `Resilience:` outcome even without surface, affected paths, and relevant idempotency and no-existing-pattern notes. Resilience findings SHALL remain in Findings under their unchanged rules. Review SHALL have no Next Steps, Domain Alignment Check, Resilience Surface Triage, or Mutation Analysis section or mutation counts/identifiers. All three audit recommendations SHALL remain under unchanged criteria.
 
-Security, performance, and accessibility SHALL retain their mandatory Not Applicable sections with Justification, severity-prefixed identifiers, and phase-specific tallies; security SHALL retain conditional SCA, supply-chain, license, policy and evidence rules; performance SHALL retain evidence, metrics, hot-path, remediation and validation; accessibility SHALL retain WCAG/framework, location, impact, runtime and clean-coverage fields. Security's fenced template body SHALL stay unindented like its siblings. No other audit contract SHALL change.
+Security, performance, and accessibility SHALL retain their mandatory Not Applicable sections with Justification, severity-prefixed identifiers, and phase-specific tallies; security SHALL retain conditional SCA and evidence rules; performance SHALL retain evidence, metrics, hot-path, remediation and validation; accessibility SHALL retain WCAG/framework, location, impact, runtime and clean-coverage fields. Security's fenced template body SHALL stay unindented like its siblings. No other audit contract SHALL change.
 
 #### Scenario: Audit phase loads only its own contract
 - **WHEN** a phase drafts its report
@@ -58,6 +58,10 @@ Security, performance, and accessibility SHALL retain their mandatory Not Applic
 - **WHEN** security, performance, or accessibility finding bodies and closing sections are read
 - **THEN** example headings lead with severity-prefixed identifiers
 - **AND** each closes with its severity-subset tally
+
+#### Scenario: Security contract drops supply-chain, license, and policy sections
+- **WHEN** the security report template is read
+- **THEN** it contains no Supply Chain Hygiene, License Risk, or Policy Compliance section and no SCA `License` field
 
 ### Requirement: Pull request body contract is preserved
 

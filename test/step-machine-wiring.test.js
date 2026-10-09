@@ -301,8 +301,14 @@ test('every step-machine worker and common.md adopt the task-disclosure pointer 
     const worker = readRepo(`sai/commands/${name}/worker.md`);
     const common = readRepo(`sai/commands/${name}/steps/common.md`);
     assert.match(worker, /§ Step-machine task disclosure/, `${name} worker should reference the shared rule`);
-    assert.match(common, /first line of the task-disclosure continuation/, `${name} common.md should carry the step-delivery rule`);
-    assert.match(common, /in the first progress event/, `${name} common.md should report both ids together`);
+    // Security states the pointer rule once, in its worker card's Steps section; common.md carries no pointer rule.
+    if (name === 'security') {
+      assert.match(worker, /Each progress-event continuation carries one pointer line/, 'security worker should carry the step-delivery rule');
+      assert.doesNotMatch(common, /first line of the task-disclosure continuation/, 'security common.md should not repeat the step-delivery rule');
+    } else {
+      assert.match(common, /first line of the task-disclosure continuation/, `${name} common.md should carry the step-delivery rule`);
+      assert.match(common, /in the first progress event/, `${name} common.md should report both ids together`);
+    }
     assert.doesNotMatch(worker, /is the Startup Handshake/, `${name} worker should no longer return the first step alone`);
   }
 });

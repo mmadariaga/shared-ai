@@ -1,8 +1,8 @@
 # Security Step — Resolve SAST Analysis
 
-Active step: resolve-sast-analysis. Apply taint-tracking and pattern detection to the selected scope. The step is done when every in-scope file has been checked against every flaw category below; then report the `resolve-sast-analysis` progress event per the worker contract.
+Active step: resolve-sast-analysis. Apply taint-tracking and pattern detection to the selected scope. The step is done when every file in the selected scope has been checked against every flaw category below, every external input source is traced to its sinks, and every flaw is recorded with its fields; then report the `resolve-sast-analysis` progress event per the worker contract.
 
-### Phase 2: SAST — Static Analysis
+### SAST — Static Analysis
 
 For each flaw record:
 - File path + line number
@@ -67,7 +67,7 @@ For each flaw record:
 - Untrusted Deserialization (CWE-502) — `BinaryFormatter`, `pickle.loads`, `ObjectInputStream`, `YAML.load`
 
 **Supply Chain**
-- Vulnerable Third-Party Component (CWE-1395) — covered in Phase 3
+- Vulnerable Third-Party Component (CWE-1395) — covered by `resolve-sca`
 - Insecure Direct Use of Library APIs
 
 #### Language-Specific Detection Hints

@@ -25,12 +25,16 @@ The routed security worker SHALL own envelope parsing, change resolution, the re
 
 ### Requirement: Worker preserves security prerequisites, argument parsing, and diff scope
 
-Before analysis, the worker SHALL enforce the required `proposal.md` and SHALL NOT run or restate the OpenSpec CLI, `openspec/` directory, or `schema: sai-workflow` prerequisite checks. It SHALL preserve the existing change-name and optional `--full` or `--path` scope arguments, zero/one/multiple-change selection behavior, missing-proposal failure text, and parent-branch detection order of user input, remote default, verified `master`, then verified `main`. It SHALL state the selected parent branch, inspect only the selected scope, use the existing file list/stat/diff workflow, and apply the 500-LOC full-diff cutover.
+Before analysis, the worker SHALL enforce the required `proposal.md` and SHALL NOT run or restate the OpenSpec CLI, `openspec/` directory, or `schema: sai-workflow` prerequisite checks. It SHALL preserve the existing change-name and optional `--full` or `--path` scope arguments, zero/one/multiple-change selection behavior, missing-proposal failure text, and parent-branch detection order of user input, remote default, verified `master`, then verified `main`. When no change name is supplied and `openspec list --json` returns zero changes, the worker SHALL return `failed` with exactly ``No active changes found. Run `/sai-1-spec` to create one.`` It SHALL state the selected parent branch, inspect only the selected scope, use the existing file list/stat/diff workflow, and apply the 500-LOC full-diff cutover.
 
 #### Scenario: Proposal prerequisite is missing
 - **WHEN** `openspec/changes/{change-name}/proposal.md` is absent
 - **THEN** the worker returns the existing actionable missing-proposal failure
 - **AND** it performs no audit analysis and writes no `security.md`
+
+#### Scenario: No active change exists
+- **WHEN** the envelope supplies no change name and `openspec list --json` returns zero changes
+- **THEN** the worker returns `failed` with exactly ``No active changes found. Run `/sai-1-spec` to create one.``
 
 #### Scenario: Large diff is encountered
 - **WHEN** the selected diff exceeds 500 LOC
@@ -38,35 +42,40 @@ Before analysis, the worker SHALL enforce the required `proposal.md` and SHALL N
 
 #### Scenario: Empty diff is encountered
 - **WHEN** the selected diff is empty
-- **THEN** the worker completes the existing no-change security outcome without creating findings or modifying protected files
+- **THEN** the worker writes the Not Applicable report and returns `completed` without creating findings or modifying protected files
 
 ### Requirement: SAST, SCA, and research delegation preserve the existing security policy
 
-The worker SHALL preserve the existing SAST flaw categories, direct-and-obvious CWE mapping, severity vocabulary, taint-flow requirements, concrete evidence requirements, diff-only rule, and no-speculation rule. It SHALL run SCA only when a dependency manifest changes and SHALL preserve dependency extraction, CVE/version-range evidence, CVSS severity, fix availability, and license checks. It SHALL use `budget-explorer` for delegated research, declare the existing per-call output contract, cap total explorer invocations at eight, and authorize only bounded read-only execution of applicable dependency-audit tools such as `npm audit`, `pip-audit`, `mvn dependency-check`, `trivy`, and `osv-scanner`; it SHALL never install, update, or rewrite dependencies.
+The worker SHALL preserve the existing SAST flaw categories, direct-and-obvious CWE mapping, severity vocabulary, taint-flow requirements, concrete evidence requirements, diff-only rule, and no-speculation rule. It SHALL run SCA only on the dependency manifests the SCA gate admits and SHALL preserve dependency extraction, CVE/version-range evidence, CVSS severity, and fix availability; it SHALL NOT perform a license check or record license evidence. It SHALL use `budget-explorer` for delegated research, declare the existing per-call output contract, cap total explorer invocations at eight, and authorize only bounded read-only execution of applicable dependency-audit tools such as `npm audit`, `pip-audit`, `mvn dependency-check`, `trivy`, and `osv-scanner`; it SHALL never install, update, or rewrite dependencies, manifests, lockfiles, production files, or configuration.
 
 #### Scenario: Code-only diff is audited
 - **WHEN** the scoped diff modifies code but no dependency manifest
 - **THEN** the worker performs the required SAST analysis with concrete locations and evidence
-- **AND** it skips SCA and states that no dependency changes in the diff caused SCA to be skipped
+- **AND** it skips SCA, and the report's provenance-line scan type names only the analyses that ran
 
 #### Scenario: Dependency manifest changes
 - **WHEN** the scoped diff modifies a supported dependency manifest
-- **THEN** the worker performs SCA using only bounded read-only audit execution and records CVE, affected version range, fix, severity, and license evidence where applicable
+- **THEN** the worker performs SCA using only bounded read-only audit execution and records CVE, affected version range, fix, severity, and CVE source evidence where applicable, with no license field
 - **AND** it does not modify the manifest, lockfile, dependencies, or configuration
 
 ### Requirement: Worker writes and verifies only the security artifact
 
-The worker SHALL write and verify only `openspec/changes/{change-name}/security.md`, using the existing security report template as amended by the shared audit severity vocabulary — a severity-prefixed identifier on every finding and a closing `Summary:` tally line — and preserving concise executive summary, concrete findings, severity counts, acknowledged trade-offs, and applicable SCA sections. Every SAST finding SHALL have precise location and required evidence, every SCA finding SHALL have CVE and affected version-range evidence, speculative or pre-existing issues SHALL be excluded, and the completed summary SHALL report severity counts, top Critical/High findings when present, the report path, and the selected parent branch without embedding report contents.
+The worker SHALL write and verify only `openspec/changes/{change-name}/security.md`, using the security report template as amended by the shared audit severity vocabulary — a severity-prefixed identifier on every finding and a closing `Summary:` tally line. The report SHALL open with a single provenance line carrying the scope with its parent branch, the scan type, and the date, and SHALL contain only the sections a consumer reads: `## Not Applicable` when the audit does not apply, `## SAST Findings`, `## SCA Findings` when SCA ran, the optional `## Acknowledged Trade-offs (from change artifacts)`, and the closing tally; a section with no content SHALL be omitted. The report SHALL NOT contain an Executive Summary, Module Summary, Supply Chain Hygiene, License Risk, Policy Compliance, Prioritized Remediation Plan, or Metrics section. Every SAST finding SHALL have precise location and required evidence, every SCA finding SHALL have CVE and affected version-range evidence, speculative or pre-existing issues SHALL be excluded, and the completed summary SHALL report severity counts, top Critical/High findings when present, the report path, and the selected parent branch without embedding report contents. The worker SHALL verify the saved file in its form: a normal report exists, is non-empty, carries the provenance line, leads every finding heading with its severity-prefixed identifier, and has a `Summary:` tally matching its findings; a Not Applicable report carries the provenance line and the `## Not Applicable` section with its justification.
 
 #### Scenario: Security report completes
-- **WHEN** all applicable audit phases and self-critique checks complete
+- **WHEN** all applicable audit steps and the hard-rule check of the draft complete
 - **THEN** `security.md` exists, is non-empty, and contains only evidence-backed findings in the selected scope, each with its severity-prefixed identifier and the closing summary tally
 - **AND** the worker returns `completed` with the canonical change name, report path, summary, and `changed_files` containing only `security.md`
 
 #### Scenario: Audit needs no findings
 - **WHEN** the scoped code and dependencies contain no concrete security flaw
-- **THEN** the worker omits speculative and exhaustive clean-category findings
-- **AND** it still writes and verifies the concise security artifact without modifying production code, dependency files, or configuration
+- **THEN** the worker writes the provenance line and a closing tally of zeros, listing no clean category
+- **AND** it still writes and verifies the security artifact without modifying production code, dependency files, or configuration
+
+#### Scenario: Not Applicable report is verified
+- **WHEN** the worker saves a Not Applicable report
+- **THEN** it verifies the provenance line and the `## Not Applicable` section with its justification, with no findings sections and no tally
+- **AND** the completed summary carries the justification in place of severity counts and findings
 
 ### Requirement: Security findings carry severity-prefixed identifiers and a closing summary tally
 
@@ -103,3 +112,36 @@ The security close step SHALL challenge the in-memory draft before saving to dis
 #### Scenario: Adversarial check filters security draft
 - **WHEN** the in-memory security draft contains findings
 - **THEN** the worker runs one bounded adversary and saves only kept findings with recomputed Summary tally
+
+### Requirement: Security discovery decides the SCA gate and the not-applicable outcome
+
+The `discover-module-map` step SHALL be the single place that decides the SCA gate — admitting each dependency manifest the diff introduces or modifies in diff mode, or that the selected scope contains in `--full` or `--path` mode — and the not-applicable outcome. When the selected scope has no attack surface (external input source, entry point, or trust boundary) and the gate admits no manifest, the worker SHALL report `discover-module-map`, `resolve-sast-analysis`, and `resolve-sca` together in that step's progress event, and `close-security-outcome` SHALL write a Not Applicable report holding only the title, the provenance line, and `## Not Applicable` with its justification. When the gate admits no manifest and the audit applies, the SAST progress event SHALL also carry `resolve-sca`.
+
+#### Scenario: Scope has no attack surface and no admitted manifest
+- **WHEN** discovery finds no attack surface in the selected scope and the SCA gate admits no manifest
+- **THEN** the worker reports `discover-module-map`, `resolve-sast-analysis`, and `resolve-sca` in one progress event
+- **AND** `close-security-outcome` writes the Not Applicable report and the worker returns `completed`
+
+#### Scenario: Gate admits no manifest on an applicable audit
+- **WHEN** the audit applies and the SCA gate admits no manifest
+- **THEN** the SAST progress event carries both `resolve-sast-analysis` and `resolve-sca`
+
+### Requirement: Security steps state observable completion criteria
+
+Each filed security step SHALL state an observable completion criterion. `discover-module-map` SHALL be done when every file in the selected scope is assigned to a module and every dependency manifest has its SCA gate decision. `resolve-sast-analysis` SHALL be done when every file in the selected scope has been checked against every flaw category, every external input source is traced to its sinks, and every flaw is recorded with its fields; the report SHALL gain no per-category record. `resolve-sca` SHALL be done when every admitted manifest is audited and every vulnerable dependency is recorded. `close-security-outcome` SHALL be done when `security.md` is saved, verified in its form, and `completed` is returned.
+
+#### Scenario: SAST step completes
+- **WHEN** the worker finishes `resolve-sast-analysis`
+- **THEN** every in-scope file has been checked against every flaw category and every external input source has been traced to its sinks before the progress event is returned
+
+### Requirement: Security instruction rules are stated once
+
+The security worker card, coordinator card, and step files SHALL state each rule once, beside the step that decides or uses it. `steps/common.md` SHALL define accepted trade-offs with their source documents (`proposal.md`, `design.md`, `specs/**/*.md`), the selected scope, the write scope (the only deliverable is `security.md`), and the identifier-and-tally rule; steps SHALL refer to "the selected scope" and to accepted trade-offs without restating them. The worker card SHALL carry the five step ids, the batch that reports each, and the pointer rule in one Steps section. The `resolve-sca` step id SHALL stay unchanged while its visible label is "Audit dependencies".
+
+#### Scenario: Step refers to the selected scope
+- **WHEN** a security step file names the scope it operates on
+- **THEN** it uses "the selected scope", and only `steps/common.md` defines the difference between diff, `--full`, and `--path`
+
+#### Scenario: Plan label for the SCA step
+- **WHEN** the security coordinator, worker, or `steps/resolve-sca.md` names the `resolve-sca` step
+- **THEN** its visible label is "Audit dependencies" and its id is `resolve-sca`
