@@ -12,6 +12,7 @@ the coordinator.
 The coordinator names each active step by appending one pointer line — `Active step: <id> — follow <path>` — to a progress-event continuation. Execute only the step file that line names; never prefetch, open, or follow any other step instruction file. Step paths arrive solely through coordinator continuations; this file is the only step surface loaded at dispatch. `prereqs-resolution` has no step file of its own — it runs from the worker contract plus this file before the first progress event, and the first delivered pointer targets `collapse-implemented-steps`. The first pointer arrives as the first line of the task-disclosure continuation, before the task: run `prereqs-resolution` inline, then follow that pointer, and report `prereqs-resolution` and `collapse-implemented-steps` together in the first progress event, per `@sai/orchestration/worker-core.md` § Step-machine task disclosure. On a first run (no `implementation.md`) that step has no work: report it without fetching its file. Each step ends by returning its progress event per the worker contract's Progress Reporting plan; a continuation without a pointer line (needs_input answer, recovery) leaves the active step unchanged in this continuous session.
 
 Fetch @sai/policies/glossary-format.md
+Fetch @sai/policies/code-quality-priority-stack.md
 Fetch @sai/policies/remember.md
 Fetch @skills/budget/SKILL.md and use it.
 
@@ -52,16 +53,3 @@ The generation rules below (complete production code, RED → GREEN, step orderi
 - **Test retirements:** A Step retires obsolete test files only inside its RED block, each listed by its exact repository-relative path as `retired`; a green-direct Step (no RED block) never carries retirements. Each retired file gets one Verification Checklist item asserting its absence, run by the coordinator after the RED dispatch returns and before GREEN may be dispatched.
 - **Existing tests to update:** Each entry of the design's `Existing Tests Broken` for a Step becomes one line `**Existing tests to update:**` in that Step's RED block, with the exact repository-relative path and its `compile|runtime` mode; RED may modify exactly those files and no other existing test, and GREEN never touches tests. An entry naming a production file, not a test file or test-only support file, is a defective `sai-2` artifact: resolve it by the plan-generation step's defective-`sai-2` rule, and the RED block lists only test files. A non-empty `Existing Tests Broken` makes a RED block mandatory for the Step, and a green-direct Step requires `None`. A test that no longer makes sense becomes a retirement instead. An absent field, or a `tasks.md` without it, counts as `None`.
 - **Manual Verification and Migration Plan:** Each `design.md` `Manual Verification` item becomes a `- [ ]` checkbox under the `**Functional (...)**` header of the first Step where it can be observed, or of the last Step when it is observable only at the end. A `Migration Plan`, when present, is reflected in the Step order or in an italic `*(...)*` note carrying its ordering and rollback constraints; when absent, nothing is generated. An absent section counts as `None`.
-
-## Code Quality Priority Stack
-
-When two good practices conflict, resolve the tension deterministically: the rule with the **lower number wins**. Apply the rules in this fixed priority order.
-
-1. **YAGNI** — Do not build behavior, abstraction, or configurability that the current change does not require. Speculative generality yields to the change actually in front of you.
-2. **SOLID (object-oriented designs only)** — Each unit has one reason to change; new behavior is added by extension without breaking existing callers; a caller depends only on the narrow interface it actually uses, not a concrete or over-wide one. State these as checkable properties of the code — never as the bare slogan "follow SOLID".
-3. **Self-documenting code** — Names and structure carry the intent so a reader follows the code without external context; comment only the non-obvious WHY.
-4. **Dependency ladder** — Prefer an already-installed project dependency over the standard library, and the standard library over a native platform feature. Do not add a new third-party dependency when any earlier rung already covers the need.
-5. **No boilerplate / DRY / deletion over addition / boring over clever** — Omit boilerplate unless it is the project standard; remove duplication; prefer deleting and rewriting over patching; choose the obvious single implementation path over a clever one.
-6. **Minimum surface area** — Ship the least code, configuration, and public API the change needs.
-
-**Project alignment.** An established pattern in the code being changed outranks rules 3–6: follow it. When following it would break rule 1 or 2, choose the path that breaks the fewest numbered rules.
