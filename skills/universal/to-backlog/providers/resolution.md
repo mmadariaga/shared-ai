@@ -16,8 +16,13 @@ resolution, passing arguments and content as data. Validate compatibility in
 the adapter, not a shared host catalogue. Return `resolved` with the canonical
 `repository` and any `project`, or an existing `needs_input`/`unsupported`
 outcome. The shared tool attaches the selected provider, instructions and
-adapter. A `provider-ambiguous` or `repository-ambiguous` result allows the CLI
+adapter. A `provider-ambiguous`, `repository-ambiguous`, or `destination-ambiguous` result allows the CLI
 wrapper to gather Git remotes and repeat resolution.
+
+For variable cloud hostnames set `classification` to `provider` and export pure
+`classify(address)` returning `match` or null. Matches win before host fallback.
+Such entries are not unknown-host fallback candidates and reject incompatible
+explicit addresses themselves. The same registry selects adapter and references.
 
 Resolution grants no publication authority. Query, confirmation, publication,
 origin-update and recovery operations retain their existing contracts. Install

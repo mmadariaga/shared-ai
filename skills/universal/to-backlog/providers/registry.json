@@ -2,6 +2,7 @@
   "providers": [
     {
       "id": "github",
+      "originDomainless": true,
       "hosts": ["github.com"],
       "capabilities": ["query", "publish", "recover", "read-update", "query-update", "update", "recover-update"],
       "instructions": "providers/github.md",
@@ -15,6 +16,16 @@
       "instructions": "providers/gitlab.md",
       "updateInstructions": "providers/gitlab-update.md",
       "adapter": "to-backlog-gitlab.js"
+    },
+    {
+      "id": "azuredevops",
+      "hosts": ["dev.azure.com", "ssh.dev.azure.com"],
+      "classification": "provider",
+      "resolution": "provider",
+      "capabilities": ["query", "publish", "recover", "read-update", "query-update", "update", "recover-update"],
+      "instructions": "providers/azuredevops.md",
+      "updateInstructions": "providers/azuredevops-update.md",
+      "adapter": "to-backlog-azuredevops.js"
     }
   ]
 }

@@ -159,13 +159,13 @@ test('I1 / I10: unsafe references and unregistered adapters block before provide
     assert.throws(() => tool.resolve({ explicit: { provider: 'github', repository: 'team/repo' } }, selected, io), /Invalid/);
     assert.throws(() => tool.query(request, { ...io, registry: selected }), /Invalid/);
   }
-  for (const provider of ['unknown', 'azuredevops']) {
+  for (const provider of ['unknown', 'unregistered-provider']) {
     assert.equal(tool.resolve({ explicit: { provider } }, registry, io).status, 'unsupported');
     assert.throws(() => tool.query({ ...request, provider }, io), /Unsupported/);
   }
   assert.equal(state.calls.length, 0);
   assert.equal(state.mutations.length, 0);
-  assert.deepEqual(registry.providers.map(entry => entry.id), ['github', 'gitlab'], 'No new publication provider is registered');
+  assert.deepEqual(registry.providers.map(entry => entry.id), ['github', 'gitlab', 'azuredevops'], 'Azure extends the same provider registry');
 });
 
 test('E9 / I1 / I10: destination precedence and unknown-host questions are unchanged', () => {

@@ -45,7 +45,7 @@ function resolve(request, registry, io) {
   if (!explicit.provider && !config.provider) {
     const values = explicit.repository ? [explicit.repository] : config.repository ? [config.repository] : request.remotes || [];
     const hosts = registry.providers.flatMap(entry => entry.hosts || []);
-    const unknownHosts = [...new Set(values.map(backlog.address).filter(Boolean).map(item => item.host).filter(host => !hosts.includes(host)))];
+    const unknownHosts = [...new Set(values.filter(value => !registry.providers.some(entry => entry.classification === 'provider' && loadAdapter(entry).classify(value) === 'match')).map(backlog.address).filter(Boolean).map(item => item.host).filter(host => !hosts.includes(host)))];
     if (unknownHosts.length) return { status: 'needs_input', reason: 'provider-ambiguous', unknownHosts };
   }
   const result = backlog.resolve(request, registry, { ...io, loadAdapter });
@@ -76,10 +76,11 @@ function collect(request, io) {
   return { ...state, base, commits: git(['log', `${base}..HEAD`, '--format=%H%n%s%n%b']), diff: git(['diff', `${base}...HEAD`]), diffStats: git(['diff', '--stat', `${base}...HEAD`]), context };
 }
 function destination(request, io) {
-  const target = adapter(request.provider, io).inspect(request.repository, io);
+  const provider = adapter(request.provider, io);
+  const target = provider.inspect(request.repository, io);
   const state = collect({}, io);
   const candidates = state.remotes.filter(remote => {
-    const same = value => { const parsed = backlog.address(value); return parsed && parsed.host === target.host.split(':')[0] && parsed.repository === target.repository; };
+    const same = value => { if (provider.sameRepository) return provider.sameRepository(value, target); const parsed = backlog.address(value); return parsed && parsed.host === target.host.split(':')[0] && parsed.repository === target.repository; };
     return same(remote.url) && same(remote.pushUrl);
   });
   const remote = request.remote ? candidates.find(item => item.name === request.remote) : candidates.length === 1 ? candidates[0] : null;
@@ -110,7 +111,8 @@ function query(request, io) {
   const selected = destination(request, io);
   const rows = adapter(request.provider, io).list(selected.target, selected.source, selected.base, io);
   if (rows.length > 1) throw new Error('Multiple matching requests; resolve ambiguity before publication');
-  const proposal = { provider: request.provider, ...selected, existing: rows[0] || null, title: request.title, description: request.description };
+  const warning = rows[0] && adapter(request.provider, io).concurrencyWarning;
+  const proposal = { provider: request.provider, ...selected, existing: rows[0] || null, title: request.title, description: request.description, ...(warning ? { concurrency_warning: warning } : {}) };
   const matches = rows[0]?.title === request.title && rows[0]?.description === request.description;
   return { status: matches ? 'no_changes' : 'ready', proposal, confirmation: digest(proposal) };
 }
@@ -120,15 +122,28 @@ function publish(request, io) {
   if (ready.status === 'no_changes') return ready;
   if (pushQuery(request, io).status !== 'no_changes') throw new Error('Branch is not published at the approved commit; obtain independent push approval');
   request = { ...request, receipt: receiptPath(request.receipt) };
-  fs.writeFileSync(request.receipt, JSON.stringify({ proposal: ready.proposal }), { flag: 'wx', mode: 0o600 });
+  const provider = adapter(request.provider, io);
+  const receipt = { proposal: ready.proposal, ...(provider.publicationEvidence ? { evidence: provider.publicationEvidence(ready.proposal, io) } : {}) };
+  fs.writeFileSync(request.receipt, JSON.stringify(receipt), { flag: 'wx', mode: 0o600 });
+  let submitted = false;
   try {
-    adapter(request.provider, io).mutate(ready.proposal, io);
+    const result = provider.mutate(ready.proposal, io);
+    submitted = true;
+    if (receipt.evidence) {
+      receipt.evidence.result = result;
+      fs.writeFileSync(request.receipt, JSON.stringify(receipt), { mode: 0o600 });
+    }
     return recover({ receipt: request.receipt }, io);
-  } catch (error) { return { status: 'uncertain', receipt: request.receipt, message: error.message }; }
+  } catch (error) { return { status: !submitted && error.rejected ? 'rejected' : 'uncertain', receipt: request.receipt, message: error.message }; }
 }
 function recover(request, io) {
   request = { ...request, receipt: receiptPath(request.receipt) };
-  const { proposal } = JSON.parse(fs.readFileSync(request.receipt, 'utf8'));
+  const { proposal, evidence } = JSON.parse(fs.readFileSync(request.receipt, 'utf8'));
+  const provider = adapter(proposal.provider, io);
+  if (provider.recoverPublication) {
+    if (!evidence || !Array.isArray(evidence.previous)) throw new Error('Missing private publication evidence');
+    return { ...provider.recoverPublication(proposal, evidence, io, request), receipt: request.receipt };
+  }
   const target = adapter(proposal.provider, io).inspect(proposal.target.url, io);
   if (target.id !== proposal.target.id || target.host !== proposal.target.host) throw new Error('Recovery destination identity changed');
   const rows = adapter(proposal.provider, io).list(target, proposal.source, proposal.base, io);
@@ -148,6 +163,7 @@ function main(argv) {
     if (operation === 'resolve') {
       let config = {};
       try { config = JSON.parse(fs.readFileSync('.to-pr.json', 'utf8')); } catch (error) { if (error.code !== 'ENOENT') throw error; }
+      if (config.type !== undefined) throw new Error('Work-item type is invocation-scoped');
       result = resolve({ explicit: request.explicit || {}, config, remotes: collect({}, io).remotes.map(row => row.url) }, registry, io);
     } else result = operations[operation](request, io);
     process.stdout.write(JSON.stringify(result) + '\n');

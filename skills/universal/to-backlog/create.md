@@ -3,9 +3,9 @@
 ## Destination selection — before extraction
 
 Run `node <tool> resolve <registry>` with JSON on stdin:
-`{"explicit":{"provider":"...","repository":"...","project":"..."}}`.
+`{"explicit":{"provider":"...","repository":"...","project":"...","organization":"..."}}`.
 Include only user-supplied fields. Optional `.to-backlog.json` in the working
-directory has the same three string fields. Resolution applies explicit input,
+directory has the same destination string fields (no work-item type default). Resolution applies explicit input,
 then configuration, then Git remotes; hosting never overrides a backlog choice.
 For `needs_input`, ask for the missing choice using returned candidates and
 resolve again. On `unsupported`, keep the draft and stop. On errors, request
