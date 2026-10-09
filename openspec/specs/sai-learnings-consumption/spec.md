@@ -6,38 +6,13 @@ TBD - this spec was authored as a change delta and never merged into the main tr
 
 ## Requirements
 
-### Requirement: sai-4-apply pre-seeds its Technical Learnings Memory at run start
-
-At the start of a `/sai-4-apply` run, before the first Step is dispatched, the coordinator SHALL read `SAI_LEARNINGS.md` from the project root and pre-seed its accumulated Technical Learnings Memory with the entries it finds.
-
-Pre-seeded entries SHALL be governed by the existing memory rules without exception: the coordinator SHALL select and inject only entries it deems relevant to a given dispatch, SHALL NOT dump the memory in full into any dispatch, and SHALL apply the existing blindness constraint when injecting into a blind test-writer dispatch.
-
-Pre-seeded entries SHALL be indistinguishable in effect from entries accumulated from subagent report field 6 during the run. No new injection channel, dispatch field, or prompt section SHALL be introduced to carry them.
-
-When entries accumulated during the run concern the same repo-level artifact as a pre-seeded entry, the run-observed entry SHALL take precedence for injection purposes, because it reflects the more recent observation.
-
-#### Scenario: Run starts in a repo with a populated learnings file
-
-- **WHEN** `/sai-4-apply` begins a run and `SAI_LEARNINGS.md` contains entries
-- **THEN** the coordinator's Technical Learnings Memory is pre-seeded with those entries before the first dispatch, and the first dispatch can therefore receive a relevant entry it would otherwise have had to rediscover
-
-#### Scenario: Pre-seeded memory is not dumped into a dispatch
-
-- **WHEN** the coordinator dispatches a Step and the pre-seeded memory holds entries unrelated to that Step
-- **THEN** only the relevant entries are injected, and the unrelated remainder is not
-
-#### Scenario: A run observation contradicts a pre-seeded entry
-
-- **WHEN** a subagent reports a field-6 learning about the same repo-level artifact as a pre-seeded entry
-- **THEN** the coordinator injects the run-observed version into subsequent dispatches
-
 ### Requirement: sai-2-design merges the learnings file into Implementation Context
 
 When `/sai-2-design` authors `tasks.md`'s `## Implementation Context`, it SHALL read `SAI_LEARNINGS.md` from the project root and merge **Stack** into **Stack**, **Conventions** into **Conventions**, and **Avoid** into **Avoid**. These three merge field-to-field, with no reshaping of entry content.
 
 **Test Command** SHALL NOT be merged field-to-field. The consuming field is contractually a single directly-executable command, and `/sai-2-design` SHALL populate it from its own research as it does today. The learnings **Test Command** section SHALL be used only as corroboration: when fresh research and the recorded command agree, the field is written as researched; when they disagree, the field is written as researched and the disagreement is surfaced per the contradiction-notice requirement below.
 
-When `/sai-2-design` takes any value from the learnings **Test Command** section, it SHALL take the command line only. It SHALL NOT carry the `*Observed:*` provenance line, a bullet marker, or a key prefix into the field, because `## Implementation Context`'s **Test Command** is injected verbatim into the blind test-writer dispatch and any such syntax would render it non-executable.
+When `/sai-2-design` takes any value from the learnings **Test Command** section, it SHALL take the command line only. It SHALL NOT carry the `*Observed:*` provenance line, a bullet marker, or a key prefix into the field, because `/sai-3-implement` copies `## Implementation Context`'s **Test Command** into the plan's runnable commands and any such syntax would render it non-executable. `/sai-4-apply` SHALL deliver only **Stack**, **Conventions**, and **Avoid** to its workers, never **Test Command**.
 
 The merge SHALL be additive to codebase research, not a replacement for it. The existing requirement that each field be derived from actual codebase research SHALL continue to hold; a populated `SAI_LEARNINGS.md` SHALL NOT be accepted as a substitute for that research, and SHALL NOT license a placeholder in any field.
 
@@ -72,8 +47,8 @@ The merge SHALL NOT change the shape of `## Implementation Context`. It remains 
 
 #### Scenario: Blind test-writer receives the merged field
 
-- **WHEN** the coordinator injects the **Test Command** field verbatim into a blind test-writer dispatch
-- **THEN** the injected value is directly executable from the project root, because the merge carried no bullet or provenance syntax into it
+- **WHEN** `/sai-3-implement` copies the **Test Command** field into the plan's runnable commands and a blind test-writer later runs its Step's command
+- **THEN** the command is directly executable from the project root, because the merge carried no bullet or provenance syntax into the field, and the field itself is never part of the apply disclosure
 
 ### Requirement: Fresh research takes precedence within the Conventions quota
 
@@ -144,17 +119,17 @@ A promoted fact reaching the blind test-writer through `## Implementation Contex
 
 This invariant is held closed by construction rather than by an added filter: the promotion classification guarantees that a promoted entry keys on a repo-level artifact and never on a symbol the change being applied introduces. A fact that cannot name the change's new symbols cannot disclose that change's implementation body.
 
-The invariant SHALL be stated explicitly wherever the promotion filter and the test-writer's injected slice are specified, rather than left as an implicit consequence. The coordinator's existing injection-time blindness constraint SHALL remain in force unchanged for entries injected directly into a dispatch.
+The invariant SHALL be stated explicitly wherever the promotion filter and the test-writer's injected slice are specified, rather than left as an implicit consequence. The coordinator SHALL NOT inject an accumulated learning directly into any dispatch: the writing profile is the only channel through which a promoted fact reaches a worker.
 
 #### Scenario: A promoted Stack fact reaches the test-writer
 
-- **WHEN** the blind test-writer receives the **Stack** and **Test Command** slice of `## Implementation Context` and that slice carries a promoted entry
-- **THEN** the entry names a repo-level artifact such as a framework version or a runner invocation, and reveals nothing about the current Step's implementation body
+- **WHEN** the blind test-writer receives the writing profile (the **Stack**, **Conventions**, and **Avoid** fields of `## Implementation Context`) and that profile carries a promoted entry
+- **THEN** the entry names a repo-level artifact such as a framework version or a project convention, and reveals nothing about the current Step's implementation body
 
 #### Scenario: Injection-time blindness is unchanged
 
-- **WHEN** the coordinator injects an accumulated learning directly into a blind test-writer dispatch
-- **THEN** the existing constraint forbidding any learning that reveals the current Step's GREEN body continues to apply
+- **WHEN** the coordinator composes a blind test-writer dispatch
+- **THEN** the dispatch carries the writing profile and no accumulated learning, and nothing in it reveals the current Step's GREEN body
 
 ### Requirement: Wrapper wiring fetches the format file for both consuming commands
 

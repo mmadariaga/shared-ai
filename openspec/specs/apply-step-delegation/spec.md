@@ -4,6 +4,7 @@
 Defines how apply Steps are dispatched to scoped execution workers.
 
 ## Requirements
+
 ### Requirement: Coordinator dispatches each Step to a managed worker
 
 During `sai-4-apply`, the main thread SHALL act as a coordinator: for each Step in `implementation.md` it SHALL identify the next unchecked Step and dispatch a managed Step-execution worker to execute that Step. The dispatch outcome depends on the Step's testability, contract availability, and divisibility, per the routing decision tree of `apply-step-routing-tree`: a **non-testable** Step (no RED block) with at least one production file is dispatched to exactly one GREEN worker (GREEN direct); a **non-testable** Step with no production file is dispatched to one RED worker under the green-exception; a **Split-Routed** Step (RED block + Step Contract + production file) is split into two ordered dispatches — a blind RED worker then a GREEN worker — per `apply-test-impl-split`; a production-free RED-carrying Step is dispatched to one RED worker under the green-exception; and a RED-carrying Step with no Step Contract STOPS the run without dispatching. In all dispatched cases the coordinator itself SHALL NOT perform the read-before-write reads, RED-test runs, or GREEN iteration of the Step — those happen inside the dispatched worker(s) so their output never enters the coordinator's context.
@@ -20,9 +21,9 @@ During `sai-4-apply`, the main thread SHALL act as a coordinator: for each Step 
 
 When dispatching a worker, the coordinator SHALL provide the material that worker needs and nothing that would reopen the mirroring channel. The dispatch SHALL include a dispatch-kind-specific `Allowed files` list derived from the current Step's plan-level file metadata. This list is shareable plan-derived input; the pre-dispatch baseline and any recovery assessment remain coordinator-only.
 
-Every dispatch kind SHALL carry the shared rule set: the dispatch's `Allowed files` list (plan-derived, injected per kind), the declared scratch rules, the read-before-write rule, and the prohibitions (no git operation or commit, no checkbox marking or `implementation.md` edit, no acting on a STOP & COMMIT marker, no `openspec` command, no loading skills, no reading change artifacts, and the report-completeness rule for field 8). Each kind SHALL additionally carry its dispatch-specific execution rule:
+Every dispatch kind SHALL carry the shared rule set: the dispatch's `Allowed files` list (plan-derived, injected per kind), the declared scratch rules, the read-before-write rule, and the prohibitions (no git operation or commit, no checkbox marking or `implementation.md` edit, no acting on a STOP & COMMIT marker, no `openspec` command, no loading skills, no reading change artifacts, and the report-completeness rule for field 8). Every dispatch kind SHALL also carry the writing profile when `tasks.md` supplies one, and SHALL NOT carry accumulated technical learnings chosen by the coordinator. Each kind SHALL additionally carry its dispatch-specific execution rule:
 
-- For a **GREEN-direct dispatch** (non-testable Step with a production surface), the coordinator SHALL provide exactly the full text of the Step, the shared rule set (including the Step's plan-level files as the `Allowed files` list), and any technical learnings it deems relevant (per `apply-technical-learnings-memory`). The GREEN worker SHALL execute the Step's implementation body without authoring tests.
+- For a **GREEN-direct dispatch** (non-testable Step with a production surface), the coordinator SHALL provide exactly the full text of the Step, the shared rule set (including the Step's plan-level files as the `Allowed files` list), and the writing profile when present. The GREEN worker SHALL execute the Step's implementation body without authoring tests.
 - For a **blind RED-worker dispatch**, the coordinator SHALL provide that Step's `interfaces.md` section, the injected testing context, the shared rule set, the blindness rule (never read the GREEN implementation body or production source to derive assertions), the RED phase contract (stubs expose the required symbol with null/empty/wrong values), and the RED verification rule (valid RED / passes / wrong-failure classification). The allowed-file list SHALL contain only plan-authorized test files and explicitly permitted RED/interface stub files; it SHALL exclude production files.
 - For a **GREEN-worker dispatch** (split Step), the coordinator SHALL provide exactly the full GREEN implementation body, the shared rule set, the no-test-file-edits rule (absolute prohibition), and the GREEN iteration rule (bounded, confined to non-test files, GREEN-conflict STOP when unpassable). The allowed-file list SHALL contain only plan-authorized production files; it SHALL exclude tests and declared interfaces.
 - For a **green-exception RED-worker dispatch** (production-free Step, testable or non-testable), the coordinator SHALL provide that Step's `interfaces.md` section (when a Step Contract is available), the injected testing context, the shared rule set, the blindness rule, the RED phase contract, and the green-exception mandate (author or execute the tests, leave them green, report GREEN = pass, terminal). The allowed-file list SHALL contain only plan-authorized test and stub paths; it SHALL exclude production files.
@@ -89,3 +90,52 @@ A Step that triggers contract absence SHALL halt before any dispatch. A Step tha
 #### Scenario: Split-eligible Step routes to the two-worker flow
 - **WHEN** the coordinator routes a Step to the split flow because all three routing parts hold
 - **THEN** it dispatches the blind RED worker first and the GREEN worker second, per the split contract
+
+### Requirement: Every Step disclosure carries the writing profile
+
+The apply coordinator SHALL read the `**Stack**`, `**Conventions**`, and `**Avoid**` fields of `## Implementation Context` in the change's `tasks.md` once at run start, and SHALL put them, headed `Writing profile`, in every RED, GREEN, and green-exception task disclosure, including the disclosure of a replacement worker and of a recovery dispatch.
+
+The coordinator SHALL NOT deliver the `**Test Command**` field: the worker keeps the commands of its Step. RED and GREEN workers SHALL still read no change artifact; the profile reaches them only through the disclosure.
+
+When `tasks.md` or those three fields are absent or empty, the coordinator SHALL dispatch without the profile, with no error and no notice.
+
+The profile holds no GREEN implementation body, so the RED worker SHALL remain blind when it receives it. No Step SHALL receive what an earlier Step of the same run learned.
+
+#### Scenario: Split-flow Step delivers the same profile to RED and GREEN
+
+- **WHEN** the coordinator dispatches the RED worker and then the GREEN worker of a Split-Routed Step in a change whose `tasks.md` carries Stack, Conventions, and Avoid
+- **THEN** both task disclosures carry the same `Writing profile` with those three fields, and neither carries the Test Command field
+
+#### Scenario: Direct GREEN and green-exception dispatches carry the profile
+
+- **WHEN** the coordinator dispatches a `green-direct` GREEN worker or a `green-exception` RED worker
+- **THEN** the task disclosure lists the writing profile beside the Step content, its allowed files, and its commands
+
+#### Scenario: Change without a profile
+
+- **WHEN** `tasks.md` is absent, has no `## Implementation Context`, or its Stack, Conventions, and Avoid fields are empty
+- **THEN** the worker is dispatched without a writing profile, and the coordinator prints no error and no notice
+
+#### Scenario: Replacement and recovery dispatches
+
+- **WHEN** the coordinator dispatches a replacement worker or a recovery dispatch for a Step
+- **THEN** that disclosure carries the same writing profile as the original dispatch
+
+### Requirement: The writing profile is context subordinate to the Step
+
+A worker that receives a `Writing profile` SHALL follow it when writing code or tests. The profile says how to write, not what to write. When the profile contradicts the Step, the Step SHALL prevail. The profile SHALL NOT widen the worker's allowed files and SHALL NOT lift a prohibition of the worker's role, including the GREEN worker's test-file prohibition. A disclosure without a profile SHALL be treated as complete as it is. The usage rule SHALL be stated once, in `sai/commands/apply/worker-common.md`.
+
+#### Scenario: Profile contradicts the Step
+
+- **WHEN** a convention in the writing profile contradicts what the Step instructs
+- **THEN** the worker follows the Step
+
+#### Scenario: Profile names a file outside the allowed files
+
+- **WHEN** the writing profile mentions a file or pattern outside the dispatch's `Allowed files`
+- **THEN** the worker writes only inside its allowed files, and a GREEN worker still creates or modifies no test file
+
+#### Scenario: Disclosure without a profile
+
+- **WHEN** a worker receives a task disclosure that carries no writing profile
+- **THEN** it executes the Step as disclosed and reports no missing input

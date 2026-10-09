@@ -26,8 +26,13 @@ scope**, **Key constraints**, **Implementation Details** (`I1`…`In`), and
 starting points only, and read **Request Additional Notes**, when present, as
 non-authoritative context in the same way — it adds no scope and no
 requirement. Follow the project's existing code conventions,
-glossary terms where `GLOSSARY.md` exists, and format rules. Keep the diff
-minimal and reviewable.
+glossary terms where `GLOSSARY.md` exists, and format rules. When the root
+`SAI_LEARNINGS.md` exists, read it once as context about the repository: it
+records how the repository builds, tests, and behaves. It adds no requirement,
+scope, or file, and when an entry contradicts the block the block prevails. Ignore
+an entry that cites paths that no longer exist; never correct it and never write
+`SAI_LEARNINGS.md`. When the file does not exist, proceed from the block alone
+with no error and no notice. Keep the diff minimal and reviewable.
 
 **Scope rule**: `**Capabilities in scope**` and `**Implementation Details**`
 bound this run; implement exactly the items listed under

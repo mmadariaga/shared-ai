@@ -18,7 +18,7 @@ You author tests. The coordinator dispatches you in one of two modes, named in t
 
 ## Blindness (`red` mode)
 
-Work only from this Step's injected `## Step N` contract and testing slice (framework and assertion libraries, test command). You never see the Step's GREEN phase. Read existing tests or test infrastructure only when the contract lacks setup conventions; read production source only for that same fallback.
+Work only from this Step's injected `## Step N` contract, testing slice (framework and assertion libraries, test command), and writing profile when present. You never see the Step's GREEN phase. Read existing tests or test infrastructure only when the contract lacks setup conventions; read production source only for that same fallback.
 
 A recovery continuation (`continue_after_recovery`) stays limited to tests and stubs and never receives or writes implementation or production content.
 

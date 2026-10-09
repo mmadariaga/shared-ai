@@ -33,7 +33,7 @@ Scan all of `implementation.md` and confirm every **Automated** checkbox is `[x]
 
 Once, after a passing sweep. Candidates come from the complete `## Appendix: Plan vs Final Implementation`, with the workers' field-6 learnings as a supplementary source. Promote once per run, never per Step and never through a worker.
 
-A candidate qualifies only when it names a repository-level artifact, not a symbol or file this change introduced or renamed. Use that artifact as the section key, supersede key, and reader anchor, and the candidate's `**Final:**` value as what works instead. Write only the root `SAI_LEARNINGS.md`, in its four-section format per `@sai/policies/sai-learnings-format.md`; create no empty file when nothing qualifies. When you write it, disclose the path, the entries added and superseded per section, and any contradicted pre-seeded keys.
+A candidate qualifies only when it names a repository-level artifact, not a symbol or file this change introduced or renamed. Use that artifact as the section key, supersede key, and reader anchor, and the candidate's `**Final:**` value as what works instead. Write only the root `SAI_LEARNINGS.md`, in its four-section format per `@sai/policies/sai-learnings-format.md`; create no empty file when nothing qualifies. When you write it, disclose the path, and the entries added and superseded per section.
 
 ## 4. Terminal documentation commit
 

@@ -442,6 +442,34 @@ test('Step 2 the blind RED prompt carries only the matching Step contract and te
     'specs/apply-test-impl-split/spec.md: the blind RED prompt must not reveal the implementation body');
 });
 
+test('every dispatching routing file delivers the writing profile and the cards state its usage once', () => {
+  const dispatching = ROUTING_FILES.filter(file => !file.endsWith('routing-stop-missing-contract.md'));
+  for (const file of dispatching) {
+    assert.match(artifact(file), /writing profile/i, `${file} must deliver the writing profile`);
+  }
+  const coordinator = artifact(APPLY_CARDS.coordinator);
+  assert.match(coordinator, /`\*\*Stack\*\*`, `\*\*Conventions\*\*`, and `\*\*Avoid\*\*`/);
+  assert.match(coordinator, /Never deliver the `\*\*Test Command\*\*` field/);
+  assert.match(coordinator, /absent or empty, dispatch without the profile, with no error and no notice/);
+  const common = artifact(APPLY_CARDS.workerCommon);
+  assert.match(common, /## Writing profile/);
+  assert.match(common, /When it contradicts the Step, the Step prevails/);
+  assert.match(common, /never widens your allowed files/);
+  assert.doesNotMatch(artifact(APPLY_CARDS.redWorker), /GREEN body|implementation body/i);
+});
+
+test('the learnings memory is retired and Direct Build reads the learnings file as context', () => {
+  const terminal = artifact('sai/commands/apply/steps/terminal-lifecycle.md');
+  assert.doesNotMatch(terminal, /pre-seeded/i);
+  const design = artifact('sai/commands/design/steps/tasks.md');
+  assert.match(design, /do not list `SAI_LEARNINGS\.md`/);
+  assert.doesNotMatch(design, /injected verbatim into the blind test-writer dispatch/);
+  const direct = artifact('sai/commands/explore/direct-build-worker.md');
+  assert.match(direct, /root\s+`SAI_LEARNINGS\.md` exists, read it once as context about the repository/);
+  assert.match(direct, /the block prevails/);
+  assert.match(direct, /never write\s+`SAI_LEARNINGS\.md`/);
+});
+
 test('Step 2 the GREEN prompt excludes test files and green-worker.md forbids creating or modifying them', () => {
   const coordinator = artifact(APPLY_CARDS.coordinator);
   const green = workerContract(APPLY_CARDS.greenWorker);

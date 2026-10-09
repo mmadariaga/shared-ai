@@ -66,6 +66,8 @@
 
   Each RED, GREEN, or green-exception dispatch is a separate worker invocation whose only request field is `arguments_value`, the resolved change name; workers echo it and never resolve a change. The routing file names the dispatches and their task disclosure; the runner selects each plan. The blind RED disclosure is the matching `## Step N` contract plus the testing slice (framework and assertion libraries, the Step test command of § Verification commands), never the GREEN body. The GREEN disclosure's allowed files exclude test files and declared interfaces.
 
+  **Writing profile.** Read the `**Stack**`, `**Conventions**`, and `**Avoid**` fields of `## Implementation Context` in `tasks.md` once at run start, and put them in every RED, GREEN, and green-exception task disclosure, replacement workers and recovery dispatches included, headed `Writing profile`. Never deliver the `**Test Command**` field: the worker keeps the Step's own commands. When `tasks.md` or those fields are absent or empty, dispatch without the profile, with no error and no notice. The profile holds no GREEN body, so RED stays blind.
+
   ## Verification commands
   A plan names two kinds of test command:
   - **Step test command** — the command on the Step's RED-block `**Step test command:**` line. It selects only that Step's tests, and every run of it — RED, GREEN, and your checks — uses it verbatim. A plan written before that line existed uses the command of the RED block's `Verify RED` checkbox. A Step without a RED block has no Step test command; its disclosure carries its own Automated checklist commands instead.
