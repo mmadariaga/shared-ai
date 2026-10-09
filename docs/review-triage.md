@@ -8,4 +8,4 @@
 
 Those recommendations are the three `**Surface touched:**` fields in `review.md`. `/sai-review` always runs review first, then dispatches an audit only when that field is `Yes`.
 
-Standalone `/sai-6-security`, `/sai-7-performance`, and `/sai-8-accessibility` are diff-scoped vs the parent branch by default. Pass `--full` or `--path {dir}` to expand scope; performance also accepts `--tier`, accessibility also accepts `--runtime`. `/sai-5-review` itself takes only a change name and an optional parent branch.
+Standalone `/sai-6-security`, `/sai-7-performance`, and `/sai-8-accessibility` are diff-scoped vs the parent branch by default. Pass `--full` or `--path {dir}` to expand scope; performance also accepts `--tier` and `--runtime`, accessibility also accepts `--runtime`. `/sai-5-review` itself takes only a change name and an optional parent branch.

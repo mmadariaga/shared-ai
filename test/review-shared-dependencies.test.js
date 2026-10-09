@@ -16,8 +16,8 @@ const phases = [
 test('review and audits keep proposal gates without environment prerequisite startup', () => {
   for (const [phase, startup, firstFiled] of phases) {
     const worker = read(`sai/commands/${phase}/worker.md`);
-    // Review and security no longer carry the prerequisite sentence (the rule belongs to /sai-explore alone).
-    if (phase !== 'review' && phase !== 'security') assert.match(worker, /OpenSpec prerequisite checks belong to `\/sai-explore` alone/);
+    // Review, security, and performance no longer carry the prerequisite sentence (the rule belongs to /sai-explore alone).
+    if (phase !== 'review' && phase !== 'security' && phase !== 'performance') assert.match(worker, /OpenSpec prerequisite checks belong to `\/sai-explore` alone/);
     assert.doesNotMatch(worker, /startup act \(prerequisite checks|the three steps above/);
     assert.ok(worker.includes('openspec/changes/{change-name}/proposal.md not found. Ensure the change name is correct and that /sai-1-spec has been run for this change.'));
     assert.ok(worker.includes(`first delivered pointer targets \`${firstFiled}\``)
@@ -30,9 +30,9 @@ test('review and audits keep proposal gates without environment prerequisite sta
     for (const content of [worker, common]) {
       assert.doesNotMatch(content, /Fetch @sai\/policies\/prereqs(?:-check)?\.md|prereqs\.js/);
     }
-    // Review and security own the pointer rule in their worker card; the others keep it in common.md.
+    // Review, security, and performance own the pointer rule in their worker card; the others keep it in common.md.
     if (phase === 'review') assert.ok(worker.includes(`reports together with \`${firstFiled}\``));
-    else if (phase === 'security') assert.ok(worker.includes(`\`${startup}\``) && worker.includes(`together with \`${firstFiled}\``));
+    else if (phase === 'security' || phase === 'performance') assert.ok(worker.includes(`\`${startup}\``) && worker.includes(`together with \`${firstFiled}\``));
     else assert.ok(common.includes(`report \`${startup}\` and \`${firstFiled}\` together`));
   }
 });

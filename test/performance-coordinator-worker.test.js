@@ -106,46 +106,100 @@ test('performance coordinator performs no technical prerequisite or research I/O
   }
 });
 
-test('canonical performance worker preserves the scope, ordering, tier, and evidence contract', () => {
+test('canonical performance worker accepts the scope grammar and names the installed protocol files', () => {
   const worker = artifact('sai/commands/performance/worker.md');
+  const common = artifact('sai/commands/performance/steps/common.md');
 
-  assert.match(worker, /complete scope grammar/i);
-  assert.match(worker, /parent branch per `steps\/common\.md` § Scope/);
-  assert.match(artifact('sai/commands/performance/steps/common.md'), /## Scope[\s\S]*?parent branch\. Detection order/);
-  assert.match(worker, /four tiers|tier 1[\s\S]{0,120}tier 4/i);
-  assert.match(worker, /500[- ]LOC cutover/i);
-  assert.match(worker, /eight[- ]call cap|8[- ]call cap/i);
-  assert.match(worker, /exact evidence policy/i);
-});
-
-test('canonical performance worker defines all lifecycle payload shapes', () => {
-  const worker = artifact('sai/commands/performance/worker.md');
-
-  for (const payload of [
-    'worker_completed',
-    'worker_needs_input_before_resolution',
-    'worker_unsuccessful',
-  ]) {
-    assert.match(worker, new RegExp(`\\b${payload}\\b`));
+  for (const flag of ['--full', '--path {dir}', '--tier backend|frontend|db|queue', '--runtime']) {
+    assert.ok(worker.includes(`\`${flag}\``), `the Change Resolution grammar should accept ${flag}`);
+    assert.ok(common.includes(`\`${flag}\``), `common.md § Scope should parse ${flag}`);
   }
-  assert.match(worker, /needs_input[\s\S]{0,240}question[\s\S]{0,240}options/i);
-  assert.match(worker, /failed[\s\S]{0,160}cancelled[\s\S]{0,240}resolved_change_name/i);
-  assert.match(worker, /changed_files[\s\S]{0,240}summary/i);
+  assert.match(worker, /parent branch per `steps\/common\.md` § Scope|parent-branch values accepted by `steps\/common\.md` § Scope/);
+  assert.match(common, /^## Scope$/m);
+  assert.match(common, /## Scope[\s\S]*?parent branch\. Detection order/);
+  assert.doesNotMatch(common, /§ Prerequisites/, 'no reference may point to a Prerequisites section');
+  for (const heading of ['Input', 'Scope', 'Communication Mode', 'Severity Taxonomy', 'Operating Principles', 'Hard Rules']) {
+    assert.equal((common.match(new RegExp(`^## ${heading}$`, 'gm')) || []).length, 1, `common.md has one ${heading} section`);
+  }
+  assert.doesNotMatch(common, /^## (?:Remember|Prerequisites)$/m);
 });
 
-test('successful performance execution writes and verifies only performance.md', () => {
+test('performance worker keeps the no-active-changes and proposal-gate failure texts', () => {
   const worker = artifact('sai/commands/performance/worker.md');
 
-  assert.match(worker, /successful[\s\S]{0,240}(?:write|create)[\s\S]{0,240}openspec\/changes\/\{change-name\}\/performance\.md/i);
-  assert.match(worker, /verif(?:y|ies|ication)[\s\S]{0,240}performance\.md/i);
-  assert.match(worker, /only[\s\S]{0,120}performance\.md/i);
+  assert.ok(worker.includes('No active changes found. Run `/sai-1-spec` to create one.'));
+  assert.ok(worker.includes('openspec/changes/{change-name}/proposal.md not found. Ensure the change name is correct and that /sai-1-spec has been run for this change.'));
+  assert.match(worker, /@sai\/orchestration\/worker-core\.md/);
+  assert.match(worker, /resolved_change_name/);
+  assert.match(worker, /^## Change Resolution and Proposal Gate$/m);
+  assert.match(worker, /^## Continuation and Reconstruction$/m);
 });
 
-test('performance lifecycle payloads carry metadata rather than report contents', () => {
+test('performance close step writes and verifies only performance.md in its two forms', () => {
+  const close = artifact('sai/commands/performance/steps/close-performance-outcome.md');
   const worker = artifact('sai/commands/performance/worker.md');
 
-  assert.match(worker, /lifecycle payloads?[\s\S]{0,240}metadata[\s\S]{0,240}(?:not|rather than|exclude)[\s\S]{0,160}(?:report|performance\.md) contents/i);
-  assert.match(worker, /report contents[\s\S]{0,160}(?:shall not|must not|never|exclude)/i);
+  assert.match(close, /Fetch @sai\/commands\/performance\/performance-report\.template\.md/);
+  assert.ok(close.includes('openspec/changes/{change-name}/performance.md'));
+  assert.match(close, /\*\*Normal report\*\*/);
+  assert.match(close, /\*\*Not Applicable report\*\*/);
+  assert.ok(close.includes('`Summary:` tally'));
+  assert.ok(close.includes('`## Not Applicable`'));
+  assert.ok(close.includes('The payload carries the summary; the report stays in `performance.md`.'));
+  assert.ok(worker.includes('sai/commands/performance/performance-report.template.md'),
+    'the worker card points to the report template');
+});
+
+test('performance report template is the single source of the finding fields, the number rule, and the tally', () => {
+  const template = artifact('sai/commands/performance/performance-report.template.md');
+  const common = artifact('sai/commands/performance/steps/common.md');
+  const close = artifact('sai/commands/performance/steps/close-performance-outcome.md');
+  const worker = artifact('sai/commands/performance/worker.md');
+
+  assert.match(template, /\*\*Scope:\*\* .* · \*\*Tiers:\*\* .* · \*\*Baseline:\*\* .* · \*\*Date:\*\* \{YYYY-MM-DD\}/);
+  assert.ok(template.includes('estimated — verify with {method}'));
+  assert.ok(template.includes('Summary: Critical={n} High={n} Medium={n} Low={n} Informational={n}'));
+  assert.deepEqual(
+    [...template.matchAll(/^## (.+)$/gm)].map(match => match[1]),
+    ['Not Applicable', 'Findings', 'Acknowledged Trade-offs (from change artifacts)'],
+  );
+  for (const retired of ['Executive Summary', 'Hot Paths in Scope', 'Observability Gaps', 'Prioritized Remediation Plan', 'Validation Plan']) {
+    assert.doesNotMatch(template, new RegExp(retired));
+  }
+  assert.ok(common.includes('performance-report.template.md'));
+  for (const source of [common, close, worker]) {
+    assert.doesNotMatch(source, /\*\*Expected impact if unfixed|\*\*Root cause/, 'finding fields live in the template alone');
+  }
+  assert.equal([common, close, worker].filter(source => source.includes('estimated — verify with')).length, 0,
+    'the estimate mark is stated once, in the template');
+});
+
+test('performance step files and tier checklists follow the single-source layout', () => {
+  const tierAudit = artifact('sai/commands/performance/steps/audit-performance-tiers.md');
+  const stepFiles = ['map-stack-hot-paths', 'audit-performance-tiers', 'resolve-diagnostics', 'close-performance-outcome'];
+
+  for (const id of stepFiles) {
+    assert.match(artifact(`sai/commands/performance/steps/${id}.md`), /The step is done when /,
+      `${id} opens with a checkable completion criterion`);
+    assert.doesNotMatch(artifact(`sai/commands/performance/steps/${id}.md`), /Phase [1-6]\b/);
+  }
+  assert.ok(tierAudit.includes('For each tier in the selected scope: Fetch @sai/commands/performance/checklists/<tier>.md'));
+  for (const tier of ['backend', 'frontend', 'db', 'queue']) {
+    assert.ok(fs.existsSync(path.join(repoRoot, 'sai/commands/performance/checklists', `${tier}.md`)),
+      `the ${tier} checklist should exist`);
+    assert.equal(fs.existsSync(path.join(repoRoot, 'sai/commands/performance/steps', `${tier}.md`)), false);
+  }
+  assert.match(tierAudit, /### Cross-cutting checklist/);
+  assert.match(tierAudit, /Without `--runtime`/);
+  assert.match(artifact('sai/commands/performance/steps/resolve-diagnostics.md'), /`Run diagnostics` \/ `Skip diagnostics`/);
+});
+
+test('performance wrappers accept --runtime on both harnesses', () => {
+  for (const wrapper of ['commands/claude/sai-7-performance.md', 'commands/opencode/sai-7-performance.md']) {
+    const description = artifact(wrapper).match(/^description:.*$/m)[0];
+    assert.ok(description.includes('--runtime'), `${wrapper} description should name --runtime`);
+  }
+  assert.match(artifact('commands/claude/sai-7-performance.md'), /^argument-hint:.*\[optional: --runtime\]/m);
 });
 
 test('Step 3 Claude and opencode bindings route only their canonical performance worker', () => {
@@ -204,15 +258,16 @@ test('performance transport carries only arguments_value and contract metadata a
   assert.match(bindings[1], /task/i);
 });
 
-test('Step 3 worker contract bounds delegated research evidence and rejects unauthorized operations', () => {
-  const worker = artifact('sai/commands/performance/worker.md');
-  assert.match(worker, /bounded evidence/i, 'the worker contract should bound research evidence');
-  assert.match(worker, /eight-call cap|8-call cap|cap of 8/i,
-    'the worker contract should enforce the eight-call audit cap');
-  assert.match(worker, /only after explicit user authorization[\s\S]{0,120}read-only/i,
-    'the worker contract should permit only authorized read-only diagnostics');
-  assert.match(worker, /never (?:modify|write)[\s\S]{0,240}(?:production|schema|migration|config|dependenc)/i,
-    'the worker contract should reject unauthorized writes and mutations');
+test('performance steps bound delegated research and rejected writes', () => {
+  const map = artifact('sai/commands/performance/steps/map-stack-hot-paths.md');
+  const common = artifact('sai/commands/performance/steps/common.md');
+  const diagnostics = artifact('sai/commands/performance/steps/resolve-diagnostics.md');
+
+  assert.ok(map.includes('≤8 per audit'), 'the mapping step owns the eight-explorer cap');
+  assert.ok(map.includes('total LOC ≤ 500') && map.includes('total LOC > 500'), 'the mapping step owns the 500-LOC cutover');
+  assert.ok(common.includes('The only file written is `openspec/changes/{change-name}/performance.md`'));
+  assert.match(common, /never modify production code, schemas, migrations, configuration, dependencies, manifests, or lockfiles/);
+  assert.match(diagnostics, /explicit user authorization/);
 });
 
 test('Step 3 coordinator preserves worker lifecycle results and owns the continuation operation', () => {
@@ -425,11 +480,13 @@ test('step-gated: the performance worker loads steps/common.md at dispatch and e
 
   assert.match(worker, /Fetch @sai\/commands\/performance\/steps\/common\.md and keep it in force for the entire run/,
     'common.md should load at dispatch as part of the sealed initial surface');
-  assert.match(worker, /## Active Step Execution/, 'the worker contract should own active-step execution');
-  assert.match(worker, /this contract plus common\.md is the sealed initial surface/);
+  assert.match(worker, /^## Steps$/m, 'the worker contract should own the plan and active-step execution in one Steps section');
+  assert.doesNotMatch(worker, /^## (?:Progress Reporting|Active Step Execution|Performance Audit)$/m,
+    'the retired worker sections should stay merged into Steps');
+  assert.match(worker, /this contract plus common\.md is the sealed initial surface/i);
   assert.match(worker, /`resolve-performance-scope` runs from it before the first progress event/,
     'the fileless first step should run from the sealed surface before the first pointer');
-  assert.match(worker, /never prefetch, open, or follow any other step instruction file/,
+  assert.match(worker, /each step file is opened when its pointer arrives/,
     'the worker must execute only the coordinator-named step');
   assert.doesNotMatch(worker, /Fetch @sai\/commands\/performance\/invocation\.md/,
     'the wholesale invocation fetch chain must be replaced by active-step execution');
