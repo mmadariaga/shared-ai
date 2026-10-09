@@ -41,3 +41,43 @@ The README SHALL document explicit invocation, supported full and domainless Git
 
 - **WHEN** Azure-specific simulated regression tests run
 - **THEN** they verify Services references, organization context, rich project-scoped content, pagination, failure outcomes, Windows safety, both harness projections, and existing GitHub and self-hosted GitLab provider selection without remote mutations.
+
+### Requirement: Mirrored next-item selector installation
+
+Claude Code and opencode SHALL provide `/from-next-backlog-item` through
+minimal conversation-preserving command entries that load the active harness's
+project-local selector skill first and fall back to its user-global skill.
+Entries SHALL forward invocation input for no-argument validation without
+invoking SAI boot. The opencode entry SHALL declare `subtask: false`.
+Manifest-driven installation SHALL project the selector skill, its GitHub,
+GitLab, and Azure DevOps provider references, common Node helper, three provider
+adapters, and corresponding command entry for both harnesses. Provider
+references SHALL be managed, content-tracked recursive projections.
+
+#### Scenario: Expand selector installation for either harness
+
+- **WHEN** installation projections are expanded for Claude Code or opencode
+- **THEN** they include the corresponding selector command, skill, three provider references, common helper, and three provider adapters.
+
+#### Scenario: Load selector in the current conversation
+
+- **WHEN** the user invokes the selector on either supported harness
+- **THEN** its entry loads the appropriate local-first skill and preserves the current context and exploration stage without SAI boot.
+
+### Requirement: Documented selector scope and simulated coverage
+
+The README SHALL document the selector's no-argument invocation, supported
+manual-order piles, pending unsupported views and filters, empty and failure
+outcomes, cancellation, read-only behavior, and conversation-scoped choices.
+Regression tests SHALL use simulated responses to cover missing context,
+actual choices, manual first positions, complete references accepted by the
+existing importer, missing ranks, top ties, partial responses, empty results,
+non-importable types, access failures, and cancellation wherever applicable
+to each provider. Tests SHALL cover supported GitLab filters and pagination,
+Azure custom types, mirrored installation, bounded access declarations, and
+rejection of extra CLI arguments without provider mutations.
+
+#### Scenario: Run simulated selection regression tests
+
+- **WHEN** selector regression tests execute
+- **THEN** simulated responses check provider selection outcomes, import references, cancellation without I/O, and both harness projections without remote mutations.

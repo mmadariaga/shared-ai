@@ -7,12 +7,19 @@ Define canonical contract-derived tool capabilities and their native projections
 
 ### Requirement: Canonical capability profiles and assignments
 
-The system SHALL declare abstract capability profiles and agent and command assignments in `sai/install-manifest.json`. Profiles SHALL support inherited flags and replacement of list-valued grants. Resolution SHALL reject unknown capabilities, missing profile assignments, invalid values, and inheritance cycles. The twenty-one shipped commands SHALL include to-backlog, from-backlog, and to-pr with their own resolvable command profiles, alongside the eighteen SAI commands. The retired sai-pr command SHALL have no current assignment.
+The system SHALL declare abstract capability profiles and agent and command
+assignments in `sai/install-manifest.json`. Profiles SHALL support inherited
+flags and replacement of list-valued grants. Resolution SHALL reject unknown
+capabilities, missing profile assignments, invalid values, and inheritance
+cycles. The twenty-two shipped commands SHALL include to-backlog, from-backlog,
+from-next-backlog-item, and to-pr with their own resolvable command profiles,
+alongside the eighteen SAI commands. The retired sai-pr command SHALL have no
+current assignment.
 
 #### Scenario: Required identities receive assignments
 
 - **WHEN** canonical capability assignments are inspected
-- **THEN** all fifteen managed workers, all three Generic Agent roles under both harness names, and all twenty-one commands have resolvable profiles.
+- **THEN** all fifteen managed workers, all three Generic Agent roles under both harness names, and all twenty-two commands have resolvable profiles.
 
 #### Scenario: Invalid profile fails closed
 
@@ -28,6 +35,11 @@ The system SHALL declare abstract capability profiles and agent and command assi
 
 - **WHEN** the from-backlog command profile is resolved for either harness
 - **THEN** it grants reading, search, questions, the from-backlog skill, and shell invocation of the common from-backlog Node tool, without granting file writes or the publication helper.
+
+#### Scenario: Next backlog-item selection capabilities
+
+- **WHEN** the from-next-backlog-item command profile is resolved for either harness
+- **THEN** it inherits the read-only import profile, includes the selector and importer skills, and limits shell grants to the selector Node helper's select invocation and the existing import Node helper without adding file writes or direct provider-CLI grants.
 
 #### Scenario: PR/MR invocation capabilities
 

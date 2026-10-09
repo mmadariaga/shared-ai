@@ -6,8 +6,10 @@ disable-model-invocation: true
 
 # Import from backlog
 
-Run only on explicit user invocation, in the current conversation with its
-existing context. This skill owns the flow; provider references supply retrieval
+Run only on explicit user invocation, or as the one import continuation authorized
+by the user's explicit `/from-next-backlog-item` invocation after that selector
+supplies a complete selected reference. Autonomous invocation remains forbidden.
+Run in the current conversation with its existing context. This skill owns the flow; provider references supply retrieval
 mechanics only. Import is read-only: keep the provider and local files unchanged. Keep
 any active sai-explore session and its stage unchanged; do not run its boot
 sequence or start implementation. Use ordinary conversation for clarification;
