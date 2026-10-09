@@ -11,19 +11,20 @@ function read(file) {
   return fs.readFileSync(path.join(__dirname, '..', file), 'utf8').replace(/\r\n/g, '\n');
 }
 
-test('implementation coordinator owns typed lookup decisions for build and standalone', () => {
+test('implementation coordinator carries the fast-track boolean and gives the planner one gap-driven research rule', () => {
   const coordinator = read('sai/commands/implement/coordinator.md');
   const worker = read('sai/commands/implement/worker.md');
-  const step = read('sai/commands/implement/steps/plan-generation.md');
-  assert.match(coordinator, /Validate the entire payload with `worker-report-validator\.js` before any/);
-  assert.match(coordinator, /Only a valid `needs_input` with `lookup_request\.type: bounded-project-lookup`/);
-  assert.match(coordinator, /approve every valid item with\s+`answer_value: yes` without presenting the picker/);
-  assert.match(coordinator, /Otherwise present each\s+question and its ordered yes\/no options/);
-  assert.match(coordinator, /lookup_request_history[\s\S]*replacement resumes a decided request without presenting it again/);
-  assert.match(step, /≤3 citations per area, ≤20 lines per citation, project-root confined/);
-  assert.match(step, /The worker never auto-approves this permission/);
+  const common = read('sai/commands/implement/steps/common.md');
+  const docReview = read('sai/commands/implement/steps/documentation-review.md');
+  const planGeneration = read('sai/commands/implement/steps/plan-generation.md');
   assert.match(worker, /post-ready task continuation and again in replacement reconstruction/);
   assert.match(coordinator, /Do not send the raw `--fast-track` token to the worker/);
+  assert.match(common, /## Planning Evidence/);
+  assert.match(common, /A \*\*gap\*\* is evidence indispensable to plan one specific Step/);
+  assert.match(common, /`budget-explorer` dispatch/);
+  assert.match(common, /one line per gap in the form `Researched gap: Step N/);
+  assert.match(docReview, /Planning Evidence rule in `steps\/common\.md`/);
+  assert.match(planGeneration, /Planning Evidence rule in `steps\/common\.md`/);
 });
 
 test('apply grants first Step and eligible terminal local commits at segment entry only', () => {
@@ -57,12 +58,6 @@ test('published build specification preserves coordinator-owned fast-track grant
   };
   const activation = requirement('Apply fast-track is injected and composition-owned');
   assert.match(activation, /print `> FAST-TRACK MODE ACTIVE` exactly once at implement activation, not at apply activation/);
-  const lookup = requirement('Implementation coordinator decides bounded lookup authorization');
-  assert.match(lookup, /typed validated bounded-project-lookup request with 1–5 functional areas/);
-  assert.match(lookup, /The coordinator SHALL approve each valid item/);
-  assert.match(lookup, /ordinary standalone implementation SHALL present each item for a decision/);
-  assert.match(lookup, /project-root, read-only, citation \(at most three per area\), and line \(at most 20 per citation\) limits/);
-  assert.match(lookup, /Ordered decisions and original limits SHALL survive worker continuation and replacement without new approval or broader search/);
   const commit = requirement('Apply commit grant is active before the first Step');
   assert.match(commit, /At apply segment entry the apply coordinator SHALL set `session_commit_authorized` from injected fast-track state before Step projection or dispatch/);
 });

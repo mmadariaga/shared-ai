@@ -129,7 +129,7 @@ When `/sai-2-design` finds no such disagreement, it SHALL print nothing.
 
 `/sai-3-implement` SHALL NOT read `SAI_LEARNINGS.md`. It SHALL receive promoted facts only through `tasks.md`'s `## Implementation Context`, which it already consumes as its expertise contract.
 
-This is required by `/sai-3-implement`'s existing contract, which restricts it to the documents listed in `## Required Documentation` and forbids additional codebase exploration. Granting it a direct read of the learnings file would contradict that contract.
+`/sai-3-implement` starts from its supplied material, and `## Implementation Context` is part of it. A direct read of the learnings file would repeat work `/sai-2-design` already did when it merged the file.
 
 No instruction file SHALL add `SAI_LEARNINGS.md` to `/sai-3-implement`'s reading list, and the `sai-3-implement` step library (`sai/commands/implement/steps/`) SHALL NOT read it.
 
