@@ -301,14 +301,14 @@ test('every step-machine worker and common.md adopt the task-disclosure pointer 
     const worker = readRepo(`sai/commands/${name}/worker.md`);
     const common = readRepo(`sai/commands/${name}/steps/common.md`);
     assert.match(worker, /§ Step-machine task disclosure/, `${name} worker should reference the shared rule`);
-    // Review and security state the pointer rule once, in their worker card; their common.md carries no pointer rule.
+    // Review, security, and performance state the pointer rule once, in their worker card; their common.md carries no pointer rule.
     if (name === 'review') {
       assert.match(worker, /first delivered pointer targets `establish-diff-scope`/, 'review worker should carry the step-delivery rule');
       assert.match(worker, /reports together with `establish-diff-scope` in the first progress event/, 'review worker should report both ids together');
       assert.doesNotMatch(common, /Step delivery|Active step:/, 'review common.md should not repeat the pointer rule');
-    } else if (name === 'security') {
-      assert.match(worker, /Each progress-event continuation carries one pointer line/, 'security worker should carry the step-delivery rule');
-      assert.doesNotMatch(common, /first line of the task-disclosure continuation/, 'security common.md should not repeat the step-delivery rule');
+    } else if (name === 'security' || name === 'performance') {
+      assert.match(worker, /Each progress-event continuation carries one pointer line/, `${name} worker should carry the step-delivery rule`);
+      assert.doesNotMatch(common, /first line of the task-disclosure continuation/, `${name} common.md should not repeat the step-delivery rule`);
     } else {
       assert.match(common, /first line of the task-disclosure continuation/, `${name} common.md should carry the step-delivery rule`);
       assert.match(common, /in the first progress event/, `${name} common.md should report both ids together`);
