@@ -17,12 +17,13 @@ The implementation phase SHALL provide a step instruction library under `sai/com
 
 ### Requirement: common.md is fetched at dispatch and stays in force
 
-The implementation worker SHALL fetch `sai/commands/implement/steps/common.md` at dispatch and SHALL keep it in force for the entire run. The file SHALL carry the boundaries that outlive any single step: the step delivery meta-rule, role, expertise profile contract, hard rules, and code quality priority stack.
+The implementation worker SHALL fetch `sai/commands/implement/steps/common.md` at dispatch and SHALL keep it in force for the entire run. The file SHALL carry the boundaries that outlive any single step: the step delivery meta-rule, role, expertise profile contract, and hard rules. It SHALL load the code quality priority stack from `sai/policies/code-quality-priority-stack.md` through its always-loaded fetch block instead of carrying it inline.
 
 #### Scenario: common.md is loaded at dispatch
 
 - **WHEN** the implementation worker is dispatched
-- **THEN** it loads `sai/commands/implement/steps/common.md` and the file's run-long boundaries remain in force for the whole run.
+- **THEN** it loads `sai/commands/implement/steps/common.md` and the file's run-long boundaries remain in force for the whole run
+- **AND** the fetch block of that file loads `sai/policies/code-quality-priority-stack.md`
 
 ### Requirement: ADR/DDR validation content lives inside artifact-analysis.md
 
