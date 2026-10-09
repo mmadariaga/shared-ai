@@ -385,11 +385,16 @@ test('review executes eleven passes, preserves alignment and resilience, and wri
   assert.deepEqual([...analysis.matchAll(/^(\d+)\. \*\*/gm)].map(match => Number(match[1])),
     Array.from({ length: 11 }, (_, index) => index + 1));
   assert.match(analysis, /contradict a recorded decision/);
-  assert.match(analysis, /Contradictions remain findings/);
   assert.match(analysis, /single owner of retry, timeout, circuit-breaker, idempotency, and fallback defects/);
   assert.match(analysis, /cap the finding at Question or Low/);
   assert.match(analysis, /Critical only for cascade or outage, data loss, or duplicate side effects with concrete impact/);
-  assert.match(analysis, /Resilience:` line in Coverage Notes/);
+  assert.match(analysis, /An uncovered goal or acceptance criterion is a finding/);
+  assert.match(analysis, /scope creep is a `Question`/);
+  assert.match(analysis, /A pass with nothing to report stays silent/);
+  assert.match(analysis, /Its findings are ordinary findings in Findings/);
+  assert.doesNotMatch(analysis, /Coverage Notes|record the pass as skipped/);
+  assert.doesNotMatch(worker, /coverage notes|`Resilience:`/);
+  assert.match(close, /the three `Surface touched` lines, and a closing `Summary:` tally/);
   assert.match(worker, /Write only `openspec\/changes\/\{change-name\}\/review\.md`/);
   assert.match(worker, /`changed_files` holds only that report path/);
   assert.match(close, /When the draft has no finding, go to step 4/);

@@ -18,7 +18,7 @@ Retry, timeout, circuit-breaker, idempotency, and fallback defects SHALL belong 
 - **THEN** the defect SHALL appear only as a Resilience finding and never as a Correctness or Performance finding
 
 ### Requirement: Resilience severity mapping
-Resilience findings SHALL use Category Resilience on the standard scale, with Critical reserved strictly for cascade or outage, data loss, or duplicate side-effects with concrete impact; all other Resilience findings SHALL be High, Medium, Low, or Question by blast radius.
+Resilience findings SHALL be ordinary findings on the standard scale, with no Category field, and Critical SHALL be reserved strictly for cascade or outage, data loss, or duplicate side-effects with concrete impact; all other Resilience findings SHALL be High, Medium, Low, or Question by blast radius.
 #### Scenario: Non-cascading retry defect
 - **WHEN** a retry defect has no cascade, loss, or duplicate side-effect impact
 - **THEN** its severity SHALL NOT be Critical
@@ -31,8 +31,8 @@ The pass SHALL yield no findings for docs or CSS-only diffs without I/O; fronten
 
 ### Requirement: Mutation analysis renumbered to Pass 12
 
-Review SHALL end analysis at the dedicated Resilience pass 11, with no mutation pass, engine probing, result notes, section, or identifier. The template SHALL retain Resilience as a finding category with unchanged exclusive ownership and severity rules, and SHALL record the resilience outcome and relevant notes in Coverage Notes, including no surface.
+Review SHALL end analysis at the dedicated Resilience pass 11, with no mutation pass, engine probing, result notes, section, or identifier. Resilience findings SHALL remain ordinary findings with unchanged exclusive ownership and severity rules. The report SHALL record no resilience outcome outside its findings: no Coverage Notes section and no `Resilience:` line, including when there is no surface.
 
 #### Scenario: Report rendered after this change
 - **WHEN** the review report is rendered after mutation-analysis retirement
-- **THEN** it includes no mutation section and retains Resilience findings and a `Resilience:` outcome in Coverage Notes
+- **THEN** it includes no mutation section and retains Resilience findings as ordinary findings, with no `Resilience:` line or Coverage Notes section

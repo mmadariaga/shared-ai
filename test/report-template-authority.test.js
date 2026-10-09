@@ -207,21 +207,22 @@ function assertFinalAuthority(pair, scaffold, delegatedWording) {
     `${pair.scaffold} authority target must exist`);
 }
 
-test('review report simplifies presentation while preserving coverage and recommendations', () => {
+test('review report carries only what a consumer reads', () => {
   const authority = readUtf8('sai/commands/review/review-report.template.md');
   const scaffold = readUtf8('openspec/schemas/sai-workflow/templates/review.md');
-  const expected = ['Summary', 'Security Surface Triage', 'Performance Surface Triage',
-    'Accessibility Surface Triage', 'Findings', 'Coverage Notes'];
+  const expected = ['Security Surface Triage', 'Performance Surface Triage',
+    'Accessibility Surface Triage', 'Findings'];
   assert.deepEqual(extractTopHeadings(extractBody(authority)), expected);
   assert.deepEqual(extractTopHeadings(scaffold), expected);
-  assert.match(authority, /One or two lines[\s\S]*not already raised as findings/);
-  assert.match(authority, /Resilience:.*No surface.*idempotency.*no-existing-pattern/);
-  assert.match(scaffold, /Resilience:.*even with no surface/);
-  assert.match(authority, /Category:\*\* \{Correctness \| Security \| Resilience \| Domain Alignment/);
+  assert.match(authority, /\*\*Reviewed:\*\* `\{parent-branch\}` \{first-sha\}\.\.\{last-sha\} · \{YYYY-MM-DD\}/);
+  assert.equal((authority.match(/\*\*Surface touched:\*\* \{Yes \/ No\}/g) || []).length, 3);
+  assert.match(authority, /#### [CHML]1 — \{Short title\}/);
   assert.match(authority, /Summary: Critical=\{n\} High=\{n\} Medium=\{n\} Low=\{n\} Questions=\{n\}/);
-  assert.doesNotMatch(authority + scaffold, /## (?:Next Steps|Domain Alignment Check|Resilience Surface Triage|Mutation Analysis)|mMUT/);
-  for (const audit of ['security', 'performance', 'accessibility']) {
-    assert.match(authority, new RegExp('Run `/sai-[678]-' + audit));
+  assert.doesNotMatch(authority + scaffold,
+    /## (?:Summary|Coverage Notes|Next Steps|Domain Alignment Check|Resilience Surface Triage|Mutation Analysis)|mMUT|Verdict|Findings count|Areas affected|Tiers affected|Recommendation|\*\*Category|\*\*Evidence|Spec reference|\*\*Suggestion|Resilience:/);
+  const lowBlock = authority.slice(authority.indexOf('### Low'), authority.indexOf('### Questions'));
+  for (const field of ['Location', 'Problem', 'Suggested fix']) {
+    assert.match(lowBlock, new RegExp('\\*\\*' + field + ':\\*\\*'));
   }
 });
 

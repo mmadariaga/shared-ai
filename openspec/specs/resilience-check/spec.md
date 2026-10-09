@@ -17,7 +17,7 @@ The pass SHALL apply only to external I/O, retryable handlers, consumers and que
 
 #### Scenario: Surface scoping
 - **WHEN** the diff touches only UI files without I/O
-- **THEN** Resilience records no surface with no findings
+- **THEN** Resilience yields no findings and leaves nothing in the report
 
 ### Requirement: Resilience check SHALL flag unbounded retries
 Unbounded or infinite retry on paths with cascade, loss or duplication risk MUST be flagged.
@@ -61,17 +61,9 @@ The check SHALL never require a pattern absent from the repo. When the repo has 
 - **WHEN** the repo has no established retry or timeout convention
 - **THEN** Resilience reports at most Question or Low
 
-### Requirement: Diffs without resilience surface SHALL be recorded as no surface
-Diffs without resilience surface SHALL be recorded as no surface. Docs-only, comments, CSS without I/O, or renames produce no findings and are recorded as no surface, not as an empty pass.
+### Requirement: Diffs without resilience surface SHALL yield no findings
+Diffs without resilience surface SHALL yield no Resilience findings and leave nothing in the report. Docs-only, comments, CSS without I/O, or renames produce no findings and no no-surface record.
 
-#### Scenario: No surface recorded
+#### Scenario: Docs-only diff stays silent
 - **WHEN** the diff is docs-only with no I/O, handler, consumer, or timeout boundary
-- **THEN** Resilience records no surface with no findings
-
-### Requirement: Review report SHALL carry Resilience Surface Triage
-
-The report SHALL record resilience in a `Resilience:` line under Coverage Notes, not a separate Resilience Surface Triage section. It SHALL include the outcome even when no relevant surface exists, affected areas with file paths when present, and relevant idempotency and no-existing-pattern notes. Findings SHALL remain in Findings with Category Resilience and existing severity and no-convention limits. This recording SHALL add no audit recommendation.
-
-#### Scenario: Triage reported
-- **WHEN** Resilience evaluates a diff
-- **THEN** Coverage Notes records a `Resilience:` outcome, affected areas and constraint notes, including no surface when appropriate
+- **THEN** Resilience yields no findings and the report carries no resilience record

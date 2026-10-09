@@ -78,17 +78,26 @@ The worker SHALL execute passes 1–11 against the full diff and change artifact
 
 ### Requirement: Worker writes and verifies only the review artifact
 
-The worker SHALL write only `openspec/changes/{change-name}/review.md` using the command-owned template, including severity-prefixed finding identifiers, severity roll-up, the closing `Summary:` tally, Coverage Notes with a `Resilience:` outcome and relevant notes even without a resilience surface, and all three audit recommendations. Summary SHALL record goal coverage and scope creep in one or two lines without repeating findings; decision contradictions SHALL remain detectable by Domain Alignment and recorded as findings. The completed payload's `summary` SHALL contain the complete existing `## Recommended Audits` block, including all three audit lines. The worker SHALL NOT modify production code or any other artifact. `changed_files` SHALL contain only the report path.
+The worker SHALL write only `openspec/changes/{change-name}/review.md` using the command-owned template. The report SHALL carry one provenance line with the parent branch, commit range and date, the three surface-triage sections each with its `**Surface touched:**` line, the findings with severity-prefixed identifiers and titles in their headings, and the closing `Summary:` tally. It SHALL carry no Summary paragraph, Verdict, Findings count, Coverage Notes section, or `Resilience:` line. The close step SHALL be the single home of the verification before `completed`: it SHALL verify that `review.md` exists, is non-empty, carries an identifier on every finding, carries the three `Surface touched` lines, and closes with a `Summary:` tally whose counts match its findings. The worker card SHALL NOT list a separate verification. The completed payload's `summary` SHALL contain the complete existing `## Recommended Audits` block, including all three audit lines. The worker SHALL NOT modify production code or any other artifact. `changed_files` SHALL contain only the report path.
 
 #### Scenario: Review report is generated
 - **WHEN** review passes 1–11 are complete
-- **THEN** `review.md` exists, is non-empty, and contains the required review sections, identifiers, summary tally, and audit recommendations
+- **THEN** `review.md` exists, is non-empty, and contains the provenance line, the three `Surface touched` lines, the finding identifiers, and the closing summary tally
 - **AND** the completed payload reports the canonical change name and only the report path
 
 #### Scenario: Worker returns completion
 - **WHEN** `review.md` is verified from disk
 - **THEN** the worker returns `completed` with severity counts, top three Critical findings when present, report path, the complete worker-authored `## Recommended Audits` block, and parent-branch statement
 - **AND** it returns no report contents in the lifecycle payload
+
+#### Scenario: Review with no findings writes a valid report
+- **WHEN** the review produces no findings
+- **THEN** `review.md` carries the provenance line, the three `Surface touched` lines, and a closing `Summary:` tally of zeros
+
+#### Scenario: Verification lives only in the close step
+- **WHEN** the worker card and the close step are read
+- **THEN** the close step states the verification before `completed`
+- **AND** the worker card points to the close step without listing the checks
 
 ### Requirement: Review lifecycle results carry no time field
 
@@ -100,7 +109,7 @@ The review worker SHALL return progress and terminal lifecycle results with no t
 
 ### Requirement: Review findings use the shared audit severity vocabulary
 
-The review instruction and worker contract SHALL classify every finding with one of the shared severities `Critical`, `High`, `Medium`, or `Low`, or with the review-only `Question` category. `Critical` SHALL mean must-fix-before-merge (bugs, security holes, broken builds, contract violations, contradictions of the change artifacts); `High` SHALL mean should-fix-before-merge (significant maintainability, performance, or test-coverage issues that will hurt soon); `Medium` SHALL mean a moderate maintainability, performance, or test-coverage concern that does not threaten merge-readiness but should be addressed soon; `Low` SHALL mean nice-to-fix (naming, small refactors, low-impact polish); `Question` SHALL mean genuine uncertainty needing user input, used sparingly. The retired terms `Blocker`, `Major`, and `Minor` SHALL NOT be emitted by the review instruction, the review worker contract, or the review report. Every triage escalation SHALL reference the shared levels: blatant security findings SHALL be `Critical`, blatant performance and accessibility findings `High` or `Critical`, and glossary deviations `Low`. No mutation findings SHALL enter counts or verdicts.
+The review instruction and worker contract SHALL classify every finding with one of the shared severities `Critical`, `High`, `Medium`, or `Low`, or with the review-only `Question` category. `Critical` SHALL mean must-fix-before-merge (bugs, security holes, broken builds, contract violations, contradictions of the change artifacts); `High` SHALL mean should-fix-before-merge (significant maintainability, performance, or test-coverage issues that will hurt soon); `Medium` SHALL mean a moderate maintainability, performance, or test-coverage concern that does not threaten merge-readiness but should be addressed soon; `Low` SHALL mean nice-to-fix (naming, small refactors, low-impact polish); `Question` SHALL mean genuine uncertainty needing user input, used sparingly. The retired terms `Blocker`, `Major`, and `Minor` SHALL NOT be emitted by the review instruction, the review worker contract, or the review report. Every triage escalation SHALL reference the shared levels: blatant security findings SHALL be `Critical`, blatant performance and accessibility findings `High` or `Critical`, and glossary deviations `Low`. No mutation findings SHALL enter counts.
 
 #### Scenario: Severity classification uses the shared levels
 - **WHEN** the review classifies a finding
@@ -113,7 +122,7 @@ The review instruction and worker contract SHALL classify every finding with one
 - **AND** it does not use the retired triage vocabulary
 
 #### Scenario: Mutation findings fold into the report by remapped severity
-- **WHEN** review renders its counts and verdict after mutation-analysis retirement
+- **WHEN** review renders its counts after mutation-analysis retirement
 - **THEN** only findings from passes 1–11 are counted
 - **AND** no mutation findings or mMUT identifiers appear
 
@@ -142,3 +151,40 @@ The review close step SHALL challenge the in-memory draft before saving to disca
 #### Scenario: Mutation findings bypass the adversary
 - **WHEN** review applies the adversarial check after mutation-analysis retirement
 - **THEN** no mutation findings or exemption exist and every draft finding is eligible for the unchanged bounded check
+
+### Requirement: Domain Alignment reports goal coverage and scope creep only through findings
+
+The Domain Alignment pass SHALL report a goal in `proposal.md` or an acceptance criterion in `specs/**/*.md` that the change does not cover as a finding with severity by impact, and SHALL report scope creep as a `Question`. It SHALL report each gap or addition once: when the gap or addition already contradicts a recorded decision, it SHALL be reported as that contradiction. No Summary paragraph SHALL record goal coverage or scope creep.
+
+#### Scenario: Uncovered acceptance criterion
+- **WHEN** the diff leaves an acceptance criterion of the change's specs uncovered
+- **THEN** the report lists a finding for that gap at a severity chosen by its impact
+
+#### Scenario: Scope creep
+- **WHEN** the diff adds behavior that the change's artifacts do not ask for
+- **THEN** the report lists it as a `Question` finding
+
+#### Scenario: Gap that contradicts a recorded decision
+- **WHEN** a gap or addition also contradicts a recorded decision
+- **THEN** the report lists it once, as the contradiction
+
+### Requirement: A review pass with nothing to report stays silent
+
+The review analysis SHALL state once that a pass with nothing to report stays silent and leaves nothing in the report. It SHALL NOT record per-pass no-surface, skipped, or clean outcomes. The analysis step SHALL be complete when the three surface outcomes (security, performance, accessibility) and the findings list are settled, with the eleven passes applied to every changed file.
+
+#### Scenario: Glossary pass without a glossary
+- **WHEN** the repository has no `GLOSSARY.md`
+- **THEN** the Domain Language Consistency pass leaves nothing in the report
+
+#### Scenario: Resilience pass without surface
+- **WHEN** the diff has no resilience surface
+- **THEN** the Resilience pass yields no findings and leaves nothing in the report
+
+### Requirement: Triage passes decide the surface without listing files
+
+The security, performance and accessibility triage passes SHALL decide `surface touched: yes/no` from their unchanged surface criteria without listing the touched files, and SHALL keep recommending their audit on yes.
+
+#### Scenario: Security surface touched
+- **WHEN** the diff touches an authentication path
+- **THEN** the security triage records `Surface touched: Yes` with no file list
+- **AND** the completed summary recommends `/sai-6-security`
