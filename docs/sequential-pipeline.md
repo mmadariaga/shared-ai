@@ -21,7 +21,7 @@ Every numbered phase runs the same shape: a **coordinator** in your main session
 
 Both harnesses preserve the same durable artifacts, gate wordings, and stop texts. Claude Code and opencode differ only in dispatch mechanics and model IDs.
 
-- `/sai-2-design` — the coordinator takes its model from the wrapper frontmatter, and the design worker (`sai-2-design-worker`) takes its model from its installed agent file, seeded from the manifest's `worker-matrix`. The fixed notice is acknowledged with `continue_after_notice`. Design ends at design completion — run `/sai-3-implement {name}` in a new chat. Proposal Complexity stays descriptive, never a routing gate.
+- `/sai-2-design` — the coordinator takes its model from the wrapper frontmatter, and the design worker (`sai-2-design-worker`) takes its model from its installed agent file, seeded from the manifest's `worker-matrix`. The fixed notice is acknowledged with `continue_after_notice`. Design ends at design completion — run `/sai-3-implement {name}` in a new chat.
 - `/sai-3-implement` — the worker writes the full coding playbook to `openspec/changes/{change-name}/implementation.md`; `/sai-4-apply` follows it and copies each step's code verbatim, adjusting only for compilation errors or test failures.
 - `/sai-4-apply` — the coordinator never edits code. It dispatches the RED and GREEN workers on the budget tier, re-verifies each result, prints a pre-commit files-modified report cross-checked against `tasks.md`, and asks before each commit.
 - `/sai-commit`, `/sai-merge` — same shape without any openspec dependency. The worker drafts, the coordinator alone runs git.

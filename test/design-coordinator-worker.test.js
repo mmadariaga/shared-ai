@@ -774,9 +774,7 @@ test('documentation records the active design compatibility boundary and managed
 
   assert.match(guide, /continue_after_notice/);
   assert.match(guide, /new chat[\s\S]{0,80}\/sai-3-implement|\/sai-3-implement[\s\S]{0,80}new chat/i);
-  assert.match(guide, /Proposal Complexity.*descriptive/i);
   assert.match(guide, /independent model roles/);
-  assert.doesNotMatch(readme, /continue_after_notice|Proposal Complexity is descriptive/);
 
   assert.match(agents, /sai\/commands\/design\/steps\//);
   assert.match(agents, /sai-2-design-worker/);

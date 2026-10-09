@@ -17,7 +17,6 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 
 - [0014 — Decision summary derived exclusively from written artifacts](./0014-decision-summary-derived-from-artifacts-only.md)
 - [0067 — Handoff provenance consumption as "premise to confirm and extend"](./0067-confirm-extend-consumption-framing.md)
-- [0072 — Numeric complexity thresholds calibrated from an archive survey](./0072-complexity-thresholds-calibrated-from-archive-survey.md) — Refs adr:0069, Refs adr:0070
 - [0106 — The ordered routing test resolves a qualifying decision's record family, DDR first, with no tie](./0106-ordered-routing-test-family-resolution.md)
 - [0133b — Review progress is marked only by no-High pass evidence](./0133b-review-progress-is-evidence-only.md) — Refs 0109c, Refs 0110, Refs 0111
 - [0134a — Automatic planning review has two distinct bounded counters](./0134a-automatic-review-has-two-distinct-counters.md) — Refs 0133b
@@ -26,12 +25,10 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0147 — Structured spec research closes at the shared confidence boundary before proposal generation](./0147-spec-research-closes-at-confidence-boundary.md)
 - [0150 — Gate mode is parameterized at the fetch site, never detected from invocation context](./0150-mode-parameterized-at-fetch-site-not-detected.md) — **Amends** adr:0028
 - [0151c — External Explore findings block is the only `review` progress evidence](./0151c-external-findings-block-is-only-review-evidence.md) — **Amends** 0133b, Refs adr:0158c
-- [0156a — Critical prohibitions are deliberately duplicated across the spec worker contract and its step files](./0156a-critical-prohibitions-duplicated-across-spec-steps.md) — Pair with adr:0172c
 
 ### `/sai-2-design`
 
 - [0014 — Decision summary derived exclusively from written artifacts](./0014-decision-summary-derived-from-artifacts-only.md)
-- [0072 — Numeric complexity thresholds calibrated from an archive survey](./0072-complexity-thresholds-calibrated-from-archive-survey.md) — Refs adr:0069, Refs adr:0070
 - [0106 — The ordered routing test resolves a qualifying decision's record family, DDR first, with no tie](./0106-ordered-routing-test-family-resolution.md)
 - [0109c — Progress plans are declared, canonical, and immutable; the coordinator renders and marks only](./0109c-declared-canonical-immutable-progress-plan.md)
 - [0110 — Progress reporting is additive and nonterminal; a run closes with exactly one terminal status](./0110-additive-nonterminal-progress-event.md)
@@ -289,7 +286,6 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 ### Artifact metadata & routing tokens
 
 - [0067 — Handoff provenance consumption as "premise to confirm and extend"](./0067-confirm-extend-consumption-framing.md)
-- [0072 — Numeric complexity thresholds calibrated from an archive survey](./0072-complexity-thresholds-calibrated-from-archive-survey.md) — Refs adr:0069, Refs adr:0070
 - [0118b — Every generation is a recoverable two-phase transition with a persisted overview.state key](./0118b-every-generation-is-a-recoverable-two-phase-transition-with-a-persisted-overview-state-key.md)
 - [0142a — Backfill intent remains ephemeral and subordinate to verified diff evidence](./0142a-intent-remains-ephemeral-and-subordinate-to-diff-evidence.md)
 - [0145a — Backfill `created` metadata uses a date-only value](./0145a-backfill-created-metadata-is-date-only.md)
@@ -317,6 +313,8 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 
 ## Superseded DDRs (historical)
 
+- [0072 — Numeric complexity thresholds calibrated from an archive survey](./archive/0072-complexity-thresholds-calibrated-from-archive-survey.md) — Refs adr:0069, Refs adr:0070 — *ARCHIVED to ./archive/ — the proposal `Complexity` token it calibrated was retired by `spec-instruction-audit`*
+- [0156a — Critical prohibitions are deliberately duplicated across the spec worker contract and its step files](./archive/0156a-critical-prohibitions-duplicated-across-spec-steps.md) — Pair with adr:0172c — *ARCHIVED to ./archive/ — the duplication invariant is retired by [adr:0191](../adr/0191-spec-restatements-need-a-record-or-an-observed-failure.md); its external-findings rules no longer exist in the spec worker*
 - [0109a — The delegation envelope's status is reserved for dispatch outcomes; check verdicts travel only in the output payload](./0109a-delegation-envelope-status-reserved-for-dispatch-outcomes.md) — *Superseded: the explore prerequisite check runs inline, with no delegated report*
 - [0116 — The apply phase carries no progress events because it has no coordinator-worker boundary](./0116-apply-phase-carries-no-progress-events.md) — Refs 0110 — *Superseded by [0137b](./0137b-apply-routed-boundary-carries-progress-events.md)*
 - [0128 — Neutral root protocols and command cards](./0128-neutral-root-protocols-and-command-cards.md) — *Superseded by [0149](./0149-orchestration-core-contracts-live-under-orchestration.md)* — placement rule only; its harness-neutral, phase-agnostic protocol decision remains in force
