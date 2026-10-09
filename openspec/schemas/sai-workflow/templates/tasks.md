@@ -1,6 +1,6 @@
 ## Step 1: <!-- Title -->
 
-**Routing**: layer=<!-- frontend|backend|infra|cross-cutting --> · discipline=<!-- ui-ux|app-code|service|data|config --> · complexity=<!-- low|medium|high -->
+**Routing**: category=<!-- frontend-ui|frontend-code|backend|data|infra|docs|other --> · context=<!-- small|medium|large --> · difficulty=<!-- low|medium|high -->
 
 **Files Affected**:
 <!-- A|M|D|R entries, one per line -->

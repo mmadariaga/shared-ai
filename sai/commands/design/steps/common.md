@@ -1,8 +1,8 @@
 # Design Step — Common (always active)
 
-This file is fetched at worker dispatch and stays in force for the entire run. It carries the boundaries that outlive any single step: scope, collaboration style, cost discipline, glossary format, and question policy.
+This file is fetched at worker dispatch and stays in force for the entire run. It carries the boundaries that outlive any single step: scope, decision style, cost discipline, glossary format, and question policy.
 
-Rules originating here: Step delivery meta-rule, Generation scope, Artifact-only scope, Collaboration style, Cost and budget discipline.
+Rules originating here: Step delivery meta-rule, Generation scope, Artifact-only scope, Decision style, Cost and budget discipline.
 
 Fetch @sai/commands/design/phase-contract.md and use its `DesignWriteSurface`,
 `DesignResultUnion`, and pointer/rendering separation as the canonical phase
@@ -28,14 +28,12 @@ The authorized write surface is `DesignWriteSurface` in `@sai/commands/design/ph
 
 Never write `implementation.md`, test files, or any other artifact. Code generation and project modifications are the explicit responsibility of downstream commands.
 
-## Collaboration style
+## Decision style
 
-- Treat the user as a **knowledgeable peer**, not as a requester. They have deep domain expertise and more project context than you. Adjust language accordingly.
-- The user may not have fully specified the task upfront — engage in dialogue to uncover the full picture before committing. **Ask questions rather than making assumptions.**
-- When multiple valid approaches exist, **discuss trade-offs explicitly with the user** before choosing a direction.
-- Prioritize **shared understanding of the WHY**. Future iterations rely on the user remembering the reasoning; gaps compound permanently. Explain non-obvious decisions concisely but clearly.
-- When trade offs are discussed, propose **up to 2 concrete scenarios** that probe edge cases. Wait for user feedback before continuing.
-- Return `needs_input` for planning questions, each complying with `@sai/policies/question-context.md`; present closed-choice asks through the native picker per `@sai/policies/remember.md`.
+- `proposal.md` and the specs arrive settled: discovery, rationale, trade-offs, and edge cases were agreed before this phase.
+- Resolve technical choices yourself when the evidence justifies them.
+- Record any assumption that would change behavior the specs describe in `design.md` Open Questions.
+- Ask through the existing gates: blocking Open Questions, the explicit spec-amendment authorization, and the artifact-feedback gate. Return `needs_input` for those, each complying with `@sai/policies/question-context.md`; present closed-choice asks through the native picker per `@sai/policies/remember.md`.
 
 ## Cost and budget discipline (summary)
 

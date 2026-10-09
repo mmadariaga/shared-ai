@@ -2,32 +2,30 @@
 
 ## Purpose
 TBD - created by archiving change tasks-routing-metadata. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: Each tasks.md step SHALL include a Routing line
 
 Every `## Step N:` section in `tasks.md` SHALL contain a single Routing line formatted as:
 
-    **Routing**: layer=<layer> · discipline=<discipline> · complexity=<complexity>
+    **Routing**: category=<category> · context=<context> · difficulty=<difficulty>
 
 The line SHALL appear immediately after the `## Step N: <title>` heading and BEFORE `**Files Affected**`. The line is the only routing metadata emitted by `tasks.md`; the file SHALL NOT contain a separate routing block, table, JSON sidecar, or `routing.md`.
 
 The middle dot character (·, U+00B7) SHALL be used as the pair separator. ASCII alternatives (`,`, `|`, `/`) are NOT acceptable substitutes.
 
-The three keys (`layer`, `discipline`, `complexity`) SHALL be present on every Routing line, in that order, each followed by `=` and a token drawn from the enumeration in the corresponding requirement of this spec. A reader SHALL be able to identify which dimension a value belongs to without assuming the token's position in the line.
+The three keys (`category`, `context`, `difficulty`) SHALL be present on every Routing line, in that order, each followed by `=` and a token drawn from the enumeration in the corresponding requirement of this spec. A reader SHALL be able to identify which dimension a value belongs to without assuming the token's position in the line. Every Step of one `tasks.md` emitted by `/sai-2-design` SHALL use this format; one file SHALL NOT mix Routing formats.
 
-The three tokens SHALL be drawn from the enumerations defined in the subsequent requirements of this spec.
-
-A trailing parenthetical one-line justification MAY follow the three key=value pairs for audit (e.g. `layer=frontend · discipline=ui-ux · complexity=medium (Next.js component)`). When present, the parenthetical begins with `(` and ends with `)` and SHALL be ignored by any parser of the Routing line — only the three key=value pairs are part of the routing tuple.
+A trailing parenthetical one-line note MAY follow the three key=value pairs for audit (e.g. `category=frontend-ui · context=medium · difficulty=medium (Next.js component)`). When present, the parenthetical begins with `(` and ends with `)` and SHALL be ignored by any parser of the Routing line — only the three key=value pairs are part of the routing tuple.
 
 #### Scenario: Step has a Routing line in the correct position
 - **WHEN** `sai-2-design` writes a `## Step N` section in `tasks.md`
-- **THEN** the section contains a line of the form `**Routing**: layer=<layer> · discipline=<discipline> · complexity=<complexity>` with three key=value pairs whose keys are exactly `layer`, `discipline`, `complexity` in that order
-- **THEN** the line precedes the `**Files Affected**` line in the same section
+- **THEN** the section contains a `**Routing**: category=<category> · context=<context> · difficulty=<difficulty>` line with keys exactly `category`, `context`, `difficulty` in that order, preceding the `**Files Affected**` line
 
 #### Scenario: Exactly three dimensions on the line
 - **WHEN** the Routing line is emitted
-- **THEN** the line contains exactly three key=value pairs: layer, discipline, complexity
-- **THEN** the `parallelizable` dimension is not present (excluded from this change)
+- **THEN** the line contains exactly three key=value pairs: category, context, difficulty
 
 #### Scenario: Optional parenthetical justification
 - **WHEN** the design agent appends a one-line audit note
@@ -40,115 +38,13 @@ A trailing parenthetical one-line justification MAY follow the three key=value p
 - **THEN** the only routing artifact is the `**Routing**` line on each step
 - **THEN** no `routing.md`, no routing table, no routing JSON sidecar, and no per-step machine-readable block is present
 
-### Requirement: Layer vocabulary is a closed enumeration
-
-The `<layer>` token SHALL be one of the following four values, and only these values:
-
-- `frontend` — frontend code lives here. Paths typically include `src/components/`, `src/pages/`, `src/router/`, `src/store/`, `src/api-client/`, `web/`, `client/`, `mobile/`, `app/` (when frontend), `pages/` (when Next.js), and framework entry points whose body is client-side.
-- `backend` — server-side code lives here. Paths typically include `server/`, `api/`, `services/`, `src/handlers/`, `src/repos/`, `src/models/`, `src/db/`, `src/controllers/`, `src/use-cases/`, `cmd/`, `migrations/`, `prisma/`.
-- `infra` — build, CI/CD, deployment, container, infrastructure-as-code, repository tooling, agent/skill wrappers. Paths typically include `.github/`, `Dockerfile`, `scripts/`, `infra/`, `terraform/`, `k8s/`, harness `commands/`, harness `agents/`, harness `skills/`. Pure declarative artifacts (config files, markdown docs) also fall under `infra` because they do not belong to either the frontend or backend runtime.
-- `cross-cutting` — escape hatch for steps that touch more than one of `frontend`, `backend`, or `infra` in a non-trivial way, or for steps whose primary layer is genuinely ambiguous. The orchestrator (out of scope) must split the step or assign a generalist agent.
-
-#### Scenario: Layer assigned by path pattern
-- **WHEN** a step's `**Files Affected**` lists paths
-- **THEN** the design agent assigns a single `<layer>` token from the enumeration above using the path-driven rules in the design instructions
-- **THEN** if the paths span more than one of `frontend` / `backend` / `infra` in a non-trivial way, the layer is `cross-cutting`
-
-#### Scenario: Layer for a docs-only step
-- **WHEN** all files in `**Files Affected**` are markdown (`*.md`, `*.mdx` outside a UI surface) under `docs/`, `README.md`, or another prose-only location
-- **THEN** the layer is `infra` (declarative artifact, not frontend or backend runtime)
-- **THEN** the discipline (per the discipline requirement) is `config`
-
-#### Scenario: Layer for a config-only step
-- **WHEN** all files in `**Files Affected**` are configuration files (`.json` / `.yaml` / `.yml` / `.toml` / `.env` / `.ini` / `.properties` / declarative `.config.{js,ts}`) AND no file contains executable logic
-- **THEN** the layer is `infra`
-- **THEN** the discipline is also `config`
-
-#### Scenario: No new layer tokens invented
-- **WHEN** a step would naturally belong to a layer not enumerated above (e.g. `ml`, `firmware`, `data-pipeline`)
-- **THEN** the design agent MUST NOT invent a new token
-- **THEN** the design agent MUST either pick the closest enumerated token or use `cross-cutting`, and MUST flag the gap in `design.md` Open Questions for a future change
-
-### Requirement: Discipline vocabulary is a closed enumeration orthogonal to layer
-
-The `<discipline>` token SHALL be one of the following five values, and only these values. Discipline is orthogonal to layer: every (layer, discipline) pair is legal, and the pair discriminates between routings that share a layer (e.g. `(frontend, ui-ux)` vs `(frontend, app-code)`) and routings that share a discipline across layers.
-
-- `ui-ux` — UI/UX sensibility (presentation, layout, styles, view templates, view-only logic, accessibility). File patterns: `components/`, `views/`, `pages/` (when view markup), `layouts/`, `*.css`, `*.scss`, `*.less`, `*.html`, `*.mdx`, `*.astro`, `*.vue`, `*.svelte` (with markup), `*.tsx`/`*.jsx` with view markup, `a11y*` files.
-- `app-code` — client-side non-UI code (routing, state stores, data layer, client SDK, framework glue, build/bundler config consumed by the frontend). File patterns: `src/store/`, `src/router/`, `src/api-client/`, frontend glue directories, `vite.config.*` / `webpack.config.*` / `rollup.config.*` when frontend, frontend-only test files under frontend test directories.
-- `service` — server-side business logic (HTTP handlers, RPC services, business logic, queues, scheduled jobs, server middleware). File patterns: `server/`, `api/` (when code), `services/` (when code), `src/handlers/`, `src/controllers/`, `src/use-cases/`, `cmd/`, `*Handler*`, `*Service*` (code), `*Controller*`, `*UseCase*`, `*Job*`, `*Worker*`, `*Queue*`.
-- `data` — persistence layer (schemas, migrations, repositories, ORM models, DAOs, query files). File patterns: `src/repos/`, `src/models/`, `src/db/`, `migrations/`, `schemas/`, `prisma/`, `*.sql`, `*Repo*`, `*Model*`, `*Dao*`, `*Entity*`, ORM definition files.
-- `config` — declarative artifacts (JSON / YAML / TOML / env / INI / properties files, declarative `.config.{js,ts}` files, markdown documentation outside a UI surface). File patterns: `*.json`, `*.yaml`, `*.yml`, `*.toml`, `*.env`, `*.ini`, `*.properties`, `docs/**/*.md` (when docs-only), `README.md` (when standalone), `CHANGELOG*`, `*.config.{js,ts}` when declarative.
-
-#### Scenario: Discipline derived from path patterns
-- **WHEN** a step's `**Files Affected**` contains only files matching a `ui-ux` pattern
-- **THEN** the discipline is `ui-ux`
-- **WHEN** a step's `**Files Affected**` contains only files matching a `service` pattern
-- **THEN** the discipline is `service`
-- **WHEN** a step's `**Files Affected**` contains only files matching a `data` pattern
-- **THEN** the discipline is `data`
-- **WHEN** a step's `**Files Affected**` contains only files matching an `app-code` pattern
-- **THEN** the discipline is `app-code`
-- **WHEN** a step's `**Files Affected**` contains only files matching a `config` pattern
-- **THEN** the discipline is `config`
-
-#### Scenario: Layer-discipline orthogonality
-- **WHEN** a step touches `src/components/Foo.tsx` (frontend code with view markup)
-- **THEN** the layer is `frontend` AND the discipline is `ui-ux`
-- **THEN** a future orchestrator can dispatch this step to an agent that handles FE with UI/UX sensibility, distinct from `(layer=frontend, discipline=app-code)` for an FE router or state-store step
-- **WHEN** a step touches `src/router/index.ts` (frontend routing code, no markup)
-- **THEN** the layer is `frontend` AND the discipline is `app-code`
-- **WHEN** a step touches `src/handlers/OrderHandler.ts`
-- **THEN** the layer is `backend` AND the discipline is `service`
-- **WHEN** a step touches `src/repos/OrderRepo.ts`
-- **THEN** the layer is `backend` AND the discipline is `data`
-- **WHEN** a step touches only `README.md`
-- **THEN** the layer is `infra` AND the discipline is `config`
-
-#### Scenario: Frontend multi-discipline decomposition for a substantial deliverable
-- **WHEN** a substantial frontend deliverable in `tasks.md` spans both markup (UI/UX sensibility) and logic (app-code glue) — for example, multiple files, or a component complex enough that the UI checkpoint is reviewable on its own
-- **THEN** `sai-2-design` SHOULD split the deliverable into two consecutive `## Step N` sections in `tasks.md` (the two steps are back-to-back in the file, with sequential numbering — e.g. `## Step 3` followed by `## Step 4`, never `## Step 3` and `## Step 5` with another step interleaved)
-- **THEN** the first `## Step N` section has `**Routing**: layer=frontend · discipline=ui-ux · complexity=low|medium|high` and the second `## Step N` section has `**Routing**: layer=frontend · discipline=app-code · complexity=low|medium|high`
-- **THEN** the two steps are emitted in that order (the `ui-ux` step first, the `app-code` step second), with no new layer or discipline token introduced — the existing `ui-ux` and `app-code` disciplines are reused verbatim
-- **THEN** the heuristic is a routing hint, not a serialization mandate: a future orchestrator MAY run the two steps in parallel against different files (UI agent on `.css` / markup-only `.tsx`, app-code agent on a store / api-client file); the `tasks.md` ordering is a recommended sequence, not a hard dependency
-
-#### Scenario: Trivial single-component FE deliverable MAY stay atomic
-- **WHEN** a frontend deliverable is trivial — a single component file (one `.tsx` or similar) with both markup and a small amount of state, fetch, or framework glue in the same file
-- **THEN** `sai-2-design` MAY keep the step atomic with a single `## Step N` section, choosing the closest single discipline from the enumeration above (typically `ui-ux` when the file is primarily markup, `app-code` when the file is primarily logic)
-- **THEN** the multi-discipline decomposition is a SHOULD gated on *substantiality*; trivial deliverables do not pay back the overhead of an extra step
-
-#### Scenario: Second step inherits a component that already contains the markup from the first step
-- **WHEN** a substantial frontend deliverable is split per the multi-discipline decomposition pattern (the `ui-ux` step emits a component file with markup, the `app-code` step follows)
-- **THEN** the second step's `**Files Affected**` includes the same component file (typically the `.tsx`) that the first step emitted markup for
-- **THEN** the intermediate state — the file with only markup, before the second step adds the logic — is internal to the OpenSpec change and is never deployed or reviewed standalone
-- **THEN** the implementer in `sai-4-apply` is responsible for producing one coherent final file (markup + logic), not two partial states
-- **THEN** the `**Routing**` line format and position are unchanged on both steps: each step is independently a complete Routing line, and the two steps do not introduce a new token or a new field
-
-#### Scenario: No new discipline tokens invented
-- **WHEN** a step would naturally belong to a discipline not enumerated above (e.g. `add`, `modify`, `refactor`, `fix`, `chore`, `perf`, `style`, `build`, `test-only`, `migrate`)
-- **THEN** the design agent MUST NOT invent a new token
-- **THEN** the design agent MUST pick the closest enumerated discipline (most often `service` for backend, `app-code` for frontend, `config` for tooling) and MUST flag the gap in `design.md` Open Questions for a future change
-
-### Requirement: Complexity vocabulary is a three-tier coarse judgment
-
-The `<complexity>` token SHALL be one of the following three values, and only these values:
-
-- `low` — single file, single concern, no cross-module impact; the orchestrator can run the step in one short pass.
-- `medium` — multiple files in the same layer, or one file with cross-module impact; the orchestrator should budget an iteration or two.
-- `high` — cross-layer, architectural, risky, touches public APIs, breaking schema change, multi-repo coordination, or introduces a new dependency; the orchestrator should budget multiple iterations and consider splitting.
-
-#### Scenario: Complexity is a coarse design-time judgment
-- **WHEN** the design agent assigns a complexity token
-- **THEN** the token is derived once from the planned file snapshot (file count, layer spread, public-API touch, breaking-change risk)
-- **THEN** the token is emitted on the Routing line and not revised by the design agent
-
-#### Scenario: sai-3-implement may refine the complexity
-- **WHEN** `sai-3-implement` reads the Routing line and judges the work larger or smaller than the design-time token suggests
-- **THEN** `sai-3-implement` MAY split, merge, or otherwise refine the step in `implementation.md` without re-tagging `tasks.md`
-- **THEN** the original Routing line in `tasks.md` stays unchanged
+#### Scenario: One tasks.md uses one Routing format
+- **WHEN** `/sai-2-design` writes or rewrites a `tasks.md`, reruns included
+- **THEN** every `## Step N` in that file carries the `category`/`context`/`difficulty` Routing line and none carries the `layer`/`discipline`/`complexity` form
 
 ### Requirement: Routing tokens are descriptive, not an agent roster
 
-The tokens in the Routing line SHALL be descriptive dimensions of the work (layer, discipline, complexity). The vocabulary MUST NOT bind to any specific agent name, model identifier, or vendor. The orchestrator (a future change) is responsible for mapping the descriptive tokens to its own agent roster at dispatch time.
+The tokens in the Routing line SHALL be descriptive dimensions of the work (category, context, difficulty). The vocabulary MUST NOT bind to any specific agent name, model identifier, or vendor. The orchestrator (a future change) is responsible for mapping the descriptive tokens to its own agent roster at dispatch time.
 
 #### Scenario: No agent names in the Routing line
 - **WHEN** a reader parses the Routing line
@@ -160,20 +56,6 @@ The tokens in the Routing line SHALL be descriptive dimensions of the work (laye
 - **THEN** the orchestrator applies its own mapping from descriptive tokens to agents
 - **THEN** the design agent does not need to know which agents exist
 
-### Requirement: Derivation is reproducible and audit-friendly
-
-The derivation rules that map a step's `**Files Affected**` to the three Routing tokens SHALL be expressible as a deterministic procedure (layer path patterns, discipline path patterns, complexity heuristics, a precedence list for ambiguity, a brief justification note per token). A second design agent given the same `**Files Affected**` list and the derivation rubric SHALL produce the same Routing line.
-
-#### Scenario: Same inputs, same Routing line
-- **WHEN** two design agents independently process the same change
-- **THEN** they produce the same `<layer>`, `<discipline>`, and `<complexity>` tokens for every step
-- **THEN** any disagreement is a defect in the derivation rubric, not in the inputs
-
-#### Scenario: Routing line carries a one-line justification
-- **WHEN** a Routing line is emitted
-- **THEN** a parenthetical one-line justification MAY follow each line (e.g. `layer=frontend · discipline=ui-ux · complexity=medium (Next.js component)`) to support audit
-- **THEN** the justification is optional and the parser MUST ignore anything from the first `(` onward
-
 ### Requirement: No consumer is built in this change
 
 This spec introduces the metadata only. The change MUST NOT add a router, dispatcher, or any code that reads the Routing line. Downstream phases (`sai-3-implement` and any future orchestrator) MAY read the line, but doing so is out of scope for this change.
@@ -183,3 +65,58 @@ This spec introduces the metadata only. The change MUST NOT add a router, dispat
 - **THEN** no such consumer exists in this change
 - **THEN** the metadata is present in `tasks.md` only; no behavior in the pipeline depends on it yet
 
+### Requirement: Routing values are judged by goal, not derived from paths
+
+The design task-generation step SHALL define each Routing value by its goal. It SHALL NOT contain path pattern tables, precedence lists, equivalence tables, or any rule that derives a Routing value from `**Files Affected**` paths. Two independent design runs are not required to produce identical tokens.
+
+#### Scenario: No path rubric in the design instruction
+- **WHEN** `sai/commands/design/steps/tasks.md` is read
+- **THEN** its Routing line subsection defines `category`, `context` and `difficulty` by goal and contains no path pattern table or precedence list
+
+### Requirement: Category vocabulary names the kind of work by purpose
+
+The `<category>` token SHALL be one of `frontend-ui`, `frontend-code`, `backend`, `data`, `infra`, `docs`, `other`, and only these values. It SHALL name the kind of work the Step performs, judged by its purpose. A Step mixing kinds of work SHALL take the category that best fits its main purpose. `other` SHALL be used only when the work fits no category at all, and SHALL carry a parenthetical note naming the kind of work.
+
+#### Scenario: Mixed step takes the best-fitting category
+- **WHEN** a Step mixes kinds of work
+- **THEN** its `category` is the single enumerated token that best fits the Step's main purpose
+
+#### Scenario: other carries a note
+- **WHEN** a Step's work fits no enumerated category
+- **THEN** its Routing line uses `category=other` followed by a parenthetical note naming the kind of work
+
+### Requirement: Context vocabulary states how much the implementer must load
+
+The `<context>` token SHALL be one of `small`, `medium`, `large`, and only these values. It SHALL state how much the implementer must load: instructions, files to read or touch, and prior information.
+
+#### Scenario: Context token is drawn from the enumeration
+- **WHEN** the design agent emits a Routing line
+- **THEN** its `context` value is exactly one of `small`, `medium`, `large`
+
+### Requirement: Difficulty vocabulary is measured against the implementer
+
+The design task-generation step SHALL define the implementer once beside the Routing line as the agent that implements the Step in `/sai-4-apply`, no more capable than the design agent and usually less. The `<difficulty>` token SHALL be one of `low`, `medium`, `high`, and only these values. It SHALL state how hard the Step is for the implementer to finish from its plan, its tests, and its `interfaces.md` contract, and SHALL state that `/sai-3-implement` uses it to decide how much production code to write. When unsure, the design agent SHALL choose the higher value. A Step with no RED block SHALL still carry `difficulty`, judged on the plan and contract with no tests to guide the implementer.
+
+#### Scenario: Uncertain difficulty rounds up
+- **WHEN** the design agent is unsure between two difficulty levels
+- **THEN** it emits the higher of the two
+
+#### Scenario: Step without tests still carries difficulty
+- **WHEN** a Step has no RED block (docs or config)
+- **THEN** its Routing line still carries a `difficulty` judged on the plan and contract alone
+
+### Requirement: Glossary defines the routing vocabulary
+
+`GLOSSARY.md` SHALL define `Routing Category`, `Routing Context` and `Routing Difficulty`, and SHALL define `Routing Line` with the `category`/`context`/`difficulty` key=value form. It SHALL NOT define `Routing Layer`, `Routing Discipline` or `Routing Complexity`. Its relationships SHALL state that a Routing Line contains exactly one Routing Category, one Routing Context and one Routing Difficulty token in that order, is judged by purpose rather than derived from paths, and measures difficulty against the implementer. They SHALL NOT grant `sai-3-implement` permission to refine or split steps.
+
+#### Scenario: Legacy routing terms are replaced
+- **WHEN** `GLOSSARY.md` is read after this change
+- **THEN** it carries `Routing Category`, `Routing Context` and `Routing Difficulty` entries and no `Routing Layer`, `Routing Discipline` or `Routing Complexity` entry
+
+### Requirement: The model capability funnel is documented
+
+`README.md` SHALL document, in its model customization section, the capability funnel in which each phase's model is no more capable than the previous one (`sai-2` >= `sai-3` >= `sai-4`), and SHALL state that a more capable later phase is unsupported.
+
+#### Scenario: Funnel note is present
+- **WHEN** a reader consults the README model customization section
+- **THEN** it finds the `sai-2` >= `sai-3` >= `sai-4` capability funnel note stating that a more capable later phase is unsupported

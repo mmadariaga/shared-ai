@@ -39,7 +39,7 @@ Structure — one numbered section per implementation step:
 
     ## Step N: <title>
 
-    **Routing**: layer=<layer> · discipline=<discipline> · complexity=<complexity>
+    **Routing**: category=<category> · context=<context> · difficulty=<difficulty>
 
     **Files Affected**: one entry per line, each starting with exactly one change-type token from the closed vocabulary `A` (created), `M` (modified), `D` (deleted), `R` (moved/renamed), followed by one space and the project-root-relative path; an `R` entry carries `R <source path> -> <destination path>`. Derive each token from the file's existence at the repository state immediately before that step's commit, never from the step title or prose verb: a path that already exists is `M` even when the step prose says "add". `R` covers both pure relocation and relocation-with-rewrite; the extent of content change is carried by `**What Will Be Done**` prose, not by the token.
 
@@ -60,35 +60,17 @@ Every verify-first marker in `design.md`'s `## Risks / Trade-offs` is an orderin
 
 Reference specs for what to build, design for how to build it.
 
-### Routing derivation
+### Routing line
 
-Every `## Step N` MUST include a `**Routing**` line immediately after its title and before `**Files Affected**`. The line is produced deterministically from the planned file snapshot using the rubric below. A second design agent given the same `**Files Affected**` list and this rubric MUST produce the same three tokens.
+Every `## Step N` MUST include a `**Routing**` line immediately after its title and before `**Files Affected**`: `**Routing**: category=<category> · context=<context> · difficulty=<difficulty>`. Judge each value by its goal; no path pattern decides it.
 
-- **Layer derivation** (path → token, with precedence for ambiguity): map `**Files Affected**` paths against the four `layer` pattern lists below, after stripping the leading change-type token (one letter from `A`/`M`/`D`/`R` plus the following space). An `R` entry contributes only its destination path (the path right of the ` -> ` separator), because routing describes where the step's work lands — a single-file move never flips the step's `layer` token.
-  - `frontend` patterns: `src/components/`, `src/pages/`, `src/router/`, `src/store/`, `src/api-client/`, `web/`, `client/`, `mobile/`, `app/` (frontend), `pages/` (Next.js).
-  - `backend` patterns: `server/`, `api/`, `services/`, `src/handlers/`, `src/repos/`, `src/models/`, `src/db/`, `src/controllers/`, `src/use-cases/`, `cmd/`, `migrations/`, `prisma/`.
-  - `infra` patterns: `.github/`, `Dockerfile`, `scripts/`, `infra/`, `terraform/`, `k8s/`, harness `commands/` / `agents/` / `skills/`, and pure declarative artifacts (`*.md`, `*.json`, `*.yaml`, config files) — docs-only steps are `infra` + `config`.
-  - `cross-cutting`: when paths span more than one of frontend/backend/infra in a non-trivial way or the primary layer is genuinely ambiguous.
-  - **Precedence**: docs/config-only → `infra`; else if any path matches `frontend` and any matches `backend`/`infra` in a non-trivial way → `cross-cutting`; else single-layer match wins.
+The implementer is the agent that implements the Step in `/sai-4-apply`: no more capable than you, and usually less.
 
-- **Discipline derivation** (path → token, orthogonal to layer): map `**Files Affected**` paths against the five `discipline` pattern lists below, after stripping the leading change-type token exactly as in layer derivation. An `R` entry contributes only its destination path, so a single-file move never flips the step's `discipline` token either.
-  - `ui-ux` (`components/`, `views/`, `pages/` with markup, `layouts/`, `*.css`, `*.scss`, `*.less`, `*.html`, `*.mdx`, `*.astro`, `*.vue`, `*.svelte` with markup, `*.tsx`/`*.jsx` with view markup, `a11y*` files).
-  - `app-code` (`src/store/`, `src/router/`, `src/api-client/`, frontend glue, frontend build configs `vite.config.*`/`webpack.config.*`/`rollup.config.*`).
-  - `service` (`server/`, `api/` (code), `services/` (code), `src/handlers/`, `src/controllers/`, `src/use-cases/`, `cmd/`, `*Handler*`, `*Service*` (code), `*Controller*`, `*UseCase*`, `*Job*`, `*Worker*`, `*Queue*`).
-  - `data` (`src/repos/`, `src/models/`, `src/db/`, `migrations/`, `schemas/`, `prisma/`, `*.sql`, `*Repo*`, `*Model*`, `*Dao*`, `*Entity*`).
-  - `config` (`*.json`, `*.yaml`, `*.yml`, `*.toml`, `*.env`, `*.ini`, `*.properties`, `docs/**/*.md` (docs-only), `README.md`, `CHANGELOG*`, declarative `*.config.{js,ts}`).
-  - **Precedence for mixed files**: pick the discipline of the majority of non-config files; if tied or ambiguous, pick the discipline that matches the step's primary intent and add a parenthetical justification.
-  - **Closed vocabularies**: `layer` and `discipline` each take only the tokens listed above. When a step fits none of them, pick the closest listed token (for `layer`, `cross-cutting` is also valid) and flag the gap in `design.md` Open Questions.
+- `difficulty=low|medium|high`: how hard the Step is for the implementer to finish from its plan, its tests, and its `interfaces.md` contract. `/sai-3-implement` uses it to decide how much production code to write. When unsure, choose the higher value. A Step with no RED block (docs or config) still carries `difficulty`, judged on what the implementer will have: the plan and contract, with no tests to guide it.
+- `category=frontend-ui|frontend-code|backend|data|infra|docs|other`: the kind of work the Step performs, judged by its purpose. A Step mixing kinds of work takes the category that best fits its main purpose. Use `other` only when the work fits no category at all, and add a parenthetical note naming the kind of work.
+- `context=small|medium|large`: how much the implementer must load: instructions, files to read or touch, and prior information.
 
-- **Complexity derivation** (coarse three-tier judgment over the planned file snapshot):
-  - `low` — single file, single concern, no cross-module impact.
-  - `medium` — multiple files in the same layer, or one file with cross-module impact.
-  - `high` — cross-layer, architectural, touches public APIs, breaking schema change, multi-repo coordination, or introduces a new dependency.
-  - The token is emitted once and not revised by the design agent; `sai-3-implement` MAY split, merge, or otherwise refine the step in `implementation.md` without re-tagging `tasks.md`.
-
-- **Parenthetical audit note**: an optional one-line `(... )` MAY follow the three key=value pairs; the parser MUST ignore anything from the first `(` onward. Encourage one short justification per line for audit.
-
-- **Prose-precedence-over-table rule**: the pattern tables above are a convenience, not a closed matcher. When a `**Files Affected**` path matches no table entry but the file's nature fits a discipline's prose definition (e.g. `sai/commands/**/instructions.md` is "markdown documentation outside a UI surface" per the `config` prose, though no table row names that path), the prose definition wins. Flag the path-class gap in `design.md` Open Questions if it recurs across multiple changes (suggest a future table amendment), but do not block the current step on it.
+An optional one-line parenthetical `(...)` MAY follow the three key=value pairs for audit; the parser ignores everything from the first `(`. Every Step of one `tasks.md` uses this format. Step numbering is final: each `## Step N` corresponds one-to-one to the `#### Step N:` of `implementation.md`, so `/sai-3-implement` neither splits nor merges Steps.
 
 ### Commit atomicity constraints
 

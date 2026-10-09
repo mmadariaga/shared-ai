@@ -13,7 +13,7 @@ The file SHALL contain one numbered section per implementation step, structured 
 
     ## Step N: <title>
 
-    **Routing**: layer=<layer> · discipline=<discipline> · complexity=<complexity>
+    **Routing**: category=<category> · context=<context> · difficulty=<difficulty>
 
     **Files Affected**:
     A <path of a file this step creates>
@@ -35,9 +35,9 @@ The `R` token SHALL cover both a pure relocation and a relocation that rewrites 
 
 For ordinary exact entries, the token SHALL be determined by the repository state immediately before that step's commit, not by the step's title or prose verb: a path that does not exist at that baseline and is created by the step is `A`; a path that exists at that baseline and is changed in place is `M`; a path that exists at that baseline and is removed is `D`; a path that exists at that baseline and is moved or renamed is `R`. A file created by an earlier step of the same change therefore carries `M` in a later step that changes it.
 
-Any consumer of an ordinary entry SHALL strip the leading change-type token before interpreting the path, and for an `R` entry SHALL read the two paths on either side of the separator; which of the two paths a consumer then acts on is defined by that consumer's own requirement (the routing derivation acts on the destination path only). Consumers of bounded generated entries SHALL retain the separate directory, family, and count semantics rather than treat the wildcard declaration as one exact file.
+Any consumer of an ordinary entry SHALL strip the leading change-type token before interpreting the path, and for an `R` entry SHALL read the two paths on either side of the separator; which of the two paths a consumer then acts on is defined by that consumer's own requirement. No Routing value is derived from these paths. Consumers of bounded generated entries SHALL retain the separate directory, family, and count semantics rather than treat the wildcard declaration as one exact file.
 
-The `**Routing**` line SHALL be the first sub-field under the step title, immediately preceding `**Files Affected**`. The line uses key=value tagged pairs (not positional tokens); the three keys `layer`, `discipline`, `complexity` are mandatory and in that order. The three values are drawn from the enumerations defined in the `tasks-routing-metadata` capability spec, and the derivation rubric is encoded in the design instructions. No `routing.md`, routing table, or routing JSON sidecar is emitted; the formatted line is the only routing artifact. An optional trailing parenthetical `(... )` is allowed for human audit and MUST be ignored by any parser of the line.
+The `**Routing**` line SHALL be the first sub-field under the step title, immediately preceding `**Files Affected**`. The line uses key=value tagged pairs (not positional tokens); the three keys `category`, `context`, `difficulty` are mandatory and in that order. The three values are drawn from the enumerations defined in the `tasks-routing-metadata` capability spec, and each value is defined by its goal in the design instructions. No `routing.md`, routing table, or routing JSON sidecar is emitted; the formatted line is the only routing artifact. An optional trailing parenthetical `(... )` is allowed for human audit and MUST be ignored by any parser of the line.
 
 The `**Existing Tests Broken**` sub-field SHALL be the fifth and last sub-field of every step section, immediately following `**Testing Strategy**`. Its literal label SHALL be exactly `**Existing Tests Broken**` — the label is pinned so two independent design runs emit the same parseable token. Its content contract is defined by the `tasks-existing-test-impact` capability spec. The sub-field is mandatory for all `tasks.md` files emitted by `/sai-2-design` after this change lands; archived `tasks.md` files are exempt.
 
@@ -82,7 +82,7 @@ Both sections are mandatory for all new changes. Archived `tasks.md` files that 
 
 #### Scenario: consumers read the path after the change-type token
 - **WHEN** a consumer reads an ordinary `**Files Affected**` entry
-- **THEN** it reads the path after the leading token, with both R paths available around ` -> ` and destination-only routing unchanged
+- **THEN** it reads the path after the leading token, with both R paths available around ` -> `
 
 #### Scenario: R covers relocation with and without rewrite
 - **WHEN** a step both relocates a file and substantially rewrites its content
@@ -110,16 +110,16 @@ Both sections are mandatory for all new changes. Archived `tasks.md` files that 
 
 ### Requirement: schema-tasks-instruction-updated
 
-The `tasks` artifact entry in `openspec/schemas/sai-workflow/schema.yaml` SHALL have its `instruction` field updated to describe the narrative scaffold format including the two mandatory trailing sections, the `**Routing**` keyword line, and the change-type-declaring `**Files Affected**` format. The instruction SHALL NOT contain the sentence "IMPORTANT: The apply phase parses checkbox format." The instruction SHALL describe the Routing line as the first sub-field of every `## Step N` section, SHALL specify the key=value tagged format (`layer=<layer> · discipline=<discipline> · complexity=<complexity>`), and SHALL reference the `tasks-routing-metadata` capability spec for the token enumerations and derivation rules. The instruction SHALL describe `**Files Affected**` as one entry per line, each entry starting with exactly one change-type token from the closed vocabulary `A` (created), `M` (modified), `D` (deleted), `R` (moved/renamed, with the source path and the destination path separated by ` -> `), and SHALL NOT describe the sub-field as a comma-separated list of paths.
+The `tasks` artifact entry in `openspec/schemas/sai-workflow/schema.yaml` SHALL have its `instruction` field updated to describe the narrative scaffold format including the two mandatory trailing sections, the `**Routing**` keyword line, and the change-type-declaring `**Files Affected**` format. The instruction SHALL NOT contain the sentence "IMPORTANT: The apply phase parses checkbox format." The instruction SHALL describe the Routing line as the first sub-field of every `## Step N` section, SHALL specify the key=value tagged format (`category=<category> · context=<context> · difficulty=<difficulty>`), and SHALL reference the `tasks-routing-metadata` capability spec for the token enumerations and goal definitions. The instruction SHALL describe `**Files Affected**` as one entry per line, each entry starting with exactly one change-type token from the closed vocabulary `A` (created), `M` (modified), `D` (deleted), `R` (moved/renamed, with the source path and the destination path separated by ` -> `), and SHALL NOT describe the sub-field as a comma-separated list of paths.
 
-The template at `openspec/schemas/sai-workflow/templates/tasks.md` SHALL show the `**Routing**` line in its `## Step N` skeleton, immediately after the step title and before `**Files Affected**`, using the key=value format. The template SHALL show `**Files Affected**` as one line per change, each line carrying a change-type token placeholder from the closed vocabulary (`A`/`M`/`D`/`R`) followed by a path placeholder.
+The template at `openspec/schemas/sai-workflow/templates/tasks.md` SHALL show the `**Routing**` line in its `## Step N` skeleton, immediately after the step title and before `**Files Affected**`, using the key=value format with the placeholders `category=<!-- frontend-ui|frontend-code|backend|data|infra|docs|other -->`, `context=<!-- small|medium|large -->` and `difficulty=<!-- low|medium|high -->`. The template SHALL show `**Files Affected**` as one line per change, each line carrying a change-type token placeholder from the closed vocabulary (`A`/`M`/`D`/`R`) followed by a path placeholder.
 
 #### Scenario: schema instruction matches narrative format with trailing sections, Routing line, and change-type Files Affected
 
 - **WHEN** `openspec instructions tasks --change <name>` is run
 - **THEN** the returned `instruction` field describes the `## Step N:` scaffold format
 - **THEN** the instruction describes the `**Routing**` line as the first sub-field, in the same position as Files Affected / What Will Be Done / Testing Strategy / Existing Tests Broken
-- **THEN** the instruction specifies the key=value format with the three keys `layer`, `discipline`, `complexity` in that order
+- **THEN** the instruction specifies the key=value format with the three keys `category`, `context`, `difficulty` in that order
 - **THEN** the instruction describes `**Files Affected**` as one entry per line with change-type tokens from the closed vocabulary `A`, `M`, `D`, `R` and the `R` source -> destination form
 - **THEN** the instruction does not describe `**Files Affected**` as a comma-separated list of paths
 - **THEN** the instruction references `## Required Documentation` and `## Implementation Context` as mandatory trailing sections
@@ -130,7 +130,7 @@ The template at `openspec/schemas/sai-workflow/templates/tasks.md` SHALL show th
 - **WHEN** `openspec/schemas/sai-workflow/templates/tasks.md` is read
 - **THEN** the `## Step N` template skeleton includes a `**Routing**` line as the first sub-field
 - **THEN** the template's `## Step N` block lists Routing, Files Affected, What Will Be Done, Testing Strategy, and Existing Tests Broken in that order
-- **THEN** the `**Routing**` line in the template uses the key=value format with the three keys `layer`, `discipline`, `complexity` in that order
+- **THEN** the `**Routing**` line in the template uses the key=value format with the three keys `category`, `context`, `difficulty` in that order
 - **THEN** the template's `**Files Affected**` block shows one entry per line with a change-type token placeholder from the closed vocabulary `A`/`M`/`D`/`R` followed by a path placeholder
 
 ### Requirement: tasks-design-instruction-updated
@@ -141,33 +141,37 @@ The instruction SHALL also permit the bounded generated exception `A <directory>
 
 The instruction SHALL NOT describe Files Affected as a comma-separated list. It SHALL direct the design agent to derive ordinary tokens from whether the path exists immediately before that Step's commit, not from the Step's title or prose verb. An existing file SHALL be M even when prose says "add". R SHALL cover pure relocations and relocations with rewrites, with content changes described by What Will Be Done rather than the token.
 
-The routing-derivation subsection SHALL retain matching against paths after stripping the leading token, so the four layer and five discipline pattern tables keep matching the same ordinary paths. An R entry SHALL contribute only its destination path because routing describes where the Step's work lands.
+The Routing line subsection SHALL define each Routing value by its goal and SHALL NOT match Files Affected paths, the change-type token, or either R path against pattern tables to derive a Routing value.
 
 #### Scenario: design instruction emits the change-type format
 - **WHEN** `sai-2-design` loads `sai/commands/design/steps/tasks.md` to generate tasks
 - **THEN** the instruction describes one entry per line with the closed A/M/D/R vocabulary and does not describe Files Affected as a comma-separated list
 
-#### Scenario: routing derivation ignores the change-type token
-- **WHEN** routing maps a Step's ordinary Files Affected entries to layer and discipline tokens
-- **THEN** it matches paths after stripping the token and uses only the R destination, so a single-file move does not flip routing tokens
+#### Scenario: Routing is not derived from Files Affected paths
+- **WHEN** `sai-2-design` assigns a Step's Routing values
+- **THEN** it judges them by goal and does not match the Step's Files Affected paths against any pattern table
 
 #### Scenario: design instruction derives tokens from file existence
 - **WHEN** `sai-2-design` emits ordinary Files Affected entries
 - **THEN** it derives tokens from existence immediately before the Step's commit and never labels an existing path A solely because prose says "add"
 
-#### Scenario: task-routing-uses-destination-path
-- **WHEN** routing derives metadata from an R Files Affected entry
-- **THEN** it strips the token and matches only the destination path
-
 #### Scenario: Design instruction bounds generated output declarations
 - **WHEN** Design needs a generated-output family rather than individual predetermined names
 - **THEN** the instruction requires its exact directory, bounded basename family, positive expected count, and exact resolution before close
+
+#### Scenario: routing derivation ignores the change-type token
+- **WHEN** a design step declares Files Affected entries with change-type tokens
+- **THEN** the Routing line values are not derived from the change-type token and are not affected by it
+
+#### Scenario: task-routing-uses-destination-path
+- **WHEN** a design step renames a file and includes an `R <source> -> <destination>` entry
+- **THEN** the Routing line values are not derived from the destination path
 
 ### Requirement: tasks-glossary-term-updated
 
 The `## Language` section of `GLOSSARY.md` at the project root SHALL contain exactly one `**File Change Type**` entry with a one-sentence definition stating what it IS — a per-file declaration of what a `tasks.md` step's commit does to that file (create, modify, delete, or move/rename) — drawn from the closed four-letter vocabulary `A` / `M` / `D` / `R`. The entry SHALL carry an `*Avoid*` line rejecting the overloaded bare phrase "change type" (which collides with "OpenSpec change").
 
-The `## Relationships` section of `GLOSSARY.md` SHALL contain an entry linking **File Change Type** to **Routing Layer** and **Routing Discipline** — a step's File Change Type entries feed the routing derivation after the leading change-type token is stripped, and an `R` entry contributes its destination path only.
+The `## Relationships` section of `GLOSSARY.md` SHALL contain an entry stating that a **File Change Type** prefixes every `**Files Affected**` entry of a step and that an `R` entry names its source and destination paths. The entry SHALL NOT link **File Change Type** to a routing derivation.
 
 The `## Flagged ambiguities` section of `GLOSSARY.md` SHALL contain an entry resolving the "change type" vs "OpenSpec change" overload in favor of **File Change Type** with a stated rationale.
 
@@ -179,11 +183,9 @@ A `## Language` entry for **File Change Type** is not duplicated: a pre-existing
 - **THEN** `## Language` contains exactly one `**File Change Type**` entry
 - **AND** the entry carries an `*Avoid*` line rejecting the overloaded bare phrase "change type"
 
-#### Scenario: File Change Type linked to Routing Layer and Routing Discipline in Relationships
-
-- **WHEN** `GLOSSARY.md` is read after the change lands
-- **THEN** `## Relationships` contains an entry linking **File Change Type** to **Routing Layer** and **Routing Discipline**
-- **AND** the relationship notes that the routing derivation strips the leading change-type token and uses the destination path of an `R` entry
+#### Scenario: File Change Type relationship names Files Affected entries without routing derivation
+- **WHEN** `GLOSSARY.md` is read after this change
+- **THEN** `## Relationships` relates **File Change Type** to the `**Files Affected**` entries and their `R` source and destination paths, with no routing-derivation link
 
 #### Scenario: change type vs OpenSpec change ambiguity resolved in Flagged ambiguities
 
@@ -191,17 +193,17 @@ A `## Language` entry for **File Change Type** is not duplicated: a pre-existing
 - **THEN** `## Flagged ambiguities` contains an entry resolving the "change type" vs "OpenSpec change" overload in favor of **File Change Type**
 - **AND** a rationale for the resolution is stated
 
+#### Scenario: File Change Type linked to Routing Layer and Routing Discipline in Relationships
+- **WHEN** `GLOSSARY.md` is read after this change
+- **THEN** `## Relationships` relates **File Change Type** to the `**Files Affected**` entries and their `R` source and destination paths, with no routing-derivation link
+
 ### Requirement: Each step SHALL include a Routing line
 
-Every `## Step N:` section in a new `tasks.md` SHALL include a line of the form `**Routing**: layer=<layer> · discipline=<discipline> · complexity=<complexity>` immediately after the step title and before `**Files Affected**`. The three key=value pairs are drawn from the enumerations in the `tasks-routing-metadata` capability spec. The line is mandatory for all `tasks.md` files emitted by `/sai-2-design` after this change lands; archived `tasks.md` files are exempt.
+Every `## Step N:` section in a new `tasks.md` SHALL include a line of the form `**Routing**: category=<category> · context=<context> · difficulty=<difficulty>` immediately after the step title and before `**Files Affected**`. The three key=value pairs are drawn from the enumerations in the `tasks-routing-metadata` capability spec. The line is mandatory for all `tasks.md` files emitted by `/sai-2-design` after this change lands; archived `tasks.md` files are exempt.
 
 #### Scenario: New step carries a Routing line in key=value form
-
 - **WHEN** `sai-2-design` generates a `tasks.md` step after this change lands
-- **THEN** the section contains a `**Routing**` line as the first sub-field
-- **THEN** the line has three key=value pairs separated by middle-dot characters (U+00B7)
-- **THEN** the three keys are exactly `layer`, `discipline`, `complexity` in that order
-- **THEN** each value belongs to its respective enumeration in `tasks-routing-metadata`
+- **THEN** the section's first sub-field is a `**Routing**` line with exactly the keys `category`, `context`, `difficulty` in that order, separated by middle dots (U+00B7), each value from its `tasks-routing-metadata` enumeration
 
 #### Scenario: Archived tasks.md files are exempt
 
@@ -229,3 +231,11 @@ This form SHALL extend the existing A token without adding a sixth Step field or
 #### Scenario: Recursive wildcard is declared
 - **WHEN** an affected-file declaration uses a recursive or unrestricted wildcard
 - **THEN** the shared declaration parser rejects it rather than treating it as authorized paths
+
+### Requirement: tasks.md Steps correspond one-to-one to implementation Steps
+
+The design task-generation step SHALL state that Step numbering is final and that each `## Step N` of `tasks.md` corresponds one-to-one to the `#### Step N:` of `implementation.md`, so `/sai-3-implement` neither splits nor merges Steps. It SHALL NOT permit `/sai-3-implement` to split, merge, or otherwise refine Steps without re-tagging `tasks.md`.
+
+#### Scenario: Design instruction pins step correspondence
+- **WHEN** `sai/commands/design/steps/tasks.md` is read
+- **THEN** it states that each `tasks.md` Step corresponds one-to-one to an `implementation.md` Step and contains no clause letting `/sai-3-implement` split or merge Steps

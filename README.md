@@ -276,6 +276,8 @@ The menu's model tables show two estimates per target to guide your choice, on b
 
 Targets without an estimate show `Unknown`.
 
+Model capability funnel: configure each phase's model no more capable than the previous one (`sai-2` >= `sai-3` >= `sai-4`). The implementer of `/sai-4-apply` is expected to be no more capable than the design agent; a more capable later phase is unsupported.
+
 ### Per project installation / override
 
 Per-project commands and agents are still possible: a file placed in a supported harness's project-local folder at the repo root overrides the user-global file of the same name. Globals act as a base; project-local files override them by filename.
