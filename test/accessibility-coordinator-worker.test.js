@@ -588,3 +588,20 @@ test('step-gated: the step library is the only accessibility instruction surface
   assert.match(artifact('sai/commands/accessibility/steps/common.md'), /`resolve-accessibility-scope` has no step file of its own/,
     'common.md should record that resolve-accessibility-scope is fileless');
 });
+
+test('accessibility defects: triggers, mapping criterion, markdown definition, no-active-changes literal', () => {
+  const mapping = artifact('sai/commands/accessibility/steps/map-ui-framework.md');
+  const audit = artifact('sai/commands/accessibility/steps/resolve-static-audit.md');
+  const common = artifact('sai/commands/accessibility/steps/common.md');
+  const worker = artifact('sai/commands/accessibility/worker.md');
+  assert.match(mapping, /`UI files in scope`, `frameworks detected`, `component types`, `design tokens`, and `accepted trade-offs`, each as a list or `none`/);
+  const triggers = [...audit.matchAll(/^Trigger: component types include ([a-z ]+)\.$/gm)].map(m => m[1]);
+  assert.deepEqual(triggers, ['forms', 'media', 'dynamic content']);
+  for (const type of triggers) {
+    assert.ok(mapping.includes('`' + type + '`'), `mapping lists ${type}`);
+  }
+  assert.match(audit, /every triggered checklist/);
+  assert.match(common, /Component-bearing markdown is `\.mdx` files, plus `\.md` files containing an HTML element or a capitalized component tag/);
+  assert.match(common, /prefixed `Inferred:`/);
+  assert.match(worker, /No active changes found\. Run `\/sai-1-spec` to create one\./);
+});
