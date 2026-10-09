@@ -263,8 +263,8 @@ test('Claude spec invocation routes through the launcher and neutral worker bind
   const launcher = artifact('sai/commands/spec/command-bootstrap.md');
   const claudeBinding = matrixBinding('claude', 'spec');
   const manifest = artifact('sai/install-manifest.json');
-  assert.match(wrapper, /^model:\s*opus\s*$/m);
-  assert.match(wrapper, /^effort:\s*medium\s*$/m);
+  assert.match(wrapper, /^model:\s*sonnet\s*$/m);
+  assert.match(wrapper, /^effort:\s*high\s*$/m);
   assert.match(wrapper, /spec[\\/]command-bootstrap\.md/);
     assert.doesNotMatch(wrapper, /sai-1-spec-proposal-worker/);
   assert.match(claudeBinding, /name:\s*"sai-1-spec-proposal-worker"/);
@@ -322,8 +322,8 @@ test('wrapper model defaults and README installation topology match routed metad
   assert.match(guide, /independent model roles/);
   assert.match(readme, /commands[\\/]claude|Claude Code/);
   assert.match(readme, /commands[\\/]opencode|opencode/);
-  assert.match(claude, /^model:\s*opus\s*$/m);
-  assert.match(claude, /^effort:\s*medium\s*$/m);
+  assert.match(claude, /^model:\s*sonnet\s*$/m);
+  assert.match(claude, /^effort:\s*high\s*$/m);
    assert.match(opencode, /^model:\s*opencode-go\/muse-spark-1\.3-contributor#xhigh\s*$/m);
    assert.doesNotMatch(opencode, /^variant:/m);
   assert.match(manifest, /agents[\\/]claude[\\/]worker-template\.md/);

@@ -1,8 +1,8 @@
 ---
 description: Audit a change for security flaws — SAST on the diff vs parent (or --full / --path), SCA when dependency manifests change — into openspec/changes/{change-name}/security.md
 argument-hint: "[change-name] [optional: --full | --path {dir}] [optional: parent branch]"
-model: opus
-effort: medium
+model: sonnet
+effort: high
 allowed-tools: {{capabilityAllowedTools}}
 ---
 Fetch @skills/fetch/SKILL.md

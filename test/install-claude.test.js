@@ -243,8 +243,8 @@ test('installClaude copies commands/claude/*.md to dest/commands/', () => {
   assert.ok(files.includes('sai-build.md'), 'sai-build.md should be in commands/');
   assert.equal(files.includes('budget.md'), false, 'budget.md should not be in commands/');
   const design = fs.readFileSync(path.join(cmdDir, 'sai-2-design.md'), 'utf8');
-  assert.match(design, /^model: opus$/m);
-  assert.match(design, /^effort: medium$/m);
+  assert.match(design, /^model: sonnet$/m);
+  assert.match(design, /^effort: high$/m);
    assert.equal(design.match(/^allowed-tools: (.+)$/m)[1], require('./helpers/capability-source').commandTools('sai-2-design'));
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });

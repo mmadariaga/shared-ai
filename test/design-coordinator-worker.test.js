@@ -191,8 +191,8 @@ test('design wrappers activate routed Claude/opencode entry and preserve phase b
   const launcher = artifact('sai/commands/design/command-bootstrap.md');
   const coordinator = artifact('sai/commands/design/coordinator.md');
 
-    assert.match(claude, /^model: opus$/m);
-    assert.match(claude, /^effort: medium$/m);
+    assert.match(claude, /^model: sonnet$/m);
+    assert.match(claude, /^effort: high$/m);
      assert.equal(claude.match(/^allowed-tools: (.+)$/m)[1], commandTools('sai-2-design'));
     assert.doesNotMatch(claude, /sai-2-design-worker/);
    assert.doesNotMatch(claude, /sai-3-implementation-worker/);

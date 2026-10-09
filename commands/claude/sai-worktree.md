@@ -1,6 +1,6 @@
 ---
 description: Manage linked git worktrees — list them, then safely create or delete them from a selector loop. No OpenSpec prerequisite.
-model: sonnet
+model: haiku
 effort: medium
 allowed-tools: {{capabilityAllowedTools}}
 ---
