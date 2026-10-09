@@ -17,7 +17,7 @@ function fixture(provider, existing = false) {
     ? { number: 7, html_url: `${url}/pull/7`, title, body: description, updated_at: 'version', head: { ref: 'feature', repo: { id: 9 } }, base: { ref: 'main' } }
     : { iid: 7, web_url: `${url}/-/merge_requests/7`, title, description, updated_at: 'version', source_project_id: 9, target_project_id: 9, source_branch: 'feature', target_branch: 'main' };
   if (existing) state.rows = [row()];
-  const io = { run(command, args, input) {
+  const io = { registry, run(command, args, input) {
     state.calls.push({ command, args, input });
     if (command === 'git') {
       if (args[0] === 'symbolic-ref') return 'feature\n';
@@ -53,6 +53,9 @@ function receipt(t) {
   return path.join(directory, 'receipt.json');
 }
 
+// E9 / I10: GitHub/GitLab regressions below cover create/update, independent
+// questions/approval tokens, forbidden mutations, recovery and optional context.
+// All provider calls are mocked; these are not live Azure publication tests.
 for (const provider of ['github', 'gitlab']) {
   for (const existing of [false, true]) test(`${provider} ${existing ? 'update' : 'create'} publishes exact content and reads it back`, t => {
     const { request, io, state } = fixture(provider, existing);
@@ -101,7 +104,7 @@ for (const provider of ['github', 'gitlab']) {
     assert.throws(() => tool.publish({ ...request, approved: true, confirmation: ready.confirmation }, io), /approval/);
     state.rows.push({ ...state.rows[0], number: 8, iid: 8 });
     assert.throws(() => tool.query(request, io), /Multiple/);
-    assert.throws(() => tool.query(request, { run() { throw new Error('Authentication missing'); } }), /Authentication/);
+    assert.throws(() => tool.query(request, { registry, run() { throw new Error('Authentication missing'); } }), /Authentication/);
     assert.equal(state.mutations.length, 0);
   });
   test(`${provider} collection is committed Git only and OpenSpec is optional`, t => {
@@ -124,6 +127,74 @@ test('resolution uses backlog precedence, asks on ambiguity and supports explici
   assert.equal(tool.resolve({ explicit: {}, config: {}, remotes: ['git@gitlab.example.com:team/repo.git'] }, registry, io).status, 'needs_input');
   assert.equal(tool.resolve({ explicit: { provider: 'unknown' }, config: {}, remotes: [] }, registry, io).status, 'unsupported');
   assert.equal(tool.resolve({ explicit: { provider: 'gitlab', repository: 'https://gitlab.example.com/team/repo' }, config: {}, remotes: [] }, registry, io).repository, 'https://gitlab.example.com/team/repo');
+});
+
+test('I1 / I10: registry metadata selects hosts, adapter and instructions without a provider enumeration', t => {
+  const { io, request, state } = fixture('github');
+  const entry = { id: 'test-provider', hosts: ['test.example'], capabilities: ['publish'], instructions: 'providers/test-provider.md', adapter: 'to-pr-github.js' };
+  io.registry = { providers: [entry] };
+  const resolved = tool.resolve({ remotes: ['https://test.example/team/repo.git'] }, io.registry, io);
+  assert.deepEqual(resolved, { status: 'resolved', provider: entry.id, repository: 'team/repo', project: undefined, instructions: entry.instructions, adapter: entry.adapter });
+  request.provider = entry.id;
+  const ready = tool.query(request, io);
+  assert.equal(ready.proposal.provider, entry.id);
+  assert.throws(() => tool.publish({ ...request, confirmation: ready.confirmation }, io), /approval/);
+  assert.equal(state.mutations.length, 0);
+  const file = receipt(t);
+  assert.equal(tool.publish({ ...request, approved: true, confirmation: ready.confirmation, receipt: file }, io).status, 'complete');
+  assert.equal(tool.recover({ receipt: file }, io).status, 'complete');
+  assert.equal(state.mutations.length, 1, 'Recovery must not publish');
+  assert.equal(tool.query(request, io).status, 'no_changes');
+});
+
+test('I1 / I10: unsafe references and unregistered adapters block before provider or Git operations', () => {
+  const { request, io, state } = fixture('github');
+  for (const overrides of [
+    { adapter: '../to-pr-github.js' },
+    { adapter: 'to-backlog-github.js' },
+    { instructions: '../github.md' },
+    { instructions: 'providers/../../github.md' },
+  ]) {
+    const selected = { providers: [{ ...registry.providers[0], ...overrides }] };
+    assert.throws(() => tool.resolve({ explicit: { provider: 'github', repository: 'team/repo' } }, selected, io), /Invalid/);
+    assert.throws(() => tool.query(request, { ...io, registry: selected }), /Invalid/);
+  }
+  for (const provider of ['unknown', 'azuredevops']) {
+    assert.equal(tool.resolve({ explicit: { provider } }, registry, io).status, 'unsupported');
+    assert.throws(() => tool.query({ ...request, provider }, io), /Unsupported/);
+  }
+  assert.equal(state.calls.length, 0);
+  assert.equal(state.mutations.length, 0);
+  assert.deepEqual(registry.providers.map(entry => entry.id), ['github', 'gitlab'], 'No new publication provider is registered');
+});
+
+test('E9 / I1 / I10: destination precedence and unknown-host questions are unchanged', () => {
+  const { io, state } = fixture('gitlab');
+  const configured = { provider: 'gitlab', repository: 'https://gitlab.example.com/team/repo' };
+  const explicit = tool.resolve({ explicit: { repository: 'https://github.com/other/repo' }, config: configured, remotes: ['https://gitlab.com/team/repo'] }, registry, io);
+  assert.equal(explicit.provider, 'github');
+  assert.equal(explicit.repository, 'other/repo');
+  assert.equal(explicit.instructions, 'providers/github.md');
+  const configuredResult = tool.resolve({ config: configured, remotes: ['https://github.com/other/repo'] }, registry, io);
+  assert.equal(configuredResult.provider, 'gitlab');
+  assert.equal(configuredResult.repository, configured.repository);
+  assert.equal(tool.resolve({ remotes: ['https://gitlab.com/team/repo'] }, registry, io).provider, 'gitlab');
+  const calls = state.calls.length;
+  const unknown = tool.resolve({ explicit: { repository: 'https://unknown.example/team/repo' } }, registry, io);
+  assert.deepEqual(unknown, { status: 'needs_input', reason: 'provider-ambiguous', unknownHosts: ['unknown.example'] });
+  assert.equal(state.calls.length, calls, 'Unknown-host clarification runs no commands');
+  assert.equal(state.mutations.length, 0);
+});
+
+test('I1 / I10: CLI operations honor the supplied registry rather than a fixed adapter list', t => {
+  const directory = temporaryDirectory(t, 'to-pr-registry-');
+  const file = path.join(directory, 'registry.json');
+  fs.writeFileSync(file, JSON.stringify({ providers: [] }));
+  const result = spawnSync(process.execPath, ['sai/tools/to-pr.js', 'destination', file], {
+    encoding: 'utf8', input: JSON.stringify({ provider: 'github', repository: 'team/repo' }),
+  });
+  assert.equal(result.status, 2);
+  assert.deepEqual(JSON.parse(result.stdout), { status: 'blocked', message: 'Unsupported provider' });
 });
 
 test('temporary preparation returns a private local receipt path and rejects an unknown harness', t => {
@@ -198,17 +269,36 @@ test('blocked CLI recovery retains the supplied prepared receipt path', t => {
   assert.equal(payload.receipt, result.receipt);
 });
 
-test('skill presents full content before approval, separates push approval and discloses providers conditionally', () => {
+test('I2 / I10: skill presents full content before approval, separates push approval and discloses providers conditionally', () => {
   const text = fs.readFileSync('skills/universal/to-pr/SKILL.md', 'utf8');
   assert.ok(text.indexOf('Show the complete proposed title') < text.indexOf('Then ask:'));
   assert.match(text, /load\s+only the returned/);
+  assert.match(text, /returned `instructions` reference/);
+  assert.doesNotMatch(text, /providers\/(?:github|gitlab|azuredevops)\.md/);
+  assert.match(text, /disable-model-invocation: true/);
   assert.match(text, /Decline stops publication/);
   assert.match(text, /Any content, destination or baseline change/);
   assert.match(text, /Claude Code.*AskUserQuestion/);
   assert.match(text, /OpenCode[\s\S]*question/);
 });
 
-test('both harnesses install to-pr and retire managed sai-pr copies while preserving modified and user documents', t => {
+test('E9 / I2 / I10: both harnesses retain thin explicit-invocation wrappers and bounded tool access', () => {
+  const manifest = require('../sai/install-manifest.json');
+  const { translate } = require('../bin/capabilities');
+  for (const harness of ['claude', 'opencode']) {
+    const wrapper = fs.readFileSync(`commands/${harness}/to-pr.md`, 'utf8');
+    assert.match(wrapper, /Follow that skill in the current conversation/);
+    assert.doesNotMatch(wrapper, /providers\//);
+    assert.equal(manifest.capabilities.assignments.commands['to-pr'], 'to-pr-command');
+    const profile = translate(manifest.capabilities, 'to-pr-command', harness).profile;
+    assert.equal(profile.question, true);
+    assert.deepEqual(profile.shell, ['node {sai}/tools/to-pr.js *']);
+    assert.ok(profile.skills.includes('to-pr'));
+    assert.ok(profile.skills.includes('safe-operations'));
+  }
+});
+
+test('E9 / I1 / I2 / I10: both harnesses install to-pr and retire managed sai-pr copies while preserving modified and user documents', t => {
   const flow = require('../bin/install-flow');
   const capabilities = require('../bin/capabilities');
   // Pin to the last revision that still shipped sai-pr, so the test survives later commits.
@@ -224,6 +314,9 @@ test('both harnesses install to-pr and retire managed sai-pr copies while preser
     if (harness === 'claude') flow.installClaude(directory); else flow.installOpencode(directory);
     assert.equal(fs.existsSync(file), false);
     for (const relative of ['skills/to-pr/SKILL.md', 'skills/to-pr/providers/registry.json', 'skills/to-pr/providers/github.md', 'skills/to-pr/providers/gitlab.md', 'skills/to-pr/description-format.md', 'sai/tools/to-pr.js', 'sai/tools/to-pr-github.js', 'sai/tools/to-pr-gitlab.js']) assert.ok(fs.existsSync(path.join(directory, relative)), relative);
+    assert.deepEqual(JSON.parse(fs.readFileSync(path.join(directory, 'skills/to-pr/providers/registry.json'), 'utf8')), registry);
+    assert.equal(fs.readFileSync(path.join(directory, 'sai/tools/to-pr.js'), 'utf8'), fs.readFileSync('sai/tools/to-pr.js', 'utf8'));
+    assert.match(fs.readFileSync(path.join(directory, 'skills/to-pr/SKILL.md'), 'utf8'), /returned `instructions` reference/);
     assert.equal(fs.readFileSync(path.join(directory, 'pr.md'), 'utf8'), 'User document');
     fs.writeFileSync(file, 'User override');
     flow.cleanupRetiredProjections(harness, { base: directory });

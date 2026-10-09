@@ -29,18 +29,28 @@ function receiptPath(file) {
   if (canonical !== path.resolve(file)) throw new Error('Receipt path must not pass through symbolic links');
   return canonical;
 }
-function adapter(provider) {
-  if (!['github', 'gitlab'].includes(provider)) throw new Error('Unsupported provider');
-  return require(`./to-pr-${provider}`);
+function loadAdapter(entry) {
+  if (!/^to-pr-[a-z0-9-]+\.js$/.test(entry.adapter)) throw new Error('Invalid registry adapter');
+  if (!/^providers\/[a-z0-9-]+\.md$/.test(entry.instructions)) throw new Error('Invalid provider instruction reference');
+  return require(path.join(__dirname, entry.adapter));
+}
+function adapter(provider, io) {
+  // Every operation uses the same registry supplied to the CLI, including recovery.
+  const entry = io.registry.providers.find(item => item.id === provider);
+  if (!entry?.capabilities.includes('publish')) throw new Error('Unsupported provider');
+  return loadAdapter(entry);
 }
 function resolve(request, registry, io) {
   const explicit = request.explicit || {}, config = request.config || {};
   if (!explicit.provider && !config.provider) {
     const values = explicit.repository ? [explicit.repository] : config.repository ? [config.repository] : request.remotes || [];
-    const unknownHosts = [...new Set(values.map(backlog.address).filter(Boolean).map(item => item.host).filter(host => !['github.com', 'gitlab.com'].includes(host)))];
+    const hosts = registry.providers.flatMap(entry => entry.hosts || []);
+    const unknownHosts = [...new Set(values.map(backlog.address).filter(Boolean).map(item => item.host).filter(host => !hosts.includes(host)))];
     if (unknownHosts.length) return { status: 'needs_input', reason: 'provider-ambiguous', unknownHosts };
   }
-  return backlog.resolve(request, registry, { ...io, loadAdapter: entry => adapter(entry.id) });
+  const result = backlog.resolve(request, registry, { ...io, loadAdapter });
+  if (result.status === 'resolved') loadAdapter(registry.providers.find(entry => entry.id === result.provider));
+  return result;
 }
 function ref(value) {
   if (typeof value !== 'string' || !value || value.startsWith('-') || /[\s~^:?*\[\\]/.test(value) || value.includes('..') || value.includes('@{')) throw new Error('Invalid branch or remote');
@@ -66,7 +76,7 @@ function collect(request, io) {
   return { ...state, base, commits: git(['log', `${base}..HEAD`, '--format=%H%n%s%n%b']), diff: git(['diff', `${base}...HEAD`]), diffStats: git(['diff', '--stat', `${base}...HEAD`]), context };
 }
 function destination(request, io) {
-  const target = adapter(request.provider).inspect(request.repository, io);
+  const target = adapter(request.provider, io).inspect(request.repository, io);
   const state = collect({}, io);
   const candidates = state.remotes.filter(remote => {
     const same = value => { const parsed = backlog.address(value); return parsed && parsed.host === target.host.split(':')[0] && parsed.repository === target.repository; };
@@ -98,7 +108,7 @@ function query(request, io) {
   const violations = checkPrTitleRules(request.title);
   if (violations.length) throw new Error(`Invalid request title: ${JSON.stringify(violations)}`);
   const selected = destination(request, io);
-  const rows = adapter(request.provider).list(selected.target, selected.source, selected.base, io);
+  const rows = adapter(request.provider, io).list(selected.target, selected.source, selected.base, io);
   if (rows.length > 1) throw new Error('Multiple matching requests; resolve ambiguity before publication');
   const proposal = { provider: request.provider, ...selected, existing: rows[0] || null, title: request.title, description: request.description };
   const matches = rows[0]?.title === request.title && rows[0]?.description === request.description;
@@ -112,16 +122,16 @@ function publish(request, io) {
   request = { ...request, receipt: receiptPath(request.receipt) };
   fs.writeFileSync(request.receipt, JSON.stringify({ proposal: ready.proposal }), { flag: 'wx', mode: 0o600 });
   try {
-    adapter(request.provider).mutate(ready.proposal, io);
+    adapter(request.provider, io).mutate(ready.proposal, io);
     return recover({ receipt: request.receipt }, io);
   } catch (error) { return { status: 'uncertain', receipt: request.receipt, message: error.message }; }
 }
 function recover(request, io) {
   request = { ...request, receipt: receiptPath(request.receipt) };
   const { proposal } = JSON.parse(fs.readFileSync(request.receipt, 'utf8'));
-  const target = adapter(proposal.provider).inspect(proposal.target.url, io);
+  const target = adapter(proposal.provider, io).inspect(proposal.target.url, io);
   if (target.id !== proposal.target.id || target.host !== proposal.target.host) throw new Error('Recovery destination identity changed');
-  const rows = adapter(proposal.provider).list(target, proposal.source, proposal.base, io);
+  const rows = adapter(proposal.provider, io).list(target, proposal.source, proposal.base, io);
   const candidates = rows.filter(row => (!proposal.existing || row.number === proposal.existing.number) && row.title === proposal.title && row.description === proposal.description);
   return candidates.length === 1 ? { status: 'complete', request: candidates[0] } : { status: 'uncertain', candidates: rows, receipt: request.receipt, message: 'Read-only recovery cannot verify the approved content; do not repeat creation' };
 }
@@ -132,12 +142,13 @@ function main(argv) {
     const operations = { prepare, collect, destination, query, 'push-query': pushQuery, push, publish, recover };
     if (argv.length !== 2 || (!operations[operation] && operation !== 'resolve')) throw new Error('Usage: node to-pr.js prepare|collect|resolve|destination|query|push-query|push|publish|recover <registry.json>; JSON on stdin');
     request = JSON.parse(fs.readFileSync(0, 'utf8'));
-    const io = { cwd: process.cwd(), run: (command, args, input) => backlog.run(command, args, process.cwd(), input) };
+    const registry = JSON.parse(fs.readFileSync(registryPath, 'utf8'));
+    const io = { registry, cwd: process.cwd(), run: (command, args, input) => backlog.run(command, args, process.cwd(), input) };
     let result;
     if (operation === 'resolve') {
       let config = {};
       try { config = JSON.parse(fs.readFileSync('.to-pr.json', 'utf8')); } catch (error) { if (error.code !== 'ENOENT') throw error; }
-      result = resolve({ explicit: request.explicit || {}, config, remotes: collect({}, io).remotes.map(row => row.url) }, JSON.parse(fs.readFileSync(registryPath, 'utf8')), io);
+      result = resolve({ explicit: request.explicit || {}, config, remotes: collect({}, io).remotes.map(row => row.url) }, registry, io);
     } else result = operations[operation](request, io);
     process.stdout.write(JSON.stringify(result) + '\n');
     return ['ready', 'resolved', 'complete', 'no_changes'].includes(result.status) || ['collect', 'destination'].includes(operation) ? 0 : 1;
