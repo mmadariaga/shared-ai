@@ -1,8 +1,8 @@
 ---
 description: Review a change's diff against its OpenSpec artifacts into review.md, recommend security/performance/accessibility audits, and optionally fix the findings with Direct Build (one local commit).
 argument-hint: "[change-name] [optional: parent branch]"
-model: opus
-effort: medium
+model: sonnet
+effort: high
 allowed-tools: {{capabilityAllowedTools}}
 ---
 Fetch @skills/fetch/SKILL.md

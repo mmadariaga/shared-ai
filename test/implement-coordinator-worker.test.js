@@ -328,8 +328,8 @@ test('Step 2 routes Claude and opencode through the coordinator', () => {
   const opencode = artifact('commands/opencode/sai-3-implement.md');
   const launcher = artifact('sai/commands/implement/command-bootstrap.md');
 
-  assert.match(claude, /^model:\s*opus\s*$/m);
-    assert.match(claude, /^effort:\s*medium\s*$/m);
+  assert.match(claude, /^model:\s*sonnet\s*$/m);
+    assert.match(claude, /^effort:\s*high\s*$/m);
      assert.match(claude, /Fetch @sai\/commands\/implement\/command-bootstrap\.md/);
    assert.doesNotMatch(claude, /Fetch @skills\/sai-3-implementation-worker\/SKILL\.md/);
      assert.match(opencode, /^model: opencode-go\/muse-spark-1\.3-contributor#xhigh$/m);
@@ -385,8 +385,8 @@ test('routed harness bindings and inline parity', () => {
   assert.match(claudeBinding, /worker/i);
   assert.doesNotMatch(claudeBinding, /opencode[\\/\\]implementation-worker\.md/,
     'the Claude binding should not reference the opencode harness binding');
-  assert.match(claudeWrapper, /^model:\s*opus\s*$/m);
-   assert.match(claudeWrapper, /^effort:\s*medium\s*$/m);
+  assert.match(claudeWrapper, /^model:\s*sonnet\s*$/m);
+   assert.match(claudeWrapper, /^effort:\s*high\s*$/m);
 
   assert.match(opencodeBinding, new RegExp(`task\\(subagent_type: "${workerName}"`),
     'the opencode binding should dispatch via task with the worker subagent_type');

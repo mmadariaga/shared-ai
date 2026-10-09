@@ -92,10 +92,10 @@ test('canonical manifest keeps implementation projections interface returns the 
   }
 });
 
-test('Claude implementation coordinator uses medium effort', () => {
+test('Claude implementation coordinator uses sonnet with high effort', () => {
   const wrapper = fs.readFileSync(path.join(repoRoot, 'commands', 'claude', 'sai-3-implement.md'), 'utf8');
-  assert.match(wrapper, /^model:\s*opus\s*$/m);
-  assert.match(wrapper, /^effort:\s*medium\s*$/m);
+  assert.match(wrapper, /^model:\s*sonnet\s*$/m);
+  assert.match(wrapper, /^effort:\s*high\s*$/m);
 });
 
 test('Step 3 manifest projects the shared lifecycle and one active harness binding', () => {

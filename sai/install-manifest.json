@@ -113,8 +113,8 @@
         "claudeAgent": {
           "agentName": "sai-1-spec-proposal-worker",
           "description": "Spec-proposal worker for /sai-1-spec and /sai-explore, dispatched only by their coordinators. Writes a change's proposal.md and specs/.",
-          "model": "opus",
-          "effort": "medium"
+          "model": "sonnet",
+          "effort": "high"
         },
         "opencodeAgent": {
           "description": "Spec-proposal worker for /sai-1-spec and /sai-explore, dispatched only by their coordinators. Writes a change's proposal.md and specs/.",
@@ -130,8 +130,8 @@
         "claudeAgent": {
           "agentName": "sai-2-design-worker",
           "description": "Design worker for /sai-2-design and /sai-explore, dispatched only by their coordinators. Writes design.md, tasks.md, and interfaces.md.",
-          "model": "opus",
-          "effort": "medium"
+          "model": "sonnet",
+          "effort": "high"
         },
         "opencodeAgent": {
           "description": "Design worker for /sai-2-design and /sai-explore, dispatched only by their coordinators. Writes design.md, tasks.md, and interfaces.md.",
@@ -182,7 +182,7 @@
           "agentName": "sai-6-security-worker",
           "description": "Security-audit worker for /sai-6-security and /sai-review, dispatched only by their coordinators. Writes security.md.",
           "model": "opus",
-          "effort": "xhigh"
+          "effort": "medium"
         },
         "opencodeAgent": {
           "description": "Security-audit worker for /sai-6-security and /sai-review, dispatched only by their coordinators. Writes security.md.",
@@ -232,7 +232,7 @@
         "claudeAgent": {
           "agentName": "sai-commit-worker",
           "description": "Commit-message worker for /sai-commit, dispatched only by its coordinator. Drafts the message from the staged changes; the coordinator runs git.",
-          "model": "sonnet",
+          "model": "haiku",
           "effort": "medium"
         },
         "opencodeAgent": {
@@ -249,7 +249,7 @@
         "claudeAgent": {
           "agentName": "sai-archive-worker",
           "description": "Archive worker for /sai-archive and /sai-explore, dispatched only by their coordinators. Runs the read-only archive pre-flight and, under Direct Build, the authorized sync, move, staging, and commit.",
-          "model": "sonnet",
+          "model": "haiku",
           "effort": "medium"
         },
         "opencodeAgent": {
@@ -301,7 +301,7 @@
         "claudeAgent": {
           "agentName": "sai-4-red-worker",
           "description": "RED worker for /sai-4-apply and /sai-build, dispatched only by their coordinators. Writes one plan Step's failing tests.",
-          "model": "sonnet",
+          "model": "haiku",
           "effort": "medium"
         },
         "opencodeAgent": {
@@ -319,8 +319,8 @@
         "claudeAgent": {
           "agentName": "sai-4-green-worker",
           "description": "GREEN worker for /sai-4-apply and /sai-build, dispatched only by their coordinators. Implements one plan Step's code, leaving its tests as written.",
-          "model": "opus",
-          "effort": "medium"
+          "model": "haiku",
+          "effort": "xhigh"
         },
         "opencodeAgent": {
           "description": "GREEN worker for /sai-4-apply and /sai-build, dispatched only by their coordinators. Implements one plan Step's code, leaving its tests as written.",
@@ -337,8 +337,8 @@
         "claudeAgent": {
           "agentName": "sai-direct-build-worker",
           "description": "Direct Build implementer for /sai-explore, dispatched only by its coordinator. Implements a change straight from its Ready to Propose block.",
-          "model": "opus",
-          "effort": "medium"
+          "model": "sonnet",
+          "effort": "high"
         },
         "opencodeAgent": {
           "description": "Direct Build implementer for /sai-explore, dispatched only by its coordinator. Implements a change straight from its Ready to Propose block.",
@@ -355,7 +355,7 @@
         "claudeAgent": {
           "agentName": "sai-review-fix-worker",
           "description": "Review-fix worker for /sai-5-review and /sai-review, dispatched only by their coordinators. Fixes the review findings in a Direct Build close.",
-          "model": "opus",
+          "model": "haiku",
           "effort": "medium"
         },
         "opencodeAgent": {

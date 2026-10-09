@@ -324,7 +324,7 @@ test('OpenCode worker generation omits optional variant without changing Claude 
   assert.match(generated, /^permissions:$/m);
   const claude = outputs.find(item => item.kind === 'agent' && item.harness === 'claude'
     && item.workerName === worker.workerName).text;
-  assert.match(claude, /^model: sonnet\neffort: medium$/m);
+  assert.match(claude, /^model: haiku\neffort: medium$/m);
 });
 
 test('fresh OpenCode install separates every managed agent model from its variant', () => {

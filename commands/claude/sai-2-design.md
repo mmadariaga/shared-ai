@@ -1,8 +1,8 @@
 ---
 description: Design a change into design.md, tasks.md, and interfaces.md — running it approves the specs; --overview-lang also writes change-overview.md. Stops before /sai-3-implement.
 argument-hint: "[change-name] [--overview-lang <language>] [--fast-track]"
-model: opus
-effort: medium
+model: sonnet
+effort: high
 allowed-tools: {{capabilityAllowedTools}}
 ---
 Fetch @skills/fetch/SKILL.md
