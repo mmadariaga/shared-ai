@@ -234,13 +234,6 @@ The same worker session SHALL evaluate feedback item by item, edit only the name
 - **WHEN** the binding cannot continue the worker that generated the artifacts
 - **THEN** a fresh design worker SHALL reconstruct state from the current durable artifacts, coordinator-forwarded opaque input history, and any exact `pending_feedback`, then independently and idempotently evaluate pending feedback against current artifacts without repeating accepted questions
 
-### Requirement: Proposal Complexity remains descriptive
-The design worker SHALL NOT use Proposal Complexity to select a model, effort level, worker profile, or workflow branch in this change.
-
-#### Scenario: Proposal carries any complexity token
-- **WHEN** `proposal.md` contains `low`, `medium`, or `high` Proposal Complexity
-- **THEN** the same configured design worker and workflow SHALL run without routing on that token
-
 ### Requirement: design-worker-progress-emission
 
 The design worker SHALL emit progress events, after change resolution completes, whenever it completes one or more steps of the progress plan whose ids are canonical in the phase contracts. The design worker contract SHALL enumerate exactly the step ids `prereqs-resolution`, `research`, `design`, `tasks`, `interfaces`, and `overview`, with labels `Resolve change`, `Research and resolve open questions`, `Write design.md`, `Write tasks.md`, `Write interfaces.md`, and `Generate change-overview.md` respectively, and every event SHALL carry only ids from that enumeration, in plan order, plus the files changed since the preceding result. The worker SHALL NOT author, extend, or reorder the plan, and SHALL NOT emit a progress event before resolution or in place of a terminal payload.

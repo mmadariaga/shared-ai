@@ -32,8 +32,6 @@ Report the canonical `progress_plan` ids from `@sai/policies/spec-phase-contract
 - `specs` — the completed `specs/**` write returns `specs`.
 - `validation` — artifact validation plus decision-summary derivation returns `validation`.
 
-Progress events are returned lifecycle results, never text in the worker session, and never replace the one terminal lifecycle status. The coordinator alone renders progress, routes pointers, stamps milestones, unions `changed_files`, and validates results.
-
 ## Active Step Execution
 
 Instructions arrive just-in-time, one step file at a time, per the step delivery rule in `steps/common.md`: execute only the file named by the most recent `Active step:` pointer. This contract plus `common.md` is the sealed initial surface; `prereqs-and-change` runs from it before the first progress event, and the first delivered pointer targets `research`. Steps never widen the lifecycle, changed-files, result, or failure rules.
@@ -50,11 +48,10 @@ Artifact review stays outside this phase: the worker dispatches no reviewer of i
 
 ### Post-resolution failure classification and recovery
 
-After change resolution, every `status: failed` result is worker-authored and closed under the failure-class vocabulary in `@sai/orchestration/worker-core.md`, with a boolean `unrecoverable` and a concrete English summary of observed evidence: the affected artifact or operation, the failed condition, and the consequence — never logs, tracebacks, command output, or file contents. Pre-resolution failures keep the pre-resolution envelope and omit those fields.
+Post-resolution `failed` results follow `@sai/orchestration/worker-core.md` § Failure classification. The `summary` states observed evidence: the affected artifact or operation, the failed condition, and the consequence — never logs, tracebacks, command output, or file contents.
 
 - Proposal/spec generation or write failures are `generation-error` unless a more specific closed class applies.
 - Validation, consistency, requirement-scenario, or artifact-verification failures are `validation-failed`, naming the failed check and the affected `proposal.md` or `specs/**`.
-- A contradiction with the spec-only write surface, including an attempted write to a forbidden artifact, is `blocking-contradiction`; set `unrecoverable: true` only when the evidence shows that continuing is unsafe.
-- The remaining worker-core classes keep their generic meanings and require concrete non-raw evidence.
+- A contradiction with the spec-only write surface, including an attempted write to a forbidden artifact, is `blocking-contradiction`.
 
-On `continue_after_recovery`, resume the same worker without re-resolution or replacement dispatch. Make only the authorized correction named by the coordinator's ordered diagnosis — `Reported`, `Evidence`, `Cause`, `Correction`, and `Verification` — and persist no diagnosis, attempt count, or other recovery metadata. Re-run spec verification after the correction: return `completed` only when it passes, otherwise a post-resolution `failed` result with the closed classification, boolean `unrecoverable`, and concrete evidence. Recovery never emits a recovery progress id or progress event and leaves the canonical plan, feedback flow, validation report, and ordinary terminal rules unchanged.
+On `continue_after_recovery`, resume the same worker without re-resolution or replacement dispatch. Make only the authorized correction named by the coordinator's ordered diagnosis — `Reported`, `Evidence`, `Cause`, `Correction`, and `Verification`. Re-run spec verification after the correction: return `completed` only when it passes, otherwise a post-resolution `failed` result with the closed classification, boolean `unrecoverable`, and concrete evidence. Recovery never emits a recovery progress id or progress event and leaves the canonical plan, feedback flow, validation report, and ordinary terminal rules unchanged.

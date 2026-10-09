@@ -17,8 +17,7 @@ is loaded.
    `proposal.md` to the `resolvedOutputPath` it returns, from its `template`,
    `instruction`, and `rules`, grounded in your research. `context` and `rules`
    constrain the content; keep both out of every artifact.
-4. Stop there: `specs/**` is the next step, and `design.md` and `tasks.md`
-   belong to `/sai-2-design`.
+4. Stop there: `specs/**` is the next step.
 
 Questions go out as `needs_input`, the coordinator renders progress, and the
 step ends with the progress event.
@@ -31,6 +30,3 @@ note reads like an obligation. Your own research findings still go to
 `## Additional Notes`; never mix the two sections. When the block has no such
 field, omit the section. A refinement run without a block keeps any existing
 `## Request Additional Notes` section intact.
-
-Write a provisional `**Complexity**` token; the validation step derives the
-real one once the specs exist.

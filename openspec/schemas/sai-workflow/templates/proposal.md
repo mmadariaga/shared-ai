@@ -1,6 +1,3 @@
-**Complexity**: <low|medium|high>
-<!-- First line of the file. Derive per `## Complexity Derivation Rubric` in sai/commands/spec/steps/validation.md, after specs/**/*.md are written. Optional trailing parenthetical, e.g. `medium (3 files, no breaking change)` — parsers ignore everything from the first `(`. -->
-
 ## Why
 
 <!-- What problem does this solve? Why now? (1-2 sentences) -->

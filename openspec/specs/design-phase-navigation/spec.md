@@ -71,5 +71,5 @@ The logical coordinator SHALL remain a role defined by the grouped `sai/commands
 
 #### Scenario: complexity routing is not implemented
 
-- **WHEN** this change is applied
-- **THEN** no worker selection SHALL be conditioned on the proposal's `**Complexity**` value
+- **WHEN** a routed `/sai-2-design` or `/sai-3-implement` invocation runs
+- **THEN** no worker selection SHALL be conditioned on a complexity value, including any legacy `**Complexity**` line in an existing `proposal.md`

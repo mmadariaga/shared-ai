@@ -30,6 +30,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0171c — Single-string invocation envelope across active SAI surfaces](./0171c-single-string-invocation-envelope.md) — Supersedes 0166, **Reframes** 0159b, Refs 0136, Refs ddr:0114
 - [0172c — Step-gated instruction delivery hands each spec step its instructions just-in-time](./0172c-step-gated-instruction-delivery.md) — Refs ddr:0109c, Refs ddr:0110, Refs ddr:0114
 - [0189 — The first step pointer travels with the task disclosure](./0189-first-step-pointer-travels-with-the-task.md) — **Amends** 0172c, Refs 0188
+- [0191 — Spec instruction restatements need a decision record or an observed failure](./0191-spec-restatements-need-a-record-or-an-observed-failure.md) — **Amends** 0172c, Refs ddr:0156a
 ### `/sai-2-design`
 
 - [0015 — Decision summary precedes the completion sentinel](./0015-decision-summary-precedes-completion-sentinel.md) — **Amends** ddr:0014
@@ -627,6 +628,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 | [0189](./0189-first-step-pointer-travels-with-the-task.md) | amends | [0172c](./0172c-step-gated-instruction-delivery.md) |
 | [0190](./0190-review-keeps-analysis-without-mutation-execution.md) | supersedes | [0012](./0012-mutation-analysis-as-dedicated-protocol-section.md) |
 | [0190](./0190-review-keeps-analysis-without-mutation-execution.md) | amends | [0107b](./0107b-unified-audit-severity-vocabulary.md) |
+| [0191](./0191-spec-restatements-need-a-record-or-an-observed-failure.md) | amends | [0172c](./0172c-step-gated-instruction-delivery.md) |
 | [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0033](./archive/0033-echo-line-format-and-placement.md) |
 | [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0034](./archive/0034-resolution-precedence-wrapper-echo-first.md) |
 | [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0035](./archive/0035-harness-specific-adapter-carve-out.md) |
