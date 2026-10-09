@@ -205,7 +205,7 @@ returns `unresolved cause`.
 4. Consider a further diagnosis only from a successfully resumed target-worker
    result, and only with a new key and a remaining slot.
 
-Recovery never dispatches a replacement worker. When the recovery continuation
+Recovery never dispatches a replacement worker unless the phase card declares an exception for a corrective dispatch (apply declares one in its recovery step). When the recovery continuation
 cannot resume the target, stop recovery and hand back the diagnosis. Ordinary
 continuation loss outside recovery keeps the runner's at-most-one replacement
 fallback.

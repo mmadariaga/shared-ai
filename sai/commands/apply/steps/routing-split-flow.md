@@ -25,4 +25,4 @@ Dispatch GREEN only after a valid RED result. Task disclosure is the Step's GREE
 
 An unpassable GREEN (a failed result with `STOP reached?: yes`) goes through coordinator § Known-False Report Recovery. When no eligible correction exists it is the GREEN-conflict STOP: the Step halts for a human, with no checkbox, commit, or advance, even under an active session commit grant. Present the halt per `@sai/policies/question-context.md`: what is being decided (implementation, test, or interface fault), why it matters, the conflict's essential state, and the options in plain language.
 
-A GREEN `blocking-contradiction` that proves a test-infra point (setup, adapter, seed, import wiring) goes back to this Step's RED worker per coordinator § Unblock ladder, never to GREEN.
+A GREEN `blocking-contradiction` that proves a test-infra point (setup, adapter, seed, import wiring) goes back to this Step's RED worker per `steps/recovery.md`, never to GREEN.

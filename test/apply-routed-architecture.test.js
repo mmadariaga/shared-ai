@@ -474,20 +474,21 @@ test('Step 2 RED stubs use only contract-valid null/empty behavior and read exis
 // ─── specs/apply-same-worker-retry/spec.md — bounded recovery ───────────────
 
 test('Step 2 coordinator-disproven GREEN evidence continues the same worker with one shared bounded recovery pool', () => {
-  const coordinator = artifact(APPLY_CARDS.coordinator);
-  const runner = runnerSurface();
-  const combined = `${coordinator}\n${runner}`;
-  assert.match(combined, /continue_after_recovery/,
+  const recovery = artifact('sai/commands/apply/steps/recovery.md');
+  const policy = artifact('sai/policies/bounded-recovery.md');
+  assert.match(recovery, /continue_after_recovery/,
     'specs/apply-same-worker-retry/spec.md: recovery must continue the same worker with continue_after_recovery');
-  assert.match(combined, /same[\s\S]{0,60}worker|worker[\s\S]{0,60}same/i,
+  assert.match(recovery, /continues the owning worker/,
     'specs/apply-same-worker-retry/spec.md: recovery must remain on the same worker');
-  assert.match(combined, /never[\s\S]{0,140}(?:fresh|replacement|new) worker|(?:fresh|replacement|new) worker[\s\S]{0,140}never/i,
-    'specs/apply-same-worker-retry/spec.md: recovery must never open a fresh worker');
-  assert.match(combined, /three attempts|3 attempts|at most three|exactly three/i,
-    'specs/apply-same-worker-retry/spec.md: recovery must permit at most three attempts');
-  assert.match(combined, /exhaust/i,
+  assert.match(policy, /Recovery never dispatches a replacement worker unless the phase card declares an exception/,
+    'bounded-recovery.md: the no-replacement rule admits one phase-declared exception');
+  assert.match(recovery, /Apply declares one exception to the policy's no-replacement rule/,
+    'recovery.md: apply declares its fresh-RED exception');
+  assert.match(recovery, /`recovery-ledger@1` owns the budgets/,
+    'specs/apply-same-worker-retry/spec.md: recovery attempts are bounded by the ledger');
+  assert.match(recovery, /exhaust/i,
     'specs/apply-same-worker-retry/spec.md: exhaustion must be a terminal state');
-  assert.match(combined, /checkbox[\s\S]{0,140}(?:commit|advance)|commit[\s\S]{0,140}(?:checkbox|advance)|advance[\s\S]{0,140}(?:checkbox|commit)/i,
+  assert.match(recovery, /blocks Automated checkbox marking, commit, and Step advance/,
     'specs/apply-same-worker-retry/spec.md: exhaustion must block checkbox marking, commit, and advance');
 });
 
@@ -504,55 +505,49 @@ test('Step 2 a completed GREEN disproven by coordinator verification is classifi
 });
 
 test('Step 2 the recovery continuation carries the ordered Reported/Evidence/Cause/Correction/Verification diagnosis to the same GREEN worker', () => {
-  const coordinator = artifact(APPLY_CARDS.coordinator);
+  const recovery = artifact('sai/commands/apply/steps/recovery.md');
   const green = workerContract(APPLY_CARDS.greenWorker);
-  const combined = `${coordinator}\n${green}`;
-  const start = combined.search(/\bReported\b/);
-  assert.ok(start >= 0, 'the recovery diagnosis must begin with the Reported heading');
-  const tail = combined.slice(start);
-  const positions = RECOVERY_HEADINGS.map(heading => tail.search(new RegExp(`\\b${heading}\\b`)));
-  for (const position of positions) assert.ok(position >= 0, 'each recovery heading must exist');
+  const combined = `${recovery}\n${green}`;
+  const start = recovery.search(/`Reported`/);
+  assert.ok(start >= 0, 'the recovery diagnosis must begin with the Reported field');
+  const tail = recovery.slice(start);
+  const positions = RECOVERY_HEADINGS.map(heading => tail.search(new RegExp('`' + heading + '`')));
+  for (const position of positions) assert.ok(position >= 0, 'each recovery field must exist');
   assert.deepEqual([...positions].sort((left, right) => left - right), positions,
-    'specs/apply-same-worker-retry/spec.md: the recovery headings must stay in the required order');
-  assert.match(combined, /same[\s\S]{0,60}GREEN worker|GREEN worker[\s\S]{0,60}same/i,
+    'specs/apply-same-worker-retry/spec.md: the recovery fields must stay in the required order');
+  assert.match(recovery, /GREEN stays in production files/,
     'specs/apply-same-worker-retry/spec.md: the continuation must target the same GREEN worker session');
   assert.match(combined, /continue_after_recovery/,
     'specs/apply-same-worker-retry/spec.md: the continuation must use continue_after_recovery');
 });
 
 test('Step 2 worker-returned eligible failures and coordinator validation-failed share one undoubled three-attempt pool', () => {
+  const recovery = artifact('sai/commands/apply/steps/recovery.md');
   const coordinator = artifact(APPLY_CARDS.coordinator);
-  const runner = runnerSurface();
-  const combined = `${coordinator}\n${runner}`;
-  assert.match(combined, /one[\s\S]{0,80}shared[\s\S]{0,80}(?:three[- ]attempt|recovery pool|pool of three attempts)|shared[\s\S]{0,80}three[- ]attempt/i,
-    'specs/apply-same-worker-retry/spec.md: both recovery sources must share one three-attempt pool');
-  assert.match(combined, /validation[- ]failed/,
+  assert.match(recovery, /Worker-returned failures and your `validation-failed` classifications draw from one worker pool/,
+    'specs/apply-same-worker-retry/spec.md: both recovery sources must share one pool');
+  assert.match(recovery, /`recovery-ledger@1` owns the budgets/,
+    'specs/apply-same-worker-retry/spec.md: the pool size is owned by the ledger');
+  assert.match(`${coordinator}\n${recovery}`, /validation[- ]failed/,
     'specs/apply-same-worker-retry/spec.md: coordinator-classified validation-failed must draw from the same pool');
-  assert.match(combined, /three attempts|3 attempts|exactly three/i,
-    'specs/apply-same-worker-retry/spec.md: the pool must hold exactly three attempts');
-  assert.match(combined, /undoubl|(?:not|never)[\s\S]{0,60}(?:doubled|duplicated)|single[\s\S]{0,60}(?:pool|budget|count)/i,
-    'specs/apply-same-worker-retry/spec.md: the pool must not be doubled per recovery source');
 });
 
 // ─── specs/apply-coordinator-verification/spec.md — scratch cleanup ─────────
 
-test('Step 2 every dispatch, continuation, and checklist run is followed by scratch cleanup with pinned trace lines', () => {
+test('Step 2 every dispatch and continuation is followed by one sweep-and-verify call with the tool-generated lines printed', () => {
   const coordinator = artifact(APPLY_CARDS.coordinator);
   const runner = runnerSurface();
   const combined = `${coordinator}\n${runner}`;
-  // Exact non-empty trace forms live solely on the coordinator.
-  assert.match(coordinator, /> Scratch cleanup: removed \.tmp\/\{change-name\}\//,
-    'specs/apply-coordinator-verification/spec.md: the per-change cleanup trace must be pinned on the coordinator');
-  assert.match(coordinator, /> Scratch cleanup: removed \.tmp\/\{change-name\}\/,[ \t]*\.tmp\//,
-    'specs/apply-coordinator-verification/spec.md: the parent cleanup trace must end with ", .tmp/" on the coordinator');
-  assert.doesNotMatch(runner, /> Scratch cleanup: removed \.tmp\/\{change-name\}\//,
-    'specs/apply-coordinator-verification/spec.md: runner must not restate the exact per-change trace form');
+  assert.doesNotMatch(combined, /> Scratch cleanup: removed/,
+    'specs/apply-coordinator-verification/spec.md: the cards do not restate the line forms the tool returns');
+  assert.match(coordinator, /Print each `sweep\.lines` entry\./,
+    'specs/apply-coordinator-verification/spec.md: the returned cleanup lines are printed');
   assert.match(combined, /every dispatch|each dispatch|after each dispatch/i,
     'specs/apply-coordinator-verification/spec.md: cleanup must follow every dispatch');
   assert.match(combined, /continuation/i,
     'specs/apply-coordinator-verification/spec.md: cleanup must also follow every continuation');
-  assert.match(combined, /before[\s\S]{0,80}(?:comparison|redispatch)|comparison[\s\S]{0,80}sweep|sweep[\s\S]{0,80}before[\s\S]{0,80}(?:comparison|redispatch)/i,
-    'specs/apply-coordinator-verification/spec.md: cleanup must precede comparison or redispatch');
+  assert.match(coordinator, /sweep scratch and verify with one `apply-step\.js verify` call/,
+    'specs/apply-coordinator-verification/spec.md: the sweep and the checks are one call');
   assert.match(combined, /checklist/i,
     'specs/apply-coordinator-verification/spec.md: the coordinator checklist runs must be named');
 });
