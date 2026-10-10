@@ -70,7 +70,7 @@
   - `input` — the freshly generated `review.md` plus `security.md`, `performance.md`, and `accessibility.md` as they exist on disk, never regenerated in this run. Tell the user in chat that those audits may be stale.
   - `decline-close` = the standard close above.
 
-  A fix that touches a triage surface leaves `review.md` as written; the audits run later on the fixed tree.
+  A fix that touches a triage surface leaves the `review.md` triage as written and changes only the fixed marks of `@sai/policies/finding-state.md`; the audits run later on the fixed tree.
 
 </TASK>
 

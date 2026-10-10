@@ -53,6 +53,17 @@ Apply exactly the listed corrections within the selected scope, return the
 closed lifecycle result again, and add every touched path to
 `changed_files`. Do not re-plan, expand scope, or "improve" beyond findings.
 
+## Fixed marks
+
+After the coordinator accepts convergence it sends one final continuation: the
+marker line `--mark-fixed`, a newline, then the source-qualified identifiers of
+the findings the fix resolved, each with its report path. For each listed
+finding, append the fixed mark of `@sai/policies/finding-state.md` to its
+heading line in that report, and change nothing else: no body line, no other
+heading, no identifier, and no `Summary:` tally. A finding already marked stays
+as it is. Add every report you touched to `changed_files`, return the closed
+lifecycle result, and write no further fix in this stretch.
+
 ## Lifecycle
 
 Emit no progress events. Every stretch opens with `event: ready` as its first

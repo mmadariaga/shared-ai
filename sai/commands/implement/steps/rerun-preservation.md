@@ -40,7 +40,7 @@ Once the INCOMPLETE gate in **Append audit-derived steps** has been evaluated an
 
 An audit artifact is `review.md`, `security.md`, `performance.md`, or `accessibility.md` in `openspec/changes/{change-name}/`. An **audit step** is the step appended for one audit artifact and MUST use the required heading literal `#### Step N: Address <kind> findings`, with `<kind>` one of `review`, `security`, `performance`, `accessibility`. A **pending audit step** is a step with that heading and at least one `[ ]` in its section.
 
-Skip every audit artifact whose latest audit step (matched by that heading literal for its `<kind>`) is still pending: that step already carries it, and it is not re-appended. The remaining artifacts are those needing a new audit step.
+Skip every audit artifact that has no open finding (every finding carries the fixed mark of `@sai/policies/finding-state.md`): it needs no audit step. Skip every audit artifact whose latest audit step (matched by that heading literal for its `<kind>`) is still pending: that step already carries it, and it is not re-appended. The remaining artifacts are those needing a new audit step.
 
 **INCOMPLETE gate:** if at least one artifact needs a new audit step and **any** prior step is **INCOMPLETE**, return `failed` before preserving or appending anything. The `summary` names each INCOMPLETE step, the audit artifacts that need a new step, and the next action: run `/sai-4-apply <change>` to finish the pending Steps, then re-plan. Audit steps would otherwise be generated on the false premise that the pending steps' code exists.
 
