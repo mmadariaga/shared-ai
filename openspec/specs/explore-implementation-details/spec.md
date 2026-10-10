@@ -101,3 +101,17 @@ Every `Ready to Propose` block — the single-change protocol and each per-slice
 
 - **WHEN** a slice needs none of the agreed items
 - **THEN** its block carries `**Implementation Details**` as exactly `- None` and lists the full agreed list under `**Out of scope Implementation Details**`
+
+### Requirement: The implementation-details list wording uses writing-for-agents when available
+
+Before drafting the `I` list, the implementation-details stage SHALL load the `writing-for-agents` skill through the harness-native skill mechanism: the `Skill` tool on Claude Code, the `skill` tool on opencode. It SHALL reuse a copy already loaded in the chat. When the skill is absent, cannot be loaded, or its load is denied, `sai-explore` SHALL print `Warning: the writing-for-agents skill is unavailable, so the list is drafted without it.` at most once per `/sai-explore` invocation, counting a warning already printed by the edge-case stage, and draft the list with the existing rules. The skill SHALL shape item wording only. Scope, numbering, agreement, and the `- None` rule SHALL stay as the stage defines them, and the skill SHALL add no items.
+
+#### Scenario: Skill available
+
+- **WHEN** the implementation-details list is drafted and `writing-for-agents` loads
+- **THEN** the `I` items are worded with the skill while the numbering and confirmation question are unchanged
+
+#### Scenario: Warning already printed in this invocation
+
+- **WHEN** the edge-case stage already printed the unavailable-skill warning and the implementation-details list is drafted without the skill
+- **THEN** `sai-explore` prints no second warning and drafts the list with the existing rules

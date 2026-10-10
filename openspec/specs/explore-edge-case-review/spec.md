@@ -106,3 +106,17 @@ When the user advances to the `Review edge cases` stage and no behavior bounds t
 
 - **WHEN** the user advances into `Review edge cases` with an empty in-scope list while `--fast-track` is active
 - **THEN** the same deterministic empty-set advancement runs with no probes, and no gate or questionnaire is skipped or weakened by the fast-track signal
+
+### Requirement: The edge-case list wording uses writing-for-agents when available
+
+Before drafting the `E` list, the edge-case review SHALL load the `writing-for-agents` skill through the harness-native skill mechanism: the `Skill` tool on Claude Code, the `skill` tool on opencode. It SHALL reuse a copy already loaded in the chat. When the skill is absent, cannot be loaded, or its load is denied, `sai-explore` SHALL print `Warning: the writing-for-agents skill is unavailable, so the list is drafted without it.` once per `/sai-explore` invocation and draft the list with the existing rules. The skill SHALL shape item wording only. Scope, numbering, probes, agreement, and the `- None` rule SHALL stay as the edge-case review defines them, and the skill SHALL add no items.
+
+#### Scenario: Skill available
+
+- **WHEN** the edge-case list is drafted and `writing-for-agents` loads
+- **THEN** the list items are worded with the skill while the numbering, probes, and agreement question are unchanged
+
+#### Scenario: Skill unavailable
+
+- **WHEN** the edge-case list is drafted and `writing-for-agents` is absent or denied
+- **THEN** `sai-explore` prints the fixed warning once in the invocation and drafts the list with the existing rules

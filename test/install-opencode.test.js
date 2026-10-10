@@ -51,7 +51,7 @@ const UTILITY_CARD_CONTENTS = {
   archive: ['archive-commit-gate.instructions.md', 'command-bootstrap.md', 'coordinator.md', 'instructions.md', 'retirement-declaration.md', 'worker.md'],
   backfill: ['command-bootstrap.md', 'coordinator.md', 'instructions.md', 'worker.md'],
   commit: ['command-bootstrap.md', 'coordinator.md', 'instructions.md', 'worker.md'],
-  explore: ['body.md', 'command-bootstrap.md', 'direct-build-worker.md', 'instructions.md', 'steps'],
+  explore: ['body.md', 'command-bootstrap.md', 'direct-build-worker.md', 'instructions.md', 'list-writing.md', 'steps'],
   pr: ['body.md', 'command-bootstrap.md', 'instructions.md', 'pr-body.template.md'],
   'retire-docs': ['body.md', 'command-bootstrap.md'],
   status: ['body.md', 'command-bootstrap.md'],
