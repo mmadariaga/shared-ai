@@ -11,15 +11,16 @@ The system SHALL declare abstract capability profiles and agent and command
 assignments in `sai/install-manifest.json`. Profiles SHALL support inherited
 flags and replacement of list-valued grants. Resolution SHALL reject unknown
 capabilities, missing profile assignments, invalid values, and inheritance
-cycles. The twenty-two shipped commands SHALL include to-backlog, from-backlog,
-from-next-backlog-item, and to-pr with their own resolvable command profiles,
-alongside the eighteen SAI commands. The retired sai-pr command SHALL have no
-current assignment.
+cycles. The twenty-three shipped command-requirement assignments SHALL include
+to-backlog, from-backlog, from-next-backlog-item, to-pr, and the skill-only
+new-change-branch workflow with their own resolvable profiles, alongside the
+eighteen SAI commands. The new-change-branch assignment SHALL NOT require a
+command wrapper. The retired sai-pr command SHALL have no current assignment.
 
 #### Scenario: Required identities receive assignments
 
 - **WHEN** canonical capability assignments are inspected
-- **THEN** all fifteen managed workers, all three Generic Agent roles under both harness names, and all twenty-two commands have resolvable profiles.
+- **THEN** all fifteen managed workers, all three Generic Agent roles under both harness names, and all twenty-three command-requirement assignments have resolvable profiles.
 
 #### Scenario: Invalid profile fails closed
 
@@ -45,6 +46,16 @@ current assignment.
 
 - **WHEN** the to-pr command profile is resolved for either harness
 - **THEN** it grants reading, search, questions, the to-pr and safe-operations skills, and shell invocation of the common to-pr Node tool without authorizing publication or push.
+
+#### Scenario: Change-branch skill capabilities
+
+- **WHEN** the new-change-branch-command profile is resolved for either harness
+- **THEN** it inherits boot access, grants search and questions, includes the new-change-branch and safe-operations skills, and grants invocation of the common new-change-branch Node helper without authorizing any operation beyond the workflow's requested local creation and switch.
+
+#### Scenario: Skill-only command requirements
+
+- **WHEN** capability requirements and installation projections are generated for new-change-branch under either harness
+- **THEN** the requirements registry identifies its new-change-branch-command profile and the universal skill is installed without a new-change-branch command wrapper.
 
 ### Requirement: Harness-native capability translation
 

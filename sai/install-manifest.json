@@ -36,7 +36,8 @@
       "to-backlog-command": { "extends": "boot", "search": true, "question": true, "skills": ["to-backlog", "safe-operations"], "shell": ["node {sai}/tools/to-backlog.js *", "node {skills}/to-backlog/scripts/prepare-temp.js {harness}"] },
       "from-backlog-command": { "extends": "boot", "search": true, "question": true, "skills": ["from-backlog"], "shell": ["node {sai}/tools/from-backlog.js *"] },
       "from-next-backlog-item-command": { "extends": "from-backlog-command", "skills": ["from-next-backlog-item", "from-backlog"], "shell": ["node {sai}/tools/from-next-backlog-item.js select", "node {sai}/tools/from-backlog.js *"] },
-      "to-pr-command": { "extends": "boot", "search": true, "question": true, "skills": ["to-pr", "safe-operations"], "shell": ["node {sai}/tools/to-pr.js *"] }
+      "to-pr-command": { "extends": "boot", "search": true, "question": true, "skills": ["to-pr", "safe-operations"], "shell": ["node {sai}/tools/to-pr.js *"] },
+      "new-change-branch-command": { "extends": "boot", "search": true, "question": true, "skills": ["new-change-branch", "safe-operations"], "shell": ["node {sai}/tools/new-change-branch.js *"] }
     },
     "assignments": {
       "agents": {
@@ -63,7 +64,7 @@
         "sai-commit": "commit-command", "sai-archive": "archive-command",
         "sai-backfill": "backfill-command", "sai-merge": "merge-command",
         "sai-explore": "explore-command", "sai-retire-docs": "utility-write",
-        "sai-status": "status-command", "sai-worktree": "worktree-command", "to-backlog": "to-backlog-command", "from-backlog": "from-backlog-command", "from-next-backlog-item": "from-next-backlog-item-command", "to-pr": "to-pr-command"
+        "sai-status": "status-command", "sai-worktree": "worktree-command", "to-backlog": "to-backlog-command", "from-backlog": "from-backlog-command", "from-next-backlog-item": "from-next-backlog-item-command", "to-pr": "to-pr-command", "new-change-branch": "new-change-branch-command"
       }
     }
   },

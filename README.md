@@ -179,6 +179,11 @@ Claude Code and opencode route these core phases through a coordinator and a man
 
 ## Utility commands
 
+Use `/new-change-branch` in Claude Code or opencode to create and switch to a
+local `feat`, `fix`, `docs`, or `chore` branch. It reuses the current discussion
+for the name and optional work-item identifier, and asks you to select a base
+or enter one. Existing work is preserved; no remote refresh, commit, or push runs.
+
 Use the universal `/to-pr` skill to create or update GitHub pull requests and
 GitLab merge requests from committed Git changes. It works in Claude Code and
 OpenCode without OpenSpec. Review the complete title and description before

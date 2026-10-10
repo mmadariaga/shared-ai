@@ -32,7 +32,8 @@ test('all workers, generic agents and commands have canonical assignments', () =
       assert.ok(registry.assignments.agents[path.basename(file, '.md')]);
     }
     const commands = fs.readdirSync(path.join(repoRoot, 'commands', harness)).map(file => path.basename(file, '.md')).sort();
-    assert.deepEqual(Object.keys(registry.assignments.commands).sort(), commands);
+    assert.deepEqual(Object.keys(registry.assignments.commands).sort(), [...commands, 'new-change-branch'].sort());
+    assert.ok(fs.existsSync(path.join(repoRoot, 'skills/universal/new-change-branch/SKILL.md')));
     for (const projection of projected(harness)) {
       if (projection.sourceText !== undefined) {
         assert.doesNotMatch(projection.sourceText, /\{\{capability/);
@@ -82,6 +83,12 @@ test('commands have independent requirements without inventing opencode command 
     const requirements = JSON.parse(projections.find(item => item.id === `${harness}-capability-requirements`).sourceText);
     for (const [name, profile] of Object.entries(registry.assignments.commands)) {
       assert.equal(requirements.commands[name].profileName, profile);
+      if (name === 'new-change-branch') {
+        const skill = projections.find(item => item.destinationPath.endsWith(path.join('new-change-branch', 'SKILL.md')));
+        assert.ok(skill, 'the skill-only workflow is installed without a command wrapper');
+        assert.ok(!projections.some(item => path.basename(item.destinationPath) === `${name}.md`));
+        continue;
+      }
       const wrapper = projections.find(item => path.basename(item.destinationPath) === `${name}.md`).sourceText;
       if (harness === 'claude') assert.match(wrapper, /^allowed-tools: .+/m);
       else assert.doesNotMatch(wrapper, /^(permission|permissions|allowed-tools|agent):/m);
