@@ -697,6 +697,152 @@ async function offerCodegraphInstall({
   }
 }
 
+const WRITING_FOR_AGENTS_SKILL = 'writing-for-agents';
+const WRITING_FOR_AGENTS_SKILLS_ARGS = [
+  'skills@latest',
+  'add',
+  'mattpocock/skills',
+  `--skill=${WRITING_FOR_AGENTS_SKILL}`,
+];
+
+// Runner candidates in fallback order. `userAgentPrefix` maps the invoking
+// package manager (npm_config_user_agent) to its runner.
+const SKILLS_RUNNERS = [
+  { userAgentPrefix: 'npm/', command: 'npx', prefixArgs: [] },
+  { userAgentPrefix: 'pnpm/', command: 'pnpm', prefixArgs: ['dlx'] },
+  { userAgentPrefix: 'bun/', command: 'bunx', prefixArgs: [] },
+];
+
+// On Windows an npm-installed CLI is a `.cmd` shim that spawnSync cannot run
+// without a shell. The arguments are fixed literals, so the shell hop adds no
+// quoting hazard; on POSIX we spawn directly without a shell.
+function spawnRunner(command, args, options) {
+  if (process.platform === 'win32') {
+    return childProcess.spawnSync([command, ...args].join(' '), { ...options, shell: true });
+  }
+  return childProcess.spawnSync(command, args, options);
+}
+
+function writingForAgentsCommandFor(runner) {
+  return [runner.command, ...runner.prefixArgs, ...WRITING_FOR_AGENTS_SKILLS_ARGS].join(' ');
+}
+
+function isRunnerAvailable(runner) {
+  const result = spawnRunner(runner.command, ['--version'], { stdio: 'ignore' });
+  return !result.error && result.status === 0;
+}
+
+// Pure mapping from the invoking package manager to its runner; spawns nothing.
+function invokingSkillsRunner(env = process.env) {
+  const userAgent = typeof env.npm_config_user_agent === 'string' ? env.npm_config_user_agent : '';
+  return SKILLS_RUNNERS.find(runner => userAgent.startsWith(runner.userAgentPrefix)) || null;
+}
+
+function selectSkillsRunner({ env = process.env, available = isRunnerAvailable } = {}) {
+  const invoking = invokingSkillsRunner(env);
+  if (invoking && available(invoking)) return invoking;
+  return SKILLS_RUNNERS.find(runner => available(runner)) || null;
+}
+
+function writingForAgentsRootsFor(assistant, { claudeBase = CLAUDE_BASE, opencodeBase, homeDir = os.homedir() } = {}) {
+  if (assistant === 'Claude Code') {
+    return [path.join(claudeBase, 'skills')];
+  }
+  if (assistant === 'Opencode') {
+    const base = opencodeBase || resolveOpencodeBase();
+    return [
+      path.join(base, 'skills'),
+      path.join(claudeBase, 'skills'),
+      path.join(homeDir, '.agents', 'skills'),
+    ];
+  }
+  return [];
+}
+
+// Returns the subset of `assistants` whose user-global skills directories lack
+// `writing-for-agents/SKILL.md`. statSync follows symlinks, so a dangling link
+// throws and counts as absent. Presence only, no version.
+function probeWritingForAgents(assistants, options = {}) {
+  return assistants.filter(assistant => {
+    const roots = writingForAgentsRootsFor(assistant, options);
+    return !roots.some(root => {
+      try {
+        return fs.statSync(path.join(root, WRITING_FOR_AGENTS_SKILL, 'SKILL.md')).isFile();
+      } catch {
+        return false;
+      }
+    });
+  });
+}
+
+function runWritingForAgentsInstall(runner) {
+  const result = spawnRunner(
+    runner.command,
+    [...runner.prefixArgs, ...WRITING_FOR_AGENTS_SKILLS_ARGS],
+    { stdio: 'inherit' }
+  );
+  return !result.error && result.status === 0;
+}
+
+async function offerWritingForAgentsInstall({
+  assistants = [],
+  probe = probeWritingForAgents,
+  selectRunner = selectSkillsRunner,
+  runInstall = runWritingForAgentsInstall,
+  promptYesNo = promptYesNoReadline,
+  isTTY = process.stdin.isTTY,
+  env = process.env,
+  opencodeBase,
+  notices,
+} = {}) {
+  const probeOptions = opencodeBase !== undefined ? { opencodeBase } : {};
+  const missing = probe(assistants, probeOptions);
+  if (missing.length === 0) {
+    return;
+  }
+
+  const names = missing.join(' and ');
+  const manualNoticeFor = runner => {
+    const command = writingForAgentsCommandFor(runner || SKILLS_RUNNERS[0]);
+    return `Optional: the writing-for-agents skill is not installed for ${names} — install it with \`${command}\`.`;
+  };
+
+  // Without a TTY nothing may be spawned, not even a runner availability probe:
+  // the manual command comes from the user-agent mapping alone.
+  if (!isTTY) {
+    emitInstallerNotice(notices, manualNoticeFor(invokingSkillsRunner(env)));
+    return;
+  }
+
+  const runner = selectRunner();
+  const manualNotice = manualNoticeFor(runner);
+  if (!runner) {
+    emitInstallerNotice(notices, manualNotice);
+    return;
+  }
+
+  const answer = await promptYesNo(
+    `Install the optional writing-for-agents skill for ${names} through skills.sh now? [y/n] `
+  );
+  if (!answer) {
+    emitInstallerNotice(notices, manualNotice);
+    return;
+  }
+
+  if (!runInstall(runner)) {
+    emitInstallerNotice(notices, manualNotice);
+    return;
+  }
+
+  const manualCommand = writingForAgentsCommandFor(runner);
+  for (const assistant of probe(assistants, probeOptions)) {
+    emitInstallerNotice(
+      notices,
+      `writing-for-agents is still not available for ${assistant} after the skills.sh install — run \`${manualCommand}\` again and choose ${assistant}.`
+    );
+  }
+}
+
 // openspec is REQUIRED for the SAI workflow (unlike opencode/CodeGraph, which
 // are optional). Returns true when openspec is present or was just installed,
 // false when the caller must abort. Never calls process.exit itself so it stays
@@ -1512,6 +1658,7 @@ async function main() {
     console.log(`Opencode skills installed to: ${path.join(resolvedOpencodeBase, 'skills')}`);
   }
 
+  await offerWritingForAgentsInstall({ assistants: choices, opencodeBase: resolvedOpencodeBase, notices });
   await offerCodegraphInstall({ notices });
   emitCodegraphStateNotices({ projectRoot: process.cwd(), opencodeBase: resolvedOpencodeBase, notices });
 
@@ -1587,6 +1734,14 @@ module.exports = {
   probeCodegraph,
   runCodegraphInstall,
   offerCodegraphInstall,
+  WRITING_FOR_AGENTS_SKILLS_ARGS,
+  SKILLS_RUNNERS,
+  invokingSkillsRunner,
+  selectSkillsRunner,
+  writingForAgentsCommandFor,
+  probeWritingForAgents,
+  runWritingForAgentsInstall,
+  offerWritingForAgentsInstall,
   OPENSPEC_INSTALL_CMD,
   probeOpenspec,
   runOpenspecInstall,

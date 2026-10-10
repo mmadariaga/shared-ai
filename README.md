@@ -262,7 +262,7 @@ The installer projects both harnesses from `sai/install-manifest.json`, includin
 npx --allow-git=all github:mmadariaga/shared-ai
 ```
 
-Presents an interactive checklist to select Claude Code and/or opencode as targets. If you pick opencode and its CLI isn't on PATH, the installer offers to install it for you. It also offers (once, editor-agnostic) to install the **CodeGraph** CLI and wire its MCP server — see [Third Party Tools](#third-party-tools).
+Presents an interactive checklist to select Claude Code and/or opencode as targets. If you pick opencode and its CLI isn't on PATH, the installer offers to install it for you. It also offers (once, editor-agnostic) to install the **CodeGraph** CLI and wire its MCP server — see [Third Party Tools](#third-party-tools). It also offers, per selected assistant that lacks it, the optional **writing-for-agents** skill through skills.sh.
 
 ```bash
 # 2. In each project where you want to use shared-AI:
@@ -389,6 +389,8 @@ Other rankings that can help you choose:
 Consider combining SAI with **[CodeGraph](https://github.com/colbymchenry/codegraph)** — a pre-indexed, 100% local code knowledge graph that exposes your codebase as an MCP server. Instead of scanning files with grep/glob/Read, agents query a SQLite symbol graph directly, cutting costs ~35%, token usage ~57%, and tool calls ~71% on average. Works with Claude Code, opencode, Cursor, Codex CLI, and more.
 
 SAI does not bundle CodeGraph. The global installer can offer (once, editor-agnostic, TTY-only) to install the CodeGraph CLI and wire its MCP server; it never indexes a project. Per-project `setup` is what configures it in a repo: when the CLI is on PATH it runs `codegraph init` to build the index; if CodeGraph isn't installed, that step is skipped and setup never blocks.
+
+**[writing-for-agents](https://github.com/mattpocock/skills)** is a third-party skill for writing documents that agents consume. `/sai-explore` loads it when drafting the edge-case and implementation-detail lists. SAI does not bundle it: the global installer can offer (interactive terminals only) to install it through skills.sh, and you can run `npx skills@latest add mattpocock/skills --skill=writing-for-agents` yourself (`pnpm dlx` and `bunx` work too). The skill stays user-owned, so doctor and uninstall ignore it. SAI works without it; when it is missing, Explore prints one warning per invocation and drafts the lists with its existing rules.
 
 ## Uninstall
 
