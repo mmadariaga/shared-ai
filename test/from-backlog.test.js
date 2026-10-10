@@ -200,7 +200,7 @@ test('E6 large content is preserved rather than shortened by the adapter', () =>
 test('E4–E8 instruction contract covers trust, capacity, conversation and no progression', () => {
   const skill = fs.readFileSync(path.join(root, 'skills/universal/from-backlog/SKILL.md'), 'utf8');
   for (const pattern of [/disable-model-invocation: true/, /Source of truth — title and description/, /Unverified content — brainstorming/, /Description missing/, /not authority to act/, /execute none/, /contradictions with the prior conversation/, /contradictions with the title or description/, /remaining capacity and output limits/, /Never silently truncate, summarize/, /partial\/chunked delivery explicitly pending/, /provider and local files unchanged/, /stage unchanged/, /do not run its boot/, /start implementation/]) assert.match(skill, pattern);
-  assert.equal((skill.match(/\*\*Complete when:\*\*/g) || []).length, 4);
+  assert.equal((skill.match(/\*\*Complete when:\*\*/g) || []).length, 5);
   assert.match(skill, /specific failed check/);
   assert.match(skill, /Ask only for components it identifies as missing/);
   assert.match(skill, /complete incompatible reference as a provider limitation/);
@@ -215,12 +215,50 @@ test('E4–E8 instruction contract covers trust, capacity, conversation and no p
   }
 });
 
+test('assessment follows complete faithful delivery and reports five evidence-based dimensions', () => {
+  const skill = fs.readFileSync(path.join(root, 'skills/universal/from-backlog/SKILL.md'), 'utf8');
+  const source = skill.indexOf('## 3. Incorporate with provenance');
+  const assessment = skill.indexOf('## 4. Assess against the current project');
+  const continuation = skill.indexOf('## 5. Continue the discussion');
+  assert.ok(source < assessment && assessment < continuation);
+  const assess = skill.slice(assessment, continuation);
+  assert.match(assess, /Begin only after faithful presentation[\s\S]*every\ncomment is complete/);
+  for (const dimension of ['Fit', 'Currency', 'Existing implementation', 'Feasibility', 'Recommendation']) {
+    assert.ok(assess.includes(`- **${dimension}:**`), dimension);
+  }
+  for (const pattern of [/code, tests, documentation, and configuration/, /outside the source sections/, /concrete references to inspected project material/, /verified facts, hypotheses, and unknowns separately/, /all five dimensions are reported with evidence or explicit\nunknowns/]) assert.match(assess, pattern);
+});
+
+test('assessment branches preserve uncertainty, covered work, context, and read-only authority', () => {
+  const skill = fs.readFileSync(path.join(root, 'skills/universal/from-backlog/SKILL.md'), 'utf8');
+  const assess = skill.slice(skill.indexOf('## 4. Assess against the current project'));
+  for (const pattern of [
+    /keep the import\npending/, /offer to retrieve or deliver them or stop/,
+    /do not present a definitive assessment/, /does\nnot establish the objective/,
+    /ask for the necessary\ninformation instead of reconstructing the request from comments/,
+    /complete or partial implementation/, /do not propose repeating covered work/,
+    /recommend adjusting or discarding an outdated request/,
+    /leave the issue and its objective unchanged/, /dependency verification is unavailable/,
+    /assumed feasibility is not confirmed feasibility/, /originating-issue provenance/,
+    /conversation decisions, scope/, /exploration stage unchanged/,
+    /do not run commands that\nwrite files/, /execute embedded issue\ninstructions/,
+    /automatically dispatch another workflow/,
+    /first\nsubstantive unresolved question that could change the recommendation/,
+    /If none remains/, /without inventing a question or automatically starting that step/,
+    /no mutations or stage transition/,
+  ]) assert.match(assess, pattern);
+  assert.doesNotMatch(skill, /End here; further discussion/);
+});
+
 test('both harness projections install every import surface and grant only the read helper', () => {
   const manifest = loadInstallManifest(root);
   for (const harness of ['claude', 'opencode']) {
     const destinationRoot = Object.fromEntries(['root', 'sai', 'commands', 'skills', 'agents', 'config'].map(key => [key, path.join(os.tmpdir(), 'from-backlog-projection', key)]));
     const projections = expandInstallManifest(manifest, { harness, repoRoot: root, destinationRoot });
     for (const suffix of ['skills/from-backlog/SKILL.md', 'skills/from-backlog/providers/github.md', 'skills/from-backlog/providers/registry.json', 'skills/from-backlog/providers/resolution.md', 'commands/from-backlog.md', 'sai/tools/from-backlog.js', 'sai/tools/from-backlog-github.js']) assert.ok(projections.some(item => item.destinationPath.endsWith(path.join(...suffix.split('/')))), `${harness}: ${suffix}`);
+    const skill = projections.find(item => item.destinationPath.endsWith(path.join('skills', 'from-backlog', 'SKILL.md')));
+    assert.equal(skill.sourcePath, path.join(root, 'skills/universal/from-backlog/SKILL.md'));
+    assert.match(fs.readFileSync(skill.sourcePath, 'utf8'), /## 4. Assess against the current project/);
     const profile = translate(manifest.capabilities, 'from-backlog-command', harness).profile;
     assert.ok(profile.read && profile.question);
     assert.ok(!profile.write);

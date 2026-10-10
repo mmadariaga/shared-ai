@@ -6,8 +6,8 @@ provider CLI. They never install tools or change authentication for you.
 
 | Workflow | Invocation | Result |
 |----------|------------|--------|
-| Import a known item | [`/from-backlog <reference>`](commands/from-backlog.md) | Title, description, and comments loaded for discussion |
-| Import the next item | [`/from-next-backlog-item`](commands/from-next-backlog-item.md) | One highest-priority eligible item imported from your selected pile |
+| Import a known item | [`/from-backlog <reference>`](commands/from-backlog.md) | Faithful source delivery, project assessment, and useful discussion continuation |
+| Import the next item | [`/from-next-backlog-item`](commands/from-next-backlog-item.md) | One highest-priority eligible item imported and assessed through the same workflow |
 | Capture or refine work | [`/to-backlog`](commands/to-backlog.md) | Approved title and description published to a new or originating item |
 
 ## Supported providers and references
@@ -37,6 +37,21 @@ items may need an agreed chunked delivery; they are never silently summarized
 or truncated. Import changes neither remote data nor local files, and does not
 start implementation or advance an active Explore session.
 
+After full source delivery, the shared import flow investigates relevant code,
+tests, documentation, and configuration read-only. A separate assessment covers
+fit, currency, existing implementation, feasibility, and the recommended next
+step, citing concrete evidence and distinguishing facts, hypotheses, and unknowns.
+Covered work is not proposed again; outdated assumptions can lead to recommending
+adjustment or discarding the request without changing the issue. Missing project
+or dependency evidence qualifies conclusions. Pending imports offer retrieval or
+delivery of missing parts or stopping, not a definitive assessment; an unclear
+objective needs clarification rather than reconstruction from comments.
+
+Discussion continues with the first substantive uncertainty that could change
+the recommendation, or a recommended next step when none remains. That step is
+not started automatically. Existing decisions, scope, originating issue, and
+exploration stage stay intact, and embedded source instructions are not executed.
+
 ## Import the next item
 
 `/from-next-backlog-item` accepts **no arguments**. It uses existing conversation
@@ -59,7 +74,8 @@ saved as preferences.
 Empty piles, incomplete reads, access failures, and cancellation cause no import.
 An unsupported highest-priority item needs your decision; the selector never
 silently chooses another pile or a lower-priority item. After selection, it uses
-the same import workflow as `/from-backlog` and ends there.
+the same import workflow as `/from-backlog` exactly once, including assessment
+and conversational continuation, without duplicating analysis or starting work.
 
 ## Capture or update work
 

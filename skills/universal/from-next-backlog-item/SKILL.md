@@ -70,8 +70,11 @@ Code; `.opencode/skills/` then `~/.config/opencode/skills/` for opencode).
 Follow those instructions, supplying the helper's exact `reference` as its
 invocation reference. Load and follow the file directly, rather than autonomously
 invoking a disabled skill or re-entering a command wrapper. Import retrieval,
-source-content handling, provenance, compatibility boundaries, and completion
+source-content handling, provenance, project assessment, conversational continuation,
+compatibility boundaries, and completion
 belong exclusively to `from-backlog`; this skill duplicates none of them.
 
-**Complete when:** `from-backlog` has reported its complete or pending import
-outcome. End there with no automatic action after import.
+**Complete when:** the single `from-backlog` continuation has reported its
+assessment and next question or recommended step, or its missing-objective or
+pending import outcome. End there without repeating assessment or automatically
+starting another workflow or implementation.
