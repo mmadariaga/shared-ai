@@ -12,7 +12,7 @@ Without `--full` or `--path`, the activated segment list SHALL include the revie
 
 #### Scenario: Zero audits recommended ends the suite
 - **WHEN** a successful review without `--full` or `--path` has at least one legible triage value and none of the three `**Surface touched:**` values is exactly `Yes`
-- **THEN** the composition SHALL dispatch no audits and SHALL use the Direct Build close with `review.md` only; eligible findings receive its correction choice, otherwise the exact literal `Review complete. No audits recommended. Run `/sai-archive {name}` in a new chat when ready.` is preserved
+- **THEN** the composition SHALL dispatch no audits and SHALL use the Direct Build close with `review.md` only; open fixable findings and open Questions receive its round, otherwise the exact literal `Review complete. No audits recommended. Run `/sai-archive {name}` in a new chat when ready.` is preserved
 
 #### Scenario: Missing or wholly illegible review retains the error close
 - **WHEN** review completes without `--full` or `--path` but `review.md` is absent or none of the three triage values is legible
@@ -20,7 +20,7 @@ Without `--full` or `--path`, the activated segment list SHALL include the revie
 
 #### Scenario: Individually illegible triage retains its warning
 - **WHEN** one or two triage values are illegible and the legible values activate no audit
-- **THEN** the composition SHALL retain the summary warning for each illegible value and SHALL evaluate correction eligibility only from the freshly generated review findings, with no authorization inferred from illegibility
+- **THEN** the composition SHALL retain the summary warning for each illegible value and SHALL decide whether the round is asked only from the freshly generated review findings, with no authorization inferred from illegibility
 
 #### Scenario: Full or path scope activates every audit
 - **WHEN** the review completes successfully and `--full` or `--path` was given

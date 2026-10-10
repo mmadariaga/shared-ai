@@ -1,27 +1,26 @@
 # Direct Build Close
 
-The Direct Build close: fix the remaining findings, then land the fix
-in one local commit. The calling coordinator supplies `input` (the findings
-files), `direct-label`, `decline-label`, and `decline-close` (the text that
-closes the run when no fix runs). Selecting `direct-label` consents to delegated
-writes and pre-authorizes exactly one local commit; nothing is dispatched
-before that selection.
+The Direct Build close: ask one round at the end, then fix the selected
+findings and land the fix in one local commit. The calling coordinator supplies
+`input` (the findings files) and `decline-close` (the text that closes the run
+when no fix runs). Fixing anything in the round consents to delegated writes
+and pre-authorizes exactly one local commit; nothing is dispatched before that
+answer.
 
-## Selector
+## Round
 
-1. When `input` reports zero remaining findings, offer no selector; the
-   caller's standard close runs.
-2. Leave open Questions (`Q*`) out of the fix input, and likewise every finding
-   whose fix changes a requirement or the design: name those findings and route
-   them to `/sai-1-spec` or `/sai-2-design`. When no remaining finding can be
-   fixed without such a change, offer no selector: name the blocking Questions and
-   findings and run `decline-close`.
-3. Otherwise present exactly two options through the native picker:
-   `direct-label` and `decline-label`. `decline-label`, or a dismissed picker,
-   dispatches nothing and runs `decline-close`. After `direct-label`, before
-   the fix loop: Fetch @sai/commands/meta-review/findings-selection.md and
-   follow it. Its selected findings and exclusions determine the fix scope; if
-   it returns no selected findings, run `decline-close` without a dispatch.
+Fetch @sai/commands/meta-review/findings-selection.md and follow it. It holds
+the whole round: the qualifying reports, one question per report, and the
+validated selected and excluded sets. A fixable finding is any finding that is
+not a Question (`@sai/policies/finding-state.md`); Questions are answered in
+the round itself, so no finding is routed to another command.
+
+1. When no report qualifies, there is no round; the caller's standard close
+   runs.
+2. When the round returns no selected findings, or the picker is dismissed,
+   dispatch nothing and run `decline-close`.
+3. Otherwise continue with the fix loop below, using the selected findings
+   (answered Questions with their answers) and the exclusions.
 
 ## Fix loop
 
@@ -38,8 +37,9 @@ close with no commit.
 1. Fetch @sai/orchestration/workers/bindings/review-fix-worker.md and use it.
    Dispatch `sai-review-fix-worker` with one `arguments_value`: the marker line
    `--review-fix`, a newline, then the full **selected** findings input and a
-   clearly labeled exclusion list with source-qualified ids and titles. Never
-   forward an excluded finding as a requested fix. When no findings were
+   clearly labeled exclusion list with source-qualified ids and titles (excluded
+   findings and unanswered Questions). Never forward an excluded finding as a
+   requested fix. When no findings were
    excluded, label the exclusion list `none`.
 2. Read the resulting diff read-only and check it against the selected findings
    **and** the exclusions. While selected findings remain or an unauthorized
@@ -55,11 +55,11 @@ close with no commit.
    excluded finding. Stage nothing and commit nothing in every case:
    - The worker returns `failed` before writing and names an excluded-finding
      dependency: show that dependency and return to `findings-selection.md` for
-     one revised selection, then restart this fix loop with a fresh dispatch.
+     one revised round, then restart this fix loop with a fresh dispatch.
      A second conflict in the same close runs `decline-close`.
    - The diff fixes an excluded finding or cannot separate it from a selected
      fix: report the conflict and the written paths, then run `decline-close`;
-     a revised selection needs a new review run.
+     a revised round needs a new review run.
    - Any other `failed` result, or a malformed fix-worker payload: apply the
      resilience rule of `@sai/policies/unattended-runtime-recovery.md`. On yes,
      correct and continue within the three-round cap (no round is added). On no,

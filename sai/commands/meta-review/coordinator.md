@@ -145,10 +145,9 @@
 
      After successful review and a legible triage parse, apply the composition's
      Direct Build close with only the freshly regenerated `review.md`.
-     When no eligible findings remain, print the literal unchanged and stop;
-     retain any warning or blocked-finding explanation required by the Direct Build
-     close. Eligible findings receive the correction choice, with no
-     fix dispatch before explicit Direct Build selection. The review adapter's
+     When no report qualifies for the round, print the literal unchanged and
+     stop; retain any warning the run produced. Open fixable findings and open Questions receive the round, with no
+     fix dispatch before the user chooses to fix. The review adapter's
      own standalone Direct Build close belongs to `/sai-5-review` and never runs
      inside this composition; the composition coordinator owns this close.
 
@@ -169,9 +168,8 @@
     this same run; with zero audits, input is only the freshly regenerated
     `review.md`. Existing non-activated audit reports stay untouched and are
     excluded from eligibility, findings selection, and fix input.
-  - `direct-label = Direct Build (Recommended)`, `decline-label = Run sai-build
-    manually`, and `decline-close` = the run-specific standard close plus guidance
-    to run `/sai-build {name}` by hand.
+  - `decline-close` = the run-specific standard close plus guidance to run
+    `/sai-build {name}` by hand.
 
   When the Error close of `command-bootstrap.md` applies, this Direct Build
   close does not run.

@@ -34,7 +34,7 @@ The activated list keeps the declared order (review → security → performance
 accessibility). When no audit is activated after successful review and a
 legible triage parse, the coordinator applies the Direct Build
 close using only the freshly regenerated `review.md`, with no audit
-dispatches. Eligible findings receive the correction choice;
+dispatches. Open fixable findings and open Questions receive the round;
 when none remain, the exact zero-audit terminal literal is preserved.
 
 ## Error close

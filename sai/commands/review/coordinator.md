@@ -68,7 +68,7 @@
   Fetch @sai/commands/meta-review/direct-build-close.md and follow it with:
 
   - `input` — the freshly generated `review.md` plus `security.md`, `performance.md`, and `accessibility.md` as they exist on disk, never regenerated in this run. Tell the user in chat that those audits may be stale.
-  - `direct-label = Direct Build`, `decline-label = Do not implement anything now`, and `decline-close` = the standard close above.
+  - `decline-close` = the standard close above.
 
   A fix that touches a triage surface leaves `review.md` as written; the audits run later on the fixed tree.
 

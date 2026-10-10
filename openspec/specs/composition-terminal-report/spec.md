@@ -16,12 +16,12 @@ When the final activated audit segment completes, or the review segment complete
 
 ### Requirement: Zero-audit terminal literal
 
-After successful review and a valid triage parse, when zero audits were activated, the composition SHALL apply its existing shared findings-driven Direct Build close using only the freshly generated `review.md`. When no eligible findings remain, its standard close SHALL print exactly the literal `Review complete. No audits recommended. Run `/sai-archive {name}` in a new chat when ready.` and stop, preserving existing warnings and blocked-finding explanations. Eligible findings SHALL receive the existing correction choice, with no fix dispatch before explicit Direct Build selection. The composition SHALL NOT invent a distinct meta-review-only success message that replaces the pinned completion texts. All shared-close paths SHALL retain this run-specific standard close; decline paths SHALL retain the existing manual-build guidance.
+After successful review and a legible triage parse, when zero audits were activated, the composition SHALL apply the Direct Build close using only the freshly generated `review.md`. When no report qualifies for the Direct Build round, its standard close SHALL print exactly the literal `Review complete. No audits recommended. Run `/sai-archive {name}` in a new chat when ready.` and stop, preserving any warning the run produced. Open fixable findings and open Questions SHALL receive the Direct Build round, with no fix dispatch before the user chooses to fix. The composition SHALL NOT invent a distinct meta-review-only success message that replaces the pinned completion texts. All shared-close paths SHALL retain this run-specific standard close; decline paths SHALL retain the existing manual-build guidance.
 
 #### Scenario: Zero-audit literal is exact
-- **WHEN** the review segment completes successfully, the triage parse is valid, no audit segment activates, and no eligible findings remain
-- **THEN** the terminal output SHALL preserve exactly `Review complete. No audits recommended. Run `/sai-archive {name}` in a new chat when ready.` with the resolved change name substituted, followed by the accumulated changed-files union, retaining any existing warnings or blocked-finding explanations
+- **WHEN** the review segment completes successfully, the triage parse is legible, no audit segment activates, and `review.md` has no open fixable finding and no open Question
+- **THEN** the terminal output SHALL preserve exactly `Review complete. No audits recommended. Run `/sai-archive {name}` in a new chat when ready.` with the resolved change name substituted, followed by the accumulated changed-files union, retaining any existing warnings
 
 #### Scenario: Zero-audit eligible findings receive the existing close
-- **WHEN** the review segment completes successfully, the triage parse is valid, no audit segment activates, and the freshly generated `review.md` contains an eligible finding
-- **THEN** the composition SHALL apply the shared Direct Build close and its existing explicit selection, exclusions, fix-loop and one-local-commit boundaries without activating an audit
+- **WHEN** the review segment completes successfully, the triage parse is legible, no audit segment activates, and the freshly generated `review.md` contains an open fixable finding or an open Question
+- **THEN** the composition SHALL apply the Direct Build close with its round, exclusions, fix-loop and one-local-commit boundaries without activating an audit
