@@ -39,6 +39,7 @@ stage and repository content it needs (conflicted files, governing rules, ADR/DD
 indexes of an affected group). The other merge cards (`coordinator.md`,
 `coordinator-stages.md`, `presentation.md`, `lifecycle.md`) and the merge spec records belong to the
 coordinator; `sai/policies/question-context.md` arrives through worker-core.
+The active stage may also require the code-quality policy before authoring code.
 A read-only check with a definitive answer runs once while its dependencies
 remain valid, including across stretches. Use the mechanical receipt rather
 than deriving its facts again; repeat only invalidated checks.

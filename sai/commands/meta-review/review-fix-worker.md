@@ -4,6 +4,8 @@ Fetch @sai/policies/verified-precondition-handback.md
 Fetch @sai/orchestration/worker-core.md and follow it exactly.
 Fetch @sai/policies/remember.md
 Fetch @sai/policies/repository-artifact-scope.md and use it.
+Fetch @sai/policies/code-quality-priority-stack.md
+Apply it only to the selected findings, retaining the exclusions and role restrictions.
 
 ## Invocation Envelope
 

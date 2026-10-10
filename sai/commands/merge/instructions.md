@@ -300,6 +300,12 @@ On the answer:
 
 #### Writing the resolution
 
+Before authoring a code resolution or a coordinator-authorized code correction,
+Fetch @sai/policies/code-quality-priority-stack.md
+Apply it within the approved strategy, behavior-preservation requirements, and
+authorized ranges; those restrictions prevail. Choosing a complete existing
+version (`git-ours` / `git-theirs`) alone requires no policy load.
+
 The tool places the bytes; you supply the text. Send every region of every
 `authored` file through one call, with the resolved text on standard input:
 
@@ -382,6 +388,12 @@ Payload rules:
   `selected_contextual_decisions` holds one record per semantic conflict.
 
 ### Step 8: Test correction
+
+Before authoring a proposed code correction,
+Fetch @sai/policies/code-quality-priority-stack.md
+Apply it within the approved strategy and behavior-preservation requirements;
+those restrictions prevail. This load grants no write: the coordinator must
+authorize and capture the correction ranges before application in `apply`.
 
 The coordinator runs the suite after it has validated, reviewed, and staged
 the resolution. It continues you here only when round 1 or 2 failed, with the
