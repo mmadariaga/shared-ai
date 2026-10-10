@@ -7,7 +7,7 @@ TBD - created by archiving change trim-performance-report-and-instructions. Upda
 
 ### Requirement: Diagnostics are opt-in with --runtime
 
-`/sai-7-performance` SHALL accept a `--runtime` option, parsed in `steps/common.md` § Scope beside `--tier` and accepted by the `worker.md` Change Resolution grammar. The `resolve-diagnostics` step SHALL run only with `--runtime`. Without `--runtime`, the worker SHALL report `resolve-diagnostics` in the same progress event as `audit-performance-tiers`, SHALL ask no question, and the findings SHALL keep their estimated marks. Step ids, labels, and the `performance-standalone@1` machine SHALL stay unchanged.
+`/sai-7-performance` SHALL accept a `--runtime` option, declared in `sai/commands/performance/options.md` beside `--tier` and applied in `steps/common.md` § Scope. Without `--runtime`, `resolve-diagnostics` SHALL resolve its gate as skipped without asking: the worker SHALL report `resolve-diagnostics` in the same progress event as `audit-performance-tiers`, SHALL ask no question, and the findings SHALL keep their estimated marks. Step ids, labels, and the `performance-standalone@1` machine SHALL stay unchanged.
 
 #### Scenario: Run without --runtime
 - **WHEN** `/sai-7-performance` runs without `--runtime` and the tier audit completes

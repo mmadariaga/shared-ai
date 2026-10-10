@@ -13,12 +13,16 @@ An ordered sequence of at most four phase adapters:
 - position 2 — performance phase adapter (`sai/commands/performance/coordinator.md`)
 - position 3 — accessibility phase adapter (`sai/commands/accessibility/coordinator.md`)
 
-Positions 1–3 run only when the triage parse activates them.
+Positions 1–3 run only when the triage parse activates them, except that
+`--full` or `--path` activates all three without the triage parse. Those two
+options ask to look beyond the diff, which the triage saves work by reading.
+Each segment runs with only the options its own `options.md` declares.
 
 ## Triage parse
 
-After the review segment completes successfully, read exactly three values
-from the freshly regenerated `openspec/changes/{change-name}/review.md`: the
+With `--full` or `--path`, no triage parse runs and the Error close below does
+not apply. Otherwise, after the review segment completes successfully, read
+exactly three values from the freshly regenerated `openspec/changes/{change-name}/review.md`: the
 `**Surface touched:**` field under each of `## Security Surface Triage`,
 `## Performance Surface Triage`, and `## Accessibility Surface Triage`. A value
 of exactly `Yes` activates the matching audit segment; exactly `No` leaves it

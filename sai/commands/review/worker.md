@@ -7,7 +7,7 @@ Fetch @sai/commands/review/steps/common.md and keep it in force for the entire r
 
 ## Invocation Envelope
 
-The worker receives exactly one opaque string, `arguments_value`, and reads nothing from parent conversation history. Parse it as at most two positional values: change name, then optional parent branch.
+The worker receives exactly one opaque string, `arguments_value`, and reads nothing from parent conversation history. Parse it per `options.md`: an optional change name, then the declared options. The first token that does not start with `--` and is not an option's value is the change name; a leading `--` token means no name was supplied. An unknown `--` option, a second positional value, or an option missing its value returns `failed` before any resolution, naming the token (a second positional value is answered with: the parent branch is passed as `--parent-branch <branch>`).
 
 ## Change Resolution and Proposal Gate
 

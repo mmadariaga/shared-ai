@@ -41,10 +41,10 @@ Before review analysis, the worker SHALL enforce the required `proposal.md` and 
 
 ### Requirement: Change resolution parses positional arguments
 
-The worker SHALL parse the resolved `arguments_value` as up to two positional values: the first token is the change name and the remaining token is the optional parent branch. It SHALL resolve a non-empty value before invoking the active-change picker; when no name is supplied, it SHALL preserve the existing zero/one/multiple picker behavior and CLI order. No wrapper-echo source or wrapper precedence exists.
+The worker SHALL parse the resolved `arguments_value` per `sai/commands/review/options.md`: an optional change name, then the declared options. The first token that does not start with `--` and is not an option's value is the change name, and the `--parent-branch` value is the optional parent branch. An unknown `--` option, an option missing its value, or a second positional value SHALL return `failed` before any resolution and name the token. A second positional value SHALL be answered with a message stating that the parent branch is passed as `--parent-branch <branch>`. The worker SHALL resolve a non-empty name before invoking the active-change picker. When no name is supplied, it SHALL preserve the existing zero/one/multiple picker behavior and CLI order. No wrapper-echo source or wrapper precedence exists.
 
 #### Scenario: Explicit change and parent branch are supplied
-- **WHEN** the resolved argument string is `my-change develop`
+- **WHEN** the resolved argument string is `my-change --parent-branch develop`
 - **THEN** the worker resolves `my-change` as the change name
 - **AND** it carries `develop` into parent-branch detection without treating it as part of the change name
 
@@ -53,12 +53,16 @@ The worker SHALL parse the resolved `arguments_value` as up to two positional va
 - **THEN** the worker requests a selection with options in CLI-preserved order
 - **AND** it does not resolve a name until the user selects one of those options
 
+#### Scenario: Positional parent branch is rejected
+- **WHEN** the resolved argument string is `my-change develop`
+- **THEN** the worker returns `failed` naming `develop` and stating that the parent branch is passed as `--parent-branch <branch>`
+
 ### Requirement: Parent branch and diff scope remain unchanged
 
-The worker SHALL detect the parent branch as the first candidate that verifies, in the existing order: user-provided branch, remote default branch, `master`, then `main`; when no candidate verifies it SHALL return `failed` naming the candidates tried. It SHALL check the name-status for an empty diff before reading change artifacts or loading the diff. It SHALL state the selected parent branch, compute the `{parent}...HEAD` name-status, stat, commit map, and diff, enforce the existing 500-LOC full-diff threshold and eight-call maximum for `budget-explorer` delegation, and terminate with exactly `No changes detected against {parent-branch}. Nothing to review.` when the diff is empty.
+The worker SHALL detect the parent branch as the first candidate that verifies, in this order: the `--parent-branch` value, remote default branch, `master`, then `main`. When no candidate verifies, it SHALL return `failed` naming the candidates tried. It SHALL check the name-status for an empty diff before reading change artifacts or loading the diff. It SHALL state the selected parent branch and compute the `{parent}...HEAD` name-status, stat, commit map, and diff. It SHALL enforce the existing 500-LOC full-diff threshold and eight-call maximum for `budget-explorer` delegation. When the diff is empty, it SHALL terminate with exactly `No changes detected against {parent-branch}. Nothing to review.`
 
 #### Scenario: Parent branch is inferred
-- **WHEN** the user does not provide a parent branch
+- **WHEN** the user does not pass `--parent-branch`
 - **THEN** the worker tries the remote default branch before verified `master` and `main`
 - **AND** the selected branch is included in the worker-authored terminal summary
 
@@ -68,7 +72,7 @@ The worker SHALL detect the parent branch as the first candidate that verifies, 
 - **AND** it delegates per-file or logical-group inspection to read-only `budget-explorer` branches within the existing maximum
 
 #### Scenario: No parent-branch candidate verifies
-- **WHEN** neither the supplied branch, the remote default, `master`, nor `main` verifies
+- **WHEN** neither the `--parent-branch` value, the remote default, `master`, nor `main` verifies
 - **THEN** the worker returns `failed` naming the candidates tried and computes no diff
 
 ### Requirement: Passes 1 through 11 preserve the existing review policy

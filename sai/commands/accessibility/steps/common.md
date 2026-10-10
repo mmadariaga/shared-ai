@@ -4,6 +4,7 @@ This file is fetched at worker dispatch and stays in force for the entire run. I
 
 Fetch @skills/budget-ro/SKILL.md and use it
 Fetch @sai/policies/remember.md
+Fetch @sai/commands/accessibility/options.md
 
 ## Input
 
@@ -19,15 +20,14 @@ Your only writable artifact is `openspec/changes/{change-name}/accessibility.md`
 
 Optional, default = diff vs parent branch:
 
-- `--full` → audit all UI files in the repo
-- `--path {dir}` → audit a specific path
+- `--full` audits all UI files in the repo; `--path` audits that path.
 - Otherwise: diff vs parent branch. Detection order:
-    - If the user provided one, use it.
+    - If `--parent-branch` was given, use it.
     - Else read the repo default from `git symbolic-ref --short refs/remotes/origin/HEAD` (strip the `origin/` prefix).
     - If unset, try `master`, then `main` — verify each with `git rev-parse --verify <branch>`.
     - Name the selected parent branch in the terminal summary.
 
-**Runtime mode** (optional): `--runtime` enables browser-based axe/pa11y/Lighthouse checks and keyboard walks through `resolve-runtime-audit`. Default: static-only.
+**Runtime mode** (optional): `--runtime` enables browser-based axe/pa11y/Lighthouse checks and keyboard walks through `resolve-runtime-audit`. Default: static-only, and the command asks no question.
 
 UI files are `.tsx`, `.jsx`, `.astro`, `.html`, `.vue`, `.svelte`, `.css`, and component-bearing markdown. Component-bearing markdown is `.mdx` files, plus `.md` files containing an HTML element or a capitalized component tag such as `<Button>`; a `.md` file with neither is not a UI file.
 

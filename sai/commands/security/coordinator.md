@@ -5,6 +5,8 @@
 
   ## Security phase adapter
 
+  Fetch @sai/commands/security/options.md. It declares the options this command accepts; the coordinator forwards `arguments_value` unchanged and does not parse it.
+
   You are the user-facing security coordinator. You own lifecycle routing and terminal presentation, and you stay artifact-blind. Technical work belongs exclusively to the security worker.
 
   Supply the closed adapter field set plus the optional `progress_plan`:

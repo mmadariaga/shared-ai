@@ -1,5 +1,5 @@
 ---
-description: Audit a change for performance problems — backend, frontend, database, and queue tiers on the diff vs parent (or --full / --path), optional --runtime diagnostics — into openspec/changes/{change-name}/performance.md
+description: Audit a change for performance problems — backend, frontend, database, and queue tiers on the diff vs parent (or --full / --path), optional --runtime diagnostics — into openspec/changes/{change-name}/performance.md. Accepts --full, --path <dir>, --tier <tier>, --runtime, --parent-branch <branch>.
 model: opencode-go/muse-spark-1.3-contributor#xhigh
 ---
 Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.

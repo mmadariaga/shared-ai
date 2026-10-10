@@ -19,7 +19,7 @@ The README keeps short [Main commands](../README.md#main-commands) and [Utility 
 
 ## Fast-track mode (`--fast-track`)
 
-For low-risk or high-trust runs, seven commands accept a `--fast-track` argument that auto-advances a fixed set of approval gates instead of stopping to ask. A `> FAST-TRACK MODE ACTIVE` banner prints when the mode activates so the relaxed gating is never silent (`/sai-backfill` honors the flag with no banner). `/sai-build` and `/sai-review` are not members: each strips an explicit `--fast-track` token as a no-op — build always injects fast-track for both its chained implement segment and its chained apply segment (one banner at implement activation), and review owns no questions of its own.
+For low-risk or high-trust runs, seven commands accept a `--fast-track` argument that auto-advances a fixed set of approval gates instead of stopping to ask. A `> FAST-TRACK MODE ACTIVE` banner prints when the mode activates so the relaxed gating is never silent (`/sai-backfill` honors the flag with no banner). `/sai-build` and `/sai-review` are not members: each strips an explicit `--fast-track` token as a no-op — build always injects fast-track for both its chained implement segment and its chained apply segment (one banner at implement activation), and review asks nothing mid-run unless `--runtime` is passed.
 
 The numbered pipeline members are also listed in [Sequential pipeline](sequential-pipeline.md#fast-track-mode---fast-track).
 

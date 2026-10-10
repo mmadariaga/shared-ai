@@ -136,6 +136,8 @@ changing the common workflow or resolver.
 
 /sai-review <change-name>         # review bugs, resilience, maintainability, and test quality;
                                   # coordinate security, performance, and accessibility audits
+                                  # options: --full, --path <dir>, --tier <tier>, --runtime,
+                                  # --parent-branch <branch>
 
 # If review findings need fixes, run sai-build again, then repeat review
 

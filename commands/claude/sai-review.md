@@ -1,6 +1,6 @@
 ---
-description: Review a change, run the security / performance / accessibility audits the review recommends, and optionally fix the findings with Direct Build (one local commit).
-argument-hint: "[change-name]"
+description: Review a change, run the security / performance / accessibility audits the review recommends, and optionally fix the findings with Direct Build (one local commit). Accepts --full, --path <dir>, --tier <tier>, --runtime, --parent-branch <branch>.
+argument-hint: "[change-name] [optional: --full | --path <dir>] [optional: --tier backend|frontend|db|queue] [optional: --runtime] [optional: --parent-branch <branch>]"
 model: opus
 effort: medium
 allowed-tools: {{capabilityAllowedTools}}

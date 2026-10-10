@@ -25,12 +25,30 @@
 
   ## Pre-resolution envelope normalization
   Before change resolution, strip every `--fast-track` token from the selected
-  `arguments_value` in any token order. The cleaned remainder is the change-name
-  input to the standard change-consuming resolution order. Stripping does NOT make
-  `/sai-review` a fast-track mode, and does NOT activate a review-local fast-track
-  mode. Explicit `--fast-track` on `/sai-review` is a behavioral no-op for phase
-  order, injection, and gates. `/sai-review` owns no questions of its own; the
-  happy path is fully deterministic.
+  `arguments_value` in any token order. Stripping does NOT make `/sai-review` a
+  fast-track mode, and does NOT activate a review-local fast-track mode.
+  Explicit `--fast-track` on `/sai-review` is a behavioral no-op for phase
+  order, injection, and gates. `/sai-review` asks nothing mid-run unless the user
+  passes `--runtime`; with it, each segment's runtime question pauses only that
+  segment.
+
+  Then split the remainder into the change name and the options. Fetch
+  `@sai/commands/review/options.md`, `@sai/commands/security/options.md`,
+  `@sai/commands/performance/options.md`, and
+  `@sai/commands/accessibility/options.md`: the options `/sai-review` accepts
+  are exactly the union of the options those four declarations list, and the
+  composition keeps no list of its own.
+
+  - A token that starts with `--` is an option; an option that takes a value
+    (`--path`, `--tier`, `--parent-branch`) consumes the next token as its
+    value. The one token left over is the change name. A second leftover
+    token stops the command before any dispatch, naming the token; the
+    parent branch is written `--parent-branch <branch>`.
+  - An option that no declaration lists, or an option missing its value, stops
+    the command before any dispatch with a message that names that option.
+  - The change name is the input to the standard change-consuming resolution
+    order. With options and no change name, the picker resolves the change and
+    the options are kept.
 
   ## Single change resolution
   Resolve the target OpenSpec change name exactly once at the start of the
@@ -45,32 +63,38 @@
   path table.
 
   ## Composition-minted segment envelopes
-  After resolution of `{name}`:
+  After resolution of `{name}`, each segment receives the change name followed
+  by only the options its own `options.md` declares, in the order and with the
+  values the user wrote them. `{options-for-X}` is that possibly empty list:
 
   - **Review envelope**:
-    `{command_name: review, arguments_value: {name}}`
+    `{command_name: review, arguments_value: {name} {options-for-review}}`
   - **Security envelope** (when activated):
-    `{command_name: security, arguments_value: {name}}`
+    `{command_name: security, arguments_value: {name} {options-for-security}}`
   - **Performance envelope** (when activated):
-    `{command_name: performance, arguments_value: {name}}`
+    `{command_name: performance, arguments_value: {name} {options-for-performance}}`
   - **Accessibility envelope** (when activated):
-    `{command_name: accessibility, arguments_value: {name}}`
+    `{command_name: accessibility, arguments_value: {name} {options-for-accessibility}}`
 
   Each envelope is composition-built; segments do not re-run change-picker or
-  prerequisite checks.
+  prerequisite checks. The review segment never receives `--full` or `--path`:
+  it keeps reviewing the diff.
 
   ## Review segment execution
   Position 0 (review) always runs. Dispatch the review worker through the review
   phase adapter. The review segment regenerates `review.md` from the current diff.
   After the review segment completes successfully, perform the triage parse
   declared in `command-bootstrap.md` and activate the audit segments it
-  returns. Activating an audit always regenerates its artifact (overwriting any
+  returns; with `--full` or `--path`, skip the triage and activate all three
+  audit segments. Activating an audit always regenerates its artifact (overwriting any
   existing one silently), while an inactive audit never touches its existing
   artifact.
 
-  If the review segment returns `failed` or `cancelled`, close the invocation
+  If the review segment returns `failed` or `cancelled` (an empty diff returns
+  `cancelled`, also with `--full` or `--path`), close the invocation
   without activating any audit segment. Report the failure or clean-stop summary
-  and the accumulated changed-files union.
+  and the accumulated changed-files union, followed by one line per option
+  aimed only at an audit, stating that it had no effect.
 
   ## Soft-parallel audit dispatch
   When one or more audit segments are activated, dispatch their workers
@@ -109,7 +133,11 @@
      status (completed / failed / cancelled) and the path to its artifact.
   2. **Cross-segment changed-files union** — the ordered, duplicate-free union
      across all segments in first-seen order.
-  3. **Zero-audit standard close** — when zero audits were activated, use
+  3. **Unused options** — one line for each option aimed only at a segment that
+     did not run (for example `--tier` when performance did not run), stating
+     that it had no effect and naming the segment. These lines print before the
+     run's standard close, which stays unchanged.
+  4. **Zero-audit standard close** — when zero audits were activated, use
      exactly this literal as the standard close for the Direct Build
      close below:
 
