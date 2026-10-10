@@ -110,11 +110,18 @@ test('canonical performance worker accepts the scope grammar and names the insta
   const worker = artifact('sai/commands/performance/worker.md');
   const common = artifact('sai/commands/performance/steps/common.md');
 
-  for (const flag of ['--full', '--path {dir}', '--tier backend|frontend|db|queue', '--runtime']) {
-    assert.ok(worker.includes(`\`${flag}\``), `the Change Resolution grammar should accept ${flag}`);
-    assert.ok(common.includes(`\`${flag}\``), `common.md § Scope should parse ${flag}`);
+  const options = artifact('sai/commands/performance/options.md');
+
+  for (const flag of ['--full', '--path <dir>', '--tier backend|frontend|db|queue', '--runtime', '--parent-branch <branch>']) {
+    assert.ok(options.includes(`\`${flag}\``), `options.md should declare ${flag}`);
   }
-  assert.match(worker, /parent branch per `steps\/common\.md` § Scope|parent-branch values accepted by `steps\/common\.md` § Scope/);
+  for (const flag of ['--full', '--path', '--tier', '--runtime', '--parent-branch']) {
+    assert.ok(common.includes(`\`${flag}\``), `common.md § Scope should apply ${flag}`);
+  }
+  assert.match(worker, /per `options\.md`/);
+  assert.match(common, /Fetch @sai\/commands\/performance\/options\.md/);
+  assert.match(artifact('sai/commands/performance/coordinator.md'), /Fetch @sai\/commands\/performance\/options\.md/);
+  assert.match(worker, /second positional value/);
   assert.match(common, /^## Scope$/m);
   assert.match(common, /## Scope[\s\S]*?parent branch\. Detection order/);
   assert.doesNotMatch(common, /§ Prerequisites/, 'no reference may point to a Prerequisites section');

@@ -2,6 +2,7 @@
 
   Fetch @sai/policies/verified-precondition-handback.md
   Fetch @sai/policies/stage-machine.md and follow it for every store interaction.
+  Fetch @sai/commands/review/options.md. It declares the options this command accepts; the coordinator forwards `arguments_value` unchanged and does not parse it.
 
   ## Your Role: Review Phase Coordinator
 

@@ -4,6 +4,7 @@ This file is fetched at worker dispatch and stays in force for the entire run. I
 
 Fetch @skills/budget-ro/SKILL.md and use it
 Fetch @sai/policies/remember.md
+Fetch @sai/commands/performance/options.md
 
 ## Input
 
@@ -19,12 +20,10 @@ The first argument is the change name (kebab-case). Read from `openspec/changes/
 
 Optional, default = diff vs parent branch:
 
-- `--full` → audit the whole repository
-- `--path {dir}` → audit a specific path
-- `--tier backend|frontend|db|queue` → audit a single tier. Default: all detected tiers.
-- `--runtime` → enable the read-only diagnostics of `resolve-diagnostics`. Default: no diagnostics.
+- `--full` audits the whole repository; `--path` audits that path; `--tier` keeps a single tier.
+- `--runtime` enables the diagnostics of `resolve-diagnostics`; without it the command asks no question.
 - Otherwise: diff vs parent branch. Detection order:
-    - If the user provided one, use it.
+    - If `--parent-branch` was given, use it.
     - Else read the repo default from `git symbolic-ref --short refs/remotes/origin/HEAD` (strip the `origin/` prefix).
     - If unset, try `master`, then `main` — verify each with `git rev-parse --verify <branch>`.
 

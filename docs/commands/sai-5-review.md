@@ -6,7 +6,9 @@ Reviews the completed changes and produces a report with problems, risks, omissi
 
 ## Flags and behavior modifiers
 
-It has no documented behavior flags. It receives the change name and the completed changes to analyze.
+- `--parent-branch <branch>`: the branch the change is compared against. It is the only way to name it; a bare second word is rejected.
+
+It receives the change name and reviews the diff only, so it has no `--full` or `--path`. It asks nothing between choosing the change and finishing.
 
 ## In detail
 

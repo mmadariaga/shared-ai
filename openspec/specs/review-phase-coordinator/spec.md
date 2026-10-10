@@ -30,12 +30,12 @@ The review coordinator SHALL reuse `sai/orchestration/command-runner.md` unchang
 
 ### Requirement: Review invocation envelope preserves both positional arguments
 
-The coordinator SHALL construct `original_envelope` with the complete argument string preserved in `arguments_value`. Both Claude Code and opencode SHALL carry the change name and optional parent branch in that one field for worker-owned parsing. No wrapper-echo field is used.
+The coordinator SHALL construct `original_envelope` with the complete argument string preserved in `arguments_value`. Both Claude Code and opencode SHALL carry the change name and the optional `--parent-branch <branch>` option in that one field for worker-owned parsing. The coordinator SHALL fetch `sai/commands/review/options.md` and SHALL NOT parse `arguments_value`. No wrapper-echo field is used.
 
 #### Scenario: Routed review receives a parent branch
-- **WHEN** the user invokes `/sai-5-review my-change develop`
-- **THEN** the worker receives both `my-change` and `develop` within `arguments_value`
-- **AND** the coordinator does not resolve or discard either positional value
+- **WHEN** the user invokes `/sai-5-review my-change --parent-branch develop`
+- **THEN** the worker receives `my-change`, `--parent-branch`, and `develop` within `arguments_value`
+- **AND** the coordinator does not resolve or discard any of those values
 
 ### Requirement: Coordinator performs no technical review I/O
 

@@ -2,6 +2,7 @@
 
   Fetch @sai/policies/verified-precondition-handback.md
   Fetch @sai/policies/stage-machine.md and follow it for every store interaction; verbs, errors, quoting, pointer, and degraded-mode handling are single-sourced there and are not restated here.
+  Fetch @sai/commands/accessibility/options.md. It declares the options this command accepts; the coordinator forwards `arguments_value` unchanged and does not parse it.
 
   ## Accessibility phase adapter (`accessibility_coordinator_adapter`)
 

@@ -6,7 +6,11 @@ Looks for vulnerabilities and security risks in the completed changes. It explai
 
 ## Flags and behavior modifiers
 
-It has no documented behavior flags. It receives the change name and the changes to audit.
+- `--full`: audits the whole repository instead of only the diff.
+- `--path <dir>`: audits one path.
+- `--parent-branch <branch>`: the branch the change is compared against. It is the only way to name it; a bare second word is rejected.
+
+It receives the change name and asks nothing between choosing the change and finishing.
 
 ## In detail
 

@@ -1,5 +1,5 @@
 ---
-description: Review a change, run the security / performance / accessibility audits the review recommends, and optionally fix the findings with Direct Build (one local commit).
+description: Review a change, run the security / performance / accessibility audits the review recommends, and optionally fix the findings with Direct Build (one local commit). Accepts --full, --path <dir>, --tier <tier>, --runtime, --parent-branch <branch>.
 model: opencode-go/muse-spark-1.3-contributor#xhigh
 subtask: false
 ---

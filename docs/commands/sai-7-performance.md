@@ -6,7 +6,13 @@ Detects performance problems introduced by the changes. It looks for operations 
 
 ## Flags and behavior modifiers
 
-It has no documented behavior flags. It receives the change name and the changes to analyze.
+- `--full`: audits the whole repository instead of only the diff.
+- `--path <dir>`: audits one path.
+- `--tier backend|frontend|db|queue`: audits a single tier. By default every detected tier is audited.
+- `--runtime`: runs read-only diagnostics that firm up the numbers in the findings, each after you authorize it. It is the only option that makes the command ask a question mid-run.
+- `--parent-branch <branch>`: the branch the change is compared against. It is the only way to name it; a bare second word is rejected.
+
+It receives the change name. Without `--runtime` it asks nothing between choosing the change and finishing, and the numbers in the findings stay marked as estimates.
 
 ## In detail
 

@@ -1,6 +1,6 @@
 ---
-description: Audit a change's UI against WCAG 2.2 AA — static review of the diff vs parent (or --full / --path), optional --runtime axe/pa11y/Lighthouse — into openspec/changes/{change-name}/accessibility.md
-argument-hint: "[change-name] [optional: --full | --path {dir}] [optional: --runtime] [optional: parent branch]"
+description: Audit a change's UI against WCAG 2.2 AA — static review of the diff vs parent (or --full / --path), optional --runtime axe/pa11y/Lighthouse — into openspec/changes/{change-name}/accessibility.md. Accepts --full, --path <dir>, --runtime, --parent-branch <branch>.
+argument-hint: "[change-name] [optional: --full | --path {dir}] [optional: --runtime] [optional: --parent-branch <branch>]"
 model: sonnet
 effort: high
 allowed-tools: {{capabilityAllowedTools}}

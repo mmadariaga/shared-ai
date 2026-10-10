@@ -2,7 +2,9 @@
 
 ## Purpose
 TBD - created by archiving change sai-5-review-coordinator-worker-split. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: Installer projects every routed review surface
 
 The installation manifest SHALL project the review coordinator/invocation assets, numbered review worker contract, Claude and opencode bindings, and Claude managed worker agent to their established destinations. It SHALL NOT project either harness's retired forwarding skill. Projection order and ownership metadata SHALL remain deterministic.
@@ -57,7 +59,7 @@ The Claude Code and opencode `/sai-5-review` wrappers SHALL be thin routed wrapp
 #### Scenario: opencode wrapper is inspected
 - **WHEN** the opencode review wrapper is loaded
 - **THEN** it fetches the review coordinator and opencode review-worker binding
-- **AND** it forwards the complete substituted argument string through `arguments_value`, preserving the optional parent branch for worker-owned parsing
+- **AND** it forwards the complete substituted argument string through `arguments_value`, preserving the optional `--parent-branch <branch>` option for worker-owned parsing
 
 ### Requirement: Installer cleanup does not remove unrelated user workers
 

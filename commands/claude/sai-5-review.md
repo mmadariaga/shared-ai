@@ -1,6 +1,6 @@
 ---
-description: Review a change's diff against its OpenSpec artifacts into review.md, recommend security/performance/accessibility audits, and optionally fix the findings with Direct Build (one local commit).
-argument-hint: "[change-name] [optional: parent branch]"
+description: Review a change's diff against its OpenSpec artifacts into review.md, recommend security/performance/accessibility audits, and optionally fix the findings with Direct Build (one local commit). Accepts --parent-branch <branch>.
+argument-hint: "[change-name] [optional: --parent-branch <branch>]"
 model: sonnet
 effort: high
 allowed-tools: {{capabilityAllowedTools}}

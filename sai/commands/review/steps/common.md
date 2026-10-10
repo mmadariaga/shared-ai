@@ -2,6 +2,7 @@
 
 Fetch @skills/budget-ro/SKILL.md and use it
 Fetch @sai/policies/remember.md
+Fetch @sai/commands/review/options.md
 
 ## Role
 

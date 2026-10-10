@@ -4,6 +4,7 @@ This file is fetched at worker dispatch and stays in force for the entire run. I
 
 Fetch @skills/budget-ro/SKILL.md and use it
 Fetch @sai/policies/remember.md
+Fetch @sai/commands/security/options.md
 
 ## Input
 
@@ -19,10 +20,9 @@ The first argument is the change name (kebab-case). Read from `openspec/changes/
 
 Optional, default = diff vs parent branch:
 
-- `--full` → scan the whole repository
-- `--path {dir}` → scan a specific path
+- `--full` scans the whole repository; `--path` scans that path.
 - Otherwise: diff vs parent branch. Detection order:
-    - If the user provided one, use it.
+    - If `--parent-branch` was given, use it.
     - Else read the repo default from `git symbolic-ref --short refs/remotes/origin/HEAD` (strip the `origin/` prefix).
     - If unset, try `master`, then `main` — verify each with `git rev-parse --verify <branch>`.
     - Name the selected parent branch in the terminal summary.

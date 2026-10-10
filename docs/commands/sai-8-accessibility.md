@@ -6,7 +6,12 @@ Reviews interface changes to find accessibility barriers and check compatibility
 
 ## Flags and behavior modifiers
 
-It has no documented behavior flags. It receives the change name and the interface changes to review.
+- `--full`: audits all interface files in the repository instead of only the diff.
+- `--path <dir>`: audits one path.
+- `--runtime`: runs browser checks, each after you authorize it. It is the only option that makes the command ask a question mid-run; without it the review is static only.
+- `--parent-branch <branch>`: the branch the change is compared against. It is the only way to name it; a bare second word is rejected.
+
+It receives the change name and asks nothing between choosing the change and finishing unless `--runtime` is passed.
 
 ## In detail
 
