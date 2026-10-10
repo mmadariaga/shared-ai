@@ -66,6 +66,16 @@ const guard = require('./no-commit-guard');
 const { checkCommitRules } = require('./lint');
 
 const DISPATCHES = ['red', 'green', 'green-direct', 'green-exception'];
+
+/** The leftover marker GREEN must remove; built by concatenation so this source never contains it. */
+const SKELETON_MARKER = 'TODO(' + 'sai-4)';
+/** Instruction verbs valid only in a Step with a RED block (see the plan's Detail range). */
+const SKELETON_VERB = 'Complete the skeleton below';
+const DESCRIBED_VERB = 'Write the content described below';
+/** Every instruction verb preflight interprets; the two Detail range verbs are Step-with-RED only. */
+const INSTRUCTION_VERBS = ['Write the test', 'Create a minimal stub', 'Copy and paste', SKELETON_VERB, DESCRIBED_VERB, 'Modify', 'Update', 'Delete', 'Remove'];
+const INSTRUCTION_RE = new RegExp(`(?:${INSTRUCTION_VERBS.join('|')}).*\\b(?:at|into|in)\\b`);
+
 const TAIL_LINES = 20;
 const COMMAND_TIMEOUT_MS = 10 * 60 * 1000;
 
@@ -202,6 +212,7 @@ function parseStep(planText, step) {
     retirements: [],
     updates: [],
     instructionPaths: [],
+    skeletonPaths: [],
     automated: [],
     automatedRange: null,
   };
@@ -250,6 +261,7 @@ function parseStep(planText, step) {
     }
     if (phase === 'pre' || phase === 'green') {
       if (/^\s*-\s+\[.\]/.test(line)) info.instructionPaths.push(...pathsOf(line));
+      if (phase === 'green' && /^\s*-\s+\[.\]\s+Complete the skeleton below\b/.test(line)) info.skeletonPaths.push(...pathsOf(line));
     }
     if (phase === 'checklist') {
       if (/^\*\*Automated/.test(line)) {
@@ -273,6 +285,7 @@ function parseStep(planText, step) {
   info.redPaths = unique(info.redPaths);
   info.testPaths = unique(info.testPaths);
   info.instructionPaths = unique(info.instructionPaths);
+  info.skeletonPaths = unique(info.skeletonPaths);
   info.sectionStart = section.start;
   return info;
 }
@@ -411,7 +424,8 @@ function preflight(opts) {
     }
     for (let j = 0; j < body.length; j++) {
       const l = body[j];
-      if (/^\s*-\s+\[[ xX]\]/.test(l) && /(?:Write the test|Create a minimal stub|Copy and paste|Modify|Update|Delete|Remove).*\b(?:at|into|in)\b/.test(l)) {
+      if (/^\s*-\s+\[[ xX]\]/.test(l) && INSTRUCTION_RE.test(l)) {
+        if (!info.hasRedBlock && new RegExp(`\\[[ xX]\\]\\s+(?:${SKELETON_VERB}|${DESCRIBED_VERB})\\b`).test(l)) fail(n, section.start + j + 1, 'skeleton and described-content instructions are valid only in a Step with a RED block');
         const ps = pathsOf(l);
         if (ps.length === 0 || ps.some((p) => !safePath(p))) fail(n, section.start + j + 1, 'required instruction path is not recognized');
         else if (ps.some((p) => !recognizedPaths.includes(p))) fail(n, section.start + j + 1, 'instruction is not interpreted by Apply');
@@ -811,6 +825,22 @@ function requireAlreadySatisfiedStep(opts, info) {
   if (!info.hasRedBlock || info.testPaths.length === 0) throw new ToolError('--already-satisfied requires a Step with a RED block that names test files');
 }
 
+/** Occurrences of the skeleton marker in a text. */
+const markerCount = (text) => (text === null ? 0 : text.split(SKELETON_MARKER).length - 1);
+
+/**
+ * Leftover-marker check for the files a GREEN block names with the skeleton verb:
+ * the working-tree count must not exceed the file's HEAD count (a file absent from HEAD counts 0).
+ */
+function skeletonMarkers(cwd, info) {
+  return info.skeletonPaths.filter(safePath).map((p) => {
+    const worktree = markerCount(readIfExists(path.join(cwd, p)));
+    const shown = git(['show', `HEAD:${p}`], cwd);
+    const base = shown.status === 0 ? markerCount(shown.stdout) : 0;
+    return { path: p, base, count: worktree, leftover: worktree > base };
+  });
+}
+
 function verify(opts, stdin) {
   loadRecord(opts.baseline, opts, 'baseline');
   if (!opts.checkpoint && opts.baselineOnly !== true) throw new ToolError('--checkpoint is required (or explicit --baseline-only cumulative compatibility verification)');
@@ -870,6 +900,9 @@ function verify(opts, stdin) {
     }
   }
 
+  const skeleton = dispatch === 'red' ? [] : skeletonMarkers(cwd, info);
+  for (const m of skeleton) if (m.leftover) failures.push(`leftover ${SKELETON_MARKER} marker in ${m.path}: ${m.count} found, ${m.base} at Step base`);
+
   const second = sweep(cwd, change, opts.parentWasAbsent && first.length === 0);
   if (sweepLine(second)) sweepLines.push(sweepLine(second));
   files = resolveGenerated(cwd, files);
@@ -909,6 +942,7 @@ function verify(opts, stdin) {
     failures,
     unjudged,
     retirements,
+    skeleton_markers: skeleton,
     sweep: { lines: sweepLines, removed: unique([...first, ...second]) },
     allowed_available: allowedAvailable,
     out_of_allowed: outOfAllowed,
@@ -1395,4 +1429,5 @@ module.exports = {
   resolveGenerated,
   parseDeclaration,
   declarationsOverlap,
+  INSTRUCTION_VERBS,
 };

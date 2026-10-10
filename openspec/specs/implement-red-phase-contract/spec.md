@@ -43,8 +43,12 @@ The implementation plan SHALL contain a minimal stub and a bullet list of scenar
 
 ### Requirement: Production code in the implementation plan SHALL be complete and executable
 
-The distinction between test code (allowed as lightweight stub + scenarios) and production code SHALL be preserved: production code MUST be final, complete, and executable, with no TODOs or speculative paths.
+The distinction between test code (allowed as lightweight stub + scenarios) and production code SHALL be preserved. In a Step without a RED block, production code MUST be final, complete, and executable, with no TODOs or speculative paths. In a Step with a RED block, production code SHALL follow the **Detail range** Hard Rule: the plan carries anywhere from a skeleton with `TODO(sai-4)` what/how comments to complete code, and the GREEN worker completes the rest, so the applied production code is complete once the Step test passes and no `TODO(sai-4)` remains. The plan SHALL NOT carry speculative production code in either case.
 
 #### Scenario: GREEN phase production code is authored
-- **WHEN** the GREEN phase of a step is written
+- **WHEN** the GREEN phase of a Step without a RED block is written
 - **THEN** it contains complete, final, executable production code with no TODOs, partial implementations, or speculative paths
+
+#### Scenario: GREEN phase of a Step with a RED block is authored
+- **WHEN** the GREEN phase of a Step with a RED block is written
+- **THEN** its content follows **Detail range**, with `TODO(sai-4)` markers only in files named by `Complete the skeleton below in` and no speculative path

@@ -289,7 +289,7 @@ The menu's model tables show two estimates per target to guide your choice, on b
 
 Targets without an estimate show `Unknown`.
 
-Model capability funnel: configure each phase's model no more capable than the previous one (`sai-2` >= `sai-3` >= `sai-4`). The implementer of `/sai-4-apply` is expected to be no more capable than the design agent; a more capable later phase is unsupported.
+Model capability funnel: configure each phase's model no more capable than the previous one (`sai-2` >= `sai-3` >= `sai-4`; that is, the `sai-3` implementation worker >= the `sai-4` GREEN worker). The implementer of `/sai-4-apply` is expected to be no more capable than the design agent; a more capable later phase is unsupported.
 
 ### Per project installation / override
 

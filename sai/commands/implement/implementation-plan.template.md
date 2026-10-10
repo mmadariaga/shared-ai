@@ -37,11 +37,23 @@
 
 ##### GREEN phase (only after RED is verified)
 
+One instruction per file, chosen per **Detail range** (`steps/common.md`); keep only the ones that apply:
+
 - [ ] Copy and paste code below into `{file}`:
 
 ```{language}
-{COMPLETE, TESTED CODE - NO PLACEHOLDERS - NO "TODO" COMMENTS}
+{COMPLETE, FINAL CODE - per Detail range}
 ```
+
+- [ ] Complete the skeleton below in `{file}`:
+
+```{language}
+{SKELETON OR PARTIAL CODE - signatures from interfaces.md plus one TODO(sai-4) what/how comment per body left to GREEN - per Detail range}
+```
+
+- [ ] Write the content described below into `{file}`:
+
+{INSTRUCTIONS DESCRIBING THE CONTENT - descriptive text only - per Detail range}
 
 - [ ] Verify GREEN: run `{step-test-command}` — expected: PASS
 
@@ -69,7 +81,7 @@
 - [ ] Copy and paste code below into `{file}`:
 
 ```{language}
-{COMPLETE, TESTED CODE - NO PLACEHOLDERS - NO "TODO" COMMENTS}
+{COMPLETE, FINAL CODE}
 ```
 
 ##### Step 2 Verification Checklist
@@ -93,7 +105,7 @@
 - [ ] Copy and paste code below into `{file}`:
 
 ```{language}
-{COMPLETE, TESTED CODE - NO PLACEHOLDERS - NO "TODO" COMMENTS}
+{COMPLETE, FINAL CODE}
 ```
 
 ##### Step 3 Verification Checklist

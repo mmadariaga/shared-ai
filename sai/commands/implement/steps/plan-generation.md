@@ -29,13 +29,13 @@ and `## Implementation Context` are the primary source of truth.
 #### First-run generation path
 
 - Create one full markdown file using the implementation plan template, including:
-  - Complete code for each step
+  - Content for each file at the point of the **Detail range** Hard Rule in `steps/common.md`
   - Precise file locations
   - Checkboxes for every action
   - In each RED test checkbox, the scenarios to cover at a high level. When `interfaces.md` exists, its concrete expected values stay single-sourced there; otherwise sai-4-apply expands the scenarios into assertions during RED.
   - Concrete Step-scoped verification instructions (common Hard Rules, **Verification commands**)
   - STOP & COMMIT markers after each step
-  - No placeholders, no TODOs, no ambiguity
+  - No ambiguity: no placeholder or `TODO` other than the `TODO(sai-4)` markers the **Detail range** rule allows
 - All code MUST strictly follow the Expertise Profile from `tasks.md`
 - **Interface conformance**: When `interfaces.md` exists for this change, treat its per-step `**Interfaces**` block as the authoritative declaration of public signatures for that Step. Every function/method signature, exported type, and public surface generated into `implementation.md` for Step N SHALL match the signature declared under the matching `## Step N` in `interfaces.md`. The generated plan SHALL NOT introduce a public signature that contradicts the one declared in `interfaces.md`.
 - **Absent-`interfaces.md` fallback**: If no `interfaces.md` exists for the change, generate `implementation.md` from `tasks.md`/`design.md` as before, with no interface-conformance gating.
