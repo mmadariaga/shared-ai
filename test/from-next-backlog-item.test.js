@@ -218,6 +218,14 @@ test('selection instructions hand off exactly once without duplicating source re
   assert.match(skill, /Offer free text and cancellation/);
   assert.match(importer, /one import continuation authorized/);
   assert.match(importer, /Autonomous invocation remains forbidden/);
+  assert.equal((skill.match(/## 3\. Continue the authoritative import/g) || []).length, 1);
+  assert.match(skill, /project assessment, conversational continuation/);
+  assert.match(skill, /belong exclusively to `from-backlog`; this skill duplicates none of them/);
+  assert.match(skill, /single `from-backlog` continuation/);
+  assert.match(skill, /assessment and next question or recommended step/);
+  assert.match(skill, /missing-objective or\npending import outcome/);
+  assert.match(skill, /without repeating assessment/);
+  assert.doesNotMatch(skill, /End there with no automatic action after import|\*\*Fit:\*\*|\*\*Feasibility:\*\*/);
 });
 test('CLI cancellation and unresolved identification use JSON stdin without provider reads', () => {
   const tool = path.join(root, 'sai/tools/from-next-backlog-item.js');
