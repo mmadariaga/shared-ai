@@ -6,18 +6,18 @@ TBD - created by archiving change review-standalone-direct-build-close. Update P
 ## Requirements
 
 ### Requirement: Standalone Direct Build Selector
-The standalone review close SHALL present exactly two options, Direct Build and Do not implement anything now, through the native picker only when the freshly generated review.md reports remaining findings, and SHALL dispatch the fix worker only on explicit Direct Build selection. This close SHALL belong to the standalone `/sai-5-review` invocation only. When the review adapter runs inside the `/sai-review` composition it SHALL offer no selector and SHALL dispatch nothing: with one or more audits activated the shared runner already resolves this non-final adapter's terminal navigation to the composition transition, and in the zero-audit case the composition coordinator owns the terminal outcome.
+The standalone review close SHALL ask the Direct Build round of `sai/commands/meta-review/findings-selection.md` only when a report of its input has an open fixable finding or an open Question. Its input is the freshly generated review.md plus the on-disk security.md, performance.md, and accessibility.md. The close SHALL dispatch the fix worker only after the user chooses to fix in the round, and SHALL supply no `direct-label` or `decline-label`. This close SHALL belong to the standalone `/sai-5-review` invocation only. When the review adapter runs inside the `/sai-review` composition it SHALL offer no selector and SHALL dispatch nothing: with one or more audits activated the shared runner already resolves this non-final adapter's terminal navigation to the composition transition, and in the zero-audit case the composition coordinator owns the terminal outcome.
 #### Scenario: Findings remain in standalone review
-- **WHEN** the freshly generated review.md reports at least one remaining finding
-- **THEN** the close presents Direct Build versus Do not implement anything now and dispatches only on explicit selection
+- **WHEN** the freshly generated review.md or an on-disk audit report has an open fixable finding or an open Question
+- **THEN** the close asks the Direct Build round with one question per qualifying report and dispatches only after the user chooses to fix
 #### Scenario: The adapter runs inside the review composition
 - **WHEN** the review adapter runs inside the `/sai-review` composition, with audits activated or with zero audits recommended
 - **THEN** the Direct Build close does not apply, no selector is offered, and nothing is dispatched from that adapter
 
 ### Requirement: Clean Empty-Diff Failed Cancelled Exclusion
-The standalone close SHALL offer no selector and SHALL close with the normal terminal text when review.md reports zero findings, the diff is empty, or the run is failed or cancelled, and a dismissed picker SHALL equal Do not implement anything now.
+The standalone close SHALL ask no round and SHALL close with the normal terminal text when no report of its input has an open fixable finding or an open Question, the diff is empty, or the run is failed or cancelled. A dismissed picker SHALL equal answering `Fix nothing` to every question of the round.
 #### Scenario: Clean close without selector
-- **WHEN** review.md reports zero findings or the run carries an empty diff, failure, or cancellation
+- **WHEN** no report of the close input has an open fixable finding or an open Question, or the run carries an empty diff, failure, or cancellation
 - **THEN** the run closes with the standard terminal text and dispatches no fix worker
 
 ### Requirement: Identical Standalone Close Text
@@ -37,11 +37,11 @@ The review coordinator's sole read exception SHALL cover, in addition to the fre
 
 ### Requirement: Meta-Review Zero-Audit Branch Is Terminal
 
-After a successful review and a legible triage parse, the `/sai-review` composition coordinator SHALL own the zero-audit close and SHALL apply the Direct Build close with only the freshly generated `review.md`. Eligible findings SHALL receive the correction choice, with no fix dispatch before explicit selection. When no eligible findings remain, the composition SHALL preserve its pinned zero-audit literal and its existing blocked-finding explanations. The composition SHALL NOT apply the review adapter's standalone Direct Build close. Using the final adapter's `terminal_navigation` SHALL select its presentation only, never its standalone selector or dispatches. A missing `review.md` or no legible triage value SHALL take the Error close defined in `sai/commands/meta-review/command-bootstrap.md`, never a correction choice.
+After a successful review and a legible triage parse, the `/sai-review` composition coordinator SHALL own the zero-audit close and SHALL apply the Direct Build close with only the freshly generated `review.md`. Open fixable findings and open Questions SHALL receive the Direct Build round, with no fix dispatch before the user chooses to fix. When no report qualifies for the round, the composition SHALL preserve its pinned zero-audit literal and any warning the run produced. The composition SHALL NOT apply the review adapter's standalone Direct Build close. Using the final adapter's `terminal_navigation` SHALL select its presentation only, never its standalone selector or dispatches. A missing `review.md` or no legible triage value SHALL take the Error close defined in `sai/commands/meta-review/command-bootstrap.md`, never a correction choice.
 
 #### Scenario: Zero audits recommended with findings still present
-- **WHEN** a successful `/sai-review` run has a legible triage parse, recommends zero audits, and the freshly generated `review.md` still carries eligible findings
-- **THEN** the composition coordinator SHALL offer the Direct Build close's correction choice with `review.md` only, dispatch no audits and dispatch no fix before explicit selection; the standalone review adapter SHALL offer no selector and dispatch nothing
+- **WHEN** a successful `/sai-review` run has a legible triage parse, recommends zero audits, and the freshly generated `review.md` still carries an open fixable finding or an open Question
+- **THEN** the composition coordinator SHALL ask the Direct Build round with `review.md` only, dispatch no audits and dispatch no fix before the user chooses to fix; the standalone review adapter SHALL offer no selector and dispatch nothing
 
 #### Scenario: Missing review content takes the Error close
 - **WHEN** the review segment completes and `review.md` is missing or none of its three triage values is legible

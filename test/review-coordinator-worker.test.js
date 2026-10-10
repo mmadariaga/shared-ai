@@ -106,16 +106,22 @@ test('Direct Build discloses findings and resolves exclusions before the fix wor
 
   assert.match(standalone, /Fetch @sai\/commands\/meta-review\/direct-build-close\.md/);
   assert.match(composition, /Fetch @sai\/commands\/meta-review\/direct-build-close\.md/);
-  assert.match(close, /After `direct-label`, before\s+the fix loop: Fetch @sai\/commands\/meta-review\/findings-selection\.md/);
-  assert.match(close, /no selected findings[\s\S]*`decline-close` without a dispatch/);
-  assert.match(selection, /show[\s\S]*every found issue/i);
+  assert.match(close, /Fetch @sai\/commands\/meta-review\/findings-selection\.md and follow it/);
+  assert.match(close, /returns no selected findings[\s\S]*dispatch nothing and run `decline-close`/);
+  assert.doesNotMatch(close + selection + standalone + composition, /direct-label|decline-label/);
+  assert.match(selection, /one question per qualifying report/);
+  assert.match(selection, /after every segment has finished\s+and the summary is printed/);
+  assert.match(selection, /`review\.md`,\s+`security\.md`, `performance\.md`, `accessibility\.md`/);
   assert.match(selection, /source-qualified id[\s\S]*severity[\s\S]*title[\s\S]*problem\/impact[\s\S]*location/);
   assert.match(selection, /`review:C1` or\s+`security:C1`/);
-  assert.match(selection, /Fix all findings \(Recommended\)[\s\S]*Specify findings to exclude[\s\S]*free-text response/);
-  assert.match(selection, /`Other` on Claude Code[\s\S]*`Type your own answer` on opencode/);
-  assert.match(selection, /without a second question/);
-  assert.match(selection, /empty, unknown, ambiguous, or unqualified id[\s\S]*dispatch nothing/);
-  assert.match(selection, /every eligible finding is\s+excluded[\s\S]*no fix or commit/);
+  assert.match(selection, /Fix all fixable findings \(Recommended\)[\s\S]*`Fix nothing`[\s\S]*free-text response/);
+  assert.match(selection, /`Other` on Claude Code,\s+`Type your own answer` on opencode/);
+  assert.match(selection, /Show each open Question in full/);
+  assert.match(selection, /one `AskUserQuestion` call carrying every question/);
+  assert.match(selection, /one call per question, consecutively/);
+  assert.match(selection, /repeats only that report's question, once[\s\S]*second invalid answer[\s\S]*dispatch nothing,\s+commit\s+nothing/);
+  assert.match(selection, /every answer is `Fix nothing`[\s\S]*dismissed[\s\S]*no fix or commit/);
+  assert.match(selection, /authorizes the writes and a single\s+local commit/);
   assert.match(close, /full \*\*selected\*\* findings input[\s\S]*labeled exclusion list/);
   assert.match(close, /against the selected findings[\s\S]*exclusions/);
   assert.match(fixWorker, /selected findings as your sole fix targets/);
@@ -126,7 +132,7 @@ test('zero-audit eligible findings reach the composition-owned shared close on b
   const composition = artifact('sai/commands/meta-review/coordinator.md');
   const bootstrap = artifact('sai/commands/meta-review/command-bootstrap.md');
   assert.match(composition, /After successful review and a legible triage parse, apply the composition's\s+Direct Build close with only the freshly regenerated `review\.md`/);
-  assert.match(composition, /Eligible findings receive the correction choice/);
+  assert.match(composition, /Open fixable findings and open Questions receive the round/);
   assert.match(bootstrap, /When no audit is activated[\s\S]*Direct Build\s+close/);
   assert.doesNotMatch(composition, /do not apply the Direct Build close below|even when `review\.md` still carries findings/);
   assert.match(composition, /standalone Direct Build close belongs to `\/sai-5-review` and never runs\s+inside this composition/);
@@ -143,13 +149,13 @@ test('zero-audit no-eligible findings preserve the literal and existing eligibil
   const close = artifact('sai/commands/meta-review/direct-build-close.md');
   const literal = 'Review complete. No audits recommended. Run `/sai-archive {name}` in a new chat when ready.';
   assert.equal(composition.split(literal).length - 1, 1);
-  assert.match(composition, /When no eligible findings remain, print the literal unchanged and stop/);
+  assert.match(composition, /When no report qualifies for the round, print the literal unchanged and\s+stop/);
   assert.match(composition, /standard close is the zero-audit literal above when zero audits/);
   assert.match(composition, /`decline-close` = the run-specific standard close/);
-  assert.match(close, /zero remaining findings, offer no selector/);
-  assert.match(close, /Leave open Questions \(`Q\*`\) out of the fix input/);
-  assert.match(close, /whose fix changes a requirement or the design/);
-  assert.match(close, /no remaining finding can be[\s\S]*offer no selector/);
+  assert.match(close, /When no report qualifies, there is no round/);
+  assert.match(close, /fixable finding is any finding that is\s+not a Question/);
+  assert.doesNotMatch(close, /\/sai-1-spec|\/sai-2-design/);
+  assert.match(artifact('sai/policies/finding-state.md'), /A finding is \*\*fixable\*\* when it is not a Question/);
 });
 
 test('zero-audit close excludes stale audit reports from every findings stage', () => {
@@ -177,11 +183,11 @@ test('zero-audit correction does not bypass triage errors or individual warnings
 test('zero-audit fixes retain explicit selection, existing rounds and local-commit boundaries', () => {
   const composition = artifact('sai/commands/meta-review/coordinator.md');
   const close = artifact('sai/commands/meta-review/direct-build-close.md');
-  assert.match(composition, /no\s+fix dispatch before explicit Direct Build selection/);
-  assert.match(close, /nothing is dispatched\s+before that selection/);
+  assert.match(composition, /no\s+fix dispatch before the user chooses to fix/);
+  assert.match(close, /nothing is dispatched before that\s+answer/);
   assert.match(close, /pre-authorizes exactly one local commit/);
   assert.match(close, /loop is capped at three rounds/);
-  const header = close.slice(0, close.indexOf('## Selector'));
+  const header = close.slice(0, close.indexOf('## Fix loop'));
   assert.doesNotMatch(header, /command-execution\.md|unattended-runtime-recovery\.md/);
   const fixLoop = close.slice(close.indexOf('## Fix loop'));
   assert.match(fixLoop, /Fetch @sai\/policies\/command-execution\.md/);
