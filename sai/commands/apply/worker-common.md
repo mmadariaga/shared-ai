@@ -6,6 +6,10 @@ Fetch @sai/policies/repository-artifact-scope.md and use it as the shared
 protected-surface rule. RED and GREEN retain their narrower role-specific
 allowed-file boundaries below.
 
+Fetch @sai/policies/code-quality-priority-stack.md
+Apply it within the assigned Step and role restrictions; it grants no additional
+paths or permissions, and GREEN's test-file prohibition remains in force.
+
 ## Invocation
 
 The request carries only `arguments_value`, set to the resolved change name. The Step's content arrives as task disclosure, never as extra request fields. Every post-resolution payload (`completed`, `needs_input`, `failed`, `cancelled`) carries the worker-core closed envelope (`status`, `summary`, `changed_files`) and echoes the identical `resolved_change_name` the coordinator supplied. Change resolution is coordinator-owned: run no change-selection or change-listing query.
