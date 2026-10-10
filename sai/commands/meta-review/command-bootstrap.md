@@ -21,20 +21,20 @@ After the review segment completes successfully, read exactly three values
 from the freshly regenerated `openspec/changes/{change-name}/review.md`: the
 `**Surface touched:**` field under each of `## Security Surface Triage`,
 `## Performance Surface Triage`, and `## Accessibility Surface Triage`. A value
-of exactly `Yes` activates the matching audit segment; any other value leaves
-it inactive.
-
-Missing or illegible content:
-
-- `review.md` is missing, or none of the three sections is legible — abort
-  without dispatching any audit and report the gap.
-- One or two sections are illegible — each counts as not recommended plus a
-  summary warning line, and the audits whose sections were legible still run.
+of exactly `Yes` activates the matching audit segment; exactly `No` leaves it
+inactive. Any other value is illegible: that audit does not run and the
+summary carries a warning line naming it. An illegible value adds no
+correction authorization.
 
 The activated list keeps the declared order (review → security → performance →
-accessibility). When no audit is activated after successful review and a valid
-triage parse, the coordinator applies the existing findings-driven Direct Build
-close using only the freshly regenerated `review.md`, with no audit dispatches.
-Eligible findings receive the existing correction choice; when none remain,
-the exact zero-audit terminal literal is preserved. Missing or wholly illegible
-triage takes the error close above, not the correction choice.
+accessibility). When no audit is activated after successful review and a
+legible triage parse, the coordinator applies the Direct Build
+close using only the freshly regenerated `review.md`, with no audit
+dispatches. Eligible findings receive the correction choice;
+when none remain, the exact zero-audit terminal literal is preserved.
+
+## Error close
+
+When `review.md` is missing, or none of the three values is legible (`Yes` or
+`No`), dispatch no audit and offer no correction choice. Report the gap, show
+the changed files, and end with no Direct Build round.

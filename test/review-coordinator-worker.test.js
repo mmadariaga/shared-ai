@@ -125,9 +125,9 @@ test('Direct Build discloses findings and resolves exclusions before the fix wor
 test('zero-audit eligible findings reach the composition-owned shared close on both harnesses', () => {
   const composition = artifact('sai/commands/meta-review/coordinator.md');
   const bootstrap = artifact('sai/commands/meta-review/command-bootstrap.md');
-  assert.match(composition, /After successful review and a valid triage parse, apply the composition's\s+shared Direct Build close with only the freshly regenerated `review\.md`/);
-  assert.match(composition, /Eligible findings receive the existing correction choice/);
-  assert.match(bootstrap, /When no audit is activated[\s\S]*existing findings-driven Direct Build\s+close/);
+  assert.match(composition, /After successful review and a legible triage parse, apply the composition's\s+Direct Build close with only the freshly regenerated `review\.md`/);
+  assert.match(composition, /Eligible findings receive the correction choice/);
+  assert.match(bootstrap, /When no audit is activated[\s\S]*Direct Build\s+close/);
   assert.doesNotMatch(composition, /do not apply the Direct Build close below|even when `review\.md` still carries findings/);
   assert.match(composition, /standalone Direct Build close belongs to `\/sai-5-review` and never runs\s+inside this composition/);
   for (const harness of ['claude', 'opencode']) {
@@ -162,12 +162,16 @@ test('zero-audit close excludes stale audit reports from every findings stage', 
 test('zero-audit correction does not bypass triage errors or individual warnings', () => {
   const composition = artifact('sai/commands/meta-review/coordinator.md');
   const bootstrap = artifact('sai/commands/meta-review/command-bootstrap.md');
-  assert.match(composition, /Missing `review\.md` or no legible triage section takes the error close above,\s+never this findings-driven close/);
-  assert.match(composition, /individually illegible section retains\s+its warning and activates no audit; it adds no correction authorization/);
-  assert.match(bootstrap, /none of the three sections is legible — abort/);
-  assert.match(bootstrap, /One or two sections are illegible — each counts as not recommended plus a\s+summary warning line/);
+  assert.match(composition, /When the Error close of `command-bootstrap\.md` applies, this Direct Build\s+close does not run/);
+  assert.match(bootstrap, /## Error close/);
+  assert.match(bootstrap, /`review\.md` is missing, or none of the three values is legible/);
+  assert.match(bootstrap, /Any other value is illegible: that audit does not run and the\s+summary carries a warning line/);
+  assert.match(bootstrap, /An illegible value adds no\s+correction authorization/);
   assert.match(bootstrap, /exactly `Yes` activates the matching audit segment/);
-  assert.match(composition, /audit failure\/cancellation never aborts siblings/);
+  assert.doesNotMatch(composition, /illegible/);
+  assert.match(composition, /An audit segment that returns `failed` or `cancelled` does not close the\s+composition, an exception to `@sai\/orchestration\/composition\.md` § 2/);
+  assert.match(composition, /the other audits continue/);
+  assert.doesNotMatch(composition, /## Edge cases|## No intermediate approval gate|## Non-removable stops|## No Step ceiling|bounded-recovery/);
 });
 
 test('zero-audit fixes retain explicit selection, existing rounds and local-commit boundaries', () => {
@@ -183,6 +187,10 @@ test('zero-audit fixes retain explicit selection, existing rounds and local-comm
   assert.match(fixLoop, /Fetch @sai\/policies\/command-execution\.md/);
   assert.match(fixLoop, /Fetch @sai\/policies\/unattended-runtime-recovery\.md/);
   assert.match(close, /no push, no amend, no retry, no other path staged/);
+  assert.doesNotMatch(close, /manual-route note/);
+  assert.match(close, /non-convergence close[\s\S]*nothing was committed[\s\S]*still open[\s\S]*left uncommitted/);
+  assert.match(close, /Fetch @sai\/policies\/commit-rules\.md/);
+  assert.match(close, /Fetch @sai\/policies\/autonomy-audit-log\.md/);
 });
 
 test('review worker contract enumerates the four ids and pins the batch semantics', () => {

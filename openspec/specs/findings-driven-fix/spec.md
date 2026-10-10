@@ -26,12 +26,12 @@ The `/sai-5-review` Direct Build close SHALL build the fix input from `review.md
 
 ### Requirement: Three-Round Convergence Guard
 
-The fix loop SHALL reuse the same fix worker across at most three rounds driven by the ordered outstanding selected-finding list, while the initial exclusion list remains in force. Excluded findings SHALL not count as outstanding work. A third completed round that still carries selected findings or an unauthorized change SHALL close with no staging and no commit plus the manual-route note. A worker `failed` result before writing that names an excluded-finding dependency SHALL stage and commit nothing and SHALL return to findings selection for one revised selection followed by a fresh dispatch; a second such conflict in the same close, a diff that fixes or cannot separate an excluded finding, or any other worker failure SHALL close with no staging and no commit through the caller's decline path.
+The fix loop SHALL reuse the same fix worker across at most three rounds driven by the ordered outstanding selected-finding list, while the initial exclusion list remains in force. Excluded findings SHALL not count as outstanding work. A third completed round that still carries selected findings or an unauthorized change SHALL stage nothing, SHALL commit nothing, and SHALL append the non-convergence close after the caller's close. That close SHALL state that nothing was committed, SHALL name the selected findings still open, and SHALL list the modified files left uncommitted. A worker `failed` result before writing that names an excluded-finding dependency SHALL stage and commit nothing and SHALL return to findings selection for one revised selection followed by a fresh dispatch. A second such conflict in the same close, a diff that fixes or cannot separate an excluded finding, or any other worker failure SHALL close with no staging and no commit through the caller's decline path.
 
 #### Scenario: Non-convergence after three rounds
 
-- **WHEN** the third completed fix round still carries findings
-- **THEN** the run reports for the manual route with no staging and no commit
+- **WHEN** the third completed fix round still carries selected findings
+- **THEN** the run SHALL stage and commit nothing and SHALL append the non-convergence close, which states that nothing was committed, names the selected findings still open, and lists the modified files left uncommitted
 
 #### Scenario: Excluded findings do not extend convergence
 

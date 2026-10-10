@@ -1,6 +1,6 @@
 # Direct Build Close
 
-A findings-driven close: fix the remaining findings, then land the fix
+The Direct Build close: fix the remaining findings, then land the fix
 in one local commit. The calling coordinator supplies `input` (the findings
 files), `direct-label`, `decline-label`, and `decline-close` (the text that
 closes the run when no fix runs). Selecting `direct-label` consents to delegated
@@ -27,6 +27,7 @@ before that selection.
 
 Fetch @sai/policies/command-execution.md and follow it exactly.
 Fetch @sai/policies/unattended-runtime-recovery.md and use it in the failure handling below.
+Fetch @sai/policies/autonomy-audit-log.md and use it for the terminal report below.
 
 Guard the fix loop below per `@sai/policies/no-commit-guard.md` § Window
 pairing: `snapshot` when its window opens and `verify` before the staging
@@ -47,8 +48,9 @@ close with no commit.
    exclusion list in force on every continuation. Outstanding work is only
    ever selected findings. The loop is capped at three rounds: a third
    completed round that still carries findings is non-convergence — stage
-   nothing, commit nothing, and append the manual-route note after the caller's
-   close.
+   nothing, commit nothing, and append the non-convergence close after the
+   caller's close: state that nothing was committed, name the selected
+   findings still open, and list the modified files left uncommitted.
 3. **Scope conflict** — the one path for a selected fix that reaches an
    excluded finding. Stage nothing and commit nothing in every case:
    - The worker returns `failed` before writing and names an excluded-finding
@@ -69,6 +71,8 @@ terminal report in the layout of `@sai/policies/autonomy-audit-log.md`, appended
 after the caller's close.
 
 ## Commit
+
+Fetch @sai/policies/commit-rules.md and use it for the message below.
 
 On convergence, between guard windows: stage only the fix worker's changed-files
 union with path-scoped `git add`, author the message from the staged state under

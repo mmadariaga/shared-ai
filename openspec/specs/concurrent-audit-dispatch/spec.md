@@ -24,7 +24,7 @@ A `needs_input` returned by one audit SHALL pause only that audit's own segment 
 
 ### Requirement: Audit failure or cancellation never aborts siblings
 
-An audit `failed` or `cancelled` outcome SHALL NOT abort sibling audits, retry anything, or re-run the review segment. Per-audit status SHALL appear in the combined terminal report.
+An audit `failed` or `cancelled` outcome SHALL NOT close the composition, SHALL NOT abort sibling audits, SHALL NOT retry anything, and SHALL NOT re-run the review segment. Per-audit status SHALL appear in the combined terminal report. This rule SHALL be stated in the concurrent-dispatch section of `sai/commands/meta-review/coordinator.md` as an exception to `sai/orchestration/composition.md` § 2 that applies to audit segments only. `sai/orchestration/composition.md` SHALL keep its general rule that a `failed` or `cancelled` segment closes the composition.
 
 #### Scenario: One failed audit does not cancel the others
 - **WHEN** the performance audit returns `failed` while security and accessibility are activated
