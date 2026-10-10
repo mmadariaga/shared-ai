@@ -18,7 +18,7 @@ Fetch @skills/budget/SKILL.md and use it.
 
 ## Role
 
-Convert the OpenSpec change artifacts into `openspec/changes/{change-name}/implementation.md`: real, tested, copy-paste-ready instructions.
+Convert the OpenSpec change artifacts into `openspec/changes/{change-name}/implementation.md`: real, tested instructions whose content follows the **Detail range** Hard Rule.
 
 ## Expertise Profile
 
@@ -35,16 +35,20 @@ Name every researched gap in the terminal `summary`, one line per gap in the for
 
 ## Hard Rules
 
-The generation rules below (complete production code, RED → GREEN, step ordering from `tasks.md`) govern the **first-run generation path**. On the re-run preservation path, the preservation contract in the plan-generation step is authoritative for existing steps; these rules do not cause existing steps to be regenerated. The Expertise Profile contract applies to both paths.
+The generation rules below (Detail range, RED → GREEN, step ordering from `tasks.md`) govern the **first-run generation path**. On the re-run preservation path, the preservation contract in the plan-generation step is authoritative for existing steps; these rules do not cause existing steps to be regenerated. The Expertise Profile contract applies to both paths.
 
-- Write complete production code for every step. Do not write partial implementations or speculative production code.
-- Every production code block must be final and executable. Do not use "TODO", "you may want to", or similar.
+- Do not write speculative production code: every line the plan carries serves the Step.
 - Tests may be expressed as a minimal stub in the plan (just enough to fail RED with an assertion error) plus a bullet list of scenarios to cover. The sai-4-apply agent will write the full test code during RED phase. This keeps the plan lightweight without sacrificing the RED→GREEN contract.
 - Commit to a single implementation path per step. Do not include alternative paths or optional decisions.
 - Implement every step in the exact order defined by `tasks.md`. Do not skip steps unless explicitly marked as skipped in the plan. Do not change the structure or order.
 - **RED → GREEN:** A step that introduces testable code (new functions, classes, endpoints, components, business logic) writes the test first (RED) and verifies it fails before writing the minimal implementation that passes (GREEN); there is no refactor phase. A non-testable step (config, migration, scaffolding) uses the standard format without RED/GREEN. Include both RED and GREEN verification commands in the step's Verification Checklist.
 - **Verification commands:** each RED block names one `{step-test-command}` that selects only that Step's tests; its Verify RED, Verify GREEN, and checklist items run that same command verbatim. A Step's Automated checklist holds only that Step's checks. The complete repository suite is `{full-suite-command}`, taken from the Expertise Profile's **Test Command**, written once in the plan's `## Verification commands` section, and run only by apply's terminal suite gate.
 - **Valid RED failure:** the test runner exits non-zero AND the failure is an assertion failure attributable to the missing or incomplete code under test (assertion mismatch, expected vs actual, wrong exception). A setup, import, compilation, missing-dependency, or test-syntax error is not a valid RED, except the `compile` or `runtime` failure of a test named under `**Existing tests to update:**` that matches its declared mode. When the test can only fail by referencing a symbol that does not exist yet, scaffold a minimal stub that exposes the symbol and returns or raises the wrong value.
+- **Detail range:** In a Step with a RED block, the plan carries, per file, anywhere from a skeleton to complete copy-paste content; the `/sai-4-apply` GREEN worker completes the rest, reading the Step's tests. The criterion is "decisions go in the plan, typing goes to GREEN": a non-obvious decision appears as code, or as the how of a `TODO(sai-4)` comment; the Step's `difficulty` in `tasks.md` sets how many decisions count as non-obvious, and a Step without `difficulty` gets the maximum (complete content). A **skeleton** is the minimum code content: the signatures plus one `TODO(sai-4)` comment per body stating what to implement and how. Per kind of content:
+  - **Code:** from the minimum (a skeleton) to the maximum (complete, final, executable code), and between the two, partial implementations that complete the non-obvious parts, including private functions and services. When the Step has no `## Step N` entry in `interfaces.md`, or the file does not exist, the minimum is the signatures of the functions the Step creates or changes, each with its what/how `TODO(sai-4)`. For a change to an existing function, show only the fragment that changes, with the `TODO(sai-4)` where the logic is missing. Every signature keeps the one `interfaces.md` declares.
+  - **Normative text** (prompts, user-facing literals, requirements, configuration values): always complete, because it is a decision.
+  - **Descriptive text** (documentation sections, explanatory comments): instructions describing the content, up to complete content.
+  Each GREEN file uses one instruction: `Copy and paste code below into` for complete content, `Complete the skeleton below in` for code that still carries `TODO(sai-4)` markers, `Write the content described below into` for descriptive text delivered as instructions. The last two are valid only in a Step with a RED block; a Step without a RED block keeps complete content and `Copy and paste`. Never leave a `TODO(sai-4)` outside a file named by `Complete the skeleton below in`, and never use "you may want to" or similar hedges. The RED block keeps its format: the test plus a minimal stub, with no what/how comments. In GREEN, the plan's content (skeleton, partial, or complete) replaces the RED stub and keeps the `interfaces.md` signatures.
 - **RED phase code contract:** The RED phase may ONLY contain:
   1. The **test** that asserts the missing behaviour.
   2. **Minimal stubs** (functions/classes that expose the required symbol but return `null`/empty/wrong value) — just enough to avoid compilation/import errors.

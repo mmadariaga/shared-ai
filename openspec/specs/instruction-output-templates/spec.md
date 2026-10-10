@@ -17,7 +17,7 @@ The instruction library SHALL contain six independently loadable Markdown output
 
 ### Requirement: Implementation plan contract is preserved
 
-The implementation plan template SHALL preserve the current headings, placeholders, ordering, RED-to-GREEN execution contract, automated verification, human verification, deferred UI checks, STOP and COMMIT markers, no-TODO rule, and first-generation versus rerun behavior as carried by `sai/commands/implement/implementation-plan.template.md`.
+The implementation plan template SHALL preserve the current headings, placeholders, ordering, RED-to-GREEN execution contract, automated verification, human verification, deferred UI checks, STOP and COMMIT markers, the **Detail range** GREEN instructions (complete content in Steps without a RED block; `TODO(sai-4)` markers only in files named by `Complete the skeleton below in`), and first-generation versus rerun behavior as carried by `sai/commands/implement/implementation-plan.template.md`.
 
 #### Scenario: Implementation plan is generated from the extracted template
 - **WHEN** the implementation phase creates `openspec/changes/{change-name}/implementation.md` for the first time

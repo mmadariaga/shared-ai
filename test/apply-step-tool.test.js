@@ -9,7 +9,7 @@ const { spawnSync } = require('child_process');
 
 const REPO_ROOT = path.join(__dirname, '..');
 const TOOL = path.join(REPO_ROOT, 'sai', 'tools', 'apply-step.js');
-const { statusLetter, classifyAutomated, parseStep, parseFilesAffected } = require(TOOL);
+const { statusLetter, classifyAutomated, parseStep, parseFilesAffected, INSTRUCTION_VERBS } = require(TOOL);
 const baselines = new Map();
 const records = new Map();
 
@@ -1261,5 +1261,104 @@ test('already-satisfied mode is a usage error outside red verify and close, and 
     assert.equal(tool(['preflight', '--change', 'demo', '--already-satisfied'], repo).status, 2);
     const head = git(['rev-parse', 'HEAD'], repo).trim();
     assert.equal(tool(['close', '--change', 'demo', '--step', '2', '--dry-run', '--already-satisfied', '--guard-base', head], repo, closeInput('src/other.js\n', '')).status, 2);
+  } finally { cleanup(parent); }
+});
+
+const MARKER = 'TODO(' + 'sai-4)';
+const JUDGED = '- [ ] Output reads sensibly — judge it\n';
+const SKELETON_PLAN = PLAN.replace(JUDGED, '').replace('- [ ] Copy and paste code below into `src/feature.js`:', '- [ ] Complete the skeleton below in `src/feature.js`:');
+const DESCRIBED_PLAN = PLAN.replace(JUDGED, '').replace('- [ ] Copy and paste code below into `src/feature.js`:', '- [ ] Write the content described below into `src/feature.js`:');
+const VERB_STEP_2 = (verb) => PLAN.replace(JUDGED, '').replace('- [ ] Do the thing at `src/other.js`', `- [ ] ${verb} \`src/other.js\`:`);
+
+test('preflight accepts the skeleton and described-content verbs only in a Step with a RED block', () => {
+  const { parent, repo, planPath } = makeRepo();
+  try {
+    for (const plan of [SKELETON_PLAN, DESCRIBED_PLAN]) {
+      fs.writeFileSync(planPath, plan);
+      const out = tool(['preflight', '--change', 'demo'], repo);
+      assert.equal(out.payload.ok, true, JSON.stringify(out.payload.errors));
+    }
+    for (const verb of ['Complete the skeleton below in', 'Write the content described below into']) {
+      fs.writeFileSync(planPath, VERB_STEP_2(verb));
+      const out = tool(['preflight', '--change', 'demo'], repo);
+      assert.ok(out.payload.errors.some((e) => e.step === 2 && /only in a Step with a RED block/.test(e.reason)), `${verb}: ${JSON.stringify(out.payload.errors)}`);
+    }
+    fs.writeFileSync(planPath, VERB_STEP_2('Copy and paste code below into'));
+    assert.equal(tool(['preflight', '--change', 'demo'], repo).payload.ok, true);
+  } finally { cleanup(parent); }
+});
+
+test('parseStep records the files named by the skeleton instruction', () => {
+  assert.deepEqual(parseStep(SKELETON_PLAN, 1).skeletonPaths, ['src/feature.js']);
+  assert.deepEqual(parseStep(PLAN, 1).skeletonPaths, []);
+  assert.deepEqual(parseStep(DESCRIBED_PLAN, 1).skeletonPaths, []);
+});
+
+test('verify fails on a leftover skeleton marker above the Step base and passes once removed', () => {
+  const { parent, repo, planPath } = makeRepo();
+  try {
+    fs.writeFileSync(planPath, SKELETON_PLAN);
+    replaceBaseline(repo, 'openspec/changes/demo/implementation.md\n');
+    writeFeature(repo, { passing: true });
+    fs.appendFileSync(path.join(repo, 'src', 'feature.js'), `// ${MARKER} compute the total from the rows\n`);
+    const args = ['verify', '--change', 'demo', '--step', '1', '--dispatch', 'green-exception'];
+    const bad = tool(args, repo, 'src/feature.js\ntest/feature.test.js\n');
+    assert.deepEqual(bad.payload.skeleton_markers, [{ path: 'src/feature.js', base: 0, count: 1, leftover: true }]);
+    assert.ok(bad.payload.failures.some((f) => f.includes('leftover') && f.includes('src/feature.js')));
+    assert.equal(bad.payload.ok, false);
+    writeFeature(repo, { passing: true });
+    const good = tool(args, repo, 'src/feature.js\ntest/feature.test.js\n');
+    assert.equal(good.payload.skeleton_markers[0].leftover, false);
+    assert.ok(!good.payload.failures.some((f) => f.includes('leftover')));
+  } finally { cleanup(parent); }
+});
+
+test('verify counts markers against the HEAD version, so legitimate marker text in a file never fails', () => {
+  const { parent, repo, planPath } = makeRepo();
+  try {
+    fs.writeFileSync(planPath, SKELETON_PLAN);
+    fs.mkdirSync(path.join(repo, 'src'), { recursive: true });
+    fs.writeFileSync(path.join(repo, 'src', 'feature.js'), `// documents ${MARKER}\nmodule.exports = 0;\n`);
+    git(['add', '.'], repo);
+    git(['commit', '-m', 'chore: base'], repo);
+    replaceBaseline(repo, 'openspec/changes/demo/implementation.md\n');
+    writeFeature(repo, { passing: true });
+    fs.writeFileSync(path.join(repo, 'src', 'feature.js'), `// documents ${MARKER}\n// documents ${MARKER}\nmodule.exports = 1;\n`);
+    const out = tool(['verify', '--change', 'demo', '--step', '1', '--dispatch', 'green-exception'], repo, 'src/feature.js\ntest/feature.test.js\n');
+    assert.deepEqual(out.payload.skeleton_markers, [{ path: 'src/feature.js', base: 1, count: 2, leftover: true }]);
+    fs.writeFileSync(path.join(repo, 'src', 'feature.js'), `// documents ${MARKER}\nmodule.exports = 1;\n`);
+    const clean = tool(['verify', '--change', 'demo', '--step', '1', '--dispatch', 'green-exception'], repo, 'src/feature.js\ntest/feature.test.js\n');
+    assert.equal(clean.payload.skeleton_markers[0].leftover, false);
+  } finally { cleanup(parent); }
+});
+
+test('the apply tool source never contains the literal marker', () => {
+  assert.ok(!fs.readFileSync(TOOL, 'utf8').includes(MARKER));
+});
+
+test('Detail range is single-sourced in common.md and referenced by the plan surfaces', () => {
+  const read = (p) => fs.readFileSync(path.join(REPO_ROOT, p), 'utf8');
+  assert.match(read('sai/commands/implement/steps/common.md'), /\*\*Detail range:\*\*/);
+  for (const p of ['sai/commands/implement/steps/plan-generation.md', 'sai/commands/implement/steps/validation.md', 'sai/commands/implement/implementation-plan.template.md']) assert.match(read(p), /Detail range/, p);
+  const template = read('sai/commands/implement/implementation-plan.template.md');
+  for (const verb of ['Copy and paste code below into', 'Complete the skeleton below in', 'Write the content described below into']) assert.ok(template.includes(verb), verb);
+  assert.match(read('sai/commands/apply/green-worker.md'), /no `TODO\(sai-4\)` remains in your files/);
+  assert.match(read('sai/commands/apply/steps/routing-split-flow.md'), /test files as read-only references/);
+  assert.match(read('README.md'), /`sai-3` implementation worker >= the `sai-4` GREEN worker/);
+});
+
+test('preflight interprets exactly the pinned instruction-verb list', () => {
+  assert.deepEqual(INSTRUCTION_VERBS, ['Write the test', 'Create a minimal stub', 'Copy and paste', 'Complete the skeleton below', 'Write the content described below', 'Modify', 'Update', 'Delete', 'Remove']);
+  const { parent, repo, planPath } = makeRepo();
+  try {
+    const withLine = (verb) => PLAN.replace(JUDGED, '').replace('- [ ] Copy and paste code below into `src/feature.js`:', `- [ ] Copy and paste code below into \`src/feature.js\`:\n- [ ] ${verb} text in \`../escape.js\`:`);
+    // An interpreted verb line naming an unsafe path is reported; an unlisted verb is ignored.
+    for (const verb of INSTRUCTION_VERBS) {
+      fs.writeFileSync(planPath, withLine(verb));
+      const out = tool(['preflight', '--change', 'demo'], repo);
+      assert.ok(out.payload.errors.some((e) => e.step === 1 && e.reason === 'required instruction path is not recognized'), `${verb}: ${JSON.stringify(out.payload.errors)}`);
+    }
+    fs.writeFileSync(planPath, withLine('Rename'));
+    assert.ok(!tool(['preflight', '--change', 'demo'], repo).payload.errors.some((e) => e.reason === 'required instruction path is not recognized'), 'an unlisted verb is not interpreted');
   } finally { cleanup(parent); }
 });

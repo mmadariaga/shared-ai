@@ -115,8 +115,8 @@ The design task-generation step SHALL define the implementer once beside the Rou
 
 ### Requirement: The model capability funnel is documented
 
-`README.md` SHALL document, in its model customization section, the capability funnel in which each phase's model is no more capable than the previous one (`sai-2` >= `sai-3` >= `sai-4`), and SHALL state that a more capable later phase is unsupported.
+`README.md` SHALL document, in its model customization section, the capability funnel in which each phase's model is no more capable than the previous one (`sai-2` >= `sai-3` >= `sai-4`), SHALL name the GREEN worker in that rule (the `sai-3` implementation worker >= the `sai-4` GREEN worker), and SHALL state that a more capable later phase is unsupported.
 
 #### Scenario: Funnel note is present
 - **WHEN** a reader consults the README model customization section
-- **THEN** it finds the `sai-2` >= `sai-3` >= `sai-4` capability funnel note stating that a more capable later phase is unsupported
+- **THEN** it finds the `sai-2` >= `sai-3` >= `sai-4` capability funnel note naming the `sai-3` implementation worker >= the `sai-4` GREEN worker and stating that a more capable later phase is unsupported
