@@ -21,10 +21,10 @@ The standalone close SHALL offer no selector and SHALL close with the normal ter
 - **THEN** the run closes with the standard terminal text and dispatches no fix worker
 
 ### Requirement: Identical Standalone Close Text
-Every standalone branch and post-fix path SHALL close with identical text consisting of the verbatim worker summary plus the Recommended Audits block plus the changed-files union plus Review done., with the E4 non-convergence note appended after that same close.
+Every standalone branch and post-fix path SHALL close with identical text consisting of the verbatim worker summary plus the Recommended Audits block plus the changed-files union plus Review done. On E4 non-convergence, the non-convergence close SHALL be appended after that same close. The non-convergence close states that nothing was committed, names the selected findings still open, and lists the modified files left uncommitted.
 #### Scenario: Identical close on every branch
 - **WHEN** any standalone branch completes including post-fix convergence or E4 non-convergence
-- **THEN** the run prints the identical standard close text with the manual-route note only after it for E4
+- **THEN** the run prints the identical standard close text, with the non-convergence close only after it for E4
 
 ### Requirement: Review Close Read Boundary Covers The Fix-Loop Diff
 
@@ -37,8 +37,12 @@ The review coordinator's sole read exception SHALL cover, in addition to the fre
 
 ### Requirement: Meta-Review Zero-Audit Branch Is Terminal
 
-After successful review and a valid triage parse, the `/sai-review` composition coordinator SHALL own the zero-audit close and SHALL apply the shared findings-driven Direct Build close with only the freshly generated `review.md`. Eligible findings SHALL receive the existing correction choice, with no fix dispatch before explicit selection; when no eligible findings remain, the composition SHALL preserve its pinned zero-audit literal and existing blocked-finding explanations. The composition SHALL NOT apply the review adapter's standalone Direct Build close. Using the final adapter's `terminal_navigation` SHALL select its presentation only, never its standalone selector or dispatches. Missing review content or no legible triage section SHALL retain the error close, not a correction choice.
+After a successful review and a legible triage parse, the `/sai-review` composition coordinator SHALL own the zero-audit close and SHALL apply the Direct Build close with only the freshly generated `review.md`. Eligible findings SHALL receive the correction choice, with no fix dispatch before explicit selection. When no eligible findings remain, the composition SHALL preserve its pinned zero-audit literal and its existing blocked-finding explanations. The composition SHALL NOT apply the review adapter's standalone Direct Build close. Using the final adapter's `terminal_navigation` SHALL select its presentation only, never its standalone selector or dispatches. A missing `review.md` or no legible triage value SHALL take the Error close defined in `sai/commands/meta-review/command-bootstrap.md`, never a correction choice.
 
 #### Scenario: Zero audits recommended with findings still present
-- **WHEN** a successful `/sai-review` run has a valid triage parse, recommends zero audits, and the freshly generated `review.md` still carries eligible findings
-- **THEN** the composition coordinator SHALL offer the existing shared Direct Build correction choice with `review.md` only, dispatch no audits and dispatch no fix before explicit selection; the standalone review adapter SHALL offer no selector and dispatch nothing
+- **WHEN** a successful `/sai-review` run has a legible triage parse, recommends zero audits, and the freshly generated `review.md` still carries eligible findings
+- **THEN** the composition coordinator SHALL offer the Direct Build close's correction choice with `review.md` only, dispatch no audits and dispatch no fix before explicit selection; the standalone review adapter SHALL offer no selector and dispatch nothing
+
+#### Scenario: Missing review content takes the Error close
+- **WHEN** the review segment completes and `review.md` is missing or none of its three triage values is legible
+- **THEN** the composition SHALL report the gap, show the changed files, and end without a correction choice or a Direct Build round

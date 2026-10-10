@@ -1,7 +1,6 @@
 <TASK>
 
   Fetch @sai/policies/verified-precondition-handback.md
-  Fetch @sai/policies/bounded-recovery.md and follow it as part of the shared runner.
   Fetch @sai/orchestration/composition.md and follow it as part of the shared runner.
 
   ## Meta-Review composition coordinator
@@ -64,26 +63,14 @@
   Position 0 (review) always runs. Dispatch the review worker through the review
   phase adapter. The review segment regenerates `review.md` from the current diff.
   After the review segment completes successfully, perform the triage parse
-  declared in `command-bootstrap.md`.
+  declared in `command-bootstrap.md` and activate the audit segments it
+  returns. Activating an audit always regenerates its artifact (overwriting any
+  existing one silently), while an inactive audit never touches its existing
+  artifact.
 
   If the review segment returns `failed` or `cancelled`, close the invocation
   without activating any audit segment. Report the failure or clean-stop summary
   and the accumulated changed-files union.
-
-  ## Triage parse and conditional audit activation
-  After the review segment completes, read the three Surface Triage sections
-  from the freshly regenerated `review.md` as declared in `command-bootstrap.md`.
-  Construct the activated segment list by including only the review segment
-  (always) plus the audit segments whose triage condition resolved to `Yes`.
-  Activating an audit always regenerates its artifact (overwriting any existing
-  one silently), while a non-recommended audit never touches its existing
-  artifact.
-
-  If `review.md` is missing or all three sections are illegible after a completed
-  review segment, abort the suite without dispatching any audit and report the
-  gap. If an individual section is illegible, that audit counts as not
-  recommended plus a summary warning line; the suite continues with the other
-  audits whose sections were legible.
 
   ## Soft-parallel audit dispatch
   When one or more audit segments are activated, dispatch their workers
@@ -99,6 +86,12 @@
   `performance.md`, `accessibility.md`), so artifact concurrency is safe. A
   `needs_input` from one audit pauses only its own segment through the native
   picker; multiple pending ones process sequentially in the fixed order.
+
+  An audit segment that returns `failed` or `cancelled` does not close the
+  composition, an exception to `@sai/orchestration/composition.md` § 2 that
+  applies to audit segments only: the other audits continue, nothing retries
+  and review does not re-run, and the combined terminal shows each audit's
+  status.
 
   ## Non-final terminal navigation
   When an audit segment runs as non-final (position `i` where `i + 1` is still
@@ -117,16 +110,16 @@
   2. **Cross-segment changed-files union** — the ordered, duplicate-free union
      across all segments in first-seen order.
   3. **Zero-audit standard close** — when zero audits were activated, use
-     exactly this literal as the standard close for the shared Direct Build
+     exactly this literal as the standard close for the Direct Build
      close below:
 
      `Review complete. No audits recommended. Run `/sai-archive {name}` in a new chat when ready.`
 
-     After successful review and a valid triage parse, apply the composition's
-     shared Direct Build close with only the freshly regenerated `review.md`.
+     After successful review and a legible triage parse, apply the composition's
+     Direct Build close with only the freshly regenerated `review.md`.
      When no eligible findings remain, print the literal unchanged and stop;
-     retain any warning or blocked-finding explanation required by the existing
-     close. Eligible findings receive the existing correction choice, with no
+     retain any warning or blocked-finding explanation required by the Direct Build
+     close. Eligible findings receive the correction choice, with no
      fix dispatch before explicit Direct Build selection. The review adapter's
      own standalone Direct Build close belongs to `/sai-5-review` and never runs
      inside this composition; the composition coordinator owns this close.
@@ -135,11 +128,11 @@
   invent a distinct meta-review-only success message that replaces the
   pinned completion texts. Then apply the Direct Build close below and stop.
 
-  ## Direct Build close (findings-driven)
+  ## Direct Build close
 
   The caller's standard close is the zero-audit literal above when zero audits
-  were activated; otherwise it is the combined terminal above. Every shared-close
-  path uses this same run-specific standard close.
+  were activated; otherwise it is the combined terminal above. Every path of the Direct Build close
+  uses this same run-specific standard close.
 
   Fetch @sai/commands/meta-review/direct-build-close.md and follow it with:
 
@@ -152,20 +145,8 @@
     manually`, and `decline-close` = the run-specific standard close plus guidance
     to run `/sai-build {name}` by hand.
 
-  Missing `review.md` or no legible triage section takes the error close above,
-  never this findings-driven close. An individually illegible section retains
-  its warning and activates no audit; it adds no correction authorization.
-
-  ## Edge cases
-  - **E1**: empty or ambiguous arguments resolve through the standard change-picker exactly once, before any dispatch.
-  - **E2**: `review.md` missing or with no legible triage section after a completed review segment → suite aborts without dispatching, reporting the gap.
-  - **E3**: an individually illegible section → that audit counts as not recommended plus a summary warning line; the suite continues.
-  - **E4**: existing and recommended artifact → re-run and overwrite silently; existing but not recommended → left untouched; missing and recommended → dispatched directly.
-  - **E5**: zero audits recommended after successful review and valid triage → shared Direct Build close using freshly regenerated `review.md` only; eligible findings receive the existing choice, otherwise preserve the exact zero-audit literal. No audit dispatches; fixes require explicit selection.
-  - **E6**: a `needs_input` pauses only its own segment via the native picker; multiple pending ones process sequentially security→performance→accessibility.
-  - **E7**: an audit failure/cancellation never aborts siblings; per-audit status appears in the combined terminal; nothing retries or re-runs review.
-  - **E8**: `--fast-track` is stripped as a behavioral no-op (build parity); it suppresses nothing because sai-review owns no questions.
-  - **E9**: pre-selector writes stay within the four `.md` artifacts via delegated workers; zero production code, commits, pushes, archives, or PRs. The Direct Build close above is the sole exception: code fix plus one pre-authorized local commit, never push.
+  When the Error close of `command-bootstrap.md` applies, this Direct Build
+  close does not run.
 
   ## Changed-files union
   Preserve one ordered, duplicate-free changed-files union across all segment
@@ -179,26 +160,11 @@
   close dispatches the distinct `sai-review-fix-worker`.
   Meta-review declares no other managed worker of its own.
 
-  ## No intermediate approval gate
-  A successful review segment transitions immediately to the activated audit
-  segments based on the triage parse. Do not stop for artifact feedback, plan
-  review, or user approval between the review and audit phases.
-
   ## Re-entry
   Re-entry after interruption or partial audit execution goes through the review
   segment again. Never resume the audit loops directly while skipping review
   re-generation. On-disk `review.md` triage sections remain the activation
   record.
-
-  ## Non-removable stops
-  Do not suppress any audit's non-removable stops. Incomplete audit (pending
-  findings, pending safe-operations confirmations) closes without the successful
-  final completion transition.
-
-  ## No Step ceiling
-  Do not declare a maximum Step count. Large audit suites are accepted.
-  Context-budget pressure is mitigated by re-entry after interruption, not by a
-  hard Step cap.
 
 </TASK>
 
