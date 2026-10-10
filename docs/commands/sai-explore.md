@@ -6,8 +6,8 @@ Helps think through an idea before committing to an implementation. It clarifies
 
 ## Flags and behavior modifiers
 
-- `--fast-track`: skips confirmations related to the document language and closing the exploration. In a later planning step, it also skips choosing the language for the general overview.
-- `--overview-lang <language>`: sets the language of the general overview and prevents a question about that preference.
+- `--fast-track`: skips the artifact-review and crystallization language gates. On Plan - Unattended, also skips the overview-language question and selects no overview unless a language was explicitly supplied. It never skips the closing route selector, uncertainty decisions, or POC choices.
+- `--overview-lang <language>`: sets the overview language for Plan - Unattended without asking. It has no effect on Direct Build - Unattended.
 - Closing selector: lets the user choose between `Manual`, `Plan - Unattended`, and `Direct Build - Unattended` when the exploration is ready to continue.
 
 ## In detail
@@ -20,4 +20,15 @@ If it detects that the place where the feature would be added mixes too many res
 
 When the technical approach is uncertain or there are several plausible explanations for a bug, it may propose a disposable proof of concept. This experiment answers the question that separates the alternatives; it is not automatically considered part of the final product. An explicit decision is requested before running it.
 
-When the conversation closes, the user chooses how to continue. `Manual` keeps step-by-step control and allows review of the changes discovered during the session. `Plan - Unattended` prepares the required documents without asking for intermediate confirmations. `Direct Build - Unattended` delegates the build and authorizes one local confirmation when the process is complete. `--fast-track` does not skip these closing decisions.
+The edge-case and implementation-detail lists use the optional third-party
+`writing-for-agents` skill for wording. If unavailable, Explore warns once and
+continues with its own rules; the skill adds no requirements or permissions.
+Direct Build also consults existing `SAI_LEARNINGS.md` as repository context.
+
+When the conversation closes, choose how to continue. `Manual` hands you the
+Ready to Propose block for `/sai-1-spec`. `Plan - Unattended` runs spec and design
+with adversarial feedback, then stops for your review before `/sai-build`.
+Ambiguous questions still escalate. `Direct Build - Unattended` authorizes
+implementation, review/fix, retroactive specs, archive, and one local commit;
+it never pushes. For slices, the selector repeats per slice. Fast-track does
+not skip these authorizations or the reconfirmation of unresolved decisions.

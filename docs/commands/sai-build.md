@@ -14,4 +14,12 @@ The user identifies the change to complete. The command first prepares a detaile
 
 The change is resolved only once, so both parts work toward the same goal. No intermediate approval is requested between preparation and application. The run continues directly as long as tests and checks confirm that the result is correct.
 
-The command keeps the application checkpoints, including commits and human checks that cannot be resolved automatically, but manages them as one continuous run. If a problem appears without a clear correction, the run stops so the user can decide how to continue.
+The planner can supply skeletons or partial code for tested Steps; GREEN
+completes them against RED-owned tests without modifying those tests. The
+project's conventions accompany both workers. See the separate
+[planning](sai-3-implement.md) and [apply](sai-4-apply.md) references for details.
+
+Local commits are pre-authorized and pending functional checks are reported at
+the end. The full-suite gate remains mandatory for current plans. A passing
+RED, a worker veto, or exhausted recovery still asks for your explicit decision;
+build's fast-track mode does not grant those answers or fresh retry budgets.

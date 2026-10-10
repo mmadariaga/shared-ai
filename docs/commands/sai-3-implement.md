@@ -2,7 +2,7 @@
 
 ## Command function
 
-Prepares a complete guide for carrying out the implementation. The guide turns the design into concrete work steps, including the code to add or change and the checks associated with each step.
+Prepares `implementation.md`, the guide for carrying out the design in concrete Steps with code/content instructions and checks. It plans the work; it does not execute it.
 
 ## Flags and behavior modifiers
 
@@ -10,9 +10,21 @@ Prepares a complete guide for carrying out the implementation. The guide turns t
 
 ## In detail
 
-The command reviews the design and turns it into an implementation guide precise enough for another run to follow step by step. For each part of the work, it states what must be done, what result is expected, and how to check it.
+The command reuses design's relevant documentation and project conventions. It researches only evidence needed for a specific planning gap, reports each researched gap in the final summary, and asks you when the gap cannot be resolved. This works the same in normal mode, fast-track, `/sai-build`, and reruns.
+
+Steps keep the order and one-to-one correspondence of `tasks.md`. In a Step with
+RED tests, production content ranges from signatures with `TODO(sai-4)` what/how
+comments to partial or complete code, depending on the Step's difficulty. Every
+non-obvious decision stays in the plan; GREEN completes routine work against the
+tests. Steps without RED and normative text such as prompts, required literals,
+and configuration values remain fully specified. Descriptive documentation can
+be provided as writing instructions in a tested Step.
 
 The guide includes the order of the steps, the tests that must demonstrate each behavior, and any documentation decisions that are needed. If a change could affect an important project decision, the command may suggest recording it so the context is not lost.
+
+Each RED/GREEN pair runs the same Step-scoped test command. The full repository
+suite is specified once for apply's final gate. Existing applied work is preserved
+on reruns rather than regenerated wholesale.
 
 The result is a written plan, not an executed implementation. The command does not change project code or perform the steps itself. It stops when the guide is complete so the next phase can apply it in a controlled way.
 

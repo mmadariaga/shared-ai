@@ -6,12 +6,12 @@ Turns an initial description of a need or feature into a clear proposal. The pro
 
 ## Flags and behavior modifiers
 
-It has no documented behavior flags. Its input is the description of the feature to be built.
+For a new change, supply the complete `Ready to Propose` block produced by `/sai-explore`. For refinement, supply an existing change name and feedback. It has no ordinary user-facing behavior flags.
 
 ## In detail
 
-The user explains an idea with whatever level of detail is available, even if it is still incomplete. The command organizes the idea, clarifies its goal, and turns it into a proposal that others can read and review.
+The command turns the crystallized idea into `proposal.md` and capability specs under `openspec/changes/{change-name}/`. Start with `/sai-explore` when the idea is still incomplete; creation requires its complete block rather than a free-form description alone.
 
 It also prepares acceptance criteria: concrete examples of what should happen when the feature is finished. These criteria help detect misunderstandings before design or coding begins.
 
-The command stops after preparing the proposal and criteria. It does not design the solution, write code, or start project changes. The user can review the result, request adjustments, or approve it before continuing. If the idea uses ambiguous terms, the command may ask for clarification so the proposal does not depend on assumptions.
+The command stops after preparing the proposal and criteria. It does not write design or implementation artifacts or project code. Review the result and invoke `/sai-2-design {change-name}` to approve it and continue. Ambiguous domain terms may require clarification and permitted glossary updates. Proposals describe purpose and scope without a project-wide Complexity rating.

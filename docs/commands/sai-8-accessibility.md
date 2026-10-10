@@ -20,3 +20,10 @@ The command analyzes whether people with different abilities can perceive, under
 When the change allows it, the command can also perform browser checks to observe the result while it is running. These checks complement code inspection and help find problems that only appear during interaction with the screen.
 
 Each problem is explained with an example of its effect on the user and the specific place that should be reviewed. The command produces a report and does not modify the interface itself.
+
+Scope includes JSX/TSX, Astro, HTML, Vue, Svelte, CSS, and component-bearing
+Markdown: `.mdx` plus `.md` containing HTML elements or capitalized component
+tags. Checks follow the frameworks and component types actually found, not only
+React. Screen-reader statements are labeled `Inferred:`; static inspection is
+not evidence of a screen-reader session. See
+[review scope and fix selection](../review-triage.md) for combined runs.

@@ -10,6 +10,12 @@ Some `sai-*` commands wrap the OpenSpec skill `openspec-explore`; others are SAI
 
 ## Main pipeline
 
+User-facing usage and flags are documented in [README.md](README.md),
+[the numbered reference](docs/sequential-pipeline.md), and
+[the on-demand reference](docs/on-demand-commands.md). Each command has a
+dedicated usage page under `docs/commands/`; keep those pages and their index
+links aligned when changing a user-visible contract.
+
 ```
  explore (optional) → spec(1) → design(2) → implement(3) → apply(4) → review(5) → [security(6) | performance(7) | accessibility(8)]
                                      ↑                                    ↓
@@ -119,6 +125,13 @@ presentation. Panel absence remains adapter-owned.
 ### Implementation coordinator and worker
 Claude Code and opencode route `/sai-3-implement` through the shared orchestration core and their respective worker binding. Both preserve the same `implementation.md` artifact contract and MANDATORY STOP. The routed coordinator performs no technical I/O and only the worker owns routed planning writes. Fast-track parse and banner: see ### Fast-track flag.
 
+Planning reuses design's supplied material and delegates only concrete gaps
+under `sai/commands/implement/steps/common.md` § Planning Evidence. Its Detail
+range rule allows skeletons or partial code in tested Steps, with decisions
+explicit in code or `TODO(sai-4)` what/how comments. GREEN may read the Step's
+tests to complete that work but never writes tests. Untested Steps and normative
+text remain complete; `tasks.md` Steps map one-to-one to implementation Steps.
+
 ### Apply coordinator and worker
 Claude Code and opencode route `/sai-4-apply` through the routed apply card set (`sai/commands/apply/coordinator.md`, `runner.md`, `invocation.md`, and the RED and GREEN worker contracts with their shared `worker-common.md`) and dispatch the `sai-4-red-worker` / `sai-4-green-worker` managed workers on the budget tier. The coordinator remains the executing main-session driver: it owns change resolution, the run-start Step Projection, coordinator verification, recovery, appendices, and both commit gates, while the RED worker authors the tests (blind to the GREEN implementation body in the split flow, and authoring green tests under the green-exception) and the GREEN worker implements with an absolute test-file prohibition. Both harnesses preserve the same `implementation.md` artifact contract and MANDATORY STOP.
 
@@ -217,6 +230,18 @@ Claude Code and opencode offer a third **Direct Build - Unattended** option on s
 
 ### Backfill coordinator and worker
 Claude Code and opencode route `/sai-backfill` through the routed-shaped backfill card set (`sai/commands/backfill/coordinator.md` + `worker.md`) and dispatch the `sai-backfill-worker` managed worker through the `backfill-worker.md` binding. The adapter declares the same minimal lifecycle shape as commit and archive: no `progress_plan`, no `recovery_policy`, no progress events, closed adapter fields; `original_envelope` is exactly `arguments_value`. The coordinator runs no prerequisite check (only `/sai-explore` does) and owns ask presentation, schema validation, and every final write: interview asks arrive as worker `needs_input` payloads (closed-choice asks through the native picker per `remember.md`; open-ended interview questions rendered as ordinary conversation text exactly once per the instruction's Delivery rule), exact answers forward byte-faithfully through the binding continuation, draft artifacts validate against `openspec/schemas/sai-workflow/schema.yaml`, and only fully valid drafts are written into `openspec/changes/{name}/` by the coordinator itself. The worker owns the read-only technical flow — diff-source selection, read-only diff computation, optional intent capture, in-memory intent reconciliation with `prior_intent` marker rules, the fixed and adaptive interview, delegated `budget-explorer` conflict scanning (the `@skills/budget/SKILL.md` load lives in the worker card), and draft composition — returning draft artifact CONTENT as payload text and never writing a file or running a mutating git command. Terminal navigation prints the worker-authored summary verbatim, closes with exactly `Backfill complete in openspec/changes/{name}/.` (the MANDATORY STOP text) only when validated artifacts were written, then prints the `## Ready to Archive` block as the LAST output. Interview question wordings, gate semantics, schema-validation rules, applied-state markers/prior_intent handling, and budget-explorer output contracts are preserved verbatim.
+
+### Universal workflow skills
+
+Claude Code and opencode install `from-backlog`, `from-next-backlog-item`,
+`to-backlog`, `to-pr`, and `new-change-branch` from `skills/universal/`.
+These explicitly invoked workflows retain conversation context and require no
+OpenSpec setup. See [backlog usage](docs/backlog.md),
+[PR/MR publication](docs/commands/to-pr.md), and
+[local branch creation](docs/commands/new-change-branch.md). Provider workflows
+load the selected registry reference, keep import read-only, and require exact
+publication approval; `to-pr` gates pushes separately. Branch creation preserves
+dirty work and never fetches, stashes, commits, or pushes.
 
 ### Managed agent files (tunable-seed lifecycle)
 

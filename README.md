@@ -33,12 +33,14 @@ In the configured project, start with `/sai-explore`. See [Installation](#instal
   - [Choose your implementation strategy](#choose-your-implementation-strategy)
 - [Main commands](#main-commands)
 - [Utility commands](#utility-commands)
+- [Backlog integration](#backlog-integration)
 - [Cost-Effective Strategies](#cost-effective-strategies)
 - [Project highlights](#project-highlights)
 - [Installation](#installation)
 - [Post Install](#post-install)
 - [Model defaults](#default-opencode-models)
 - [Third Party Tools](#third-party-tools)
+- [Upgrades](#upgrades)
 - [Uninstall](#uninstall)
 
 ## Why use this
@@ -56,93 +58,42 @@ In the configured project, start with `/sai-explore`. See [Installation](#instal
 - For codebase research, the research agent prefers CodeGraph for structural questions and `git grep` for text searches, reading specific files directly when needed.
 - Framework advantage: SAI already writes specs, ADRs, and DDRs and maintains their indexes, so research counts on it and knows where to start.
 
-**Testing is not optional.**
+**Planned builds verify behavior, not just code.**
 
-- Documentation can say something is done; tests demonstrate it. There is no better documentation.
-- The workflow enforces RED → GREEN: test assertions are defined beforehand during design, tests are written first, and production code follows.
-- Different agents own the tests and the implementation: the implementation agent cannot weaken, rewrite, or delete a failing test just to make the suite pass. It has to fix the code instead — no moving the goalposts.
-- When tests cannot check something, such as visual or end-to-end behavior, SAI asks you to verify it as soon as you can see it working — or defers the check if you choose an unattended implementation.
+- Planned builds write tests before implementation: RED → GREEN.
+- Separate agents own tests and production code, so the implementer cannot weaken a failing test just to pass.
+- Checks that need human judgment remain visible rather than being silently marked complete.
 
 **Adversarial review out of the box.**
 
-- Because the workflow starts by refining the idea with `/sai-explore`, that same agent uses its context to adversarially review what comes next: the planning artifacts on the planned route, or the implementation on the Direct Build route.
-- After implementation, dedicated commands offer a deeper review focused on bugs, weak tests, maintainability, and resilience, plus security, performance, and accessibility audits. Run `/sai-review` to coordinate the review process.
+- Explore challenges the plan or implementation before handing it back to you.
+- Run `/sai-review` for a deeper code review and relevant security, performance, and accessibility audits.
 
 ## How to use it
 
-**Load existing work:** `/from-backlog <reference>` imports a GitHub or GitLab
-issue, or an Azure DevOps Services work item, into the current conversation in
-Claude Code and opencode. GitHub accepts `https://github.com/owner/repo/issues/123`
-or `/owner/repo/issues/123`; GitLab accepts complete `/-/issues/N` links,
-including self-hosted destinations. Azure Boards accepts
-`https://dev.azure.com/organization/project/_workitems/edit/123` and legacy
-`https://organization.visualstudio.com/project/_workitems/edit/123` links.
-An isolated Azure ID requires unambiguous existing organization context.
-Requires Node.js and authorized `gh`, `glab`, or Azure CLI with its azure-devops
-extension, respectively. Import reads descriptions and all available comments;
-partial retrieval is reported explicitly. It changes no remote data and installs
-or configures nothing. Azure DevOps Server, GitHub Enterprise, and pull requests
-are not supported. See the installed `from-backlog` skill for import rules.
+Start with an idea in `/sai-explore`, or import existing work using the
+[backlog integration](#backlog-integration) skills before exploring it.
 
-**Load the next item:** `/from-next-backlog-item` takes no arguments in Claude
-Code and opencode. It asks only for missing provider/pile context, selects the
-first item in manual backlog order, and continues the same `from-backlog` import
-in the current conversation. Supported piles are GitHub Projects in project-wide
-position order, GitLab project issue lists (with supported filters) in relative
-position order, and Azure team backlog levels using their configured rank field.
-View-specific order or filters that cannot be verified stay pending rather than
-falling back to date, identifier, priority, or another pile. Empty piles, access
-failures, unsupported first items, and cancellation never trigger an import.
-Choices stay in the conversation; execution writes no files or provider data.
-
-**Capture work for later:** `/to-backlog` uses the current conversation in
-Claude Code and OpenCode to propose one title and Markdown description. If the
-conversation started from an existing issue (via `/from-backlog` or a directly
-supplied full or partial issue URL), it updates only that issue's title and
-description, preserving unrelated text. Later reference links are not targets.
-It shows the exact target and content for explicit approval, rereads before
-updating, and requires fresh approval when the baseline content changes. Update
-does not select or modify a Project, and never creates a replacement issue.
-Without an originating issue, it retains creation of a GitHub issue and insertion
-into a GitHub Project after confirmation. It needs authenticated `gh` with issue
-edit access for update, or repository and Project access for creation; it does
-not need OpenSpec or discard conversation context.
-
-For creation, supply a provider, repository, or Project explicitly, or configure defaults
-in `.to-backlog.json` in the target working directory:
-
-```json
-{"provider":"github","repository":"owner/repo","project":"https://github.com/orgs/board-owner/projects/1"}
+```text
+/sai-explore                       # clarify the change and choose a route
+# Choose Plan - Unattended, review the plan, then:
+/sai-build <change-name>            # write tests and implement
+/sai-review <change-name>           # review and choose which findings to fix
+/sai-archive <change-name>          # sync specs and archive when ready
 ```
 
-Explicit destination fields take precedence over configuration, then Git
-remotes. Ambiguous destinations are questions, not guesses. GitHub is the only
-publication provider shipped; another requested provider is not replaced with
-GitHub. If publication is partial or uncertain, keep the reported local receipt
-and existing issue link: recovery verifies outcomes and never recreates an issue.
-Provider detection rules and adapter references live in
-`skills/universal/to-backlog/providers/registry.json`; new providers register
-their capabilities, plain instruction file and isolated Node adapter without
-changing the common workflow or resolver.
+`/sai-build` authorizes local commits as it works. If you want to approve each
+commit, use [`/sai-4-apply`](docs/commands/sai-4-apply.md) after preparing the
+[implementation plan](docs/commands/sai-3-implement.md) instead.
 
-```
-/sai-explore                      # discuss the idea, edge cases, and implementation details
-                                  # then choose a path:
-                                  # ↪ unattended plan, direct build, or manual control
-                                  # If you choose direct build, wait for it to finish
+Need broader specialized audits? Add `--full` or `--path <dir>` to `/sai-review`.
+Use `--runtime` to request performance diagnostics and browser checks (with your
+permission), or `--parent-branch <branch>` to choose the comparison branch.
+See [review options](docs/review-triage.md) for scope and cost trade-offs.
 
-                                  # If you choose unattended plan, review it, give feedback, and then:
-/sai-build <change-name>          # implement → apply in one run
-
-/sai-review <change-name>         # review bugs, resilience, maintainability, and test quality;
-                                  # coordinate security, performance, and accessibility audits
-                                  # options: --full, --path <dir>, --tier <tier>, --runtime,
-                                  # --parent-branch <branch>
-
-# If review findings need fixes, run sai-build again, then repeat review
-
-/sai-archive <change-name>
-```
+If you choose to fix findings at the end of review, it makes one local commit
+but does **not** run tests before committing; run project checks afterward. For fixes through RED → GREEN,
+leave findings open and run `/sai-build`, then review again.
 
 ### Divide and conquer
 
@@ -154,61 +105,74 @@ When a change is too large to implement and review safely as one unit, `/sai-exp
 
 ### Choose your implementation strategy
 
-After `/sai-explore` displays every `Ready to Propose` block for a crystallized idea, it closes the turn with a picker offering three routes. Nothing is dispatched before you answer it; your choice authorizes delegated writes.
+Once the idea is clear, `/sai-explore` asks you to choose a route. Planning or implementation starts only after your choice.
 
-| Option | What happens |
-|--------|--------------|
-| **Plan - Unattended** | Runs `/sai-1-spec` and `/sai-2-design` back to back. After each phase, `/sai-explore` uses the change context it already holds to run an automatic agent-to-agent feedback loop: it reviews the worker's output and sends corrections back to the same worker. It then stops for your final pre-implementation review. Bounded auto-answering handles routine worker questions; anything ambiguous escalates to you, and every auto-answer is announced inline. This path and the commands that follow it provide the most technically rigorous workflow, but also consume the most tokens. |
-| **Direct Build - Unattended** | Code first, specs after: implements the change directly, then the main agent runs a bounded adversarial review-and-fix loop. It reconstructs `proposal.md` and the capability specs from both the diff and the previous discussion about the change in `/sai-explore`. Ideal for fixes and simple changes. |
-| **Manual** | Dispatches nothing. Hands you the `Ready to Propose` block to paste into a new chat with `/sai-1-spec`. Full control over every command — see [docs/sequential-pipeline.md](docs/sequential-pipeline.md). |
+| Option | Choose it when | What happens |
+|--------|----------------|--------------|
+| **Plan - Unattended** | The change needs careful design and you want to approve the plan before coding. More rigorous, but uses more tokens. | Prepares and reviews specs and design, then stops for your feedback. Run `/sai-build` when ready. |
+| **Direct Build - Unattended** | The change is small and clear, such as a focused fix. Less planning overhead. | Implements and reviews the change, reconstructs specs, archives it, and makes one local commit. No push. |
+| **Manual** | You want to review and control each phase separately. More interaction. | Gives you the `Ready to Propose` block for `/sai-1-spec` in a new chat. Follow the [numbered pipeline](docs/sequential-pipeline.md). |
 
-If the idea was sliced, the selector reappears after each slice completes — a per-slice authorization gate rather than one blanket approval.
+For sliced work, you choose again for each slice. Ambiguous decisions still come back to you on unattended routes.
+
+Choose the planned route when you need tests-first implementation. Direct Build
+does not use the same RED → GREEN process; check its results before publishing.
 
 ## Main commands
 
 | Command | Role | Output |
 |---------|------|--------|
-| `/sai-explore` | Discover, crystallize, and choose an implementation route | Ready-to-propose plan or completed Direct Build |
-| `/sai-build` | Chain `sai-3-implement` → `sai-4-apply` | Tests and production code |
-| `/sai-review` | Coordinate code review and specialized audits | `review.md` and audit reports (`security.md`, `performance.md`, `accessibility.md`) |
-| `/sai-archive` | Sync specs and archive the completed change | Archived change and optional local commit |
+| [`/sai-explore`](docs/commands/sai-explore.md) | Clarify the idea and choose how to build it | Proposal handoff, reviewed plan, or completed Direct Build |
+| [`/sai-build`](docs/commands/sai-build.md) | Turn an approved design into a tested implementation | Tests, production code, and local commits |
+| [`/sai-review`](docs/commands/sai-review.md) | Coordinate code review and specialized audits, then offer selected fixes | Reports and, if authorized, fixes with one local commit |
+| [`/sai-archive`](docs/commands/sai-archive.md) | Sync specs and archive the completed change | Archived change and optional local commit |
 
-The core planning, build, and review phases are also exposed as eight numbered commands — full reference in [docs/sequential-pipeline.md](docs/sequential-pipeline.md). Review audit triage lives in [docs/review-triage.md](docs/review-triage.md).
-
-Claude Code and opencode route these core phases through a coordinator and a managed worker. In the spec phase, the worker creates only the proposal and capability specs (plus permitted glossary updates); later phases own design and implementation artifacts.
+For phase-by-phase control, use the eight [numbered commands](docs/sequential-pipeline.md). See [review options and fix selection](docs/review-triage.md) for audit scope and handling findings.
 
 ## Utility commands
 
-Use `/new-change-branch` in Claude Code or opencode to create and switch to a
-local `feat`, `fix`, `docs`, or `chore` branch. It reuses the current discussion
-for the name and optional work-item identifier, and asks you to select a base
-or enter one. Existing work is preserved; no remote refresh, commit, or push runs.
-
-Use the universal `/to-pr` skill to create or update GitHub pull requests and
-GitLab merge requests from committed Git changes. It works in Claude Code and
-OpenCode without OpenSpec. Review the complete title and description before
-publication; any push needs separate approval. Reinstall to retire managed
-`sai-pr` copies. Existing user `pr.md` documents and modified overrides are preserved.
+Use these workflows alongside the main pipeline in Claude Code and opencode.
 
 | Command | Purpose |
 |---------|---------|
-| `/sai-merge` | Integrate a branch with `Merge`, `Rebase`, or `Rebase with squash` — full conflict resolution, ADR/DDR collision repair, and automatic local finalization. Normal mode approves strategies; `--fast-track` applies them after presentation. Unavailable tests are reported, not counted as passing. |
-| `/sai-worktree` | Interactive git worktree manager — inventory, create, and delete linked worktrees. Attempts to initialize CodeGraph in new worktrees when available. |
-| `/sai-status` | Read-only progress panel — single change or table over every active change. Never writes anything. |
-| `/sai-retire-docs` | Read-only, index-driven analysis of active ADRs, DDRs, and related specs. Asks for explicit per-candidate confirmation before any archival move. |
+| [`/sai-commit`](docs/commands/sai-commit.md) | Draft a message for staged changes and commit after approval. |
+| [`/sai-backfill`](docs/commands/sai-backfill.md) | Reconstruct proposal/specs from a code-first change. |
+| [`/sai-merge`](docs/commands/sai-merge.md) | Merge, rebase, or squash-rebase with conflict resolution and decision-record repair. |
+| [`/sai-worktree`](docs/commands/sai-worktree.md) | Create or remove separate Git working folders so you can work on changes in parallel. |
+| [`/sai-status`](docs/commands/sai-status.md) | Check progress for one change or all active changes without modifying files. |
+| [`/sai-retire-docs`](docs/commands/sai-retire-docs.md) | Find outdated decision records and specs; archive only the candidates you approve. |
 
-Full unnumbered reference in [docs/on-demand-commands.md](docs/on-demand-commands.md).
+See the [utility command reference](docs/on-demand-commands.md) for options.
 
-Merge runs its mechanical stages in the coordinator through one tool call per
-stage and dispatches its worker only when a conflict or a decision-record
-collision needs judgment. Strategy explanations are presented
-once per decision; safety, independent review and verification budgets remain
-unchanged. [Measurement evidence and comparison protocol](docs/merge-efficiency-measurements.md)
-distinguish instruction/tool-call reductions from unmeasured model latency.
+## Backlog integration
+
+Bring backlog items into the discussion, save ideas for later, create a branch,
+and publish completed work for review. These skills
+retain the current conversation in Claude Code and opencode and need no OpenSpec.
+
+| Command | Purpose |
+|---------|---------|
+| [`/from-backlog <reference>`](docs/commands/from-backlog.md) | Read a GitHub/GitLab issue or Azure Boards work item, including its description and comments, into the discussion. |
+| [`/from-next-backlog-item`](docs/commands/from-next-backlog-item.md) | Select and import a highest-priority eligible item from a chosen backlog; takes no arguments. |
+| [`/to-backlog`](docs/commands/to-backlog.md) | Capture agreed work in a new item, or update the originating item's title and description, after approval. |
+| [`/new-change-branch`](docs/commands/new-change-branch.md) | Create and switch to a local change branch from a base you select; reuse the current discussion for its name. |
+| [`/to-pr`](docs/commands/to-pr.md) | Create/update a GitHub PR, GitLab MR, or Azure Repos PR from committed changes; publication and push are approved separately. |
+
+Use `/from-backlog` when you already know the item, or `/from-next-backlog-item`
+to pick from your backlog. Import is read-only; you decide what to do next.
+Use `/to-backlog` to save an agreed idea for later. If the conversation started
+from an existing item, it updates that item instead of creating another.
+
+Creating a branch is local; PR publication requires approval, and any push is
+approved separately.
+
+Importing or publishing requires Node.js and an authenticated provider CLI: `gh`, `glab`, or Azure CLI
+with the azure-devops extension. See [Backlog workflows](docs/backlog.md) for
+supported references, destination settings, ordering limits, and recovery.
 
 ## Cost-Effective Strategies
 
-Every phase in this pipeline is optimized to minimize token consumption without sacrificing quality.
+Spend stronger models on decisions and cheaper models on routine work.
 
 ### Token-Efficient Languages
 
@@ -216,6 +180,12 @@ Agents reason internally in English to reduce token costs, but respond to you in
 
 ### Task-Matched Model Selection
 SAI uses different models for different kinds of work, balancing quality and cost. You can customize them per project during setup; see the [default opencode models](#default-opencode-models).
+
+### CodeGraph Integration
+
+Install [CodeGraph](#third-party-tools) to reduce repeated code searches and
+the tokens they consume. Project `setup` builds its index when available;
+SAI also works without it.
 
 ### Explore Sub-Agent
 Research and documentation lookup can run on lower-cost agents that return concise findings instead of filling the main conversation with raw material. This keeps the focus on decisions while reducing cost.
@@ -234,31 +204,29 @@ Small, well-scoped tasks can go to a lower-cost agent while the main agent handl
 Alongside code and tests, SAI records each change's purpose and acceptance criteria. That context helps future developers and AI agents understand why the change was made, instead of leaving the reasoning only in the original requester's head.
 
 ### Built-In Code Quality
-SAI favors focused changes, clear names, and tests tied to acceptance criteria. When something cannot be checked automatically, it asks you to verify it yourself. The goal is code that's easier to understand, change, and trust.
+SAI follows existing project conventions and favors focused changes over speculative abstractions, so the result stays easier to maintain.
 
 ### Multi-Pass Review
-The change is checked for bugs, weak tests, maintainability, and alignment with the project's requirements. Security, performance, and accessibility audits are part of the review toolkit.
+Review looks for bugs, weak tests, maintainability issues, and missed requirements. You choose which findings to fix; resolved findings stay visible with a ` (FIXED)` mark so you can distinguish them from open work.
 
 ### RED → GREEN
-For every testable step, the test is written first (RED) and run against the not-yet-implemented function — so it fails because the behavior is missing, not because of a setup bug. A separate agent then writes the implementation to make the test pass (GREEN), with **no permission to modify the tests** — no cheating. The production code ends up validated against an assertion it never touched.
+Tests first demonstrate the missing behavior (RED), then a separate agent implements it (GREEN) without changing the tests. If the tests already pass, you decide whether the behavior exists or the test needs stronger assertions.
 
-### ADR Proposals
-Proposes creating an ADR/DDR if all 3 criteria below are met:
+### Record important decisions
+Architecture and domain decision records (ADRs/DDRs) explain choices that future
+changes should not undo casually. SAI proposes one when all three criteria apply:
 1. **Hard to reverse** — the cost of changing later is meaningful.
 2. **Surprising without context** — a future reader would wonder "why did they do it this way?"
 3. **Real trade-off** — genuine alternatives existed and one was chosen for specific reasons.
 
-### Fresh context for each command
-Each command starts fresh and reads the project artifacts it needs instead of relying on earlier chat context. That makes runs easier to reproduce and lets you switch models between phases.
-
-### Ubiquitous Language via GLOSSARY.md
+### Consistent project terminology
 Project terms live in `GLOSSARY.md`. Planning reuses them in names, and review checks that new code stays consistent with the project's language.
 
 ## Installation
 
-Install the commands once for Claude Code, opencode, or both; then run setup in each project you want to use. A read-only `doctor` command checks the installation, and `uninstall` removes managed files.
+Requires **Node.js 22 or newer**. Provider workflows additionally need their own authenticated CLIs; SAI does not install or authenticate them.
 
-The installer projects both harnesses from `sai/install-manifest.json`, including the shared `sai/policies/` and shared Orchestration Core files plus each harness's routed worker bindings; `doctor` and `uninstall` use the same projection.
+Install the commands once for Claude Code, opencode, or both; then run setup in each project you want to use. A read-only `doctor` command checks the installation, and `uninstall` removes managed files.
 
 ### npx installer
 
@@ -267,119 +235,85 @@ The installer projects both harnesses from `sai/install-manifest.json`, includin
 npx --allow-git=all github:mmadariaga/shared-ai
 ```
 
-Presents an interactive checklist to select Claude Code and/or opencode as targets. If you pick opencode and its CLI isn't on PATH, the installer offers to install it for you. It also offers (once, editor-agnostic) to install the **CodeGraph** CLI and wire its MCP server — see [Third Party Tools](#third-party-tools). It also offers, per selected assistant that lacks it, the optional **writing-for-agents** skill through skills.sh.
+Choose Claude Code, opencode, or both. The installer offers missing opencode
+and the recommended [third-party tools](#third-party-tools).
 
 ```bash
 # 2. In each project where you want to use shared-AI:
 npx github:mmadariaga/shared-ai setup /path/to/your/project
 ```
 
-- Asks to install the openspec CLI if missing
-- Runs `openspec init` if needed
-- Sets `schema: sai-workflow` in `openspec/config.yaml`
-- Copies the schema templates into the project
-- Builds the project index with `codegraph init` when the CodeGraph CLI is available
-- Ends with interactive CLI menus to customize command and agent models per project — any model available in opencode can be selected; on Claude Code it works with Anthropic models
+- Installs OpenSpec with your approval if missing and configures the project workflow.
+- Builds a CodeGraph index when available.
+- Offers model customization for the project.
 
-If something looks off after install or setup, run a read-only health check — full reference in [docs/doctor.md](docs/doctor.md).
+Restart Claude Code or opencode after installation to load the commands and agents.
+If something looks wrong, run the read-only health check:
+
+```bash
+npx github:mmadariaga/shared-ai doctor
+```
+
+See [doctor options](docs/doctor.md) for offline and machine-readable checks.
 
 ## Post Install
 
-`npx github:mmadariaga/shared-ai setup` ends with an interactive **Customize models** menu. Choose models for individual commands and agents, or save and load presets, without editing configuration files by hand. On opencode you can select any available model; Claude Code supports Anthropic models.
+To change models later, run `setup` again and choose **Customize models**.
+Select individual commands and agents, or load a preset. Opencode supports any
+available model; Claude Code supports Anthropic models.
 
-The menu's model tables show two estimates per target to guide your choice, on both Claude Code and opencode:
+Use the menu's estimates to choose:
 
-- `CONTEXT` — how much the task typically accumulates (instructions, documents, results, history): `Small` for isolated tasks, `Medium` for several documents or continuations, `Large` for substantial accumulated state. It describes the task, not the model's context window.
-- `DIFFICULTY` — reasoning demand, from `↑` to `↑↑↑`.
+- `CONTEXT` — how much material the task needs to handle, from Small to Large.
+- `DIFFICULTY` — reasoning demand, from `↑` to `↑↑↑`; use stronger models for harder work.
 
-Targets without an estimate show `Unknown`.
-
-Model capability funnel: configure each phase's model no more capable than the previous one (`sai-2` >= `sai-3` >= `sai-4`; that is, the `sai-3` implementation worker >= the `sai-4` GREEN worker). The implementer of `/sai-4-apply` is expected to be no more capable than the design agent; a more capable later phase is unsupported.
+Keep design at least as capable as implementation planning, and planning at
+least as capable as GREEN (`sai-2` >= `sai-3` >= `sai-4`). Decisions belong in
+the earlier phases; cheaper implementers should execute them, not redesign them.
 
 ### Per project installation / override
 
-Per-project commands and agents are still possible: a file placed in a supported harness's project-local folder at the repo root overrides the user-global file of the same name. Globals act as a base; project-local files override them by filename.
+Use `setup` for project-specific models. For custom instructions, a project-local
+command or agent overrides the global file with the same name:
 
 | Harness | Commands | Agents |
 |---------|----------|--------|
 | opencode | `.opencode/commands/` | `.opencode/agents/` |
 | Claude Code | `.claude/commands/` | `.claude/agents/` |
 
-The **Customize models** menu in `setup` creates project-local model overrides for you. You can edit those overrides to add instructions or invoke skills; just keep the original `Fetch @` imports intact so future updates remain compatible. Later model customizations preserve your other edits to these overrides.
+Keep the original `Fetch @` imports when editing overrides so the command still
+loads its workflow. Model customization preserves your other edits.
 
 ### Default opencode models
 
-These opencode defaults were chosen for good results at reasonable cost. Feel free to use the setup model menu to replace them with models you know work better for your projects.
-
-```
-      TYPE          TARGET                       CONTEXT  DIFFICULTY  SETTING
-      ────────────  ───────────────────────────  ───────  ──────────  ─────────────────────────────────────────────────
-> [x] AGENT         budget                       Medium   ↑           opencode/muse-spark-1.3-contributor-free (xhigh)
-  [x] AGENT         executor                     Small    ↑           opencode/muse-spark-1.3-contributor-free (xhigh)
-  [x] AGENT         explore                      Medium   ↑           opencode/muse-spark-1.3-contributor-free (xhigh)
-
-  [x] ORCHESTRATOR  sai-explore                  Large    ↑↑↑         opencode-go/muse-spark-1.3-contributor (xhigh)
-  [x] WORKER        sai-direct-build-worker      Large    ↑↑          opencode-go/deepseek-v4.1-flash (max)
-  [x] ORCHESTRATOR  sai-1-spec                   Medium   ↑↑          opencode-go/muse-spark-1.3-contributor (xhigh)
-  [x] WORKER        sai-1-spec-proposal-worker   Medium   ↑↑          opencode-go/deepseek-v4.1-flash (max)
-  [x] ORCHESTRATOR  sai-2-design                 Medium   ↑↑          opencode-go/muse-spark-1.3-contributor (xhigh)
-  [x] WORKER        sai-2-design-worker          Large    ↑↑↑         opencode-go/deepseek-v4.1-flash (max)
-
-  [x] ORCHESTRATOR  sai-build                    Large    ↑↑↑         opencode-go/muse-spark-1.3-contributor (xhigh)
-  [x] ORCHESTRATOR  sai-3-implement              Medium   ↑↑          opencode-go/muse-spark-1.3-contributor (xhigh)
-  [x] WORKER        sai-3-implementation-worker  Large    ↑↑          opencode-go/deepseek-v4.1-flash (max)
-  [x] ORCHESTRATOR  sai-4-apply                  Large    ↑↑↑         opencode-go/muse-spark-1.3-contributor (xhigh)
-  [x] WORKER        sai-4-red-worker             Medium   ↑           opencode-go/deepseek-v4.1-flash (max)
-  [x] WORKER        sai-4-green-worker           Medium   ↑↑          opencode-go/deepseek-v4.1-flash (max)
-
-  [x] ORCHESTRATOR  sai-review                   Large    ↑↑          opencode-go/muse-spark-1.3-contributor (xhigh)
-  [x] ORCHESTRATOR  sai-5-review                 Medium   ↑↑          opencode-go/muse-spark-1.3-contributor (xhigh)
-  [x] WORKER        sai-5-review-worker          Large    ↑↑          opencode-go/gpt-5.6-luna (max)
-  [x] WORKER        sai-review-fix-worker        Medium   ↑↑          opencode-go/deepseek-v4.1-flash (max)
-  [x] ORCHESTRATOR  sai-6-security               Medium   ↑           opencode-go/muse-spark-1.3-contributor (xhigh)
-  [x] WORKER        sai-6-security-worker        Large    ↑↑↑         opencode-go/deepseek-v4.1-flash (max)
-  [x] ORCHESTRATOR  sai-7-performance            Medium   ↑           opencode-go/muse-spark-1.3-contributor (xhigh)
-  [x] WORKER        sai-7-performance-worker     Large    ↑↑          opencode-go/deepseek-v4.1-flash (max)
-  [x] ORCHESTRATOR  sai-8-accessibility          Medium   ↑           opencode-go/muse-spark-1.3-contributor (xhigh)
-  [x] WORKER        sai-8-accessibility-worker   Large    ↑↑          opencode-go/deepseek-v4.1-flash (max)
-
-  [x] ORCHESTRATOR  sai-backfill                 Medium   ↑↑          opencode-go/muse-spark-1.3-contributor (xhigh)
-  [x] WORKER        sai-backfill-worker          Large    ↑↑          opencode-go/deepseek-v4.1-flash (max)
-  [x] ORCHESTRATOR  sai-archive                  Medium   ↑↑          opencode-go/muse-spark-1.3-contributor (xhigh)
-  [x] WORKER        sai-archive-worker           Medium   ↑           opencode-go/muse-spark-1.3-contributor (high)
-  [x] ORCHESTRATOR  sai-merge                    Large    ↑↑↑         opencode-go/muse-spark-1.3-contributor (xhigh)
-  [x] WORKER        sai-merge-worker             Large    ↑↑          opencode-go/deepseek-v4.1-flash (max)
-  [x] ORCHESTRATOR  sai-commit                   Small    ↑           opencode-go/muse-spark-1.3-contributor (xhigh)
-  [x] WORKER        sai-commit-worker            Small    ↑           opencode-go/muse-spark-1.3-contributor (xhigh)
-
-  [x] UTILITY       sai-retire-docs              Large    ↑↑          opencode-go/muse-spark-1.3-contributor (xhigh)
-  [x] UTILITY       sai-status                   Small    ↑           opencode-go/muse-spark-1.3-contributor (xhigh)
-  [x] UTILITY       sai-worktree                 Small    ↑           opencode-go/muse-spark-1.3-contributor (xhigh)
-```
+The default mix uses Muse Spark for coordination, DeepSeek Flash for most
+implementation work, GPT Luna for code review, and free models for helpers.
+It aims for reliable results at moderate cost. See the
+[full model table](docs/models.md) or replace the mix through `setup`.
 
 ### Example presets
 
-The installer includes four SAI default presets for OpenCode and one for Claude Code. Their filenames start with the reserved prefix `[sai-default]-`. Every installation replaces these distributed files, including any direct edits, but does not apply them to projects or change project model selections. Older unprefixed files, personal presets, and other files not distributed by SAI remain untouched.
+Choose a preset matching your subscriptions, then adjust it for your project.
+Save custom mixes under your own name: installation refreshes `[sai-default]-`
+presets but keeps personal presets and does not change your project's selections.
 
-Save changes under a separate personal preset name to retain them. **Save preset** rejects the reserved prefix case-insensitively and asks for another name; loading SAI defaults and existing presets remains supported.
-
-| Preset | Model mix |
-|--------|-----------|
-| `[sai-default]-Go.json` | OpenCode Go models throughout: Muse Spark for commands and helper subagents, DeepSeek Flash for most workers, and GPT Luna for the review worker. |
-| `[sai-default]-Go+Zen.json` | OpenCode Go models: Muse Spark for commands and utilities, DeepSeek Flash for most workers, and GPT Luna for the review worker; free `opencode` models for the `budget`, `executor`, and `explore` subagents. |
-| `[sai-default]-oAI-LUNA+Zen.json` | OpenAI Luna models for most commands and workers, with free `opencode` models for the `budget`, `executor`, and `explore` subagents. |
-| `[sai-default]-oAI-SOL+Zen.json` | OpenAI models: GPT-6.1 Sol for the planning, build, and merge pipeline, GPT-6 Luna for the audit coordinators, commit, and utilities, and GPT-5.6 Luna for the review and audit workers; free `opencode` models for the `budget`, `executor`, and `explore` subagents. |
-| `[sai-default]-OPUS.json` | Claude Code: Opus for the heavy workers and the explore, build, apply, review, and merge coordinators; Sonnet for the remaining coordinators, the RED/GREEN, fix, archive, and commit workers, and most utilities; Haiku for `budget-executor`. |
+| Preset | Choose it for |
+|--------|---------------|
+| `[sai-default]-Go.json` | OpenCode Go models throughout. |
+| `[sai-default]-Go+Zen.json` | OpenCode Go with free helper models to reduce cost. |
+| `[sai-default]-oAI-LUNA+Zen.json` | OpenAI Luna with free helper models. |
+| `[sai-default]-oAI-SOL+Zen.json` | OpenAI Sol for the more demanding planning/build work, with free helpers. |
+| `[sai-default]-OPUS.json` | Claude Code: Opus for demanding work, Sonnet and Haiku for lighter tasks. |
 
 Load a preset with `npx github:mmadariaga/shared-ai setup` → **Customize models** → **Load preset** → **OpenCode** or **Claude Code** → preset name.
 
 ### Choosing your models
 
-This chart may help you identify which models to test. The intelligence axis is highly task-type-dependent — do not rely on it without running your own tests tailored to your project and specific use case.
+Use benchmarks to shortlist models, then test them on your project: a good
+overall ranking does not guarantee good results for your tasks. Compare the
+prices available through your own providers and subscriptions.
 
-The x-axis (cost) is usually more reliable, but again, do your own tests. Note that costs can vary depending on the provider — the same model may be priced differently across API providers, subscriptions, and regions.
-
-![Intelligence vs Cost (Sep 2026)](Intelligence-vs-Cost-(8-Oct-'26).png)
+![Intelligence vs Cost (Oct 2026)](Intelligence-vs-Cost-(8-Oct-'26).png)
 [+ Info](https://artificialanalysis.ai/?models=claude-sonnet-5-5-medium%2Cgpt-6-1-sol-xhigh%2Cmimo-v2-6-flash%2Cglm-5-3-flash%2Cgpt-6-luna-xhigh%2Cmimo-v2-6-pro%2Cclaude-sonnet-5-5-high%2Cclaude-opus-5-5%2Cgpt-6-1-sol-high%2Cgpt-6-luna%2Cqwen3-8-flash-next%2Cgpt-6-1-sol-medium%2Cqwen3-8-27b%2Cgpt-6-1-sol%2Cgrok-4-6%2Cglm-5-3%2Cmuse-spark-1-3-xhigh%2Cdeepseek-v4-1-flash%2Cclaude-opus-5-5-xhigh%2Cgpt-6-1-sol-low%2Cclaude-opus-5-5-medium%2Cclaude-opus-5-5-high%2Ckimi-k3%2Cgrok-4-7&coding-agents=execution-time&intelligence=agentic-index&intelligence-efficiency=cost-per-task&total-cost=intelligence-vs-total-cost&cost=intelligence-vs-cost-per-task)
 
 Other rankings that can help you choose:
@@ -391,11 +325,15 @@ Other rankings that can help you choose:
 
 ## Third Party Tools
 
-Consider combining SAI with **[CodeGraph](https://github.com/colbymchenry/codegraph)** — a pre-indexed, 100% local code knowledge graph that exposes your codebase as an MCP server. Instead of scanning files with grep/glob/Read, agents query a SQLite symbol graph directly, cutting costs ~35%, token usage ~57%, and tool calls ~71% on average. Works with Claude Code, opencode, Cursor, Codex CLI, and more.
+**[CodeGraph](https://github.com/colbymchenry/codegraph)** is offered during
+installation. Recommended to reduce code-search overhead and token use; its
+index stays local. Project `setup` prepares the index. SAI works without it.
 
-SAI does not bundle CodeGraph. The global installer can offer (once, editor-agnostic, TTY-only) to install the CodeGraph CLI and wire its MCP server; it never indexes a project. Per-project `setup` is what configures it in a repo: when the CLI is on PATH it runs `codegraph init` to build the index; if CodeGraph isn't installed, that step is skipped and setup never blocks.
+Matt Pocock's **[writing-for-agents](https://github.com/mattpocock/skills)** is offered during installation if it is not already installed. Installing it is recommended because it helps improve `/sai-explore` results.
 
-**[writing-for-agents](https://github.com/mattpocock/skills)** is a third-party skill for writing documents that agents consume. `/sai-explore` loads it when drafting the edge-case and implementation-detail lists. SAI does not bundle it: the global installer can offer (interactive terminals only) to install it through skills.sh, and you can run `npx skills@latest add mattpocock/skills --skill=writing-for-agents` yourself (`pnpm dlx` and `bunx` work too). The skill stays user-owned, so doctor and uninstall ignore it. SAI works without it; when it is missing, Explore prints one warning per invocation and drafts the lists with its existing rules.
+## Upgrades
+
+Run the installation script again.
 
 ## Uninstall
 
@@ -403,19 +341,10 @@ SAI does not bundle CodeGraph. The global installer can offer (once, editor-agno
 npx github:mmadariaga/shared-ai uninstall
 ```
 
-The `uninstall` command reverses the installation process:
+Shows what will be removed and asks for confirmation.
 
-- **Interactive mode** — prints the full plan of what will be removed (commands, instructions, skills, configs, agents) and asks for confirmation before touching anything.
-- **`--dry-run`** — prints the same plan and exits 0 without modifying anything.
-- **`--yes`** — skips the confirmation prompt (use in CI/scripts).
+- `--dry-run`: preview without changing anything.
+- `--yes`: skip confirmation, for scripts or CI.
 
-**sha256 override guard**: Files that have been locally edited (their content hash differs from the installed manifest) are **kept in place** and logged to stderr. The uninstaller will not silently delete customized files. A re-run after the override is confirmed will remove them.
-
-**Idempotent re-runs**: Running `uninstall` again after a successful uninstall is safe — it checks what's still present and produces a plan with nothing to do.
-
-**Empty-directory pruning**: After removing tracked files, the uninstaller prunes empty ancestor directories up to the editor base directory (`~/.claude/`, `~/.config/opencode/`). It never removes the base directory itself or files it didn't place.
-
-**Excluded targets**: The following are **never touched** by the uninstaller:
-- opencode config merges — `opencode.json` / `opencode.jsonc` are left intact
-- Per-project `setup` artifacts — `openspec/config.yaml`, `openspec/schemas/sai-workflow/`
-- External CLIs — `openspec`, `opencode-ai`, and `@colbymchenry/codegraph` are never uninstalled
+Custom instruction overrides, project setup files, opencode configuration, and
+external tools are preserved. Removing SAI does not remove your project specs.

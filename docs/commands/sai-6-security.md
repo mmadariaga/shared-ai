@@ -19,3 +19,11 @@ The command analyzes modified code by considering how an unauthorized person cou
 When it finds a risk, it describes what could happen, what conditions would be required, and why the problem matters. It also identifies the file and line to review so the correction is concrete rather than based on a vague explanation.
 
 The report may relate findings to known practices or standards, such as OWASP or CVE, when there is a useful match. The command is a read-only audit: it does not fix code, change configuration, or publish anything by itself.
+
+`security.md` contains scope/scan/date provenance, evidence-backed SAST and
+dependency findings, optional acknowledged trade-offs, and a severity tally.
+Clean categories and empty sections are omitted. If the selected scope has no
+attack surface and no dependency manifest qualifies, the report records
+`Not Applicable` with a justification. Accepted trade-offs remain acknowledged
+rather than findings. Use [review scope and fix selection](../review-triage.md)
+to combine this audit with the other phases or act on open findings.
