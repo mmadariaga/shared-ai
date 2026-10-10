@@ -65,6 +65,15 @@ close with no commit.
      correct and continue within the three-round cap (no round is added). On no,
      stop per its § Stop condition notice, stage and commit nothing, and run
      `decline-close`.
+4. **Fixed marks** — on convergence, and only then, continue THE SAME fix
+   worker once with the marker line `--mark-fixed`, a newline, and the
+   source-qualified ids (with report paths) of the selected findings the fix
+   resolved, answered Questions included. Read the resulting diff read-only:
+   it must change only heading lines of those findings in the reports, and
+   no excluded finding or unanswered Question may carry a mark. Correct a
+   deviation by continuing the same worker once more; a mark pass that
+   still deviates stages nothing, commits nothing, and ends like
+   non-convergence. The mark pass adds no fix round.
 
 Record every automatic correction and every ignored process statement for the
 terminal report in the layout of `@sai/policies/autonomy-audit-log.md`, appended
@@ -74,9 +83,10 @@ after the caller's close.
 
 Fetch @sai/policies/commit-rules.md and use it for the message below.
 
-On convergence, between guard windows: stage only the fix worker's changed-files
-union with path-scoped `git add`, author the message from the staged state under
+On convergence and after the fixed marks, between guard windows: stage only the
+fix worker's changed-files union — fixed files and marked reports — plus the
+reports of `input` that this run regenerated, with path-scoped `git add`, author the message from the staged state under
 `@sai/policies/commit-rules.md`, and create one local commit with
 `git commit -F -`, passing the complete message literally on standard input
 under `@sai/policies/command-execution.md`. That single commit is the close's
-whole git write: no push, no amend, no retry, no other path staged.
+whole git write: no push, no amend, no retry, no other path staged. The close runs no test before the commit.

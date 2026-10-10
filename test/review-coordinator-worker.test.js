@@ -431,3 +431,26 @@ test('review executes eleven passes, preserves alignment and resilience, and wri
     assert.match(analysis, new RegExp('recommend `/sai-[678]-' + audit));
   }
 });
+
+test('fixed findings are marked in the fix commit and consumers act on open findings only', () => {
+  const policy = artifact('sai/policies/finding-state.md');
+  assert.match(policy, /A finding is \*\*open\*\* when it carries no fixed mark/);
+  assert.match(policy, /literal ` \(FIXED\)` appended to the end of the\s+finding's heading line/);
+  assert.match(policy, /closing\s+`Summary:` tally stay exactly as the report wrote them/);
+  assert.match(policy, /The mark carries no commit hash/);
+  assert.match(policy, /Regenerating a report\s+replaces its findings together with their marks/);
+  const worker = artifact('sai/commands/meta-review/review-fix-worker.md');
+  assert.match(worker, /marker line `--mark-fixed`/);
+  assert.match(worker, /change nothing else/);
+  const close = artifact('sai/commands/meta-review/direct-build-close.md');
+  assert.match(close, /continue THE SAME fix\s+worker once with the marker line `--mark-fixed`/);
+  assert.match(close, /plus the\s+reports of `input` that this run regenerated/);
+  assert.match(close, /The close runs no test before the commit/);
+  assert.match(artifact('sai/commands/implement/steps/audit-ingestion.md'), /ignore every fixed finding/);
+  assert.match(artifact('sai/commands/implement/steps/rerun-preservation.md'), /has no open finding/);
+  for (const doc of ['sai-5-review', 'sai-review', 'sai-3-implement']) {
+    const text = artifact(`docs/commands/${doc}.md`);
+    assert.match(text, /fixed mark|\(FIXED\)/);
+    assert.match(text, /Claude Code and opencode/);
+  }
+});

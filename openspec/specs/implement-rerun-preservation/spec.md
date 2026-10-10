@@ -38,11 +38,11 @@ On re-run, every step the collapse step collapsed to a heading followed by `*(al
 
 ### Requirement: Audit-derived steps SHALL be appended after the last existing step
 
-For each audit artifact that exists in `openspec/changes/{change-name}/` (`review.md`, `security.md`, `performance.md`, `accessibility.md`) and needs a new audit step, the plan-generation step SHALL append exactly one new step at the end of `implementation.md`, numbered strictly after the highest existing `#### Step N:` number found in the prior file. Each appended step is dedicated to a single artifact and MUST NOT be merged into an existing step. An audit artifact needs a new audit step unless its latest audit step is still pending: an audit step is a step headed exactly `#### Step N: Address <kind> findings` with `<kind>` one of `review`, `security`, `performance`, `accessibility`, and it is pending when its section holds at least one unchecked `[ ]` checkbox. A pending audit step already carries its artifact, so the artifact SHALL NOT be re-appended.
+For each audit artifact that exists in `openspec/changes/{change-name}/` (`review.md`, `security.md`, `performance.md`, `accessibility.md`) and needs a new audit step, the plan-generation step SHALL append exactly one new step at the end of `implementation.md`. That step is numbered strictly after the highest existing `#### Step N:` number found in the prior file. Each appended step is dedicated to a single artifact and MUST NOT be merged into an existing step. An audit artifact that has no open finding, meaning every finding carries the fixed mark of `sai/policies/finding-state.md`, needs no audit step. Any other audit artifact needs a new audit step unless its latest audit step is still pending. An audit step is a step headed exactly `#### Step N: Address <kind> findings`, with `<kind>` one of `review`, `security`, `performance`, `accessibility`. It is pending when its section holds at least one unchecked `[ ]` checkbox. A pending audit step already carries its artifact, so the artifact SHALL NOT be re-appended.
 
 #### Scenario: one appended step per existing audit artifact
 
-- **WHEN** `review.md` and `security.md` exist and the prior file's highest step number is 6
+- **WHEN** `review.md` and `security.md` exist, each with at least one open finding, and the prior file's highest step number is 6
 - **THEN** the plan-generation step appends `#### Step 7: Address review findings` and `#### Step 8: Address security findings` at the end
 - **AND** no audit findings are merged into the preserved steps
 
@@ -64,13 +64,18 @@ For each audit artifact that exists in `openspec/changes/{change-name}/` (`revie
 
 #### Scenario: artifact whose audit step is applied is appended again
 
-- **WHEN** `review.md` exists and the latest `#### Step N: Address review findings` section has every checkbox marked `[x]`
+- **WHEN** `review.md` exists with at least one open finding and the latest `#### Step N: Address review findings` section has every checkbox marked `[x]`
 - **THEN** the plan-generation step appends a new review audit step numbered after the highest existing step
 
 #### Scenario: no artifact needs a new audit step
 
 - **WHEN** no audit artifact needs a new audit step
 - **THEN** the preserved file stands as-is, byte-for-byte, and the run ends `completed`
+
+#### Scenario: artifact with no open finding is skipped
+
+- **WHEN** `performance.md` exists and every finding in it carries the fixed mark
+- **THEN** the plan-generation step appends no performance audit step
 
 ### Requirement: Review findings naming a compacted step SHALL become new appended steps, not re-openings
 

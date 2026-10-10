@@ -7,14 +7,15 @@ Turn review, security, performance, and accessibility findings into judged, dedi
 
 ### Requirement: The `/sai-3-implement` agent SHALL read all existing audit artifacts for a change before generating `implementation.md`.
 
-When producing an implementation plan, the agent SHALL check for audit artifacts produced by earlier review passes, SHALL apply editorial judgment over each finding using the rubric defined in this spec, SHALL classify every finding as Apply (rendered as a code action) or Discard (listed in a Discarded findings sub-block with a one-sentence reason and surfaced in chat for confirmation), and SHALL append a single step per artifact with the Apply/Discard structure. The agent SHALL NOT append every actionable finding unconditionally — judgment is mandatory and precedes appending.
+When producing an implementation plan, the agent SHALL check for audit artifacts produced by earlier review passes and SHALL ignore every fixed finding in them. It SHALL apply editorial judgment over each open finding using the rubric defined in this spec. It SHALL classify every open finding as Apply (rendered as a code action) or Discard (listed in a Discarded findings sub-block with a one-sentence reason and surfaced in chat for confirmation). It SHALL append a single step per artifact with the Apply/Discard structure. The agent SHALL NOT append every actionable finding unconditionally: judgment is mandatory and precedes appending.
 
 #### Scenario: Audit artifacts exist for the change
 
 - **WHEN** one or more of `review.md`, `security.md`, `performance.md`, or `accessibility.md` exist in `openspec/changes/{change-name}/`
 - **THEN** the agent reads each file that exists
-- **AND** applies the judgment rubric (severity, actionability, spec-decision consistency, duplication, scope) to every finding in that artifact
-- **AND** classifies every finding as Apply or Discard
+- **AND** ignores every finding whose heading line carries the fixed mark
+- **AND** applies the judgment rubric (severity, actionability, spec-decision consistency, duplication, scope) to every open finding in that artifact
+- **AND** classifies every open finding as Apply or Discard
 - **AND** appends one step per artifact at the end of `implementation.md` (e.g., `Step N: Address review findings`, `Step N+1: Address security findings`) containing the Apply code actions and the Discarded findings sub-block side by side
 - **AND** surfaces the list of Discarded findings in chat for user confirmation
 
@@ -106,23 +107,23 @@ Each audit artifact produces its own dedicated step (e.g., `Step N: Address revi
 
 ### Requirement: The judgment behavior SHALL apply uniformly to all four audit artifacts
 
-The judgment, classification, and Discarded block behaviors SHALL apply to findings in `review.md`, `security.md`, `performance.md`, and `accessibility.md`. Every finding in any of these four audit artifacts is subject to the rubric.
+The judgment, classification, and Discarded block behaviors SHALL apply to the open findings in `review.md`, `security.md`, `performance.md`, and `accessibility.md`. Every open finding in any of these four audit artifacts is subject to the rubric. A fixed finding is subject to none of them.
 
 #### Scenario: applies to all four
 
 - **WHEN** any of `review.md`, `security.md`, `performance.md`, or `accessibility.md` exists for the change
-- **THEN** the agent exercises judgment over that artifact's findings and produces the same Apply/Discard/Discarded-block structure
+- **THEN** the agent exercises judgment over that artifact's open findings and produces the same Apply/Discard/Discarded-block structure
 
 ### Requirement: The re-run preservation contract SHALL be preserved
 
-The existing re-run preservation contract — one new step appended per audit artifact that needs a new audit step on re-run, with no dedup logic across re-runs other than skipping an artifact whose latest audit step is still pending — SHALL be preserved. The canonical name of that contract today is `openspec/specs/implement-rerun-preservation/spec.md` (introduced by `openspec/changes/archive/2026-06-20-sai-3-rerun-preserve-compacted`); this requirement name-links it so a future reader of this spec knows which contract is being locked. Re-running `/sai-3-implement` against a change whose latest audit step for a given artifact is applied SHALL still append a new step (numbered strictly after the last existing step) with its own Apply/Discard list. The judgment behavior is re-exercised on every such re-run, and the re-run appends a new step each time. No further dedup logic SHALL be added to detect that the same audit artifact produced a prior step. Judgment is not idempotent w.r.t. the audit artifact: two re-runs against the same unchanged artifact may produce slightly different Apply/Discard lists because the LLM is not perfectly deterministic; the appended step is best-effort, not byte-stable across re-runs.
+The existing re-run preservation contract SHALL be preserved: one new step is appended per audit artifact that needs a new audit step on re-run. The only dedup logic across re-runs is skipping an artifact that has no open finding, meaning every finding carries the fixed mark of `sai/policies/finding-state.md`, and skipping an artifact whose latest audit step is still pending. The canonical name of that contract today is `openspec/specs/implement-rerun-preservation/spec.md` (introduced by `openspec/changes/archive/2026-06-20-sai-3-rerun-preserve-compacted`); this requirement name-links it so a future reader of this spec knows which contract is being locked. Re-running `/sai-3-implement` against a change whose latest audit step for a given artifact is applied, while that artifact still has an open finding, SHALL still append a new step (numbered strictly after the last existing step) with its own Apply/Discard list. The judgment behavior is re-exercised on every such re-run, and the re-run appends a new step each time. No further dedup logic SHALL be added to detect that the same audit artifact produced a prior step. Judgment is not idempotent w.r.t. the audit artifact: two re-runs against the same unchanged artifact may produce slightly different Apply/Discard lists because the LLM is not perfectly deterministic; the appended step is best-effort, not byte-stable across re-runs.
 
 #### Scenario: re-run appends, does not dedupe
 
-- **WHEN** `/sai-3-implement` re-runs against a change that already has an applied audit step for a given artifact
+- **WHEN** `/sai-3-implement` re-runs against a change that already has an applied audit step for a given artifact that still has an open finding
 - **THEN** it appends a new step (numbered after the last existing step) with its own Apply/Discard list
 - **AND** it does NOT deduplicate against the prior appended step
-- **AND** the judgment behavior is re-exercised on the artifact's findings for the new step
+- **AND** the judgment behavior is re-exercised on the artifact's open findings for the new step
 - **AND** the new step's Apply/Discard list is permitted to differ from the prior step's list, because judgment is not idempotent
 
 #### Scenario: re-run skips an artifact whose audit step is pending
@@ -130,6 +131,11 @@ The existing re-run preservation contract — one new step appended per audit ar
 - **WHEN** `/sai-3-implement` re-runs against a change whose latest audit step for a given artifact still has an unchecked `[ ]` checkbox
 - **THEN** it does NOT append another step for that artifact
 - **AND** the pending audit step stands
+
+#### Scenario: re-run skips an artifact with no open finding
+
+- **WHEN** `/sai-3-implement` re-runs against a change whose audit artifact has every finding marked as fixed
+- **THEN** it does NOT append a step for that artifact
 
 ### Requirement: The append of audit-derived steps SHALL be verified before the plan is delivered
 
@@ -177,3 +183,17 @@ Every audit step the plan-generation step appends, on a first run or a re-run, S
 
 - **WHEN** a section headed `#### Step 6: Address accessibility findings` holds at least one `[ ]` checkbox
 - **THEN** it is a pending audit step for `accessibility.md`
+
+### Requirement: Fixed findings SHALL be ignored by audit ingestion
+
+When `/sai-3-implement` reads an audit artifact, it SHALL ignore every fixed finding, meaning a finding whose heading line carries the fixed mark of `sai/policies/finding-state.md`. A fixed finding SHALL NOT be classified: it SHALL never be Applied, Discarded, or Escalated, and SHALL never appear in the Discarded findings sub-block.
+
+#### Scenario: A fixed finding is ignored
+
+- **WHEN** `review.md` carries a finding whose heading line ends with ` (FIXED)`
+- **THEN** the agent SHALL NOT classify it and SHALL add no Apply action or Discarded entry for it
+
+#### Scenario: A fixed Question is not transcribed
+
+- **WHEN** an audit artifact carries a Question whose heading line carries the fixed mark
+- **THEN** the agent SHALL NOT auto-discard it and SHALL NOT transcribe its text in the Discarded findings sub-block

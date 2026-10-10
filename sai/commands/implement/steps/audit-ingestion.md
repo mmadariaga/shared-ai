@@ -2,13 +2,13 @@
 
 Loaded by `artifact-analysis` only when an audit artifact (`review.md`, `security.md`, `performance.md`, or `accessibility.md`) exists in `openspec/changes/{change-name}/` at run start.
 
-For each audit artifact that exists, read it and apply the **Judgment Rubric for Audit Findings** (see below) to every finding, classifying each as Apply, Discard, or Escalate. The classified results are evaluated for escalations first (see **Escalation Detection and Handoff** below); if escalations exist, the run stops. Otherwise, the plan-generation step appends audit-derived steps from this Apply/Discard classification — the append description lives at that execution site; this step only reads and classifies.
+For each audit artifact that exists, read it and ignore every fixed finding: a finding whose heading line carries the fixed mark of `@sai/policies/finding-state.md` is already fixed and is not classified, so it is never Applied, Discarded, or Escalated and never appears in the Discarded findings sub-block. Apply the **Judgment Rubric for Audit Findings** (see below) to every finding, classifying each as Apply, Discard, or Escalate. The classified results are evaluated for escalations first (see **Escalation Detection and Handoff** below); if escalations exist, the run stops. Otherwise, the plan-generation step appends audit-derived steps from this Apply/Discard classification — the append description lives at that execution site; this step only reads and classifies.
 
 ### Judgment Rubric for Audit Findings
 
-This step applies the rubric once per run; the plan-generation step appends from the resulting classification.
+This step applies the rubric once per run, to open findings only (see above); the plan-generation step appends from the resulting classification.
 
-For every finding in an existing audit artifact (`review.md`, `security.md`, `performance.md`, `accessibility.md`), evaluate all five criteria and classify the finding as **Apply**, **Discard**, or **Escalate**:
+For every open finding in an existing audit artifact (`review.md`, `security.md`, `performance.md`, `accessibility.md`), evaluate all five criteria and classify the finding as **Apply**, **Discard**, or **Escalate**:
 
 1. **Severity** — does the finding rise to Critical/High (the shared audit severity vocabulary used by review, security, performance, and accessibility), or is it a non-issue?
 2. **Actionability** — is the proposed fix specific enough to implement as a concrete file:line change, or is it a vague suggestion?
