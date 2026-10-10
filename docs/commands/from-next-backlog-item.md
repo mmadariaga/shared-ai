@@ -29,5 +29,9 @@ An unsupported highest-priority item is reported rather than silently skipped.
 You can cancel, choose another pile, or explicitly import another reference.
 
 A selected reference continues the same [`/from-backlog`](from-backlog.md)
-workflow. Empty piles and cancellation trigger no import, and a completed import
-does not start exploration or implementation automatically.
+workflow exactly once, including its default project assessment and first
+substantive unresolved question (or recommended next step when no question
+remains). The selector does not repeat that analysis. Missing objectives require
+clarification; incomplete imports remain pending. Empty piles and cancellation
+trigger no import. No workflow or implementation starts automatically, and
+existing decisions, scope, origin, and exploration stage remain unchanged.

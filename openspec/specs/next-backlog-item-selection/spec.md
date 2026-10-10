@@ -124,20 +124,24 @@ the item or pile. It SHALL NOT silently skip the first item.
 
 ### Requirement: Single authoritative import continuation
 
-After selection establishes one complete importable reference, the command
-SHALL load and follow the installed `from-backlog` instructions in the same
-conversation, supplying the helper's exact reference. Explicit selector
-invocation SHALL authorize this one continuation. The selector SHALL NOT
-duplicate import retrieval, source handling, provenance, compatibility, or
-completion instructions, autonomously invoke a disabled skill, or re-enter
-a command wrapper. The existing importer SHALL govern the complete or pending
-import outcome, after which the command SHALL end without another automatic
-action.
+After selection establishes one complete importable reference, the command SHALL load and follow the installed `from-backlog` instructions in the same conversation, supplying the helper's exact reference. Explicit selector invocation SHALL authorize this one continuation. The selector SHALL NOT duplicate import retrieval, source handling, provenance, project assessment, conversational continuation, compatibility, or completion instructions, autonomously invoke a disabled skill, or re-enter a command wrapper.
+
+The existing importer SHALL govern source delivery, default project assessment, and conversational continuation. The selector SHALL complete after that single continuation reports its assessment and next substantive question or recommended step, or its missing-objective or pending import outcome. It SHALL end without repeating assessment or automatically starting another workflow or implementation.
 
 #### Scenario: Selected reference is handed off
 
 - **WHEN** the helper returns a selected complete importable item reference
-- **THEN** the command directly follows the installed `from-backlog` instructions with that exact reference and ends after the importer's reported outcome.
+- **THEN** the command directly follows the installed `from-backlog` instructions exactly once with that reference and ends after the importer's reported assessment and continuation or missing-objective or pending outcome.
+
+#### Scenario: Importer completes assessment
+
+- **WHEN** the authoritative importer reports its project assessment and next substantive question or recommended next step
+- **THEN** the selector inherits that outcome without duplicating analysis or automatically starting the recommended step, another workflow, or implementation.
+
+#### Scenario: Import remains pending or the objective is unclear
+
+- **WHEN** the authoritative importer reports incomplete source delivery or a description that does not establish the objective
+- **THEN** the selector retains the importer's pending or clarification outcome without replacing it with duplicate assessment or automatic execution.
 
 ### Requirement: Cancellation prevents continuation
 
