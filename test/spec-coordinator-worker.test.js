@@ -287,16 +287,21 @@ test('opencode spec invocation routes through the launcher and neutral worker bi
   assert.match(wrapper, /\$ARGUMENTS/);
 });
 
-test('README documents the routed spec architecture and proposal-only scope', () => {
+test('documentation records the routed spec architecture and proposal-only scope', () => {
   const readme = artifact('README.md');
+  const guide = artifact('docs/sequential-pipeline.md');
+  const agents = artifact('AGENTS.md');
   for (const harness of ['Claude Code', 'opencode']) {
-    assert.match(readme, new RegExp(harness.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'));
+    assert.match(agents, new RegExp(harness.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'));
   }
-  assert.match(readme, /Claude Code.*rout|rout.*Claude Code/i);
-  assert.match(readme, /opencode.*rout|rout.*opencode/i);
-  assert.match(readme, /spec.*core|core.*spec/i);
-  assert.match(readme, /spec.*worker|worker.*spec/i);
-  assert.match(readme, /proposal.*spec|spec.*proposal/i);
+  assert.match(agents, /Claude Code.*rout|rout.*Claude Code/i);
+  assert.match(agents, /opencode.*rout|rout.*opencode/i);
+  assert.match(agents, /spec.*core|core.*spec/i);
+  assert.match(agents, /spec.*worker|worker.*spec/i);
+  assert.match(agents, /proposal.*spec|spec.*proposal/i);
+  assert.match(readme, /docs\/sequential-pipeline\.md/);
+  assert.match(guide, /AGENTS\.md/);
+  assert.match(guide, /\/sai-1-spec/);
 });
 
 test('AGENTS documents the routed architecture, ownership, and artifact scope', () => {

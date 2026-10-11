@@ -762,12 +762,12 @@ test('documentation records the active design compatibility boundary and managed
   }
   assert.match(readme, /docs\/sequential-pipeline\.md/);
   assert.match(guide, /AGENTS\.md/);
-  for (const text of [readme, agents]) {
-    assert.match(text, /sai\/install-manifest\.json/);
-    assert.match(text, /doctor/);
-    assert.match(text, /uninstall/);
-    assert.match(text, /sai\/policies/);
-  }
+  assert.match(agents, /sai\/install-manifest\.json/);
+  assert.match(agents, /doctor/);
+  assert.match(agents, /uninstall/);
+  assert.match(agents, /sai\/policies/);
+  assert.match(readme, /doctor/);
+  assert.match(readme, /uninstall/);
 
   assert.match(guide, /sai-2-design-worker/);
   assert.match(agents, /sai-2-design-worker/);
@@ -791,14 +791,15 @@ test('Step 5 documentation records manifest projections and routed-source bounda
   const guide = artifact('docs/sequential-pipeline.md');
   const agents = artifact('AGENTS.md');
 
-  for (const text of [readme, agents]) {
-    assert.match(text, /sai\/install-manifest\.json/);
-    assert.match(text, /doctor/);
-    assert.match(text, /uninstall/);
-    assert.match(text, /sai\/policies/);
-  }
+  assert.match(agents, /sai\/install-manifest\.json/);
+  assert.match(agents, /doctor/);
+  assert.match(agents, /uninstall/);
+  assert.match(agents, /sai\/policies/);
+  assert.match(readme, /doctor/);
+  assert.match(readme, /uninstall/);
+  assert.match(readme, /docs\/sequential-pipeline\.md/);
   assert.match(agents, /sai\/orchestration\//);
-  assert.match(readme, /shared Orchestration Core/i);
+  assert.match(agents, /shared Orchestration Core/i);
   assert.match(guide, /AGENTS\.md/);
   assert.match(agents, /routed worker bindings/i);
 });
