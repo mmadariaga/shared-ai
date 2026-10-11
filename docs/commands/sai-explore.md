@@ -6,7 +6,7 @@ Helps think through an idea before committing to an implementation. It clarifies
 
 ## Flags and behavior modifiers
 
-- `--fast-track`: skips the artifact-review and crystallization language gates. On Plan - Unattended, also skips the overview-language question and selects no overview unless a language was explicitly supplied. It never skips the closing route selector, uncertainty decisions, or POC choices.
+- `--fast-track`: skips the artifact-review and crystallization language gates. On Plan - Unattended, also skips the overview-language question and selects no overview unless a language was explicitly supplied. It never skips the backlog and branch questions, closing route selector, uncertainty decisions, or POC choices.
 - `--overview-lang <language>`: sets the overview language for Plan - Unattended without asking. It has no effect on Direct Build - Unattended.
 - Closing selector: lets the user choose between `Manual`, `Plan - Unattended`, and `Direct Build - Unattended` when the exploration is ready to continue.
 
@@ -25,7 +25,17 @@ The edge-case and implementation-detail lists use the optional third-party
 continues with its own rules; the skill adds no requirements or permissions.
 Direct Build also consults existing `SAI_LEARNINGS.md` as repository context.
 
-When the conversation closes, choose how to continue. `Manual` hands you the
+After displaying the complete Ready to Propose block set, Explore asks first
+whether to create or update a backlog item through `to-backlog`, then whether
+to create and switch to a local branch through `new-change-branch`. Answer Yes,
+No, or free text with instructions or a clarification request. No skips only
+that action; ambiguous intent is clarified before anything runs. Each accepted
+skill runs in the current conversation and owns its details, confirmations,
+errors, and cancellation handling. Explore waits for it to finish before the
+next question. These questions remain explicit with `--fast-track` on Claude
+Code and opencode, and branch preparation permits no code edits.
+
+After both actions finish or are skipped, choose how to continue. `Manual` hands you the
 Ready to Propose block for `/sai-1-spec`. `Plan - Unattended` runs spec and design
 with adversarial feedback, then stops for your review before `/sai-build`.
 Ambiguous questions still escalate. `Direct Build - Unattended` authorizes

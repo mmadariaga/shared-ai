@@ -7,17 +7,17 @@ TBD - created by archiving change explore-slice-machine. Update Purpose after ar
 
 ### Requirement: Combined slice inventory and Direct Build TODO
 
-The store CLI tool SHALL host `explore-slice@1` as the post-crystallization machine. The machine SHALL keep slice inventory readiness (`inventoryReady`, `set`, `active`, `done`), inventory version, block-emission closure, parked steps, and Plan / Direct Build TODO in CLI-owned state. A successful `recordedList` event SHALL replace `set`, mark the new inventory ready, increment its version, clear `done`, discard every parked step, and preserve a running route cursor. When no slice is active, it SHALL return `next.follow: sai/commands/explore/steps/route-selector.md` so the selector can present the native picker. `blockEmissionTurnClosed` SHALL remain true until the coordinator receives one valid picker answer and emits `route-choice`; Plan and Direct Build intents SHALL reject while that gate is true. Inventory, active, done, parked steps, mode, and the new control fields SHALL not appear on the wire.
+The store CLI tool SHALL host `explore-slice@1` as the post-crystallization machine. The machine SHALL keep slice inventory readiness (`inventoryReady`, `set`, `active`, `done`), inventory version, block-emission closure, parked steps, and Plan / Direct Build TODO in CLI-owned state. A successful `recordedList` event SHALL replace `set`, mark the new inventory ready, increment its version, clear `done`, discard every parked step, and preserve a running route cursor. When no slice is active, it SHALL return `next.follow: sai/commands/explore/steps/route-selector.md` so the selector can deliver its optional backlog and branch actions together with the native picker. The selector SHALL follow its optional-action completion gate before presenting that picker; action completion SHALL remain conversation state rather than a new machine field or pointer gate. `blockEmissionTurnClosed` SHALL remain true until the coordinator receives one valid picker answer and emits `route-choice`; Plan and Direct Build intents SHALL reject while that gate is true. Inventory, active, done, parked steps, mode, and the existing control fields SHALL not appear on the wire.
 
 #### Scenario: Recording inventory does not move the cursor
 
 - **WHEN** the caller invokes `emit` with `recordedList` while `explore-slice@1` is at `idle` with no active slice
-- **THEN** `set` is replaced with the supplied list, the machine enters `waiting`, and the response returns the selector pointer while route intents remain rejected until picker answer activation
+- **THEN** `set` is replaced with the supplied list, the machine enters `waiting`, and the response returns the selector pointer for optional actions and subsequent picker presentation while route intents remain rejected until picker answer activation
 
 #### Scenario: Re-crystallization discards parked steps
 
 - **WHEN** the caller emits `recordedList` while a slice is parked on `sai-2`
-- **THEN** no parked step remains, the new inventory starts in waiting with the selector pointer available when no route is active, and a later valid picker answer applies only to the first pending slice
+- **THEN** no parked step remains, the new inventory starts in waiting with the selector pointer available when no route is active, optional actions follow the new set's completion gate, and a later valid picker answer applies only to the first pending slice
 
 ### Requirement: Direct Build cursor travels in stage
 

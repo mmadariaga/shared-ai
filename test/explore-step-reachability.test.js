@@ -117,6 +117,47 @@ test('common.md does not fetch nested crystallization files', () => {
   }
 });
 
+test('loaded sibling instructions and orientation cannot bypass optional pre-route actions', () => {
+  const slice = fs.readFileSync(path.join(explorerStepsDir, 'slice.md'), 'utf8');
+  assert.match(slice, /authoritative shared crystallization close in `crystallization-protocol\.md`/);
+  assert.match(slice, /`route-selector\.md`'s optional pre-route actions and completion gate before presenting its native route picker/);
+  // Inspect the whole selector-loaded sibling closure, not just the selector itself.
+  for (const file of getReachableStepFiles()) {
+    const source = fs.readFileSync(path.join(explorerStepsDir, file), 'utf8');
+    assert.doesNotMatch(source,
+      /(?:present(?:s)?|open(?:s)?) (?:its |the selector's |the )?(?:native (?:three-option |route )?)?picker at the end of (?:that|the) same assistant turn/i,
+      `${file} must not restore the block-display-turn picker requirement`);
+    assert.doesNotMatch(source, /picker is the immediate action after the printed blocks/i,
+      `${file} must not skip the optional actions`);
+  }
+  const orientation = fs.readFileSync(path.join(__dirname, '..', 'AGENTS.md'), 'utf8');
+  assert.match(orientation, /Claude Code and opencode share the post-crystallization sequence/);
+  assert.match(orientation, /under the selector's\s+completion gate, then present the native implementation route picker/);
+  assert.match(orientation, /optional actions can require multiple human turns/);
+});
+
+test('next.follow delivers optional actions and the route picker together, never at startup', () => {
+  const machine = require('../sai-state/machines/explore-slice.js');
+  const before = machine.project(machine.initialState);
+  assert.equal(before.next.follow, 'none');
+  const waiting = machine.transition(machine.initialState, { recordedList: ['proposal'] });
+  assert.equal(waiting.next.follow, 'sai/commands/explore/steps/route-selector.md');
+  const selector = fs.readFileSync(path.join(explorerStepsDir, 'route-selector.md'), 'utf8');
+  const backlog = selector.indexOf('1. **Backlog question:**');
+  const branch = selector.indexOf('2. **Branch question:**');
+  const picker = selector.indexOf('\n## Native route picker');
+  assert.ok(backlog >= 0 && branch > backlog && picker > branch);
+  for (const startup of [nucleusFile, path.join(explorerStepsDir, 'common.md'),
+    path.join(__dirname, '..', 'sai', 'commands', 'explore', 'body.md')]) {
+    const source = fs.readFileSync(startup, 'utf8');
+    assert.doesNotMatch(source, /Fetch @skills\/(?:to-backlog|new-change-branch)\/SKILL\.md/);
+    assert.doesNotMatch(source, /Would you like to (?:create or update a backlog item|create and switch to a local change branch)/);
+  }
+  for (const intent of ['plan', 'direct-build']) {
+    assert.equal(machine.transition(waiting.state, { intent }).rejected, 'ROUTE_CHOICE_REQUIRED');
+  }
+});
+
 test('crystallization-protocol.md fetches assessment and language gates', () => {
   const fetches = findFetchDirectives(path.join(explorerStepsDir, 'crystallization-protocol.md'));
   assert.ok(fetches.includes('slicing-assessment.md'),

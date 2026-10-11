@@ -105,7 +105,7 @@ When a change is too large to implement and review safely as one unit, `/sai-exp
 
 ### Choose your implementation strategy
 
-Once the idea is clear, `/sai-explore` asks you to choose a route. Planning or implementation starts only after your choice.
+Once the idea is clear, `/sai-explore` displays the crystallized proposal, offers backlog capture through `/to-backlog`, then local branch preparation through `/new-change-branch`, and finally asks you to choose a route. Both optional questions accept Yes, No, or free text and remain explicit under `--fast-track` in Claude Code and opencode. Each skill owns its confirmations and details. Planning or implementation starts only after both actions finish or are skipped and you explicitly choose a route. See the [Explore usage page](docs/commands/sai-explore.md).
 
 | Option | Choose it when | What happens |
 |--------|----------------|--------------|
