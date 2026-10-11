@@ -346,10 +346,53 @@ test('a failed Direct Build slice resumes at its saved stage', () => {
   const started = selectRoute(recorded.state, 'direct-build');
   const backfill = slice.transition(started.state, { intent: 'complete' });
   const cancelled = slice.transition(backfill.state, { intent: 'cancel' });
-  const retry = selectRoute(cancelled.state, 'direct-build');
+  const retry = slice.transition(cancelled.state, { intent: 'resume-direct-build' });
   assert.ok(!('rejected' in retry));
   assert.equal(retry.state.stage, 'backfill');
   assert.equal(retry.state.active, 'a');
+});
+
+test('Direct Build resumption consumes each parked stage without a new route gate', () => {
+  for (const intent of ['fail', 'cancel']) {
+    for (let index = 0; index < slice.DIRECT_BUILD_STEPS.length; index++) {
+      const inventory = slice.transition(slice.initialState, { recordedList: ['a', 'b'] }).state;
+      let current = selectRoute(inventory, 'direct-build').state;
+      for (let i = 0; i < index; i++) current = slice.transition(current, { intent: 'complete' }).state;
+      const parked = slice.transition(current, { intent }).state;
+      for (const selection of ['route-choice', 'direct-build', 'plan']) {
+        const rejected = slice.transition(parked, { intent: selection });
+        assert.equal(rejected.rejected, 'RESUMPTION_REQUIRED');
+        assert.deepEqual(rejected.state, parked);
+      }
+      const resumed = slice.transition(parked, { intent: 'resume-direct-build', pick: 'b' });
+      assert.equal(resumed.rejected, undefined);
+      assert.equal(resumed.state.active, 'a');
+      assert.equal(resumed.state.stage, slice.DIRECT_BUILD_STEPS[index]);
+      assert.deepEqual(resumed.state.done, parked.done);
+      assert.deepEqual(resumed.state.parked, {});
+      assert.equal(resumed.next.follow, 'sai/commands/explore/steps/pipeline-direct-build.md');
+      assert.equal(slice.transition(resumed.state, { intent: 'resume-direct-build' }).rejected, 'ALREADY_RUNNING');
+      // Multiple stops consume the same cursor; none advance or finish work.
+      const stoppedAgain = slice.transition(resumed.state, { intent: 'fail' });
+      assert.deepEqual(stoppedAgain.state.parked, parked.parked);
+    }
+  }
+});
+
+test('resumption cannot create an execution, bypass Plan, or replay a completed commit stage', () => {
+  const inventory = slice.transition(slice.initialState, { recordedList: ['a', 'b'] }).state;
+  const plan = selectRoute(inventory, 'plan').state;
+  const parkedPlan = slice.transition(plan, { intent: 'fail' }).state;
+  const completed = finishDirectBuild(selectRoute(inventory, 'direct-build').state);
+  const parkedBuild = slice.transition(selectRoute(inventory, 'direct-build').state, { intent: 'fail' }).state;
+  const replaced = slice.transition(parkedBuild, { recordedList: ['a', 'b'] }).state;
+  for (const state of [slice.initialState, inventory, parkedPlan, completed, replaced]) {
+    const result = slice.transition(state, { intent: 'resume-direct-build' });
+    assert.equal(result.rejected, 'NO_PENDING_DIRECT_BUILD');
+    assert.deepEqual(result.state, slice.project(state).snapshot.state);
+  }
+  assert.deepEqual(completed.done, ['a']);
+  assert.equal(selectRoute(completed, 'plan').state.active, 'b', 'later slices retain their route choices');
 });
 
 test('a parked slice resumes only in its own mode', () => {

@@ -283,9 +283,43 @@ The pipeline selector SHALL be presented only after same-turn block emission and
 
 ### Requirement: Direct Build enters only via stage-machine emit and follow
 
-Direct Build selection SHALL enter only after a later valid `Direct Build - Unattended` picker answer, an emit of intent `direct-build` to `explore-slice@1`, and `next.follow` to `pipeline-direct-build.md`. It SHALL never enter via an ad-hoc Temp script or any other helper path.
+Initial Direct Build selection SHALL enter only after a later valid `Direct Build - Unattended` picker answer, an emit of intent `direct-build` to `explore-slice@1`, and `next.follow` to `pipeline-direct-build.md`. A pending Direct Build execution in the same conversation SHALL instead enter through `resume-direct-build` and the returned parked-stage pointer, without a new `route-choice` activation. Both entry paths SHALL use their applicable machine emit and `next.follow`, never an ad-hoc Temp script or another helper path.
 
 #### Scenario: Direct Build uses stage-machine route
 
-- **WHEN** the native picker returns `Direct Build - Unattended`
+- **WHEN** the native picker returns `Direct Build - Unattended` for an initial selection
 - **THEN** the flow emits `direct-build` intent and follows to the Direct Build contract without loading an ad-hoc helper path
+
+#### Scenario: Pending Direct Build resumes through its saved stage
+
+- **WHEN** an executable same-conversation resume choice or explicit resume request is accepted for pending Direct Build work
+- **THEN** Explore emits `resume-direct-build` without `route-choice` or a slice name and follows the returned parked-stage pointer without granting additional attempts or commit authorization
+
+### Requirement: Pending Direct Build decisions precede initial route selection
+
+Before presenting the initial native route picker, Explore SHALL distinguish a pending Direct Build execution using retained conversation state and the first pending slice's parked mode. For that execution, Explore SHALL apply existing unattended recovery before requesting a decision. When intervention is required, the native picker SHALL present only executable actions to resolve the actual blocker or remain stopped. `Resume Direct Build` SHALL be offered only when retained state and existing recovery rules permit the pending operation. Plan and Manual SHALL not replace the pending execution. Initial selection, Plan retries, and selection for later slices SHALL retain their existing behavior on Claude Code and opencode.
+
+#### Scenario: Pending work needs intervention
+
+- **WHEN** a parked Direct Build execution requires user intervention
+- **THEN** Explore names the change, accepted work, pending operation, blocking cause, and remaining budget and offers only applicable actions, including remaining stopped, instead of the initial three-route selector
+
+#### Scenario: Recovery can continue without a new decision
+
+- **WHEN** an interrupted Direct Build operation can be corrected within the existing unattended recovery rules
+- **THEN** Explore applies that recovery before presenting a user decision and retains the original execution identity, scope, and authorization
+
+#### Scenario: Response does not authorize executable resumption
+
+- **WHEN** the pending-execution decision is invalid, cancelled, or selects `Remain stopped`
+- **THEN** Explore dispatches nothing and preserves the pending execution state
+
+#### Scenario: Initial selection remains unchanged
+
+- **WHEN** the first pending slice has no pending Direct Build execution
+- **THEN** Explore retains the existing initial route picker and its authorization rules
+
+#### Scenario: Exhaustion or uncertainty restricts choices
+
+- **WHEN** recovery attempts are exhausted or an execute operation has uncertain effects
+- **THEN** Explore offers no automatic retry for exhaustion and offers verification rather than replay for uncertainty

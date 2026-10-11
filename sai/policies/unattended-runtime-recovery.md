@@ -254,8 +254,11 @@ blocked the correction (agreed content, authorization, slice paths,
 available information, planned process, execute-order state, or attempts);
 and what the user must decide,
 presented as the stop options of `@sai/policies/stop-options.md`. Lanes
-reference this notice and do not restate it. Retrying a stopped slice still
-requires a fresh route picker answer.
+ reference this notice and do not restate it. A stopped Plan slice still
+ requires a fresh route picker answer. For a pending Direct Build execution in
+ the same conversation, use `sai/commands/explore/steps/route-selector.md`'s
+ pending-execution decision and the retained state in `pipeline-direct-build.md`;
+ resumption preserves these attempts and execute-order checks.
 
 Keep the Plan approval/review stop and Direct Build's selected-scope, validated
 execution-order, and one-local-commit gates unchanged. Obtain any existing

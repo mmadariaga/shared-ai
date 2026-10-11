@@ -52,6 +52,66 @@ function supervisionContract() {
   ].join('\n');
 }
 
+test('Direct Build retains execution context and accepts steps only after checks', () => {
+  const route = spec('sai/commands/explore/steps/pipeline-direct-build.md');
+  const retained = route.slice(route.indexOf('**Retained execution state**'), route.indexOf('**Pre-dispatch compatibility refusal**'));
+  for (const field of ['pending_step', 'base_sha', 'guard_base', 'slice_snapshot', 'order_snapshot',
+    'fix_rounds', 'gate_rounds', 'diagnosis_rounds.direct_build', 'direct_build_commit_authorized',
+    'validated_execution_order', 'execution_state']) assert.ok(retained.includes(field), field);
+  assert.match(retained, /each role's captured Handle/);
+  assert.match(retained, /first attempt same-worker continuation using its retained Handle/);
+  assert.match(retained, /original envelopes and exact opaque continuation histories/);
+  assert.match(retained, /Continuation and replacement/);
+  assert.match(retained, /Reconstruction must be complete before replacement work/);
+  assert.match(retained, /Only a new slice execution initializes counters to zero/);
+  assert.match(retained, /first pending internal step/);
+  assert.match(retained, /completed worker stretch alone does not accept a step/);
+  assert.match(retained, /all that step's checks/);
+  assert.match(retained, /preserve replacement usage and all recovery counters/);
+  assert.match(retained, /Claude Code[\s\S]*opencode/);
+});
+
+test('Direct Build resumption separates immutable slice references from window-local guard state', () => {
+  const route = spec('sai/commands/explore/steps/pipeline-direct-build.md');
+  const retained = route.slice(route.indexOf('**Retained execution state**'), route.indexOf('**Entry and same-conversation resumption**'));
+  assert.match(retained, /retain `guard_base` only within its live window/);
+  assert.match(retained, /no-commit-guard\.md` § Window pairing/);
+  assert.match(retained, /including a user interruption: close and verify the running window/);
+  assert.match(retained, /After the human turn, open a fresh window[\s\S]*before forwarding worker work/);
+  assert.match(retained, /`guard_base` is never carried across a boundary/);
+  assert.match(retained, /immutable slice references `base_sha` and `slice_snapshot` through resumption/);
+  assert.match(retained, /fresh guard snapshot replaces only the window-local baseline, not those slice references/);
+  assert.doesNotMatch(retained, /Reuse[^\n]*`guard_base`/);
+});
+
+test('format and commit recovery preserve work and the original single-commit grant', () => {
+  const route = spec('sai/commands/explore/steps/pipeline-direct-build.md');
+  assert.match(route, /every response to the active validator exactly as received/);
+  assert.match(route, /invalid output, preserve existing changes, keep the step pending/);
+  assert.match(route, /fresh validator-compatible response from the authoring agent/);
+  assert.match(route, /unattended-runtime-recovery\.md` § Precedence and § Attempts/);
+  assert.match(route, /resume choice alone does not reopen any budget/);
+  assert.match(route, /confirmed to have occurred, record its reference and consumption once/);
+  assert.match(route, /confirmed absent[\s\S]*no-effect check/);
+  assert.match(route, /absence of a commit does not authorize replay of a partially applied archive order/);
+  assert.match(route, /inconclusive check keeps execution stopped/);
+  assert.match(route, /consumed order or commit grant is never renewed by resumption; never push/);
+});
+
+test('pending Direct Build decisions precede the initial picker and retain parked references', () => {
+  const selector = spec('sai/commands/explore/steps/route-selector.md');
+  const pending = selector.slice(selector.indexOf('\n## Pending Direct Build execution'), selector.indexOf('\n## Native route picker'));
+  assert.match(pending, /recoverable error[\s\S]*before asking for a decision/);
+  assert.match(pending, /only executable actions/);
+  assert.match(pending, /Plan and Manual do not replace/);
+  assert.match(pending, /Resume Direct Build[\s\S]*only when retained state/);
+  assert.match(pending, /Remain stopped/);
+  assert.match(pending, /resume-direct-build[\s\S]*without `route-choice`/);
+  assert.match(pending, /grants no additional[\s\S]*attempts or commit/);
+  assert.match(spec('sai/commands/explore/steps/slice.md'), /releasing the machine's `active` is not clearing conversation execution state/);
+  assert.match(spec('docs/commands/sai-explore.md'), /Claude Code and opencode use the same rules/);
+});
+
 test('supervision is entered only through an explicit crystallization route choice', () => {
   const source = exploreContract();
 

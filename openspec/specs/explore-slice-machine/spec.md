@@ -44,61 +44,68 @@ Completing Archive SHALL mark the active slice done, clear `active`, clear `mode
 
 ### Requirement: Fail, cancel, already-running, and next-slice do not mark done
 
-A fail or cancel intent SHALL park the active slice at its current Direct Build or Plan step, clear active and mode, return stage to `waiting`, and SHALL not mark the slice done. A parked first slice SHALL block later slices until it resumes in its own mode at the parked step; selecting it in the other mode SHALL reject with PARKED_IN_OTHER_MODE. A second Direct Build or Plan while active is set, or a route-choice activation while active is set, SHALL reject with ALREADY_RUNNING. A next-slice intent SHALL reject with READINESS_IS_NOT_INTENT except when Plan is at implement.
+A `fail` or `cancel` intent SHALL park the active slice at its current Direct Build or Plan step, clear active and mode, return stage to `waiting`, and SHALL not mark the slice done. The parked first slice SHALL block later slices. A parked Plan slice SHALL resume only in its own mode after route-choice activation; selecting Direct Build for that Plan slice SHALL reject with `PARKED_IN_OTHER_MODE`. A parked Direct Build slice SHALL resume only through `resume-direct-build`; initial selection SHALL reject with `RESUMPTION_REQUIRED`. A second Direct Build or Plan while active is set, a route-choice activation while active is set, or resumption while active is set SHALL reject with `ALREADY_RUNNING`. A `next-slice` intent SHALL reject with `READINESS_IS_NOT_INTENT` except when Plan is at implement.
 
 #### Scenario: Already-running rejects a second Direct Build
 
-- **WHEN** the caller emits direct-build while explore-slice already has active set
-- **THEN** the response carries rejected: ALREADY_RUNNING, stage stays on the pending Direct Build step, and done is unchanged
+- **WHEN** the caller emits `direct-build` while explore-slice already has active set
+- **THEN** the response carries rejected `ALREADY_RUNNING`, stage stays on the pending Direct Build step, and done is unchanged
 
 #### Scenario: Already-running rejects Plan while Direct Build is active
 
-- **WHEN** the caller emits plan while explore-slice already has active set in direct-build mode
-- **THEN** the response carries rejected: ALREADY_RUNNING, mode stays direct-build, and done is unchanged
+- **WHEN** the caller emits `plan` while explore-slice already has active set in direct-build mode
+- **THEN** the response carries rejected `ALREADY_RUNNING`, mode stays direct-build, and done is unchanged
 
 #### Scenario: Fail leaves the active step pending
 
-- **WHEN** the caller emits fail during an active Direct Build
+- **WHEN** the caller emits `fail` during an active Direct Build
 - **THEN** stage returns to waiting, active is null, the slice is parked at its current step, and the slice is not appended to done
 
 #### Scenario: A parked slice resumes at its parked step
 
-- **WHEN** a Plan slice parked on sai-2 is selected again with plan after route-choice activation
+- **WHEN** a Plan slice parked on sai-2 is selected again with `plan` after route-choice activation
 - **THEN** active is that slice, stage is sai-2, and no parked step remains for it
 
 #### Scenario: A parked slice rejects the other mode
 
-- **WHEN** a Plan slice parked on sai-2 is selected with direct-build after route-choice activation
-- **THEN** the response carries rejected: PARKED_IN_OTHER_MODE, stage stays waiting, and the slice stays parked on sai-2
+- **WHEN** a Plan slice parked on sai-2 is selected with `direct-build` after route-choice activation
+- **THEN** the response carries rejected `PARKED_IN_OTHER_MODE`, stage stays waiting, and the slice stays parked on sai-2
 
 #### Scenario: next-slice does not complete Direct Build Archive
 
-- **WHEN** the caller emits next-slice while explore-slice is at archive
-- **THEN** the response carries rejected: READINESS_IS_NOT_INTENT, stage stays archive, and active is not cleared
+- **WHEN** the caller emits `next-slice` while explore-slice is at archive
+- **THEN** the response carries rejected `READINESS_IS_NOT_INTENT`, stage stays archive, and active is not cleared
 
 #### Scenario: Parked first slice blocks a later slice
 
-- **WHEN** a first slice is parked and a route start is emitted while it remains first pending
-- **THEN** the response carries PARKED_IN_OTHER_MODE and no later pending slice starts
+- **WHEN** a first slice is parked and an incompatible route start is emitted while it remains first pending
+- **THEN** the response carries `PARKED_IN_OTHER_MODE` for parked Plan or `RESUMPTION_REQUIRED` for parked Direct Build and no later pending slice starts
 
 ### Requirement: Every slice close re-locks the route gate
 
-Completing a slice (Archive for Direct Build, `next-slice` for Plan) and parking a slice (`fail` or `cancel`) SHALL set `blockEmissionTurnClosed` back to true, so a later Plan or Direct Build intent SHALL reject with ROUTE_CHOICE_REQUIRED until a fresh `route-choice`. The machine SHALL keep an `autoContinueReady` flag that only a clean Direct Build finish sets. An `auto-continue` intent SHALL start the first pending slice as Direct Build only while that flag is set; otherwise it SHALL reject with ROUTE_CHOICE_REQUIRED, or ALREADY_RUNNING while a slice is active, or NO_PENDING_SLICE on an exhausted set. Starting any slice, parking, `route-choice`, and `recordedList` SHALL clear the flag.
+Completing a slice (Archive for Direct Build, `next-slice` for Plan) and parking a slice (`fail` or `cancel`) SHALL set `blockEmissionTurnClosed` back to true. For ordinary fresh selection or a parked Plan slice, Plan and Direct Build intents SHALL reject with `ROUTE_CHOICE_REQUIRED` until a fresh `route-choice`. When the first pending slice is parked as Direct Build, initial `route-choice`, `plan`, and `direct-build` intents SHALL instead reject with `RESUMPTION_REQUIRED`, preserving the parked state.
+
+The machine SHALL keep an `autoContinueReady` flag that only a clean Direct Build finish sets. An `auto-continue` intent SHALL start the first pending slice as Direct Build only while that flag is set; otherwise it SHALL reject with `ROUTE_CHOICE_REQUIRED`, or `ALREADY_RUNNING` while a slice is active, or `NO_PENDING_SLICE` on an exhausted set. Starting any slice, parking, `route-choice`, and `recordedList` SHALL clear the flag.
 
 #### Scenario: A finished slice needs a fresh picker answer
 
-- **WHEN** a slice finishes or is parked and the caller emits plan or direct-build without a new route-choice
-- **THEN** the response carries rejected: ROUTE_CHOICE_REQUIRED and no slice starts
+- **WHEN** a slice finishes or a Plan slice is parked and the caller emits `plan` or `direct-build` without a new `route-choice`
+- **THEN** the response carries rejected `ROUTE_CHOICE_REQUIRED` and no slice starts
 
 #### Scenario: Auto-continue follows only a clean Direct Build finish
 
-- **WHEN** a Direct Build slice completes Archive and the caller emits auto-continue with pending slices remaining
+- **WHEN** a Direct Build slice completes Archive and the caller emits `auto-continue` with pending slices remaining
 - **THEN** the first pending slice starts in direct-build mode at build-implement
 
 #### Scenario: Auto-continue after Plan is refused
 
-- **WHEN** a Plan slice closes with next-slice and the caller emits auto-continue
-- **THEN** the response carries rejected: ROUTE_CHOICE_REQUIRED
+- **WHEN** a Plan slice closes with `next-slice` and the caller emits `auto-continue`
+- **THEN** the response carries rejected `ROUTE_CHOICE_REQUIRED`
+
+#### Scenario: Initial selection cannot replace parked Direct Build
+
+- **WHEN** the first pending slice is parked as Direct Build and the caller emits `route-choice`, `direct-build`, or `plan`
+- **THEN** the machine rejects with `RESUMPTION_REQUIRED` and leaves the parked stage and completed set unchanged
 
 ### Requirement: Anonymous active slice when inventory is empty
 
@@ -176,3 +183,27 @@ The explore crystallization close SHALL record the `explore-slice@1` inventory o
 
 - **WHEN** a valid block emit arrives while a slice route is active
 - **THEN** the inventory is replaced and the response returns the active slice's pointer instead of `route-selector.md`
+
+### Requirement: Direct Build resumption consumes the first pending parked cursor
+
+With no active slice, `resume-direct-build` SHALL resume only when the first pending inventory entry has a Direct Build parked cursor. It SHALL set that entry active, restore its saved stage and Direct Build mode, consume its parked cursor, preserve done, and return `next.follow` to `sai/commands/explore/steps/pipeline-direct-build.md`. It SHALL ignore any legacy `pick` and require no fresh route-choice activation. With active set it SHALL reject `ALREADY_RUNNING`; without a first-pending Direct Build parked cursor it SHALL reject `NO_PENDING_DIRECT_BUILD`. Rejections SHALL preserve state.
+
+#### Scenario: Each Direct Build stage resumes after fail or cancel
+
+- **WHEN** a Direct Build slice is parked by `fail` or `cancel` at build-implement, backfill, or archive and receives `resume-direct-build`
+- **THEN** the same first pending slice becomes active at its saved stage, its parked cursor is consumed, and done remains unchanged
+
+#### Scenario: Repeated interruption does not advance work
+
+- **WHEN** a resumed Direct Build slice stops again before completion
+- **THEN** it is parked at the same stage without completing the slice or starting a later slice
+
+#### Scenario: Resumption cannot create or replay an execution
+
+- **WHEN** `resume-direct-build` is emitted before inventory, for fresh inventory, for parked Plan, after Direct Build completion, or after `recordedList` discarded the old parked cursor
+- **THEN** the machine rejects `NO_PENDING_DIRECT_BUILD` without creating an execution, bypassing Plan, or replaying completed work
+
+#### Scenario: Active execution rejects duplicate resumption
+
+- **WHEN** `resume-direct-build` is emitted while a slice is active
+- **THEN** the machine rejects `ALREADY_RUNNING` without another execution

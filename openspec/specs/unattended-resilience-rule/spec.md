@@ -78,12 +78,24 @@ Each failed step SHALL allow three attempts, shared between the two recovery pat
 
 ### Requirement: The stop notice is defined once
 
-When the rule answers no, the stop notice SHALL state what failed; what is done and what is pending, including known partial effects and what remains unverified; which invariant blocked the correction (agreed content, authorization, slice paths, available information, planned process, execute-order state, or attempts); and what the user must decide. The notice SHALL be defined once in the Stop condition of `sai/policies/unattended-runtime-recovery.md`, and the lanes SHALL reference it without restating it. Earlier completed steps SHALL be preserved, the stopped step SHALL stay pending, and retrying a stopped slice SHALL still require a fresh route picker answer.
+When the resilience rule answers no, the stop notice SHALL state what failed; what is done and what is pending, including known partial effects and what remains unverified; which invariant blocked the correction (agreed content, authorization, slice paths, available information, planned process, execute-order state, or attempts); and what the user must decide. The notice SHALL be defined once in the Stop condition of `sai/policies/unattended-runtime-recovery.md`, and the lanes SHALL reference it without restating it.
+
+Earlier accepted steps SHALL be preserved and the stopped step SHALL stay pending. A stopped Plan slice SHALL still require a fresh route picker answer. A pending Direct Build execution in the same conversation SHALL use the pending-execution decision in `route-selector.md` and the retained state in `pipeline-direct-build.md`. Resumption SHALL preserve existing attempts and execute-order checks and SHALL grant no extra attempt.
 
 #### Scenario: A stop reports the blocking limit
 
 - **WHEN** an unattended lane stops because an invariant blocks the correction
 - **THEN** the notice names what failed, what is done and pending, the blocking invariant, and the decision the user must make
+
+#### Scenario: Direct Build resumes within the existing budget
+
+- **WHEN** pending Direct Build work resumes in the same conversation
+- **THEN** it uses retained recovery counters and existing execute-order checks rather than a new route selection or renewed attempt budget
+
+#### Scenario: Plan retains its selection gate
+
+- **WHEN** a stopped Plan slice is retried
+- **THEN** the existing fresh route picker answer remains required
 
 ### Requirement: The per-worker recovery allowlist is retired
 

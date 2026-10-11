@@ -4,7 +4,7 @@
 
 **Preparation first; route selection after its answer.** The shared close in `crystallization-protocol.md` owns block emission, stage-panel handling, and ordered inventory recording; its block emit records the complete ordered inventory before any block is displayed, and only after that checkpoint succeeds does its `next.follow` load this selector. When no slice is active, start the optional actions after the printed blocks in that same assistant turn. Present the native three-option picker only after both optional actions finish; the user's route answer arrives in a later turn. If a slice is still active, its own pointer remains authoritative and no new question is opened. It succeeds only when a complete inventory is in the machine's `waiting` state. A panel-unavailable notice does not block the close when inventory recording succeeds; a state-store or step-load failure stops before a choice. The `inline-refusal` path remains outside this selector.
 
-**Route gate (single source).** Opening the picker exposes no route and authorizes no work: no route intent, panel entry, or dispatch occurs on picker presentation alone. `explore-slice@1` keeps route intents blocked until a valid picker answer is received and `{intent: route-choice}` is emitted (`ROUTE_CHOICE_REQUIRED`), and it re-locks the gate whenever a slice finishes or is parked. Every later presentation is therefore a fresh picker for the first pending slice; never reuse an earlier answer. The one exception is the Direct Build continuation below, which emits `{intent: auto-continue}` instead. Fast-track never auto-selects a route. There is no literal pipeline token.
+**Route gate (single source).** Opening the picker exposes no route and authorizes no work: no route intent, panel entry, or dispatch occurs on picker presentation alone. `explore-slice@1` keeps route intents blocked until a valid picker answer is received and `{intent: route-choice}` is emitted (`ROUTE_CHOICE_REQUIRED`), and it re-locks the gate whenever a slice finishes or is parked. For initial selection and later slices, present a fresh picker; never reuse an earlier answer. A pending Direct Build execution uses the resumption branch below instead. Automatic later-slice continuation emits `{intent: auto-continue}` under its existing consent. Fast-track never auto-selects a route. There is no literal pipeline token.
 
 **The POC profile is never a route option here.** This selector recognizes exactly the three route choices below. The Direct Build `--no-specs` profile (the POC lane's pinned execution profile, `pipeline-direct-build.md`) is reachable only from inside the POC lane, which runs before `Review edge cases` and has already closed by the time this choice is presented; it is never offered as a fourth route or as a variant of any route here.
 
@@ -18,11 +18,42 @@ Fetch @sai/policies/question-context.md and follow it for the route picker.
 - **Before inventory** — the initial `idle` state has no complete inventory. Plan and Direct Build intents are rejected; `next.follow` is `none`.
 - **Waiting with pending slices** — `stage` is `waiting`, inventory is complete, and at least one slice is pending (`set` minus `done` is non-empty). The native picker below applies to the first pending slice; route work waits for its answer.
 - **Waiting with no pending slices** — `stage` is `waiting` with no pending slice and `active` cleared. The set is exhausted: acknowledge that no route can start and dispatch nothing.
-- A route that fails or is cancelled parks its active slice back in `waiting`. Its returned pointer may load this selector in the same assistant turn; present a fresh native picker. A pending set remains after a completed slice: offer the picker again unless the Direct Build continuation resolves to `auto_continue`.
+- A route that fails or is cancelled parks its active slice back in `waiting`. On its returned selector pointer, distinguish pending Direct Build execution from initial selection before presenting any options. Plan keeps its existing fresh native picker. After a completed slice, offer the picker for the next slice unless Direct Build continuation resolves to `auto_continue`.
 
 **Inventory.** Slice names come from `Ready to Propose` blocks in chat, not the wire. A `recordedList` replaces `set` without moving a running cursor, discards parked cursors, and makes the newest complete block set authoritative. A name in the new set is pending even if that same name completed under an older set. Do not run `openspec list --json`, enumerate changes on disk, or re-sort emitted names.
 
-**Reply-pending state.** Keep `route_choice_reply_pending` in conversation state for the current `last_crystallization_set`. It starts `false`; the shared close sets it to `true` only after its block emit has recorded the inventory and every block has been displayed. Reset it to `false` when a new crystallization replaces the set, then set it to `true` as that new close ends. After an accepted Plan, Direct Build, or Manual picker answer, set it to `false`. If this selector is reached after a route result, set it to `true` before presenting a fresh native picker. A cancelled, absent, invalid, or ambiguous response keeps it `true` and emits no route intent. It is not persisted or sent to a worker.
+**Reply-pending state.** Keep `route_choice_reply_pending` in conversation state for the current `last_crystallization_set`. It starts `false`; the shared close sets it to `true` only after its block emit has recorded the inventory and every block has been displayed. Reset it to `false` when a new crystallization replaces the set, then set it to `true` as that new close ends. After an accepted Plan, Direct Build, or Manual picker answer, set it to `false`. If this selector is reached after a route result requiring a fresh route selection, set it to `true` before presenting a fresh native picker. A pending Direct Build execution keeps it `false` and uses the decision below. A cancelled, absent, invalid, or ambiguous route-choice response keeps it `true` and emits no route intent. It is not persisted or sent to a worker.
+
+## Pending Direct Build execution
+
+Before the native route picker, inspect the retained conversation state and the
+first pending slice's parked mode under `slice.md`. If it is a pending Direct
+Build execution, use this branch; initial selection, completed-slice selection,
+and Plan behavior keep the picker below. Reach
+`pipeline-direct-build.md`'s **Retained execution state** and **Entry and
+same-conversation resumption** only for this pending execution.
+
+1. Apply the existing unattended recovery procedure to a recoverable error
+   before asking for a decision. Keep the original route identity, scope, and
+   one-local-commit authorization. A recovery hand-off is not route selection.
+2. When user intervention is needed, present only executable actions under
+   `@sai/policies/stop-options.md` and `@sai/policies/question-context.md`, using
+   Claude Code's `AskUserQuestion` or opencode's `question`. Name the change,
+   accepted work, pending operation, blocking cause, and remaining budget.
+   Offer `Resume Direct Build` only when retained state and existing recovery
+   rules permit the pending operation; offer a concrete action to resolve the
+   blocker when available, and `Remain stopped`. Plan and Manual do not replace
+   this pending execution. Budget exhaustion offers no automatic retry; an
+   uncertain mutation offers verification, not replay. Invalid or cancelled
+   answers preserve the stop and dispatch nothing.
+3. On an explicit executable resume choice (or explicit same-chat request to
+   resume), emit `{intent: resume-direct-build}` without `route-choice`, a new
+   route selection, or a slice name, and consume `next.follow`. Reuse the
+   retained state at its first pending step; this decision grants no additional
+   attempts or commit. `Remain stopped` emits nothing and retains that state.
+   `RESUMPTION_REQUIRED` redirects here without dispatch;
+   `NO_PENDING_DIRECT_BUILD` requires checking state before any work, never an
+   implicit new execution.
 
 ## Optional pre-route actions
 
@@ -41,7 +72,7 @@ Ask one question at a time in the user's language, with short context naming the
 
 ## Native route picker
 
-This is a closed choice. Present it only after a complete ordered inventory has been recorded successfully and the machine returns this selector, and only when at least one slice is pending. Before opening the picker, use the user's language for a short context that names the first-pending change, states that the complete proposal set was recorded in display order, and explains that this selection chooses only the route for that change. Explain that Plan and Direct Build authorize their existing delegated-write scopes only after the user selects them; Direct Build also authorizes its existing one local commit. Manual starts no worker and uses the block in a new `/sai-1-spec` chat. This context, question, and options follow `@sai/policies/question-context.md`; fixed route titles and command literals stay unchanged.
+This is a closed choice. Present it only after a complete ordered inventory has been recorded successfully and the machine returns this selector, and only when at least one slice is pending and the pending-execution branch above does not apply. Before opening the picker, use the user's language for a short context that names the first-pending change, states that the complete proposal set was recorded in display order, and explains that this selection chooses only the route for that change. Explain that Plan and Direct Build authorize their existing delegated-write scopes only after the user selects them; Direct Build also authorizes its existing one local commit. Manual starts no worker and uses the block in a new `/sai-1-spec` chat. This context, question, and options follow `@sai/policies/question-context.md`; fixed route titles and command literals stay unchanged.
 
 Use the active harness's native picker: Claude Code uses `AskUserQuestion`; opencode uses the `question` tool. Present exactly one single-select question, localized from “Which route should start for the first pending change?”, with these three options in this order. Localize descriptions, but keep the fixed option labels exactly as shown:
 
@@ -72,7 +103,7 @@ Handle each rejection by dispatching nothing:
 - `PARKED_IN_OTHER_MODE` — explain that the first pending slice is parked in the other route and resumes only there; a later slice cannot bypass it.
 - `NO_PENDING_SLICE` — distinguish an empty crystallization set (no change crystallized; prompt block-first) from an exhausted set (all crystallized changes already completed).
 
-After a non-rejected emit, consume `next.follow` per the same policy. Plan loads `pipeline-plan-unattended.md` at sai-1; Direct Build loads `pipeline-direct-build.md` at build-implement. Direct Build enters only through that emit plus `next.follow`; never enter via an ad-hoc Temp script or any other helper path.
+After a non-rejected initial-selection emit, consume `next.follow` per the same policy. Plan loads `pipeline-plan-unattended.md` at sai-1; a new Direct Build execution loads `pipeline-direct-build.md` at build-implement. Pending Direct Build enters through `resume-direct-build` plus its parked-stage pointer as defined above. Direct Build enters only through its applicable machine emit plus `next.follow`; never enter via an ad-hoc Temp script or any other helper path.
 
 **Manual is not terminal** — after a Manual handoff, re-present the native route picker only when the user asks to see the choice again or to run **Plan - Unattended** or **Direct Build - Unattended**; no token form exists and none is recognized. There is no cap on re-presentations.
 
@@ -118,4 +149,4 @@ The handoff's surrounding prose follows the selected crystallization language pe
 
 Route state is conversation-only and scoped to the first pending slice: retain its `**Change name**`, the chosen mode, the ordered route steps, each step's `pending | in_progress | completed` state, and the active step. Reset route state when a new slice starts; preserve completed slices and every pending slice in crystallization order. Route state is emitted only by the explore coordinator, is never authored by a worker, is never persisted, and creates no milestone stamps. Each path owns its entries (E7).
 
-A failed, cancelled, STOP-bearing, coordinator-disproved, or unrecovered result leaves the active route step `pending` and retryable, preserves earlier completed route steps, starts no later route step, and parks the slice in `explore-slice@1` per `slice.md`; only a clean terminal result completes the route (E4). A retry needs a fresh picker answer in the same mode and resumes the same first-pending slice at its parked step, with earlier route steps still `completed`. Never re-run completed slices (E2). After a clean Direct Build slice, `pipeline-direct-build.md` automatically starts the next first-pending slice only when the continuation resolves to `auto_continue`; otherwise, re-present this route choice once. Plan and Manual never auto-start later slices.
+A failed, cancelled, STOP-bearing, coordinator-disproved, or unrecovered result leaves the active route step `pending` and retryable, preserves earlier completed route steps, starts no later route step, and parks the slice in `explore-slice@1` per `slice.md`; only a clean terminal result completes the route (E4). Plan retry needs a fresh picker answer in the same mode; pending Direct Build uses **Pending Direct Build execution** above. Both resume the first-pending slice at its parked step, with earlier route steps still `completed`. Never re-run completed slices (E2). After a clean Direct Build slice, `pipeline-direct-build.md` automatically starts the next first-pending slice only when the continuation resolves to `auto_continue`; otherwise, re-present this route choice once. Plan and Manual never auto-start later slices.
