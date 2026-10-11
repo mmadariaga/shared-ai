@@ -56,7 +56,7 @@ const initialState = Object.freeze({
 });
 
 // A parked slice is pending with a saved cursor: `fail` or `cancel` parked it,
-// and only a selection in its own mode resumes it at the saved stage.
+// Plan selection or Direct Build resumption consumes its saved stage.
 function cloneParked(src) {
   const parked = {};
   if (!src || typeof src !== 'object' || Array.isArray(src)) return parked;
@@ -175,6 +175,10 @@ function startRoute(current, mode, steps) {
     return outcome(current, 'INVENTORY_NOT_READY');
   }
   if (current.blockEmissionTurnClosed) {
+    const parked = current.parked[pendingOf(current)[0]];
+    if (parked && parked.mode === DIRECT_BUILD_MODE) {
+      return outcome(current, 'RESUMPTION_REQUIRED');
+    }
     return outcome(current, 'ROUTE_CHOICE_REQUIRED');
   }
   return beginSlice(current, mode, steps);
@@ -254,6 +258,16 @@ function transition(state, signal) {
 
   const intent = sig.intent;
 
+  if (intent === 'resume-direct-build') {
+    if (current.active != null) return outcome(current, 'ALREADY_RUNNING');
+    const parked = current.parked[pendingOf(current)[0]];
+    if (!parked || parked.mode !== DIRECT_BUILD_MODE) {
+      return outcome(current, 'NO_PENDING_DIRECT_BUILD');
+    }
+    // Resumption consumes the saved cursor, not a new route authorization.
+    return beginSlice(current, DIRECT_BUILD_MODE, DIRECT_BUILD_STEPS);
+  }
+
   if (intent === 'route-choice') {
     if (current.active != null) {
       return outcome(current, 'ALREADY_RUNNING');
@@ -263,6 +277,10 @@ function transition(state, signal) {
     }
     if (current.stage !== WAITING_STAGE) {
       return outcome(current, 'NOT_WAITING_FOR_ROUTE');
+    }
+    const parked = current.parked[pendingOf(current)[0]];
+    if (parked && parked.mode === DIRECT_BUILD_MODE) {
+      return outcome(current, 'RESUMPTION_REQUIRED');
     }
     // The coordinator emits this only after one valid native-picker answer.
     // It unlocks the follow-up route intent; it does not itself select a mode

@@ -42,3 +42,16 @@ Ambiguous questions still escalate. `Direct Build - Unattended` authorizes
 implementation, review/fix, retroactive specs, archive, and one local commit;
 it never pushes. For slices, the selector repeats per slice. Fast-track does
 not skip these authorizations or the reconfirmation of unresolved decisions.
+
+An interrupted Direct Build can resume in the same conversation. It retains
+its agents, accepted work, verification references, recovery counters, and the
+original authorization for one local commit. Resumption continues the first
+pending step; it does not start implementation again or offer Plan as a
+replacement. Available agents are continued before any permitted replacement.
+Invalid responses are corrected by their author and validated unchanged before
+work is accepted. Recovery uses only the remaining attempts. When intervention
+is needed, the choices address the actual blocker or leave execution stopped.
+An uncertain commit is checked before continuing: a confirmed commit consumes
+the original authorization once; an unknown result remains stopped. Nothing is
+pushed. Claude Code and opencode use the same rules through their native agent
+continuation mechanisms. Resumption in a new conversation is not supported.

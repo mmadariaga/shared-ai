@@ -273,12 +273,19 @@ When the completion transition finds uncompleted entries in last_crystallization
 
 ### Requirement: Direct Build slice attempts reset only per-attempt state
 
-Each re-entered slice selection SHALL start a fresh Direct Build attempt and reset `base_sha`, `fix_rounds`, `gate_rounds`, and the Direct Build diagnosis counters according to their existing per-attempt rules. The reset SHALL retain `completed_changes` and completed idea-progress states, and a failed, cancelled, incomplete-recovery, coordinator-disproved, STOP-bearing, or suite-gate-stopped result SHALL not mark the slice completed or trigger completion re-entry.
+Only a new Direct Build slice execution SHALL initialize its execution state, capture initial `base_sha` and slice snapshots, reset `fix_rounds`, `gate_rounds`, and the Direct Build diagnosis counters, start at Step 1, and receive that slice's original one-local-commit authorization. The initialization SHALL retain completed changes and completed idea-progress states.
+
+Resumption of a pending execution in the same conversation SHALL preserve its accepted work, initial references, counters, replacement usage, pending step, and authorization consumption instead of initializing a fresh attempt. A failed, cancelled, incomplete-recovery, coordinator-disproved, STOP-bearing, or suite-gate-stopped result SHALL not mark the slice completed or trigger completion re-entry.
 
 #### Scenario: A new slice gets fresh attempt state
 
-- **WHEN** the completion transition re-enters selection for an uncompleted slice
-- **THEN** the next slice starts with reset per-attempt counters while previously completed slice state remains intact.
+- **WHEN** the completion transition re-enters selection for a new uncompleted slice execution
+- **THEN** that slice starts with initialized per-attempt counters while previously completed slice state remains intact
+
+#### Scenario: Pending execution retains its attempt state
+
+- **WHEN** a stopped Direct Build execution resumes in the same conversation
+- **THEN** it retains its existing counters and accepted work without restarting implementation or renewing commit authorization
 
 ### Requirement: Direct Build terminal navigation waits for slice exhaustion
 
@@ -558,3 +565,68 @@ The Direct Build - Unattended route SHALL classify every observation of its func
 #### Scenario: the run ends with no scope observation
 - **WHEN** a Direct Build - Unattended run reaches its terminal report with no scope observation held
 - **THEN** the terminal report omits the `Scope observations` record
+
+### Requirement: Direct Build owns retained same-conversation execution state
+
+The full Direct Build route SHALL define its retained execution state once in `pipeline-direct-build.md` and keep it conversation-only. The state SHALL include the selected block, active change, route entries and accepted completion states, pending internal step and check, each role's captured handle while continuation may be needed, original envelopes, exact opaque continuation histories, required reconstruction metadata and replacement usage, first-seen changed-path union, findings, draft validation evidence, suite results, verification references, existing recovery counters, execute-order state, and commit-authorization consumption evidence.
+
+Parking the slice SHALL release machine active state without clearing this conversation execution state. Guard baseline state SHALL remain local to its live window; a human interruption SHALL close and verify that window, and subsequent worker work SHALL open a fresh window under the existing guard policy. Resumption SHALL introduce no new persistent storage and SHALL not support a new conversation.
+
+#### Scenario: Pending execution is parked
+
+- **WHEN** Direct Build fails, is cancelled, or remains stopped
+- **THEN** its route step remains pending and its conversation execution references remain available even though the machine releases active
+
+#### Scenario: Human boundary closes guard state
+
+- **WHEN** a human interruption crosses an active Direct Build guard window
+- **THEN** the coordinator closes and verifies that window and opens a fresh window before forwarding subsequent worker work without carrying the old guard baseline across the boundary
+
+### Requirement: Direct Build resumes the first pending accepted-check operation
+
+On `resume-direct-build`, the coordinator SHALL reconcile the retained pending internal step with the machine's saved stage: Steps 1–2b belong to build-implement, Steps 3–6 to backfill, and Steps 7–8 to archive. Missing information required for the pending operation SHALL keep execution stopped and be identified. A stage mismatch SHALL require reconciliation from accepted checks, never fresh initialization.
+
+The coordinator SHALL recheck accepted-step evidence against repository state, preserve accepted work whose evidence remains valid, and review affected work whose evidence changed without resetting counters or scope. It SHALL enter at the first pending internal step. A completed worker stretch alone SHALL not accept a step: acceptance SHALL require validator-compatible output and every ordinary step check. Only accepted internal checks SHALL advance `pending_step`, and high-level `complete` SHALL be emitted only after all internal checks for that stage pass.
+
+#### Scenario: Backfill is the first pending operation
+
+- **WHEN** implementation and suite checks are accepted and the parked stage is backfill
+- **THEN** resumption continues the pending backfill operation without re-running accepted implementation
+
+#### Scenario: Reconstruction information is missing
+
+- **WHEN** resumption lacks a required block, handle history, counter, authorization state, or verification reference
+- **THEN** the route remains stopped and identifies the missing information
+
+#### Scenario: Accepted evidence changed
+
+- **WHEN** current repository state invalidates evidence for previously accepted work
+- **THEN** the coordinator reviews the affected work while preserving scope and counters rather than accepting stale evidence or restarting the whole execution
+
+### Requirement: Direct Build continues the corresponding agent before replacement
+
+For pending agent work, the coordinator SHALL first attempt same-worker continuation with the retained handle through the existing native binding: Claude Code's captured agent handle or opencode's task session identifier. Failed delivery and permitted replacement SHALL follow existing command-runner continuation, replacement, reconstruction, and unattended recovery contracts. Replacement work SHALL require complete reconstruction and SHALL retain replacement usage and recovery counters. Each pending step SHALL continue its corresponding role rather than dispatching a new implementer for backfill or archive.
+
+#### Scenario: Existing role agent remains available
+
+- **WHEN** pending work can continue through its retained agent handle
+- **THEN** the coordinator continues that same agent before considering permitted replacement
+
+#### Scenario: Continuation delivery fails
+
+- **WHEN** same-agent continuation cannot be delivered
+- **THEN** the coordinator applies only the replacement and reconstruction permitted by existing contracts and remains stopped if reconstruction is incomplete
+
+### Requirement: Rejected responses preserve work and remain pending
+
+Every Direct Build response SHALL reach the active validator exactly as received. Invalid output SHALL preserve existing repository changes, keep the step pending, and request a fresh validator-compatible response from its author through existing recovery rules. Rejected output SHALL supply no accepted status or changed-path claim. Recoverable errors SHALL follow the existing unattended recovery procedure before a user decision. An exhausted budget SHALL leave the step pending and report the cause; choosing resumption SHALL not reopen that budget.
+
+#### Scenario: Agent returns invalid output
+
+- **WHEN** an agent response fails active payload validation
+- **THEN** the coordinator preserves existing changes and requests corrected output from the author within the existing recovery budget without advancing the step
+
+#### Scenario: Recovery budget is exhausted
+
+- **WHEN** a pending step has exhausted its existing recovery attempts
+- **THEN** the coordinator reports the cause and keeps the step pending without granting another attempt merely because resumption was requested

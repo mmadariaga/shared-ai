@@ -45,3 +45,31 @@ The commit coverage rule SHALL live in harness-neutral route text and one shared
 
 - **WHEN** the archive coordinator validates a Direct Build plan on either harness
 - **THEN** it continues the worker with the execute order only after the order covers the slice per `@sai/policies/slice-path-scope.md` § Commit coverage
+
+### Requirement: Resumption retains slice references and original commit authorization
+
+Same-conversation Direct Build resumption SHALL retain the initial `base_sha`, `slice_snapshot`, execute-order `order_snapshot`, validated execution order, execution state, and the original `direct_build_commit_authorized` state with its consumption evidence. Opening a fresh no-commit-guard window SHALL replace only its window-local baseline, not immutable slice references. Resumption SHALL neither renew a consumed order nor authorize another commit.
+
+#### Scenario: Human interruption opens a new guard window
+
+- **WHEN** pending Direct Build work continues after a human turn
+- **THEN** the coordinator uses a fresh window-local guard baseline while preserving the initial slice verification references and commit authorization state
+
+### Requirement: Uncertain commit closure is verified before continuation
+
+Before continuing an uncertain execute operation, the coordinator SHALL apply existing execute-order checks with the retained `order_snapshot` and verify the authorized commit against the retained order and repository evidence. A confirmed authorized commit SHALL have its reference and consumption recorded once; route closure SHALL still require acceptance of the archive result and remaining checks. A confirmed absent commit SHALL permit only pending work allowed by the existing no-effect check. Absence of a commit SHALL not authorize replay of a partially applied archive order. An inconclusive check SHALL leave execution stopped. The route SHALL never push.
+
+#### Scenario: Authorized commit is confirmed
+
+- **WHEN** repository evidence confirms that the retained authorized commit occurred
+- **THEN** the coordinator records its reference and authorization consumption once and does not issue the consumed commit order again
+
+#### Scenario: Commit is absent but archive effects exist
+
+- **WHEN** the authorized commit is absent but the execute order has partial effects
+- **THEN** the coordinator does not replay the order merely because no commit exists
+
+#### Scenario: Execute outcome remains uncertain
+
+- **WHEN** the existing checks cannot establish the execute operation's effects
+- **THEN** execution remains stopped without a new order or renewed authorization
