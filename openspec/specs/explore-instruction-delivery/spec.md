@@ -72,11 +72,23 @@ The explore boot in `sai/commands/explore/instructions.md` SHALL keep only the m
 - **THEN** the boot presents minimal guard pointers and pipeline detail loads only through its owning step file
 
 ### Requirement: Simplify explore write prohibition to a single delegated-write rule
-The explore instruction SHALL state that the command MUST NOT create, modify, or delete files and SHALL limit sessions to read, search, and discuss only, with delegated writes existing solely via the crystallization-close choice under its owned scopes.
+
+The explore instruction SHALL state that the command MUST NOT create, modify, or delete repository files and SHALL otherwise limit exploration to read, search, and discuss. Delegated implementation writes SHALL remain scoped to an explicitly selected crystallization-close route. Explicit acceptance of the optional backlog action SHALL count as a request for `to-backlog` under its existing scoped exception, without replacing that skill's publication confirmation. An explicit acceptance of the branch action or user request for that workflow SHALL permit only local branch creation and switching through the installed `new-change-branch` skill in the current conversation. That skill SHALL own naming, base selection, authorization, safety checks, errors, and cancellation handling. The branch exception SHALL NOT permit production code edits or other repository-file writes. These boundaries SHALL apply in Claude Code and opencode.
 
 #### Scenario: boot states read-only rule without duplicated detail
+
 - **WHEN** an explore session starts
-- **THEN** the boot presents the single read-only rule and defers all delegated-write detail to the crystallization-close owned scopes
+- **THEN** the boot presents the read-only rule and scoped workflow exceptions while deferring optional question details to the selector and delegated implementation detail to crystallization-close owned scopes
+
+#### Scenario: User authorizes local branch preparation
+
+- **WHEN** the user explicitly accepts the optional branch action or requests the branch workflow during Explore
+- **THEN** Explore permits only the installed skill's local branch creation and switching workflow without authorizing production code edits or other repository-file writes
+
+#### Scenario: User accepts backlog capture
+
+- **WHEN** the user accepts the optional backlog action
+- **THEN** Explore invokes the existing scoped `to-backlog` workflow without treating acceptance as its publication confirmation
 
 ### Requirement: Generalize boot preload to instruction pack plus stage machine with generic follow loading
 The explore boot SHALL preload only the explore instruction pack and sai/policies/stage-machine.md and SHALL load every other step file only when a returned next.follow names that exact file.
@@ -91,3 +103,22 @@ The explore instruction SHALL NOT fetch the review-loop step at boot and SHALL t
 #### Scenario: review loop waits for token
 - **WHEN** a session runs without the literal review-loop trigger
 - **THEN** the review-loop step is not loaded and boot carries only the trigger line
+
+### Requirement: Deliver optional preparation and route selection together through next follow
+
+Both optional pre-route questions and the existing native implementation route picker SHALL reside in `sai/commands/explore/steps/route-selector.md` and SHALL be delivered together when the existing state-machine `next.follow` names that file. Explore SHALL NOT preload those questions or either optional workflow skill at startup. It SHALL load each skill only after Yes or a clear free-text request for its action. Loaded sibling instructions and orientation guidance SHALL defer to the authoritative shared crystallization close and selector completion gate rather than requiring an immediate same-turn route picker. Claude Code and opencode SHALL follow the same delivery and ordering contract.
+
+#### Scenario: Successful inventory recording delivers the complete sequence
+
+- **WHEN** a successful inventory emit with no active slice returns `next.follow: sai/commands/explore/steps/route-selector.md`
+- **THEN** the loaded file supplies the backlog question, branch question, and native route picker together in that order, with picker presentation waiting for optional action completion
+
+#### Scenario: Explore starts before crystallization
+
+- **WHEN** Explore loads its startup instruction pack
+- **THEN** the optional questions and their skills are not preloaded and remain deferred to selector delivery and action acceptance
+
+#### Scenario: Loaded sibling guidance is consulted
+
+- **WHEN** selector-loaded sibling instructions or project orientation describe the post-crystallization close
+- **THEN** they defer to the shared close and selector completion gate without restoring an immediate same-turn route-picker requirement

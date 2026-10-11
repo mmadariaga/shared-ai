@@ -8,12 +8,12 @@ Define the crystallized handoff format and closing behavior for `sai-explore`.
 
 ### Requirement: Close crystallization with the three named routes
 
-The shared crystallization close SHALL emit every `Ready to Propose` block and the ordered `recordedList`, handle the stage TODO, and complete the inventory checkpoint only after the ordered event succeeds in `waiting`. After that successful checkpoint, it SHALL follow the returned pointer. When the pointer names the route selector and no slice is active, the selector SHALL present the native three-option picker in the same assistant turn. The close SHALL not emit `route-choice`, select a route, or dispatch work until a valid picker answer arrives in a later turn. No route SHALL be selected automatically.
+The shared crystallization close SHALL emit every `Ready to Propose` block and the ordered `recordedList`, handle the stage TODO, and complete the inventory checkpoint only after the ordered event succeeds in `waiting`. After that successful checkpoint, it SHALL follow the returned pointer. When the pointer names the route selector and no slice is active, the selector SHALL start its optional backlog-then-branch actions after displaying every block. It SHALL present the native three-option implementation route picker only after both actions finish or are explicitly skipped. The close SHALL not emit `route-choice`, select a route, or dispatch work until a valid picker answer arrives in a later turn. No route SHALL be selected automatically.
 
 #### Scenario: shared close remains final
 
 - **WHEN** a crystallization block or slice is emitted in the same turn and ordered inventory recording succeeds
-- **THEN** the selector picker may be presented after the checkpoint, but route processing and dispatch remain locked until a later explicit picker answer
+- **THEN** the selector starts its optional pre-route actions after displaying the complete block set, and route processing and dispatch remain locked until those actions finish or are skipped and a later explicit picker answer arrives
 
 ### Requirement: Three mandatory decision-facet sections in the single-change Ready to Propose block
 
@@ -72,17 +72,17 @@ The companion `explore-handoff-edge-cases` capability governs the same `**Edge C
 
 ### Requirement: Close crystallization with selector
 
-`sai-explore` SHALL define one authoritative crystallization-turn close in `sai/commands/explore/steps/crystallization-protocol.md`. The single-change and sliced-feature items SHALL compose their blocks and reference that definition rather than restating its emission sequence. Inline proposal refusal SHALL stay outside the shared close. The shared close SHALL run, in order: stage-TODO panel handling; the block emit that validates the composed block or blocks and records the ordered inventory; and printing the blocks exactly as sent. After a successful block emit, the close SHALL load the actual `next.follow` before printing. When no slice is active, that pointer SHALL load `route-selector.md`, whose native picker SHALL be presented after the printed blocks. A later valid picker answer SHALL control whether Manual emits its handoff and recommendation; Plan and Direct Build SHALL not emit that handoff.
+`sai-explore` SHALL define one authoritative crystallization-turn close in `sai/commands/explore/steps/crystallization-protocol.md`. The single-change and sliced-feature items SHALL compose their blocks and reference that definition rather than restating its emission sequence. Inline proposal refusal SHALL stay outside the shared close. The shared close SHALL run, in order: stage-TODO panel handling; the block emit that validates the composed block or blocks and records the ordered inventory; and printing the blocks exactly as sent. After a successful block emit, the close SHALL load the actual `next.follow` before printing. When no slice is active, that pointer SHALL load `route-selector.md`, whose optional actions SHALL start after the printed blocks and whose native picker SHALL wait until both actions finish or are explicitly skipped. When a slice remains active, its returned pointer SHALL remain authoritative and new optional questions SHALL wait until it closes. A later valid picker answer SHALL control whether Manual emits its handoff and recommendation; Plan and Direct Build SHALL not emit that handoff.
 
 #### Scenario: single-change handoff uses the shared close
 
 - **WHEN** `sai-explore` composes the single-change `Ready to Propose` block in the same turn
-- **THEN** item 5 invokes the protocol-owned shared close, which handles the panel, records the inventory through the block emit, prints the block, and presents the route picker without starting a route
+- **THEN** item 5 invokes the protocol-owned shared close, which handles the panel, records the inventory through the block emit, prints the block, and starts optional pre-route actions without starting a route
 
 #### Scenario: sliced output closes once after the final slice
 
 - **WHEN** `sai-explore` composes one `Ready to Propose` block per slice in the same turn
-- **THEN** item 6 invokes the protocol-owned shared close once for the complete ordered set, whose block emit extracts the names in display order and records the inventory once, and the picker is presented only after every block is printed
+- **THEN** item 6 invokes the protocol-owned shared close once for the complete ordered set, whose block emit extracts the names in display order and records the inventory once, with optional actions starting only after every block is printed and the picker waiting for their completion or explicit skip
 
 #### Scenario: inline proposal refusal uses the shared close
 
@@ -97,7 +97,7 @@ The companion `explore-handoff-edge-cases` capability governs the same `**Edge C
 #### Scenario: the close does not alter the handoff payload
 
 - **WHEN** the shared close is emitted in any single-change or sliced crystallization path in the same turn
-- **THEN** the existing `Ready to Propose` block labels and `---` separator remain unchanged, the route picker remains outside the block, and `review-loop` remains a standing user-triggered path
+- **THEN** the existing `Ready to Propose` block labels and `---` separator remain unchanged, optional questions and the route picker remain outside the block, and `review-loop` remains a standing user-triggered path
 
 #### Scenario: recommendation language and review separation remain unchanged
 

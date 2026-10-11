@@ -286,6 +286,16 @@ Loaded by the sai-* commands `sai-1-spec`, `sai-4-apply`, `sai-archive`, `sai-ba
 Worker "never run a mutating git command" rules are prose the worker reads at start; the no-commit guard turns the one invariant true in every project — HEAD immobility across worker stretches — into a filesystem check. `sai/tools/no-commit-guard.js` (`snapshot`/`verify`, JSON verdicts `clean | violation | allowed | n/a`) is single-sourced in `sai/policies/no-commit-guard.md`: every coordinator card that dispatches a routed worker binding (spec, design, implement, apply, review, security, performance, accessibility, commit, archive, backfill, merge, meta-review) plus explore's three Direct Build windows pairs one snapshot and one verify per guard window. Windows are bounded by control hand-offs (a human turn, a coordinator git mutation, or run close), not by dispatches; the policy's § Window pairing owns the rules. The baseline SHA lives in coordinator conversation state as `guard_base` (literal `n/a` when HEAD cannot be resolved; never persisted); on violation the coordinator captures the payload's commit evidence, runs `git reset <guard_base>` (mixed), prints the one pinned incident line from the guard policy's § Incident line, and continues the route — the remediation reset is pre-authorized by the flow and carved out of safe-operations' confirmation gate. `allow_commit` is the lax dispatch-carried flag that permits HEAD movement; its only carrier is the archive worker's pre-authorized Direct Build `--direct-build-execute` continuation. Coordinator-owned mutations (apply gates, merge launch, the archive commit gate) always run between windows; worker prose prohibitions stay unchanged.
 
 ### Explore-mode read-only enforcement
+
+Claude Code and opencode share the post-crystallization sequence owned by
+`sai/commands/explore/steps/crystallization-protocol.md` and the returned
+`route-selector.md` pointer: display all recorded proposal blocks, complete or
+explicitly skip the optional backlog and branch actions under the selector's
+completion gate, then present the native implementation route picker. The
+optional actions can require multiple human turns; block display does not
+require an immediate same-turn route picker. Existing skills own their actions,
+and implementation still requires an explicit route choice. Loaded sibling
+instructions defer to these owners rather than restate a different sequence.
 `sai-explore`'s explore-mode "No file writes" boundary lives in
 `sai/commands/explore/instructions.md`. Claude Code's command `allowed-tools`
 pre-approves selected tools but does not remove unlisted tools; opencode has no
