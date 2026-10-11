@@ -1344,7 +1344,9 @@ test('Detail range is single-sourced in common.md and referenced by the plan sur
   for (const verb of ['Copy and paste code below into', 'Complete the skeleton below in', 'Write the content described below into']) assert.ok(template.includes(verb), verb);
   assert.match(read('sai/commands/apply/green-worker.md'), /no `TODO\(sai-4\)` remains in your files/);
   assert.match(read('sai/commands/apply/steps/routing-split-flow.md'), /test files as read-only references/);
-  assert.match(read('README.md'), /`sai-3` implementation worker >= the `sai-4` GREEN worker/);
+  assert.match(read('README.md'), /`sai-2` >= `sai-3` >= `sai-4`/);
+  assert.match(read('README.md'), /docs\/sequential-pipeline\.md/);
+  assert.match(read('docs/sequential-pipeline.md'), /AGENTS\.md/);
 });
 
 test('preflight interprets exactly the pinned instruction-verb list', () => {
