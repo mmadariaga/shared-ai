@@ -324,7 +324,7 @@ test('block emit: a later successful emit replaces the stored blocks', () => {
   }
 });
 
-test('block emit: blocks that cannot be stored are reported with BLOCKS_NOT_STORED, never silently dropped', { skip: typeof process.getuid === 'function' && process.getuid() === 0 }, () => {
+test('block emit: blocks that cannot be stored are reported with BLOCKS_NOT_STORED, never silently dropped', { skip: process.platform === 'win32' || (typeof process.getuid === 'function' && process.getuid() === 0) }, () => {
   const os = require('os');
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-blocks-'));
   const env = Object.assign({}, process.env, { TMPDIR: tmp, TEMP: tmp, TMP: tmp });
