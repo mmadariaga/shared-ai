@@ -62,6 +62,14 @@
  *
  * Exit codes: 0 = valid (dispatchable: `dispatchable` is true); 1 = violations
  * found or judgment pending; 2 = usage or I/O error.
+ *
+ * A second sub-command recomputes a block's hash for the worker that receives a
+ * stored block (sai/policies/ready-to-propose-format.md § Stored block
+ * transport):
+ *   node sai/tools/ready-to-propose.js hash < block
+ * It prints `{ ok: true, hash }` (the same sha256 the dispatchable verdict
+ * reports per block) and exits 0 when stdin carries exactly one block; any other
+ * count prints `{ ok: false, blocks, error }` and exits 1.
  */
 
 const crypto = require('crypto');
@@ -554,8 +562,10 @@ function detect(text, profile) {
 function usage() {
   return [
     'Usage: node sai/tools/ready-to-propose.js check --profile loose|strict|dispatchable [--json] < text',
+    '       node sai/tools/ready-to-propose.js hash < block',
     '',
     '  check               Validate the Ready to Propose text read from stdin',
+    '  hash                Print the sha256 of the single block read from stdin',
     '  --profile <name>    loose (backfill quorum), strict (full block format), or',
     `                      dispatchable (strict + implementation item + hygiene pre-filter;`,
     `                      verdicts JSON after a ${VERDICTS_MARKER} line)`,
@@ -598,8 +608,24 @@ function main(argv, readInput = () => fs.readFileSync(0, 'utf8')) {
     process.stdout.write(`${usage()}\n`);
     return 0;
   }
+  if (opts.command === 'hash') {
+    let input;
+    try {
+      input = readInput();
+    } catch (err) {
+      process.stderr.write(`cannot read stdin: ${err.message}\n`);
+      return 2;
+    }
+    const texts = extractBlockTexts(input);
+    if (texts.length !== 1) {
+      process.stdout.write(`${JSON.stringify({ ok: false, blocks: texts.length, error: 'exactly one block is required' }, null, 2)}\n`);
+      return 1;
+    }
+    process.stdout.write(`${JSON.stringify({ ok: true, hash: hashBlock(texts[0]) }, null, 2)}\n`);
+    return 0;
+  }
   if (opts.command !== 'check') {
-    process.stderr.write(`sub-command "check" required.\n${usage()}\n`);
+    process.stderr.write(`sub-command "check" or "hash" required.\n${usage()}\n`);
     return 2;
   }
   if (!PROFILES.includes(opts.profile)) {

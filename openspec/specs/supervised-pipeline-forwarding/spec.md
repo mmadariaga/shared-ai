@@ -3,6 +3,7 @@
 ## Purpose
 
 *To be determined — brief description of what this capability does and why it exists.*
+
 ## Requirements
 
 ### Requirement: Forward Plan envelopes unchanged
@@ -13,13 +14,14 @@ Plan (unattended) SHALL preserve the existing supervised worker envelopes, inclu
 
 - **WHEN** Plan dispatches a supervised worker
 - **THEN** the existing one-string envelope is forwarded with only the route terminology changed outside the worker protocol.
+
 ### Requirement: Forward supervised marker on Auto dispatches
 
 When `sai-explore` runs selector-dispatched `Auto` supervision, it SHALL include the literal flag `--supervised` in every phase-worker request it constructs. The marker SHALL ride as flag content on `arguments_value`, which is the sole request field. No wrapper-echo or third envelope field SHALL be introduced.
 
 Phase-specific placement (two grammars, one marker token):
 
-- The initial `sai-1` spec-proposal dispatch SHALL set `arguments_value` to the leading flag line `--supervised`, a newline, then the complete `Ready to Propose` block, so after the spec worker's line-wise flag strip the verbatim request is still that full block.
+- The initial `sai-1` spec-proposal dispatch SHALL set `arguments_value` to the leading flag line `--supervised`, a newline, the line `--block-hash <sha256>` carrying the hash returned by `sai-state block`, a newline, then the complete `Ready to Propose` block text returned by the same verb, so after the spec worker strips the flag and hash lines the verbatim request is still that full block.
 - The chained `sai-2` design dispatch SHALL reuse the existing name-first flag mechanism, forming `arguments_value` of the shape `{name} --fast-track --supervised` and, when an overview language was selected, additionally `--overview-lang {overview_language}`. The equivalent inverse order `{name} --supervised --fast-track` is also valid, including the language-bearing form; the design worker does not require `--supervised` to be the first token.
 - A design-phase retry that re-dispatches only the design worker SHALL carry `--supervised` exactly as the normal chained design dispatch does and SHALL still supply `--overview-lang {overview_language}` again when localization is required (language non-persistence is unchanged).
 
@@ -28,8 +30,8 @@ Phase-specific placement (two grammars, one marker token):
 #### Scenario: Auto spec dispatch carries the marker
 
 - **WHEN** Auto starts a supervised run for a change whose spec phase has not yet converged or exhausted
-- **THEN** `arguments_value` begins with the line `--supervised` ahead of the crystallized body
-- **AND** after flag stripping the worker still receives the complete crystallized `Ready to Propose` block as the verbatim request
+- **THEN** `arguments_value` begins with the line `--supervised`, followed by the `--block-hash` line, ahead of the crystallized body
+- **AND** after flag and hash-line stripping the worker still receives the complete crystallized `Ready to Propose` block as the verbatim request
 
 #### Scenario: Auto chained design dispatch carries the marker
 

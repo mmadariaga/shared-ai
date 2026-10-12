@@ -5,39 +5,6 @@ TBD - created by archiving change replace-state-sidecar-with-cli. Update Purpose
 
 ## Requirements
 
-### Requirement: Local CLI three-verb interface
-The stage machine store SHALL provide four CLI verbs via the `sai-state` script:
-1. `spawn --key <stable-key>` initializes or locates a session, deriving a deterministic UUIDv4 from the stable key, and returns `{received_at, id}` on success.
-2. `emit <id> <machineId> -` applies a transition. It accepts the session id and target machine id as arguments and reads the JSON event object from stdin, and it returns the minimal wire outcome. In progress mode, `emit <id> <machineId> --progress [--with-overview true|false] -`, it instead reads a worker progress payload from stdin. It validates the payload, derives the event `{"step_ids": [...]}` from a valid payload, and returns the timeless verdict as `validation` alongside the minimal wire outcome and the top-level `received_at`.
-3. `reset <id> <machineId>` clears only that machine's state to its initialState with an atomic write, leaves other machines untouched, and returns `{received_at, reset: <machineId>}` on success. When the machine exposes a first filed step (the first step whose `follow` is a file), the success response additionally carries `stage` and `next: {follow, hint}` for that step; a machine without one, or whose lookup fails or yields a malformed pointer, returns only `{received_at, reset: <machineId>}`.
-4. `close <id>` terminates a session by deleting the session file and returns `{received_at, closed: id}` on success.
-Each verb writes minimal JSON to stdout on success and writes error text to stderr on failure. Exit code 0 indicates success; exit code 1 or 2 indicates failure.
-
-#### Scenario: CLI spawn returns session id
-- **WHEN** the caller invokes `sai-state spawn --key <key>` for a new or existing session
-- **THEN** the process outputs a JSON `{received_at, id}` with exit code 0
-
-#### Scenario: CLI emit returns minimal wire outcome
-- **WHEN** the caller pipes an event JSON to `sai-state emit <id> <machineId> -`
-- **THEN** the process exits 0 and outputs JSON `{received_at, stage, next, rejected?, warnings?}` on success. On failure it exits 1 and outputs `{received_at, error: <name>, reason?, next: {follow, hint}}`.
-
-#### Scenario: CLI reset clears one machine and returns confirmation
-- **WHEN** the caller invokes `sai-state reset <id> <machineId>` with a registered machine id
-- **THEN** that machine's state is reset to its initialState with an atomic write, other machines in the session remain untouched, and the process outputs `{received_at, reset: <machineId>}` with exit code 0
-- **AND** for each of the seven step machines the output also carries `stage` and `next` naming that machine's first filed step
-
-#### Scenario: CLI reset with missing arguments returns usage error
-- **WHEN** the caller invokes `sai-state reset` with missing id or machineId
-- **THEN** the process exits with code 2 and writes a usage message to stderr
-
-#### Scenario: CLI reset with unknown machine returns error
-- **WHEN** the caller invokes `sai-state reset <id>` with a machine id not in the registry
-- **THEN** the process outputs `{received_at, error: "UNKNOWN_MACHINE"}` with exit code 1
-
-#### Scenario: CLI close deletes and returns confirmation
-- **WHEN** the caller invokes `sai-state close <id>`
-- **THEN** the session file is deleted from the store directory and the process outputs `{received_at, closed: id}` with exit code 0
-
 ### Requirement: Deterministic UUID derivation
 
 The `spawn --key <stable-key>` verb SHALL derive a well-formed UUIDv4 from the stable key by hashing with SHA-256, then fixing the version (4) and variant (RFC 4122) nibbles in the resulting string, producing a value that:
@@ -76,7 +43,7 @@ The store SHALL persist each session's state in a JSON file under `$TMPDIR/sai-s
 
 ### Requirement: Closed error vocabulary via JSON error field
 
-Every failed emit (invalid event, unknown machine, version mismatch) SHALL return a JSON response. The response SHALL carry a mandatory `error` field with one of the closed-vocabulary values `INVALID_EVENT`, `UNKNOWN_MACHINE`, `VERSION_MISMATCH`, `ALREADY_RUNNING`, or `READINESS_IS_NOT_INTENT`. It SHALL also carry the current state's `next` pointer. An `INVALID_EVENT` caused by an event read from stdin that cannot be parsed SHALL additionally carry `reason: "EVENT_UNPARSEABLE"`; every other failed emit SHALL carry no `reason`. Exit code SHALL be 1. In progress mode, stdin that fails validation, including stdin that is not JSON, SHALL produce an invalid `validation` block with exit code 1 and no `error` field, and never `EVENT_UNPARSEABLE`. A machine error after a valid verdict SHALL carry the same `error` vocabulary alongside `validation`. Reset failures also return `error` with closed-vocabulary values, but without a `next` pointer.
+Every failed emit (invalid event, unknown machine, version mismatch) SHALL return a JSON response. The response SHALL carry a mandatory `error` field with one of the closed-vocabulary values `INVALID_EVENT`, `UNKNOWN_MACHINE`, `VERSION_MISMATCH`, `ALREADY_RUNNING`, or `READINESS_IS_NOT_INTENT`. It SHALL also carry the current state's `next` pointer. An `INVALID_EVENT` caused by an event read from stdin that cannot be parsed SHALL additionally carry `reason: "EVENT_UNPARSEABLE"`. A block amendment rejected because stdin carries more than one block SHALL carry `reason: "AMEND_BLOCK_COUNT"`, and one rejected because the block's change name differs from the amended slice SHALL carry `reason: "AMEND_NAME_MISMATCH"`. Every other failed emit SHALL carry no `reason`. Exit code SHALL be 1. In progress mode, stdin that fails validation, including stdin that is not JSON, SHALL produce an invalid `validation` block with exit code 1 and no `error` field, and never `EVENT_UNPARSEABLE`. A machine error after a valid verdict SHALL carry the same `error` vocabulary alongside `validation`. Reset failures also return `error` with closed-vocabulary values, but without a `next` pointer. The `block` verb alone SHALL answer a missing block with `{error: "BLOCK_NOT_FOUND"}` and exit 1, without a `next` pointer.
 
 #### Scenario: Invalid machineId returns INVALID_EVENT
 
@@ -98,15 +65,22 @@ Every failed emit (invalid event, unknown machine, version mismatch) SHALL retur
 - **WHEN** `reset` is called with a machine id not in the code registry
 - **THEN** the response carries `{error: "UNKNOWN_MACHINE"}` with exit code 1 and no `next` field
 
+#### Scenario: Rejected amendment carries its reason
+
+- **WHEN** a block amendment carries two blocks or a block for another change name
+- **THEN** the response carries `{error: "INVALID_EVENT", reason: "AMEND_BLOCK_COUNT"}` or `{error: "INVALID_EVENT", reason: "AMEND_NAME_MISMATCH"}` with a `next` pointer and exit code 1
+
 ### Requirement: Minimal wire outcomes
 Each CLI verb SHALL return minimal JSON without state serialization, with `received_at` as the first key of every response:
 - `spawn`: `{received_at, id}`
 - `emit` success: `{received_at, stage, next: {follow, hint}, rejected?, warnings?}`
-- `emit` failure: `{received_at, error: <name>, reason?, next: {follow, hint}}`, where `reason` is present only as `EVENT_UNPARSEABLE` on a delivery failure
+- `emit` failure: `{received_at, error: <name>, reason?, next: {follow, hint}}`, where `reason` is present only as `EVENT_UNPARSEABLE` on a delivery failure or as `AMEND_BLOCK_COUNT` or `AMEND_NAME_MISMATCH` on a rejected block amendment
 - `emit --progress`: `{received_at, validation}` on an invalid verdict; on a valid verdict, `{received_at, validation, …}` followed by the `emit` success or failure fields above, unchanged
 - `reset` success: `{received_at, reset: <machineId>}`, or `{received_at, reset: <machineId>, stage, next: {follow, hint}}` on a machine that exposes a first filed step
 - `reset` failure: `{received_at, error: <name>}`
 - `close`: `{received_at, closed: id}`
+- `block` success: `{received_at, hash, text}`
+- `block` failure: `{received_at, error: "BLOCK_NOT_FOUND"}`
 
 The machine's internal state remains in the session file; no snapshot or state object is serialized to stdout.
 
@@ -233,3 +207,41 @@ Every stdout JSON response of `bin/sai-state.js` SHALL carry `received_at` as it
 
 - **WHEN** a structurally valid set with a flagged line and no verdict is piped
 - **THEN** the process exits 1 with `validation.structural_ok` true, the line in `validation.judgment.pending`, and nothing recorded
+
+### Requirement: Local CLI verb interface
+The stage machine store SHALL provide five CLI verbs via the `sai-state` script:
+1. `spawn --key <stable-key>` initializes or locates a session, deriving a deterministic UUIDv4 from the stable key, and returns `{received_at, id}` on success.
+2. `emit <id> <machineId> -` applies a transition. It accepts the session id and target machine id as arguments and reads the JSON event object from stdin, and it returns the minimal wire outcome. In progress mode, `emit <id> <machineId> --progress [--with-overview true|false] -`, it instead reads a worker progress payload from stdin. It validates the payload, derives the event `{"step_ids": [...]}` from a valid payload, and returns the timeless verdict as `validation` alongside the minimal wire outcome and the top-level `received_at`. With `--ready-to-propose` on `explore-slice@1` it reads a block set as text, and with `--ready-to-propose --amend <change-name>` one amended block.
+3. `reset <id> <machineId>` clears only that machine's state to its initialState with an atomic write, leaves other machines untouched, and returns `{received_at, reset: <machineId>}` on success. When the machine exposes a first filed step (the first step whose `follow` is a file), the success response additionally carries `stage` and `next: {follow, hint}` for that step; a machine without one, or whose lookup fails or yields a malformed pointer, returns only `{received_at, reset: <machineId>}`.
+4. `close <id>` terminates a session by deleting the session file and returns `{received_at, closed: id}` on success.
+5. `block <id> <change-name>` returns `{received_at, hash, text}` for one recorded slice's stored block, or `{received_at, error: "BLOCK_NOT_FOUND"}` with exit code 1 when the block is absent.
+Each verb writes minimal JSON to stdout on success and writes error text to stderr on failure. Exit code 0 indicates success; exit code 1 or 2 indicates failure.
+
+#### Scenario: CLI spawn returns session id
+- **WHEN** the caller invokes `sai-state spawn --key <key>` for a new or existing session
+- **THEN** the process outputs a JSON `{received_at, id}` with exit code 0
+
+#### Scenario: CLI emit returns minimal wire outcome
+- **WHEN** the caller pipes an event JSON to `sai-state emit <id> <machineId> -`
+- **THEN** the process exits 0 and outputs JSON `{received_at, stage, next, rejected?, warnings?}` on success. On failure it exits 1 and outputs `{received_at, error: <name>, reason?, next: {follow, hint}}`.
+
+#### Scenario: CLI reset clears one machine and returns confirmation
+- **WHEN** the caller invokes `sai-state reset <id> <machineId>` with a registered machine id
+- **THEN** that machine's state is reset to its initialState with an atomic write, other machines in the session remain untouched, and the process outputs `{received_at, reset: <machineId>}` with exit code 0
+- **AND** for each of the seven step machines the output also carries `stage` and `next` naming that machine's first filed step
+
+#### Scenario: CLI reset with missing arguments returns usage error
+- **WHEN** the caller invokes `sai-state reset` with missing id or machineId
+- **THEN** the process exits with code 2 and writes a usage message to stderr
+
+#### Scenario: CLI reset with unknown machine returns error
+- **WHEN** the caller invokes `sai-state reset <id>` with a machine id not in the registry
+- **THEN** the process outputs `{received_at, error: "UNKNOWN_MACHINE"}` with exit code 1
+
+#### Scenario: CLI close deletes and returns confirmation
+- **WHEN** the caller invokes `sai-state close <id>`
+- **THEN** the session file is deleted from the store directory and the process outputs `{received_at, closed: id}` with exit code 0
+
+#### Scenario: CLI block returns the stored block
+- **WHEN** the caller invokes `sai-state block <id> <change-name>` for a recorded slice
+- **THEN** the process outputs `{received_at, hash, text}` with exit code 0

@@ -252,6 +252,24 @@ function transition(state, signal) {
     return outcome(current);
   }
 
+  // Single-slice amendment: the block emit's `--amend` validates one block and
+  // asks the machine whether that slice may be replaced. Only a pending or
+  // stopped (parked) slice is amendable; the machine state never changes, so
+  // order, completed slices, the running slice, and parked cursors stay as they
+  // were.
+  if (typeof sig.amend === 'string') {
+    if (!current.inventoryReady || current.set.indexOf(sig.amend) === -1) {
+      return outcome(current, 'UNKNOWN_SLICE');
+    }
+    if (current.done.indexOf(sig.amend) !== -1) {
+      return outcome(current, 'SLICE_COMPLETED');
+    }
+    if (current.active === sig.amend) {
+      return outcome(current, 'SLICE_RUNNING');
+    }
+    return outcome(current);
+  }
+
   if (!hasIntent(signal)) {
     return outcome(current, 'READINESS_IS_NOT_INTENT');
   }

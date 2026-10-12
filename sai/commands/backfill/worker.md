@@ -18,7 +18,12 @@ history. Throughout `@sai/commands/backfill/instructions.md`, `$ARGUMENTS`
 denotes the received `arguments_value`.
 
 The Direct Build (unattended) composition may prefix the initial envelope with the marker
-`--direct-build-prepare` on its own line. Strip that marker before applying the
+`--direct-build-prepare` on its own line, followed on the next line by
+`--block-hash <sha256>`, the hash of the crystallized block the envelope carries.
+Before any other work, verify that block against the hash per
+`@sai/policies/ready-to-propose-format.md` § Stored block transport: the hash
+line is required in prepare mode, and a missing line or a mismatch returns
+`failed` with no changes. Strip the marker and the hash line before applying the
 ordinary envelope-token parse and retain `direct_build_mode: prepare` as
 invocation-scoped worker state. The marker is composition-only; an ordinary
 `/sai-backfill` invocation without it follows the normal route byte-for-byte.

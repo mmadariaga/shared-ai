@@ -21,7 +21,7 @@ Record only dispatchable Ready to Propose sets at Explore's crystallization emit
 
 ### Requirement: Recorded blocks are stored with text, hash, and verdicts
 
-On a dispatchable set the emit SHALL store in the session file a top-level `blocks` map keyed by change name, each entry holding the block `text`, its sha256 `hash`, and the `context` verdicts `{clause, line, evidence, verdict}` of its flagged lines, in the same session-file write as the inventory. A later successful block emit SHALL replace the whole map together with the inventory.
+On a dispatchable set the emit SHALL store in the session file a top-level `blocks` map keyed by change name, each entry holding the block `text`, its sha256 `hash`, and the `context` verdicts `{clause, line, evidence, verdict}` of its flagged lines, in the same session-file write as the inventory. A later successful block emit SHALL replace the whole map together with the inventory. An accepted single-slice amendment (`--amend <change-name>`) SHALL instead replace only that slice's entry, leaving the inventory and every other entry unchanged.
 
 #### Scenario: Context verdicts record and store the set
 
@@ -33,9 +33,14 @@ On a dispatchable set the emit SHALL store in the session file a top-level `bloc
 - **WHEN** a second dispatchable set is emitted in the same session
 - **THEN** the stored `blocks` map holds only the second set's blocks
 
+#### Scenario: An amendment replaces one entry
+
+- **WHEN** an amendment for one pending slice is accepted
+- **THEN** only that slice's entry in the `blocks` map changes
+
 ### Requirement: Block storage failures are reported, never silent
 
-After a successful emit the command SHALL confirm that the stored blocks match the recorded inventory, SHALL retry the store once when they do not, and, if the store still cannot be confirmed, SHALL remove any earlier emit's `blocks` map and add `BLOCKS_NOT_STORED` to the response `warnings` while the inventory stays recorded.
+After a successful emit the command SHALL confirm that the stored blocks match the recorded inventory, SHALL retry the store once when they do not, and, if the store still cannot be confirmed, SHALL remove any earlier emit's `blocks` map and add `BLOCKS_NOT_STORED` to the response `warnings` while the inventory stays recorded. After an accepted single-slice amendment, the command SHALL confirm the replaced entry and retry once; if the entry still cannot be confirmed, it SHALL add `BLOCKS_NOT_STORED` to the response `warnings`, and the previous entry SHALL remain stored.
 
 #### Scenario: Unwritable session file is reported
 

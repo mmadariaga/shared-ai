@@ -99,6 +99,8 @@ const EMIT_STDIN_FORM = "echo '<json>' | node <tool-path> emit <id> <machineId> 
 const EMIT_PROGRESS_FORM = "echo '<progress-payload-json>' | node <tool-path> emit <id> <machineId> --progress [--with-overview true|false] -";
 const EMIT_BLOCKS_FORM = "node <tool-path> emit <id> explore-slice@1 --ready-to-propose - (Ready to Propose block set on stdin, optionally followed by a <<<VERDICTS>>> line and the judgment verdicts as a JSON array: quoted heredoc in Bash, single-quoted here-string in PowerShell)";
 
+const EMIT_AMEND_FORM = "node <tool-path> emit <id> explore-slice@1 --ready-to-propose --amend <change-name> - (one Ready to Propose block on stdin, optionally followed by a <<<VERDICTS>>> line and the judgment verdicts as a JSON array)";
+
 // The explore slice machine is the only one that accepts the block emit.
 const READY_TO_PROPOSE_MACHINE = 'explore-slice@1';
 
@@ -664,9 +666,10 @@ function ensureRecordedBlocks(id, expected) {
   return false;
 }
 
-function commandEmitReadyToPropose(id, machineIdArg, eventSource, extraArgs) {
-  if (!id || !machineIdArg || eventSource !== '-' || (extraArgs && extraArgs.length > 0) || process.stdin.isTTY) {
-    process.stderr.write('emit --ready-to-propose requires <id> explore-slice@1 --ready-to-propose - and reads the block set from stdin: ' + EMIT_BLOCKS_FORM + '\n');
+function commandEmitReadyToPropose(id, machineIdArg, eventSource, extraArgs, amendName) {
+  const amending = amendName !== undefined;
+  if (!id || !machineIdArg || eventSource !== '-' || (extraArgs && extraArgs.length > 0) || process.stdin.isTTY || (amending && (typeof amendName !== 'string' || amendName === ''))) {
+    process.stderr.write('emit --ready-to-propose requires <id> explore-slice@1 --ready-to-propose [--amend <change-name>] - and reads the block set from stdin: ' + (amending ? EMIT_AMEND_FORM : EMIT_BLOCKS_FORM) + '\n');
     process.exitCode = 2;
     return;
   }
@@ -704,6 +707,11 @@ function commandEmitReadyToPropose(id, machineIdArg, eventSource, extraArgs) {
     return;
   }
 
+  if (amending) {
+    commandAmendBlock(id, machineIdArg, detector, verdict, text, validation, amendName);
+    return;
+  }
+
   const event = { recordedList: verdict.names.slice() };
   const expectedBlocks = buildRecordedBlocks(detector, verdict, text);
   pendingRecordExtras = { blocks: expectedBlocks };
@@ -719,6 +727,84 @@ function commandEmitReadyToPropose(id, machineIdArg, eventSource, extraArgs) {
   }
   writeResponse(Object.assign({ validation }, payload));
   process.exitCode = outcome.code;
+}
+
+// Stores one amended block entry beside the untouched entries of the other
+// slices: reads the session record, replaces only `blocks[name]`, writes it back,
+// and confirms the stored entry. Returns whether the session file now holds it.
+function storeAmendedBlock(id, name, entry) {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const record = readSessionRecord(id).record;
+      if (!record || typeof record !== 'object' || Array.isArray(record)) return false;
+      const blocks = (record.blocks && typeof record.blocks === 'object' && !Array.isArray(record.blocks)) ? record.blocks : {};
+      record.blocks = Object.assign({}, blocks, { [name]: entry });
+      writeSessionFile(id, record);
+      const stored = (readSessionRecord(id).record || {}).blocks;
+      if (stored && stored[name] && stored[name].hash === entry.hash && stored[name].text === entry.text) return true;
+    } catch (err) {}
+  }
+  return false;
+}
+
+// Single-slice amendment (`emit --ready-to-propose --amend <change-name>`): the
+// dispatchable verdict of the one block is already in hand. The block must be
+// the only one on stdin and carry the amended change name; the machine then
+// accepts the amendment for a pending or stopped slice only, and only an
+// accepted amendment replaces that slice's stored text, hash, and verdicts.
+function commandAmendBlock(id, machineIdArg, detector, verdict, text, validation, amendName) {
+  if (verdict.blocks.length !== 1) {
+    const session = getSession(id);
+    seedFromRecord(session, readSessionRecord(id).record);
+    process.stderr.write('emit --ready-to-propose --amend takes exactly one block; no transition occurred. Send it as: ' + EMIT_AMEND_FORM + '\n');
+    writeResponse({ validation, error: 'INVALID_EVENT', reason: 'AMEND_BLOCK_COUNT', next: pointerFor(session, READY_TO_PROPOSE_MACHINE) });
+    process.exitCode = 1;
+    return;
+  }
+  if (verdict.names[0] !== amendName) {
+    const session = getSession(id);
+    seedFromRecord(session, readSessionRecord(id).record);
+    process.stderr.write('emit --ready-to-propose --amend read a block whose change name differs from the amended slice; no transition occurred.\n');
+    writeResponse({ validation, error: 'INVALID_EVENT', reason: 'AMEND_NAME_MISMATCH', next: pointerFor(session, READY_TO_PROPOSE_MACHINE) });
+    process.exitCode = 1;
+    return;
+  }
+
+  const outcome = runEmit(id, machineIdArg, () => ({ event: { amend: amendName } }));
+  let payload = outcome.payload;
+  if (outcome.code === 0 && !payload.rejected) {
+    const entry = buildRecordedBlocks(detector, verdict, text)[amendName];
+    if (!storeAmendedBlock(id, amendName, entry)) {
+      payload = Object.assign({}, payload, { warnings: (payload.warnings || []).concat('BLOCKS_NOT_STORED') });
+    }
+  }
+  writeResponse(Object.assign({ validation }, payload));
+  process.exitCode = outcome.code;
+}
+
+// `sai-state block <id> <change-name>`: returns the stored block text and hash
+// of one recorded slice. A missing record, session, or entry is BLOCK_NOT_FOUND
+// (exit 1) with no text; the caller dispatches nothing.
+function commandBlock(id, name) {
+  if (!id || !name) {
+    process.stderr.write('block requires <id> <change-name>\n');
+    process.exitCode = 2;
+    return;
+  }
+  let entry = null;
+  try {
+    const blocks = (readSessionRecord(id).record || {}).blocks;
+    if (blocks && typeof blocks === 'object' && !Array.isArray(blocks) && Object.prototype.hasOwnProperty.call(blocks, name)) {
+      entry = blocks[name];
+    }
+  } catch (err) { entry = null; }
+  if (!entry || typeof entry.text !== 'string' || entry.text === '' || typeof entry.hash !== 'string' || entry.hash === '') {
+    writeResponse({ error: 'BLOCK_NOT_FOUND' });
+    process.exitCode = 1;
+    return;
+  }
+  writeResponse({ hash: entry.hash, text: entry.text });
+  process.exitCode = 0;
 }
 
 function commandReset(id, machineIdArg) {
@@ -847,7 +933,7 @@ function commandClose(id) {
 
 function main(argv) {
   const parsed = parseArgs(argv);
-  if (['spawn', 'emit', 'reset', 'close'].includes(parsed.command)) {
+  if (['spawn', 'emit', 'reset', 'close', 'block'].includes(parsed.command)) {
     const validator = loadValidator();
     if (!validator || typeof validator.generateReceivedAt !== 'function' || typeof validator.validateText !== 'function') {
       process.stderr.write('sai-state could not load the worker-report validator; tried: ' + VALIDATOR_CANDIDATES.join(', ') + '\n');
@@ -866,7 +952,7 @@ function main(argv) {
       process.exitCode = 2;
       return;
     }
-    commandEmitReadyToPropose(parsed.positional[0], parsed.positional[1], parsed.positional[2], parsed.positional.slice(3));
+    commandEmitReadyToPropose(parsed.positional[0], parsed.positional[1], parsed.positional[2], parsed.positional.slice(3), parsed.named.amend);
     return;
   }
   if (parsed.command === 'emit' && parsed.named.progress === true) {
@@ -885,10 +971,16 @@ function main(argv) {
     commandClose(parsed.positional[0]);
     return;
   }
+  if (parsed.command === 'block') {
+    commandBlock(parsed.positional[0], parsed.positional[1]);
+    return;
+  }
   process.stderr.write('Usage: sai-state spawn --key <stable-key>\n');
   process.stderr.write('       sai-state emit <id> <machineId> -   (event JSON on stdin)\n');
   process.stderr.write('       sai-state emit <id> <machineId> --progress [--with-overview true|false] -   (worker progress payload JSON on stdin)\n');
   process.stderr.write('       sai-state emit <id> explore-slice@1 --ready-to-propose -   (Ready to Propose block set on stdin)\n');
+  process.stderr.write('       sai-state emit <id> explore-slice@1 --ready-to-propose --amend <change-name> -   (one amended block on stdin)\n');
+  process.stderr.write('       sai-state block <id> <change-name>\n');
   process.stderr.write('       sai-state reset <id> <machineId>\n');
   process.stderr.write('       sai-state close <id>\n');
   process.exitCode = 2;
