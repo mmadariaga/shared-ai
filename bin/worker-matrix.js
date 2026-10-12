@@ -1,6 +1,7 @@
 'use strict';
 
 const { assignment, translate, permissionYaml } = require('./capabilities');
+const { IMPLEMENTATION_REGISTRATION } = require('./implementation-worker-roles');
 
 const PHASE_ORDER = Object.freeze([
   'spec',
@@ -67,7 +68,12 @@ const DIRECT_BUILD_ROLE_BY_WORKER = Object.freeze(Object.fromEntries(
 const DIRECT_BUILD_ROLE_BY_PHASE = Object.freeze(Object.fromEntries(
   DIRECT_BUILD_ROLES.map(role => [role.phase, role]),
 ));
-const EXPECTED_ENTRY_COUNT = PHASE_ORDER.length + APPLY_ROLES.length + DIRECT_BUILD_ROLES.length;
+const PHASE_ENTRY_ORDER = Object.freeze(PHASE_ORDER.flatMap(phase =>
+  phase === IMPLEMENTATION_REGISTRATION.phase
+    ? IMPLEMENTATION_REGISTRATION.roles.map(() => phase)
+    : [phase],
+));
+const EXPECTED_ENTRY_COUNT = PHASE_ENTRY_ORDER.length + APPLY_ROLES.length + DIRECT_BUILD_ROLES.length;
 
 const REQUIRED_FIELDS = Object.freeze([
   'phase',
@@ -83,7 +89,6 @@ const TOKEN = /\{\{([A-Za-z0-9_.-]+)\}\}/g;
 const PHASE_WORKER_NAME = Object.freeze({
   spec: 'sai-1-spec-proposal-worker',
   design: 'sai-2-design-worker',
-  implementation: 'sai-3-implementation-worker',
   review: 'sai-5-review-worker',
   security: 'sai-6-security-worker',
   performance: 'sai-7-performance-worker',
@@ -97,7 +102,6 @@ const PHASE_WORKER_NAME = Object.freeze({
 const PHASE_CONTRACT_DIR = Object.freeze({
   spec: 'spec',
   design: 'design',
-  implementation: 'implement',
   review: 'review',
   security: 'security',
   performance: 'performance',
@@ -108,7 +112,7 @@ const PHASE_CONTRACT_DIR = Object.freeze({
   merge: 'merge',
 });
 
-const PHASE_WORKER_IDENTITY = /^sai-[1278]-[a-z-]+-worker$|^sai-3-implementation-worker$|^sai-5-review-worker$|^sai-6-security-worker$|^sai-commit-worker$|^sai-archive-worker$|^sai-backfill-worker$|^sai-merge-worker$/;
+const PHASE_WORKER_IDENTITY = /^sai-[1278]-[a-z-]+-worker$|^sai-5-review-worker$|^sai-6-security-worker$|^sai-commit-worker$|^sai-archive-worker$|^sai-backfill-worker$|^sai-merge-worker$/;
 const INVOCATION_ENVELOPE_FIELD = 'arguments_value';
 const RETIRED_INVOCATION_ENVELOPE_FIELD = ['wrapper', 'echo', 'value'].join('_');
 
@@ -159,9 +163,18 @@ function validateEntry(entry, index) {
     if (entry.workerContract !== autoRole.workerContract) {
       throw new Error(`Invalid Worker Matrix contract path for ${entry.phase}: ${entry.workerContract}`);
     }
+  } else if (entry.phase === IMPLEMENTATION_REGISTRATION.phase) {
+    const role = IMPLEMENTATION_REGISTRATION.roles.find(role => role.workerName === entry.workerName);
+    if (!role) {
+      throw new Error(`Invalid Worker Matrix worker identity for ${entry.phase}: ${entry.workerName}`);
+    }
+    if (entry.workerContract !== role.workerContract) {
+      throw new Error(`Invalid Worker Matrix contract path for ${entry.phase}: ${entry.workerContract}`);
+    }
   } else {
     if (!PHASE_ORDER.includes(entry.phase)) throw new Error(`Unknown Worker Matrix phase: ${entry.phase}`);
-    if (!PHASE_WORKER_IDENTITY.test(entry.workerName)) {
+    if (!PHASE_WORKER_IDENTITY.test(entry.workerName)
+        && !IMPLEMENTATION_REGISTRATION.roles.some(role => role.workerName === entry.workerName)) {
       throw new Error(`Invalid Worker Matrix worker identity for ${entry.phase}: ${entry.workerName}`);
     }
     if (entry.workerContract !== `sai/commands/${PHASE_CONTRACT_DIR[entry.phase]}/worker.md`) {
@@ -178,6 +191,7 @@ function defineWorkerMatrix(entries, capabilities = require('../sai/install-mani
   const seenWorkers = new Set();
   let applySeen = 0;
   let directBuildSeen = 0;
+  let implementationSeen = 0;
   entries.forEach((entry, index) => {
     validateEntry(entry, index);
     if (seenWorkers.has(entry.workerName)) {
@@ -207,12 +221,21 @@ function defineWorkerMatrix(entries, capabilities = require('../sai/install-mani
         );
       }
     } else {
-      if (seenPhases.has(entry.phase)) {
+      if (entry.phase === IMPLEMENTATION_REGISTRATION.phase) {
+        implementationSeen += 1;
+        if (implementationSeen > IMPLEMENTATION_REGISTRATION.roles.length) {
+          throw new Error(`Duplicate Worker Matrix phase: ${entry.phase}`);
+        }
+        const expected = IMPLEMENTATION_REGISTRATION.roles[implementationSeen - 1];
+        if (entry.workerName !== expected.workerName) {
+          throw new Error(`Worker Matrix implementation role out of order; expected ${expected.workerName}`);
+        }
+      } else if (seenPhases.has(entry.phase)) {
         throw new Error(`Duplicate Worker Matrix phase: ${entry.phase}`);
       }
       seenPhases.add(entry.phase);
-      if (entry.phase !== PHASE_ORDER[index]) {
-        throw new Error(`Worker Matrix phase ${entry.phase} is out of order; expected ${PHASE_ORDER[index]}`);
+      if (entry.phase !== PHASE_ENTRY_ORDER[index]) {
+        throw new Error(`Worker Matrix phase ${entry.phase} is out of order; expected ${PHASE_ENTRY_ORDER[index]}`);
       }
     }
   });
@@ -259,7 +282,12 @@ function materializeWorkerMatrix(matrix, templates) {
     if (typeof templates[name] !== 'string') throw new Error(`Missing Worker Matrix template: ${name}`);
   }
   return matrix.entries.flatMap(entry => {
-    const common = { ...entry, canonicalFetch: `Fetch @${entry.workerContract} and follow it exactly.` };
+    const implementationRole = entry.phase === IMPLEMENTATION_REGISTRATION.phase
+      ? IMPLEMENTATION_REGISTRATION.roles.find(role => role.workerName === entry.workerName)
+      : undefined;
+    if (entry.phase === IMPLEMENTATION_REGISTRATION.phase) assertWorkerIdentity(entry);
+    const workerContract = implementationRole ? implementationRole.workerContract : entry.workerContract;
+    const common = { ...entry, canonicalFetch: `Fetch @${workerContract} and follow it exactly.` };
     const panelRenderBinding = harness => entry.phase === APPLY_PHASE
       ? ''
       : [
@@ -345,6 +373,16 @@ function assertWorkerIdentity(entry) {
       throw new Error(
         `Direct-build worker ${entry.workerName} must pin its explore-owned contract ${autoRole.workerContract}; found ${entry.workerContract}`
       );
+    }
+    return;
+  }
+  if (entry.phase === IMPLEMENTATION_REGISTRATION.phase) {
+    const role = IMPLEMENTATION_REGISTRATION.roles.find(role => role.workerName === entry.workerName);
+    if (!role) {
+      throw new Error(`Worker Matrix phase ${entry.phase} has misassigned worker identity ${entry.workerName}`);
+    }
+    if (entry.workerContract !== role.workerContract) {
+      throw new Error(`Worker Matrix phase ${entry.phase} has mismatched worker contract ${entry.workerContract}`);
     }
     return;
   }

@@ -2,6 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { IMPLEMENTATION_REGISTRATION } = require('./implementation-worker-roles');
 
 const {
   defineWorkerMatrix,
@@ -31,7 +32,6 @@ const RETIRED_INVOCATION_ENVELOPE_FIELD = ['wrapper', 'echo', 'value'].join('_')
 const PHASE_WORKER_IDENTITIES = Object.freeze({
   spec: 'sai-1-spec-proposal-worker',
   design: 'sai-2-design-worker',
-  implementation: 'sai-3-implementation-worker',
   review: 'sai-5-review-worker',
   security: 'sai-6-security-worker',
   performance: 'sai-7-performance-worker',
@@ -44,7 +44,6 @@ const PHASE_WORKER_IDENTITIES = Object.freeze({
 const PHASE_CONTRACT_DIRS = Object.freeze({
   spec: 'spec',
   design: 'design',
-  implementation: 'implement',
   review: 'review',
   security: 'security',
   performance: 'performance',
@@ -181,6 +180,16 @@ function assertWorkerIdentity(entry, harness) {
     }
     return;
   }
+  if (entry.phase === IMPLEMENTATION_REGISTRATION.phase) {
+    const role = IMPLEMENTATION_REGISTRATION.roles.find(role => role.workerName === entry.workerName);
+    if (!role) {
+      throw new Error(`${prefix}phase ${entry.phase} has misassigned worker identity ${entry.workerName}`);
+    }
+    if (entry.workerContract !== role.workerContract) {
+      throw new Error(`${prefix}phase ${entry.phase} has mismatched worker contract ${entry.workerContract}`);
+    }
+    return;
+  }
   const canonical = PHASE_WORKER_IDENTITIES[entry.phase];
   if (canonical && entry.workerName !== canonical) {
     throw new Error(`${prefix}phase ${entry.phase} has misassigned worker identity ${entry.workerName}`);
@@ -266,6 +275,7 @@ function validateMatrixBlock(matrix) {
   }
   const seen = new Set();
   let applySeen = 0;
+  let implementationSeen = 0;
   for (const entry of matrix.entries) {
     if (!entry || typeof entry !== 'object') {
       throw new Error('worker-matrix phase entry must be an object');
@@ -276,6 +286,11 @@ function validateMatrixBlock(matrix) {
     if (entry.phase === 'apply') {
       applySeen += 1;
       if (applySeen > 2) {
+        throw new Error(`worker-matrix declares duplicate phase: ${entry.phase}`);
+      }
+    } else if (entry.phase === IMPLEMENTATION_REGISTRATION.phase) {
+      implementationSeen += 1;
+      if (implementationSeen > IMPLEMENTATION_REGISTRATION.roles.length) {
         throw new Error(`worker-matrix declares duplicate phase: ${entry.phase}`);
       }
     } else {

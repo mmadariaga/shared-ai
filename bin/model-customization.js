@@ -6,6 +6,7 @@ const path = require('path');
 const crypto = require('crypto');
 const childProcess = require('child_process');
 const { loadInstallManifest } = require('./install-manifest.js');
+const { IMPLEMENTATION_REGISTRATION } = require('./implementation-worker-roles');
 const {
   promptSelect,
   promptChecklist: installFlowPromptChecklist,
@@ -129,7 +130,7 @@ const COMMAND_WORKER_ORDER = Object.freeze({
   'sai-explore': Object.freeze(['sai-direct-build-worker']),
   'sai-1-spec': Object.freeze(['sai-1-spec-proposal-worker']),
   'sai-2-design': Object.freeze(['sai-2-design-worker']),
-  'sai-3-implement': Object.freeze(['sai-3-implementation-worker']),
+  [IMPLEMENTATION_REGISTRATION.command]: Object.freeze(IMPLEMENTATION_REGISTRATION.roles.map(role => role.workerName)),
   'sai-4-apply': Object.freeze(['sai-4-red-worker', 'sai-4-green-worker']),
   'sai-5-review': Object.freeze(['sai-5-review-worker', 'sai-review-fix-worker']),
   'sai-6-security': Object.freeze(['sai-6-security-worker']),
