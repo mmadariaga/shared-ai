@@ -20,11 +20,13 @@ Claude Code and opencode SHALL each ship a thin `sai-build.md` wrapper loading t
 - **THEN** they use the shared three-directive shape and contain no phase logic
 
 ### Requirement: Build launcher and coordinator are shared
-`sai/commands/build/command-bootstrap.md` SHALL load the implementation-worker binding and build coordinator, contain no harness token, and not load RED/GREEN bindings. The build folder SHALL not require `worker.md`; apply selects its own workers.
+
+The meta-build bootstrap SHALL load the implementation command bootstrap, which supplies five neutral category-planning bindings. The composition coordinator SHALL reuse the technical implementation coordinator followed by the unchanged apply adapter. It SHALL not dispatch a build-specific worker or send an implement worker step-machine pointer. Apply SHALL retain RED/GREEN selection ownership.
 
 #### Scenario: Launcher is non-empty
-- **WHEN** the build launcher is read
-- **THEN** both required fetches are present and no build worker is required
+
+- **WHEN** the meta-build launcher is read
+- **THEN** it loads the implementation bootstrap with category bindings and requires no build worker or launcher-owned RED/GREEN selection.
 
 ### Requirement: Registry and documentation list build
 The installed command files (the registry the universal `sai-commands` skill resolves against), README, and AGENTS command inventories SHALL list `/sai-build` as a user command that runs implementation planning and apply back-to-back, never as an internal `opsx:*` skill.
@@ -34,8 +36,10 @@ The installed command files (the registry the universal `sai-commands` skill res
 - **THEN** each maps or describes `/sai-build`
 
 ### Requirement: Existing projections and inventories cover build
-Build wrappers and cards SHALL install through existing recursive projections without a new destination class. Fixed-count inventory, doctor, and install tests SHALL include build. No build worker agent, binding, or worker-matrix row SHALL be added.
+
+Existing recursive projections SHALL install build wrappers and cards for both harnesses. Inventories and tests SHALL include build and the five implementation planners without adding a build worker, binding, or matrix row. The implementation segment SHALL use the category coordinator's complete-task and verified-publication contracts.
 
 #### Scenario: Recursive installation
+
 - **WHEN** projections and inventories run
-- **THEN** both build wrappers and both build cards are included while worker matrices remain unchanged
+- **THEN** build wrappers/cards and the category implementation surfaces are included while no build-specific worker identity is added.

@@ -28,7 +28,7 @@ const CANONICAL_PHASE_ORDER = [
 const WORKER_NAME = {
   spec: 'sai-1-spec-proposal-worker',
   design: 'sai-2-design-worker',
-  implementation: 'sai-3-implementation-worker',
+  implementation: 'sai-3-ui-worker',
   review: 'sai-5-review-worker',
   security: 'sai-6-security-worker',
   performance: 'sai-7-performance-worker',
@@ -137,7 +137,10 @@ function entry(phase, overrides = {}) {
 }
 
 function fullEntries() {
-  return CANONICAL_PHASE_ORDER.map(phase => entry(phase));
+  return CANONICAL_PHASE_ORDER.flatMap(phase => phase === 'implementation'
+    ? ['ui', 'frontend', 'backend', 'infra', 'other'].map(agent => entry(phase, {
+      workerName: `sai-3-${agent}-worker`, bindingStem: `implementation-${agent}`,
+    })) : [entry(phase)]);
 }
 
 function contractFor(phase) {
@@ -186,12 +189,12 @@ test('defineWorkerMatrix returns the frozen matrix with the eleven canonical pha
   assert.equal(Object.isFrozen(PHASE_ORDER), true, 'PHASE_ORDER should be frozen');
 
   const matrix = defineOrNull(twelveEntries());
-  assert.ok(matrix, 'defineWorkerMatrix should accept the fifteen-entry set');
+  assert.ok(matrix, 'defineWorkerMatrix should accept the nineteen-entry set');
   assert.equal(Object.isFrozen(matrix), true, 'defineWorkerMatrix should return a frozen matrix');
   assert.equal(matrix.phases, PHASE_ORDER, 'the matrix should reference the frozen canonical PHASE_ORDER');
   assert.equal(Object.isFrozen(matrix.entries), true, 'matrix entries should be frozen');
-  assert.equal(matrix.entries.length, 15, 'the matrix should carry fifteen entries');
-  assert.deepEqual(matrix.entries.slice(0, 11).map(item => item.phase), CANONICAL_PHASE_ORDER,
+  assert.equal(matrix.entries.length, 19, 'the matrix should carry nineteen entries');
+  assert.deepEqual([...new Set(matrix.entries.slice(0, 15).map(item => item.phase))], CANONICAL_PHASE_ORDER,
     'the first eleven matrix entries should preserve the canonical phase order');
   for (const item of matrix.entries) {
     assert.equal(Object.isFrozen(item), true, `${item.workerName} entry should be frozen`);
@@ -201,11 +204,11 @@ test('defineWorkerMatrix returns the frozen matrix with the eleven canonical pha
 test('defineWorkerMatrix yields entries with eleven phase identities followed by RED then GREEN apply identities', () => {
   const matrix = defineOrNull(twelveEntries());
   assert.ok(matrix, 'defineWorkerMatrix should accept the eleven phase entries plus the two apply entries');
-  assert.equal(matrix.entries.length, 15, 'the matrix should yield fifteen entries');
-  assert.deepEqual(matrix.entries.slice(0, 11).map(item => item.workerName), Object.values(WORKER_NAME),
+  assert.equal(matrix.entries.length, 19, 'the matrix should yield nineteen entries');
+  assert.deepEqual(matrix.entries.slice(0, 15).map(item => item.workerName), fullEntries().map(item => item.workerName),
     'the eleven phase identities should be unchanged');
-  const red = matrix.entries[11];
-  const green = matrix.entries[12];
+  const red = matrix.entries[15];
+  const green = matrix.entries[16];
   assert.equal(red.phase, 'apply', 'the RED entry should share the apply phase');
   assert.equal(green.phase, 'apply', 'the GREEN entry should share the apply phase');
   assert.equal(red.workerName, 'sai-4-red-worker', 'the twelfth entry should be the RED worker');
@@ -233,10 +236,10 @@ test('defineWorkerMatrix rejects duplicate phase identities naming the phase', (
 test('defineWorkerMatrix rejects missing phase identities', () => {
   assert.throws(
     () => defineWorkerMatrix(twelveEntries().filter(item => item.phase !== 'review')),
-    error => String(error && error.message || error).includes('exactly 15'),
+    error => String(error && error.message || error).includes('exactly 19'),
     'an entry set missing the review phase should be rejected for its exact entry count'
   );
-  const omitReview = twelveEntries().map((item, index) => index === 4 ? entry('spec') : item);
+  const omitReview = twelveEntries().map(item => item.phase === 'review' ? entry('spec') : item);
   assert.throws(
     () => defineWorkerMatrix(omitReview),
     error => {
@@ -249,16 +252,16 @@ test('defineWorkerMatrix rejects missing phase identities', () => {
 
 test('defineWorkerMatrix rejects a non-array or wrong-size entry set', () => {
   assert.throws(() => defineWorkerMatrix(null),
-    error => String(error && error.message || error).includes('exactly 15'),
+    error => String(error && error.message || error).includes('exactly 19'),
     'null entries should be rejected for the exact entry count');
   assert.throws(() => defineWorkerMatrix('not-an-array'),
-    error => String(error && error.message || error).includes('exactly 15'),
+    error => String(error && error.message || error).includes('exactly 19'),
     'non-array entries should be rejected for the exact entry count');
   assert.throws(() => defineWorkerMatrix(twelveEntries().slice(0, 11)),
-    error => String(error && error.message || error).includes('exactly 15'),
+    error => String(error && error.message || error).includes('exactly 19'),
     'eleven entries should be rejected for the exact entry count');
   assert.throws(() => defineWorkerMatrix([...twelveEntries(), entry('spec')]),
-    error => String(error && error.message || error).includes('exactly 15'),
+    error => String(error && error.message || error).includes('exactly 19'),
     'fourteen entries should be rejected for the exact entry count');
 });
 
@@ -370,7 +373,7 @@ test('renderWorkerTemplate preserves opencode task(...) dispatch syntax', () => 
   const rendered = renderWorkerTemplate(OPENCODE_BINDING_TEMPLATE, bindingParameters('implementation', 'opencode'));
   assert.match(rendered, /task\s*\(/,
     'opencode rendering should preserve the task(...) dispatch form');
-  assert.ok(rendered.includes('task("sai-3-implementation-worker"'),
+  assert.ok(rendered.includes('task("sai-3-ui-worker"'),
     'the substituted worker identity should be preserved inside the opencode dispatch');
   assert.ok(rendered.includes('harness opencode'),
     'the injected opencode harness label should be substituted');
@@ -414,13 +417,13 @@ test('renderWorkerTemplate rejects unresolved tokens left after substitution', (
 
 test('materializeWorkerMatrix returns one binding and one agent per phase and harness', () => {
   const matrix = defineOrNull(twelveEntries());
-  assert.ok(matrix, 'materialization requires the fifteen-entry matrix');
+  assert.ok(matrix, 'materialization requires the nineteen-entry matrix');
   const projections = materializeWorkerMatrix(matrix, TEMPLATES);
-  assert.equal(projections.length, 60,
+  assert.equal(projections.length, 76,
     '15 workers × 2 harnesses × (binding + agent) should yield 60 projections');
-  assert.equal(projections.filter(item => item.kind === 'binding').length, 30,
+  assert.equal(projections.filter(item => item.kind === 'binding').length, 38,
     'there should be 30 binding projections');
-  assert.equal(projections.filter(item => item.kind === 'agent').length, 30,
+  assert.equal(projections.filter(item => item.kind === 'agent').length, 38,
     'there should be 30 agent projections');
   for (const harness of ['claude', 'opencode']) {
     for (const phase of CANONICAL_PHASE_ORDER) {
@@ -428,8 +431,9 @@ test('materializeWorkerMatrix returns one binding and one agent per phase and ha
         item.kind === 'binding' && item.harness === harness && item.phase === phase);
       const agents = projections.filter(item =>
         item.kind === 'agent' && item.harness === harness && item.phase === phase);
-      assert.equal(bindings.length, 1, `${harness}/${phase} should have exactly one binding projection`);
-      assert.equal(agents.length, 1, `${harness}/${phase} should have exactly one agent projection`);
+      const count = phase === 'implementation' ? 5 : 1;
+      assert.equal(bindings.length, count, `${harness}/${phase} should project every registered role`);
+      assert.equal(agents.length, count, `${harness}/${phase} should project every registered role`);
     }
     for (const workerName of APPLY_WORKER_NAMES) {
       const bindings = projections.filter(item =>
@@ -446,17 +450,17 @@ test('materializeWorkerMatrix returns one binding and one agent per phase and ha
 
 test('materializeWorkerMatrix produces deterministic destinations and template names', () => {
   const matrix = defineOrNull(twelveEntries());
-  assert.ok(matrix, 'materialization requires the fifteen-entry matrix');
+  assert.ok(matrix, 'materialization requires the nineteen-entry matrix');
   const first = materializeWorkerMatrix(matrix, TEMPLATES);
   const second = materializeWorkerMatrix(matrix, TEMPLATES);
   assert.deepEqual(first, second, 'materialization should be deterministic across calls');
-  assert.equal(new Set(first.map(item => item.destinationName)).size, 30,
+  assert.equal(new Set(first.map(item => item.destinationName)).size, 38,
     '15 binding destinations and 15 agent destinations should be distinct');
   for (const harness of ['claude', 'opencode']) {
     for (const phase of CANONICAL_PHASE_ORDER) {
       const binding = first.find(item =>
         item.kind === 'binding' && item.harness === harness && item.phase === phase);
-      assert.equal(binding.destinationName, `${phase}-worker.md`,
+      assert.equal(binding.destinationName, phase === 'implementation' ? 'implementation-ui-worker.md' : `${phase}-worker.md`,
         `${harness}/${phase} binding destination should be bindingStem-derived`);
       assert.equal(binding.templateName, harness === 'claude' ? 'claudeBinding' : 'opencodeBinding',
         `${harness}/${phase} binding should use its harness binding template`);
@@ -483,7 +487,7 @@ test('materializeWorkerMatrix produces deterministic destinations and template n
 
 test('materializeWorkerMatrix renders non-empty content carrying the canonical Fetch target', () => {
   const matrix = defineOrNull(twelveEntries());
-  assert.ok(matrix, 'materialization requires the fifteen-entry matrix');
+  assert.ok(matrix, 'materialization requires the nineteen-entry matrix');
   const projections = materializeWorkerMatrix(matrix, TEMPLATES);
   for (const item of projections) {
     assert.equal(typeof item.text, 'string', `${item.destinationName} should carry rendered string text`);
@@ -516,7 +520,7 @@ test('materializeWorkerMatrix renders non-empty content carrying the canonical F
 
 test('the RED and GREEN apply bindings fetch their own contracts and never resolve through the sibling entry', () => {
   const matrix = defineOrNull(twelveEntries());
-  assert.ok(matrix, 'materialization requires the fifteen-entry matrix');
+  assert.ok(matrix, 'materialization requires the nineteen-entry matrix');
   const projections = materializeWorkerMatrix(matrix, TEMPLATES);
   for (const harness of ['claude', 'opencode']) {
     const redBindings = projections.filter(item =>
@@ -549,7 +553,7 @@ test('the RED and GREEN apply bindings fetch their own contracts and never resol
 
 test('materializeWorkerMatrix merges the per-harness agent metadata into agent text', () => {
   const matrix = defineOrNull(twelveEntries());
-  assert.ok(matrix, 'materialization requires the fifteen-entry matrix');
+  assert.ok(matrix, 'materialization requires the nineteen-entry matrix');
   const projections = materializeWorkerMatrix(matrix, TEMPLATES);
   for (const phase of CANONICAL_PHASE_ORDER) {
     const claudeAgent = projections.find(item =>
@@ -568,7 +572,7 @@ test('materializeWorkerMatrix requires a matrix and all four templates', () => {
     error => String(error && error.message || error).includes('Worker Matrix and templates are required'),
     'a missing matrix should be rejected');
   const matrix = defineOrNull(twelveEntries());
-  assert.ok(matrix, 'materialization requires the fifteen-entry matrix');
+  assert.ok(matrix, 'materialization requires the nineteen-entry matrix');
   assert.throws(() => materializeWorkerMatrix(matrix, { ...TEMPLATES, claudeAgent: undefined }),
     error => String(error && error.message || error).includes('Missing Worker Matrix template: claudeAgent'),
     'a missing claudeAgent template should be rejected');
@@ -609,7 +613,7 @@ test('defineWorkerMatrix rejects generic apply worker-contract variants', () => 
 
 test('defineWorkerMatrix rejects duplicate worker names', () => {
   const duplicated = twelveEntries().map((item, index) =>
-    index === 12 ? applyEntry('sai-4-red-worker') : item);
+    index === 16 ? applyEntry('sai-4-red-worker') : item);
   assert.throws(
     () => defineWorkerMatrix(duplicated),
     error => {

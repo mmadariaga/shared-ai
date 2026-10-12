@@ -13,7 +13,11 @@ const { main: doctorMain } = require('../bin/doctor.js');
 const WORKER_NAMES = [
   'sai-1-spec-proposal-worker',
   'sai-2-design-worker',
-  'sai-3-implementation-worker',
+  'sai-3-ui-worker',
+  'sai-3-frontend-worker',
+  'sai-3-backend-worker',
+  'sai-3-infra-worker',
+  'sai-3-other-worker',
   'sai-5-review-worker',
   'sai-6-security-worker',
   'sai-7-performance-worker',

@@ -382,11 +382,11 @@ test('matrix retirement: active projections never source from retired per-phase 
   const { expandInstallManifest } = require('../bin/install-manifest.js');
   const repoRoot = path.join(__dirname, '..');
   const manifest = loadInstallManifest(repoRoot);
-  const phases = ['spec', 'design', 'implementation', 'review', 'security', 'performance', 'accessibility'];
+  const phases = ['spec', 'design', ...['ui', 'frontend', 'backend', 'infra', 'other'].map(agent => `implementation-${agent}`), 'review', 'security', 'performance', 'accessibility'];
   const workers = {
     spec: 'sai-1-spec-proposal-worker',
     design: 'sai-2-design-worker',
-    implementation: 'sai-3-implementation-worker',
+    ...Object.fromEntries(['ui', 'frontend', 'backend', 'infra', 'other'].map(agent => [`implementation-${agent}`, `sai-3-${agent}-worker`])),
     review: 'sai-5-review-worker',
     security: 'sai-6-security-worker',
     performance: 'sai-7-performance-worker',
@@ -423,14 +423,14 @@ test('matrix retirement: active projections never source from retired per-phase 
         .split(path.sep).join('/').startsWith('orchestration/workers/bindings/') &&
         phases.includes(path.basename(projection.destinationPath, '-worker.md')))
       .map(projection => path.basename(projection.destinationPath));
-    assert.equal(bindingNames.length, 7, `${harness} should declare exactly seven worker bindings`);
+    assert.equal(bindingNames.length, 11, `${harness} should declare eleven phase worker bindings`);
     assert.deepEqual(bindingNames.sort(), phases.map(phase => `${phase}-worker.md`).sort(),
       `${harness} worker binding names should match the canonical phase matrix`);
     const agentNames = active
       .filter(projection => projection.destinationPath.startsWith(destinationRoot.agents) &&
         Object.values(workers).includes(path.basename(projection.destinationPath, '.md')))
       .map(projection => path.basename(projection.destinationPath, '.md'));
-    assert.equal(agentNames.length, 7, `${harness} should declare exactly seven managed agents`);
+    assert.equal(agentNames.length, 11, `${harness} should declare eleven phase worker agents`);
     assert.deepEqual(agentNames.sort(), Object.values(workers).sort(),
       `${harness} managed agent names should match the canonical worker matrix`);
   }

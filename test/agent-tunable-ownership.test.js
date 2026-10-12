@@ -14,7 +14,11 @@ const { loadInstallManifest, matrixRenderFor } = require('../bin/install-manifes
 const WORKER_NAMES = [
   'sai-1-spec-proposal-worker',
   'sai-2-design-worker',
-  'sai-3-implementation-worker',
+  'sai-3-ui-worker',
+  'sai-3-frontend-worker',
+  'sai-3-backend-worker',
+  'sai-3-infra-worker',
+  'sai-3-other-worker',
   'sai-5-review-worker',
   'sai-6-security-worker',
   'sai-7-performance-worker',
@@ -29,7 +33,11 @@ const CLAUDE_GENERIC_AGENTS = ['budget-explorer', 'budget-executor', 'budget-sub
 const WORKER_PHASE = {
   'sai-1-spec-proposal-worker': 'spec',
   'sai-2-design-worker': 'design',
-  'sai-3-implementation-worker': 'implementation',
+  'sai-3-ui-worker': 'implementation',
+  'sai-3-frontend-worker': 'implementation',
+  'sai-3-backend-worker': 'implementation',
+  'sai-3-infra-worker': 'implementation',
+  'sai-3-other-worker': 'implementation',
   'sai-5-review-worker': 'review',
   'sai-6-security-worker': 'security',
   'sai-7-performance-worker': 'performance',
@@ -309,8 +317,8 @@ test('Claude and opencode uninstall enumerate their managed agent destinations',
   const applyNames = ['sai-4-red-worker', 'sai-4-green-worker',
     'sai-direct-build-worker', 'sai-review-fix-worker'];
   for (const [harness, install, enumerate, expectedCount] of [
-    ['claude', flow.installClaude, enumerateClaude, 18],
-    ['opencode', flow.installOpencode, enumerateOpencode, 18],
+    ['claude', flow.installClaude, enumerateClaude, 22],
+    ['opencode', flow.installOpencode, enumerateOpencode, 22],
   ]) {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), `sai-tunable-${expectedCount}-${harness}-`));
     try {
@@ -327,10 +335,10 @@ test('Claude and opencode uninstall enumerate their managed agent destinations',
         assert.ok(genericNames.every(name => basenames.includes(name)),
           'opencode agent destinations should include explore, executor, and budget');
         assert.ok(WORKER_NAMES.every(name => basenames.includes(name)),
-          'opencode agent destinations should still cover the eleven sai worker filenames');
+          'opencode agent destinations should still cover all registered phase-planner worker filenames');
       } else {
         assert.ok(WORKER_NAMES.every(name => basenames.includes(name)),
-          'claude agent destinations should still cover the eleven sai worker filenames');
+          'claude agent destinations should still cover all registered phase-planner worker filenames');
         assert.ok(CLAUDE_GENERIC_AGENTS.every(name => basenames.includes(name)),
           'claude agent destinations should include the three budget agent basenames');
       }

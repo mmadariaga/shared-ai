@@ -20,7 +20,7 @@ const STEP_2_SCRATCH_DIR = path.join(__dirname, '..', '.tmp', 'collapse-sai-work
 const WORKER_BINDINGS = [
   ['spec', 'sai-1-spec-proposal-worker', 'spec-worker.md'],
   ['design', 'sai-2-design-worker', 'design-worker.md'],
-  ['implement', 'sai-3-implementation-worker', 'implementation-worker.md'],
+  ...['ui', 'frontend', 'backend', 'infra', 'other'].map(agent => ['implement', `sai-3-${agent}-worker`, `implementation-${agent}-worker.md`]),
   ['review', 'sai-5-review-worker', 'review-worker.md'],
   ['security', 'sai-6-security-worker', 'security-worker.md'],
   ['performance', 'sai-7-performance-worker', 'performance-worker.md'],
@@ -34,7 +34,7 @@ const WORKER_BINDINGS = [
 const WORKER_NAMES = [
   'sai-1-spec-proposal-worker',
   'sai-2-design-worker',
-  'sai-3-implementation-worker',
+  ...['ui', 'frontend', 'backend', 'infra', 'other'].map(agent => `sai-3-${agent}-worker`),
   'sai-5-review-worker',
   'sai-6-security-worker',
   'sai-7-performance-worker',
@@ -141,7 +141,7 @@ test('managed worker registry defines every Claude compatibility export', () => 
   assert.ok(MANAGED_WORKERS, 'MANAGED_WORKERS should be exported');
 
   const expectedNames = [
-    'sai-3-implementation-worker',
+    ...['ui', 'frontend', 'backend', 'infra', 'other'].map(agent => `sai-3-${agent}-worker`),
     'sai-2-design-worker',
     'sai-5-review-worker',
     'sai-6-security-worker',
@@ -179,9 +179,7 @@ test('managed worker registry defines every Claude compatibility export', () => 
     'sai-2-design-worker': {
       agent: 'sai-2-design-worker.md',
     },
-    'sai-3-implementation-worker': {
-      agent: 'sai-3-implementation-worker.md',
-    },
+    ...Object.fromEntries(['ui', 'frontend', 'backend', 'infra', 'other'].map(agent => [`sai-3-${agent}-worker`, { agent: `sai-3-${agent}-worker.md` }])),
     'sai-5-review-worker': {
       agent: 'sai-5-review-worker.md',
     },
@@ -222,7 +220,7 @@ test('managed worker registry defines every Claude compatibility export', () => 
 
   assert.equal(CLAUDE_SPEC_WORKER_AGENT, 'sai-1-spec-proposal-worker.md');
   assert.equal(CLAUDE_DESIGN_WORKER_AGENT, 'sai-2-design-worker.md');
-  assert.equal(CLAUDE_IMPLEMENTATION_WORKER_AGENT, 'sai-3-implementation-worker.md');
+  assert.equal(CLAUDE_IMPLEMENTATION_WORKER_AGENT, 'sai-3-other-worker.md');
   assert.equal(CLAUDE_REVIEW_WORKER_AGENT, 'sai-5-review-worker.md');
 });
 
@@ -326,7 +324,7 @@ test('Step 3 fresh Claude install omits all routed worker proxy skills', () => {
   const workers = [
     'sai-1-spec-proposal-worker',
     'sai-2-design-worker',
-    'sai-3-implementation-worker',
+    ...['ui', 'frontend', 'backend', 'infra', 'other'].map(agent => `sai-3-${agent}-worker`),
     'sai-5-review-worker',
     'sai-6-security-worker',
     'sai-7-performance-worker',
@@ -462,7 +460,7 @@ test('Claude managed agents install with one frontmatter block and one canonical
     const tunable = expandInstallManifest(manifest, { harness: 'claude', repoRoot, destinationRoot })
       .filter(projection => projection.strategy === 'tunable-seed' &&
         WORKER_NAMES.includes(path.basename(projection.destinationPath, '.md')));
-    assert.equal(tunable.length, 11, 'the manifest should declare 11 tunable-seed Claude worker agent projections');
+    assert.equal(tunable.length, 15, 'the manifest should declare fifteen phase-planner agent projections');
     assert.ok(tunable.every(projection => projection.ownership === 'managed'),
       'every tunable-seed Claude worker projection should be managed');
 
@@ -607,8 +605,8 @@ test('installClaude re-install preserves tuned values and never recreates owners
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-'));
   try {
     installClaude(tmpDir);
-    const agentPath = path.join(tmpDir, 'agents', 'sai-3-implementation-worker.md');
-    const sidecarPath = path.join(tmpDir, 'agents', '.sai-3-implementation-worker.owner.json');
+    const agentPath = path.join(tmpDir, 'agents', 'sai-3-ui-worker.md');
+    const sidecarPath = path.join(tmpDir, 'agents', '.sai-3-ui-worker.owner.json');
     const sourceBytes = fs.readFileSync(agentPath);
     fs.writeFileSync(agentPath, fs.readFileSync(agentPath, 'utf8')
       .replace(/^model:.*$/m, 'model: tuned-model')
@@ -643,7 +641,7 @@ test('restore-coordinator-instruction-loading Step 3: isolated Claude installati
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-coordinator-loading-'));
   const wrappers = [
     ['commands/sai-2-design.md', 'design', 'design-worker.md'],
-    ['commands/sai-3-implement.md', 'implement', 'implementation-worker.md'],
+    ['commands/sai-3-implement.md', 'implement', 'implementation-ui-worker.md'],
     ['commands/sai-commit.md', 'commit', 'commit-worker.md'],
     ['commands/sai-5-review.md', 'review', 'review-worker.md'],
     ['commands/sai-6-security.md', 'security', 'security-worker.md'],
@@ -701,7 +699,7 @@ test('restore-coordinator-instruction-loading Step 3: isolated Claude installati
   }
 });
 
-test('Claude installer consumes exactly the fifteen matrix worker bindings and agents', () => {
+test('Claude installer consumes exactly the nineteen matrix worker bindings and agents', () => {
   const repoRoot = path.join(__dirname, '..');
   const manifest = loadInstallManifest(repoRoot);
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-matrix-inventory-'));
@@ -715,21 +713,21 @@ test('Claude installer consumes exactly the fifteen matrix worker bindings and a
       root: tmpDir,
     };
     const active = expandInstallManifest(manifest, { harness: 'claude', repoRoot, destinationRoot });
-    const phases = ['spec', 'design', 'implementation', 'review', 'security', 'performance', 'accessibility', 'commit', 'archive', 'backfill'];
+    const phases = ['spec', 'design', ...['ui', 'frontend', 'backend', 'infra', 'other'].map(agent => `implementation-${agent}`), 'review', 'security', 'performance', 'accessibility', 'commit', 'archive', 'backfill'];
     const bindingNames = active
       .filter(projection => path.relative(destinationRoot.sai, projection.destinationPath)
         .split(path.sep).join('/').startsWith('orchestration/workers/bindings/') &&
         phases.includes(path.basename(projection.destinationPath, '-worker.md')))
       .map(projection => path.basename(projection.destinationPath));
-    assert.equal(bindingNames.length, 10, 'Claude should project exactly ten phase worker bindings');
+    assert.deepEqual(bindingNames.sort(), phases.map(phase => `${phase}-worker.md`).sort());
     assert.equal(bindingNames.includes('idea-list-render.md'), false,
       'Claude must not project an idea-list-render matrix binding');
     const allBindingNames = active
       .filter(projection => path.relative(destinationRoot.sai, projection.destinationPath)
         .split(path.sep).join('/').startsWith('orchestration/workers/bindings/'))
       .map(projection => path.basename(projection.destinationPath));
-    assert.equal(allBindingNames.length, 15,
-      'Claude should keep only the fifteen routed worker bindings in the matrix destination');
+    assert.equal(allBindingNames.length, 19,
+      'Claude should keep only the nineteen routed worker bindings in the matrix destination');
     const ideaList = active.find(projection =>
       path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/') ===
       'sai/adapters/claude/idea-list-render.md');
@@ -741,7 +739,7 @@ test('Claude installer consumes exactly the fifteen matrix worker bindings and a
     const agentNames = active
       .filter(projection => projection.destinationPath.startsWith(destinationRoot.agents))
       .map(projection => path.basename(projection.destinationPath, '.md'));
-    assert.equal(agentNames.length, 18, 'Claude should project exactly eighteen managed agents');
+    assert.equal(agentNames.length, 22, 'Claude should project nineteen workers and three generic agents');
     for (const name of Object.keys(CLAUDE_GENERIC_AGENTS)) {
       assert.ok(agentNames.includes(name), `Claude should project the ${name} managed agent`);
     }

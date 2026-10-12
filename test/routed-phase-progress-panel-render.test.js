@@ -82,11 +82,14 @@ test('routed coordinators delegate progress rendering to the shared policy', () 
 
   for (const relativePath of coordinatorPaths) {
     const coordinator = read(relativePath);
-    assert.match(coordinator, /Progress-event\s+panel updates(?: and worker continuation)? follow/);
+    if (relativePath === 'sai/commands/implement/coordinator.md') {
+      assert.match(coordinator, /coordinator-authored observations.*never worker\s+progress returns/s);
+      assert.match(coordinator, /validator response's `received_at`/);
+    } else assert.match(coordinator, /Progress-event\s+panel updates(?: and worker continuation)? follow/);
     assert.doesNotMatch(coordinator, /shared command runner before worker continuation/);
-    assert.match(coordinator, /panel tool is unavailable at runtime|declared panel tool is unavailable at runtime/);
-    assert.match(coordinator, /record its notice/);
-    assert.match(coordinator, /disable later[\s\S]{0,40}panel calls/);
+    assert.match(coordinator, /(?:declared )?panel tool is\s+unavailable at runtime/);
+    assert.match(coordinator, /record (?:its|the) notice/);
+    assert.match(coordinator, /disable later[\s\S]{0,40}panel\s+calls/);
     assert.doesNotMatch(coordinator, /Re-render the list on every progress event/);
   }
 });

@@ -2,9 +2,9 @@ name: CI
 
 on:
   pull_request:
-    branches: [main, v0.9-beta]
+    branches: [main, v0.9-beta, v1.0-alpha]
   push:
-    branches: [main]
+    branches: [main, v1.0-alpha]
 
 permissions:
   contents: read

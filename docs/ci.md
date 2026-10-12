@@ -2,8 +2,9 @@
 
 ## Workflow delivered
 
-`.github/workflows/ci.yml` runs on every pull request targeting `main` and every
-push to `main`, including documentation-only changes. Node 22 runs `npm ci` and
+`.github/workflows/ci.yml` runs on every pull request targeting `main`,
+`v0.9-beta`, or `v1.0-alpha`, and every push to `main` or `v1.0-alpha`,
+including documentation-only changes. Node 22 runs `npm ci` and
 `npm test` on Linux and Windows. Both Bash and PowerShell 7 must be available;
 the workflow fails before tests if either interpreter is missing. Installation
 tests retain their temporary destinations. The manual opencode model smoke

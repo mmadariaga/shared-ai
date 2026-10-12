@@ -72,7 +72,7 @@ test('STEP1_RETIRE_INLINE: active projections retain both routed inventories and
     config: path.join(os.tmpdir(), 'sai-step1-layout-config'),
     root: path.join(os.tmpdir(), 'sai-step1-layout-config'),
   };
-  const workers = ['spec', 'design', 'implementation', 'review', 'security', 'performance', 'accessibility'];
+  const workers = ['spec', 'design', ...['ui', 'frontend', 'backend', 'infra', 'other'].map(agent => `implementation-${agent}`), 'review', 'security', 'performance', 'accessibility'];
 
   assert.equal(manifest.projections.some(projection =>
     projection.source === 'sai/orchestration/inline-invocation.md' ||

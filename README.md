@@ -86,6 +86,17 @@ Start with an idea in `/sai-explore`, or import existing work using the
 commit, use [`/sai-4-apply`](docs/commands/sai-4-apply.md) after preparing the
 [implementation plan](docs/commands/sai-3-implement.md) instead.
 
+Planning uses five configurable agents (ui, frontend, backend, infra, other),
+routed by `tasks.md` category. Required agents plan all their assigned Steps
+concurrently into independent temporary parts; the coordinator owns common
+analysis and verified final integration. Failed workers do not cancel siblings
+or replace the previous plan. All agents are identical by default. Claude Code
+and opencode support individual models and skills through project-local agent
+overrides and individual model-customizer selections. See the
+[planning guide](docs/commands/sai-3-implement.md#category-planning) and
+[model configuration](docs/models.md). The sai-4 plan format and RED/GREEN route
+remain unchanged.
+
 Need broader specialized audits? Add `--full` or `--path <dir>` to `/sai-review`.
 Use `--runtime` to request performance diagnostics and browser checks (with your
 permission), or `--parent-branch <branch>` to choose the comparison branch.

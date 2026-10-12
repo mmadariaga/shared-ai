@@ -41,23 +41,18 @@ function rule(overrides = {}) {
 }
 
 const MANAGED_WORKER_PROJECTIONS = {
-  'sai-3-implementation-worker': {
-    claudeBinding: {
-      id: 'claude-implementation-worker-binding',
-      sourcePath: 'sai/orchestration/workers/bindings/claude/implementation-worker.md',
-       destinationPath: 'orchestration/workers/bindings/implementation-worker.md',
-    },
-    opencodeBinding: {
-      id: 'opencode-implementation-worker-binding',
-      sourcePath: 'sai/orchestration/workers/bindings/opencode/implementation-worker.md',
-       destinationPath: 'orchestration/workers/bindings/implementation-worker.md',
-    },
+  ...Object.fromEntries(['ui', 'frontend', 'backend', 'infra', 'other'].map(agent => [`sai-3-${agent}-worker`, {
+    ...Object.fromEntries(['claude', 'opencode'].map(harness => [`${harness}Binding`, {
+      id: `${harness}-implementation-${agent}-worker-binding`,
+      sourcePath: `.tmp/collapse-sai-worker-matrix/matrix-sources/${harness}/implementation-${agent}-worker.md`,
+      destinationPath: `orchestration/workers/bindings/implementation-${agent}-worker.md`,
+    }])),
     claudeAgent: {
-      id: 'claude-sai-3-implementation-worker',
-      sourcePath: 'agents/claude/sai-3-implementation-worker.md',
-      destinationPath: 'sai-3-implementation-worker.md',
+      id: `claude-sai-3-${agent}-worker`,
+      sourcePath: `.tmp/collapse-sai-worker-matrix/matrix-sources/claude/sai-3-${agent}-worker.md`,
+      destinationPath: `sai-3-${agent}-worker.md`,
     },
-  },
+  }])),
   'sai-2-design-worker': {
     claudeBinding: {
       id: 'claude-design-worker-binding',
@@ -539,14 +534,14 @@ test('canonical manifest projects implementation assets to neutral matrix destin
       assert.ok(sourceSet.has(source), `${harness} should include ${source}`);
     }
     const binding = projections.find(projection =>
-      projection.destinationPath.endsWith(path.join('orchestration', 'workers', 'bindings', 'implementation-worker.md')));
+      projection.destinationPath.endsWith(path.join('orchestration', 'workers', 'bindings', 'implementation-ui-worker.md')));
     assert.ok(binding, `${harness} should project the neutral matrix implementation binding`);
     assert.equal(binding.harness, harness, `${harness} implementation binding should be harness-scoped`);
     assert.equal(isRetiredPerPhaseSource(relSource(binding, repoRoot), harness), false,
       `${harness} implementation binding must not source from a retired per-harness tree`);
     if (harness === 'claude') {
       const agent = projections.find(projection =>
-        projection.destinationPath.endsWith(path.join('agents', 'sai-3-implementation-worker.md')));
+        projection.destinationPath.endsWith(path.join('agents', 'sai-3-ui-worker.md')));
       assert.ok(agent, 'claude should project the implementation worker agent');
       assert.equal(isRetiredPerPhaseSource(relSource(agent, repoRoot), harness), false,
         'claude implementation agent must not source from a retired per-harness agent tree');
@@ -1435,11 +1430,11 @@ test('folded instruction templates project to their co-located and root destinat
 test('matrix worker bindings and agents are the sole worker inventory per harness', () => {
   const repoRoot = path.join(__dirname, '..');
   const manifest = loadInstallManifest(repoRoot);
-  const phases = ['spec', 'design', 'implementation', 'review', 'security', 'performance', 'accessibility', 'commit', 'archive'];
+  const phases = ['spec', 'design', ...['ui', 'frontend', 'backend', 'infra', 'other'].map(agent => `implementation-${agent}`), 'review', 'security', 'performance', 'accessibility', 'commit', 'archive'];
   const workers = {
     spec: 'sai-1-spec-proposal-worker',
     design: 'sai-2-design-worker',
-    implementation: 'sai-3-implementation-worker',
+    ...Object.fromEntries(['ui', 'frontend', 'backend', 'infra', 'other'].map(agent => [`implementation-${agent}`, `sai-3-${agent}-worker`])),
     review: 'sai-5-review-worker',
     security: 'sai-6-security-worker',
     performance: 'sai-7-performance-worker',
@@ -1455,7 +1450,7 @@ test('matrix worker bindings and agents are the sole worker inventory per harnes
         .split(path.sep).join('/').startsWith('orchestration/workers/bindings/') &&
         phases.includes(path.basename(projection.destinationPath, '-worker.md')))
       .map(projection => path.basename(projection.destinationPath));
-    assert.equal(bindingNames.length, 9, `${harness} should declare exactly nine worker bindings`);
+    assert.equal(bindingNames.length, 13, `${harness} should declare thirteen phase worker bindings`);
     assert.deepEqual(bindingNames.sort(), phases.map(phase => `${phase}-worker.md`).sort(),
       `${harness} worker bindings should cover exactly the nine phases`);
     assert.equal(bindingNames.includes('idea-list-render.md'), false,
@@ -1465,7 +1460,7 @@ test('matrix worker bindings and agents are the sole worker inventory per harnes
       .filter(projection => projection.destinationPath.startsWith(destinationRoot.agents) &&
         Object.values(workers).includes(path.basename(projection.destinationPath, '.md')))
       .map(projection => path.basename(projection.destinationPath, '.md'));
-    assert.equal(agentNames.length, 9, `${harness} should declare exactly nine managed agents`);
+    assert.equal(agentNames.length, 13, `${harness} should declare thirteen phase worker agents`);
     assert.deepEqual(agentNames.sort(), Object.values(workers).sort(),
       `${harness} managed agents should be exactly the nine worker identities`);
     assert.equal(agentNames.some(name => ['budget', 'executor', 'explore'].includes(name)), false,

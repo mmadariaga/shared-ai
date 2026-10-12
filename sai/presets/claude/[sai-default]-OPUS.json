@@ -43,7 +43,11 @@
     "model": "sonnet",
     "effort": "high"
   },
-  "worker:sai-3-implementation-worker": {
+  "worker:sai-3-ui-worker": { "model": "opus", "effort": "medium" },
+  "worker:sai-3-frontend-worker": { "model": "opus", "effort": "medium" },
+  "worker:sai-3-backend-worker": { "model": "opus", "effort": "medium" },
+  "worker:sai-3-infra-worker": { "model": "opus", "effort": "medium" },
+  "worker:sai-3-other-worker": {
     "model": "opus",
     "effort": "medium"
   },

@@ -8,22 +8,21 @@ Deliver the `/sai-3-implement` worker's instructions one progress-plan step at a
 
 ### Requirement: Step instruction files exist per progress-plan id
 
-The implementation phase SHALL provide a step instruction library under `sai/commands/implement/steps/` containing one instruction file per declared progress-plan step id: `collapse-implemented-steps.md`, `artifact-analysis.md`, `documentation-review.md`, `plan-generation.md`, and `validation.md`, plus `common.md` as the always-active file and three conditionally fetched sub-files that carry no step id of their own: `decision-record-index.md`, fetched by `artifact-analysis.md` only when the run creates a decision record; `audit-ingestion.md`, fetched by `artifact-analysis.md` only when an audit artifact exists at run start; and `rerun-preservation.md`, fetched by `plan-generation.md` only when `implementation.md` already exists at run start. The `prereqs-resolution` step SHALL have no step file of its own and SHALL map to `none` in the coordinator's pointer map.
+The implementation library SHALL retain collapse-implemented-steps.md, artifact-analysis.md, documentation-review.md, plan-generation.md, validation.md, and common.md under sai/commands/implement/steps/. Conditional decision-record-index.md, audit-ingestion.md, and rerun-preservation.md SHALL retain their existing applicability gates. Resolution SHALL run inline in the coordinator without its own step file. The coordinator SHALL use this library for common work and final validation; category workers SHALL use common and plan-generation rules for assigned Step content.
 
 #### Scenario: Step files are named by plan id
 
-- **WHEN** a consumer inspects `sai/commands/implement/steps/` for a declared progress-plan step id other than `prereqs-resolution`
-- **THEN** an instruction file named `{step-id}.md` exists in that directory.
+- **WHEN** a consumer inspects a declared milestone other than prereqs-resolution
+- **THEN** the corresponding same-named instruction file exists in the implementation library.
 
 ### Requirement: common.md is fetched at dispatch and stays in force
 
-The implementation worker SHALL fetch `sai/commands/implement/steps/common.md` at dispatch and SHALL keep it in force for the entire run. The file SHALL carry the boundaries that outlive any single step: the step delivery meta-rule, role, expertise profile contract, and hard rules. It SHALL load the code quality priority stack from `sai/policies/code-quality-priority-stack.md` through its always-loaded fetch block instead of carrying it inline.
+The coordinator and category workers SHALL retain common.md as their run-long technical baseline. Its role, expertise, hard rules, planning-evidence rules, and code-quality-priority-stack fetch SHALL remain authoritative, with delivery adapted to coordinator common work and complete category tasks.
 
 #### Scenario: common.md is loaded at dispatch
 
-- **WHEN** the implementation worker is dispatched
-- **THEN** it loads `sai/commands/implement/steps/common.md` and the file's run-long boundaries remain in force for the whole run
-- **AND** the fetch block of that file loads `sai/policies/code-quality-priority-stack.md`
+- **WHEN** a category worker is dispatched
+- **THEN** common.md and its code-quality-priority-stack policy are loaded and remain in force throughout the worker task.
 
 ### Requirement: ADR/DDR validation content lives inside artifact-analysis.md
 
@@ -36,16 +35,14 @@ The ADR/DDR validation workflow content SHALL live inside `sai/commands/implemen
 
 ### Requirement: Common baseline and just-in-time step delivery
 
-`sai/commands/implement/steps/common.md` SHALL remain the run-long technical baseline for the implementation worker, and coordinator-selected step files SHALL provide just-in-time instructions for the active step. The step library SHALL be the active technical instruction source after the inactive `sai/commands/implement/invocation.md` surface is retired.
-
-`steps/common.md` SHALL remain the run-long technical baseline for the implementation worker, and coordinator-selected step files SHALL provide the just-in-time instructions for the active step. Coordinator and worker lifecycle contracts MUST NOT override the technical authority of those files.
+The implementation step library SHALL remain the sole technical planning-rule source. The coordinator SHALL load common-work files at their point of use; category workers SHALL follow common.md plus plan-generation.md for the full assigned-Step task. Lifecycle cards SHALL not override those technical rules, and no live worker active-step pointer or retired invocation card SHALL be required.
 
 #### Scenario: Step-gated worker starts a step
 
-- **WHEN** the coordinator delivers the pointer for the next implementation step
-- **THEN** the worker uses `steps/common.md` and only the pointed step file as its technical instruction surface.
+- **WHEN** a category worker receives its complete assignment
+- **THEN** it uses common.md and plan-generation Step-content rules for all assigned Steps rather than following one active-step pointer.
 
 #### Scenario: Step-gated worker starts without the retired invocation card
 
-- **WHEN** the implementation worker begins a routed run
-- **THEN** it uses `steps/common.md` and the coordinator-named step file without loading `sai/commands/implement/invocation.md`.
+- **WHEN** a category planning worker begins its task
+- **THEN** it uses the shared baseline and planning rules without loading sai/commands/implement/invocation.md.

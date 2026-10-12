@@ -17,7 +17,9 @@ test('implementation coordinator carries the fast-track boolean and gives the pl
   const common = read('sai/commands/implement/steps/common.md');
   const docReview = read('sai/commands/implement/steps/documentation-review.md');
   const planGeneration = read('sai/commands/implement/steps/plan-generation.md');
-  assert.match(worker, /post-ready task continuation and again in replacement reconstruction/);
+  assert.match(coordinator, /supervisor supplies `fast_track_active`/);
+  assert.match(coordinator, /common decisions in `common_context`; category workers do not own those gates/);
+  assert.match(worker, /Common decisions.*permission gates.*belong to the coordinator/s);
   assert.match(coordinator, /Do not send the raw `--fast-track` token to the worker/);
   assert.match(common, /## Planning Evidence/);
   assert.match(common, /A \*\*gap\*\* is evidence indispensable to plan one specific Step/);

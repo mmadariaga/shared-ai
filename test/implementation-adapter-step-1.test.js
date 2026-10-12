@@ -26,9 +26,9 @@ test('Step 1 rejects post-resolution terminal payloads without a resolved change
   const worker = artifact(IMPLEMENTATION_ARTIFACTS.worker);
   const coordinator = artifact(IMPLEMENTATION_ARTIFACTS.coordinator);
 
-  assert.match(worker, /every post-resolution payload include[s]?[^\n]*resolved_change_name/i);
-  assert.match(coordinator, /Every post-resolution payload.*requires `resolved_change_name`/);
-  assert.match(coordinator, /terminal\s+navigation/i);
+  assert.match(worker, /`resolved_change_name` equal to `change`/);
+  assert.match(coordinator, /Every post-resolution child result requires `resolved_change_name` equal to the\s+assigned change/);
+  assert.match(coordinator, /terminal_navigation/i);
 });
 
 test('Step 1 replacement request forwards only the exact reconstruction envelope', () => {
@@ -47,14 +47,15 @@ test('Step 1 replacement request forwards only the exact reconstruction envelope
 
 test('Step 1 accepts a plan with ordered coverage, RED before GREEN, verification, STOP and COMMIT, and no execution', () => {
   const worker = artifact(IMPLEMENTATION_ARTIFACTS.worker);
-  for (const requirement of [
-    /implementation\.md/,
-    /every task in order/i,
-    /verification and STOP markers/i,
-    /RED\s+before GREEN/i,
-    /functional-check encoding/i,
-    /executed no implementation step/i,
-  ]) {
-    assert.match(worker, requirement);
-  }
+  const coordinator = artifact(IMPLEMENTATION_ARTIFACTS.coordinator);
+  const common = artifact('sai/commands/implement/steps/common.md');
+  const validation = artifact('sai/commands/implement/steps/validation.md');
+  assert.match(worker, /every assigned Step exactly once in assignment order/);
+  assert.match(worker, /STOP & COMMIT markers/);
+  assert.match(worker, /never production code, implementation\.md/);
+  assert.match(coordinator, /coverage, identity, original numbering, and tasks\.md ordering/);
+  assert.match(coordinator, /Run no implementation Step/);
+  assert.match(common, /RED → GREEN/);
+  assert.match(validation, /Functional-check encoding/);
+  assert.match(validation, /Verification Checklist/);
 });

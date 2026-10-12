@@ -219,7 +219,11 @@ const CLAUDE_BINDINGS_DIR = path.join(REPOSITORY_ROOT, 'sai', 'orchestration', '
 // the validated Worker Matrix phase entries. The canonical key order below is
 // preserved for compatibility with consumers that read MANAGED_WORKERS.
 const MANAGED_WORKER_ORDER = Object.freeze([
-  'sai-3-implementation-worker',
+  'sai-3-ui-worker',
+  'sai-3-frontend-worker',
+  'sai-3-backend-worker',
+  'sai-3-infra-worker',
+  'sai-3-other-worker',
   'sai-2-design-worker',
   'sai-5-review-worker',
   'sai-6-security-worker',
@@ -257,7 +261,9 @@ function matrixWorkerRoster(harness) {
 const MANAGED_WORKERS = Object.freeze(Object.fromEntries(
   MANAGED_WORKER_ORDER.map(name => [name, Object.freeze({ claude: Object.freeze({ agent: `${name}.md` }) })])
 ));
-const CLAUDE_IMPLEMENTATION_WORKER_AGENT = MANAGED_WORKERS['sai-3-implementation-worker'].claude.agent;
+// Deprecated export compatibility only: not a routing or default-selection
+// fallback. Live implementation dispatch selects only the category's role.
+const CLAUDE_IMPLEMENTATION_WORKER_AGENT = MANAGED_WORKERS['sai-3-other-worker'].claude.agent;
 const CLAUDE_DESIGN_WORKER_AGENT = MANAGED_WORKERS['sai-2-design-worker'].claude.agent;
 const CLAUDE_SPEC_WORKER_AGENT = MANAGED_WORKERS['sai-1-spec-proposal-worker'].claude.agent;
 const CLAUDE_REVIEW_WORKER_AGENT = MANAGED_WORKERS['sai-5-review-worker'].claude.agent;
@@ -396,8 +402,8 @@ function parseClaudeInitialDispatches(text, bindingPath) {
 function validateClaudeWorkerBindings() {
   assertBindingDirectoryUsesOneStringEnvelope(CLAUDE_BINDINGS_DIR);
   const roster = matrixWorkerRoster('claude');
-  if (roster.length !== 15) {
-    throw new Error('Claude worker roster cannot be derived from the validated Worker Matrix; expected the ordered fifteen-worker roster.');
+  if (roster.length !== MANAGED_WORKER_ORDER.length) {
+    throw new Error('Claude worker roster cannot be derived from the validated Worker Matrix; expected the complete managed-worker roster.');
   }
   const seenBy = new Map();
   for (const binding of matrixBindings('claude')) {
@@ -475,8 +481,8 @@ function validateOpencodeWorkerBindings(bindingsDir = OPENCODE_BINDINGS_DIR) {
         throw new Error(`Opencode worker "${workerName}" has no binding with a validated initial task dispatch.`);
       }
     }
-    if (seenBy.size !== 15) {
-      throw new Error('Opencode worker roster must contain exactly the ordered fifteen-worker roster.');
+    if (seenBy.size !== canonicalBindings.length) {
+      throw new Error('Opencode worker roster must contain exactly the complete managed-worker roster.');
     }
       return [...seenBy.keys()].sort((left, right) =>
         left.split(path.sep).join('/').localeCompare(right.split(path.sep).join('/')));

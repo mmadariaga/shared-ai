@@ -12,16 +12,16 @@ const { loadInstallManifest, matrixRenderFor } = require('../bin/install-manifes
 const repoRoot = path.join(__dirname, '..');
 
 const matrixManifest = loadInstallManifest(path.join(__dirname, '..'));
-function matrixBinding(harness, phase) {
+function matrixBinding(harness, phase, workerName) {
   const item = matrixRenderFor(matrixManifest, harness, path.join(__dirname, '..'))
-    .find(entry => entry.kind === 'binding' && entry.phase === phase);
+    .find(entry => entry.kind === 'binding' && entry.phase === phase && (!workerName || entry.entry.workerName === workerName));
   assert.ok(item, `${harness}/${phase} matrix binding should exist`);
   return item.text;
 }
 
-function matrixAgent(harness, phase) {
+function matrixAgent(harness, phase, workerName) {
   const item = matrixRenderFor(matrixManifest, harness, path.join(__dirname, '..'))
-    .find(entry => entry.kind === 'agent' && entry.phase === phase);
+    .find(entry => entry.kind === 'agent' && entry.phase === phase && (!workerName || entry.entry.workerName === workerName));
   assert.ok(item, `${harness}/${phase} matrix agent should exist`);
   return item.text;
 }
@@ -35,7 +35,7 @@ function artifact(relativePath) {
 const WORKERS = [
   ['sai-1-spec-proposal-worker', 'spec-worker.md'],
   ['sai-2-design-worker', 'design-worker.md'],
-  ['sai-3-implementation-worker', 'implementation-worker.md'],
+  ...['ui', 'frontend', 'backend', 'infra', 'other'].map(agent => [`sai-3-${agent}-worker`, `implementation-${agent}-worker.md`]),
   ['sai-5-review-worker', 'review-worker.md'],
   ['sai-6-security-worker', 'security-worker.md'],
   ['sai-7-performance-worker', 'performance-worker.md'],
@@ -44,7 +44,7 @@ const WORKERS = [
 
 const BINDING_PHASE = Object.fromEntries(WORKERS.map(([worker, filename]) => [
   filename,
-  filename.replace('-worker.md', ''),
+  filename.startsWith('implementation-') ? 'implementation' : filename.replace('-worker.md', ''),
 ]));
 
 const OPERATION_PHRASE = {
@@ -72,10 +72,10 @@ test('Step 3 removes worker proxy skills while preserving harness-specific bindi
       assert.equal(fs.existsSync(path.join(repoRoot, 'skills', harness, worker, 'SKILL.md')), false,
         `${harness} worker proxy source should be absent`);
 
-      const binding = matrixBinding(harness, BINDING_PHASE[filename]);
+      const binding = matrixBinding(harness, BINDING_PHASE[filename], worker);
       assert.match(binding, permissionTarget,
         `${harness} binding should use its harness permission target`);
-      if (filename === 'implementation-worker.md') {
+      if (filename.startsWith('implementation-')) {
         for (const operation of REQUIRED_OPERATIONS) {
           assert.match(binding, OPERATION_PHRASE[operation],
             `${harness} binding should define ${operation}`);
@@ -88,9 +88,9 @@ test('Step 3 removes worker proxy skills while preserving harness-specific bindi
 test('Step 3 keeps all seven managed Claude agents alongside the neutral binding sources', () => {
   for (const [worker, filename] of WORKERS) {
     const phase = BINDING_PHASE[filename];
-    assert.match(matrixAgent('claude', phase), new RegExp(worker),
+    assert.match(matrixAgent('claude', phase, worker), new RegExp(worker),
       `the Claude matrix agent should seed ${worker}`);
-    assert.match(matrixBinding('claude', phase), /Agent\s*\(/,
+    assert.match(matrixBinding('claude', phase, worker), /Agent\s*\(/,
       `the Claude matrix binding should render ${filename}`);
     assert.equal(fs.existsSync(path.join(repoRoot, 'agents', 'claude', `${worker}.md`)), false,
       `no per-harness ${worker} agent source should exist`);

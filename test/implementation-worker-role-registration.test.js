@@ -2,94 +2,103 @@
 
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const crypto = require('node:crypto');
 const path = require('node:path');
+const fs = require('node:fs');
+const crypto = require('node:crypto');
 const { IMPLEMENTATION_REGISTRATION } = require('../bin/implementation-worker-roles');
 const { defineWorkerMatrix, assertWorkerIdentity } = require('../bin/worker-matrix');
-const { loadInstallManifest, expandInstallManifest, matrixRenderFor } = require('../bin/install-manifest');
+const { loadInstallManifest, matrixRenderFor, expandInstallManifest } = require('../bin/install-manifest');
+const previous = require('../fixtures/implementation-projections-7112f07.json');
 const { buildChecklistTargets } = require('../bin/model-customization');
+const { validateClaudeWorkerBindings, validateOpencodeWorkerBindings } = require('../bin/install-flow').__test;
 
-const repoRoot = path.join(__dirname, '..');
-const manifest = () => loadInstallManifest(repoRoot);
-const implementationEntry = entries => entries.find(entry => entry.phase === 'implementation');
+const root = path.join(__dirname, '..');
+const manifest = () => loadInstallManifest(root);
 
-test('implementation phase registration owns a closed, immutable current role set', () => {
-  assert.equal(IMPLEMENTATION_REGISTRATION.phase, 'implementation');
-  assert.equal(IMPLEMENTATION_REGISTRATION.command, 'sai-3-implement');
-  assert.deepEqual(IMPLEMENTATION_REGISTRATION.roles, [{
-    workerName: 'sai-3-implementation-worker',
-    workerContract: 'sai/commands/implement/worker.md',
-  }]);
-  assert.ok(Object.isFrozen(IMPLEMENTATION_REGISTRATION));
+test('implementation registration closes five identical planning roles', () => {
+  const names = ['ui', 'frontend', 'backend', 'infra', 'other'].map(agent => `sai-3-${agent}-worker`);
+  assert.deepEqual(IMPLEMENTATION_REGISTRATION.roles.map(role => role.workerName), names);
   assert.ok(Object.isFrozen(IMPLEMENTATION_REGISTRATION.roles));
-  assert.ok(Object.isFrozen(IMPLEMENTATION_REGISTRATION.roles[0]));
   const entries = manifest()['worker-matrix'].entries;
-  assert.deepEqual(entries.filter(entry => entry.phase === 'implementation').map(({ workerName, workerContract }) =>
-    ({ workerName, workerContract })), IMPLEMENTATION_REGISTRATION.roles);
-  assert.equal(defineWorkerMatrix(entries).entries.length, 15);
-});
-
-test('implementation role identity and contract checks stay closed at registration and both install surfaces', () => {
-  for (const patch of [
-    { workerName: 'sai-3-ui-worker' },
-    { workerName: 'sai-2-design-worker' },
-    { workerContract: 'sai/commands/design/worker.md' },
-  ]) {
-    const altered = manifest();
-    const entries = altered['worker-matrix'].entries;
-    Object.assign(implementationEntry(entries), patch);
-    assert.throws(() => defineWorkerMatrix(entries), /Invalid Worker Matrix (worker identity|contract path).*implementation/);
-    assert.throws(() => assertWorkerIdentity(implementationEntry(entries)), /implementation.*misassigned|implementation.*mismatched/);
-    for (const harness of ['claude', 'opencode']) {
-      assert.throws(() => expandInstallManifest(altered, { harness, repoRoot, destinationRoot: {} }),
-        new RegExp(`${harness} worker matrix: phase implementation has (misassigned|mismatched)`));
+  assert.equal(defineWorkerMatrix(entries).entries.length, 19);
+  const planners = entries.filter(entry => entry.phase === 'implementation');
+  for (const harness of ['claudeAgent', 'opencodeAgent']) {
+    const baseline = { ...planners[0][harness] };
+    delete baseline.agentName;
+    for (const entry of planners) {
+      const actual = { ...entry[harness] };
+      delete actual.agentName;
+      assert.deepEqual(actual, baseline);
+      assert.equal(entry.workerContract, 'sai/commands/implement/worker.md');
     }
   }
+  assert.doesNotThrow(validateClaudeWorkerBindings);
+  assert.equal(validateOpencodeWorkerBindings().length, 19);
 });
 
-test('the preparation does not admit additional or duplicate implementation roles', () => {
+test('invalid, duplicate, missing and reordered category roles remain rejected', () => {
+  for (const patch of [{ workerName: 'sai-3-unknown-worker' }, { workerContract: 'sai/commands/design/worker.md' }]) {
+    const entries = manifest()['worker-matrix'].entries;
+    Object.assign(entries[2], patch);
+    assert.throws(() => defineWorkerMatrix(entries), /Invalid Worker Matrix/);
+    assert.throws(() => assertWorkerIdentity(entries[2]), /misassigned|mismatched/);
+  }
   const entries = manifest()['worker-matrix'].entries;
-  assert.throws(() => defineWorkerMatrix([...entries, { ...implementationEntry(entries) }]), /exactly 15 entries/);
+  assert.throws(() => defineWorkerMatrix(entries.slice(1)), /exactly 19/);
   const duplicate = entries.map(entry => ({ ...entry }));
-  duplicate[3] = { ...implementationEntry(entries) };
-  assert.throws(() => defineWorkerMatrix(duplicate), /Duplicate Worker Matrix worker name: sai-3-implementation-worker/);
+  duplicate[3] = { ...duplicate[2] };
+  assert.throws(() => defineWorkerMatrix(duplicate), /Duplicate Worker Matrix worker/);
   const reordered = entries.map(entry => ({ ...entry }));
-  [reordered[1], reordered[2]] = [reordered[2], reordered[1]];
-  assert.throws(() => defineWorkerMatrix(reordered), /phase implementation is out of order; expected design/);
+  [reordered[2], reordered[3]] = [reordered[3], reordered[2]];
+  assert.throws(() => defineWorkerMatrix(reordered), /implementation role out of order/);
 });
 
-test('both harnesses preserve every current rendered worker byte and destination', () => {
-  // Captured before this refactor; pins the whole installed roster, not only sai-3.
-  const expected = {
-    claude: '4d9f5725c8067300bf0e5b7ea65f42000507972bf58c135f11a103ea4b633f32',
-    opencode: 'f078d8c75583496584e2490edd384991059dbb17a930c90edd0d6950c609c58d',
-  };
+test('both harnesses materialize five unique planning agents and bindings', () => {
   for (const harness of ['claude', 'opencode']) {
-    const rendered = matrixRenderFor(manifest(), harness, repoRoot);
-    assert.equal(rendered.length, 30);
-    const bytes = JSON.stringify(rendered.map(({ kind, destinationName, text }) => ({ kind, destinationName, text })));
-    assert.equal(crypto.createHash('sha256').update(bytes).digest('hex'), expected[harness]);
+    const rendered = matrixRenderFor(manifest(), harness, root);
+    assert.equal(rendered.length, 38);
+    const planners = rendered.filter(item => item.entry.phase === 'implementation');
+    assert.equal(planners.length, 10);
+    assert.equal(new Set(planners.map(item => `${item.kind}/${item.destinationName}`)).size, 10);
+    for (const item of planners) assert.match(item.text, /sai\/commands\/implement\/worker\.md/);
   }
 });
 
-test('implementation binding destinations remain unique in each harness projection', () => {
-  const altered = manifest();
-  implementationEntry(altered['worker-matrix'].entries).bindingStem = 'design';
-  for (const harness of ['claude', 'opencode']) {
-    const prefix = path.join(repoRoot, '.tmp', 'prepare-sai3-worker-role-registration', harness);
-    const destinationRoot = Object.fromEntries(['commands', 'sai', 'skills', 'agents', 'config', 'root']
-      .map(kind => [kind, path.join(prefix, kind)]));
-    assert.throws(() => expandInstallManifest(altered, { harness, repoRoot, destinationRoot }), /collision/i);
+test('unaffected agent and binding destinations and every rendered byte match base 7112f07', () => {
+  assert.equal(previous.base, '7112f07be7e9a5f96d8cfe7aaa7daa023a614853');
+  const originalDataRoot = process.env.XDG_DATA_HOME;
+  process.env.XDG_DATA_HOME = '';
+  try {
+    for (const harness of ['claude', 'opencode']) {
+      const base = path.join(root, '.tmp', 'category-byte-pins', harness);
+      const destinationRoot = Object.fromEntries(['root', 'config', 'agents', 'commands', 'sai', 'skills'].map(key => [key, path.join(base, key)]));
+      const projections = expandInstallManifest(manifest(), { harness, repoRoot: root, destinationRoot });
+      const unchanged = projections.filter(item => item.destinationPath.startsWith(destinationRoot.agents + path.sep)
+        || item.destinationPath.startsWith(path.join(destinationRoot.sai, 'orchestration/workers/bindings') + path.sep))
+        .map(item => [path.relative(base, item.destinationPath).split(path.sep).join('/'), item.sourceText ?? fs.readFileSync(item.sourcePath, 'utf8')])
+        .filter(([destination]) => !/\/(sai-3-|implementation-)/.test(destination))
+        .sort(([left], [right]) => left.localeCompare(right, 'en'));
+      assert.equal(unchanged.length, 31);
+      const hash = crypto.createHash('sha256').update(JSON.stringify(unchanged)).digest('hex');
+      assert.equal(hash, previous[harness].unaffectedDestinationContentHash,
+        `${harness}: all unrelated projected destination names, defaults, permissions and bodies remain byte-identical`);
+      const planners = matrixRenderFor(manifest(), harness, root).filter(item => item.entry.phase === 'implementation');
+      for (const item of planners) {
+        const prior = previous[harness].legacy.find(record => record.destination.startsWith(item.kind === 'agent' ? 'agents/' : 'sai/'));
+        const normalized = item.text.replaceAll(item.entry.workerName, 'sai-3-implementation-worker')
+          .replace(/^description:.*$/m, prior.text.match(/^description:.*$/m)?.[0] || '');
+        assert.equal(normalized, prior.text,
+          `${harness}/${item.destinationName}: only role identity and description change; defaults, skills, contract and native access retain baseline bytes`);
+      }
+    }
+  } finally {
+    if (originalDataRoot === undefined) delete process.env.XDG_DATA_HOME;
+    else process.env.XDG_DATA_HOME = originalDataRoot;
   }
 });
 
-test('the model customizer retains the implementation command and its existing worker grouping', () => {
-  const rows = buildChecklistTargets('All', {
-    command: ['sai-3-implement', 'sai-4-apply'],
-    worker: ['sai-4-green-worker', 'sai-3-implementation-worker', 'sai-4-red-worker'],
-  });
-  assert.deepEqual(rows.map(row => row.value), [
-    'command:sai-3-implement', 'worker:sai-3-implementation-worker',
-    'command:sai-4-apply', 'worker:sai-4-red-worker', 'worker:sai-4-green-worker',
-  ]);
+test('model customizer groups all five individually selectable planners under sai-3', () => {
+  const names = IMPLEMENTATION_REGISTRATION.roles.map(role => role.workerName);
+  const rows = buildChecklistTargets('All', { command: ['sai-3-implement', 'sai-4-apply'], worker: [...names].reverse() });
+  assert.deepEqual(rows.map(row => row.value), ['command:sai-3-implement', ...names.map(name => `worker:${name}`), 'command:sai-4-apply']);
 });

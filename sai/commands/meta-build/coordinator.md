@@ -60,7 +60,7 @@
   ## No intermediate approval gate
   A successful implement segment transitions immediately to the apply segment.
   Do not stop for artifact feedback, plan review, or user approval between the
-  two phases. Plan quality remains the implement worker's validation step.
+   two phases. Plan quality remains the implement coordinator's validation step.
   Do not extend the Review Engine artifact vocabulary for `implementation.md`.
 
   ## Non-final implement terminal navigation
@@ -78,7 +78,12 @@
   once at implement-segment activation (the first fast-track activation of the build), as ordinary in-conversation text, and write
   nothing to disk to record it. When activating the apply segment, always inject fast-track true but print no second banner. Print the banner zero times when apply never activates and implement never activated; when implement activated, its single banner stands with no second banner. Neither segment's skipped shell prints a second banner.
 
-  The implement adapter receives explicit `fast_track_active=true` in its post-ready worker task disclosure and replacement reconstruction, separate from `arguments_value`. That same post-ready task disclosure opens with the `collapse-implemented-steps` pointer line that the implement segment's `reset <id> implement-standalone@1` returns, per `@sai/orchestration/command-runner.md` § Step-gated pointer delivery; the chained segment follows the same first-pointer rule as a standalone `/sai-3-implement`. Its worker keeps the boolean for its defined fast-track behaviors. At apply segment activation, inject fast-track true before Run-Start Step Projection so the apply coordinator sets `session_commit_authorized=true` before the first Step. Injected fast-track still means: commit pre-authorization and non-detached branch auto-stay. It changes nothing about functional checks: apply's terminal functional review marks the checks it verified and prints the rest as pending human review in the ordinary terminal print cluster, identically with and without fast-track (no approval gate either way). Detached HEAD still presents the existing three-option branch prompt. Safe-operations confirmations remain required — never auto-approve them because fast-track is injected.
+  The implement coordinator receives explicit `fast_track_active=true`, separate from `arguments_value`, and owns common preparation and category-part integration exactly as on the standalone route. It dispatches complete category tasks with the ready handshake and independent recovery; no implement worker step-machine pointer is sent. At apply segment activation, inject fast-track true before Run-Start Step Projection so its coordinator sets `session_commit_authorized=true`. This retains apply's existing commit authorization, branch selection, functional checks, and safe-operations confirmations unchanged.
+
+  Apply's existing commit pre-authorization and non-detached branch auto-stay run
+  identically with and without fast-track in the build argument.
+  Detached HEAD still presents the existing three-option branch prompt.
+  Safe-operations confirmations remain required; Build authorizes no additional Git mutation.
 
   ## Phase-1 failure blocks apply
   If the implement segment returns `failed` or `cancelled`, close the invocation
@@ -125,7 +130,7 @@
   segment add paths in first-seen order without resetting the union on segment activation.
 
   ## Workers
-  Phase 1 dispatches the existing `sai-3-implementation-worker`. Phase 2 dispatches existing `sai-4-red-worker` / `sai-4-green-worker` only through the apply adapter. RED remains blind to the GREEN implementation body in the split
+  Phase 1 uses the implementation coordinator's category-routed concurrent workers and verified integration. Phase 2 dispatches existing `sai-4-red-worker` / `sai-4-green-worker` only through the apply adapter. RED remains blind to the GREEN implementation body in the split
   flow. GREEN retains its absolute test-file prohibition.
 
 </TASK>

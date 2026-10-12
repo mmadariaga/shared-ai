@@ -15,7 +15,11 @@ const HEX64 = /^[0-9a-f]{64}$/;
 const WORKER_NAMES = [
   'sai-1-spec-proposal-worker',
   'sai-2-design-worker',
-  'sai-3-implementation-worker',
+  'sai-3-ui-worker',
+  'sai-3-frontend-worker',
+  'sai-3-backend-worker',
+  'sai-3-infra-worker',
+  'sai-3-other-worker',
   'sai-5-review-worker',
   'sai-6-security-worker',
   'sai-7-performance-worker',
@@ -126,8 +130,8 @@ test('enumerateClaude yields managed agent entries without owner sidecar destina
   try {
     flow.installClaude(dir);
     const entries = enumerateClaude(dir).filter(entry => entry.assetType === 'claude-managed-agent');
-    assert.equal(entries.length, 18,
-      'Claude uninstall should enumerate 18 managed agent destinations: the fifteen workers plus the three budget agents');
+    assert.equal(entries.length, 22,
+      'Claude uninstall should enumerate nineteen workers plus three budget agents');
     assert.ok(entries.every(entry => !/owner\.json$/.test(entry.dest)),
       'no owner sidecar destination may be enumerated as a deletion target');
     const basenames = entries.map(entry => path.basename(entry.dest, '.md'));
@@ -136,7 +140,7 @@ test('enumerateClaude yields managed agent entries without owner sidecar destina
         `Claude should enumerate the ${name} managed agent destination`);
     }
     assert.ok(WORKER_NAMES.every(name => basenames.includes(name)),
-      'Claude should still enumerate the eleven worker destinations');
+      'Claude should still enumerate all registered phase-planner worker destinations');
     for (const name of ['sai-4-red-worker', 'sai-4-green-worker', 'sai-direct-build-worker', 'sai-review-fix-worker']) {
       assert.ok(basenames.includes(name),
         `Claude should enumerate the ${name} role managed agent destination`);

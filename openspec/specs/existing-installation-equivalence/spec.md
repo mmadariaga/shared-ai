@@ -7,12 +7,12 @@ Preserve the current installation and model-customizer outputs while implementat
 
 ### Requirement: Current rendered worker projection equivalence
 
-For the current manifest and templates, implementation registration preparation SHALL preserve the complete ordered rendered worker projection for Claude Code and opencode, including each artifact's kind, destination name, and text.
+The current manifest and templates SHALL render nineteen registered workers as thirty-eight ordered agent/binding artifacts per harness, including five implementation planners in ui, frontend, backend, infra, and other order with unique category destinations and the shared implementation-worker contract. Preservation of unaffected agent/binding destination names and complete contents SHALL be checked against the baseline captured at 7112f07be7e9a5f96d8cfe7aaa7daa023a614853 by fixtures/implementation-projections-7112f07.json and test/implementation-worker-role-registration.test.js. Changed implementation roles SHALL not be claimed byte-identical to the retired role: their baseline comparison SHALL normalize worker identity and agent description while retaining checks for defaults, skills, contract Fetch targets, permissions, and native binding behavior.
 
 #### Scenario: Current workers are rendered for both harnesses
 
 - **WHEN** the current worker matrix is rendered separately for Claude Code and opencode
-- **THEN** each harness produces the same thirty agent and binding artifacts with the same ordered kinds, destination names, and byte-for-byte text as before the refactor.
+- **THEN** each harness produces thirty-eight agent and binding artifacts with five implementation planners in registration order, while the baseline-byte tests verify unchanged non-implementation destinations/contents and the explicitly normalized equivalence of changed planner projections.
 
 ### Requirement: Implementation identity and contract diagnostics
 
@@ -39,9 +39,9 @@ Installation projection SHALL continue to reject an implementation binding desti
 
 ### Requirement: Existing implementation model-customizer grouping
 
-The model customizer SHALL derive sai-3 worker grouping from the authoritative implementation registration definition while preserving the current command and worker selection order.
+The model customizer SHALL derive sai-3 worker grouping from the authoritative implementation registration definition, placing ui, frontend, backend, infra, and other planners in that order behind sai-3-implement. Each planner SHALL remain independently selectable. The neighboring sai-4 command and RED-then-GREEN worker order SHALL remain unchanged.
 
 #### Scenario: Implementation and apply targets are grouped
 
 - **WHEN** the model customizer builds the All checklist for sai-3 and sai-4 commands and their current workers
-- **THEN** the order remains `command:sai-3-implement`, `worker:sai-3-implementation-worker`, `command:sai-4-apply`, `worker:sai-4-red-worker`, and `worker:sai-4-green-worker`.
+- **THEN** the order is `command:sai-3-implement`, `worker:sai-3-ui-worker`, `worker:sai-3-frontend-worker`, `worker:sai-3-backend-worker`, `worker:sai-3-infra-worker`, `worker:sai-3-other-worker`, `command:sai-4-apply`, `worker:sai-4-red-worker`, and `worker:sai-4-green-worker`.

@@ -13,11 +13,13 @@ The machine SHALL expose exactly the six progress-plan ids in order as its close
 - **THEN** the active stage SHALL be the first unmarked id in canonical order
 
 ### Requirement: Minimal boot with just-in-time follow loads
-The standalone run SHALL boot from the nucleus only, worker contract plus steps/common.md, with prereqs-resolution carrying follow none. Each of the five step files under sai/commands/implement/steps/ SHALL load only when next.follow names it, and the initial dispatch SHALL bear no Active step line with the first pointer targeting collapse-implemented-steps.
+
+Live implementation planning SHALL load the coordinator's common baseline and fetch each common-work step file only when its work begins. Category workers SHALL load their common baseline and plan-generation rules for a complete assigned-Step task, not machine-delivered active-step pointers. The retained implement-standalone machine's next.follow behavior SHALL remain compatibility data rather than live scheduling.
 
 #### Scenario: Step file loads at its point of use
-- **WHEN** the sidecar emits next.follow naming a step file
-- **THEN** the coordinator SHALL fetch that single file at that point and at no earlier point
+
+- **WHEN** the live coordinator enters a common-work milestone
+- **THEN** it loads that milestone's instruction file at entry without sending a machine pointer to category workers.
 
 ### Requirement: No-whitelist follow-load with stop-on-failure
 After each emit the coordinator SHALL fetch whatever next.follow names with no file whitelist. A machine-named unknown file or a path outside the steps directory SHALL stop with an error and fetch nothing. A follow-load failure SHALL stop, show the error, and wait with nothing guessed and never routed through Bounded Recovery.
@@ -70,19 +72,19 @@ The registry SHALL register implement-standalone@1 alongside explore-idea@1, exp
 
 ### Requirement: Every-activation scope with parked machine lifecycle
 
-The machine SHALL govern the implement adapter for every activation — direct (`/sai-3-implement`) and chained (as part of `/sai-build`). Feedback and recovery continuations SHALL carry no pointer and never consult the machine; parking and pointer behavior follow `@sai/policies/stage-machine.md` § Step machines. The machine resets per-machine at segment start and resets (not closes) at run-closing. Every activation opens a session that does not reuse prior marks.
+Direct sai-3, chained sai-build, and Plan - Unattended implementation activations SHALL use the same category-planning coordinator without declaring a worker implement-standalone step machine. The existing machine definition SHALL remain registered as compatibility data only. Its store, pointer, parking, and wire contracts SHALL not arbitrate live category tasks or final publication.
 
 #### Scenario: Direct activation consults the machine
 
-- **WHEN** `/sai-3-implement` is invoked directly
-- **THEN** the machine arbitrates step routing via the coordinator's declared `step_machine: implement-standalone@1` throughout the run
+- **WHEN** sai-3 is invoked directly
+- **THEN** the coordinator executes common work and complete category tasks without consulting implement-standalone as a live schedule.
 
 #### Scenario: Chained activation consults the same machine
 
-- **WHEN** the implement adapter runs as position 0 of `/sai-build`
-- **THEN** the same machine arbitrates step routing with identical pointer derivation as the direct path, and the coordinator never falls back to supervised transition
+- **WHEN** implementation runs as sai-build position zero
+- **THEN** it uses the same category coordinator as direct activation without machine rebinding or worker pointer delivery.
 
 #### Scenario: Store failure during chained segment stops the chain
 
-- **WHEN** the machine emits and the store reports a failure during a chained `/sai-build` segment
-- **THEN** the run stops per stage-machine.md, and `/sai-build` does not proceed to the next segment
+- **WHEN** an unrelated compatibility-machine store fails during a chained category-planning segment
+- **THEN** that inactive machine does not advance or govern the segment, while actual planning failures still block publication and the apply transition.

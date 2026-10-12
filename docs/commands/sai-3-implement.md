@@ -10,6 +10,46 @@ Prepares `implementation.md`, the guide for carrying out the design in concrete 
 
 ## In detail
 
+### Category planning
+
+The coordinator resolves the change and performs common analysis, documentation
+review, shared decisions, authorization, and rerun preparation once. It routes
+the existing `tasks.md` Step categories through this fixed mapping:
+
+| Category | Managed planning agent |
+|---|---|
+| frontend-ui | sai-3-ui-worker |
+| frontend-code | sai-3-frontend-worker |
+| backend, data | sai-3-backend-worker |
+| infra | sai-3-infra-worker |
+| docs, other | sai-3-other-worker |
+
+Only agents with assigned Steps run. Each receives all its Steps in one task;
+required agents run concurrently, after their ready handshake. Missing or
+invalid categories block routing rather than defaulting to other. Shared
+context remains readable, but a worker writes only its assigned complete
+temporary plan part, not production code or `implementation.md`.
+
+The coordinator verifies current input identity, exact coverage, original Step
+numbers and ordering, interfaces, dependencies, and verification contracts. It
+assembles and validates a candidate before replacing the final plan. A failed
+or cancelled worker does not cancel siblings: valid results remain available
+and the previous final plan stays intact until the entire set is valid. Parts
+live under the change's `.planning-parts/run-*/`; only exact files owned by a
+verified successful run are cleaned. Failed runs and unrelated files survive.
+
+All five agents ship with identical common planning instructions, skills, and
+the previous sai-3 default model for each harness. The coordinator selects an
+agent by category, not a model automatically. Configure each model independently
+in the model customizer's sai-3 group, or override the complete agent definition
+under `.claude/agents/<agent>.md` for Claude Code or
+`.opencode/agents/<agent>.md` for opencode. Project-local overrides can also add
+skills; preserve the shared planning contract and write boundaries. A missing
+model or required skill is reported by agent/resource name, without substitution.
+See [model configuration](../models.md). `/sai-build` and Plan - Unattended use
+the same planning route. sai-4 and its RED/GREEN routing and plan format do not
+change.
+
 The command reuses design's relevant documentation and project conventions. It researches only evidence needed for a specific planning gap, reports each researched gap in the final summary, and asks you when the gap cannot be resolved. This works the same in normal mode, fast-track, `/sai-build`, and reruns.
 
 Steps keep the order and one-to-one correspondence of `tasks.md`. In a Step with

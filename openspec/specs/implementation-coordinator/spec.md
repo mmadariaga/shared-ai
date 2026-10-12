@@ -8,50 +8,38 @@ TBD - this spec was authored as a change delta and never merged into the main tr
 
 ### Requirement: Shared lifecycle adapter integration
 
-The routed `/sai-3-implement` coordinator SHALL consume the canonical shared coordinator contract through an implementation phase adapter. The adapter SHALL provide the original `arguments_value` request, harness binding dispatch and continuation operations, progress events as the sole allowed nonterminal extension, no extension handlers, the enumerated implementation replacement-reconstruction fields below, and parameterized implementation terminal navigation that selects standalone completion or the composition-owned authorized transition by adapter position. The adapter SHALL NOT duplicate lifecycle payload validation, ordered changed-file aggregation, continuation-first recovery, replacement-worker limits, or terminal routing, and SHALL NOT import design feedback, notice, or continue-now behavior.
-
-The replacement-reconstruction fields SHALL be exactly:
-
-- `resolved_change_name` when resolution already occurred;
-- `opaque_input_history`, an ordered list whose entries contain only one prior worker-authored `question`, its ordered `options`, and the exact selected `answer_value`;
-- `durable_artifact_reconstruction_instruction`, a fixed instruction requiring the replacement worker to rerun prerequisites and independently reread current change artifacts, audit artifacts, and `implementation.md` from disk; and
-- `active_step_id`, the departing worker's active step identifier under the step-gated instruction delivery map.
-
-The coordinator SHALL retain the accumulated `changed_files` union itself rather than seed the replacement worker's empty journal. It SHALL NOT pass artifact contents, inferred planning state, design `pending_feedback`, design notice acknowledgements, design fast-track presentation flags, or binding continuation identifiers as reconstruction fields.
+The implementation coordinator SHALL retain shared closed-payload validation, ready handshakes, answer transport, ordered changed-file aggregation, continuation-first recovery, and replacement limits. It SHALL bind those fields separately per category worker and use a parallel result loop instead of single-worker scheduling and immediate failure close. Child adapters SHALL have no progress plan or nonterminal extensions. Reconstruction SHALL contain the original complete task, resolved name, exact opaque_input_history, current run identity, assignment, and a durable instruction naming run.json and the assigned part. It SHALL not contain artifact contents, another worker's journal, design-only feedback state, or binding identifiers. A child's completed payload SHALL not complete the phase; verified coordinator publication SHALL control positional terminal navigation.
 
 #### Scenario: Implementation lifecycle result is processed
 
-- **WHEN** the implementation-planning worker returns a lifecycle payload under Claude Code or opencode
-- **THEN** the coordinator SHALL process it through the canonical shared coordinator contract
-- **AND** implementation-specific behavior SHALL enter only through the declared phase-adapter fields
+- **WHEN** a category worker returns a lifecycle payload under Claude Code or opencode
+- **THEN** shared validation and aggregation process it while the implementation coordinator's parallel loop records the child's outcome separately from phase completion.
 
 #### Scenario: Design-only event reaches implementation
 
 - **WHEN** the implementation coordinator receives a design notice, artifact-feedback event, or continue-now transition
-- **THEN** it SHALL reject that event as unsupported rather than adding a design-only extension or processing it as an implementation lifecycle status
+- **THEN** it rejects the unsupported event rather than adding a design-only extension.
 
 #### Scenario: Continuation cannot resume the original worker
 
-- **WHEN** same-worker implementation continuation fails
-- **THEN** the shared lifecycle SHALL preserve the ordered changed-file union and dispatch at most one replacement worker only when the original envelope, `resolved_change_name` when applicable, complete `opaque_input_history`, `durable_artifact_reconstruction_instruction`, and `active_step_id` are available
-- **AND** the replacement worker SHALL rebuild technical state from durable artifacts rather than receive artifact contents or the prior worker journal
-- **AND** the replacement's first continuation SHALL carry the correct pointer line for the active step named by `active_step_id`
+- **WHEN** same-worker continuation fails
+- **THEN** the coordinator preserves its changed-file union and uses at most one bounded replacement with complete original-task and reconstruction evidence, without cancelling siblings or passing artifact contents or an active-step pointer.
 
 #### Scenario: Reconstruction metadata is incomplete
 
-- **WHEN** the coordinator cannot provide an exact required reconstruction field
-- **THEN** it SHALL return a failed restart request and SHALL NOT dispatch a replacement worker with inferred or partial state
+- **WHEN** an exact required reconstruction field is unavailable
+- **THEN** replacement is not dispatched with inferred or partial state and the affected worker's restart failure is reported.
 
 ### Requirement: Lifecycle-only implementation coordinator
 
-The routed implementation coordinator SHALL own adapter routing, progress rendering, pointer delivery, result validation, and terminal navigation only. It SHALL NOT perform technical planning, read implementation artifacts, run git or OpenSpec checks, or write planning files. The single clean-route exception is the no-commit guard: the coordinator SHALL run the guard's `snapshot` and `verify` tool invocations (`sai/tools/no-commit-guard.js`) at each guard window's opening and immediately before each boundary the no-commit-guard policy lists (human turn, coordinator git mutation, run close), acting on a progress event or notice with no guard call, and those two tool invocations per window are the coordinator's only git observations on the artifact-blind clean route. No other rule of this requirement changes.
+The routed implementation coordinator SHALL now own technical common preparation, category routing, integration, verification, and the sole final implementation.md write, as well as lifecycle routing and presentation. It SHALL execute shared preparation once, preserve existing authorization and rerun contracts, and run no production implementation Step. After all required zero-task worker handles and ready returns are captured, it SHALL open one no-commit guard window immediately before task disclosure when no window is running. It SHALL reuse an existing window and verify it at human, mutation, and run-close boundaries, including failure close, rather than create independent child baselines. Only the guard's authorized remediation permits a mutating git command.
 
 #### Scenario: Coordinator processes a worker result
 
-- **WHEN** the implementation worker returns a lifecycle result
-- **THEN** the coordinator validates and routes the result without performing technical planning or artifact I/O.
+- **WHEN** a category worker returns a lifecycle result
+- **THEN** the coordinator validates it, collects siblings, and performs complete-plan integration and verification only on valid parts.
 
 #### Scenario: the guard's two tool invocations are the only clean-route git access
 
-- **WHEN** the implementation coordinator snapshots at a window opening and verifies before a boundary
-- **THEN** those two no-commit-guard tool invocations are its only git observations on the clean route, and no git or OpenSpec check beyond the guard is performed
+- **WHEN** category-worker task disclosure follows validated ready returns and captured handles
+- **THEN** a single snapshot opens the shared guard window if needed and a single verify closes it at the next required boundary, without deriving separate per-child baselines or granting workers git-mutation authority.

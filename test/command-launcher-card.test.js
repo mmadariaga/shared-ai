@@ -47,10 +47,10 @@ const movedDirectives = {
     'Fetch @sai/orchestration/workers/bindings/design-worker.md and use it.',
   ],
   implement: [
-    'Fetch @sai/orchestration/workers/bindings/implementation-worker.md and use it.',
+    ...['ui', 'frontend', 'backend', 'infra', 'other'].map(agent => `Fetch @sai/orchestration/workers/bindings/implementation-${agent}-worker.md`),
   ],
   'meta-build': [
-    'Fetch @sai/orchestration/workers/bindings/implementation-worker.md and use it.',
+    'Fetch @sai/commands/implement/command-bootstrap.md',
   ],
   review: [
     'Fetch @sai/orchestration/workers/bindings/review-worker.md and use it.',

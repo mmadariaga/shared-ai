@@ -926,6 +926,13 @@ test('routed Claude wrappers expose the exact coordinator and panel tool scope',
     const toolNames = match[1].split(',').map(tool => tool.trim());
     assert.deepEqual(toolNames, commandTools(path.basename(relativePath, '.md')).split(',').map(tool => tool.trim()),
       `${relativePath} should keep the exact routed scope with panel tools plus the closed node-scoped grant and the scoped mixed-reset grant`);
+    if (relativePath === 'commands/claude/sai-3-implement.md') {
+      for (const tool of ['Edit', 'Write', 'WebFetch', 'Bash']) assert.ok(toolNames.includes(tool), `technical planning coordinator needs ${tool}`);
+      const coordinator = artifact('sai/commands/implement/coordinator.md');
+      assert.match(coordinator, /Run no implementation Step/);
+      assert.match(coordinator, /no mutating git command except no-commit-guard's authorized remediation/);
+      continue;
+    }
     for (const forbidden of ['Edit', 'Write']) {
       assert.equal(match[1].includes(forbidden), false,
         `${relativePath} must not expose ${forbidden}`);

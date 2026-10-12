@@ -2,7 +2,9 @@
 
 ## Purpose
 TBD - created by archiving change project-sai-tools-and-extract-worktree. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: Managed projection of sai tools into both harness roots
 
 The install manifest SHALL carry a `sai-tools` rule that projects the `sai/tools` source directory into the `sai` destination class at path `tools` for both the `claude` and the `opencode` harness, using `strategy: copy`, `recursive: true`, and `include: ["**/*.js"]`, so that every tool file is installed under the same resolved root that serves the prose which invokes it.
@@ -53,3 +55,11 @@ The `sai-tools` projection SHALL install `sai/tools/no-commit-guard.js` into `sa
 - **THEN** `no-commit-guard.js` is installed under both harness roots as a managed file with no `sai/install-manifest.json` change
 - **AND** the documentation row names the tool and its verdict vocabulary
 
+### Requirement: planning-parts.js joins the deterministic planning tool roster
+
+The existing recursive sai-tools projection SHALL install planning-parts.js into both harness roots as a managed content-tracked runtime tool. The tool SHALL expose the shared category/agent definition and start, assemble, and publish mechanics for run-bound planning parts.
+
+#### Scenario: Category planning runs outside the source repository
+
+- **WHEN** installation projects sai/tools JavaScript files for Claude Code or opencode
+- **THEN** planning-parts.js is installed beside the calling instruction surfaces and participates in doctor and uninstall tracking.

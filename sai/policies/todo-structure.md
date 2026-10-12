@@ -24,7 +24,7 @@ Each rendered step carries exactly one of three states:
 
 ## Deterministic state derivation
 
-Rendered state is a pure function of plan order plus the marked set (the step ids reported by worker progress events):
+Rendered state is a pure function of plan order plus the marked set (the step ids reported by worker progress events). Implementation's category coordinator instead records its own completed common milestones through the same validator progress shape; these observations update this set and use the same rendering and response-sourced stamp rules, without becoming worker returns or a worker step-machine schedule. Other phases continue to mark only worker-reported ids:
 
 - A step whose id is in the marked set renders `completed`.
 - The first step in plan order whose id is not in the marked set renders `in_progress`.
