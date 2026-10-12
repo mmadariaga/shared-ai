@@ -549,7 +549,7 @@ The Direct Build - Unattended route SHALL classify every observation of its func
 
 ### Requirement: Direct Build owns retained same-conversation execution state
 
-The full Direct Build route SHALL define its retained execution state once in `pipeline-direct-build.md` and keep it conversation-only. The state SHALL include the selected block, active change, route entries and accepted completion states, pending internal step and check, each role's captured handle while continuation may be needed, original envelopes, exact opaque continuation histories, required reconstruction metadata and replacement usage, first-seen changed-path union, findings, draft validation evidence, suite results, verification references, existing recovery counters, execute-order state, and commit-authorization consumption evidence.
+The full Direct Build route SHALL define its retained execution state once in `pipeline-direct-build.md` and keep it conversation-only. The state SHALL include the active change, route entries and accepted completion states, pending internal step and check, each role's captured handle while continuation may be needed, original envelopes, exact opaque continuation histories, required reconstruction metadata and replacement usage, first-seen changed-path union, findings, draft validation evidence, suite results, verification references, existing recovery counters, execute-order state, and commit-authorization consumption evidence. The state SHALL NOT include the block text: only the `sai-state` store holds it, and every step that needs the block SHALL read it with `sai-state block <id> <change-name>`, so a compaction leaves resumption unaffected.
 
 Parking the slice SHALL release machine active state without clearing this conversation execution state. Guard baseline state SHALL remain local to its live window; a human interruption SHALL close and verify that window, and subsequent worker work SHALL open a fresh window under the existing guard policy. Resumption SHALL introduce no new persistent storage and SHALL not support a new conversation.
 
@@ -562,6 +562,11 @@ Parking the slice SHALL release machine active state without clearing this conve
 
 - **WHEN** a human interruption crosses an active Direct Build guard window
 - **THEN** the coordinator closes and verifies that window and opens a fresh window before forwarding subsequent worker work without carrying the old guard baseline across the boundary
+
+#### Scenario: Resumption reads the block from the store
+
+- **WHEN** a parked Direct Build slice resumes after its conversation was compacted
+- **THEN** the pending step reads the slice's block from `sai-state block` and no missing block keeps the route stopped while the store holds it
 
 ### Requirement: Direct Build resumes the first pending accepted-check operation
 

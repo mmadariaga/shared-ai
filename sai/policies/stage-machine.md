@@ -86,6 +86,36 @@ verbs take neither `--json` nor `--cwd`. A missing argument is a usage error
   machine, or combined with `--progress` or `--with-overview`, the option is a
   usage error (exit 2). A detector module found in neither location relative to
   the CLI exits 2 naming the tried paths.
+- **Block amend**: `sai-state emit <id> explore-slice@1 --ready-to-propose --amend <change-name> -`
+  reads exactly one `Ready to Propose` block as text from stdin, in the block
+  emit's delivery form and with the same optional `<<<VERDICTS>>>` suffix. It
+  validates the block with the `dispatchable` profile exactly as the block emit
+  does, then requires the block's `**Change name**` to equal `<change-name>`
+  (`INVALID_EVENT` with `reason: "AMEND_NAME_MISMATCH"`, exit 1) and the stdin
+  to carry one block (`reason: "AMEND_BLOCK_COUNT"`, exit 1). `explore-slice@1`
+  then accepts the amendment for a pending or stopped slice only: a slice that
+  is completed (`rejected: "SLICE_COMPLETED"`), running
+  (`rejected: "SLICE_RUNNING"`), or not in the recorded inventory
+  (`rejected: "UNKNOWN_SLICE"`) is rejected with exit 0 and nothing stored. An
+  accepted amendment replaces only that slice's stored text, hash, and verdicts
+  in the session file; the inventory order, the other slices' stored entries,
+  the completed slices, and every parked cursor stay unchanged. It returns the
+  block emit's `validation` block plus the ordinary emit fields, and the
+  `BLOCKS_NOT_STORED` warning when the replacement cannot be confirmed (the
+  previous entry then remains stored). A non-dispatchable block returns
+  `validation` alone, exits 1, and replaces nothing. The option is accepted
+  only with `--ready-to-propose` on `explore-slice@1`; otherwise it is a usage
+  error (exit 2).
+- **Block**: `sai-state block <id> <change-name>` returns
+  `{received_at, hash, text}` for one recorded slice: the exact validated block
+  text and its sha256 hash as the block emit (or the latest amendment) stored
+  them. When the session, the stored blocks, or that change name is absent it
+  returns `{received_at, error: "BLOCK_NOT_FOUND"}` and exits 1, with no text.
+  Plan and Direct Build dispatches, and every later reading of a slice's block
+  by an Explore route, take block text only from this verb, never from
+  conversation. The receiving worker recomputes the hash of the block it
+  received (`@sai/policies/ready-to-propose-format.md` § Stored block
+  transport); the verb performs no check of its own.
 - **Reset**: `sai-state reset <id> <machineId>` clears that one machine's state
   and returns `{received_at, reset: <machineId>}`; other machines in the session keep theirs.
   A linear step machine (§ Step machines) also returns
@@ -118,6 +148,9 @@ A machine error exits 1 with `{error, next}` and one closed literal:
   no transition occurs.
 - `UNKNOWN_MACHINE`: an unknown base name.
 - `VERSION_MISMATCH`: a known base name with the wrong version.
+
+The `block` verb alone answers a missing block with `{error: "BLOCK_NOT_FOUND"}`
+(exit 1), without `next`.
 
 A `rejected` field (exit 0) means the machine did not advance, for example an
 intent-less advance or `ALREADY_RUNNING`: fetch nothing and give the

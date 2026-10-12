@@ -6,7 +6,7 @@ The route choice itself — presentation, deterministic selection over pending s
 
 **State contract**: Maintain these values in conversation only:
 - `tracked_changes`: the existing ordered, duplicate-free records in first-emission order. It is the review loop's (item 9) source only, and is never the deferred choice's dispatch source.
-- `last_crystallization_set`: the ordered, duplicate-free `**Change name**` values emitted by the **most recent** crystallization turn (items 5 and 6), in emission order. Each crystallization turn replaces it wholesale; it starts empty.
+- `last_crystallization_set`: the ordered, duplicate-free `**Change name**` values emitted by the **most recent** crystallization turn (items 5 and 6), in emission order. Each crystallization turn replaces it wholesale; it starts empty. It holds names only: the validated block text of each name lives only in the `sai-state` store and reaches a worker only through `sai-state block <id> <change-name>`.
 - `completed_changes`: names whose applicable terminal worker returned `completed`; the spec worker is terminal when design is not entered, and the design worker is terminal after spec convergence.
 - `active_change`: the selected name from dispatch until the applicable terminal phase ends; while non-null, another **Plan - Unattended** or **Direct Build - Unattended** choice is acknowledged as already running and dispatches and queues nothing.
 - `active_phase`: `spec`, `design`, or null.

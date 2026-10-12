@@ -335,3 +335,33 @@ test('cli: usage errors exit 2', () => {
   assert.equal(run(['--profile', 'strict'], '').status, 2);
   assert.equal(run(['check', '--profile', 'strict', '--bogus'], '').status, 2);
 });
+
+test('cli hash: prints the sha256 of the single block and ignores text around it', () => {
+  const text = block('add-thing');
+  const bare = run(['hash'], text);
+  assert.equal(bare.status, 0, bare.stderr);
+  assert.equal(bare.payload.ok, true);
+  assert.equal(bare.payload.hash, hashBlock(extractBlockTexts(text)[0]));
+  assert.equal(bare.payload.hash, detect(text, 'dispatchable').blocks[0].hash);
+  const wrapped = run(['hash'], `--direct-build\n${text}`);
+  assert.equal(wrapped.payload.hash, bare.payload.hash);
+});
+
+test('cli hash: a truncated or altered block hashes differently', () => {
+  const text = block('add-thing');
+  const original = run(['hash'], text).payload.hash;
+  const cut = run(['hash'], text.slice(0, Math.floor(text.length / 2)));
+  assert.notEqual(cut.payload && cut.payload.hash, original);
+  const altered = run(['hash'], text.replace('Adds a thing.', 'Adds two things.'));
+  assert.notEqual(altered.payload.hash, original);
+});
+
+test('cli hash: anything other than exactly one block exits 1', () => {
+  const none = run(['hash'], 'no block here');
+  assert.equal(none.status, 1);
+  assert.equal(none.payload.ok, false);
+  assert.equal(none.payload.blocks, 0);
+  const two = run(['hash'], `${block('one-change')}\n${block('two-change')}`);
+  assert.equal(two.status, 1);
+  assert.equal(two.payload.blocks, 2);
+});

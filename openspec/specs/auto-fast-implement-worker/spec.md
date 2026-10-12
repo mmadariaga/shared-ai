@@ -14,7 +14,7 @@ TBD - created by archiving change auto-fast-selector-option. Update Purpose afte
 
 ### Requirement: Alpha input model
 
-The implementer worker SHALL receive exactly one opaque `arguments_value` whose first line is the marker `--direct-build` and whose remainder is the complete crystallized Ready to Propose block; it SHALL strip the marker line and treat that block as its sole substantive input, with no conversation context forwarded and no requirements inferred from repository discovery beyond what implementing the block requires. `**Capabilities in scope**` and `**Implementation Details**` SHALL bound the run, and the worker SHALL implement exactly the items listed under `**Implementation Details**`. `**Out of scope Implementation Details**` SHALL be context only: the worker SHALL use its items solely to choose among options that are equivalent for this run, SHALL NOT implement an out-of-scope item, and SHALL NOT do anticipatory implementation — no whole item, stub, hook, "for later" abstraction, or reference whose only purpose is to serve a later slice.
+The implementer worker SHALL receive exactly one opaque `arguments_value` whose first line is the marker `--direct-build`, whose second line is `--block-hash <sha256>`, and whose remainder is the complete crystallized Ready to Propose block, exactly as Explore read it from the `sai-state` store. Before any other work it SHALL verify that block against the hash per `sai/policies/ready-to-propose-format.md` § Stored block transport; a missing hash line or a mismatch SHALL return `failed` with no changes. The pinned `--no-specs` POC profile is the one exception: its first line is `--direct-build --no-specs`, it carries no hash line, and nothing is verified. The worker SHALL then strip the marker and hash lines and treat that block as its sole substantive input, with no conversation context forwarded and no requirements inferred from repository discovery beyond what implementing the block requires. `**Capabilities in scope**` and `**Implementation Details**` SHALL bound the run, and the worker SHALL implement exactly the items listed under `**Implementation Details**`. `**Out of scope Implementation Details**` SHALL be context only: the worker SHALL use its items solely to choose among options that are equivalent for this run, SHALL NOT implement an out-of-scope item, and SHALL NOT do anticipatory implementation — no whole item, stub, hook, "for later" abstraction, or reference whose only purpose is to serve a later slice.
 
 #### Scenario: Block-only input
 
@@ -31,6 +31,11 @@ The implementer worker SHALL receive exactly one opaque `arguments_value` whose 
 
 - **WHEN** two implementation options are equivalent for the current slice and only one of them would block a later out-of-scope item
 - **THEN** the worker chooses the option that does not block the later item, and adds no code whose only purpose is to serve that item
+
+#### Scenario: Altered block is refused before work
+
+- **WHEN** the block after the `--block-hash` line does not match that hash
+- **THEN** the worker returns `failed` with no changes before reading the repository
 
 ### Requirement: Write containment
 The implementer worker SHALL treat any repository artifact required by the crystallized block as writable, regardless of file format, under the shared protected update protocols and its role restrictions. It SHALL NOT directly modify `openspec/specs/**`, with proposal, specs, design, tasks, and metadata reconstructed later by backfill. It SHALL NOT create planning artifacts, SHALL NOT run a mutating git command, and SHALL NOT dispatch subagents.

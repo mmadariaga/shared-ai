@@ -35,6 +35,17 @@ published specs directly. Lines that merely mention these are judged as context.
 A confirmed violation records nothing; Explore shows the clause, line, and evidence,
 and corrects the block.
 
+Plan - Unattended and Direct Build - Unattended send a worker the exact validated
+block read from the per-chat `sai-state` store, together with its hash; the receiving
+worker recomputes the hash before doing any work and stops with no changes if the
+block was truncated or altered. A compaction of the conversation therefore cannot
+lose or change the next slice's block. If the stored block is missing, Explore
+dispatches nothing and offers stop options that include emitting the block again.
+To correct one slice that is pending or stopped, Explore validates the corrected
+block and replaces only that slice's stored block; completed and running slices cannot
+be amended. Manual has no store and no hash check. Block text is kept in the chat's
+session file under the system temp directory, never in the project.
+
 After displaying the complete Ready to Propose block set, Explore asks first
 whether to create or update a backlog item through `to-backlog`, then whether
 to create and switch to a local branch through `new-change-branch`. Answer Yes,
