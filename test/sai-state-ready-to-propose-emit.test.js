@@ -2,8 +2,10 @@
 
 // Block emit: `sai-state emit <id> explore-slice@1 --ready-to-propose -`
 // validates the Ready to Propose block set read from stdin with the detector's
-// strict profile and only then records the extracted change names as the
-// explore slice inventory. Every case spawns the CLI as a real process.
+// dispatchable profile (plus the judgment verdicts after the verdicts marker)
+// and only then records the extracted change names as the explore slice
+// inventory and stores each block's text, hash, and verdicts. Every case
+// spawns the CLI as a real process.
 
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
@@ -13,6 +15,8 @@ const { spawnSync } = require('child_process');
 
 const { sessionFile } = require('../bin/sai-state.js');
 const { RECEIVED_AT_PATTERN } = require('../sai/tools/worker-report-validator.js');
+
+const { hashBlock, VERDICTS_MARKER } = require('../sai/tools/ready-to-propose.js');
 
 const REPO_ROOT = path.join(__dirname, '..');
 const SAI_STATE_TOOL = path.join(REPO_ROOT, 'bin', 'sai-state.js');
@@ -45,6 +49,11 @@ function readSet(id) {
   if (!entry) return null;
   const state = entry.state || entry;
   return state.set;
+}
+
+function readStoredBlocks(id) {
+  const record = JSON.parse(fs.readFileSync(sessionFile(id), 'utf8'));
+  return record.blocks || null;
 }
 
 function block(name, overrides = {}) {
@@ -83,7 +92,7 @@ test('block emit: a valid single block records its name and returns the route-se
     assert.equal(Object.keys(json)[0], 'received_at');
     assert.match(json.received_at, RECEIVED_AT_PATTERN);
     assert.equal(json.validation.ok, true);
-    assert.equal(json.validation.profile, 'strict');
+    assert.equal(json.validation.profile, 'dispatchable');
     assert.equal(json.stage, 'waiting');
     assert.equal(json.next.follow, ROUTE_SELECTOR);
     assert.deepEqual(readSet(id), ['one-change']);
@@ -228,5 +237,111 @@ test('block emit: usage errors exit 2 (other machine, missing marker, combined f
     assert.equal(readSet(id), null);
   } finally {
     cleanup(id);
+  }
+});
+
+test('block emit: a block with no in-scope implementation item records nothing (E1)', () => {
+  const id = spawnSession('rtp-no-item');
+  try {
+    const result = blockEmit(id, block('empty-details', { 'Implementation Details': '\n- None' }));
+    assert.equal(result.exitCode, 1);
+    const json = JSON.parse(result.stdout);
+    assert.equal(json.validation.ok, false);
+    assert.ok(json.validation.blocks[0].violations.some((v) => v.problem === 'NO_IMPLEMENTATION_ITEM'));
+    assert.equal(json.stage, undefined);
+    assert.equal(readSet(id), null);
+    assert.equal(readStoredBlocks(id), null);
+  } finally {
+    cleanup(id);
+  }
+});
+
+test('block emit: a flagged line without a verdict records nothing and is reported', () => {
+  const id = spawnSession('rtp-pending');
+  try {
+    const result = blockEmit(id, block('git-subject', { Why: ' The change is about git commit messages.' }));
+    assert.equal(result.exitCode, 1);
+    const json = JSON.parse(result.stdout);
+    assert.equal(json.validation.ok, false);
+    assert.equal(json.validation.structural_ok, true);
+    assert.deepEqual(json.validation.flagged.map((f) => f.clause), ['mutating-git']);
+    assert.equal(json.validation.judgment.pending.length, 1);
+    assert.equal(readSet(id), null);
+    assert.equal(readStoredBlocks(id), null);
+  } finally {
+    cleanup(id);
+  }
+});
+
+test('block emit: context verdicts record the set and store text, hash, and verdicts per change name (E3)', () => {
+  const id = spawnSession('rtp-context');
+  try {
+    const text = block('git-subject', { Why: ' The change is about git commit messages.' });
+    const flaggedLine = text.split('\n').findIndex((line) => line.startsWith('**Why**')) + 1;
+    const verdicts = [{ clause: 'mutating-git', line: flaggedLine, evidence: 'Why names the subject of the change.', verdict: 'context' }];
+    const result = blockEmit(id, `${text}\n${VERDICTS_MARKER}\n${JSON.stringify(verdicts)}\n`);
+    assert.equal(result.exitCode, 0, result.stderr);
+    assert.deepEqual(readSet(id), ['git-subject']);
+    const stored = readStoredBlocks(id);
+    assert.deepEqual(Object.keys(stored), ['git-subject']);
+    const blockText = text.split('\n').slice(0, text.split('\n').indexOf('---') + 1).join('\n');
+    assert.equal(stored['git-subject'].text, blockText);
+    assert.equal(stored['git-subject'].hash, hashBlock(blockText));
+    assert.deepEqual(stored['git-subject'].verdicts, verdicts);
+  } finally {
+    cleanup(id);
+  }
+});
+
+test('block emit: a violation verdict records nothing and the verdict is shown (E4)', () => {
+  const id = spawnSession('rtp-violation');
+  try {
+    const text = block('bad-ask', { 'Implementation Details': '\n- I1: run git commit after the edit.' });
+    const flaggedLine = text.split('\n').findIndex((line) => line.startsWith('- I1')) + 1;
+    const verdicts = [{ clause: 'mutating-git', line: flaggedLine, evidence: 'I1 asks for a commit.', verdict: 'violation' }];
+    const result = blockEmit(id, `${text}\n${VERDICTS_MARKER}\n${JSON.stringify(verdicts)}`);
+    assert.equal(result.exitCode, 1);
+    const json = JSON.parse(result.stdout);
+    assert.equal(json.validation.judgment.violations.length, 1);
+    assert.equal(json.validation.judgment.violations[0].line, flaggedLine);
+    assert.equal(readSet(id), null);
+    assert.equal(readStoredBlocks(id), null);
+  } finally {
+    cleanup(id);
+  }
+});
+
+test('block emit: a later successful emit replaces the stored blocks', () => {
+  const id = spawnSession('rtp-store-replace');
+  try {
+    assert.equal(blockEmit(id, block('first-set')).exitCode, 0);
+    assert.deepEqual(Object.keys(readStoredBlocks(id)), ['first-set']);
+    assert.equal(blockEmit(id, `${block('second-a')}\n${block('second-b')}`).exitCode, 0);
+    assert.deepEqual(Object.keys(readStoredBlocks(id)), ['second-a', 'second-b']);
+    assert.deepEqual(readStoredBlocks(id)['second-a'].verdicts, []);
+  } finally {
+    cleanup(id);
+  }
+});
+
+test('block emit: blocks that cannot be stored are reported with BLOCKS_NOT_STORED, never silently dropped', { skip: typeof process.getuid === 'function' && process.getuid() === 0 }, () => {
+  const os = require('os');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-blocks-'));
+  const env = Object.assign({}, process.env, { TMPDIR: tmp, TEMP: tmp, TMP: tmp });
+  const run = (argv, input) => spawnSync(process.execPath, [SAI_STATE_TOOL, ...argv], { encoding: 'utf8', input: input || '', env });
+  const stateDir = path.join(tmp, 'sai-state');
+  try {
+    const spawned = run(['spawn', '--key', `rtp-unwritable-${process.pid}-${Date.now()}`]);
+    assert.equal(spawned.status, 0, spawned.stderr);
+    const id = JSON.parse(spawned.stdout).id;
+    fs.chmodSync(stateDir, 0o500);
+    const result = run(['emit', id, MACHINE, '--ready-to-propose', '-'], block('unstored-change'));
+    assert.equal(result.status, 0, result.stderr);
+    const json = JSON.parse(result.stdout);
+    assert.ok(json.warnings.includes('BLOCKS_NOT_STORED'));
+    assert.equal(json.validation.ok, true);
+  } finally {
+    try { fs.chmodSync(stateDir, 0o700); } catch { /* best-effort */ }
+    fs.rmSync(tmp, { recursive: true, force: true });
   }
 });

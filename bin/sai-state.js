@@ -97,7 +97,7 @@ function sessionDir() {
 
 const EMIT_STDIN_FORM = "echo '<json>' | node <tool-path> emit <id> <machineId> -";
 const EMIT_PROGRESS_FORM = "echo '<progress-payload-json>' | node <tool-path> emit <id> <machineId> --progress [--with-overview true|false] -";
-const EMIT_BLOCKS_FORM = "node <tool-path> emit <id> explore-slice@1 --ready-to-propose - (Ready to Propose block set on stdin: quoted heredoc in Bash, single-quoted here-string in PowerShell)";
+const EMIT_BLOCKS_FORM = "node <tool-path> emit <id> explore-slice@1 --ready-to-propose - (Ready to Propose block set on stdin, optionally followed by a <<<VERDICTS>>> line and the judgment verdicts as a JSON array: quoted heredoc in Bash, single-quoted here-string in PowerShell)";
 
 // The explore slice machine is the only one that accepts the block emit.
 const READY_TO_PROPOSE_MACHINE = 'explore-slice@1';
@@ -257,6 +257,11 @@ function canonicalizeMergedState(mod, mergedState) {
 // is accepted because callers serialize store operations per session id and
 // the union keeps survivors harmless for monotonic step sets. One file per
 // session, never one per machine.
+// Top-level session-record fields the next persistMachineOutcome write carries
+// with the machine state, so an inventory and its stored blocks land in one
+// session-file write. Set by the block emit around its runEmit call only.
+let pendingRecordExtras = null;
+
 function persistMachineOutcome(id, record, machineId, nextState, eventId, wire) {
   let freshRecord = null;
   try { freshRecord = readSessionRecord(id).record; } catch (err) { freshRecord = null; }
@@ -315,6 +320,7 @@ function persistMachineOutcome(id, record, machineId, nextState, eventId, wire) 
   const merged = Object.assign({}, baseForMeta);
   merged.createdAt = createdAt;
   merged.stateVersion = STATE_VERSION;
+  if (pendingRecordExtras) Object.assign(merged, pendingRecordExtras);
   merged.stateByMachine = {};
   const allKeys = new Set(Object.keys(staleMap).concat(Object.keys(freshMap)));
   for (const key of allKeys) {
@@ -569,20 +575,33 @@ function commandEmitProgress(id, machineIdArg, eventSource, extraArgs, withOverv
 }
 
 // Block emit: validates the Ready to Propose block set read from stdin with the
-// detector's strict profile BEFORE any session, machine, or registry read, then
-// derives `{ recordedList: [...] }` from the extracted change names (display
-// order) and advances the explore slice machine. The whole set is validated as
-// one unit: an invalid verdict records nothing. Output always carries
+// detector's dispatchable profile BEFORE any session, machine, or registry read,
+// then derives `{ recordedList: [...] }` from the extracted change names
+// (display order) and advances the explore slice machine. The stdin may carry
+// the bounded-judgment verdicts after a `<<<VERDICTS>>>` line (a JSON array, see
+// sai/policies/block-hygiene-judgment.md). The whole set is validated as one
+// unit: a set with a structural violation, a flagged line without a `context`
+// verdict, or a `violation` verdict records nothing. Output always carries
 // `validation`; change names never appear on the wire, so the verdict is
 // projected without them. A delivery failure (`EVENT_UNPARSEABLE`) is empty
 // stdin, stdin with no block heading, or a final block cut off before its
 // `---` line; every other violation is an invalid verdict.
 function projectBlockVerdict(verdict) {
+  const judgment = verdict.judgment || { ok: true, pending: [], violations: [], unknown: [], invalid: [] };
   return {
-    ok: verdict.ok,
+    ok: verdict.dispatchable === true,
+    structural_ok: verdict.ok,
     profile: verdict.profile,
-    blocks: verdict.blocks.map((block) => ({ index: block.index, line: block.line, violations: block.violations })),
+    blocks: verdict.blocks.map((block) => ({ index: block.index, line: block.line, violations: block.violations, flagged: block.flagged })),
     violations: verdict.violations,
+    flagged: verdict.flagged,
+    judgment: {
+      ok: judgment.ok,
+      pending: judgment.pending,
+      violations: judgment.violations,
+      unknown: judgment.unknown,
+      invalid: judgment.invalid,
+    },
   };
 }
 
@@ -591,6 +610,58 @@ function blockDeliveryFailed(text, verdict) {
   if (verdict.blocks.length === 0) return true;
   const last = verdict.blocks[verdict.blocks.length - 1];
   return last.violations.some((v) => v.problem === 'MISSING_SEPARATOR');
+}
+
+// Builds, per change name, each recorded block's text, sha256 hash, and the
+// judgment verdicts of its flagged lines: the session file's top-level `blocks`
+// map. It travels in the same session-file write as the inventory, and a later
+// successful block emit replaces the whole map exactly as it replaces the
+// inventory.
+function buildRecordedBlocks(detector, verdict, text) {
+  const texts = detector.extractBlockTexts(text);
+  const cleared = (verdict.judgment && verdict.judgment.cleared) || [];
+  const blocks = {};
+  verdict.blocks.forEach((block, i) => {
+    blocks[block.name] = {
+      text: texts[i],
+      hash: block.hash,
+      verdicts: cleared
+        .filter((entry) => entry.block === block.index)
+        .map((entry) => ({ clause: entry.clause, line: entry.line, evidence: entry.evidence, verdict: entry.verdict })),
+    };
+  });
+  return blocks;
+}
+
+function blocksMatch(stored, expected) {
+  if (!stored || typeof stored !== 'object' || Array.isArray(stored)) return false;
+  const keys = Object.keys(expected);
+  if (Object.keys(stored).length !== keys.length) return false;
+  return keys.every((key) => stored[key] && stored[key].hash === expected[key].hash && stored[key].text === expected[key].text);
+}
+
+// Confirms the stored blocks match the recorded inventory. When they do not,
+// retries the store once and, failing that, removes any earlier emit's map so
+// stale text is never left beside a newer inventory. Returns whether the
+// session file now holds exactly the recorded blocks.
+function ensureRecordedBlocks(id, expected) {
+  try {
+    if (blocksMatch((readSessionRecord(id).record || {}).blocks, expected)) return true;
+    const record = readSessionRecord(id).record;
+    if (record) {
+      record.blocks = expected;
+      writeSessionFile(id, record);
+      return true;
+    }
+  } catch (err) {}
+  try {
+    const record = readSessionRecord(id).record;
+    if (record && record.blocks !== undefined) {
+      delete record.blocks;
+      writeSessionFile(id, record);
+    }
+  } catch (err) {}
+  return false;
 }
 
 function commandEmitReadyToPropose(id, machineIdArg, eventSource, extraArgs) {
@@ -615,7 +686,7 @@ function commandEmitReadyToPropose(id, machineIdArg, eventSource, extraArgs) {
 
   let text = '';
   try { text = readStdinSync(); } catch (err) { text = ''; }
-  const verdict = detector.detect(text, 'strict');
+  const verdict = detector.detect(text, 'dispatchable');
   const validation = projectBlockVerdict(verdict);
 
   if (blockDeliveryFailed(text, verdict)) {
@@ -627,15 +698,26 @@ function commandEmitReadyToPropose(id, machineIdArg, eventSource, extraArgs) {
     return;
   }
 
-  if (!verdict.ok) {
+  if (!verdict.dispatchable) {
     writeResponse({ validation });
     process.exitCode = 1;
     return;
   }
 
   const event = { recordedList: verdict.names.slice() };
-  const outcome = runEmit(id, machineIdArg, () => ({ event }));
-  writeResponse(Object.assign({ validation }, outcome.payload));
+  const expectedBlocks = buildRecordedBlocks(detector, verdict, text);
+  pendingRecordExtras = { blocks: expectedBlocks };
+  let outcome;
+  try {
+    outcome = runEmit(id, machineIdArg, () => ({ event }));
+  } finally {
+    pendingRecordExtras = null;
+  }
+  let payload = outcome.payload;
+  if (outcome.code === 0 && !payload.rejected && !ensureRecordedBlocks(id, expectedBlocks)) {
+    payload = Object.assign({}, payload, { warnings: (payload.warnings || []).concat('BLOCKS_NOT_STORED') });
+  }
+  writeResponse(Object.assign({ validation }, payload));
   process.exitCode = outcome.code;
 }
 

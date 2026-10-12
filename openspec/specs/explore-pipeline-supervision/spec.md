@@ -338,25 +338,6 @@ Direct Build slice inventory (`set` / `active` / `done`) and TODO (`mode` plus `
 - **WHEN** a backfill or archive execute order fails, the no-effect check verifies that it changed nothing, and the scope has an attempt left
 - **THEN** the route corrects the cause through the recovery path and issues a new order to the step's owner
 
-### Requirement: Direct Build - Unattended pre-dispatch compatibility refusal
-
-Before Step 1 of the Direct Build Unattended flow, explore SHALL judge the emitted Ready to Propose block against the step-1 implementer's work scope only. A published specification under `openspec/specs/**` SHALL change only through the change's delta, backfill, and the archive sync that steps 3 through 8 own. Explore SHALL check for planning-artifact creation, mutating git commands, subagent dispatch, or direct edits to published `openspec/specs/**` that the block designates as step-1 implementation work; every other repository artifact, including any other content under `openspec/`, SHALL be step-1 scope and never a violation. When the block evidence clearly triggers a genuine violation, explore SHALL emit a documented refusal naming the violated clause and the block evidence, dispatch nothing, mutate no selection state, and leave the change retryable with Manual available. A block that only mentions published specs in Why, Decisions and Rationale, or Research Leads SHALL pass straight through to Step 1 with no refusal.
-
-#### Scenario: Genuine step-1 violations are refused
-
-- **WHEN** the block evidence clearly designates implementation work that violates the step-1 scope (planning-artifact creation, mutating git, subagent dispatch, or direct edits to published `openspec/specs/**`)
-- **THEN** explore emits a documented refusal naming the violated clause and the block evidence, dispatches nothing, mutates no selection state, and leaves the change retryable.
-
-#### Scenario: Bookkeeping-only blocks pass through without refusal
-
-- **WHEN** the block only mentions or references OpenSpec bookkeeping artifacts in non-Capabilities fields
-- **THEN** explore dispatches to Step 1 without refusal.
-
-#### Scenario: Other OpenSpec content passes through
-
-- **WHEN** the block designates implementation work under `openspec/` outside `openspec/specs/**`, such as `openspec/schemas/**` or `openspec/config.yaml`
-- **THEN** explore dispatches to Step 1 with no refusal
-
 ### Requirement: Explore worker bindings load at their dispatch points
 
 The Direct Build - Unattended route of `/sai-explore` SHALL load the binding for each of its three workers (`sai-direct-build-worker`, `sai-backfill-worker`, `sai-archive-worker`) lazily at that worker's dispatch point in `sai/commands/explore/steps/pipeline-direct-build.md`, not in `sai/commands/explore/command-bootstrap.md`. The Plan - Unattended route SHALL likewise load the `spec-worker` and `design-worker` bindings at its phase-aware dispatch point in `sai/commands/explore/steps/pipeline-plan-unattended.md`, so explore sessions that never dispatch load no worker binding. Each dispatch SHALL occur only after its binding has been fetched and used, so the envelope carries the binding's `Worker contract: Fetch …` + `InvocationEnvelope:` framing and the worker returns closed lifecycle payloads.

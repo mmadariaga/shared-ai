@@ -141,9 +141,9 @@ The shared close SHALL keep the inline-refusal path outside the checkpoint with 
 - **WHEN** the block set is composed
 - **THEN** the protocol's single-source sequence governs the ordered close and exposes the selector picker only after the block emit succeeds and the blocks are printed, and the selector consumes the later picker answer without repeating the close
 
-### Requirement: Block validation failures retry silently and stop without display
+### Requirement: Block validation failures retry within a bounded limit and show only confirmed hygiene violations
 
-When the block emit returns `validation.ok` false, the machine SHALL stay untouched. The close SHALL correct the cited blocks and resend the whole set without showing anything to the user, with at most two retries. When those retries are exhausted, the close SHALL show each violation with its block index, line, and problem, print no block, open no picker, and wait for instructions. A delivery failure (`reason: "EVENT_UNPARSEABLE"` or an emit usage error) SHALL use the stage-machine corrective retry, whose counter of two is separate from the validation counter, and SHALL stop the same way when it is exhausted. Any other emit error or rejection SHALL follow the stage-machine error or acknowledgement path: print the block set, stop the close, and open no picker.
+When the block emit returns `validation.ok` false, the machine SHALL stay untouched. For a structural failure the close SHALL correct the cited blocks and resend the whole set without showing anything to the user, with at most two retries. For pending flagged lines the close SHALL judge them per `sai/policies/block-hygiene-judgment.md` and resend the set with the verdicts. For a confirmed hygiene violation the close SHALL show each violation's clause, line number, and evidence, recompose the set, and resend it within the same retry limit, asking the user only when the correction would change an agreed `E` or `I` item or the scope. When the retries are exhausted, the close SHALL show each violation with its block index, line, and problem, print no block, open no picker, and wait for instructions. A delivery failure (`reason: "EVENT_UNPARSEABLE"` or an emit usage error) SHALL use the stage-machine corrective retry, whose counter of two is separate from the validation counter, and SHALL stop the same way when it is exhausted. Any other emit error or rejection SHALL follow the stage-machine error or acknowledgement path: print the block set, stop the close, and open no picker.
 
 #### Scenario: Invalid set is corrected silently
 
@@ -159,3 +159,8 @@ When the block emit returns `validation.ok` false, the machine SHALL stay untouc
 
 - **WHEN** a block emit returns `reason: "EVENT_UNPARSEABLE"` after a validation retry was already used
 - **THEN** the corrective retry runs with its own counter of two, independent of the validation retries
+
+#### Scenario: Confirmed hygiene violation is shown
+
+- **WHEN** the judgment confirms that a flagged line requests a forbidden action
+- **THEN** nothing is recorded, the clause, line number, and evidence are shown, and the close recomposes and re-emits the set

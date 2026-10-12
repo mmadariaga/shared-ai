@@ -58,21 +58,34 @@ verbs take neither `--json` nor `--cwd`. A missing argument is a usage error
   time.
 - **Block emit**: `sai-state emit <id> explore-slice@1 --ready-to-propose -`
   reads the complete `Ready to Propose` block set as text from stdin instead of
-  a hand-composed event, in the style of the progress emit. It validates the
-  set with the strict profile of `sai/tools/ready-to-propose.js` before any
-  session, machine, or registry read; on a valid verdict it derives
-  `{"recordedList": [...]}` from the extracted `**Change name**` values in
-  display order and advances the machine. The set is validated as a whole: an
-  invalid verdict records no name and leaves the machine untouched. It always
-  returns `received_at` and `validation: {ok, profile, blocks: [{index, line,
-  violations}], violations}` (change names stay off the wire), plus the
-  ordinary emit fields on a valid verdict. An invalid verdict exits 1. Empty
-  stdin, stdin with no block heading, or a final block cut off before its
-  `---` line is a delivery failure instead (`INVALID_EVENT` with
-  `reason: "EVENT_UNPARSEABLE"`, exit 1). On any other machine, or combined with
-  `--progress` or `--with-overview`, the option is a usage error (exit 2). A
-  detector module found in neither location relative to the CLI exits 2
-  naming the tried paths.
+  a hand-composed event, in the style of the progress emit. The stdin may end
+  with a line equal to `<<<VERDICTS>>>` followed by the bounded-judgment
+  verdicts as a JSON array (`@sai/policies/block-hygiene-judgment.md`). It
+  validates the set with the `dispatchable` profile of
+  `sai/tools/ready-to-propose.js` before any session, machine, or registry
+  read; the set is dispatchable when it is structurally valid and every line
+  the lexical pre-filter flagged carries a `context` verdict. On a dispatchable
+  verdict it derives `{"recordedList": [...]}` from the extracted
+  `**Change name**` values in display order, advances the machine, and stores in
+  the session file, per change name, each block's text, its sha256 hash, and
+  the verdicts of its flagged lines, in the same session-file write as the
+  inventory; a later successful block emit replaces the stored blocks together
+  with the inventory. When the stored blocks cannot be confirmed after the emit,
+  the response carries `warnings: ["BLOCKS_NOT_STORED"]`, the inventory stays
+  recorded, and no earlier emit's blocks are left in place. The set is validated as a whole: a
+  structural violation, a flagged line without a verdict, or a `violation`
+  verdict records nothing and leaves the machine untouched. It always
+  returns `received_at` and `validation: {ok, structural_ok, profile, blocks:
+  [{index, line, violations, flagged}], violations, flagged, judgment: {ok,
+  pending, violations, unknown, invalid}}` (change names stay off the wire;
+  `ok` is true only for a dispatchable set), plus the ordinary emit fields on a
+  dispatchable verdict. A non-dispatchable verdict exits 1; `judgment.pending`
+  lists the lines awaiting a verdict. Empty stdin, stdin with no block heading,
+  or a final block cut off before its `---` line is a delivery failure instead
+  (`INVALID_EVENT` with `reason: "EVENT_UNPARSEABLE"`, exit 1). On any other
+  machine, or combined with `--progress` or `--with-overview`, the option is a
+  usage error (exit 2). A detector module found in neither location relative to
+  the CLI exits 2 naming the tried paths.
 - **Reset**: `sai-state reset <id> <machineId>` clears that one machine's state
   and returns `{received_at, reset: <machineId>}`; other machines in the session keep theirs.
   A linear step machine (§ Step machines) also returns
@@ -151,6 +164,8 @@ SAI_BLOCKS
 <block set>
 '@ | node <tool-path> emit <id> explore-slice@1 --ready-to-propose -
 ```
+
+When the hygiene judgment supplies verdicts, they follow the block set inside the same text, after a `<<<VERDICTS>>>` line, as one JSON array (the here-string and heredoc carry the quotes unchanged). The displayed set excludes that line and everything after it.
 
 The PowerShell closing `'@` starts its own line. A re-encoded non-ASCII
 character in the prose does not change the verdict: the labels are English and
