@@ -22,26 +22,93 @@
  *           names unique across the set. Set-level distribution rules (each `E`
  *           once per set, `I` coverage) are out of scope.
  *
+ *   dispatchable
+ *           The one contract every implementation route accepts (Plan -
+ *           Unattended, Direct Build - Unattended, Manual). A superset of
+ *           `strict` that also requires at least one in-scope item under
+ *           `**Implementation Details**` (`- None` is valid only under
+ *           `**Out of scope Implementation Details**`), computes each block's
+ *           sha256 hash, and runs a lexical pre-filter that reports the lines
+ *           a bounded judgment must clear against the four block-hygiene
+ *           clauses (HYGIENE_CLAUSES, the single source of the clause ids).
+ *           The pre-filter cannot tell requested work from subject matter, so
+ *           a flagged line is not a violation: it needs one verdict
+ *           `{clause, line, evidence, verdict: violation|context}` (the
+ *           judgment contract is sai/policies/block-hygiene-judgment.md).
+ *           Verdicts are supplied on stdin after a line equal to
+ *           VERDICTS_MARKER, as a JSON array. A set is dispatchable when it is
+ *           structurally valid and every flagged line carries a `context`
+ *           verdict.
+ *
  * Every block that passes `strict` also passes `loose`: each strict label,
- * once `**` is stripped, contains its loose literal.
+ * once `**` is stripped, contains its loose literal. Every dispatchable block
+ * passes `strict`.
  *
  * Labels are always English, so the prose language of a block is irrelevant.
  *
  * Usage:
- *   node sai/tools/ready-to-propose.js check --profile loose|strict [--json] < text
+ *   node sai/tools/ready-to-propose.js check --profile loose|strict|dispatchable [--json] < text
  *
  * Input is read from stdin. The verdict is always one JSON object on stdout
  * (`--json` is accepted and changes nothing):
  *   { ok, profile, names, blocks: [{ index, line, name, violations }], violations }
- * `names` lists the extracted change names in block order (strict only);
- * `violations` holds set-level findings (no block, duplicate names, quorum).
+ * `names` lists the extracted change names in block order (strict and
+ * dispatchable); `violations` holds set-level findings (no block, duplicate
+ * names, quorum). The dispatchable verdict adds, per block, `hash` and
+ * `flagged`, and at set level `flagged`, `judgment`
+ * `{ ok, pending, violations, unknown, invalid, cleared }`, and `dispatchable`.
+ * `ok` is the deterministic structural result; `dispatchable` also needs the
+ * judgment to be clean.
  *
- * Exit codes: 0 = valid; 1 = violations found; 2 = usage or I/O error.
+ * Exit codes: 0 = valid (dispatchable: `dispatchable` is true); 1 = violations
+ * found or judgment pending; 2 = usage or I/O error.
  */
 
+const crypto = require('crypto');
 const fs = require('fs');
 
-const PROFILES = ['loose', 'strict'];
+const PROFILES = ['loose', 'strict', 'dispatchable'];
+
+/** The line that separates the block set from the judgment verdicts (JSON array). */
+const VERDICTS_MARKER = '<<<VERDICTS>>>';
+
+/**
+ * The four block-hygiene clauses of the dispatchable contract: what a block
+ * must not request as implementation work. The ids are the single source;
+ * sai/policies/block-hygiene-judgment.md lists the same ids and a test asserts
+ * the two agree. Each pattern is a lexical pre-filter only: a match flags a
+ * line for judgment and never rejects it.
+ */
+const HYGIENE_CLAUSES = [
+  {
+    id: 'planning-artifact',
+    summary: 'creating the planning artifacts design.md, tasks.md, or implementation.md',
+    patterns: [/(?<![\w-])(?:design|tasks|implementation)\.md\b/i],
+  },
+  {
+    id: 'mutating-git',
+    summary: 'running a mutating git command',
+    patterns: [
+      /\bgit\s+(?:add|commit|push|pull|branch|tag|stash|reset|rebase|merge|checkout|switch|cherry-pick|revert|clean|rm|mv|restore|apply|am)\b/i,
+    ],
+  },
+  {
+    id: 'subagent-dispatch',
+    summary: 'dispatching subagents',
+    patterns: [
+      /\bsub-?agents?\b/i,
+      /\bdispatch(?:es|ed|ing)?\s+(?:(?:a|an|the)\s+)?(?:[\w-]+\s+)?(?:worker|agent)s?\b/i,
+      /\bspawn(?:s|ed|ing)?\s+(?:(?:a|an|the)\s+)?(?:[\w-]+\s+)?agents?\b/i,
+    ],
+  },
+  {
+    id: 'published-spec-edit',
+    summary: 'editing published specs under openspec/specs/** as implementation work',
+    patterns: [/\bopenspec\/specs\b/i],
+  },
+];
+
+const VERDICT_VALUES = ['violation', 'context'];
 
 /** The nine plain literals of backfill's quorum, in their documented order. */
 const LOOSE_LITERALS = [
@@ -276,6 +343,198 @@ function checkStrict(text) {
   return { ok, profile: 'strict', names, blocks, violations };
 }
 
+/** sha256 hex of a block's text (newlines normalized to LF). */
+function hashBlock(blockText) {
+  return crypto.createHash('sha256').update(normalize(blockText), 'utf8').digest('hex');
+}
+
+/**
+ * Split stdin into the block set text and the optional verdicts JSON that
+ * follows a line equal to VERDICTS_MARKER.
+ */
+function splitVerdicts(text) {
+  const lines = normalize(text).split('\n');
+  const at = lines.findIndex((line) => line.trim() === VERDICTS_MARKER);
+  if (at === -1) {
+    return { blocksText: lines.join('\n'), verdictsText: null };
+  }
+  return {
+    blocksText: lines.slice(0, at).join('\n'),
+    verdictsText: lines.slice(at + 1).join('\n'),
+  };
+}
+
+/** The text of each block, in block order: heading line through its `---` line. */
+function extractBlockTexts(text) {
+  const lines = normalize(splitVerdicts(text).blocksText).split('\n');
+  return splitBlocks(lines).map((range) => {
+    const last = range.end === -1 ? lines.length - 1 : range.end;
+    return lines.slice(range.start, last + 1).join('\n');
+  });
+}
+
+/** The lexical pre-filter: every (line, clause) pair the patterns match in one block body. */
+function flagBlock(lines, range, index) {
+  const bodyEnd = range.end === -1 ? lines.length : range.end;
+  const flagged = [];
+  for (let i = range.start + 1; i < bodyEnd; i++) {
+    for (const clause of HYGIENE_CLAUSES) {
+      if (clause.patterns.some((pattern) => pattern.test(lines[i]))) {
+        flagged.push({ block: index, line: i + 1, clause: clause.id });
+      }
+    }
+  }
+  return flagged;
+}
+
+/** Count the in-scope items of a block's `**Implementation Details**` section. */
+function implementationItems(lines, range) {
+  const bodyEnd = range.end === -1 ? lines.length : range.end;
+  let labelIndex = -1;
+  let count = 0;
+  for (let i = range.start + 1; i < bodyEnd; i++) {
+    const match = LABEL_LINE.exec(lines[i]);
+    if (match && STRICT_FIELDS.some((field) => field.label === match[1])) {
+      if (labelIndex !== -1) {
+        break;
+      }
+      if (match[1] === 'Implementation Details') {
+        labelIndex = i;
+      }
+      continue;
+    }
+    if (labelIndex !== -1) {
+      const item = /^[-*]\s+(.*)$/.exec(lines[i].trim());
+      if (item && item[1].trim() !== 'None') {
+        count++;
+      }
+    }
+  }
+  return { labelIndex, count };
+}
+
+/**
+ * Resolve the judgment verdicts against the flagged lines. A flagged line is
+ * cleared only by a `context` verdict that carries evidence; a `violation`
+ * verdict, a missing verdict, a verdict for a line that is not flagged, and a
+ * malformed verdict each keep the set from being dispatchable.
+ */
+function resolveJudgment(flagged, verdicts) {
+  const invalid = [];
+  const entries = [];
+  (Array.isArray(verdicts) ? verdicts : []).forEach((raw, i) => {
+    const ok = raw && typeof raw === 'object'
+      && Number.isInteger(raw.line) && raw.line > 0
+      && typeof raw.clause === 'string'
+      && HYGIENE_CLAUSES.some((clause) => clause.id === raw.clause)
+      && VERDICT_VALUES.includes(raw.verdict)
+      && typeof raw.evidence === 'string' && raw.evidence.trim() !== '';
+    if (ok) {
+      entries.push({ line: raw.line, clause: raw.clause, evidence: raw.evidence, verdict: raw.verdict });
+    } else {
+      invalid.push({ position: i + 1, detail: 'verdict needs integer line, known clause, verdict violation|context, and non-empty evidence' });
+    }
+  });
+
+  const flaggedKeys = new Set(flagged.map((f) => `${f.line}:${f.clause}`));
+  const byKey = new Map();
+  const unknown = [];
+  for (const entry of entries) {
+    const key = `${entry.line}:${entry.clause}`;
+    if (!flaggedKeys.has(key)) {
+      unknown.push({ line: entry.line, clause: entry.clause });
+      continue;
+    }
+    if (!byKey.has(key)) {
+      byKey.set(key, []);
+    }
+    byKey.get(key).push(entry);
+  }
+
+  const pending = [];
+  const violations = [];
+  const cleared = [];
+  for (const f of flagged) {
+    const found = byKey.get(`${f.line}:${f.clause}`);
+    if (!found) {
+      pending.push({ block: f.block, line: f.line, clause: f.clause });
+      continue;
+    }
+    const bad = found.find((entry) => entry.verdict === 'violation');
+    if (bad) {
+      violations.push({ block: f.block, line: f.line, clause: f.clause, evidence: bad.evidence });
+    } else {
+      cleared.push({ block: f.block, line: f.line, clause: f.clause, evidence: found[0].evidence, verdict: 'context' });
+    }
+  }
+
+  return {
+    ok: invalid.length === 0 && unknown.length === 0 && pending.length === 0 && violations.length === 0,
+    pending,
+    violations,
+    unknown,
+    invalid,
+    cleared,
+  };
+}
+
+/**
+ * Dispatchable profile: `strict` plus the in-scope implementation item, block
+ * hashes, and the lexical pre-filter; the optional verdicts after
+ * VERDICTS_MARKER are resolved against the flagged lines.
+ */
+function checkDispatchable(text) {
+  const { blocksText, verdictsText } = splitVerdicts(text);
+  const lines = normalize(blocksText).split('\n');
+  const ranges = splitBlocks(lines);
+  const strict = checkStrict(blocksText);
+
+  const blocks = strict.blocks.map((block, i) => {
+    const range = ranges[i];
+    const last = range.end === -1 ? lines.length - 1 : range.end;
+    const violations = block.violations.slice();
+    const { labelIndex, count } = implementationItems(lines, range);
+    if (labelIndex !== -1 && count === 0) {
+      violations.push(violation(labelIndex + 1, 'NO_IMPLEMENTATION_ITEM',
+        '"**Implementation Details**" must carry at least one in-scope item; "- None" is valid only under "**Out of scope Implementation Details**"'));
+    }
+    return Object.assign({}, block, {
+      violations,
+      hash: hashBlock(lines.slice(range.start, last + 1).join('\n')),
+      flagged: flagBlock(lines, range, i),
+    });
+  });
+  const flagged = blocks.flatMap((block) => block.flagged);
+
+  const violations = strict.violations.slice();
+  let verdicts = [];
+  if (verdictsText !== null && verdictsText.trim() !== '') {
+    try {
+      verdicts = JSON.parse(verdictsText);
+      if (!Array.isArray(verdicts)) {
+        throw new Error('verdicts must be a JSON array');
+      }
+    } catch (err) {
+      verdicts = [];
+      violations.push(violation(1, 'VERDICTS_UNPARSEABLE',
+        `the verdicts after ${VERDICTS_MARKER} must be a JSON array: ${err.message}`));
+    }
+  }
+  const judgment = resolveJudgment(flagged, verdicts);
+
+  const ok = violations.length === 0 && blocks.every((block) => block.violations.length === 0);
+  return {
+    ok,
+    profile: 'dispatchable',
+    names: strict.names,
+    blocks,
+    violations,
+    flagged,
+    judgment,
+    dispatchable: ok && judgment.ok,
+  };
+}
+
 /**
  * Run the detector with the named profile.
  */
@@ -286,15 +545,20 @@ function detect(text, profile) {
   if (profile === 'strict') {
     return checkStrict(text);
   }
+  if (profile === 'dispatchable') {
+    return checkDispatchable(text);
+  }
   throw new Error(`unknown profile: ${profile}`);
 }
 
 function usage() {
   return [
-    'Usage: node sai/tools/ready-to-propose.js check --profile loose|strict [--json] < text',
+    'Usage: node sai/tools/ready-to-propose.js check --profile loose|strict|dispatchable [--json] < text',
     '',
     '  check               Validate the Ready to Propose text read from stdin',
-    '  --profile <name>    loose (backfill quorum) or strict (full block format)',
+    '  --profile <name>    loose (backfill quorum), strict (full block format), or',
+    `                      dispatchable (strict + implementation item + hygiene pre-filter;`,
+    `                      verdicts JSON after a ${VERDICTS_MARKER} line)`,
     '  --json              Accepted for symmetry; the verdict is always JSON',
   ].join('\n');
 }
@@ -353,15 +617,23 @@ function main(argv, readInput = () => fs.readFileSync(0, 'utf8')) {
 
   const verdict = detect(input, opts.profile);
   process.stdout.write(`${JSON.stringify(verdict, null, 2)}\n`);
-  return verdict.ok ? 0 : 1;
+  const accepted = opts.profile === 'dispatchable' ? verdict.dispatchable : verdict.ok;
+  return accepted ? 0 : 1;
 }
 
 module.exports = {
   LOOSE_LITERALS,
   STRICT_FIELDS,
+  HYGIENE_CLAUSES,
+  VERDICTS_MARKER,
   PROFILES,
   checkLoose,
   checkStrict,
+  checkDispatchable,
+  resolveJudgment,
+  hashBlock,
+  splitVerdicts,
+  extractBlockTexts,
   detect,
   main,
 };

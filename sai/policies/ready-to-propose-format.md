@@ -1,4 +1,4 @@
-<!-- Format validator: node sai/tools/ready-to-propose.js check --profile strict < text (strict profile; also via node sai/tools/lint.js ready-to-propose <file>) -->
+<!-- Format validator: node sai/tools/ready-to-propose.js check --profile dispatchable < text (dispatchable profile; also via node sai/tools/lint.js ready-to-propose <file>) -->
 
 # Ready to Propose Block Format
 
@@ -33,7 +33,7 @@ The block is structured as follows:
 **Edge Cases**:
 - <agreed `E1`…`En` behavior statement, or None>
 **Implementation Details**:
-- <in-scope `I1`…`In` statement in order, or None>
+- <in-scope `I1`…`In` statement in order; at least one>
 **Out of scope Implementation Details**:
 - <out-of-scope `I1`…`In` statement in order, or None>
 **Request Additional Notes**:
@@ -54,7 +54,13 @@ The five sections between `**Capabilities in scope**` and `**Key constraints**` 
 
 `**Out of scope Implementation Details**` is also mandatory: every block carries it immediately after `**Implementation Details**`, as exactly `- None` when no item is out of scope.
 
+`**Implementation Details**` is the exception to the `- None` rule: it carries at least one in-scope item, in every block and in every slice of a sliced set. `- None` is valid only under `**Out of scope Implementation Details**`.
+
 Sections follow the block order above; `**Overview language**` is the last line before the `---` separator.
+
+## Dispatchable contract
+
+One contract makes a block valid for every route that consumes it — Plan - Unattended, Direct Build - Unattended, and Manual — so choosing a route never fails on block shape. A block is dispatchable when it passes the `dispatchable` profile of `sai/tools/ready-to-propose.js` (this format, plus at least one in-scope `**Implementation Details**` item) and each line the tool's lexical pre-filter flags carries a `context` verdict from the bounded judgment in `@sai/policies/block-hygiene-judgment.md`. That policy owns the four block-hygiene clauses: a block never requests planning-artifact creation, a mutating git command, subagent dispatch, or direct edits to `openspec/specs/**` as implementation work. The tool computes each block's sha256 hash and is the single source of the clause ids.
 
 `**Request Additional Notes**` is optional and sits outside the mandatory sections: when present it follows `**Out of scope Implementation Details**` and immediately precedes `**Overview language**`; when it has no content it is omitted entirely — no label, no `- None`.
 
@@ -72,8 +78,8 @@ Sections follow the block order above; `**Overview language**` is the last line 
 - **Key constraints**: constraints and non-goals of the change's own behavior and scope
 - **Terms**: agreed terms fixed before edge cases, each as `term: definition`; emits exactly `- None` when no term was agreed; conversation-only agreement, never a file write
 - **Edge Cases**: agreed `E1`…`En` behavior statements in their established order, or exactly one `- None` bullet when the agreed list is empty
-- **Implementation Details**: the in-scope agreed `I1`…`In` statements — the items this block's change needs — in their established global order with identifiers and wording preserved, or exactly one `- None` bullet when no agreed item is in scope. `wording preserved` means identifiers and order, not source language, and does not block translation under the crystallization language gate. In a non-sliced block every agreed item is in scope.
-- **Out of scope Implementation Details**: every other agreed `I1`…`In` statement — items owned by an earlier or a later slice — under the same field rules (global order, identifiers, and wording preserved), or exactly one `- None` bullet when no item is out of scope (always in a non-sliced block, and whenever the agreed list is empty). Within one block each identifier appears exactly once, in exactly one of the two sections, and together the two sections cover the full agreed list. This section is non-normative context for the receiving change: no requirement, scenario, intent item, or implementation obligation derives from it.
+- **Implementation Details**: the in-scope agreed `I1`…`In` statements — the items this block's change needs — in their established global order with identifiers and wording preserved. At least one item is required: every change implements something, so the block never carries `- None` here, and every slice of a sliced set owns at least one item. `wording preserved` means identifiers and order, not source language, and does not block translation under the crystallization language gate. In a non-sliced block every agreed item is in scope.
+- **Out of scope Implementation Details**: every other agreed `I1`…`In` statement — items owned by an earlier or a later slice — under the same field rules (global order, identifiers, and wording preserved), or exactly one `- None` bullet when no item is out of scope (always in a non-sliced block). Within one block each identifier appears exactly once, in exactly one of the two sections, and together the two sections cover the full agreed list. This section is non-normative context for the receiving change: no requirement, scenario, intent item, or implementation obligation derives from it.
 - **Request Additional Notes**: optional, free-form, non-normative Markdown (paragraphs or bullets) carrying discussed, agreed context that could influence implementation and fits no other field. Examples of what it holds, not an exhaustive list:
   - future behavior the conversation agreed on but excluded from this change;
   - related follow-up work, such as PBIs or tickets;

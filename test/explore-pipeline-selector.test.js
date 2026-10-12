@@ -54,7 +54,7 @@ function supervisionContract() {
 
 test('Direct Build retains execution context and accepts steps only after checks', () => {
   const route = spec('sai/commands/explore/steps/pipeline-direct-build.md');
-  const retained = route.slice(route.indexOf('**Retained execution state**'), route.indexOf('**Pre-dispatch compatibility refusal**'));
+  const retained = route.slice(route.indexOf('**Retained execution state**'), route.indexOf('**Dispatchable blocks only**'));
   for (const field of ['pending_step', 'base_sha', 'guard_base', 'slice_snapshot', 'order_snapshot',
     'fix_rounds', 'gate_rounds', 'diagnosis_rounds.direct_build', 'direct_build_commit_authorized',
     'validated_execution_order', 'execution_state']) assert.ok(retained.includes(field), field);

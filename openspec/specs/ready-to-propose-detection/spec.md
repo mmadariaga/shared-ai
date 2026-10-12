@@ -5,18 +5,6 @@ TBD - created by archiving change ready-to-propose-detector. Update Purpose afte
 
 ## Requirements
 
-### Requirement: Deterministic stdin detector with loose and strict profiles
-
-The repository SHALL provide `sai/tools/ready-to-propose.js` with the sub-command `check --profile loose|strict`. It SHALL read the text to check from stdin, SHALL accept one or more blocks, and SHALL always print exactly one JSON verdict carrying `ok`, `profile`, `names`, `blocks` (each with `index`, `line`, `name`, and `violations`), and set-level `violations`. It MUST exit 0 when the text is valid for the profile, 1 when violations are found, and 2 on a usage or I/O error. `--json` SHALL be accepted and change nothing, and the tool SHALL take no `--cwd`.
-
-#### Scenario: Valid text on stdin yields a JSON verdict and exit 0
-- **WHEN** a canonical block is piped to `check --profile strict`
-- **THEN** the tool prints one JSON verdict with `"ok": true` and the extracted change name, and exits 0
-
-#### Scenario: Usage errors exit 2
-- **WHEN** the tool runs without the `check` sub-command, without `--profile`, or with an unknown profile or flag
-- **THEN** it writes a usage message to stderr and exits 2
-
 ### Requirement: Loose profile implements backfill's nine-literal quorum
 
 The `loose` profile SHALL strip every `**` and then require each of the nine plain literals `Change name`, `What`, `Why`, `Capabilities in scope`, `Alternatives Considered`, `Trade-offs Accepted`, `Key constraints`, `Edge Cases`, and `Implementation Details` as a case-sensitive substring with its exact spacing, anywhere and in any order. It MUST NOT require the `## Ready to Propose` heading, a position, or content, and it MUST NOT require or count `Request Additional Notes`. Each missing literal SHALL be reported as a named violation.
@@ -68,3 +56,19 @@ Every text that passes the `strict` profile SHALL also pass the `loose` profile.
 #### Scenario: The detector is registered and projected
 - **WHEN** `AGENTS.md`, `sai/policies/tool-resolution.md`, and `sai/install-manifest.json` are read
 - **THEN** the registry row and the invocation shape name `ready-to-propose.js`, and the manifest carries no detector-specific entry
+
+### Requirement: Deterministic stdin detector with loose, strict, and dispatchable profiles
+
+The repository SHALL provide `sai/tools/ready-to-propose.js` with the sub-command `check --profile loose|strict|dispatchable`. It SHALL read the text to check from stdin, SHALL accept one or more blocks, and SHALL always print exactly one JSON verdict carrying `ok`, `profile`, `names`, `blocks` (each with `index`, `line`, `name`, and `violations`), and set-level `violations`; the `dispatchable` verdict SHALL additionally carry per-block `hash` and `flagged` and set-level `flagged`, `judgment`, and `dispatchable`. For `loose` and `strict` it MUST exit 0 when the text is valid for the profile and 1 when violations are found; for `dispatchable` it MUST exit 0 only when `dispatchable` is true and 1 otherwise; it MUST exit 2 on a usage or I/O error. `--json` SHALL be accepted and change nothing, and the tool SHALL take no `--cwd`.
+
+#### Scenario: Valid text on stdin yields a JSON verdict and exit 0
+- **WHEN** a canonical block is piped to `check --profile strict`
+- **THEN** the tool prints one JSON verdict with `"ok": true` and the extracted change name, and exits 0
+
+#### Scenario: Usage errors exit 2
+- **WHEN** the tool runs without the `check` sub-command, without `--profile`, or with an unknown profile or flag
+- **THEN** it writes a usage message to stderr and exits 2
+
+#### Scenario: Dispatchable exit follows dispatchability
+- **WHEN** a structurally valid block with an unjudged flagged line is piped to `check --profile dispatchable`
+- **THEN** the verdict carries `"ok": true` and `"dispatchable": false`, and the tool exits 1
