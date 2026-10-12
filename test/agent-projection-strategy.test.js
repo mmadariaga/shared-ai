@@ -12,7 +12,11 @@ const { STRATEGIES, validateManifest, loadInstallManifest, expandInstallManifest
 const WORKER_NAMES = [
   'sai-1-spec-proposal-worker',
   'sai-2-design-worker',
-  'sai-3-implementation-worker',
+  'sai-3-ui-worker',
+  'sai-3-frontend-worker',
+  'sai-3-backend-worker',
+  'sai-3-infra-worker',
+  'sai-3-other-worker',
   'sai-5-review-worker',
   'sai-6-security-worker',
   'sai-7-performance-worker',
@@ -111,7 +115,7 @@ test('tunable-seed routes to the dedicated installer', () => {
   }
 });
 
-test('the manifest declares 30 matrix tunable-seed managed agent projections', () => {
+test('the manifest declares 38 matrix tunable-seed managed agent projections', () => {
   const repoRoot = path.join(__dirname, '..');
   const manifest = loadInstallManifest(repoRoot);
   const destinationRoot = agentDestinationRoots(path.join(os.tmpdir(), 'sai-agent-projection-18'));
@@ -121,7 +125,7 @@ test('the manifest declares 30 matrix tunable-seed managed agent projections', (
       .filter(projection => projection.destinationPath.startsWith(destinationRoot.agents));
     const agentProjections = allAgents
       .filter(projection => ALL_WORKER_NAMES.includes(path.basename(projection.destinationPath, '.md')));
-    assert.equal(agentProjections.length, 15,
+    assert.equal(agentProjections.length, 19,
       `the manifest should declare exactly 15 matrix agent projections for ${harness}`);
     assert.ok(agentProjections.every(projection => projection.strategy === 'tunable-seed'),
       `every ${harness} matrix agent projection should use the tunable-seed strategy`);
@@ -130,13 +134,13 @@ test('the manifest declares 30 matrix tunable-seed managed agent projections', (
     assert.deepEqual(
       agentProjections.map(projection => path.basename(projection.destinationPath, '.md')).sort(),
       [...ALL_WORKER_NAMES].sort(),
-      `${harness} matrix agent projections should cover exactly the fifteen worker identities`);
+      `${harness} matrix agent projections should cover exactly the nineteen worker identities`);
     assert.ok(allAgents.every(projection => projection.strategy === 'tunable-seed'),
       `every ${harness} agent projection, matrix and support alike, should use the tunable-seed strategy`);
     allAgentProjections.push(...agentProjections);
   }
-  assert.equal(allAgentProjections.length, 30,
-    'the manifest should declare 30 matrix managed agent projections across both harnesses');
+  assert.equal(allAgentProjections.length, 38,
+    'the manifest should declare 38 matrix managed agent projections across both harnesses');
 });
 
 test('the manifest declares exactly 36 tunable-seed agent projections, exactly 18 targeting Claude', () => {
@@ -191,13 +195,13 @@ test('no managed agent projection declares owned-copy', () => {
     .filter(projection => projection.destination && projection.destination.class === 'agents');
   const matrixAgentRules = agentRules.filter(projection => projection.matrix);
   assert.equal(matrixAgentRules.length, 30,
-    'the manifest should declare 30 matrix agent-class projections (fifteen per harness)');
+    'the manifest should declare 38 matrix agent-class projections (nineteen per harness)');
   assert.equal(
     matrixAgentRules.filter(projection => projection.harnesses.includes('claude')).length, 15,
-    'claude should declare exactly fifteen matrix agent projections');
+    'claude should declare exactly nineteen matrix agent projections');
   assert.equal(
     matrixAgentRules.filter(projection => projection.harnesses.includes('opencode')).length, 15,
-    'opencode should declare exactly fifteen matrix agent projections');
+    'opencode should declare exactly nineteen matrix agent projections');
   for (const name of ['explore', 'executor', 'budget']) {
     assert.ok(agentRules.some(projection => projection.destination.path.endsWith(`${name}.md`)),
       `opencode should retain its regular ${name} support agent projection`);

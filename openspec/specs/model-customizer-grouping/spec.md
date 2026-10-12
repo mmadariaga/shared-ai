@@ -26,29 +26,34 @@ The All scope SHALL order targets as alphabetical agents, then a phased middle b
 
 ### Requirement: Semantic worker pairing with orphan handling
 
-The pairing SHALL place sai-4-apply with both sai-4-red-worker and sai-4-green-worker in RED-then-GREEN order, SHALL place sai-5-review with sai-5-review-worker then sai-review-fix-worker in that order, SHALL pair every other mapped command with its single worker, and leave unmapped commands alone in phase position. The pairing SHALL attach sai-direct-build-worker directly behind sai-explore as a single occurrence and SHALL leave no duplicate in the orphan group. Commands sai-build and sai-review SHALL stay childless and open the build and review phases respectively. The pairing SHALL list remaining orphan workers alphabetically trailing the close phase with sai-merge-worker last, excluding sai-review-fix-worker from the orphan group; sai-commit-worker stays separated from the commit utility row by the phase/utilities blank separator.
+The customizer SHALL pair sai-3-implement with ui, frontend, backend, infra, and other workers in registration order, retaining independent selection and model configuration. It SHALL pair sai-4-apply with RED then GREEN, sai-5-review with review then review-fix, and other mapped commands with their workers. Direct-build SHALL attach once behind sai-explore. sai-build and sai-review SHALL remain childless phase openers. Remaining orphan workers SHALL be alphabetical with sai-merge-worker last, excluding already attached workers. The commit worker SHALL remain separated from the commit utility by the phase/utilities blank.
 
 #### Scenario: All checklist contains boundary cardinalities
 
-- **WHEN** the All list includes a two-worker command, lone commands, lone workers, and the split commit pair
-- **THEN** apply SHALL show both workers in RED-then-GREEN order, direct-build SHALL attach once with no orphan duplicate, build and review SHALL stay childless, and remaining orphans SHALL stay alphabetical with sai-merge-worker last
+- **WHEN** All contains multi-worker commands, lone commands/workers, and the split commit pair
+- **THEN** sai-3 shows five registered planners, apply shows RED then GREEN, direct-build appears once, build/review remain childless, and remaining orphan ordering is preserved.
 
 #### Scenario: Direct-build worker attaches to explore
 
-- **WHEN** the All list includes sai-explore and its worker
-- **THEN** the system SHALL show sai-direct-build-worker immediately behind sai-explore once and SHALL show no duplicate in the orphan group
+- **WHEN** All contains sai-explore and its worker
+- **THEN** sai-direct-build-worker follows sai-explore once with no orphan duplicate.
 
 #### Scenario: Apply keeps RED-then-GREEN and orphans stay alphabetical with merge last
 
-- **WHEN** the All list includes the two-worker apply command and lone workers
-- **THEN** the system SHALL show both apply workers in RED-then-GREEN order and SHALL list orphan workers alphabetically with sai-merge-worker last
+- **WHEN** All contains apply workers and lone workers
+- **THEN** RED precedes GREEN and orphan workers remain alphabetical with merge last.
 
 #### Scenario: Review-fix follows review worker in All
 
-- **WHEN** the All list includes both sai-5-review-worker and sai-review-fix-worker
-- **THEN** the system SHALL show the fix worker immediately after the review worker and before sai-6-security
+- **WHEN** All contains both review workers
+- **THEN** review-fix immediately follows the review worker before sai-6-security.
 
 #### Scenario: Either review worker absent shows without gaps
 
-- **WHEN** the All list includes only one of sai-5-review-worker and sai-review-fix-worker
-- **THEN** the system SHALL show only the present worker with no empty row and no duplicate row
+- **WHEN** only one review worker is present
+- **THEN** only that worker is shown without empty or duplicate rows.
+
+#### Scenario: Category workers are independently configurable
+
+- **WHEN** Workers, All, presets, reset, or project-local configuration enumerates sai-3 workers
+- **THEN** all five category workers are visible independently and use the existing per-harness customization mechanisms.

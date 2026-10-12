@@ -43,7 +43,11 @@
     "model": "opencode-go/muse-spark-1.3-contributor",
     "variant": "xhigh"
   },
-  "worker:sai-3-implementation-worker": {
+  "worker:sai-3-ui-worker": { "model": "opencode-go/deepseek-v4.1-flash", "variant": "max" },
+  "worker:sai-3-frontend-worker": { "model": "opencode-go/deepseek-v4.1-flash", "variant": "max" },
+  "worker:sai-3-backend-worker": { "model": "opencode-go/deepseek-v4.1-flash", "variant": "max" },
+  "worker:sai-3-infra-worker": { "model": "opencode-go/deepseek-v4.1-flash", "variant": "max" },
+  "worker:sai-3-other-worker": {
     "model": "opencode-go/deepseek-v4.1-flash",
     "variant": "max"
   },

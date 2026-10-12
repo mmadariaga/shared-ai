@@ -4,7 +4,7 @@ Active step: collapse-implemented-steps. This step runs only on a re-run, when `
 
 ### Simplify existing implementation.md and interfaces.md
 
-Delegate the read and rewrite to one `budget-subagent` and act only on its report. Dispatch it with this prompt (fill in `{change-name}`):
+The coordinator performs this once against candidate copies of the existing plan and interfaces, retaining the originals until successful final verification. The following recipe operates on those copies, not the durable paths; stage interface pruning until publication succeeds:
 
 > 1. Read `openspec/changes/{change-name}/implementation.md`.
 > 2. For each `#### Step N:` section, check whether every checkbox in that section is `[x]`.
@@ -13,4 +13,4 @@ Delegate the read and rewrite to one `budget-subagent` and act only on its repor
 > 5. **Prune interfaces.md if it exists:** For each collapsed `#### Step N:` (identified by integer key N from step 3), find the matching `## Step N:` section in `openspec/changes/{change-name}/interfaces.md`. Replace that section with just the heading line followed by `*(already applied)*`. The pruning criterion (all checkboxes checked in implementation.md) is evaluated once and applied to both files by the integer key N.
 > 6. Report: the step headings collapsed, the step headings left as-is, and the step numbers pruned from interfaces.md (if any).
 
-Wait for the subagent's report before reporting this step.
+Complete and verify the candidate-copy changes before marking this common step complete.

@@ -35,7 +35,7 @@ function matrixAgent(harness, phase) {
 const MANAGED_WORKER_NAMES = [
   'sai-1-spec-proposal-worker',
   'sai-2-design-worker',
-  'sai-3-implementation-worker',
+  ...['ui', 'frontend', 'backend', 'infra', 'other'].map(agent => `sai-3-${agent}-worker`),
   'sai-5-review-worker',
   'sai-6-security-worker',
   'sai-7-performance-worker',
@@ -45,7 +45,7 @@ const MANAGED_WORKER_NAMES = [
 const WORKER_CONTRACT_DIRS = {
   'sai-1-spec-proposal-worker': 'spec',
   'sai-2-design-worker': 'design',
-  'sai-3-implementation-worker': 'implement',
+  ...Object.fromEntries(['ui', 'frontend', 'backend', 'infra', 'other'].map(agent => [`sai-3-${agent}-worker`, 'implement'])),
   'sai-5-review-worker': 'review',
   'sai-6-security-worker': 'security',
   'sai-7-performance-worker': 'performance',
@@ -85,7 +85,7 @@ function projectionSources(harness) {
 
 test('canonical manifest keeps implementation projections interface returns the required projection record', () => {
   const projection = projectionSources('claude').find(({ source }) =>
-    source === '.tmp/collapse-sai-worker-matrix/matrix-sources/claude/sai-3-implementation-worker.md');
+    source === '.tmp/collapse-sai-worker-matrix/matrix-sources/claude/sai-3-ui-worker.md');
   assert.ok(projection, 'Claude worker projection should exist');
   for (const field of REQUIRED_PROJECTION_FIELDS) {
     assert.ok(projection[field], `${field} should be populated`);
@@ -104,14 +104,13 @@ test('Step 3 manifest projects the shared lifecycle and one active harness bindi
       'sai/orchestration/command-runner.md',
       'sai/orchestration/worker-core.md',
       'sai/commands/implement/worker.md',
-      '.tmp/collapse-sai-worker-matrix/matrix-sources/claude/implementation-worker.md',
-      '.tmp/collapse-sai-worker-matrix/matrix-sources/claude/sai-3-implementation-worker.md',
+      ...['ui', 'frontend', 'backend', 'infra', 'other'].flatMap(agent => [`.tmp/collapse-sai-worker-matrix/matrix-sources/claude/implementation-${agent}-worker.md`, `.tmp/collapse-sai-worker-matrix/matrix-sources/claude/sai-3-${agent}-worker.md`]),
     ],
     opencode: [
       'sai/orchestration/command-runner.md',
       'sai/orchestration/worker-core.md',
       'sai/commands/implement/worker.md',
-      '.tmp/collapse-sai-worker-matrix/matrix-sources/opencode/implementation-worker.md',
+      ...['ui', 'frontend', 'backend', 'infra', 'other'].map(agent => `.tmp/collapse-sai-worker-matrix/matrix-sources/opencode/implementation-${agent}-worker.md`),
     ],
   };
 
@@ -123,18 +122,20 @@ test('Step 3 manifest projects the shared lifecycle and one active harness bindi
     }
     assert.equal(new Set(projections.map(projection => projection.destination)).size, projections.length,
       `${harness} destinations should be unique`);
-    const bindingSource = `.tmp/collapse-sai-worker-matrix/matrix-sources/${harness}/implementation-worker.md`;
+    const bindingSource = `.tmp/collapse-sai-worker-matrix/matrix-sources/${harness}/implementation-ui-worker.md`;
     const bindingProjection = projections.find(({ source }) => source === bindingSource);
     assert.ok(bindingProjection, `${harness} should project its matrix binding source`);
     assert.match(bindingProjection.destination.replace(/\\/g, '/'),
-      /orchestration\/workers\/bindings\/implementation-worker\.md$/,
+      /orchestration\/workers\/bindings\/implementation-ui-worker\.md$/,
       `${harness} binding should project to the neutral relative path`);
     assert.doesNotMatch([...sources].join('\n'), /sai\/orchestration\/inline-invocation\.md/);
     if (harness === 'claude') {
-      assert.equal(sources.has('.tmp/collapse-sai-worker-matrix/matrix-sources/opencode/implementation-worker.md'), false);
+      for (const agent of ['ui', 'frontend', 'backend', 'infra', 'other']) assert.equal(sources.has(`.tmp/collapse-sai-worker-matrix/matrix-sources/opencode/implementation-${agent}-worker.md`), false);
     } else {
-      assert.equal(sources.has('.tmp/collapse-sai-worker-matrix/matrix-sources/claude/implementation-worker.md'), false);
-      assert.equal(sources.has('.tmp/collapse-sai-worker-matrix/matrix-sources/claude/sai-3-implementation-worker.md'), false);
+      for (const agent of ['ui', 'frontend', 'backend', 'infra', 'other']) {
+        assert.equal(sources.has(`.tmp/collapse-sai-worker-matrix/matrix-sources/claude/implementation-${agent}-worker.md`), false);
+        assert.equal(sources.has(`.tmp/collapse-sai-worker-matrix/matrix-sources/claude/sai-3-${agent}-worker.md`), false);
+      }
     }
   }
 });
@@ -143,8 +144,8 @@ test('a tuned Claude worker is reused and is removed by uninstall', () => {
   const base = tempDir('sai-step-3-claude-');
   try {
     installClaude(base);
-    const workerPath = path.join(base, 'agents', 'sai-3-implementation-worker.md');
-    const ownerPath = path.join(base, 'agents', '.sai-3-implementation-worker.owner.json');
+    const workerPath = path.join(base, 'agents', 'sai-3-ui-worker.md');
+    const ownerPath = path.join(base, 'agents', '.sai-3-ui-worker.owner.json');
     const sourceBytes = fs.readFileSync(workerPath);
     const tuned = fs.readFileSync(workerPath, 'utf8')
       .replace(/^model:.*$/m, 'model: tuned-model')
@@ -223,7 +224,7 @@ test('preserves commented JSONC and non-SAI settings through namespaced opencode
 test('Step 3 overwrites incompatible Claude destinations with notice while preserving customized opencode workers', () => {
   const claudeBase = tempDir('sai-step-3-claude-collision-');
   const opencodeBase = tempDir('sai-step-3-opencode-collision-');
-  const claudePath = path.join(claudeBase, 'agents', 'sai-3-implementation-worker.md');
+  const claudePath = path.join(claudeBase, 'agents', 'sai-3-ui-worker.md');
   const opencodePath = path.join(opencodeBase, 'opencode.jsonc');
   const claudeSentinel = 'incompatible Claude worker\n';
   const opencodeSentinel = '{\n' +
@@ -270,7 +271,7 @@ test('Step 3 overwrites incompatible Claude destinations with notice while prese
       mode: 'subagent',
       model: 'user-model',
     }, 'no canonical prompt should be injected into the customized worker entry');
-    const projectedAgentPath = path.join(opencodeBase, 'agents', 'sai-3-implementation-worker.md');
+    const projectedAgentPath = path.join(opencodeBase, 'agents', 'sai-3-ui-worker.md');
     assert.ok(fs.existsSync(projectedAgentPath),
       'the projected worker agent file should exist under agents/');
 
@@ -295,7 +296,7 @@ test('Step 3 ADR/INSTALL prose describes tunable-seed projections, body-identity
   const adr = fs.readFileSync(path.join(repoRoot, 'docs', 'adr', '0077-harness-specific-worker-bindings.md'), 'utf8');
   const boundaries = fs.readFileSync(path.join(repoRoot, 'docs', 'adr', '0088-implementation-harness-projection-boundaries.md'), 'utf8');
   const agentsDoc = fs.readFileSync(path.join(repoRoot, 'AGENTS.md'), 'utf8');
-  const documentation = [adr, boundaries, agentsDoc].join('\n');
+  const documentation = [adr, boundaries, agentsDoc, fs.readFileSync(path.join(repoRoot, 'docs/commands/sai-3-implement.md'), 'utf8')].join('\n');
   for (const worker of MANAGED_WORKER_NAMES) {
     assert.match(documentation, new RegExp(worker),
       `specs/opencode-agent-preservation/spec.md: opencode documentation should describe the projected ${worker} agent file`);

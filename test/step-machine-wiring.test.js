@@ -67,10 +67,10 @@ test('discovered coordinators have registered step machines and fetch stage-mach
   const coordinators = discoverStepMachineCoordinators();
   assert.ok(coordinators.length > 0, 'should discover at least one coordinator with step_machine');
 
-  // Must discover exactly spec, design, implement, performance, review, security, and accessibility
+  // Implement owns common progression and complete category tasks instead.
   const names = coordinators.map(c => c.name).sort();
-  const expectedPhases = ['accessibility', 'design', 'implement', 'performance', 'review', 'security', 'spec'];
-  assert.deepEqual(names, expectedPhases, 'must discover exactly spec, design, implement, performance, review, security, and accessibility');
+  const expectedPhases = ['accessibility', 'design', 'performance', 'review', 'security', 'spec'];
+  assert.deepEqual(names, expectedPhases, 'all six unchanged step-machine phases remain discoverable');
 
   for (const coord of coordinators) {
     assert.ok(registry.has(coord.machineId), `${coord.machineId} must be registered in sai-state/registry.js`);
@@ -284,7 +284,7 @@ test('replacement before the first progress event reconstructs with the first fi
 
 test('every step-machine coordinator sends the first filed pointer with the task disclosure', () => {
   const coordinators = discoverStepMachineCoordinators().filter((c) => c.machineId !== 'apply-standalone@1');
-  assert.equal(coordinators.length, 7, 'seven step-machine coordinators should be discovered');
+  assert.equal(coordinators.length, 6, 'six worker step-machine coordinators should be discovered');
   for (const { name, machineId, content } of coordinators) {
     const mod = registry.get(machineId);
     const second = mod.firstFiled().stage;
@@ -297,7 +297,7 @@ test('every step-machine coordinator sends the first filed pointer with the task
 });
 
 test('every step-machine worker and common.md adopt the task-disclosure pointer rule', () => {
-  for (const name of ['spec', 'design', 'implement', 'review', 'security', 'performance', 'accessibility']) {
+  for (const name of ['spec', 'design', 'review', 'security', 'performance', 'accessibility']) {
     const worker = readRepo(`sai/commands/${name}/worker.md`);
     const common = readRepo(`sai/commands/${name}/steps/common.md`);
     assert.match(worker, /§ Step-machine task disclosure/, `${name} worker should reference the shared rule`);
@@ -320,7 +320,16 @@ test('every step-machine worker and common.md adopt the task-disclosure pointer 
 test('chained and supervised surfaces deliver the first pointer in their own task disclosure (E9)', () => {
   const build = readRepo('sai/commands/meta-build/coordinator.md');
   const pipeline = readRepo('sai/commands/explore/steps/pipeline-plan-unattended.md');
-  assert.match(build, /post-ready task disclosure opens with the `collapse-implemented-steps` pointer line/);
+  assert.match(build, /no implement worker step-machine pointer is sent/);
+  const implement = readRepo('sai/commands/implement/coordinator.md');
+  const worker = readRepo('sai/commands/implement/worker.md');
+  assert.match(implement, /zero-task ready call/);
+  assert.match(implement, /Capture every\s+handle and validate each `event: ready` before any task disclosure/);
+  assert.match(implement, /snapshot once immediately before task disclosure when no window is\s+running/);
+  assert.match(implement, /one complete task concurrently through its same-worker\s+continuation/);
+  assert.match(worker, /Receive all assigned Steps as one complete task/);
+  assert.match(worker, /emit no progress events/);
+  assert.doesNotMatch(implement, /step_machine: implement-standalone@1/);
   assert.match(pipeline, /reset <id> spec-standalone@1` returns/);
   assert.match(pipeline, /reset <id> design-standalone@1` returns[\s\S]{0,300}--with-overview false` in every supervised run, including on a design-phase retry/);
 });

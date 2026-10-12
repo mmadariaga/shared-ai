@@ -3,15 +3,17 @@
 ## Purpose
 
 TBD
+
 ## Requirements
+
 ### Requirement: Canonical worker matrix contents
 
-The canonical worker matrix SHALL define exactly fifteen entries: the eleven canonical phase identities (spec, design, implementation, review, security, performance, accessibility, commit, archive, backfill, merge), followed by the RED then GREEN apply identities, one Direct Build implementer identity, and one `/sai-review` fix identity. The Direct Build identity SHALL be `sai-direct-build-worker`, use binding stem `direct-build`, and use contract `sai/commands/explore/direct-build-worker.md`. The review-fix identity SHALL be `sai-review-fix-worker`, use binding stem `review-fix`, and use contract `sai/commands/meta-review/review-fix-worker.md`. The former auto-fast implement and hands roles are retired; no hands worker or autofast identity SHALL remain active. Materializing the matrix SHALL project exactly one binding and one managed agent per worker per harness, including `orchestration/workers/bindings/merge-worker.md` and the `sai-merge-worker` managed agent.
+The canonical matrix SHALL contain nineteen entries: spec, design, five ordered implementation roles ui/frontend/backend/infra/other, review, security, performance, accessibility, commit, archive, backfill, merge, RED then GREEN apply, Direct Build implementer, and review-fix. Implementation roles SHALL share sai/commands/implement/worker.md with distinct implementation-category binding stems. Direct Build SHALL retain sai-direct-build-worker, direct-build, and sai/commands/explore/direct-build-worker.md; review-fix SHALL retain sai-review-fix-worker, review-fix, and sai/commands/meta-review/review-fix-worker.md. Materialization SHALL produce one binding and one agent per worker per harness. Retired hands and autofast identities SHALL remain inactive.
 
 #### Scenario: Manifest expansion yields the fifteen-worker roster
 
-- **WHEN** the install manifest expands for either harness
-- **THEN** exactly fifteen active worker bindings and fifteen managed agents materialize, with the merge phase bound to `sai-merge-worker` and the Direct Build phase bound to `sai-direct-build-worker`.
+- **WHEN** the category-planning manifest expands for either harness
+- **THEN** nineteen bindings and nineteen managed agents materialize, including all five implementation roles, the unchanged merge worker, and the unchanged Direct Build worker.
 
 ### Requirement: Materialized worker behavior preserves canonical lifecycle contracts
 
@@ -34,28 +36,28 @@ Each materialized worker agent SHALL preserve its harness-specific frontmatter i
 
 ### Requirement: Projection lifecycle integrity covers matrix replacement and retirements
 
-The manifest and expansion layer SHALL represent the parameterized templates as deterministic managed projections whose materialized bytes remain available to install, doctor, and uninstall. The change SHALL retire every removed per-phase binding and managed-agent source destination with a complete `managedHashes` record in the same manifest revision, including the former auto-fast implementer and hands projections, while preserving existing retirement records and excluding unrelated `idea-list-render` and support-agent projections from retirement. The retired `sai/commands/apply/body.md` utility-card destination SHALL be covered by the same retirement machinery.
+Deterministic matrix projections SHALL remain available to install, doctor, and uninstall. The former single implementation agent and binding destinations SHALL have managed-hash retirement records for both harnesses. Existing retirement records SHALL remain intact. Obsolete managed files SHALL be removed only when their bytes match registered managed variants; modified files SHALL remain preserved. Unrelated support-agent and idea-list projections SHALL not be retired.
 
 #### Scenario: Re-projection removes obsolete managed files safely
 
-- **WHEN** install is run against a prior installation containing a removed per-phase source file or the retired apply body destination
-- **THEN** the obsolete file is recognized through its retirement record and removed only when its bytes match a permitted managed hash, while user-modified content is preserved and reported as drift.
+- **WHEN** a prior installation contains retired implementation, per-phase, autofast, hands, or apply-body destinations
+- **THEN** installation uses their recorded hashes to remove only recognized managed content and preserves modified content with drift reporting.
 
 #### Scenario: Doctor and uninstall agree with installation
 
-- **WHEN** doctor and uninstall are run after matrix projection
-- **THEN** both enumerate the same active materialized worker projections and retirement records, report no orphan or phantom worker destinations, preserve user tuning, and complete without treating historical retired files as active projections.
+- **WHEN** doctor and uninstall run after category matrix projection
+- **THEN** they share the active nineteen-worker inventory and retirement records, preserve tuning, and do not treat retired files as active or phantom workers.
 
 ### Requirement: Canonical tests enforce cross-harness matrix parity
 
-The test suite SHALL verify every routed phase and both apply workers across both harnesses, including parameter substitution, exact worker-contract Fetch targets, frontmatter and tuning preservation, phase-flag isolation, absence of unresolved placeholders, and install/doctor/uninstall retirement integrity. The tests SHALL verify the fifteen-entry roster, the Direct Build phase, `sai-direct-build-worker`, the review-fix phase, `sai-review-fix-worker`, the retired hands role, and the absence of active auto-fast identities. The tests SHALL retain the established thin-agent Fetch-wrapper behavior precedent rather than accepting duplicated worker contract bodies.
+Tests SHALL verify nineteen workers per harness, exact bindings/contracts, parameter substitution, frontmatter and tuning preservation, phase-flag isolation, absence of unresolved placeholders, and installation/doctor/uninstall retirement integrity. They SHALL retain thin Fetch wrappers, unchanged apply/Direct Build/review-fix identities, retired-role exclusions, and byte-level regression protection for unaffected projections.
 
 #### Scenario: Matrix regression is detected before installation
 
-- **WHEN** a phase parameter, model, or Fetch target is missing, duplicated, or assigned to the wrong phase or worker
-- **THEN** the canonical matrix tests fail with the phase, worker, and harness identified.
+- **WHEN** a phase, worker, model, or Fetch target is missing, duplicated, or misassigned
+- **THEN** matrix tests fail with the affected phase, worker, and harness identified.
 
 #### Scenario: Historical files remain covered
 
-- **WHEN** a removed binding, managed-agent destination, or retired apply body destination has any previously managed byte variant
-- **THEN** the retirement-integrity tests require every known hash to remain registered and reject incomplete retirement or a duplicate active destination.
+- **WHEN** a removed binding, agent, or apply-body destination has a known managed byte variant
+- **THEN** retirement tests require its recorded hash and reject incomplete retirement coverage or duplicate active destinations.

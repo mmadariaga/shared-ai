@@ -37,7 +37,8 @@ const UTILITY_NAMES = Object.freeze(['sai-retire-docs', 'sai-status', 'sai-workt
 const TARGET_PROFILE = Object.freeze({
   'worker:sai-1-spec-proposal-worker':   { context: 'Medium',  difficulty: '↑↑' },
   'worker:sai-2-design-worker':          { context: 'Large',   difficulty: '↑↑↑' },
-  'worker:sai-3-implementation-worker':  { context: 'Large',   difficulty: '↑↑' },
+  ...Object.fromEntries(IMPLEMENTATION_REGISTRATION.roles.map(role =>
+    [`worker:${role.workerName}`, { context: 'Large', difficulty: '↑↑' }])),
   'worker:sai-4-green-worker':           { context: 'Medium',  difficulty: '↑↑' },
   'worker:sai-4-red-worker':             { context: 'Medium',  difficulty: '↑' },
   'worker:sai-5-review-worker':          { context: 'Large',   difficulty: '↑↑' },
@@ -491,6 +492,10 @@ function materializeLocalOverride({
 function enumerateProjectionTargets(packageRoot, loadManifest, harness) {
   const manifest = loadManifest(packageRoot);
   const families = { worker: [], agent: [], command: [], utility: [] };
+  // Raw projection aliases need not enumerate every generated matrix role.
+  // Include the matrix itself so independently configurable category planners
+  // are visible before installer expansion, while retaining unknown targets.
+  for (const entry of manifest['worker-matrix']?.entries || []) families.worker.push(entry.workerName);
   for (const projection of manifest.projections) {
     if (!projection.harnesses.includes(harness)) continue;
     const name = path.basename(projection.destination.path, '.md');

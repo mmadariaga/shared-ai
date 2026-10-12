@@ -1,15 +1,14 @@
 # Implement Step — Common (always active)
 
-This file is fetched at worker dispatch and stays in force for the entire run.
-It is the authoritative technical baseline for the step-gated worker. It carries
+This file is fetched by the coordinator and every category worker and stays in force for the entire run.
+It is the authoritative technical baseline for category planning. It carries
 the boundaries that outlive any single step: role, expertise profile
 contract, hard rules, and code quality priorities. The worker and coordinator cards carry lifecycle and routing
-contracts only; they do not override this file or the one step file selected by
-the coordinator.
+contracts and ownership; they preserve this file's technical planning rules.
 
-## Step delivery meta-rule
+## Ownership and delivery
 
-The coordinator names each active step by appending one pointer line — `Active step: <id> — follow <path>` — to a progress-event continuation. Execute only the step file that line names; never prefetch, open, or follow any other step instruction file. Step paths arrive solely through coordinator continuations; this file is the only step surface loaded at dispatch. `prereqs-resolution` has no step file of its own — it runs from the worker contract plus this file before the first progress event, and the first delivered pointer targets `collapse-implemented-steps`. The first pointer arrives as the first line of the task-disclosure continuation, before the task: run `prereqs-resolution` inline, then follow that pointer, and report `prereqs-resolution` and `collapse-implemented-steps` together in the first progress event, per `@sai/orchestration/worker-core.md` § Step-machine task disclosure. On a first run (no `implementation.md`) that step has no work: report it without fetching its file. Each step ends by returning its progress event per the worker contract's Progress Reporting plan; a continuation without a pointer line (needs_input answer, recovery) leaves the active step unchanged in this continuous session.
+The coordinator executes common steps in order, loading their instructions at entry. Category workers receive one complete assigned-Step task and load plan-generation for Step content; no per-Step scheduling or progress events apply. In the existing step library, shared decisions and final-plan writes belong to the coordinator, and worker content generation targets only its assigned part. The coordinator's candidate is the plan write surface until verified publication. The worker contract narrows the shared rules: workers report input defects and never amend shared inputs. Rerun preservation precedes category generation and retains all existing work.
 
 Fetch @sai/policies/glossary-format.md
 Fetch @sai/policies/code-quality-priority-stack.md

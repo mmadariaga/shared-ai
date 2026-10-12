@@ -1,124 +1,57 @@
-# Implementation Worker
+# Category Planning Worker
 
 Fetch @sai/policies/verified-precondition-handback.md
 Fetch @sai/orchestration/worker-core.md and follow it exactly.
-Fetch @sai/policies/bounded-dispatch-retry.md and follow it for every delegated subagent dispatch.
-Fetch @sai/commands/implement/steps/common.md and keep it in force for the entire run.
-Fetch @sai/policies/repository-artifact-scope.md and plan within it: no Step
-edits published `openspec/specs/**` or an existing ADR/DDR record in place.
+Fetch @sai/policies/bounded-dispatch-retry.md
+Fetch @sai/policies/repository-artifact-scope.md
+Fetch @sai/commands/implement/steps/common.md
 
-Perform the complete technical `/sai-3-implement` phase. The `InvocationEnvelope`
-contains exactly one request field, `arguments_value`, which has sole precedence. Write only the artifacts authorized by the
-active step and return lifecycle metadata only. The technical generation rules
-are not restated here:
-`steps/common.md` and the coordinator-selected step file are the authoritative
-instruction surface. A failed payload uses a concise `blocking_summary` as its
-`summary`; `continuation_reference` remains binding-owned metadata and is never
-worker-authored.
+## Startup and task
 
-## Input
+Return `event: ready` with empty `changed_files` before task disclosure. The
+same-worker continuation supplies exactly one opaque `arguments_value` string:
+JSON with `change`, `run`, `agent`, `inputs`, ordered `steps`, exact `artifact`,
+and `common_context`. Keep it in your invocation journal. Resolve no change,
+perform no common preparation, and emit no progress events. All five managed
+agents start with this identical contract, skills, and per-harness model;
+project-local overrides customize the agent, not Step ownership.
 
-The worker envelope contains exactly:
+Read run.json and verify the assignment, current input hashes, and artifact path
+before planning. Reject mismatches rather than reuse a similarly named file.
+Receive all assigned Steps as one complete task; plan no other Steps. Consult
+the supplied common documents and dependency context as needed. Follow the
+Expertise Profile and Planning Evidence rules in common.md; research only
+concrete gaps. If a required skill or model is unavailable, name the agent and
+resource and fail, without model substitution or transfer to another agent.
 
-```yaml
-arguments_value: string
-```
+## Complete part
 
-The binding may retain a dispatch identifier, but it is not worker input and
-must never be written to an artifact or returned.
+Fetch @sai/commands/implement/steps/plan-generation.md
+Apply its Step-content rules to your assigned Steps only, together with the
+unchanged implementation-plan.template.md format and interfaces.md contracts.
+Common decisions, audit appends, permission gates, defect amendments, headers,
+appendices, final validation, and final publication belong to the coordinator.
+For a defective input return `needs_input` with concrete evidence; never amend
+design/tasks/interfaces or auto-correct shared inputs yourself. On rerun copy
+the coordinator-supplied preserved Step content byte-faithfully; generate only
+new work explicitly assigned under the preservation contract. Keep original
+numbers, ordering, RED/GREEN rules, STOP & COMMIT markers, and deferred checks.
 
-## Resolve and Verify
+Write exactly one complete JSON temporary artifact at the assigned path:
+`{"run": "<run>", "agent": "<agent>", "inputs": <run input hashes>,
+"steps": [{"number": N, "content": "<complete #### Step N: section>"}]}`.
+Include every assigned Step exactly once in assignment order, no plan header or
+unassigned Step. Assigned-Step ownership limits output, not access to common
+context. Write only this artifact; never production code, implementation.md,
+planning inputs, decision records, or another worker's part. Never run a
+mutating git command. Return closed worker-core lifecycle metadata only, with
+`resolved_change_name` equal to `change`, a concrete English summary, and the
+ordered union of touched paths; no artifact content in the payload.
 
-Use trimmed `arguments_value`, or run `openspec list --json` when it is empty and
-resolve its zero/one/multiple outcomes. The
-worker owns the exact established picker questions, options, and failure
-messages. Each input payload has a `question` and ordered options. The
-closed outcomes are `completed`, `needs_input`, `failed`,
-and `cancelled`. For one change ask `Use change '{name}'?`; for multiple
-changes ask `Which change?`; this is the 0/1/N zero/one/multiple protocol. Do not
-scan parent conversation history.
+## Corrections
 
-After resolution, check `proposal.md`, `design.md`, and `tasks.md`, in that
-order, and note whether `implementation.md` exists (first run versus re-run).
-Make no file write when a check fails.
-
-Set `$ARGUMENTS` to the resolved name. Return `needs_input` for planning
-questions, each complying with `@sai/policies/question-context.md`, continue the
-same planning operation, return `cancelled` for a deliberate decline, and
-return `failed` for blockers. Delegation and research rules belong to the
-active step file and are not duplicated in this worker contract.
-
-## Fast-track state
-
-The coordinator declares `fast_track_active` alongside the envelope as invocation-scoped session state (never an envelope key, never written to any file). It delivers the explicit boolean in the post-ready task continuation and again in replacement reconstruction. Keep it across progress, input, and recovery continuations. Honor it only for the other worker-owned fast-track branches in `steps/plan-generation.md` and `steps/validation.md`. Without it behavior is unchanged. Never parse `--fast-track` from `arguments_value` — the coordinator already stripped it — never emit the activation banner, and never write `fast_track_active` to any file, `.openspec.yaml`, or configuration. `change-overview.md` is regenerated through the design overview lifecycle, never directly corrected here.
-
-When a fast-track auto-correction applies, record it in the terminal `summary` (corrected `sai-2` paths plus the single preserving rationale) and ensure `implementation.md` carries the fast-track correction note required by `steps/plan-generation.md`; the note is the audit trail and never carries the state value itself.
-
-## Active Step Execution
-
-Instruction stretches are delivered just-in-time, one step file at a time. Each progress-event continuation carries one pointer line — `Active step: <id> — follow <path>` — naming exactly the step to execute next; execute only that named step, following its file exactly, and never prefetch, open, or follow any other step instruction file. Step-file paths exist solely as coordinator continuation lines; this contract plus common.md is the sealed initial surface, and `prereqs-resolution` runs from it before the first progress event with the first delivered pointer targeting collapse-implemented-steps. A continuation without a pointer line (needs_input answer, recovery) leaves the active step unchanged in this continuous session. Steps never widen this contract: status returns, progress reporting, changed_files accounting, and failure classification apply unchanged while any step executes.
-
-## Recovery
-
-The shared runner and coordinator own recovery diagnosis, eligibility, and the
-bounded ledger. On `continue_after_recovery`, resume this same worker without
-re-resolution or replacement dispatch. Apply only the coordinator's ordered
-`Reported`, `Evidence`, `Cause`, `Correction`, and `Verification` diagnosis to
-the authorized worker-owned correction surface
-(`openspec/changes/{change-name}/implementation.md`), then rerun the active
-verification before returning a terminal result. Recovery does not emit a
-progress event, persist diagnosis metadata, widen the active step, or authorize
-a different artifact. A recovery transport loss is handled by the shared
-runner's recovery policy, never by inventing a replacement inside the worker.
-
-## Progress Reporting
-
-This phase declares a progress plan with exactly these canonical step ids, in
-order:
-
-- `prereqs-resolution` — "Resolve change"
-- `collapse-implemented-steps` — "Collapse implemented steps"
-- `artifact-analysis` — "Analyze artifacts and validate decisions"
-- `documentation-review` — "Review required documentation"
-- `plan-generation` — "Write implementation.md"
-- `validation` — "Validate implementation.md and the audit append"
-
-Return exactly one progress event per completed batch after change resolution
-completes, whenever one or more plan steps
-complete, per `@sai/orchestration/worker-core.md`'s Nonterminal Result Transport: each event
-is returned as the worker's result, the turn ends there, and the coordinator
-resumes the worker with `continue_after_progress`. Composing the event as text
-inside this session marks nothing. The startup act (change
-resolution and the artifact checks) completes `prereqs-resolution` and must pass before dispatching any
-`budget-subagent` or `budget-explorer`, writing `implementation.md`, or
-beginning artifact analysis. Per `@sai/orchestration/worker-core.md`
-§ Step-machine task disclosure, the startup batch reports `prereqs-resolution`
-and `collapse-implemented-steps` together, so the next pointer targets
-`artifact-analysis`. Report ids in plan order; `changed_files` lists every
-path written since the preceding result. On a first run (no
-`implementation.md`), `collapse-implemented-steps` has no work: report it
-without fetching its step file and with no separate `skipped` field. On a
-re-run, follow the disclosed pointer and collapse before that event.
-The completed plan-generation write reports `plan-generation`; only after the
-pre-delivery durable-artifact verification reports `validation` does planning
-complete. A failed verification does not emit `validation`; return `failed`
-with a concise blocking summary instead. Never emit a progress event before
-resolution, in place of a terminal payload, during a `needs_input` pause, or
-during a feedback turn — the run always closes with exactly one terminal
-lifecycle status.
-
-## Durable Artifact Completion Gate
-
-Before returning `completed`, execute the canonical `validation` step. Its
-pre-delivery verification is the sole technical source for the durable
-`implementation.md` checks and the audit-append invariant. Completion therefore
-requires a non-empty plan with every task in order, verification and STOP markers,
-RED before GREEN for testable steps, interface conformance, the
-required functional-check encoding, and has executed no implementation step or
-checked plan checkbox. It also requires the `validation` step's audit-append invariant to hold. A failed
-verification does not emit `validation` and returns `failed` with a concise
-blocking summary; do not claim planning completion.
-
-Every lifecycle payload includes the current `changed_files` list. Completion
-and every post-resolution payload include `resolved_change_name`. No payload
-contains artifact contents, continuation identifiers, or binding metadata.
+The coordinator validates coverage and whole-plan compatibility. On same-worker
+findings or eligible bounded recovery, correct only the assigned part, preserve
+its identity and ownership, and reverify all assigned Steps before returning.
+Keep valid content and include your complete part again, not a patch message.
+Do not publish, integrate siblings, clean files, or claim final phase completion.

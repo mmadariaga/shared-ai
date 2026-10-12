@@ -9,98 +9,100 @@ Define the harness-specific binding contracts for the implementation coordinator
 The routed implementation coordinator lives at `sai/commands/implement/coordinator.md`; its worker and step library own technical planning.
 
 ### Requirement: Claude coordinator-worker binding
-The Claude Code coordinator SHALL use the `model` and `effort` frontmatter in `commands/claude/sai-3-implement.md`; the `sai-3-implementation-worker` seed SHALL use the implementation entry in `sai/install-manifest.json`'s `worker-matrix`. The installed worker agent file's tunables govern runtime dispatch. The binding SHALL start the custom worker in the background, capture the returned agent ID as coordinator-owned dispatch metadata, forward user answers with `SendMessage(to: agent_id, message: answer)`, and wait asynchronously for the same background worker's next structured payload. Agent continuation parameters SHALL NOT be used. The installer SHALL handle the `sai-3-implementation-worker.md` agent file under the `tunable-seed` strategy: when the agent destination is absent, the installer creates the canonical SAI-namespaced agent with the shipped `model` and `effort` values from the matrix; when an exact-compatible agent already exists, the installer reuses it; when the body or non-tunable frontmatter differs from source, the installer overwrites the body and non-tunable frontmatter, preserves the destination's `model` and `effort` values placed per the structural anchor in `agent-tunable-ownership`, and emits a console notice naming the destination path. The installer SHALL NOT create a `.<basename>.owner.json` sidecar and SHALL NOT block installation on a body divergence. The `rename-or-remove` remediation is retired. Guarded uninstall SHALL remove the agent file only when its body and non-tunable frontmatter match the source; a body-divergent file SHALL be preserved as a project-local override. This change SHALL provide no implicit adoption path.
+
+Claude Code SHALL use the sai-3 wrapper's coordinator model/effort and the installed category agents' runtime tunables seeded from their worker-matrix entries. Required category bindings SHALL start zero-task workers in one background Agent batch without per-spawn model selection, capture handles, validate ready returns, and disclose complete tasks through SendMessage. Answers and corrections SHALL continue the same worker. Each category agent SHALL use the existing tunable-seed lifecycle: create when absent, reuse exact-compatible definitions, overwrite divergent managed bodies/non-tunable frontmatter with a destination notice while preserving model/effort, and create no ownership sidecar. Guarded uninstall SHALL remove body-and-non-tunable-compatible files and preserve divergent definitions.
 
 #### Scenario: Claude implementation invocation
-- **WHEN** `/sai-3-implement` runs under Claude Code
-- **THEN** the coordinator SHALL use its wrapper's configured model and effort, the worker SHALL use its installed agent file's tunables seeded from the worker matrix, the binding SHALL attach the returned agent ID to `needs_input` as coordinator-owned continuation metadata, and the coordinator SHALL use `SendMessage` and await the same background worker's next structured payload
+
+- **WHEN** sai-3 runs under Claude Code
+- **THEN** required category workers use installed agent tunables, return ready before complete-task disclosure, and receive answers through their captured SendMessage handles.
 
 #### Scenario: Claude agent-name collision is overwritten with notice
-- **WHEN** `~/.claude/agents/sai-3-implementation-worker.md` already exists with body or non-tunable frontmatter that does not exactly match the managed definition
-- **THEN** installation overwrites the body and non-tunable frontmatter, preserves the destination's `model` and `effort` values placed per the structural anchor in `agent-tunable-ownership`, and emits a console notice naming the destination path
-- **AND** doctor SHALL report the divergence as an error referencing the body comparison
-- **AND** installation does NOT block with rename-or-remove remediation
+
+- **WHEN** a category agent destination has divergent body or non-tunable frontmatter
+- **THEN** installation overwrites managed content, preserves model/effort at the existing structural anchor, emits a destination notice, and retains body-comparison doctor checks without rename-or-remove blocking.
 
 #### Scenario: Pre-existing compatible Claude agent is reused
-- **WHEN** the namespaced Claude agent already exists with the exact managed content
-- **THEN** installation SHALL reuse it without writing it again
-- **AND** uninstall SHALL preserve it as user-owned
+
+- **WHEN** a category agent already has compatible managed content
+- **THEN** installation reuses it without rewriting and uninstall applies the body-comparison guard rather than ownership-sidecar provenance.
 
 #### Scenario: SAI-created Claude agent uninstall
-- **WHEN** the current agent's body and non-tunable frontmatter match the source
-- **THEN** guarded uninstall SHALL remove the agent file
-- **AND** SHALL NOT consult any sidecar file; when the body or non-tunable frontmatter differs, uninstall SHALL preserve the agent file
+
+- **WHEN** the category agent's body and non-tunable frontmatter match the source
+- **THEN** guarded uninstall removes it without consulting a sidecar and preserves it instead when managed content diverges.
 
 ### Requirement: Opencode coordinator-worker binding
-The opencode `/sai-3-implement` wrapper SHALL declare its coordinator `model` and `variant` in `commands/opencode/sai-3-implement.md` and SHALL dispatch only the `sai-3-implementation-worker` subagent. A missing worker SHALL be seeded from the implementation entry in `sai/install-manifest.json`'s `worker-matrix`; the installed agent file's tunables govern runtime dispatch. The wrapper SHALL not select or install a separate coordinator agent profile. The binding SHALL capture the returned task ID as coordinator-owned dispatch metadata and continue the same explicit task worker by task ID when possible. The installer SHALL project the `sai-3-implementation-worker.md` agent file to `~/.config/opencode/agents/` under the `tunable-seed` lifecycle: create when absent with the shipped model and variant (when present) from the matrix; on subsequent installs, overwrite the body and non-tunable frontmatter with the source bytes while preserving the destination's `model` and `variant` values placed per the structural anchor in `agent-tunable-ownership`. The installer SHALL NOT create a `.<basename>.owner.json` sidecar and SHALL NOT block installation on a body divergence. Existing names SHALL be treated as user-owned at the file level, so a user-edited file SHALL have its tunable values preserved across installs. Doctor SHALL validate the projected agent file against its bundled source by comparing only the body and non-tunable frontmatter, reporting a missing or body-divergent file as an error and a body-and-non-tunable-frontmatter-compatible file as valid. When an existing user-edited worker agent file is selected at runtime, its configured model, variant, mode, and permissions SHALL govern that worker invocation because the installer preserves the destination's tunable values on overwrite; the matrix seed SHALL apply only to a file created because it was absent. Guarded uninstall SHALL remove the projected agent file only when its body and non-tunable frontmatter match the source, SHALL preserve a body-divergent file as a project-local override, and SHALL leave the opencode configuration files untouched under the existing config-merge exclusion.
+
+Opencode SHALL use its sai-3 wrapper's coordinator configuration and required category task workers, not a separate managed coordinator profile. It SHALL dispatch concurrent zero-task calls without a background parameter, capture task handles, validate ready returns, and continue each same worker with its complete assignment. Each category agent SHALL use tunable-seed installation under the opencode agents directory: create absent files with matrix model/optional variant, reuse compatible files, and overwrite divergent managed content with a destination notice while preserving model/variant. Runtime mode, permissions, and tunables SHALL come from the effective agent definition. Doctor and uninstall SHALL use body-and-non-tunable comparison, not sidecars or config-map agent entries.
 
 #### Scenario: Opencode implementation invocation
-- **WHEN** `/sai-3-implement` runs under opencode
-- **THEN** the coordinator SHALL use the wrapper-declared model and variant, the worker SHALL use the projected `sai-3-implementation-worker.md` agent's configured tunables, and the binding SHALL attach the returned task ID to `needs_input` as coordinator-owned continuation metadata
+
+- **WHEN** sai-3 runs under opencode
+- **THEN** the coordinator uses its wrapper configuration and each required category worker uses its effective agent definition and captured task continuation.
 
 #### Scenario: Existing customized opencode implementation agent file
-- **WHEN** a `sai-3-implementation-worker.md` agent file already exists with a body or non-tunable frontmatter that differs from source
-- **THEN** installation overwrites the body and non-tunable frontmatter, preserves the destination's `model` and `variant` values placed per the structural anchor in `agent-tunable-ownership`, and emits a console notice naming the destination path
-- **AND** installation does not report the file as a config-map collision
+
+- **WHEN** a category agent has divergent managed content
+- **THEN** installation overwrites managed body/non-tunable fields, preserves model/variant at the existing structural anchor, emits a destination notice, and reports no config-map collision.
 
 #### Scenario: Missing opencode implementation agent file
-- **WHEN** `sai-3-implementation-worker.md` is absent
-- **THEN** installation SHALL create that file with the managed definition and seed tunables from the worker-matrix entry
-- **AND** SHALL NOT create a `.<basename>.owner.json` sidecar
+
+- **WHEN** a required category agent is absent during installation
+- **THEN** installation creates its managed definition with matrix seed tunables and no ownership sidecar.
 
 #### Scenario: Customized worker runtime is honored
-- **WHEN** `/sai-3-implement` dispatches an existing user-owned `sai-3-implementation-worker.md` agent file with a customized model or variant
-- **THEN** the invocation SHALL use that existing worker configuration without requiring the repository worker-matrix seed
+
+- **WHEN** a category worker has an effective customized agent definition
+- **THEN** dispatch honors that worker's configuration without dynamic model selection or requiring the shipped model seed.
 
 #### Scenario: Opencode uninstall respects the body-comparison guard
-- **WHEN** shared-AI is uninstalled after the opencode worker agent file was installed
-- **THEN** uninstall SHALL remove the agent file only when its body and non-tunable frontmatter match the source
-- **AND** SHALL preserve a body-divergent file as a project-local override
-- **AND** SHALL leave the opencode configuration files untouched
-- **AND** SHALL NOT consult any sidecar file
+
+- **WHEN** shared-AI uninstalls a category agent
+- **THEN** it removes compatible managed content, preserves divergent definitions, leaves opencode configuration untouched, and consults no ownership sidecar.
 
 ### Requirement: Routed worker binding boundary
-The routed implementation command contract SHALL define the coordinator-worker behavior for Claude Code and opencode without requiring `sai/commands/implement/invocation.md` or another retired compatibility projection. The active technical instruction path SHALL be the implementation worker and its coordinator-selected step library.
 
-The routed implementation command contract SHALL define the coordinator-worker behavior for Claude Code and opencode. It SHALL not require a retired compatibility surface or compatibility projection.
+The implementation route SHALL use the technical coordinator, shared step library, common category-worker contract, and five neutral installed category bindings for both harnesses. It SHALL not require the retired invocation card, single implementation binding, forwarding skill, or intermediate inline loader.
 
 #### Scenario: Retired compatibility path is excluded
-- **WHEN** the supported implementation projections are inspected
-- **THEN** they SHALL contain only the Claude Code and opencode routed coordinator and worker surfaces
-- **AND** no active projection SHALL require a retired compatibility surface or an intermediate inline command loader
+
+- **WHEN** supported implementation projections are inspected
+- **THEN** only active coordinator, category-worker, library, and harness-binding surfaces are required, with no retired compatibility or inline loader dependency.
 
 #### Scenario: Retired implementation invocation is excluded
 
 - **WHEN** supported implementation projections are inspected
-- **THEN** they contain the active routed coordinator, worker, and harness binding surfaces without requiring `sai/commands/implement/invocation.md`.
+- **THEN** the route requires no sai/commands/implement/invocation.md.
 
 ### Requirement: Managed implementation worker projections
-The single installation manifest SHALL project the canonical shared coordinator and worker-lifecycle contracts, the implementation worker contract, and only the active routed harness's implementation binding to Claude Code and opencode. Routed wrappers SHALL fetch that neutral installed binding destination directly; no forwarding skill SHALL be projected. The Claude agent surface SHALL remain a thin forwarder to the canonical sources, and the opencode worker surface SHALL be the manifest-projected `sai-3-implementation-worker.md` agent file. Installer, doctor, and uninstall SHALL derive these projections from the same manifest while preserving deterministic collision detection for ordinary managed files and the body-and-non-tunable identity rule for Claude and opencode worker-agent definitions. Doctor SHALL compare only the body and non-tunable frontmatter; uninstall SHALL use the same body comparison to decide keep vs delete. The `rename-or-remove` wording is retired; a body-divergent worker agent is overwritten with a console notice by the installer and preserved as a project-local override by uninstall. The `.<basename>.owner.json` sidecar is no longer written, read, or compared. Tunable lines on existing worker files are preserved on every install. Exact-compatible pre-existing worker agent files SHALL be reused without rewriting, and all unrelated entries in an existing opencode JSONC configuration SHALL remain unchanged.
+
+The shared manifest SHALL materialize five category bindings and five managed category agents per harness from one common worker contract and per-harness templates. The bootstrap SHALL fetch the neutral installed bindings directly. Install, doctor, and uninstall SHALL share deterministic inventories, collision checks, tunable preservation, and body-comparison rules. Unrelated files and opencode configuration SHALL remain unchanged; sidecars and rename-or-remove remediation SHALL remain retired.
 
 #### Scenario: Claude Code projection is installed
-- **WHEN** the manifest expands the Claude Code implementation surfaces
-- **THEN** it SHALL include the shared lifecycle sources, canonical implementation worker, Claude implementation binding, and managed worker agent under the `tunable-seed` strategy
-- **AND** it SHALL exclude the opencode binding subtree
+
+- **WHEN** the manifest expands Claude Code implementation surfaces
+- **THEN** it includes the shared sources, five Claude category bindings and tunable-seed agents, and no opencode binding subtree.
 
 #### Scenario: Exact-compatible Claude agent already exists
-- **WHEN** the canonical Claude implementation worker agent already exists with body and non-tunable frontmatter matching source, with or without tunable differences
-- **THEN** installation SHALL reuse it without rewriting it
-- **AND** guarded uninstall SHALL preserve it as user-owned
+
+- **WHEN** a Claude category agent's body/non-tunable fields match source with or without tuning differences
+- **THEN** installation reuses it unchanged and uninstall uses managed-content identity rather than pre-existing-file provenance.
 
 #### Scenario: Opencode projection is installed
-- **WHEN** the manifest expands the opencode implementation surfaces
-- **THEN** it SHALL include the shared lifecycle sources, canonical implementation worker, opencode implementation binding, and the namespaced `sai-3-implementation-worker.md` agent file under the `tunable-seed` strategy
-- **AND** it SHALL exclude the Claude binding subtree and Claude worker-agent projection
+
+- **WHEN** the manifest expands opencode implementation surfaces
+- **THEN** it includes the shared sources, five opencode category bindings and tunable-seed agents, excluding Claude bindings and agent projections.
 
 #### Scenario: Opencode worker surface merges into existing destinations
-- **WHEN** installation creates or reuses the namespaced `sai-3-implementation-worker.md` agent file in the opencode global agents directory
-- **THEN** it SHALL preserve every unrelated file and opencode configuration entry
-- **AND** uninstall SHALL apply the body-comparison guard and SHALL leave the opencode configuration intact under the existing config-merge exclusion
+
+- **WHEN** installation creates or reuses category agents in the opencode global agents directory
+- **THEN** unrelated files/configuration remain intact and uninstall retains the configuration-merge exclusion.
 
 #### Scenario: Existing destination is body-divergent
-- **WHEN** installation or activation encounters a body-or-non-tunable-frontmatter divergence on a managed worker file
-- **THEN** installation overwrites the body and non-tunable frontmatter, preserves the destination's tunable lines, and emits a console notice
-- **AND** uninstall preserves the body-divergent file as a project-local override
+
+- **WHEN** a managed category agent differs in body or non-tunable frontmatter
+- **THEN** installation restores managed content while preserving tunables and issuing a notice, and guarded uninstall preserves divergent definitions.
 
 ### Requirement: OpenCode SAI external-directory permission is merged safely
 

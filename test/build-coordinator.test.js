@@ -28,12 +28,14 @@ test('build source layout contains only the coordinator and launcher cards', () 
     'build must not introduce a worker card');
 });
 
-test('build launcher fetches only the implementation worker binding', () => {
+test('build launcher reuses the implementation bootstrap with all five category bindings', () => {
   const source = readRequired(launcherPath).trim().split(/\r?\n/);
   assert.deepEqual(source, [
-    'Fetch @sai/orchestration/workers/bindings/implementation-worker.md and use it.',
+    'Fetch @sai/commands/implement/command-bootstrap.md',
   ]);
   assert.doesNotMatch(source.join('\n'), /claude|opencode|red-worker|green-worker|coordinator\.md/i);
+  const bootstrap = readRequired('sai/commands/implement/command-bootstrap.md');
+  assert.deepEqual([...bootstrap.matchAll(/bindings\/([^\s]+\.md)/g)].map(match => match[1]), ['ui', 'frontend', 'backend', 'infra', 'other'].map(agent => `implementation-${agent}-worker.md`));
 });
 
 test('build coordinator declares the implement-to-apply composition and envelopes', () => {
@@ -179,5 +181,11 @@ test('Claude sai-build keeps exact apply parity for the chained apply segment', 
   assert.match(buildWrapper,
     /^allowed-tools: \{\{capabilityAllowedTools\}\}$/m,
     'sai-build should pin the wide execution set without node-scoped narrowing');
-  assert.equal(require('./helpers/capability-source').commandTools('sai-build'), require('./helpers/capability-source').commandTools('sai-4-apply'));
+  const { commandTools } = require('./helpers/capability-source');
+  const build = commandTools('sai-build').split(', ');
+  const apply = commandTools('sai-4-apply').split(', ');
+  assert.ok(build.includes('WebFetch'), 'build needs direct documentation reads during coordinator-owned planning');
+  assert.ok(!apply.includes('WebFetch'), 'standalone apply access remains unchanged');
+  assert.deepEqual(build.filter(tool => tool !== 'WebFetch'), apply,
+    'all apply execution, delegation and authorization capabilities remain identical');
 });

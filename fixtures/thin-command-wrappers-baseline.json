@@ -36,12 +36,16 @@
       "sai-3-implement.md": [
         "Fetch @skills/fetch/SKILL.md",
         "Fetch @sai/adapters/claude/boot.md and follow it.",
-        "Fetch @sai/orchestration/workers/bindings/implementation-worker.md and use it."
+        "Fetch @sai/orchestration/workers/bindings/implementation-ui-worker.md",
+        "Fetch @sai/orchestration/workers/bindings/implementation-frontend-worker.md",
+        "Fetch @sai/orchestration/workers/bindings/implementation-backend-worker.md",
+        "Fetch @sai/orchestration/workers/bindings/implementation-infra-worker.md",
+        "Fetch @sai/orchestration/workers/bindings/implementation-other-worker.md"
       ],
       "sai-build.md": [
         "Fetch @skills/fetch/SKILL.md",
         "Fetch @sai/adapters/claude/boot.md and follow it.",
-        "Fetch @sai/orchestration/workers/bindings/implementation-worker.md and use it."
+        "Fetch @sai/commands/implement/command-bootstrap.md"
       ],
       "sai-4-apply.md": [
         "Fetch @skills/fetch/SKILL.md",
@@ -124,12 +128,16 @@
       "sai-3-implement.md": [
         "Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.",
         "Fetch @sai/adapters/opencode/boot.md and follow it.",
-        "Fetch @sai/orchestration/workers/bindings/implementation-worker.md and use it."
+        "Fetch @sai/orchestration/workers/bindings/implementation-ui-worker.md",
+        "Fetch @sai/orchestration/workers/bindings/implementation-frontend-worker.md",
+        "Fetch @sai/orchestration/workers/bindings/implementation-backend-worker.md",
+        "Fetch @sai/orchestration/workers/bindings/implementation-infra-worker.md",
+        "Fetch @sai/orchestration/workers/bindings/implementation-other-worker.md"
       ],
       "sai-build.md": [
         "Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.",
         "Fetch @sai/adapters/opencode/boot.md and follow it.",
-        "Fetch @sai/orchestration/workers/bindings/implementation-worker.md and use it."
+        "Fetch @sai/commands/implement/command-bootstrap.md"
       ],
       "sai-4-apply.md": [
         "Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.",

@@ -8,36 +8,36 @@ TBD - created by archiving change implement-step-gated-instructions. Update Purp
 
 ### Requirement: Worker executes only the coordinator-named active step
 
-The implementation worker SHALL execute only the step instruction file named by the `Active step: <id> — follow <path>` pointer line on the task-disclosure continuation or a progress-event continuation. It SHALL follow that file exactly and SHALL never prefetch, open, or follow any other step instruction file. Step-file paths SHALL exist solely as coordinator continuation lines; the worker contract plus `steps/common.md` is the sealed initial surface.
+A category planning worker SHALL receive all assigned Steps in one complete task and SHALL apply the shared plan-generation rules to those Steps only. It SHALL not use an Active step pointer schedule, perform common preparation, or generate unassigned Steps.
 
 #### Scenario: Only the named step file executes
 
-- **WHEN** a task-disclosure or progress-event continuation carries one pointer line naming a step file
-- **THEN** the worker executes that named step file exactly and does not open any other step instruction file.
+- **WHEN** the coordinator discloses the complete category assignment
+- **THEN** the worker executes common and plan-generation rules for every assigned Step without requiring per-Step continuations.
 
 ### Requirement: Wholesale instruction chain replaced by common.md at dispatch
 
-The implementation worker SHALL replace the wholesale fetch of the invocation chain with a fetch of `sai/commands/implement/steps/common.md` at dispatch, followed by execute-only-the-active-step delivery. `prereqs-resolution` SHALL run from the worker contract plus `common.md` before the worker follows any pointer. The first delivered pointer SHALL target `collapse-implemented-steps` and arrive as the first line of the task-disclosure continuation, before `arguments_value` and `fast_track_active`. The first progress event SHALL report `prereqs-resolution` and `collapse-implemented-steps` together.
+Category workers SHALL load common.md at dispatch, return ready before task disclosure, and then consume the complete task containing change, run, agent, inputs, ordered steps, artifact, and common_context. Resolution and common preparation SHALL remain coordinator-owned. Workers SHALL emit no progress events or combined resolution/collapse milestone.
 
 #### Scenario: Prereqs resolution runs before the first pointer
 
-- **WHEN** the implementation worker receives its task-disclosure continuation
-- **THEN** `prereqs-resolution` runs from the worker contract plus `common.md` before the pointer is followed, and the first delivered pointer names `collapse-implemented-steps`.
+- **WHEN** the coordinator prepares category tasks
+- **THEN** it resolves the change and completes required common preparation before disclosure, without transferring resolution or a first pointer to workers.
 
 ### Requirement: Steps never widen the worker contract
 
-Step execution SHALL NOT widen the worker contract: status returns, progress reporting, changed_files accounting, and failure classification SHALL apply unchanged while any step executes.
+Assigned-Step planning SHALL preserve closed status returns, ordered changed_files accounting, failure classification, and the exact temporary-part write boundary. It SHALL not grant final-plan, shared-input, production-code, or git-mutation authority.
 
 #### Scenario: Contract behavior is unchanged during step execution
 
-- **WHEN** any step instruction file executes
-- **THEN** the worker's status returns, progress reporting, changed_files accounting, and failure classification behave exactly as the worker contract defines.
+- **WHEN** a worker plans or corrects any assigned Step
+- **THEN** its lifecycle, failure, accounting, and temporary-artifact boundaries remain in force.
 
 ### Requirement: Active-step instruction authority
 
-The implementation worker SHALL treat `steps/common.md` together with exactly the coordinator-named active step file as the authoritative technical instruction surface for step execution. The worker SHALL NOT prefetch or follow another step instruction file.
+Category workers SHALL treat common.md and plan-generation Step-content rules as authoritative for their complete assignments. Shared documents MAY supply necessary dependency context but SHALL not expand output ownership.
 
 #### Scenario: Worker receives an active pointer
 
-- **WHEN** a progress continuation names one active step file
-- **THEN** the worker follows the common baseline and that named step file for technical execution.
+- **WHEN** the coordinator provides planning work to a category worker
+- **THEN** work is a complete assigned-Step task, not a progress pointer, and the worker follows the common baseline and planning rules without assuming phase-wide ownership.

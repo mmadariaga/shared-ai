@@ -170,6 +170,15 @@ continuation, and recovery: the union is never reset.
 
 ### Phase-adapter fields
 
+Implementation's category-planning coordinator owns its scheduling and common
+technical work. Its card binds the fields below separately per child and uses
+its parallel result loop: a child failure stops publication, not collection of
+sibling results. The coordinator's verified final publication, not any child's
+completed payload, is successful phase completion. It declares no worker step
+machine and marks its own common milestones. All child payloads, ready
+handshakes, input transport, independent bounded recovery, and changed-file
+unions still follow this runner. Other phases keep their existing ownership.
+
 The coordinator invokes only these phase-adapter fields; the last three are
 optional static declarations:
 

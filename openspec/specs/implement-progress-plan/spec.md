@@ -8,31 +8,28 @@ TBD - this spec was authored as a change delta and never merged into the main tr
 
 ### Requirement: implement-plan-steps-match-workflow
 
-The implementation plan steps SHALL correspond one-to-one to the implementation-planning workflow: `collapse-implemented-steps` covers the re-run guard (collapse every fully applied `#### Step N` of an existing `implementation.md` to `*(already applied)*`; on a first run its id is reported in the first progress event without fetching its step file); `artifact-analysis` covers parsing the artifacts, classifying audit findings, and validating design decisions for ADR/DDR; `documentation-review` covers reading the required documentation one time only; `plan-generation` covers the plan write (first-run generation or re-run preservation plus the audit-derived step append); `validation` covers the worker's pre-delivery durable-artifact verification — the `implementation.md` invariants and the audit-derived step append check, which remains a non-completion blocker: any failed check returns a non-completed lifecycle result and never a `completed` claim. The plan SHALL NOT include a `specs-approval` step: the specs approval gate belongs to the design phase.
-
-The workflow SHALL be executed from the step instruction files under `sai/commands/implement/steps/`: the worker executes only the step file named by the coordinator's `Active step:` pointer line on the task-disclosure continuation and on each progress-event continuation, and never prefetches, opens, or follows any other step instruction file. `prereqs-resolution` runs from the worker contract plus `steps/common.md` before the worker follows any pointer. On every run the first delivered pointer targets `collapse-implemented-steps` and arrives with the task disclosure. The first progress event reports `prereqs-resolution` and `collapse-implemented-steps` together, so the next delivered pointer targets `artifact-analysis`. Each plan id executes from its same-named step file, and `artifact-analysis` fetches `decision-record-index.md` only when it creates a decision record.
+The visible phase plan SHALL retain exactly prereqs-resolution, collapse-implemented-steps, artifact-analysis, documentation-review, plan-generation, and validation in that order, with no specs-approval milestone. The coordinator SHALL execute resolution and common-work milestones once from the existing library, preserve rerun content in a candidate, and own audit append and final verification. Category workers SHALL receive complete assigned-Step tasks and emit no milestone progress. Coordinator-authored observations SHALL validate through the progress validator, using only its received_at stamp. Plan-generation and validation SHALL complete only after verified publication; unsuccessful or input-paused results SHALL retain the last rendered state.
 
 #### Scenario: workflow steps map to plan steps
 
-- **WHEN** the step instruction files under `sai/commands/implement/steps/` named by the coordinator's `Active step:` pointer lines are executed
-- **THEN** each step's completion SHALL be reportable under exactly one of the declared plan step ids
+- **WHEN** the coordinator completes common work or verified publication
+- **THEN** each completed act is recorded under the corresponding canonical milestone without worker pointer-driven progress.
 
 #### Scenario: no approval step in the implementation plan
 
-- **WHEN** the implementation plan is inspected
-- **THEN** it SHALL contain exactly the six declared steps and SHALL NOT contain a `specs-approval` step
+- **WHEN** the visible phase plan is inspected
+- **THEN** it contains exactly the six canonical milestones and no specs-approval milestone.
 
 #### Scenario: validation step covers the durable verification
 
-- **WHEN** the worker completes the pre-delivery durable-artifact verification of `implementation.md` and the audit-derived step append check
-- **THEN** those acts SHALL be reported under `validation`
-- **AND** a failed verification SHALL NOT emit a `completed` claim — the run closes with a non-completed lifecycle result instead
+- **WHEN** the coordinator verifies the complete candidate and audit-derived append
+- **THEN** validation remains incomplete until successful publication and no failed verification produces a completed phase claim.
 
 ### Requirement: Validation owns durable implementation-plan verification
 
-The implementation worker SHALL execute the canonical `validation` step as the sole technical source for pre-delivery verification of `implementation.md` invariants and the audit-derived step-append check. A failed validation SHALL produce a non-completed lifecycle result.
+The coordinator SHALL use validation.md as the technical source for implementation-plan invariants and audit-step verification, applying it to the candidate before publication. A failed check SHALL produce a non-completed phase outcome and preserve the previous durable plan.
 
 #### Scenario: Durable validation fails
 
-- **WHEN** a required implementation-plan or audit-step check fails during `validation`
-- **THEN** the worker returns a failed result and does not claim planning completion.
+- **WHEN** a required implementation-plan or audit-step check fails
+- **THEN** publication and phase completion remain blocked.

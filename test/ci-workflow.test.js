@@ -8,9 +8,9 @@ const { spawnSync } = require('node:child_process');
 
 const workflow = fs.readFileSync(path.join(__dirname, '../.github/workflows/ci.yml'), 'utf8');
 
-test('CI checks main and v0.9-beta pull requests and main pushes without documentation filters or write access', () => {
-  assert.match(workflow, /pull_request:\s+branches: \[main, v0\.9-beta\]/);
-  assert.match(workflow, /push:\s+branches: \[main\]/);
+test('CI checks main, v0.9-beta, and v1.0-alpha pull requests and main/v1.0-alpha pushes without documentation filters or write access', () => {
+  assert.match(workflow, /pull_request:\s+branches: \[main, v0\.9-beta, v1\.0-alpha\]/);
+  assert.match(workflow, /push:\s+branches: \[main, v1\.0-alpha\]/);
   assert.doesNotMatch(workflow, /paths(?:-ignore)?:|pull_request_target|secrets\.|cache:|upload-artifact/);
   assert.match(workflow, /permissions:\s+contents: read/);
   assert.equal((workflow.match(/persist-credentials: false/g) || []).length, 2);

@@ -16,20 +16,21 @@
       "coordinator": { "extends": "boot", "search": true, "question": true, "panel": true, "message": true, "shell": ["node {sai}/tools/worker-report-validator.js *", "node {sai}/tools/no-commit-guard.js *", "node {sai}/bin/sai-state.js *", "git reset *"] },
       "spec-command": { "extends": "coordinator", "delegate": ["sai-1-spec-proposal-worker"] },
       "design-command": { "extends": "coordinator", "delegate": ["sai-2-design-worker"] },
-      "implementation-command": { "extends": "coordinator", "delegate": ["sai-3-implementation-worker"] },
+      "implementation-command": { "extends": "worker-implementation", "question": true, "panel": true, "delegate": ["explorer", "budget", "sai-3-ui-worker", "sai-3-frontend-worker", "sai-3-backend-worker", "sai-3-infra-worker", "sai-3-other-worker"] },
       "security-command": { "extends": "coordinator", "delegate": ["sai-6-security-worker"] },
       "performance-command": { "extends": "coordinator", "delegate": ["sai-7-performance-worker"] },
       "accessibility-command": { "extends": "coordinator", "delegate": ["sai-8-accessibility-worker"] },
       "review-coordinator": { "extends": "coordinator", "shell": ["node {sai}/tools/worker-report-validator.js *", "node {sai}/tools/no-commit-guard.js *", "node {sai}/bin/sai-state.js *", "git reset *", "git diff *", "git add *", "git commit *"], "delegate": ["sai-5-review-worker", "sai-6-security-worker", "sai-7-performance-worker", "sai-8-accessibility-worker", "sai-review-fix-worker"] },
       "review-command": { "extends": "review-coordinator", "delegate": ["sai-5-review-worker", "sai-review-fix-worker"] },
-      "apply-coordinator": { "extends": "coordinator", "write": true, "shell": ["*"], "delegate": ["explorer", "executor", "budget", "sai-3-implementation-worker", "sai-4-red-worker", "sai-4-green-worker"] },
+      "apply-coordinator": { "extends": "coordinator", "write": true, "shell": ["*"], "delegate": ["explorer", "executor", "budget", "sai-3-ui-worker", "sai-3-frontend-worker", "sai-3-backend-worker", "sai-3-infra-worker", "sai-3-other-worker", "sai-4-red-worker", "sai-4-green-worker"] },
+      "build-command": { "extends": "apply-coordinator", "webfetch": true },
       "apply-command": { "extends": "apply-coordinator", "delegate": ["explorer", "executor", "budget", "sai-4-red-worker", "sai-4-green-worker"] },
       "mutation-coordinator": { "extends": "coordinator", "write": true, "shell": ["*"] },
       "commit-command": { "extends": "mutation-coordinator", "write": false, "delegate": ["sai-commit-worker"] },
       "archive-command": { "extends": "mutation-coordinator", "delegate": ["sai-archive-worker", "sai-backfill-worker"] },
       "backfill-command": { "extends": "mutation-coordinator", "delegate": ["sai-backfill-worker"] },
       "merge-command": { "extends": "mutation-coordinator", "delegate": ["sai-merge-worker"] },
-      "explore-command": { "extends": "coordinator", "codegraph": true, "webfetch": true, "websearch": true, "shell": ["openspec *", "git *", "node {sai}/*", "node {skills}/to-backlog/scripts/prepare-temp.js {harness}"], "delegate": ["explorer", "executor", "budget", "sai-1-spec-proposal-worker", "sai-2-design-worker", "sai-3-implementation-worker", "sai-direct-build-worker", "sai-backfill-worker", "sai-archive-worker"] },
+      "explore-command": { "extends": "coordinator", "codegraph": true, "webfetch": true, "websearch": true, "shell": ["openspec *", "git *", "node {sai}/*", "node {skills}/to-backlog/scripts/prepare-temp.js {harness}"], "delegate": ["explorer", "executor", "budget", "sai-1-spec-proposal-worker", "sai-2-design-worker", "sai-3-ui-worker", "sai-3-frontend-worker", "sai-3-backend-worker", "sai-3-infra-worker", "sai-3-other-worker", "sai-direct-build-worker", "sai-backfill-worker", "sai-archive-worker"] },
       "utility-write": { "extends": "boot", "search": true, "write": true, "codegraph": true, "shell": ["*"], "question": true },
       "status-command": { "extends": "boot", "search": true, "question": true, "shell": ["openspec *", "node {sai}/tools/status.js *", "node {sai}/tools/change-picker.js *"] },
       "worktree-command": { "extends": "boot", "search": true, "question": true, "shell": ["git *", "node {sai}/tools/worktree.js *"] },
@@ -46,7 +47,11 @@
         "budget-subagent": "task", "budget": "task",
         "sai-1-spec-proposal-worker": "worker-research",
         "sai-2-design-worker": "worker-design",
-        "sai-3-implementation-worker": "worker-implementation",
+        "sai-3-ui-worker": "worker-implementation",
+        "sai-3-frontend-worker": "worker-implementation",
+        "sai-3-backend-worker": "worker-implementation",
+        "sai-3-infra-worker": "worker-implementation",
+        "sai-3-other-worker": "worker-implementation",
         "sai-5-review-worker": "worker-research",
         "sai-6-security-worker": "worker-research",
         "sai-7-performance-worker": "worker-research",
@@ -58,7 +63,7 @@
       },
       "commands": {
         "sai-1-spec": "spec-command", "sai-2-design": "design-command", "sai-3-implement": "implementation-command",
-        "sai-4-apply": "apply-command", "sai-build": "apply-coordinator",
+        "sai-4-apply": "apply-command", "sai-build": "build-command",
         "sai-5-review": "review-command", "sai-review": "review-coordinator",
         "sai-6-security": "security-command", "sai-7-performance": "performance-command", "sai-8-accessibility": "accessibility-command",
         "sai-commit": "commit-command", "sai-archive": "archive-command",
@@ -142,20 +147,40 @@
       },
       {
         "phase": "implementation",
-        "workerName": "sai-3-implementation-worker",
+        "workerName": "sai-3-ui-worker",
         "workerContract": "sai/commands/implement/worker.md",
-        "bindingStem": "implementation",
+        "bindingStem": "implementation-ui",
         "claudeAgent": {
-          "agentName": "sai-3-implementation-worker",
-          "description": "Implementation-planning worker for /sai-3-implement and /sai-build, dispatched only by their coordinators. Writes implementation.md.",
+          "agentName": "sai-3-ui-worker",
+          "description": "Category planner for /sai-3-implement and /sai-build, dispatched only by their coordinators. Writes only its assigned temporary plan part.",
           "model": "opus",
           "effort": "medium"
         },
         "opencodeAgent": {
-          "description": "Implementation-planning worker for /sai-3-implement and /sai-build, dispatched only by their coordinators. Writes implementation.md.",
+          "description": "Category planner for /sai-3-implement and /sai-build, dispatched only by their coordinators. Writes only its assigned temporary plan part.",
           "model": "opencode-go/deepseek-v4.1-flash",
           "variant": "max"
         }
+      },
+      {
+        "phase": "implementation", "workerName": "sai-3-frontend-worker", "workerContract": "sai/commands/implement/worker.md", "bindingStem": "implementation-frontend",
+        "claudeAgent": { "agentName": "sai-3-frontend-worker", "description": "Category planner for /sai-3-implement and /sai-build, dispatched only by their coordinators. Writes only its assigned temporary plan part.", "model": "opus", "effort": "medium" },
+        "opencodeAgent": { "description": "Category planner for /sai-3-implement and /sai-build, dispatched only by their coordinators. Writes only its assigned temporary plan part.", "model": "opencode-go/deepseek-v4.1-flash", "variant": "max" }
+      },
+      {
+        "phase": "implementation", "workerName": "sai-3-backend-worker", "workerContract": "sai/commands/implement/worker.md", "bindingStem": "implementation-backend",
+        "claudeAgent": { "agentName": "sai-3-backend-worker", "description": "Category planner for /sai-3-implement and /sai-build, dispatched only by their coordinators. Writes only its assigned temporary plan part.", "model": "opus", "effort": "medium" },
+        "opencodeAgent": { "description": "Category planner for /sai-3-implement and /sai-build, dispatched only by their coordinators. Writes only its assigned temporary plan part.", "model": "opencode-go/deepseek-v4.1-flash", "variant": "max" }
+      },
+      {
+        "phase": "implementation", "workerName": "sai-3-infra-worker", "workerContract": "sai/commands/implement/worker.md", "bindingStem": "implementation-infra",
+        "claudeAgent": { "agentName": "sai-3-infra-worker", "description": "Category planner for /sai-3-implement and /sai-build, dispatched only by their coordinators. Writes only its assigned temporary plan part.", "model": "opus", "effort": "medium" },
+        "opencodeAgent": { "description": "Category planner for /sai-3-implement and /sai-build, dispatched only by their coordinators. Writes only its assigned temporary plan part.", "model": "opencode-go/deepseek-v4.1-flash", "variant": "max" }
+      },
+      {
+        "phase": "implementation", "workerName": "sai-3-other-worker", "workerContract": "sai/commands/implement/worker.md", "bindingStem": "implementation-other",
+        "claudeAgent": { "agentName": "sai-3-other-worker", "description": "Category planner for /sai-3-implement and /sai-build, dispatched only by their coordinators. Writes only its assigned temporary plan part.", "model": "opus", "effort": "medium" },
+        "opencodeAgent": { "description": "Category planner for /sai-3-implement and /sai-build, dispatched only by their coordinators. Writes only its assigned temporary plan part.", "model": "opencode-go/deepseek-v4.1-flash", "variant": "max" }
       },
       {
         "phase": "review",
@@ -767,11 +792,11 @@
       "drift": "content"
     },
     {
-      "id": "claude-sai-3-implementation-worker",
+      "id": "claude-sai-3-ui-worker",
       "source": "agents/claude/worker-template.md",
       "destination": {
         "class": "agents",
-        "path": "sai-3-implementation-worker.md"
+        "path": "sai-3-ui-worker.md"
       },
       "harnesses": [
         "claude"
@@ -1078,11 +1103,11 @@
       }
     },
     {
-      "id": "opencode-sai-3-implementation-worker",
+      "id": "opencode-sai-3-ui-worker",
       "source": "agents/opencode/worker-template.md",
       "destination": {
         "class": "agents",
-        "path": "sai-3-implementation-worker.md"
+        "path": "sai-3-ui-worker.md"
       },
       "harnesses": [
         "opencode"
@@ -1496,6 +1521,10 @@
     }
   ],
   "retirements": [
+    { "id": "retired-claude-single-implementation-agent", "destination": { "class": "agents", "path": "sai-3-implementation-worker.md" }, "harnesses": ["claude"], "managedHashes": ["be822f59065ed68edc25dd0d1a3931702efa825fa0345ceb94d6c6543135e268"] },
+    { "id": "retired-opencode-single-implementation-agent", "destination": { "class": "agents", "path": "sai-3-implementation-worker.md" }, "harnesses": ["opencode"], "managedHashes": ["00c2df2a1c1105d47314ea5c12976dee9cde4a18f1e7ae9a835d4554b5f3b3ab"] },
+    { "id": "retired-claude-single-implementation-binding", "destination": { "class": "sai", "path": "orchestration/workers/bindings/implementation-worker.md" }, "harnesses": ["claude"], "managedHashes": ["31bda12d4d3df7bc890ea7f14e376923a587827e24ee059eca527bdc660cc44c"] },
+    { "id": "retired-opencode-single-implementation-binding", "destination": { "class": "sai", "path": "orchestration/workers/bindings/implementation-worker.md" }, "harnesses": ["opencode"], "managedHashes": ["f29ce7551be4188d1f8935dc3781259645c1c113204c9c8d2b7afbef6bffc69c"] },
     { "id": "retired-sai-pr-claude", "destination": { "class": "commands", "path": "sai-pr.md" }, "harnesses": ["claude"], "managedHashes": ["c0571888d02f3a4d5cb92c2c9328c37ac42453703db3592e871f049b495d0dfa", "895c177fa529659d34d0d94344775cc3779d7236ec6c3671012de4ec708f33d9"] },
     { "id": "retired-sai-pr-opencode", "destination": { "class": "commands", "path": "sai-pr.md" }, "harnesses": ["opencode"], "managedHashes": ["b5464e822849b6499d4054c4acaa62df4b6d699beda80f48c44ada59a6922c68", "757f4406f2db41f40744bd3dd0b4055441a90d90d5d2618497e93637bdd8c12b"] },
     { "id": "retired-pr-body", "destination": { "class": "sai", "path": "commands/pr/body.md" }, "harnesses": ["claude", "opencode"], "managedHashes": ["634f3094b588e912e2ede4d7273afcb15f25f48437caddd3ccac56d701da32f4"] },

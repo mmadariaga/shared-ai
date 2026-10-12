@@ -7,36 +7,42 @@ Verify that all shipped Claude Code model and effort defaults match the selected
 
 ### Requirement: Regression coverage checks all 36 Claude Code preset roles
 
-The default-alignment regression test SHALL compare both model and effort for every role in `sai/presets/claude/[sai-default]-OPUS.json` against the corresponding canonical Claude Code source and generated installation projection. It SHALL require exactly 3 agent roles, 15 command roles, 15 worker roles, and 3 utility roles. Command and agent frontmatter SHALL contain exactly one explicit model line and exactly one explicit effort line. Managed-worker canonical settings SHALL be checked against the corresponding `claudeAgent` entry in the worker matrix.
+Alignment tests SHALL compare model and effort for all forty Claude OPUS preset roles against canonical sources and generated projections: three generic agents, fifteen commands, nineteen workers, and three utilities. Each category planner SHALL match the former implementation worker's settings. Explicit model/effort lines and matrix-derived managed-worker settings SHALL retain their checks.
 
 #### Scenario: All role settings match the preset
-- **WHEN** the regression test checks canonical and generated settings for all 36 preset roles
-- **THEN** it passes only when every role has exactly the preset model and effort values and the expected role-family counts
+
+- **WHEN** alignment checks all forty preset roles
+- **THEN** it passes only when model, effort, and role-family counts match and all five category planners retain the former worker defaults.
 
 #### Scenario: A model or effort differs or is absent
-- **WHEN** a canonical source or generated projection has a model or effort mismatch, or command or agent frontmatter lacks an explicit effort line
-- **THEN** the regression test fails
+
+- **WHEN** canonical or generated settings mismatch or required model/effort lines are absent
+- **THEN** the alignment regression test fails.
 
 ### Requirement: Regression coverage protects the reference preset
 
-The default-alignment regression test SHALL verify that the raw reference preset content retains SHA-256 `214fff330885f84ece7527632bbb5bdd2b940d813c623c866e2f2f308cc3752f`. It SHALL assert that `to-pr`, `to-backlog`, `from-backlog`, and `from-next-backlog-item` have no command entries in that preset.
+The test SHALL reconstruct the previous reference preset by removing frontend/backend/infra/other additions and renaming ui to sai-3-implementation-worker, then verify SHA-256 214fff330885f84ece7527632bbb5bdd2b940d813c623c866e2f2f308cc3752f. It SHALL require all five new planner settings to equal that prior worker's settings. The four excluded publication/backlog command entries SHALL remain absent.
 
 #### Scenario: Reference preset changes
-- **WHEN** the raw content of `sai/presets/claude/[sai-default]-OPUS.json` differs from the recorded reference
-- **THEN** the preset hash assertion fails
+
+- **WHEN** reconstructed prior preset bytes or identical planner settings differ from the reference
+- **THEN** the reference-protection assertion fails.
 
 #### Scenario: Excluded commands remain outside the preset
-- **WHEN** the regression test examines command membership in the reference preset
-- **THEN** none of to-pr, to-backlog, from-backlog, or from-next-backlog-item is present
+
+- **WHEN** reference command membership is checked
+- **THEN** to-pr, to-backlog, from-backlog, and from-next-backlog-item remain absent.
 
 ### Requirement: Regression coverage protects generated opencode output
 
-The default-alignment regression test SHALL collect generated opencode agent, command wrapper, and configuration entries, normalize destination paths to relative forward-slash paths, sort entries by path, and fingerprint their paths and complete contents. It SHALL require exactly 41 entries and SHA-256 `75cf8ad0db8fb76addde58b5fa7fa86acf21536853701d094cea53da58c9721a` for the JSON-serialized entry array, matching the pre-alignment output.
+The test SHALL fingerprint normalized, sorted generated opencode agent/command/configuration paths and complete contents. It SHALL require forty-five entries with five category agents. Excluding those five agents and sai-3-implement, sai-build, and sai-explore wrappers, the thirty-seven unaffected entries SHALL retain SHA-256 ae95c53c1bb9706aafa51eb5fde3f1ccca6a000f6e9b4bfa3d088d286eca551d. Changed implementation surfaces SHALL remain covered by routing, permissions, handshake, defaults, and reference-projection tests.
 
 #### Scenario: Claude Code defaults change without changing opencode output
-- **WHEN** the regression test generates opencode agents, command wrappers, and configuration after the Claude Code alignment
-- **THEN** the 41-entry output retains the pre-alignment fingerprint
+
+- **WHEN** generated output is checked with the category-routing changes applied
+- **THEN** all unaffected opencode path/content bytes retain the recorded fingerprint.
 
 #### Scenario: Generated opencode output changes
-- **WHEN** a generated opencode agent, command wrapper, or configuration entry changes its path or contents
-- **THEN** the unchanged-output assertion fails
+
+- **WHEN** an unaffected generated opencode path or content changes
+- **THEN** the unchanged-output assertion fails rather than accepting a count-only replacement.
