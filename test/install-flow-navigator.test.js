@@ -500,6 +500,225 @@ test('a non-TTY input with a header resolves non-interactive before painting any
   }
 });
 
+// --- height-bounded rendering ----------------------------------------------
+
+function createSizedOutput(columns, rows) {
+  const output = new EventEmitter();
+  output.columns = columns;
+  output.rows = rows;
+  output.frames = [];
+  output.write = chunk => {
+    if (chunk.includes('\x1B[0J')) output.frames.push(chunk);
+    return true;
+  };
+  output.resize = (nextColumns, nextRows) => {
+    output.columns = nextColumns;
+    output.rows = nextRows;
+    output.emit('resize');
+  };
+  return output;
+}
+
+function frameText(frame) {
+  return frame.slice(frame.indexOf('\x1B[0J') + 4).replace(/\x1B\[[0-9;]*[A-Za-z]/g, '').replace(/[\r\n]+$/, '');
+}
+
+function physicalRows(text, width) {
+  return text.split('\n').reduce((total, line) => total + Math.max(1, Math.ceil(line.length / width)), 0);
+}
+
+test('a fitting menu retains the complete frame and its physical-row redraw count', async () => {
+  const input = createFakeInput(true);
+  const output = createSizedOutput(80, 8);
+  const promise = runNavigator({ mode: 'single', question: 'Pick:', header: ['Header'],
+    options: ['one', 'two'], defaultSelected: [], footer: 'Help', input, output });
+  assert.equal(output.frames[0], '\x1B[0JPick:\nHeader\n>    one\n     two\nHelp\n');
+  input.emit('keypress', '', keyInfo('down', '\x1b[B'));
+  assert.ok(output.frames[1].startsWith('\x1B[5A\x1B[0J'));
+  input.emit('keypress', '\r', keyInfo('return', '\r'));
+  assert.deepEqual(await promise, { status: 'confirmed', items: ['two'] });
+});
+
+test('oversized menus scroll both ways, skip separators, and retain offscreen checks', async () => {
+  const input = createFakeInput(true);
+  const output = createSizedOutput(40, 6);
+  const options = ['one', '', 'two', 'three', 'four', 'five', 'six'];
+  const promise = runNavigator({ mode: 'multi', question: 'Pick:', header: ['Header'],
+    options, defaultSelected: ['one'], footer: 'Help', input, output, toggleAll: true });
+  for (let i = 0; i < 5; i += 1) input.emit('keypress', '', keyInfo('down', '\x1b[B'));
+  assert.match(frameText(output.frames.at(-1)), /> \[ \] six/);
+  assert.doesNotMatch(frameText(output.frames.at(-1)), /\bone\b/);
+  input.emit('keypress', ' ', keyInfo('space', ' '));
+  for (let i = 0; i < 5; i += 1) input.emit('keypress', '', keyInfo('up', '\x1b[A'));
+  assert.match(frameText(output.frames.at(-1)), /> \[x\] one/);
+  for (const frame of output.frames) {
+    assert.ok(physicalRows(frameText(frame), output.columns) <= output.rows - 1);
+    const up = /\x1B\[(\d+)A/.exec(frame);
+    if (up) assert.ok(Number(up[1]) <= output.rows - 1);
+  }
+  input.emit('keypress', '\r', keyInfo('return', '\r'));
+  assert.deepEqual(await promise, { status: 'confirmed', items: ['one', 'six'] });
+  assert.equal(output.listenerCount('resize'), 0);
+});
+
+test('wrapped title, headers, instructions and option rows share the height budget', async () => {
+  const input = createFakeInput(true);
+  const output = createSizedOutput(12, 9);
+  const promise = runNavigator({ mode: 'single', question: 'A wrapped title',
+    header: ['A wrapped header'], footer: 'Wrapped instructions',
+    options: ['long option text', 'second', 'third', 'fourth'], defaultSelected: [], input, output });
+  assert.match(frameText(output.frames[0]), /A wrapped header/);
+  assert.doesNotMatch(frameText(output.frames[0]), /second/);
+  input.emit('keypress', '', keyInfo('down', '\x1b[B'));
+  assert.match(frameText(output.frames.at(-1)), />    second/);
+  for (const frame of output.frames) assert.ok(physicalRows(frameText(frame), 12) <= 8);
+  input.emit('keypress', ' ', keyInfo('space', ' '));
+  assert.deepEqual(await promise, { status: 'confirmed', items: ['second'] });
+});
+
+test('bounded redraws overwrite the visible screen instead of accumulating frames in scrollback', async () => {
+  const input = createFakeInput(true);
+  const output = createSizedOutput(16, 5);
+  let screen = Array.from({ length: output.rows }, () => '');
+  let row = output.rows - 1;
+  let column = 0;
+  let scrolled = 0;
+  const capture = output.write;
+  const advance = () => {
+    row += 1;
+    if (row === output.rows) {
+      screen.shift();
+      screen.push('');
+      row -= 1;
+      scrolled += 1;
+    }
+  };
+  // Model delayed terminal wrapping and the cursor/erase operations used by
+  // the renderer. Starting on the bottom row also exercises the first paint.
+  output.write = chunk => {
+    capture(chunk);
+    for (const token of chunk.match(/\x1B\[[0-9;?]*[A-Za-z]|[\s\S]/g) || []) {
+      if (token.startsWith('\x1B[')) {
+        const up = /^\x1B\[(\d+)A$/.exec(token);
+        if (up) row = Math.max(0, row - Number(up[1]));
+        else if (token === '\x1B[H') { row = 0; column = 0; }
+        else if (token === '\x1B[2J') screen = screen.map(() => '');
+        else if (token === '\x1B[0J') {
+          screen[row] = screen[row].slice(0, column);
+          for (let i = row + 1; i < screen.length; i += 1) screen[i] = '';
+        }
+      } else if (token === '\r') column = 0;
+      else if (token === '\n') { advance(); column = 0; }
+      else {
+        if (column === output.columns) { advance(); column = 0; }
+        screen[row] = screen[row].padEnd(column, ' ').slice(0, column) + token;
+        column += 1;
+      }
+    }
+    return true;
+  };
+  const options = Array.from({ length: 20 }, (_, i) => `option-${i}`);
+  const promise = runNavigator({ mode: 'single', options, question: 'Pick:',
+    defaultSelected: [], input, output });
+  const initialScroll = scrolled;
+  for (let i = 1; i < options.length; i += 1) {
+    input.emit('keypress', '', keyInfo('down', '\x1b[B'));
+    assert.equal(scrolled, initialScroll, 'later redraws must not add scrollback');
+    assert.equal(screen.filter(line => line.startsWith('>')).length, 1);
+    assert.ok(screen.includes(`>    option-${i}`));
+  }
+  // A real resize changes the grid before emitting its event.
+  screen = Array.from({ length: 3 }, () => '');
+  row = 0;
+  column = 0;
+  output.resize(10, 3);
+  const resizeScroll = scrolled;
+  for (let i = options.length - 2; i >= 0; i -= 1) {
+    input.emit('keypress', '', keyInfo('up', '\x1b[A'));
+    assert.equal(scrolled, resizeScroll);
+    assert.ok(screen[0].startsWith('>    optio'));
+  }
+  input.emit('keypress', '\r', keyInfo('return', '\r'));
+  assert.deepEqual(await promise, { status: 'confirmed', items: ['option-0'] });
+});
+
+test('resize reduces auxiliary content in order and restores it without changing selection', async () => {
+  const input = createFakeInput(true);
+  const output = createSizedOutput(40, 10);
+  const promise = runNavigator({ mode: 'multi', question: 'Title', header: ['Header 1', 'Header 2'],
+    footer: 'Help', options: ['one', 'two', 'three'], defaultSelected: ['one'], input, output });
+  input.emit('keypress', '', keyInfo('down', '\x1b[B'));
+  input.emit('keypress', ' ', keyInfo('space', ' '));
+  for (const [rows, expected, absent] of [
+    [5, ['Title', 'Header 1', 'Help'], ['Header 2']],
+    [3, ['Title'], ['Header 1', 'Help']],
+    [2, [], ['Title', 'Help', 'Header 1']],
+    [1, [], ['Title', 'Help', 'Header 1']],
+    [10, ['Title', 'Header 1', 'Header 2', 'Help'], []],
+  ]) {
+    output.resize(40, rows);
+    const frame = output.frames.at(-1);
+    assert.ok(frame.startsWith('\x1B[2J\x1B[H'), 'resize establishes a new screen origin');
+    assert.doesNotMatch(frame, /\x1B\[\d+A/, 'resize never seeks vanished old rows');
+    const text = frameText(frame);
+    assert.match(text, /> \[x\] two/);
+    for (const line of expected) assert.ok(text.includes(line));
+    for (const line of absent) assert.ok(!text.includes(line));
+    assert.ok(physicalRows(text, 40) <= Math.max(1, rows - 1));
+  }
+  input.emit('keypress', '\r', keyInfo('return', '\r'));
+  assert.deepEqual(await promise, { status: 'confirmed', items: ['one', 'two'] });
+  assert.equal(output.listenerCount('resize'), 0);
+});
+
+test('a selected option taller than the window is clipped, including embedded newlines and ANSI', async () => {
+  const input = createFakeInput(true);
+  const output = createSizedOutput(10, 3);
+  const promise = runNavigator({ mode: 'single', question: 'Title', footer: 'Help',
+    options: ['\x1B[32mvery long option with more text\x1B[0m\nextra line', 'two'],
+    defaultSelected: [], input, output });
+  const text = frameText(output.frames[0]);
+  assert.ok(text.startsWith('>    very long'));
+  assert.ok(physicalRows(text, 10) <= 2);
+  assert.doesNotMatch(text, /Title|Help|extra/);
+  output.resize(8, 1);
+  assert.ok(physicalRows(frameText(output.frames.at(-1)), 8) <= 1);
+  input.emit('keypress', '', keyInfo('down', '\x1b[B'));
+  assert.equal(frameText(output.frames.at(-1)), '>    two');
+  input.emit('keypress', '\r', keyInfo('return', '\r'));
+  assert.deepEqual(await promise, { status: 'confirmed', items: ['two'] });
+});
+
+test('Ctrl+A still toggles options outside the visible area', async () => {
+  const input = createFakeInput(true);
+  const output = createSizedOutput(40, 2);
+  const promise = runNavigator({ mode: 'multi', options: ['one', '', 'two', 'three'],
+    defaultSelected: ['two'], input, output, toggleAll: true, preventEmptyConfirm: true });
+  input.emit('keypress', '\x01', keyInfo('a', '\x01', { ctrl: true }));
+  input.emit('keypress', '\r', keyInfo('return', '\r'));
+  assert.deepEqual(await promise, { status: 'confirmed', items: ['one', 'two', 'three'] });
+});
+
+for (const exit of ['q', 'ctrl-c', 'escape', 'end', 'close', 'error']) {
+  test(`height-bounded navigator removes resize handling on ${exit}`, async () => {
+    const input = createFakeInput(true);
+    const output = createSizedOutput(20, 2);
+    const promise = runNavigator({ mode: 'single', options: ['one', 'two', 'three'],
+      defaultSelected: [], input, output });
+    assert.equal(output.listenerCount('resize'), 1);
+    if (['end', 'close', 'error'].includes(exit)) input.emit(exit);
+    else if (exit === 'ctrl-c') input.emit('keypress', '\x03', keyInfo('c', '\x03', { ctrl: true }));
+    else input.emit('keypress', exit === 'q' ? 'q' : '', keyInfo(exit, ''));
+    const outcome = await promise;
+    assert.equal(outcome.status, ['end', 'close', 'error'].includes(exit) ? 'input-closed'
+      : exit === 'escape' ? 'back' : 'cancelled');
+    assert.equal(output.listenerCount('resize'), 0);
+    const count = output.frames.length;
+    output.resize(30, 10);
+    assert.equal(output.frames.length, count);
+  });
+}
+
 // --- main() TTY guard source pin -------------------------------------------
 
 test('main() preserves the exact non-interactive message before process.exit(1) and the message no longer lives in promptChecklist (npx-installer TTY guard)', () => {
