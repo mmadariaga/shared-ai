@@ -27,6 +27,17 @@ Fetch @sai/commands/explore/steps/crystallization-language-gates.md
 
 The blocks are composed inside the block emit, never printed first. The machine records the inventory before anything is displayed; after its result only a transcription and one action remain. Run these steps in order, in the same turn:
 
+Place `**Depends on**: <comma-separated immediate change names or None>` inside
+each new slice block immediately after Change name, never in an external
+annotation. Before the block emit, run `ready-to-propose.js dependencies` with
+the complete set on stdin. Require `ok: true`; arrange unchanged block texts by
+returned `order` before storage and display. This is stable blocker-first order
+and adds no dependencies from branch ancestry. Correct syntax without changing
+agreements; contradictory agreed dependencies require a user decision before
+delivery. `sai-state` runs the same complete-set validator before storage and
+every amendment. Existing numbering and Walking Skeleton identities are
+unchanged; dependency ordering orders blocks, not their slice identifiers.
+
 1. **Stage panel.** Clear the stage TODO through the existing Phase A panel contract in `common.md` and the active harness binding. Do not create idea-list entries; the panel remains logically empty until route-choice resolution. The panel is presentation only and never blocks the close: if a panel call is rejected because the panel tool is unavailable, record exactly `> Panel rendering unavailable; continuing without task-panel updates.`, disable panel calls for the rest of the chat, and continue; report any other panel error in one line and continue.
 2. **Block emit.** Send the complete block set — every block, with any slice header and numbering, exactly as it will be displayed, in display order — on stdin in one `sai-state emit <id> explore-slice@1 --ready-to-propose -` call, using the block-emit delivery form in `@sai/policies/stage-machine.md` § Event delivery (a quoted heredoc in Bash, a single-quoted here-string in PowerShell). Use the existing session; do not reset either machine. The emit validates every block against the `dispatchable` profile of `@sai/policies/ready-to-propose-format.md`, extracts the change names, and records them as the ordered inventory in one step, storing each block's text, hash, and verdicts; never compose a `recordedList` by hand. The set is validated as a whole: when any block fails, no name is recorded.
    - **Hygiene judgment** (`validation.flagged` is non-empty and `validation.judgment.pending` lists lines): the structure is valid but the lexical pre-filter flagged lines. Fetch @sai/policies/block-hygiene-judgment.md, judge each pending flagged line, and send the same block set again with the verdicts after the `<<<VERDICTS>>>` line, in the delivery form of `@sai/policies/stage-machine.md` § Event delivery. The set is recorded only when every flagged line carries a `context` verdict.

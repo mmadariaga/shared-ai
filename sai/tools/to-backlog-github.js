@@ -117,7 +117,15 @@ function save(file, receipt) {
   // Atomic replacement keeps the previous conservative state on interruption.
   const temporary = `${file}.${crypto.randomUUID()}.tmp`;
   fs.writeFileSync(temporary, JSON.stringify(receipt), { mode: 0o600, flag: 'wx' });
-  fs.renameSync(temporary, file);
+  // Windows scanners can briefly hold the destination after a verified read.
+  // Retry the same atomic rename; never delete the previous durable receipt.
+  for (let attempt = 0; ; attempt++) {
+    try { fs.renameSync(temporary, file); break; }
+    catch (error) {
+      if (attempt >= 4 || !['EPERM', 'EBUSY', 'EACCES'].includes(error.code)) throw error;
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 10);
+    }
+  }
 }
 
 function report(receipt, message) {
@@ -270,4 +278,18 @@ function recoverUpdate(request, io) {
   } catch (error) { return { status: 'uncertain', message: error.message }; }
 }
 
-module.exports = { query, publish, recover, pages, inspect, digest, receiptPath, save, 'read-update': readUpdate, 'query-update': queryUpdate, update, 'recover-update': recoverUpdate };
+const set = require('./backlog-set-github');
+const assignment = require('./backlog-assignment-github');
+function lookupSlice(request, io) {
+  const state = inspect(request, io);
+  const identity = require('./backlog-slice-identity');
+  const candidates = issues({ proposal: { repository: state.repo.nameWithOwner } }, io).flatMap(issue => {
+    const value = identity.decode(issue.body);
+    return value?.role === 'child' && value.change_name === request.change_name && value.slices.find(slice => slice.change_name === value.change_name)?.issue === issue.url ? [{ issue: issue.url, correspondence: value }] : [];
+  });
+  return { status: candidates.length === 1 ? 'complete' : 'needs_input', candidates };
+}
+module.exports = { query, publish, recover, pages, inspect, digest, receiptPath, save, api, 'read-update': readUpdate, 'query-update': queryUpdate, update, 'recover-update': recoverUpdate,
+  'lookup-slice': lookupSlice,
+  'query-set': set.query, 'publish-set': set.publish, 'recover-set': set.recover, 'continue-set': set.continueSet,
+  'inspect-assignment': assignment.inspect, 'propose-assignment': assignment.propose, assign: assignment.assign, 'verify-assignment': assignment.verify };

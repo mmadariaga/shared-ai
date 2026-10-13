@@ -12,6 +12,8 @@ The block is structured as follows:
 ## Ready to Propose
 
 **Change name**: <kebab-case suggestion>
+**Depends on**: <comma-separated immediate dependency change names, or None>
+**Backlog origin**: <selected GitHub child URL; omit without issue provenance>
 **What**: <1–2 sentences describing the change>
 **Why**: <1–2 sentences stating the motivation; optional inline file:line provenance citations when the hypothesis was grounded in specific files>
 **Capabilities in scope**:
@@ -75,6 +77,9 @@ Plan - Unattended and Direct Build - Unattended dispatch a block only from the `
 The Manual route has no store and no hash.
 
 ## Field rules
+
+- **Depends on**: inside the block immediately after Change name; required for newly emitted slices (None for an independent slice). Older blocks without it mean no dependencies. Use real immediate dependencies only, separated by commas; branch ancestry adds no edges. `validateDependencies` in `ready-to-propose.js` checks one block's syntax, duplicates, and self references without demanding external slices. `validateDependencySet` additionally checks existing references and cycles and returns stable blocker-first order. Producers validate the complete set before storage, display, amendment, or publication; contradictions that need an agreement change go to the user. Never invent or delete agreed edges to pass validation. The line is stored and hashed with the block.
+- **Backlog origin**: optional issue identity carried with the separately delivered slice, after Depends on when present. It is provenance, not remote-mutation authority. Retain the selected child URL, not its parent context URL. After a completed set publication, `backlog-origin-transport.md` attaches the actual child identities to stored blocks through validated amendments and recomputed hashes before planning dispatch. The validator returns the canonical `backlog_origin`; Spec preserves it under `.openspec.yaml`'s `backlog_origin`; implementation coordinators independently verify the selected child and parent before assignment.
 
 - **Change name**: kebab-case suggestion
 - **What**: 1–2 sentences describing the change

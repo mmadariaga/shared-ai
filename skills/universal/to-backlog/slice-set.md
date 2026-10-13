@@ -1,0 +1,57 @@
+# GitHub crystallized slice publication
+
+Reach this branch only for GitHub create with an explicitly crystallized slice
+set, including a one-slice set. An ordinary request without slices follows the
+existing one-item branch. GitLab and Azure DevOps retain their current workflows.
+An originating issue retains update mode; never create a replacement parent.
+Updating a previously published set retains its correspondence and children;
+this branch grants no additional child creation on update.
+
+Use the existing whole-objective parent title/description and every agreed
+slice block verbatim. There is no second decomposition or breakdown approval.
+Resolve content ambiguity with the user; do not synthesize replacement slices.
+Call `query-set` with the ordinary GitHub destination/content fields and
+`blocks` (the complete Ready to Propose text). The single dependency validator
+checks the whole set and returns stable blocker-first order. Resolve invalid
+dependencies before delivery or publication without changing agreements alone.
+
+Show the complete parent and every complete child in returned order, the exact
+destination/visibility/Project, and relation operations. State the returned
+representation: native hierarchy when supported; otherwise written references.
+Disclose the returned dependency representation too: native blocker relations
+when supported, otherwise written immediate references. Only agreed immediate
+edges are created; execution order and branch ancestry add none.
+The approved relation recipe appends issue URLs and structured correspondence
+to agreed source content after creation; assignees, labels and state stay intact.
+Obtain the existing explicit publication confirmation for this entire proposal.
+The optional backlog Yes, fast-track, and unattended consent do not replace it.
+
+Call `publish-set` with the same request, unchanged `confirmation` and a new
+private receipt path under the existing temporary-directory protocol. Each
+creation, Project membership, written reference, and native hierarchy link is a
+separate verified operation. Retain returned `correspondence` with
+`version`, `platform`, `parent`, and `slices` (change_name, issue, depends_on).
+The same mapping is stored in each issue's `sai-backlog-slices@1` marker, so
+import and `lookup-slice` can recover it independently of this conversation.
+When returning to Explore's pre-route action, return the complete verified
+correspondence to `backlog-origin-transport.md`: that owner amends the stored
+blocks with actual child origins and new hashes before cold planning dispatch.
+Conversation-only retention is not sufficient for that path.
+
+On a partial or uncertain result, show `created`, `pending`, and the receipt.
+Offer verify/recover, stop, or explicit continuation when verifiable; wait.
+`recover-set` reads remote results and updates only the local receipt. A lost
+creation response returns candidates, never another creation. Ask the user to
+identify the existing result and send `identified: {"<index>": "<issue URL>"}`.
+If unresolved, stay stopped. After recovery, show all pending operations and
+ask approval; `continue-set` uses the returned `continuation` as its
+`confirmation`. It re-verifies results before executing pending operations.
+Changed content or visibility requires renewed review, not automatic replay.
+
+If native relationship operations fail, `recover-set` with `fallback: "written"`
+proposes written hierarchy/dependencies and lists native links already verified. Show
+that limitation and ask the user to approve the changed representation. Only
+then call `continue-set` with that fallback and its new confirmation token.
+This leaves existing native links intact and never claims remaining links are
+native. An uncertain creation must still be identified before continuation.
+Report only verified success. End without assignment or implementation.

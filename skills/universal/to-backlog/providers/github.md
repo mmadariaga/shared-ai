@@ -1,5 +1,10 @@
 # GitHub adapter
 
+For a crystallized set, `slice-set.md` owns the branch and calls `query-set`,
+`publish-set`, `recover-set`, and `continue-set`. Assignment is separate:
+`inspect-assignment`, `propose-assignment`, `assign`, `verify-assignment` are
+used only by the implementation-start owner after explicit authorization.
+
 ## Requirements and read-only operations
 
 Use the common `to-backlog.js` tool with this skill's registry. This adapter
