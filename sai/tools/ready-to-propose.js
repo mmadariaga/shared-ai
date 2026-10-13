@@ -138,6 +138,8 @@ const LOOSE_LITERALS = [
  */
 const STRICT_FIELDS = [
   { label: 'Change name', inline: true },
+  { label: 'Depends on', inline: true, optional: true },
+  { label: 'Backlog origin', inline: true, optional: true },
   { label: 'What', inline: true },
   { label: 'Why', inline: true },
   { label: 'Capabilities in scope' },
@@ -270,6 +272,7 @@ function checkStrictBlock(lines, block, index) {
 
   // Content per field.
   let name = null;
+  let backlogOrigin = null;
   for (let k = 0; k < firsts.length; k++) {
     const entry = firsts[k];
     const field = known.get(entry.label);
@@ -302,6 +305,15 @@ function checkStrictBlock(lines, block, index) {
           `change name "${name}" must be kebab-case`));
       }
     }
+    if (entry.label === 'Backlog origin' && entry.inline !== '') {
+      try {
+        const { normalize } = require('./from-backlog-github');
+        if (normalize(entry.inline).url !== entry.inline) throw new Error('noncanonical URL');
+        backlogOrigin = entry.inline;
+      } catch {
+        violations.push(violation(line, 'INVALID_BACKLOG_ORIGIN', 'Backlog origin must be a canonical GitHub issue URL'));
+      }
+    }
   }
 
   // `**Overview language**` must be the last non-blank line before `---`.
@@ -316,7 +328,9 @@ function checkStrictBlock(lines, block, index) {
     }
   }
 
-  return { index, line: headingLine, name, violations };
+  const dependency = validateDependencies(lines.slice(block.start, bodyEnd).join('\n'), name);
+  violations.push(...dependency.violations.map(entry => ({ ...entry, line: entry.line + block.start })));
+  return { index, line: headingLine, name, backlog_origin: backlogOrigin, dependencies: dependency.dependencies, violations };
 }
 
 /**
@@ -354,6 +368,69 @@ function checkStrict(text) {
 /** sha256 hex of a block's text (newlines normalized to LF). */
 function hashBlock(blockText) {
   return crypto.createHash('sha256').update(normalize(blockText), 'utf8').digest('hex');
+}
+
+/** Individual blocks may refer to slices that were not delivered with them. */
+function validateDependencies(text, name) {
+  const lines = normalize(text).split('\n');
+  const entries = lines.map((line, i) => ({ match: /^(?:\*\*Depends on\*\*|Depends on):(.*)$/.exec(line), line: i + 1 })).filter(entry => entry.match);
+  const violations = [];
+  if (entries.length > 1) violations.push(violation(entries[1].line, 'DUPLICATE_DEPENDENCY_FIELD', 'Depends on must appear once'));
+  const value = entries[0]?.match[1].trim();
+  if (entries[0]) {
+    for (let i = entries[0].line; i < lines.length; i++) {
+      if (LABEL_LINE.test(lines[i]) || lines[i].trim() === SEPARATOR) break;
+      if (lines[i].trim()) {
+        violations.push(violation(i + 1, 'DEPENDENCY_FORMAT', 'Depends on must be one comma-separated line'));
+        break;
+      }
+    }
+  }
+  const dependencies = !value || value === 'None' ? [] : value.split(',').map(part => part.trim());
+  if (value === '' || dependencies.some(dep => !KEBAB_CASE.test(dep))) violations.push(violation(entries[0]?.line || 1, 'DEPENDENCY_FORMAT', 'Use comma-separated change names or None'));
+  if (new Set(dependencies).size !== dependencies.length) violations.push(violation(1, 'DUPLICATE_DEPENDENCY', 'An immediate dependency may appear only once'));
+  if (dependencies.includes(name)) violations.push(violation(1, 'SELF_DEPENDENCY', `${name} cannot depend on itself`));
+  return { dependencies, violations, ok: violations.length === 0 };
+}
+
+/** Stable topological order; no transitive or branch-derived edges are added. */
+function validateDependencySet(text) {
+  const strict = checkStrict(text);
+  const violations = [...strict.violations, ...strict.blocks.flatMap(block => block.violations)];
+  const byName = new Map(strict.blocks.map(block => [block.name, block]));
+  for (const block of strict.blocks) {
+    for (const dependency of block.dependencies) {
+      if (!byName.has(dependency)) violations.push(violation(block.line, 'MISSING_DEPENDENCY', `${block.name} depends on absent change ${dependency}`));
+    }
+  }
+  const order = [];
+  const pending = strict.blocks.slice();
+  while (pending.length) {
+    const next = pending.findIndex(block => block.dependencies.every(name => order.includes(name)));
+    if (next === -1) {
+      if (!violations.some(entry => entry.problem === 'MISSING_DEPENDENCY')) violations.push(violation(1, 'DEPENDENCY_CYCLE', 'The complete set has a dependency cycle'));
+      break;
+    }
+    order.push(pending.splice(next, 1)[0].name);
+  }
+  return { ok: violations.length === 0, order, blocks: strict.blocks, violations };
+}
+
+/** Attach verified publication identities without changing any agreed work text. */
+function attachBacklogOrigins(text, correspondence) {
+  const association = require('./backlog-slice-identity').checkIdentity(correspondence);
+  if (association.role !== 'parent') throw new Error('Complete parent/child publication correspondence is required');
+  const validation = validateDependencySet(text);
+  if (!validation.ok || validation.blocks.length !== association.slices.length) throw new Error('Publication correspondence must cover the complete stored block set');
+  const originals = extractBlockTexts(text);
+  const blocks = validation.blocks.map((block, index) => {
+    const slice = association.slices.find(slice => slice.change_name === block.name);
+    if (!slice || JSON.stringify(slice.depends_on.slice().sort()) !== JSON.stringify(block.dependencies.slice().sort())) throw new Error('Publication correspondence differs from the agreed slice dependencies');
+    if (block.backlog_origin && block.backlog_origin !== slice.issue) throw new Error('Existing selected issue origin conflicts with publication; obtain a user decision');
+    const updated = block.backlog_origin ? originals[index] : originals[index].replace(/^\*\*What\*\*:/m, `**Backlog origin**: ${slice.issue}\n**What**:`);
+    return { name: block.name, text: updated, hash: hashBlock(updated), backlog_origin: slice.issue };
+  });
+  return { ok: true, order: validation.order, blocks };
 }
 
 /**
@@ -563,6 +640,8 @@ function usage() {
   return [
     'Usage: node sai/tools/ready-to-propose.js check --profile loose|strict|dispatchable [--json] < text',
     '       node sai/tools/ready-to-propose.js hash < block',
+    '       node sai/tools/ready-to-propose.js dependencies < complete block set',
+    '       node sai/tools/ready-to-propose.js attach-origin < JSON {text, correspondence}',
     '',
     '  check               Validate the Ready to Propose text read from stdin',
     '  hash                Print the sha256 of the single block read from stdin',
@@ -609,6 +688,7 @@ function main(argv, readInput = () => fs.readFileSync(0, 'utf8')) {
     return 0;
   }
   if (opts.command === 'hash') {
+    // Hash transport remains independent of complete-set validation.
     let input;
     try {
       input = readInput();
@@ -623,6 +703,24 @@ function main(argv, readInput = () => fs.readFileSync(0, 'utf8')) {
     }
     process.stdout.write(`${JSON.stringify({ ok: true, hash: hashBlock(texts[0]) }, null, 2)}\n`);
     return 0;
+  }
+  if (opts.command === 'dependencies') {
+    let input;
+    try { input = readInput(); }
+    catch (error) { process.stderr.write(`cannot read stdin: ${error.message}\n`); return 2; }
+    const verdict = validateDependencySet(input);
+    process.stdout.write(`${JSON.stringify(verdict, null, 2)}\n`);
+    return verdict.ok ? 0 : 1;
+  }
+  if (opts.command === 'attach-origin') {
+    try {
+      const request = JSON.parse(readInput());
+      process.stdout.write(`${JSON.stringify(attachBacklogOrigins(request.text, request.correspondence), null, 2)}\n`);
+      return 0;
+    } catch (error) {
+      process.stdout.write(`${JSON.stringify({ ok: false, error: error.message })}\n`);
+      return 1;
+    }
   }
   if (opts.command !== 'check') {
     process.stderr.write(`sub-command "check" or "hash" required.\n${usage()}\n`);
@@ -660,6 +758,9 @@ module.exports = {
   hashBlock,
   splitVerdicts,
   extractBlockTexts,
+  validateDependencies,
+  validateDependencySet,
+  attachBacklogOrigins,
   detect,
   main,
 };

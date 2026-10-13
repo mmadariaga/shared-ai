@@ -712,7 +712,13 @@ function commandEmitReadyToPropose(id, machineIdArg, eventSource, extraArgs, ame
     return;
   }
 
-  const event = { recordedList: verdict.names.slice() };
+  const dependencies = detector.validateDependencySet(text);
+  if (!dependencies.ok) {
+    writeResponse({ validation: Object.assign({}, validation, { ok: false, structural_ok: false, violations: validation.violations.concat(dependencies.violations) }), dependencies });
+    process.exitCode = 1;
+    return;
+  }
+  const event = { recordedList: dependencies.order };
   const expectedBlocks = buildRecordedBlocks(detector, verdict, text);
   pendingRecordExtras = { blocks: expectedBlocks };
   let outcome;
@@ -770,6 +776,27 @@ function commandAmendBlock(id, machineIdArg, detector, verdict, text, validation
     return;
   }
 
+  const recorded = (readSessionRecord(id).record || {}).blocks || {};
+  if (!Object.prototype.hasOwnProperty.call(recorded, amendName)) {
+    const outcome = runEmit(id, machineIdArg, () => ({ event: { amend: amendName } }));
+    writeResponse(Object.assign({ validation }, outcome.payload));
+    process.exitCode = outcome.code;
+    return;
+  }
+  const resulting = Object.entries(recorded).map(([name, entry]) => name === amendName ? detector.extractBlockTexts(text)[0] : entry.text);
+  const dependencies = detector.validateDependencySet(resulting.join('\n\n'));
+  if (!dependencies.ok) {
+    writeResponse({ validation: Object.assign({}, validation, { ok: false, structural_ok: false, violations: validation.violations.concat(dependencies.violations) }), dependencies, error: 'INVALID_EVENT', reason: 'AMEND_DEPENDENCIES_INVALID' });
+    process.exitCode = 1;
+    return;
+  }
+  // Inventory order cannot be changed underneath running or completed work.
+  const previous = detector.validateDependencySet(Object.values(recorded).map(entry => entry.text).join('\n\n'));
+  if (JSON.stringify(previous.order) !== JSON.stringify(dependencies.order)) {
+    writeResponse({ validation, dependencies, error: 'INVALID_EVENT', reason: 'AMEND_REQUIRES_SET_REEMISSION' });
+    process.exitCode = 1;
+    return;
+  }
   const outcome = runEmit(id, machineIdArg, () => ({ event: { amend: amendName } }));
   let payload = outcome.payload;
   if (outcome.code === 0 && !payload.rejected) {

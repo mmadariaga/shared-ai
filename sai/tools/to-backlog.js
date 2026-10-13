@@ -3,6 +3,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
+const OPERATIONS = ['resolve', 'resolve-origin', 'query', 'publish', 'recover', 'read-update', 'query-update', 'update', 'recover-update', 'query-set', 'publish-set', 'recover-set', 'continue-set', 'lookup-slice', 'inspect-assignment', 'propose-assignment', 'assign', 'verify-assignment'];
 
 function run(command, args, cwd, input) {
   if (command === 'azure-sdk') return require('./from-backlog').runAzureSdk(input);
@@ -98,8 +99,8 @@ function resolve({ explicit = {}, config = {}, remotes = [] }, registry, io = {}
 function main(argv) {
   try {
     const [operation, registryPath] = argv;
-    if (!['resolve', 'resolve-origin', 'query', 'publish', 'recover', 'read-update', 'query-update', 'update', 'recover-update'].includes(operation) || !registryPath || argv.length !== 2) {
-      throw new Error('Usage: node to-backlog.js resolve|resolve-origin|query|publish|recover|read-update|query-update|update|recover-update <registry.json>; JSON request on stdin; JSON result on stdout');
+    if (!OPERATIONS.includes(operation) || !registryPath || argv.length !== 2) {
+      throw new Error(`Usage: node to-backlog.js ${OPERATIONS.join('|')} <registry.json>; JSON request on stdin; JSON result on stdout`);
     }
     const request = JSON.parse(fs.readFileSync(0, 'utf8'));
     const registry = JSON.parse(fs.readFileSync(registryPath, 'utf8'));

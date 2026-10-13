@@ -7,6 +7,12 @@ conversation in Claude Code and opencode, then assesses it against the current
 project and continues discussion. Import and assessment are read-only and need
 no OpenSpec setup.
 
+GitHub parent import includes every direct child's complete content. Child
+import includes its parent as context, not siblings; the selected child remains
+the origin. States, assignees and dependency identities remain visible.
+Assignment is a separately authorized implementation-start action, never an
+import side effect. See [Backlog workflows](../backlog.md#import-an-item).
+
 ## Inputs and flags
 
 Supply one reference: `/from-backlog <reference>`. With none, the skill asks for

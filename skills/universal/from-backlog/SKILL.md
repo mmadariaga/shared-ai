@@ -59,6 +59,19 @@ lossless delivery of every part is possible or a delivery plan is agreed.
 
 ## 3. Incorporate with provenance
 
+For GitHub, deliver every entry in `sources` separately, with its full title,
+description, comments, identity, state, assignees, parent and dependencies.
+A selected parent includes all direct children; a selected child includes its
+parent as context, not siblings. `origin` remains the selected issue and never
+becomes the parent-context issue. A failed required read or delivery leaves the
+entire hierarchical import pending: show the limitation, offer retry/chunked
+delivery or stop, and wait. Reading the set authorizes no assignment or work.
+Carry the selected child's explicit URL as `**Backlog origin**` in any later
+crystallized block for that child (provenance outside source sections); preserve
+the original imported source text separately. A parent requires explicit child
+selection before a slice is started. Planning performs no assignment; the
+implementation coordinator owns `sai/policies/backlog-implementation-start.md`.
+
 Show the canonical source link and state. For repository-owned issues, show
 repository archived state. For Azure Boards, show organization, project, and
 work-item type instead; retain custom type and state values exactly.

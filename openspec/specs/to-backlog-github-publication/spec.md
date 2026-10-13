@@ -26,7 +26,7 @@ For creation, the adapter SHALL check gh availability and github.com authenticat
 
 ### Requirement: Faithful confirmed issue publication
 
-Creation publication SHALL re-query the proposal and reject a missing or mismatched confirmation token before attempting issue creation. The creation token SHALL bind content, repository, Project, and visibility. The adapter SHALL invoke gh with separate arguments, no shell interpretation, and structured JSON input; it SHALL preserve the approved title and description exactly, create one repository issue, and then add it to the verified Project. It SHALL NOT automatically add labels, assignees, priority, estimates, sprints, or create Projects, install tools, or change authentication. Origin-issue updates SHALL use the separate restricted update operation instead of creation or insertion.
+Ordinary creation publication SHALL re-query the proposal and reject a missing or mismatched confirmation token before attempting issue creation. The creation token SHALL bind content, repository, Project, and visibility. The adapter SHALL invoke gh with separate arguments, no shell interpretation, and structured JSON input; it SHALL preserve the approved title and description exactly, create one repository issue, and then add it to the verified Project. Explicitly crystallized sliced-set creation SHALL instead publish the approved whole-objective parent and one child per agreed slice through the separate set-publication operations, with exact confirmation binding the parent, slices, destination and relationship recipe. Set publication SHALL preserve agreed source content and append only reviewed relationship references and structured correspondence. Creation SHALL NOT automatically add labels, assignees, priority, estimates, sprints, create Projects, install tools, or change authentication. Separately authorized implementation-start assignment SHALL remain a distinct operation rather than a creation or title-and-description update side effect. Origin-issue updates SHALL use the separate restricted update operation instead of creation or insertion and SHALL NOT create replacement parents or additional children.
 
 #### Scenario: Content or visibility changes before publication
 
@@ -35,8 +35,18 @@ Creation publication SHALL re-query the proposal and reject a missing or mismatc
 
 #### Scenario: Markdown publication
 
-- **WHEN** approved creation content contains Markdown, Unicode, or shell-looking text
+- **WHEN** approved ordinary creation content contains Markdown, Unicode, or shell-looking text
 - **THEN** the adapter publishes that content unchanged as data without executing it.
+
+#### Scenario: Explicitly crystallized sliced set
+
+- **WHEN** an approved GitHub create request explicitly contains an agreed crystallized slice set
+- **THEN** the separate set operations publish the parent and one child per slice without another breakdown approval or automatic assignment.
+
+#### Scenario: Existing origin update
+
+- **WHEN** the workflow refines a previously published originating issue
+- **THEN** it retains restricted update mode without creating a replacement parent or additional children.
 
 ### Requirement: Private bounded publication receipts
 

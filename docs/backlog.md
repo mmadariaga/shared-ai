@@ -25,6 +25,35 @@ GitHub Enterprise, Azure DevOps Server, and PR/MR import are not supported.
 
 ## Import an item
 
+GitHub crystallized slices can be published as one parent and one child per
+agreed slice, including a one-slice set. `/to-backlog` retains full publication
+confirmation, without a second breakdown approval. Dependencies stay inside
+each block as comma-separated immediate change names and are validated before
+storage/publication. Blockers publish and run first; independent slices retain
+their original order. Native hierarchy/dependencies are used when supported;
+unavailable relationships are disclosed as written links. Partial publication
+preserves created issues and a receipt; continuation needs approval and never
+blindly repeats creation.
+
+After a completed publication in Explore, each stored slice receives its actual
+child issue URL and a recomputed hash before planning begins. Spec preserves that
+origin in change metadata, so a fresh standalone implementation can verify it
+without conversation memory or title matching.
+
+GitHub parent import delivers the complete parent and all direct children;
+child import delivers that child and parent context, not siblings. Full comments,
+identities, states, assignees and dependencies are retained. The selected issue
+remains the origin. Assignment occurs only at selected-child implementation
+start: unassigned children require approval to assign the authenticated user;
+any existing assignee triggers a keep/replace/stop question. Parent assignees
+stay unchanged. Keep verifies the exact approved set, including another user or
+multiple assignees, without mutation. Ordinary native GitHub children need no SAI
+marker. Parent import reconciles readable native children with written references,
+including children added outside those references. Initial branch preparation retains conditional questions and
+local-work protection; no inter-slice switching is added. Claude Code and
+opencode use the same owner contracts. GitLab/Azure workflows, next-item
+selection and human issue closure are unchanged.
+
 ```text
 /from-backlog https://github.com/owner/repo/issues/123
 /sai-explore

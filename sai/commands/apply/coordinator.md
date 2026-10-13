@@ -42,6 +42,7 @@
   Option 2 already skips the branch-base sub-prompt. Every other gate stays in force. The rule lives in apply because only apply resolves fast-track (`docs/adr/0059-fast-track-auto-stay-branch-rule-in-apply.md`).
 
   ## Run-Start Step Projection
+  When a pending implementation Step will dispatch (standalone or chained), Fetch @sai/policies/backlog-implementation-start.md and complete it for the selected change before its first technical dispatch. No pending Step means no assignment; this is not a planning gate.
   Derive one unique invocation-scoped stable run identity from the harness session, Apply segment, and invocation nonce before capture; retain it on retry and replacement, and pass it as `--run-id <identity>` to baseline. The capture registry refuses a second capture for that identity, including when the original record is missing; resume only with the retained original reference. A new run identity is not a recovery mechanism.
   Before the first worker, after planning modifications and branch selection are settled, run `apply-step.js preflight --change {change-name} --cwd <project-root> --json` and require exit 0 and `ok: true`. A failure stops before RED with each Step/line/reason; no independent parser or incomplete-check pass is permitted. The one exception is a `Files Affected omits a path the plan names` error in `tasks.md`: fetch @sai/commands/apply/steps/plan-amendment.md, amend before the baseline capture, and run preflight again.
 

@@ -101,6 +101,44 @@ test('block emit: a valid single block records its name and returns the route-se
   }
 });
 
+test('dependency set storage orders blockers, hashes internal edges and rejects invalid amendments without replacement', () => {
+  const id = spawnSession('dependency-set');
+  try {
+    const dependent = block('dependent').replace('**What**:', '**Depends on**: blocker\n**What**:');
+    const blocker = block('blocker');
+    assert.equal(blockEmit(id, dependent + '\n' + blocker).exitCode, 0);
+    assert.deepEqual(readSet(id), ['blocker', 'dependent']);
+    const before = readStoredBlocks(id);
+    assert.match(before.dependent.text, /\*\*Depends on\*\*: blocker/);
+    assert.equal(before.dependent.hash, hashBlock(before.dependent.text));
+    for (const value of ['missing', 'dependent', 'blocker, blocker']) {
+      const amended = dependent.replace('**Depends on**: blocker', `**Depends on**: ${value}`);
+      assert.equal(blockEmit(id, amended, MACHINE, ['--amend', 'dependent']).exitCode, 1);
+      assert.deepEqual(readStoredBlocks(id), before);
+    }
+    const cycle = blocker.replace('**What**:', '**Depends on**: dependent\n**What**:');
+    assert.equal(blockEmit(id, cycle, MACHINE, ['--amend', 'blocker']).exitCode, 1);
+    assert.deepEqual(readStoredBlocks(id), before);
+    assert.equal(blockEmit(id, dependent.replace('Adds a thing.', 'Adds a revised thing.'), MACHINE, ['--amend', 'dependent']).exitCode, 0);
+    assert.notEqual(readStoredBlocks(id).dependent.hash, before.dependent.hash);
+  } finally { cleanup(id); }
+});
+
+test('complete dependency sets fail before emission when references are missing or cyclic', () => {
+  const id = spawnSession('invalid-dependency-set');
+  try {
+    const one = block('one').replace('**What**:', '**Depends on**: two\n**What**:');
+    const two = block('two').replace('**What**:', '**Depends on**: one\n**What**:');
+    for (const text of [one, one + '\n' + two]) {
+      const result = blockEmit(id, text);
+      assert.equal(result.exitCode, 1);
+      assert.equal(JSON.parse(result.stdout).validation.ok, false);
+      assert.equal(readStoredBlocks(id), null);
+      assert.equal(readSet(id), null);
+    }
+  } finally { cleanup(id); }
+});
+
 test('block emit: a multi-slice set records every name in display order, with header text between blocks ignored', () => {
   const id = spawnSession('rtp-multi');
   try {

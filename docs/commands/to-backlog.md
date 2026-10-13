@@ -7,6 +7,12 @@ issue, or Azure Boards work item. In Claude Code and opencode, it creates one
 item or refines the originating item's title and description after approval.
 It needs no OpenSpec setup.
 
+GitHub create with crystallized slices publishes the agreed whole-objective
+parent and one child per complete slice (including one slice), after full
+publication confirmation without another breakdown approval. Dependency
+validation, explicit relationship representations and partial-result recovery
+are described in [Backlog workflows](../backlog.md#import-an-item).
+
 ## Inputs and flags
 
 Invoke `/to-backlog` in the conversation containing the work to capture. There

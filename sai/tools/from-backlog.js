@@ -129,7 +129,8 @@ function main(argv) {
     if (!['resolve', 'read'].includes(operation) || !registryPath || argv.length !== 2) throw fault('usage', 'Usage: node from-backlog.js resolve|read <registry.json>; JSON {reference} on stdin');
     const request = JSON.parse(fs.readFileSync(0, 'utf8'));
     const resolved = resolve(request.reference, JSON.parse(fs.readFileSync(registryPath, 'utf8')), { run });
-    const result = operation === 'resolve' || resolved.status !== 'resolved' ? resolved : require(path.join(__dirname, resolved.adapter)).read(resolved, { run });
+    const adapter = resolved.status === 'resolved' ? require(path.join(__dirname, resolved.adapter)) : null;
+    const result = operation === 'resolve' || resolved.status !== 'resolved' ? resolved : (adapter.readSet || adapter.read)(resolved, { run });
     process.stdout.write(JSON.stringify(result) + '\n');
     return ['resolved', 'complete'].includes(result.status) ? 0 : 1;
   } catch (error) {

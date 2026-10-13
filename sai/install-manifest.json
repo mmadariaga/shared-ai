@@ -23,7 +23,7 @@
       "review-coordinator": { "extends": "coordinator", "shell": ["node {sai}/tools/worker-report-validator.js *", "node {sai}/tools/no-commit-guard.js *", "node {sai}/bin/sai-state.js *", "git reset *", "git diff *", "git add *", "git commit *"], "delegate": ["sai-5-review-worker", "sai-6-security-worker", "sai-7-performance-worker", "sai-8-accessibility-worker", "sai-review-fix-worker"] },
       "review-command": { "extends": "review-coordinator", "delegate": ["sai-5-review-worker", "sai-review-fix-worker"] },
       "apply-coordinator": { "extends": "coordinator", "write": true, "shell": ["*"], "delegate": ["explorer", "executor", "budget", "sai-3-implementation-worker", "sai-4-red-worker", "sai-4-green-worker"] },
-      "apply-command": { "extends": "apply-coordinator", "delegate": ["explorer", "executor", "budget", "sai-4-red-worker", "sai-4-green-worker"] },
+      "apply-command": { "extends": "apply-coordinator", "skills": ["safe-operations"], "delegate": ["explorer", "executor", "budget", "sai-4-red-worker", "sai-4-green-worker"] },
       "mutation-coordinator": { "extends": "coordinator", "write": true, "shell": ["*"] },
       "commit-command": { "extends": "mutation-coordinator", "write": false, "delegate": ["sai-commit-worker"] },
       "archive-command": { "extends": "mutation-coordinator", "delegate": ["sai-archive-worker", "sai-backfill-worker"] },
@@ -726,7 +726,7 @@
       "harnesses": ["claude", "opencode"],
       "strategy": "copy",
       "recursive": true,
-      "include": ["create.md", "update.md", "issue-format.md", "prepare-temp.md", "providers/**/*.md", "providers/**/*.json", "scripts/prepare-temp.js"],
+      "include": ["create.md", "update.md", "slice-set.md", "issue-format.md", "prepare-temp.md", "providers/**/*.md", "providers/**/*.json", "scripts/prepare-temp.js"],
       "ownership": "managed",
       "drift": "content"
     },
