@@ -89,3 +89,27 @@ Azure import SHALL reuse existing Azure CLI authorization and SHALL perform no w
 
 - **WHEN** a Windows Azure read uses project or continuation-token arguments containing shell metacharacters
 - **THEN** those arguments remain data passed without shell interpretation and automatic extension installation remains disabled.
+
+### Requirement: Hierarchical Boards import verifies actual related projects
+
+Azure hierarchical import SHALL read native parent, direct-child and predecessor relationships and relevant assignee identities. A related organization-wide work-item ID SHALL be resolved through a read verifying its actual project rather than using the selected item's project to fabricate its URL. Foreign-organization relation URLs, unverified related projects, multiple parents and incomplete relation shapes SHALL prevent complete import. A selected parent SHALL include every direct child's complete content and available comments; a selected child SHALL include parent context without automatically importing siblings. Native relationships SHALL be reconciled with valid written correspondence. The selected issue SHALL remain the origin, original HTML SHALL remain unchanged and every import operation SHALL remain read-only.
+
+#### Scenario: Related items belong to different projects
+
+- **WHEN** a selected item's parent, direct children or predecessors belong to other projects in the same organization
+- **THEN** import verifies each actual project and returns its canonical identity with complete required source content and comments.
+
+#### Scenario: Related project cannot be verified
+
+- **WHEN** a required related-item read fails or its actual project cannot be verified
+- **THEN** import remains incomplete, preserves available selected content and origin and does not fabricate a related URL.
+
+#### Scenario: Foreign organization relationship
+
+- **WHEN** a native relation identifies an item in another organization
+- **THEN** import rejects that relation without treating its ID as an item in the selected organization.
+
+#### Scenario: Child selected for import
+
+- **WHEN** the selected work item has a verified parent
+- **THEN** import returns the selected child and full parent context separately, retains the child as origin and performs no remote mutation.

@@ -7,11 +7,15 @@ issue, or Azure Boards work item. In Claude Code and opencode, it creates one
 item or refines the originating item's title and description after approval.
 It needs no OpenSpec setup.
 
-GitHub create with crystallized slices publishes the agreed whole-objective
-parent and one child per complete slice (including one slice), after full
-publication confirmation without another breakdown approval. Dependency
-validation, explicit relationship representations and partial-result recovery
-are described in [Backlog workflows](../backlog.md#import-an-item).
+For GitHub, GitLab ordinary project issues and Azure DevOps Services,
+crystallized slices publish the agreed whole-objective parent and one child per
+complete slice (including one slice), after full publication confirmation
+without another breakdown approval. GitLab uses written hierarchy and native
+blocking links; Azure uses native Parent/Child and Predecessor links. Native
+relation failures require approval for a disclosed written fallback. Azure's
+selected invocation-scoped type applies to every item, with project rules
+enabled. See [Backlog workflows](../backlog.md#import-an-item) for dependency
+validation and partial-result recovery.
 
 ## Inputs and flags
 

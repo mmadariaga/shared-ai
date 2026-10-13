@@ -18,15 +18,18 @@ the explicitly selected change name, explicit originating-issue provenance, the
 selected change's `**Backlog origin**` line, or `.openspec.yaml`'s
 `backlog_origin`. A supplied parent does not select a child: ask which child
 to implement and wait. With no provenance, run no remote operation. Use the
-GitHub publication correspondence to match an explicitly selected change name,
+selected provider's publication correspondence to match an explicitly selected change name,
 never an issue title. If correspondence was lost, `lookup-slice` recovers it
 read-only using the known repository and change name; ask the user to resolve
 zero or multiple candidates. Preserve the originating selected issue separately
-from parent context. Non-GitHub workflows keep their existing behavior.
+from parent context. Resolve the provider through `resolve-origin`, retaining that
+identity for every assignment operation; GitLab may use an authenticated custom host.
 
 Locate `to-backlog.js` per `tool-resolution.md` and use the installed
 `to-backlog/providers/registry.json`. Each operation receives JSON on stdin
-with `provider: "github"` and `reference` (the selected child URL).
+with the resolved `provider` and `reference` (the selected child URL). For lost
+correspondence, pass the known destination and explicit change name to
+`lookup-slice`; Azure also requires the invocation's known work-item type.
 
 1. Run `inspect-assignment`. Require either independently verified native child
    and parent identities, or verified published written correspondence. Ordinary

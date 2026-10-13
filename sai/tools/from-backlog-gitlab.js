@@ -62,7 +62,7 @@ function issue(target, number, io) {
 
 function readIssue(reference, io) {
   const checked = resolve(reference.url, io);
-  const data = issue(checked.target, checked.number, io);
+    const data = issue(checked.target, checked.number, io);
   const description = data.description ?? '';
   return { provider: 'gitlab', repository: checked.repository, repository_archived: checked.target.archived, number: data.iid, url: data.web_url, title: data.title, description, state: data.state === 'opened' ? 'OPEN' : 'CLOSED', description_missing: !description.trim() };
 }
@@ -93,4 +93,37 @@ function read(reference, io) {
   }
 }
 
-module.exports = { project, api, issueURL, resolve, issue, readIssue, read };
+function dependencies(target, number, io) {
+  const result = [], seen = new Set();
+  for (let page = 1; ; page++) {
+    const rows = api(target, `projects/${target.id}/issues/${number}/links?per_page=100&page=${page}`, io);
+    if (!Array.isArray(rows)) throw fault('Incomplete GitLab dependency links');
+    for (const row of rows) {
+      if (!Number.isSafeInteger(row.id) || typeof row.web_url !== 'string' || !['relates_to', 'blocks', 'is_blocked_by'].includes(row.link_type) || seen.has(row.id)) throw fault('Incomplete or repeated GitLab dependency link');
+      issueURL(row.web_url); seen.add(row.id);
+      if (row.link_type === 'is_blocked_by') result.push(row.web_url);
+    }
+    if (rows.length < 100) return result;
+  }
+}
+const readSet = require('./backlog-provider-import').bind('gitlab', (url, io) => {
+  const ref = resolve(url, io), result = read(ref, io);
+  if (result.status !== 'complete') return result;
+  try {
+  const row = issue(ref.target, ref.number, io);
+  if (!Array.isArray(row.assignees) || row.assignees.some(actor => !Number.isSafeInteger(actor.id) || actor.id < 1)) throw fault('Incomplete GitLab assignees');
+  const correspondence = require('./backlog-slice-identity').decode(result.item.description);
+  let blockers, limitation;
+  try { blockers = dependencies(ref.target, ref.number, io); }
+  catch (error) {
+    // A written marker is not evidence that native discovery is unavailable.
+    const unavailable = error.reason === 'dependency-capability-unavailable'
+      || /(?:issue links|blocking (?:issue )?links) (?:feature )?(?:is |are )?(?:not available|not supported|disabled)(?:\b)/i.test(error.message || '');
+    if (correspondence?.dependency_representation !== 'written' || !unavailable) throw error;
+    blockers = []; limitation = error.message;
+  }
+  return { ...result, item: { ...result.item, assignees: row.assignees.map(actor => actor.id), dependencies: blockers,
+    ...(limitation ? { native_dependency_status: 'unavailable', native_dependency_notice: limitation } : {}) } };
+  } catch (error) { return { ...result, status: 'incomplete', reason: error.reason || 'retrieval-failed', message: error.message }; }
+});
+module.exports = { project, api, issueURL, resolve, issue, readIssue, read, readSet, dependencies };

@@ -57,7 +57,7 @@ same-conversation resumption** only for this pending execution.
 
 ## Optional pre-route actions
 
-After `to-backlog` finishes with a completed GitHub set publication, Fetch @sai/policies/backlog-origin-transport.md and complete it before advancing to the branch question. Transport failure leaves this action pending and blocks route disclosure; a returned correspondence kept only in conversation is not completion.
+After `to-backlog` finishes with a completed set publication on any supported provider, Fetch @sai/policies/backlog-origin-transport.md and complete it before advancing to the branch question. Transport failure leaves this action pending and blocks route disclosure; a returned correspondence kept only in conversation is not completion.
 
 Pass the complete recorded block set, whether the feature was explicitly sliced, and existing whole-objective parent content to the accepted `to-backlog` owner. Retain its structured correspondence, not titles, for later selected-slice provenance. Pass only the current slice's returned issue identity to `new-change-branch`; reuse an already-prepared initial branch. Dependency order comes from the validator-owned stored inventory, with blockers before dependents and original order among independent slices. Optional actions do not authorize assignment.
 

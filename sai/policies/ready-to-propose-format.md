@@ -13,7 +13,7 @@ The block is structured as follows:
 
 **Change name**: <kebab-case suggestion>
 **Depends on**: <comma-separated immediate dependency change names, or None>
-**Backlog origin**: <selected GitHub child URL; omit without issue provenance>
+**Backlog origin**: <selected canonical GitHub, GitLab or Azure DevOps child URL; omit without issue provenance>
 **What**: <1–2 sentences describing the change>
 **Why**: <1–2 sentences stating the motivation; optional inline file:line provenance citations when the hypothesis was grounded in specific files>
 **Capabilities in scope**:

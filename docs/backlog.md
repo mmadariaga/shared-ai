@@ -25,7 +25,7 @@ GitHub Enterprise, Azure DevOps Server, and PR/MR import are not supported.
 
 ## Import an item
 
-GitHub crystallized slices can be published as one parent and one child per
+GitHub, GitLab and Azure DevOps crystallized slices can be published as one parent and one child per
 agreed slice, including a one-slice set. `/to-backlog` retains full publication
 confirmation, without a second breakdown approval. Dependencies stay inside
 each block as comma-separated immediate change names and are validated before
@@ -40,7 +40,7 @@ child issue URL and a recomputed hash before planning begins. Spec preserves tha
 origin in change metadata, so a fresh standalone implementation can verify it
 without conversation memory or title matching.
 
-GitHub parent import delivers the complete parent and all direct children;
+Parent import on all three providers delivers the complete parent and all direct children;
 child import delivers that child and parent context, not siblings. Full comments,
 identities, states, assignees and dependencies are retained. The selected issue
 remains the origin. Assignment occurs only at selected-child implementation
@@ -51,8 +51,11 @@ multiple assignees, without mutation. Ordinary native GitHub children need no SA
 marker. Parent import reconciles readable native children with written references,
 including children added outside those references. Initial branch preparation retains conditional questions and
 local-work protection; no inter-slice switching is added. Claude Code and
-opencode use the same owner contracts. GitLab/Azure workflows, next-item
-selection and human issue closure are unchanged.
+opencode use the same owner contracts. GitLab ordinary issues disclose written
+hierarchy and native blocking links; Azure uses native Parent/Child and Predecessor links, with an explicitly
+approved written fallback when project rules reject relations. Azure's selected
+invocation-scoped type applies to every item; project rules and permissions remain
+enabled. Next-item selection and human issue closure are unchanged.
 
 ```text
 /from-backlog https://github.com/owner/repo/issues/123

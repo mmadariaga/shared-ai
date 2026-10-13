@@ -59,7 +59,7 @@ lossless delivery of every part is possible or a delivery plan is agreed.
 
 ## 3. Incorporate with provenance
 
-For GitHub, deliver every entry in `sources` separately, with its full title,
+For every provider, deliver every entry in `sources` separately, with its full title,
 description, comments, identity, state, assignees, parent and dependencies.
 A selected parent includes all direct children; a selected child includes its
 parent as context, not siblings. `origin` remains the selected issue and never

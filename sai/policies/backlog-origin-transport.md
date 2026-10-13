@@ -1,6 +1,6 @@
 # Published child identity transport
 
-Explore calls this owner after a completed GitHub slice publication and before
+Explore calls this owner after a completed slice publication on any supported provider and before
 its optional branch action or route picker. With no completed set publication,
 there is no transport operation. This is provenance transport only: publication
 confirmation remains owned by `to-backlog`; no implementation or assignment runs.

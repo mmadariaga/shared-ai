@@ -110,5 +110,64 @@ function recover(request, io) {
     return result;
   } catch (error) { return { status: 'uncertain', message: error.message }; }
 }
+const sliceIdentity = require('./backlog-slice-identity');
+function setRead(p, item, io) {
+  const row = readItem(p, item.number, io);
+  if (row.type !== p.type) throw new Error('Work-item type changed');
+  return { issue: row.issue, title: row.baseline.title, description: row.baseline.description, version: row.baseline.rev, actor: row.actor };
+}
+const relationType = kind => kind === 'parent' ? 'System.LinkTypes.Hierarchy-Reverse' : 'System.LinkTypes.Dependency-Reverse';
+const relationURL = (p, other) => `${p.organization}/_apis/wit/workItems/${other.number}`;
+function relationRow(p, item, io) {
+  const row = azure.api(p, 'wit', 'workitems', { project: p.project, id: item.number }, io, 'GET', undefined, { '$expand': 'relations' });
+  if (row.id !== item.number || !Number.isSafeInteger(row.rev) || !row.fields || !azure.equal(row.fields['System.TeamProject'], p.project) || (row.relations != null && !Array.isArray(row.relations))) throw new Error('Incomplete native relation inspection');
+  return row;
+}
+function hasRelation(p, item, other, kind, io) {
+  return (relationRow(p, item, io).relations || []).some(link => link.rel === relationType(kind) && azure.equal(link.url, relationURL(p, other)));
+}
+const set = require('./backlog-provider-set').bind('azuredevops', {
+  query, representation: { hierarchy: 'native', dependencies: 'native' },
+  // Preserve every character of the agreed block, including the Markdown separator.
+  renderBlock: text => `<pre>${sliceIdentity.escape(text)}</pre>`,
+  append: (description, links, value) => `${description}\n<p>${links.map(sliceIdentity.escape).join('<br>')}</p>\n${sliceIdentity.encodeHtml(value)}`,
+  inventory: (p, io) => list(p, io).map(number => setRead(p, { number }, io)), read: setRead,
+  create: (p, item, io) => {
+    const row = azure.api(p, 'wit', 'workitems', { project: p.project, type: p.type }, io, 'POST', [
+      { op: 'add', path: '/fields/System.Title', value: item.title }, { op: 'add', path: '/fields/System.Description', value: item.description }
+    ], {}, true);
+    if (!Number.isSafeInteger(row.id) || row.id < 1) throw new Error('Incomplete work-item creation identity');
+    return { id: row.id, number: row.id, url: `${p.url}/_workitems/edit/${row.id}` };
+  },
+  writeReferences: (p, current, description, io) => azure.api(p, 'wit', 'workitems', { project: p.project, id: current.issue.number }, io, 'PATCH', [
+    { op: 'test', path: '/rev', value: current.version }, { op: 'add', path: '/fields/System.Description', value: description }
+  ], {}, true),
+  hasRelation,
+  addRelation: (p, item, other, kind, io) => {
+    const current = relationRow(p, item, io);
+    if (kind === 'parent' && (current.relations || []).some(link => link.rel === relationType(kind))) throw new Error('A different native parent already exists');
+    azure.api(p, 'wit', 'workitems', { project: p.project, id: item.number }, io, 'PATCH', [
+      { op: 'test', path: '/rev', value: current.rev }, { op: 'add', path: '/relations/-', value: { rel: relationType(kind), url: relationURL(p, other) } }
+    ], {}, true);
+  }
+});
+const assignment = require('./backlog-provider-assignment').bind('azuredevops', {
+  native: true,
+  inspect: (request, io) => {
+    const ref = source.resolve(request.reference, io);
+    if (!ref.url) throw new Error('Complete child work-item URL required');
+    const target = azure.inspect(`${ref.organization}/${encodeURIComponent(ref.project)}`, io);
+    return { result: source.readSet(ref, io), actor: target.actor };
+  },
+  assign: (request, proposal, io) => {
+    const ref = source.resolve(request.reference, io), target = azure.inspect(`${ref.organization}/${encodeURIComponent(ref.project)}`, io);
+    const current = relationRow(target, { number: ref.number }, io);
+    const assigned = current.fields['System.AssignedTo'];
+    if (digest(assigned ? [assigned.id] : []) !== digest(proposal.assignees) || target.actor !== proposal.actor) throw new Error('Azure responsibility or authenticated identity changed');
+    azure.api(target, 'wit', 'workitems', { project: target.project, id: ref.number }, io, 'PATCH', [
+      { op: 'test', path: '/rev', value: current.rev }, { op: 'add', path: '/fields/System.AssignedTo', value: proposal.actor }
+    ], {}, true);
+  }
+});
 module.exports = { classify, resolve, query, publish: (r, io) => execute(r, io, false), recover,
-  'read-update': readUpdate, 'query-update': queryUpdate, update: (r, io) => execute(r, io, true), 'recover-update': recover };
+  'read-update': readUpdate, 'query-update': queryUpdate, update: (r, io) => execute(r, io, true), 'recover-update': recover, ...set, ...assignment };

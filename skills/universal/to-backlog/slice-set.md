@@ -1,8 +1,9 @@
-# GitHub crystallized slice publication
+# Crystallized slice publication
 
-Reach this branch only for GitHub create with an explicitly crystallized slice
+Reach this branch only for create with an explicitly crystallized slice
 set, including a one-slice set. An ordinary request without slices follows the
-existing one-item branch. GitLab and Azure DevOps retain their current workflows.
+existing one-item branch. Load the selected provider's mechanics for its relationship
+representation, content format and invocation-scoped type requirements.
 An originating issue retains update mode; never create a replacement parent.
 Updating a previously published set retains its correspondence and children;
 this branch grants no additional child creation on update.
@@ -10,13 +11,13 @@ this branch grants no additional child creation on update.
 Use the existing whole-objective parent title/description and every agreed
 slice block verbatim. There is no second decomposition or breakdown approval.
 Resolve content ambiguity with the user; do not synthesize replacement slices.
-Call `query-set` with the ordinary GitHub destination/content fields and
+Call `query-set` with the selected provider's ordinary destination/content fields and
 `blocks` (the complete Ready to Propose text). The single dependency validator
 checks the whole set and returns stable blocker-first order. Resolve invalid
 dependencies before delivery or publication without changing agreements alone.
 
 Show the complete parent and every complete child in returned order, the exact
-destination/visibility/Project, and relation operations. State the returned
+destination/visibility/Project when applicable, and relation operations. State the returned
 representation: native hierarchy when supported; otherwise written references.
 Disclose the returned dependency representation too: native blocker relations
 when supported, otherwise written immediate references. Only agreed immediate
@@ -29,7 +30,7 @@ The optional backlog Yes, fast-track, and unattended consent do not replace it.
 Call `publish-set` with the same request, unchanged `confirmation` and a new
 private receipt path under the existing temporary-directory protocol. Each
 creation, Project membership, written reference, and native hierarchy link is a
-separate verified operation. Retain returned `correspondence` with
+separate verified operation when applicable. Retain returned `correspondence` with
 `version`, `platform`, `parent`, and `slices` (change_name, issue, depends_on).
 The same mapping is stored in each issue's `sai-backlog-slices@1` marker, so
 import and `lookup-slice` can recover it independently of this conversation.

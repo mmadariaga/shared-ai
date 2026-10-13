@@ -307,11 +307,11 @@ function checkStrictBlock(lines, block, index) {
     }
     if (entry.label === 'Backlog origin' && entry.inline !== '') {
       try {
-        const { normalize } = require('./from-backlog-github');
-        if (normalize(entry.inline).url !== entry.inline) throw new Error('noncanonical URL');
+        const identity = require('./backlog-slice-identity');
+        if (identity.normalize(entry.inline, identity.platformFor(entry.inline)) !== entry.inline) throw new Error('noncanonical URL');
         backlogOrigin = entry.inline;
       } catch {
-        violations.push(violation(line, 'INVALID_BACKLOG_ORIGIN', 'Backlog origin must be a canonical GitHub issue URL'));
+        violations.push(violation(line, 'INVALID_BACKLOG_ORIGIN', 'Backlog origin must be a canonical GitHub, GitLab or Azure DevOps issue URL'));
       }
     }
   }
