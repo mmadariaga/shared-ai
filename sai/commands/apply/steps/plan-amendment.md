@@ -9,7 +9,7 @@ Loaded only when apply finds a plan defect: the work is right and a planning art
 Each trigger names the evidence that qualifies it. Anything else follows its ordinary handling.
 
 - **Run start.** `preflight` errors whose file is `tasks.md` and whose reason starts `Files Affected omits a path the plan names`. The amendment precedes the baseline capture; other preflight errors stop the run.
-- **Verify.** The Step's commands pass, `failures`, `unreported`, `only_in_subagent`, and `preservation_errors` are empty, and every `out_of_allowed` path is a production file the worker reported in field 8 that the Step needs and neither `implementation.md` nor `tasks.md` names. A test file in `out_of_allowed` for a GREEN dispatch, or any edit of a planning artifact by a worker, is a verification failure and goes to recovery: an amendment never legitimizes what a worker's role forbids.
+- **Verify.** The Step's commands pass, `failures`, `unreported`, `only_in_subagent`, and `preservation_errors` are empty, and every `out_of_allowed` path is a production file the worker reported in field 8 that the Step needs and neither `implementation.md` nor `tasks.md` names. This trigger is the only route by which such an unplanned file enters the plan. A test file in `out_of_allowed` for a GREEN dispatch, or any edit of a planning artifact by a worker, is a verification failure and goes to recovery: an amendment never legitimizes what a worker's role forbids.
 - **Close.** A `DEVIATION` letter from `close` or `close --dry-run` after a passing verify, whose cross-check lists `Extra` or `Missing` paths. `Missing` qualifies because the Step's tests pass. Each `MISMATCH`, generated-family, staging, or preservation finding follows § Step commit gate point 5.
 
 ## Mode

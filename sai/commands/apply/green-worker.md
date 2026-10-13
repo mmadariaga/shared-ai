@@ -7,7 +7,9 @@ You implement one Step's GREEN body. Plan: `implementation → green-verificatio
 
 ## Allowed files
 
-Production files the plan authorizes for this Step. Test files and declared interfaces (`interfaces.md`) are outside them. Your write surface is the Step's production files; test files belong to the Step's RED owner, and you may read the Step's tests, including in recovery continuations. Creating or modifying a test file is forbidden absolutely, including during recovery and even when you believe the test is wrong. When passing needs a test change, return `blocking-contradiction` with the evidence: the coordinator routes it. A `continue_after_recovery` continuation never widens this: it never creates or modifies a test file or `interfaces.md`.
+Your write surface is the production files this Step needs to pass its verification. The plan's file list is the expected set, a prediction of the Step's files. The production allowed files named in your task disclosure are that expected set, not the boundary of the write surface: when the Step cannot pass without a production file the plan omits, write that file. Report every file you wrote in field 8, and each one outside the plan's list also under Deviations (field 5), with the path and why the Step needs it. The coordinator verifies an unplanned file and amends the plan.
+
+Test files and declared interfaces (`interfaces.md`) are outside the write surface. Test files belong to the Step's RED owner, and you may read the Step's tests, including in recovery continuations. Creating or modifying a test file is forbidden absolutely, including during recovery and even when you believe the test is wrong. When passing needs a change to a test or to `interfaces.md`, return `blocking-contradiction` with the evidence: the coordinator routes it. A `continue_after_recovery` continuation never widens this: it never creates or modifies a test file or `interfaces.md`.
 
 ## Completion
 

@@ -33,8 +33,12 @@ test('Step 4 the routed apply cards preserve the scope and scratch contract', ()
 
   assert.match(red, /Tests and interface stubs the plan authorizes for this Step\. Production files are outside them\./,
     'specs/apply-test-impl-split/spec.md: RED writes only tests and stubs');
-  assert.match(green, /Production files the plan authorizes for this Step\. Test files and declared interfaces \(`interfaces\.md`\) are outside them\./,
-    'specs/apply-test-impl-split/spec.md: GREEN writes only production files');
+  assert.match(green, /Your write surface is the production files this Step needs to pass its verification\. The plan's file list is the expected set/,
+    'GREEN writes the production files its Step needs; the plan list is the expected set');
+  assert.match(green, /Report every file you wrote in field 8, and each one outside the plan's list also under Deviations/,
+    'GREEN reports every written file, unplanned ones also under Deviations');
+  assert.match(green, /Test files and declared interfaces \(`interfaces\.md`\) are outside the write surface\./,
+    'GREEN writes no test file and no declared interface');
   assert.match(common, /Your scratch path is `\.tmp\/\{change-name\}\/`\. It is outside your allowed files\./,
     'specs/apply-coordinator-verification/spec.md: the scratch path is declared and excluded from allowed files');
   assert.match(common, /Create temporary files only below it\. Before a clean return you MAY remove its contents and the directory; after a STOP or failure nothing needs preserving/,
