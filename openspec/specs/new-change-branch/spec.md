@@ -70,6 +70,10 @@ The helper SHALL inspect at most 20 commits using first-parent traversal from HE
 
 The skill SHALL offer the current branch, detected parent, existing main references, and existing master references in that order, omitting absent and duplicate references. Detached HEAD SHALL have no current-branch option. The skill MUST use Claude Code's `AskUserQuestion` or opencode's `question` with free-text entry and MUST NOT automatically choose a base. Claude Code SHALL paginate more than four bases in returned order with a More option and retain free text on every page. The helper SHALL resolve the selected or entered base to a commit SHA; an unavailable or non-commit base SHALL return the workflow to base selection.
 
+Suggested branch-base options SHALL display short names by stripping only a leading `refs/heads/` or `refs/remotes/` prefix, such as `main` or `origin/main`. When short names coincide across local and remote branches, the skill SHALL add localized local or remote qualifiers to each affected option after checking the complete inventory, including other pages. Each option SHALL map to its full, exact reference, and the skill SHALL pass that reference as `{base}` on selection.
+
+Short-name display SHALL be a presentation exception only for suggested branch-base options. The skill SHALL preserve the general verbatim-identifier rule elsewhere and the helper's returned data. Free-text bases SHALL remain unchanged by this display rule. These presentation rules SHALL apply in standalone use and when Explore invokes the skill.
+
 #### Scenario: User enters an unavailable base
 
 - **WHEN** a selected or free-text base does not resolve to a commit
@@ -79,6 +83,26 @@ The skill SHALL offer the current branch, detected parent, existing main referen
 
 - **WHEN** inspection returns no suggested base references
 - **THEN** the skill still accepts a free-text base rather than selecting one automatically.
+
+#### Scenario: Suggested options display short names and select exact references
+
+- **WHEN** the inventory contains `refs/heads/main` and `refs/remotes/origin/main`
+- **THEN** the options display `main` and `origin/main`, and selecting either passes its corresponding full, exact reference as `{base}`.
+
+#### Scenario: Coincident names across pages remain distinguishable
+
+- **WHEN** a local and remote suggested reference produce the same short name, including references on different pages
+- **THEN** each affected option receives its localized local or remote qualifier without restoring namespace prefixes, while its full-reference association remains intact.
+
+#### Scenario: Free-text references retain their input
+
+- **WHEN** the user enters a free-text base instead of selecting a suggested option
+- **THEN** the skill passes that input to base resolution without applying the short-name display transformation.
+
+#### Scenario: Explore and standalone use share presentation rules
+
+- **WHEN** Claude Code or opencode runs the skill standalone or through Explore
+- **THEN** suggested options follow the same short-name and collision-qualifier rules while preserving returned option order, full-reference mapping, and helper data.
 
 ### Requirement: Safe local creation and verified switching
 

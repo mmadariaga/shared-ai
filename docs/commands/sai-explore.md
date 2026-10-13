@@ -54,7 +54,13 @@ that action; ambiguous intent is clarified before anything runs. Each accepted
 skill runs in the current conversation and owns its details, confirmations,
 errors, and cancellation handling. Explore waits for it to finish before the
 next question. These questions remain explicit with `--fast-track` on Claude
-Code and opencode, and branch preparation permits no code edits.
+Code and opencode, and branch preparation permits no code edits. The backlog
+question and option descriptions retain the word `backlog` in every language
+(for example, “¿Quieres crear o actualizar el backlog con esta propuesta?”).
+Publication confirmation remains a separate step owned by `to-backlog`.
+Branch-base suggestions use the same short names and local/remote qualifiers as
+standalone [`new-change-branch`](new-change-branch.md), while preserving exact
+Git references internally.
 
 After both actions finish or are skipped, choose how to continue. `Manual` hands you the
 Ready to Propose block for `/sai-1-spec`. `Plan - Unattended` runs spec and design

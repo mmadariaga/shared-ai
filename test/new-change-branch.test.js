@@ -204,6 +204,21 @@ test('CLI uses stdin JSON and reports invalid input without creating a branch', 
   assert.equal(refs(cwd), before);
 });
 
+test('suggested base labels are short, collision-safe and mapped to exact references', () => {
+  const skill = fs.readFileSync(path.resolve(__dirname, '../skills/universal/new-change-branch/SKILL.md'), 'utf8');
+  const step = skill.split('## 2. Select and resolve the base')[1].split('## 3. Create once and verify')[0];
+  assert.match(step, /strip only the leading `refs\/heads\/` or `refs\/remotes\/` for display/);
+  assert.match(step, /`main` or `origin\/main`/);
+  assert.match(step, /When short names coincide[\s\S]*localized `local` or `remote` qualifiers/);
+  assert.match(step, /check the complete inventory, including other pages/);
+  assert.match(step, /Map each option back\s+to its full, exact reference and pass that reference as `\{base\}`/);
+  assert.match(step, /presentation exception only for suggested branch-base options/);
+  assert.match(step, /general verbatim-identifier rule elsewhere and the helper's returned data/);
+  assert.match(step, /Accept a free-text base unchanged by this display rule/);
+  assert.match(step, /Present `inspect.bases` in its returned order/);
+  assert.doesNotMatch(step, /Display exact reference\s+values/);
+});
+
 test('instruction checks cover context questions, native pickers, safety and both harness projections', () => {
   const skill = fs.readFileSync(path.resolve(__dirname, '../skills/universal/new-change-branch/SKILL.md'), 'utf8');
   for (const pattern of [/disable-model-invocation: true/, /explicit user request/, /relevant conversation context/,

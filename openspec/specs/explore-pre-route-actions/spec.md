@@ -9,6 +9,8 @@ Define the optional backlog and local branch preparation workflows offered after
 
 After every block in the recorded crystallized proposal set is visible and a pending slice exists, `sai-explore` SHALL ask whether to create or update a backlog item, then whether to create and switch to a local change branch, and only then present the implementation route picker. It SHALL ask one optional question at a time in the user's language with concise context naming the crystallized work. Claude Code SHALL use `AskUserQuestion` with its automatic free-text Other entry; opencode SHALL use `question` with custom/free-text input enabled. Both questions SHALL offer Yes then No, with stable values `yes` and `no`, and SHALL remain explicit under `--fast-track`.
 
+The backlog question and its option descriptions SHALL retain the word `backlog` in every language. The Yes description SHALL identify creating or updating the backlog, and the No description SHALL identify skipping the backlog action. Yes and No labels SHALL remain localized with their existing stable values. The Spanish example SHALL be “¿Quieres crear o actualizar el backlog con esta propuesta?”
+
 #### Scenario: Complete proposal precedes optional actions
 
 - **WHEN** a successful crystallization close displays the complete recorded block set with a pending slice and no active route
@@ -18,6 +20,16 @@ After every block in the recorded crystallized proposal set is visible and a pen
 
 - **WHEN** Claude Code or opencode runs Explore with `--fast-track` and reaches the optional actions
 - **THEN** both questions remain explicit with Yes, No, and free-text support rather than receiving automatic answers
+
+#### Scenario: Localized backlog question retains recognizable terminology
+
+- **WHEN** Explore presents the optional backlog question in any user language on Claude Code or opencode
+- **THEN** the question and option descriptions retain `backlog`, with localized Yes and No labels describing creating or updating and skipping the backlog action respectively, and stable values `yes` and `no`
+
+#### Scenario: Spanish backlog wording
+
+- **WHEN** Explore uses the documented Spanish example for the optional backlog question
+- **THEN** it asks “¿Quieres crear o actualizar el backlog con esta propuesta?”
 
 ### Requirement: Resolve optional action replies without selecting an implementation route
 
