@@ -618,10 +618,16 @@ function ownFromReceipts(opts, state) {
   return own;
 }
 
+/**
+ * The root learnings file is coordinator-owned: the apply coordinator rewrites it at every closing
+ * report, so it is neither pre-existing work a run must preserve nor a file any Step wrote.
+ */
+const LEARNINGS_PATH = 'SAI_LEARNINGS.md';
+
 /** Paths dirty at run start that are foreign to the Step; without a Step, foreign to every Step. */
 function foreignDirty(base, step = null) {
   const own = base.own || {};
-  return dirtyPaths(base.state).filter((p) => !Object.hasOwn(own, p) || (step !== null && own[p] !== String(step)));
+  return dirtyPaths(base.state).filter((p) => p !== LEARNINGS_PATH && (!Object.hasOwn(own, p) || (step !== null && own[p] !== String(step))));
 }
 
 /** The two ways the user settles a foreign file that blocks a Step's dispatch. */
@@ -745,7 +751,7 @@ function executionState(opts) {
   const registered = checkpoint ? amendable.filter((p) => delta(reference.state, checkpoint.state).includes(p)) : [];
   const frozenInputs = unique([...base.planning, ...amendable]).filter((p) => p !== planRelPath(opts.change));
   const planningErrors = frozenInputs.filter((p) => delta((registered.includes(p) ? checkpoint : reference).state, current).includes(p));
-  const changed = unique([...visible, ...changedFromBase]).filter((p) => !unrelated.includes(p) && !base.planning.includes(p) && !amendable.includes(p) && p !== planRelPath(opts.change) && !isScratch(p, opts.change));
+  const changed = unique([...visible, ...changedFromBase]).filter((p) => !unrelated.includes(p) && !base.planning.includes(p) && !amendable.includes(p) && p !== planRelPath(opts.change) && p !== LEARNINGS_PATH && !isScratch(p, opts.change));
   // Earlier authorized commits are clean now and must not become this Step's changes.
   const uncommitted = changed.filter((p) => visible.includes(p));
   const retainedOwned = settled ? settled.paths.filter((p) => !delta(settled.state, current).includes(p)) : [];
@@ -990,7 +996,7 @@ function verify(opts, stdin) {
   const entries = statusEntries(cwd).filter((e) => !isScratch(e.path, change));
   const plan = planRelPath(change);
   const state = opts.baseline ? executionState(opts) : null;
-  const dispatchDelta = checkpoint ? delta(checkpoint.state, state.current).filter((p) => !isScratch(p, change)) : null;
+  const dispatchDelta = checkpoint ? delta(checkpoint.state, state.current).filter((p) => !isScratch(p, change) && p !== LEARNINGS_PATH) : null;
   const amendable = amendablePaths(change);
   const changed = checkpoint ? dispatchDelta.filter((p) => p !== plan && !amendable.includes(p))
     : state ? state.changed : unique(entries.flatMap((e) => (e.from ? [e.path, e.from] : [e.path]))).filter((p) => p !== plan);

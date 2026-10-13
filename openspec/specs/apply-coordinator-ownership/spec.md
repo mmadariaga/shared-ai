@@ -169,8 +169,14 @@ After close, the coordinator SHALL retain the settled receipt for later dispatch
 
 Before selecting eligible terminal documentation paths, the coordinator SHALL require baseline-aware inspect to pass and exclude every initially protected path, including initially dirty documentation and glossary paths. This check SHALL not widen the existing eligible terminal set or make planning inputs Step-owned.
 
+Root `SAI_LEARNINGS.md` SHALL be exempt from this exclusion: it is coordinator-owned, the tool SHALL never report it as protected or as a preservation error, and it SHALL stay eligible when it was modified at run start.
+
 An authorized terminal commit SHALL stage and commit only exact eligible paths using path-limited commit semantics and preserve unrelated staging. Missing or corrupt state or preservation errors SHALL stop before terminal staging.
 
 #### Scenario: Initial documentation edits are unrelated
 - **WHEN** documentation eligible by location already had unrelated modifications in the baseline
 - **THEN** the terminal gate excludes that path and preserves its content and staging
+
+#### Scenario: Learnings file modified at run start stays eligible
+- **WHEN** root `SAI_LEARNINGS.md` was already modified in the baseline and the run reaches the terminal documentation commit
+- **THEN** inspect reports no preservation error for it and the terminal gate keeps it in the eligible set

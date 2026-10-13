@@ -55,15 +55,22 @@ The system SHALL keep warnings ephemeral with no persistence, so a re-entry re-d
 
 When the plan's Verification commands section lacks the full-suite command, the command cannot run, or the suite fails, Apply SHALL print the shared stopped closing report directly from the terminal suite gate without invoking successful terminal navigation. It SHALL state the command or its absence, failure or cannot-run reason, remaining work and commits, and existing suite re-entry guidance before Execution details. Sections 1 through 5 of the terminal lifecycle SHALL NOT run, no terminal entry SHALL be marked, and no completion literal or successful transition SHALL print. The report SHALL omit the pending-human-review block because the functional review has not run. Under Build, the supervisor SHALL print the single invocation-wide stopped report from these available results.
 
+This stop SHALL promote learnings like any other apply stop: before the stopped report prints, the apply coordinator SHALL load `sai/commands/apply/steps/learnings-promotion.md` and promote. When the promotion wrote `SAI_LEARNINGS.md`, the report SHALL list the path, the entries added and superseded, and that the file is uncommitted; when it wrote nothing, the report SHALL carry no learnings line.
+
 #### Scenario: Terminal suite fails after Step commits
 
 - **WHEN** the terminal suite gate fails after every Step and its commit gate have closed
-- **THEN** the direct stopped report describes the retained commits and suite re-entry action, prints available diagnostics last, and performs no functional review, final sweep, learnings promotion, or terminal documentation commit
+- **THEN** the direct stopped report describes the retained commits and suite re-entry action, prints available diagnostics last, follows a learnings promotion, and performs no functional review, final sweep, or terminal documentation commit
 
 #### Scenario: Full-suite command is absent or cannot run
 
 - **WHEN** the Verification commands section exists but lacks the full-suite command or the command cannot run
 - **THEN** Apply uses the same direct stopped-report path, identifies the missing command or execution error, and marks no terminal work
+
+#### Scenario: An apply stop promotes before its stopped report
+
+- **WHEN** the apply coordinator is about to print a stopped closing report and its promotion wrote `SAI_LEARNINGS.md`
+- **THEN** What you need to know lists the path, the entries added and superseded, and that the file is uncommitted
 
 ### Requirement: Legacy suite omission remains permitted and visible
 

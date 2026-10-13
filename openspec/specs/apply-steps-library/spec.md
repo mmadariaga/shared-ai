@@ -7,7 +7,7 @@ TBD - created by archiving change apply-routing-steps-decomposition. Update Purp
 
 ### Requirement: Step instruction files exist per routing mode and terminal phase
 
-The apply command SHALL provide a step instruction library under `sai/commands/apply/steps/` containing one instruction file per routing decision mode and one for the terminal phase: `routing-green-direct.md`, `routing-green-exception-test-only.md`, `routing-stop-missing-contract.md`, `routing-split-flow.md`, `routing-green-exception-no-production.md`, and `terminal-lifecycle.md`, plus `branch-selection.md`, a plainly fetched non-routing file that is not a machine pointer and loads only when the branch picker must be presented. The routing files contain the five exclusive step routing conditions from the original decision tree; the terminal file contains the final sweep, learnings promotion, terminal documentation evaluation, visibility, authorization, and commit behaviors.
+The apply command SHALL provide a step instruction library under `sai/commands/apply/steps/` containing one instruction file per routing decision mode and one for the terminal phase: `routing-green-direct.md`, `routing-green-exception-test-only.md`, `routing-stop-missing-contract.md`, `routing-split-flow.md`, `routing-green-exception-no-production.md`, and `terminal-lifecycle.md`, plus `branch-selection.md`, a plainly fetched non-routing file that is not a machine pointer and loads only when the branch picker must be presented, and `learnings-promotion.md`, a plainly fetched non-routing file that is the single source of the learnings promotion rule and loads at each closing report, stopped or completed. The routing files contain the five exclusive step routing conditions from the original decision tree; the terminal file contains the final sweep, the load of the learnings promotion file, terminal documentation evaluation, visibility, authorization, and commit behaviors.
 
 #### Scenario: Routing files are named by mode
 - **WHEN** a consumer inspects `sai/commands/apply/steps/` for a routing mode
@@ -15,7 +15,11 @@ The apply command SHALL provide a step instruction library under `sai/commands/a
 
 #### Scenario: Terminal file contains the terminal phase
 - **WHEN** a consumer looks for apply's terminal lifecycle (final sweep, promotion, documentation evaluation, visibility, authorization, commit)
-- **THEN** it is found in `sai/commands/apply/steps/terminal-lifecycle.md`.
+- **THEN** it is found in `sai/commands/apply/steps/terminal-lifecycle.md`, whose § 3 loads the promotion rule from `sai/commands/apply/steps/learnings-promotion.md`.
+
+#### Scenario: Promotion rule has a single source
+- **WHEN** a consumer looks for the learnings promotion candidates, qualification rule, and disclosure
+- **THEN** they are found only in `sai/commands/apply/steps/learnings-promotion.md`.
 
 ### Requirement: Routing decisions remain exhaustive and exclusive
 
@@ -31,15 +35,19 @@ The five routing files SHALL preserve the five exclusive routing conditions and 
 
 ### Requirement: Terminal lifecycle behaviors are preserved
 
-The terminal-lifecycle file SHALL preserve the complete sequence and logic of apply's coordinator-owned terminal phase: the Final sweep (checkbox verification), exactly one learnings promotion pass (per-run), terminal documentation-set evaluation (eligible set: changed `docs/**`, root `SAI_LEARNINGS.md` if written by promotion, changed `GLOSSARY.md`), visibility listing, authorization gate, exact-path staging (no `git add -A`), and commit, in that order. A run that halts before the Final sweep SHALL perform neither promotion nor terminal evaluation.
+The terminal-lifecycle file SHALL preserve the complete sequence and logic of apply's coordinator-owned terminal phase: the Final sweep (checkbox verification), the learnings promotion of the completed closing report (loaded from `learnings-promotion.md` after a passing sweep), terminal documentation-set evaluation (eligible set: changed `docs/**`, root `SAI_LEARNINGS.md` whenever it is modified, changed `GLOSSARY.md`), visibility listing, authorization gate, exact-path staging (no `git add -A`), and commit, in that order. A run that stops before the terminal lifecycle SHALL perform no terminal evaluation and SHALL promote learnings before its stopped closing report prints, as every apply stop does. Root `SAI_LEARNINGS.md` SHALL be exempt from the protected-path exclusion of the terminal documentation commit.
 
 #### Scenario: Sweep, promotion, and documentation occur in order
 - **WHEN** all Steps complete and verification gates pass
-- **THEN** the coordinator performs the Final sweep first, then one learnings promotion pass, then terminal documentation evaluation and visibility listing, with authorization and commit following only if the set is non-empty.
+- **THEN** the coordinator performs the Final sweep first, then the learnings promotion, then terminal documentation evaluation and visibility listing, with authorization and commit following only if the set is non-empty.
 
 #### Scenario: Terminal paths remain distinct from implementation paths
 - **WHEN** the terminal documentation set is evaluated
-- **THEN** only changed `docs/**`, root `SAI_LEARNINGS.md` (if promotion wrote it), and changed `GLOSSARY.md` are eligible; `openspec/changes/**` and `implementation.md` remain excluded.
+- **THEN** only changed `docs/**`, root `SAI_LEARNINGS.md` (whenever it is modified), and changed `GLOSSARY.md` are eligible; `openspec/changes/**` and `implementation.md` remain excluded.
+
+#### Scenario: Learnings file was modified at run start
+- **WHEN** root `SAI_LEARNINGS.md` was already modified at run start
+- **THEN** it stays eligible for the terminal documentation commit and is not excluded as a protected path.
 
 ### Requirement: Recovery and the exhausted-Step choice load from failure-triggered step files
 

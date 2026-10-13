@@ -106,6 +106,13 @@
   non-deferred HV outside fast-track deferral, or pending commits) closes
   without the successful final completion transition.
 
+  The supervisor promotes no learnings. When a stop inside the apply segment
+  closes the invocation, the apply coordinator has already promoted
+  (`sai/commands/apply/steps/learnings-promotion.md`); print the learnings lines
+  it hands over in the single stopped report: the path, the entries added and
+  superseded, and that the file is uncommitted. A stop in the implement segment
+  has none.
+
   ## Final terminal navigation
   When apply is the final segment and all apply completion conditions pass, use
   apply's final `terminal_navigation` action and its shared closing report: in Next step print exactly

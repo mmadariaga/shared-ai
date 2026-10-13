@@ -68,8 +68,18 @@ test('suite failures have a direct stopped-report print path without terminal wo
   assert.match(gate, /Execution details last/);
   assert.match(gate, /supervisor to print its single invocation-wide stopped report/);
   assert.match(gate, /Omit the pending human-review block: no functional review ran/);
-  assert.match(gate, /no functional review, final sweep, learnings promotion, or terminal documentation commit/);
+  assert.match(gate, /This stop promotes learnings like any other: fetch `sai\/commands\/apply\/steps\/learnings-promotion\.md` and promote before the report prints/);
+  assert.match(gate, /no functional review, final sweep, or terminal documentation commit/);
   assert.match(gate, /marks no terminal entry, and prints no completion literal or successful transition/);
+});
+
+test('an apply stop promotes learnings before the stopped report prints, and no other route does', () => {
+  const promotion = policy().split('## Apply stop: learnings promotion')[1].split('## Authorization visibility')[0];
+  assert.match(promotion, /Before the apply coordinator prints a stopped report, it fetches\s+`sai\/commands\/apply\/steps\/learnings-promotion\.md` and promotes/);
+  assert.match(promotion, /lists the path, the\s+entries added and superseded, and that the file is uncommitted/);
+  assert.match(promotion, /the report carries no learnings line/);
+  assert.match(promotion, /supervisor\s+prints the lines the apply coordinator hands over and promotes nothing itself/);
+  assert.match(promotion, /\(Build's implement segment, Direct Build\)\s+promotes nothing/);
 });
 
 test('permitted legacy suite omission reaches both summary and diagnostics as a warning', () => {
