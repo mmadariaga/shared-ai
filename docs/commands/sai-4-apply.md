@@ -24,6 +24,12 @@ pending human review in the final report; they are not silently marked complete.
 A failed terminal suite stops closure, leaves the Step commits intact, and can
 be rerun by invoking apply again.
 
+Apply records durable repository facts it observed in the root
+`SAI_LEARNINGS.md` at every closing report: on a stop as well as at the end. A
+stop makes no commit, so its report says the file is uncommitted; the final
+documentation commit of the run that completes includes the file whenever it
+is modified.
+
 ## Decisions that still require you
 
 - **RED already passes:** confirm whether the behavior already exists or the

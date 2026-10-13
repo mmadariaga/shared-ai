@@ -1073,7 +1073,11 @@ test('Step 2 the active runner owns the ordered terminal documentation lifecycle
   assert.ok(positions.every(position => position >= 0), 'every terminal lifecycle segment must be present');
   assert.deepEqual([...positions].sort((left, right) => left - right), positions,
     'review, Final sweep, promotion, documentation commit, and print must stay ordered');
-  assert.match(section, /Promote once per run/);
+  assert.match(section, /## 3\. Learnings promotion\s+Fetch @sai\/commands\/apply\/steps\/learnings-promotion\.md and promote, after a passing sweep/,
+    '§ 3 must load the single promotion rule');
+  assert.doesNotMatch(section, /A candidate qualifies only when/, 'the promotion rule lives only in its step file');
+  assert.match(section, /Like every apply stop, it promotes learnings before its stopped closing report prints/,
+    'the opening paragraph must state that a stop promotes');
   const docs = section.slice(section.indexOf(markers[3]), section.indexOf(markers[4]));
   const steps = ['**Visibility listing.**', '**Message.**', '**Authorization.**', '**Commit.**'].map(step => docs.indexOf(step));
   assert.ok(steps.every(position => position >= 0), 'listing, message, authorization, and commit must all be present');
@@ -1084,11 +1088,30 @@ test('Step 2 the active runner owns the ordered terminal documentation lifecycle
 test('Step 2 the terminal path contract is explicit and separate from Step staging', () => {
   const section = artifact('sai/commands/apply/steps/terminal-lifecycle.md');
   assert.match(section, /changed paths under `docs\/\*\*`/);
-  assert.match(section, /root `SAI_LEARNINGS\.md`, only when § 3 wrote it in this run/);
+  assert.match(section, /root `SAI_LEARNINGS\.md` whenever it is modified \(tracked-modified or untracked\)/);
+  assert.match(section, /already modified at run start, and when § 3 wrote nothing in this run/);
+  assert.match(section, /Root `SAI_LEARNINGS\.md` is exempt from this exclusion: it is coordinator-owned/);
   assert.match(section, /root `GLOSSARY\.md` when changed/);
   assert.match(section, /`openspec\/changes\/\*\*`, `implementation\.md`, the changed-files union, per-Step add-lists, and unrelated paths are outside the set/);
   assert.match(section, /never touches the index/);
   assert.match(section, /Never `git add -A` or a broad fallback/);
+});
+
+test('the learnings promotion rule is single-sourced in its step file and runs at every closing report', () => {
+  const promotion = artifact('sai/commands/apply/steps/learnings-promotion.md');
+  assert.match(promotion, /once at each closing report[\s\S]{0,120}stopped or completed, before that report prints/);
+  assert.match(promotion, /The coordinator alone promotes: no worker does, and under `\/sai-build` the supervisor does not/);
+  assert.match(promotion, /promotes again at its next closing report/);
+  assert.match(promotion, /fixed text instead of the closing report[\s\S]{0,80}promotes nothing, and so does an interruption/);
+  assert.match(promotion, /every entry written so far in `## Appendix: Plan vs Final Implementation`/);
+  assert.match(promotion, /field-6 learnings[\s\S]{0,80}include the stopped Step's/);
+  assert.match(promotion, /A candidate qualifies only when it names a repository-level artifact/);
+  assert.match(promotion, /@sai\/policies\/sai-learnings-format\.md`; create no empty file when nothing qualifies/);
+  assert.match(promotion, /When you write nothing, the report carries no learnings line/);
+  assert.match(promotion, /A stop makes no commit\. On a stop, also state that `SAI_LEARNINGS\.md` is uncommitted/);
+  const build = artifact('sai/commands/meta-build/coordinator.md');
+  assert.match(build, /The supervisor promotes no learnings/);
+  assert.match(build, /print the learnings lines\s+it hands over in the single stopped report/);
 });
 
 test('Step 2 both harnesses keep the routed coordinator and workers keep Git authority prohibited', () => {

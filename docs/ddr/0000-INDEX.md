@@ -88,6 +88,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0151b — Three mutually exclusive routing diagnoses, separate from worker failure classes](./0151b-three-mutually-exclusive-routing-diagnoses.md) — Refs 0152
 - [0152 — Cause Locus gates eligibility; unresolved is not out-of-scope](./0152-cause-locus-gates-eligibility.md) — Refs 0151b
 - [0155 — Terminal documentation set is explicit and root-aware](./0155-terminal-documentation-set-is-explicit-and-root-aware.md)
+- [0163 — The learnings file is coordinator-owned and promoted at every closing report](./0163-learnings-file-is-coordinator-owned-and-promoted-at-every-closing-report.md) — **Amends** 0155
 
 ### `/sai-5-review`
 
@@ -210,6 +211,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0155 — Terminal documentation set is explicit and root-aware](./0155-terminal-documentation-set-is-explicit-and-root-aware.md)
 - [0161 — In-memory authoritative conversation snapshots](./0161-in-memory-authoritative-conversation-snapshots.md)
 - [0162 — `received_at` is the CLI response clock; verdicts are timeless](./0162-received-at-is-the-cli-response-clock.md) — **Amends** 0140, **Amends** 0141
+- [0163 — The learnings file is coordinator-owned and promoted at every closing report](./0163-learnings-file-is-coordinator-owned-and-promoted-at-every-closing-report.md) — **Amends** 0155
 
 ### Fetch resolution & path conventions
 
@@ -305,6 +307,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 | [0141](./0141-milestone-stamp-is-closure-only-and-derived-from-emitted-on.md) | supersedes | [adr:0118a](../adr/0118a-per-harness-wall-clock-commands-in-bindings.md) |
 | [0162](./0162-received-at-is-the-cli-response-clock.md) | amends | [0140](./0140-closed-worker-payloads-carry-result-emission-time.md) |
 | [0162](./0162-received-at-is-the-cli-response-clock.md) | amends | [0141](./0141-milestone-stamp-is-closure-only-and-derived-from-emitted-on.md) |
+| [0163](./0163-learnings-file-is-coordinator-owned-and-promoted-at-every-closing-report.md) | amends | [0155](./0155-terminal-documentation-set-is-explicit-and-root-aware.md) |
 | [0149](./0149-orchestration-core-contracts-live-under-orchestration.md) | supersedes | [0128](./0128-neutral-root-protocols-and-command-cards.md) |
 | [0150](./0150-mode-parameterized-at-fetch-site-not-detected.md) | amends | [0028](../adr/0028-gate-parameters-inline-at-fetch-site.md) |
 | [0151c](./0151c-external-findings-block-is-only-review-evidence.md) | amends | [0133b](./0133b-review-progress-is-evidence-only.md) |

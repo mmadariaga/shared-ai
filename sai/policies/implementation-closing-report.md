@@ -68,6 +68,17 @@ route-owned.
    original reports verbatim rather than rebuilding them. Preserve route-owned
    diagnostic information and telemetry omissions.
 
+## Apply stop: learnings promotion
+
+Before the apply coordinator prints a stopped report, it fetches
+`sai/commands/apply/steps/learnings-promotion.md` and promotes. When the
+promotion wrote `SAI_LEARNINGS.md`, What you need to know lists the path, the
+entries added and superseded, and that the file is uncommitted. When it wrote
+nothing, the report carries no learnings line. Under `/sai-build` the supervisor
+prints the lines the apply coordinator hands over and promotes nothing itself.
+A stop outside the apply coordinator (Build's implement segment, Direct Build)
+promotes nothing.
+
 ## Authorization visibility
 
 Keep each original tool-generated report at its current pre-authorization

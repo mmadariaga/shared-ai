@@ -6,27 +6,6 @@ Defines the once-per-run learnings promotion pass of `/sai-4-apply`: the deviati
 
 ## Requirements
 
-### Requirement: Promotion runs once per run, after the Final sweep and before the MANDATORY STOP
-
-The `/sai-4-apply` coordinator SHALL perform exactly one promotion pass per run. The pass SHALL be implemented in `sai/commands/apply/steps/terminal-lifecycle.md` and executed after the Final sweep — the scan that verifies every Automated checkbox in `implementation.md` is marked — and before the MANDATORY STOP that prints the completion message.
-
-The pass SHALL NOT be performed per Step, SHALL NOT be delegated to a Step-execution worker, and SHALL NOT be performed more than once in a run. Because the whole `## Appendix: Plan vs Final Implementation` is on disk by the time the pass runs, supersede-by-key SHALL be applied as a single pass over the complete appendix rather than incrementally.
-
-#### Scenario: A routed run completes all Steps
-
-- **WHEN** the coordinator finishes the Final sweep and every Step is checked
-- **THEN** `terminal-lifecycle.md` drives the promotion pass once over the complete deviations appendix before terminal documentation evaluation and the completion message
-
-#### Scenario: A run halts before the Final sweep
-
-- **WHEN** a GREEN conflict, user stop, or declined per-Step commit ends the run before the Final sweep
-- **THEN** the routed runner performs neither promotion nor terminal documentation-commit evaluation
-
-#### Scenario: The coordinator is tempted to promote per Step
-
-- **WHEN** a Step's deviations are appended to the appendix mid-run
-- **THEN** no promotion occurs at that point; promotion happens only in the single end-of-run pass
-
 ### Requirement: Promotion source is the deviations appendix
 
 The promotion pass SHALL take its candidate entries from the `## Appendix: Plan vs Final Implementation` section of `openspec/changes/{change-name}/implementation.md` — the appendix the coordinator itself wrote from subagent report field 5. This is the primary source.
@@ -117,7 +96,9 @@ The standard pre-commit file visibility report SHALL continue to fire unchanged 
 
 Per-Step commits SHALL remain field-8-only: the coordinator SHALL continue to stage exactly the add-list supplied by the applicable subagent report field 8 for each Step and SHALL NOT widen that rule to sweep `docs/**`, `SAI_LEARNINGS.md`, or `GLOSSARY.md`.
 
-The terminal documentation commit SHALL use its own fixed path set, consisting only of `docs/**`, `SAI_LEARNINGS.md`, and the project-root `GLOSSARY.md`. The coordinator SHALL determine eligibility from the terminal working-tree state, whether the promotion pass wrote `SAI_LEARNINGS.md`, and whether the project-root `GLOSSARY.md` is changed in the working tree — tracked-modified or untracked; it SHALL NOT consult a Step's intended add-list or any subagent report field 8 to construct this terminal set.
+The terminal documentation commit SHALL use its own fixed path set, consisting only of `docs/**`, `SAI_LEARNINGS.md`, and the project-root `GLOSSARY.md`. The coordinator SHALL determine eligibility from the terminal working-tree state, whether root `SAI_LEARNINGS.md` is modified (tracked-modified or untracked), and whether the project-root `GLOSSARY.md` is changed in the working tree — tracked-modified or untracked; it SHALL NOT consult a Step's intended add-list or any subagent report field 8 to construct this terminal set.
+
+Root `SAI_LEARNINGS.md` SHALL be eligible whenever it is modified: when a stop of an earlier run wrote it, when it was already modified at run start, and when the promotion of this run wrote nothing.
 
 The coordinator SHALL NOT use `git add -A`, a broad working-tree sweep, or an equivalent operation that stages paths outside `docs/**`, `SAI_LEARNINGS.md`, and the project-root `GLOSSARY.md`. In particular, `openspec/changes/{change-name}/` and its `implementation.md` SHALL remain outside the terminal documentation commit.
 
@@ -133,7 +114,7 @@ The coordinator SHALL NOT use `git add -A`, a broad working-tree sweep, or an eq
 
 #### Scenario: Glossary alone triggers the terminal set
 
-- **WHEN** the promotion pass writes no learning entry, `docs/**` has no working-tree changes, and the project-root `GLOSSARY.md` is changed in the working tree
+- **WHEN** root `SAI_LEARNINGS.md` is unmodified, `docs/**` has no working-tree changes, and the project-root `GLOSSARY.md` is changed in the working tree
 - **THEN** the coordinator constructs the terminal set from the changed glossary path and does not require a qualifying promotion as a trigger
 
 #### Scenario: No learning promotion but docs trigger the terminal set
@@ -141,14 +122,19 @@ The coordinator SHALL NOT use `git add -A`, a broad working-tree sweep, or an eq
 - **WHEN** the promotion pass writes no learning entry but `docs/**` has working-tree changes
 - **THEN** the coordinator constructs the terminal set from the changed docs paths and does not require a qualifying promotion as a trigger
 
+#### Scenario: Learnings file modified before this run's promotion
+
+- **WHEN** root `SAI_LEARNINGS.md` was already modified at run start and the promotion of this run wrote nothing
+- **THEN** the terminal set includes `SAI_LEARNINGS.md`
+
 ### Requirement: Terminal documentation commit preserves the halted-run boundary
 
-The terminal documentation commit SHALL be evaluated only after the Final sweep and the once-per-run promotion pass. If the run halts before the Final sweep, the coordinator SHALL perform neither the promotion pass nor the terminal documentation commit, preserving the existing halted-run rule.
+The terminal documentation commit SHALL be evaluated only after the Final sweep and the promotion of the completed closing report. If the run stops before the Final sweep, the coordinator SHALL promote learnings before its stopped report prints and SHALL NOT perform the terminal documentation commit.
 
 #### Scenario: Run halts before the Final sweep
 
 - **WHEN** a GREEN conflict, user stop, or declined per-Step commit ends the run before the Final sweep
-- **THEN** no terminal documentation commit is proposed, and any docs or learnings changes remain subject to a later completed run or manual commit
+- **THEN** no terminal documentation commit is proposed, and any docs or learnings changes, including a learnings file the stop wrote, remain subject to a later completed run or manual commit
 
 ### Requirement: Bootstrap on first promotion
 
@@ -168,20 +154,92 @@ When the promotion pass produces no qualifying entry and the file does not exist
 - **WHEN** the promotion pass produces no qualifying entry and no `SAI_LEARNINGS.md` exists
 - **THEN** no file is created
 
-### Requirement: A run that halts before the Final sweep promotes nothing
+### Requirement: Promotion runs once at every closing report, stopped or completed
 
-When a run ends before reaching the Final sweep — including a GREEN-conflict halt, a user stop, or a decline at a Step's commit gate — the promotion pass SHALL NOT run, and `SAI_LEARNINGS.md` SHALL NOT be written for that run.
+The `/sai-4-apply` coordinator SHALL perform one promotion pass at each closing report of `sai/policies/implementation-closing-report.md`, stopped or completed, before that report prints. The promotion rule SHALL be single-sourced in `sai/commands/apply/steps/learnings-promotion.md`: `sai/commands/apply/steps/terminal-lifecycle.md` § 3 SHALL load it after a passing Final sweep, and the shared stopped report SHALL load it for an apply stop.
 
-This SHALL NOT be treated as data loss. Deviations for every completed Step are already committed to the `## Appendix: Plan vs Final Implementation`, and a later run over the same change can promote them from there.
+The pass SHALL NOT be performed per Step, SHALL NOT be delegated to a worker, and SHALL NOT be performed by the `/sai-build` supervisor. A run that continues after a stop SHALL promote again at its next closing report, and an entry that an earlier promotion wrote SHALL be superseded by its key. A stop that prints fixed text instead of the closing report, and an interruption (a chat that dies without reaching a stop), SHALL promote nothing.
 
-The coordinator SHALL NOT attempt a partial or early promotion in order to salvage facts from a halted run.
+#### Scenario: A routed run completes all Steps
 
-#### Scenario: GREEN-conflict halt mid-plan
+- **WHEN** the coordinator finishes the Final sweep and every Step is checked
+- **THEN** `terminal-lifecycle.md` § 3 loads `learnings-promotion.md` and the coordinator promotes once before terminal documentation evaluation and the completed closing report
 
-- **WHEN** a split-routed Step reports an unpassable GREEN and the coordinator surfaces the conflict to the user
-- **THEN** the run stops without a promotion pass, and the deviations recorded so far remain in the committed appendix
+#### Scenario: A run stops before the Final sweep
 
-#### Scenario: A later run resumes the change
+- **WHEN** an apply run stops for a human before the Final sweep and prints the stopped closing report
+- **THEN** the coordinator promotes once before that report prints
 
-- **WHEN** a subsequent `/sai-4-apply` run completes the remaining Steps and reaches the Final sweep
-- **THEN** its single promotion pass reads the whole appendix, including entries written by the earlier halted run
+#### Scenario: The terminal suite gate stops the run
+
+- **WHEN** the terminal suite gate of `terminal-lifecycle.md` § 0 stops the run
+- **THEN** the coordinator promotes like any other stop before the stopped report prints
+
+#### Scenario: A run continues after a stop
+
+- **WHEN** an authorized Step retry continues a run that already promoted at a stop
+- **THEN** the coordinator promotes again at the next closing report and supersedes by key any entry already written
+
+#### Scenario: The coordinator is tempted to promote per Step
+
+- **WHEN** a Step's deviations are appended to the appendix mid-run and no closing report is due
+- **THEN** no promotion occurs at that point
+
+#### Scenario: A stop prints fixed text instead of the closing report
+
+- **WHEN** a run stops with fixed text because `implementation.md` is missing
+- **THEN** no promotion occurs
+
+#### Scenario: A chat is interrupted
+
+- **WHEN** a chat dies without reaching a stop
+- **THEN** no promotion occurs
+
+### Requirement: A stop promotes from the candidates written so far and makes no commit
+
+On a stop, the promotion candidates SHALL be every entry written so far in `## Appendix: Plan vs Final Implementation` and the workers' field-6 learnings, the stopped Step's included, under the unchanged qualification rule and the unchanged learnings format. When the promotion writes `SAI_LEARNINGS.md`, the stopped report SHALL list the path, the entries added and superseded, and that the file is uncommitted. When no candidate qualifies, the coordinator SHALL write no file and the report SHALL carry no learnings line.
+
+A stop SHALL NOT make a commit: `SAI_LEARNINGS.md` SHALL stay modified in the working tree, and Step commits SHALL NOT include it.
+
+#### Scenario: A stop has qualifying candidates
+
+- **WHEN** an apply stop has at least one qualifying candidate among the appendix entries written so far and the workers' field-6 learnings
+- **THEN** the coordinator writes root `SAI_LEARNINGS.md` and the stopped report lists the path, the entries added and superseded, and that the file is uncommitted
+
+#### Scenario: A stop has no qualifying candidate
+
+- **WHEN** an apply stop has no qualifying candidate
+- **THEN** no file is written and the stopped report carries no learnings line
+
+#### Scenario: A stop leaves the file uncommitted
+
+- **WHEN** a stop's promotion wrote `SAI_LEARNINGS.md`
+- **THEN** no commit is made and the file stays modified until the terminal documentation commit of the run that completes
+
+### Requirement: The Build supervisor prints the apply coordinator's learnings lines
+
+Under `/sai-build`, the apply coordinator SHALL promote before it hands its results to the supervisor, and the supervisor's single stopped report SHALL print the learnings lines the apply coordinator hands over: the path, the entries added and superseded, and that the file is uncommitted. The supervisor SHALL NOT promote. A stop outside the apply coordinator, including a stop in Build's implement segment and a Direct Build stop, SHALL promote nothing.
+
+#### Scenario: A stop inside the apply segment closes a Build invocation
+
+- **WHEN** a stop inside the apply segment closes a `/sai-build` invocation after the apply coordinator promoted
+- **THEN** the supervisor's single stopped report prints the handed-over learnings lines and the supervisor promotes nothing itself
+
+#### Scenario: A stop in the implement segment
+
+- **WHEN** a `/sai-build` invocation stops in its implement segment
+- **THEN** no promotion occurs and the stopped report carries no learnings line
+
+### Requirement: The apply tool treats the root learnings file as coordinator-owned
+
+`sai/tools/apply-step.js` SHALL treat root `SAI_LEARNINGS.md` as coordinator-owned in every gate that takes `--baseline`: a change to it SHALL never be a preservation error, SHALL never be reported as protected or unrelated work, and SHALL never be counted among a Step's written files.
+
+#### Scenario: Learnings file modified at run start and rewritten during the run
+
+- **WHEN** root `SAI_LEARNINGS.md` is modified at run start and rewritten during the run
+- **THEN** `verify` and `inspect` report no preservation error and do not list the file as changed, protected, unreported, or unrelated
+
+#### Scenario: A Step commit closes while the learnings file is modified
+
+- **WHEN** `close` commits a Step while root `SAI_LEARNINGS.md` is modified
+- **THEN** the Step commit excludes the file and its working-tree content is unchanged

@@ -571,6 +571,38 @@ test('unchanged unrelated staged and unstaged work is shown, preserved and exclu
   } finally { cleanup(parent); }
 });
 
+test('a learnings file modified at run start and rewritten during the run is coordinator-owned, never preserved work or Step work', () => {
+  const { parent, repo } = makeRepo();
+  try {
+    const learnings = path.join(repo, 'SAI_LEARNINGS.md');
+    fs.writeFileSync(learnings, '# SAI Learnings\n');
+    git(['add', 'SAI_LEARNINGS.md'], repo);
+    git(['commit', '-m', 'docs: learnings'], repo);
+    fs.appendFileSync(learnings, 'promoted by an earlier stopped run\n');
+    replaceBaseline(repo);
+    const cp = checkpoint(repo, 'green-exception');
+    writeFeature(repo, { passing: true });
+    fs.appendFileSync(path.join(repo, 'test', 'legacy.test.js'), '// edit\n');
+    fs.appendFileSync(learnings, 'promoted by this run\n');
+    const verified = tool(['verify', '--change', 'demo', '--step', '1', '--dispatch', 'green-exception', '--checkpoint', cp], repo, ADD);
+    assert.equal(verified.payload.ok, true, JSON.stringify(verified.payload));
+    assert.deepEqual(verified.payload.preservation_errors, []);
+    assert.deepEqual(verified.payload.unreported, []);
+    assert.deepEqual(verified.payload.unrelated, []);
+    const inspected = tool(['inspect', '--change', 'demo', '--baseline', baselines.get(repo)], repo);
+    assert.equal(inspected.status, 0, JSON.stringify(inspected.payload));
+    assert.deepEqual(inspected.payload.preservation_errors, []);
+    assert.equal(inspected.payload.changed.includes('SAI_LEARNINGS.md'), false);
+    assert.equal(inspected.payload.protected.includes('SAI_LEARNINGS.md'), false);
+    const out = tool(['close', '--change', 'demo', '--step', '1'], repo, closeInput(ADD, MSG));
+    assert.equal(out.payload.committed, true, JSON.stringify(out.payload));
+    assert.doesNotMatch(git(['show', '--name-only', '--pretty=format:', 'HEAD'], repo), /SAI_LEARNINGS/);
+    assert.match(git(['status', '--porcelain'], repo), / M SAI_LEARNINGS\.md/);
+    assert.equal(fs.readFileSync(learnings, 'utf8'), '# SAI Learnings\npromoted by an earlier stopped run\npromoted by this run\n');
+    fs.rmSync(cp.slice(0, cp.lastIndexOf('#')), { force: true });
+  } finally { cleanup(parent); }
+});
+
 test('initial dirty Step path stops before dispatch, even when its path is authorized', () => {
   const { parent, repo } = makeRepo();
   try {

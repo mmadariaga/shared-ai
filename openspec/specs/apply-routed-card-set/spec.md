@@ -8,7 +8,9 @@ Defines the routed card set for `/sai-4-apply` — coordinator.md + runner.md + 
 
 ### Requirement: apply-terminal-lifecycle-contract-coverage
 
-The repository SHALL contain focused contract tests for the active routed apply source that assert the coordinator-owned terminal lifecycle in `sai/commands/apply/steps/terminal-lifecycle.md` is reached from the runner's Step loop once every Step is done (the `apply-standalone@1` terminal pointer, or after the last Step in the degraded fallback): terminal functional review, Final sweep, exactly one learnings promotion pass, terminal documentation-set evaluation, visibility disclosure, authorization/commit behavior, and the print cluster with MANDATORY STOP, in that order. The tests SHALL cover the no-op path, decline path, active session-flag and `--fast-track` paths, and the boundary that halts before the Final sweep.
+The repository SHALL contain focused contract tests for the active routed apply source that assert the coordinator-owned terminal lifecycle in `sai/commands/apply/steps/terminal-lifecycle.md` is reached from the runner's Step loop once every Step is done (the `apply-standalone@1` terminal pointer, or after the last Step in the degraded fallback): terminal functional review, Final sweep, the learnings promotion that § 3 loads from `sai/commands/apply/steps/learnings-promotion.md`, terminal documentation-set evaluation, visibility disclosure, authorization/commit behavior, and the print cluster with MANDATORY STOP, in that order. The tests SHALL cover the no-op path, decline path, active session-flag and `--fast-track` paths, and the statement that a run stopping before the terminal lifecycle promotes learnings before its stopped closing report prints.
+
+The tests SHALL assert that the promotion rule is single-sourced in `learnings-promotion.md`: promotion once at each closing report, stopped or completed; coordinator-only promotion; the candidates; the qualification rule; the disclosure lines; and that the `/sai-build` supervisor promotes no learnings and prints the handed-over lines.
 
 The tests SHALL protect the routed source as the authority and SHALL fail if the behavior is removed from the active card set.
 
@@ -19,12 +21,12 @@ The tests SHALL protect the routed source as the authority and SHALL fail if the
 
 #### Scenario: Halt and no-op semantics regress
 
-- **WHEN** a future edit allows promotion before the Final sweep, proposes a terminal gate for an empty set, or retries after a decline
-- **THEN** the contract suite fails the corresponding halted-run, no-op, or decline assertion
+- **WHEN** a future edit drops the statement that a stop promotes, restates the qualification rule inside `terminal-lifecycle.md`, proposes a terminal gate for an empty set, or retries after a decline
+- **THEN** the contract suite fails the corresponding stop-promotion, single-source, no-op, or decline assertion
 
 ### Requirement: apply-terminal-path-contract-coverage
 
-The contract tests SHALL assert that terminal path selection is explicit and closed: changed `docs/**`, root `SAI_LEARNINGS.md` only when written by the current promotion pass, and changed root `GLOSSARY.md` are eligible; `openspec/changes/**`, `implementation.md`, and unrelated working-tree paths are excluded; and `git add -A` or an equivalent broad staging fallback is forbidden. The tests SHALL also assert that the terminal visibility listing occurs before the proposed commit message and authorization.
+The contract tests SHALL assert that terminal path selection is explicit and closed: changed `docs/**`, root `SAI_LEARNINGS.md` whenever it is modified (tracked-modified or untracked, including when it was already modified at run start and when § 3 wrote nothing in this run), and changed root `GLOSSARY.md` are eligible; `openspec/changes/**`, `implementation.md`, and unrelated working-tree paths are excluded; and `git add -A` or an equivalent broad staging fallback is forbidden. The tests SHALL assert that root `SAI_LEARNINGS.md` is exempt from the protected-path exclusion because it is coordinator-owned. The tests SHALL also assert that the terminal visibility listing occurs before the proposed commit message and authorization.
 
 The tests SHALL keep the terminal set distinct from the coordinator's changed-files union and from ordinary per-Step field-8 staging.
 
@@ -37,6 +39,11 @@ The tests SHALL keep the terminal set distinct from the coordinator's changed-fi
 
 - **WHEN** a future edit stages before visibility disclosure or asks for authorization before the proposed message
 - **THEN** the contract suite fails the terminal preview-order assertion
+
+#### Scenario: Learnings eligibility regresses
+
+- **WHEN** a future edit makes root `SAI_LEARNINGS.md` eligible only when the current promotion wrote it, or removes its exemption from the protected-path exclusion
+- **THEN** the contract suite fails the learnings eligibility assertion
 
 ### Requirement: apply-harness-parity-contract-coverage
 

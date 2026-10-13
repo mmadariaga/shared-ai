@@ -15,7 +15,7 @@ If this file exists, it means the project's domain language is recorded for the 
 
 - **Canonical location**: project root — `./SAI_LEARNINGS.md`
 - **Purpose**: durable, execution-observed facts about how the repository builds, tests, and behaves.
-- **Writer**: the apply phase's Learnings Promotion Pass.
+- **Writer**: the apply phase's Learnings Promotion Pass, at every closing report: on a stop as well as at the end.
 - **Format**: sai/policies/sai-learnings-format.md
 
 If this file exists, it means execution-observed repository facts are recorded here.
