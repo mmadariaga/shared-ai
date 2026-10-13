@@ -12,7 +12,7 @@
     {
       "id": "gitlab",
       "resolution": "provider",
-      "capabilities": ["query", "publish", "recover", "read-update", "query-update", "update", "recover-update"],
+      "capabilities": ["query", "publish", "recover", "read-update", "query-update", "update", "recover-update", "query-set", "publish-set", "recover-set", "continue-set", "lookup-slice", "inspect-assignment", "propose-assignment", "assign", "verify-assignment"],
       "instructions": "providers/gitlab.md",
       "updateInstructions": "providers/gitlab-update.md",
       "adapter": "to-backlog-gitlab.js"
@@ -22,7 +22,7 @@
       "hosts": ["dev.azure.com", "ssh.dev.azure.com"],
       "classification": "provider",
       "resolution": "provider",
-      "capabilities": ["query", "publish", "recover", "read-update", "query-update", "update", "recover-update"],
+      "capabilities": ["query", "publish", "recover", "read-update", "query-update", "update", "recover-update", "query-set", "publish-set", "recover-set", "continue-set", "lookup-slice", "inspect-assignment", "propose-assignment", "assign", "verify-assignment"],
       "instructions": "providers/azuredevops.md",
       "updateInstructions": "providers/azuredevops-update.md",
       "adapter": "to-backlog-azuredevops.js"

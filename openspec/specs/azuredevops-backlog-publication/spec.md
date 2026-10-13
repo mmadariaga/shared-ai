@@ -148,3 +148,31 @@ Offline tests SHALL cover destination and type questions, supported conversion a
 #### Scenario: Protocol checks are reported
 - **WHEN** offline routing and launcher tests pass
 - **THEN** their result is described as offline evidence rather than proof of a live Azure publication.
+
+### Requirement: Boards slice sets preserve type content and native relationship meaning
+
+Azure DevOps crystallized slice publication SHALL create the agreed parent and one child per slice through separate verified operations using the invocation-selected project and work-item type. Child blocks SHALL be preserved as losslessly escaped HTML pre blocks, and full source Markdown and outgoing HTML SHALL be shown before approval. Correspondence SHALL be stored in a visible escaped `sai-backlog-slices@1` pre block. Native Parent/Child hierarchy and Predecessor links for agreed immediate dependencies SHALL be inspected, written and verified separately. Relation mutations SHALL test the current revision. Project rules SHALL remain enabled; incompatible type or hierarchy rules SHALL stop the pending operation for a human decision without automatic type changes.
+
+#### Scenario: Approved slice set
+
+- **WHEN** exact publication approval covers the selected project, type, parent, child contents and relationships
+- **THEN** publication creates and verifies those items and relationships while preserving each child's complete block.
+
+#### Scenario: Project rejects a native relationship
+
+- **WHEN** project rules reject a relationship after work items have been created
+- **THEN** recovery reports existing items and proposes a disclosed written fallback requiring explicit approval without duplicate creation.
+
+### Requirement: Boards child assignment is revision conditional and separate from content
+
+Azure selected-child assignment SHALL inspect authenticated identity and current responsibility, require exact assignment approval and test the current work-item revision in the same JSON Patch request that changes `System.AssignedTo`. It SHALL NOT change title, description, state, tags or parent responsibility. Keeping existing responsibility SHALL perform verification without mutation. Rejected or uncertain assignment SHALL stop unverified implementation and require appropriate verification or renewed authorization.
+
+#### Scenario: Approved responsibility replacement
+
+- **WHEN** the approved responsibility and authenticated identity remain current
+- **THEN** assignment tests the revision and changes only the selected child's assigned identity before verifying it.
+
+#### Scenario: Keep existing assignee
+
+- **WHEN** the user approves keeping the selected child's current assignee
+- **THEN** verification checks the approved identity without a work-item mutation.

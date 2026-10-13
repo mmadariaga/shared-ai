@@ -43,3 +43,27 @@ as `issueUrl`. Candidates must be new relative to saved IDs and match type,
 author and full content. A coincident title is not evidence. Zero or multiple
 plausible matches require clarification, never automatic repeat creation.
 Complete when verified or the blocker and private receipt location are reported.
+
+## Slice sets and implementation assignment
+
+For a crystallized set, use the shared `slice-set.md` contract and
+`query-set|publish-set|recover-set|continue-set`, with the ordinary project,
+explicit invocation-scoped `type`, source parent content and complete `blocks`.
+The selected type applies to parent and children: show it for each item before
+approval. Project rules remain enabled; incompatible types or hierarchy rules
+stop the pending operation for a human decision, not an automatic type change.
+Child blocks are losslessly escaped HTML pre blocks; show their full outgoing
+HTML alongside source Markdown. Structured correspondence is a visible escaped
+`sai-backlog-slices@1` pre block so HTML sanitizers need not retain comments.
+The adapter separately verifies native Parent/Child and Predecessor relations.
+Only agreed immediate dependencies receive Predecessor links. On an established
+native relation failure, the common explicitly approved written fallback is
+available; already-created native links stay intact and are disclosed.
+Read-only `lookup-slice` requires project, explicit type and change name.
+
+Implementation-start assignment follows `sai/policies/backlog-implementation-start.md`.
+The separate assignment operations use the selected child's complete URL and
+authenticated identity ID. `assign` tests the current revision and changes only
+`System.AssignedTo`, leaving the parent's responsibility, title, description,
+state and tags untouched. Keep verifies the approved existing identity without
+mutation; rules or permissions that reject replacement stop implementation.

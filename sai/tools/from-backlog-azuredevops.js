@@ -122,4 +122,35 @@ function read(reference, io) {
   }
 }
 
-module.exports = { classify, resolve, read, address, segment };
+function nativeRelations(reference, io) {
+  const row = JSON.parse(execute(io, ['boards', 'work-item', 'show', '--id', String(reference.number), '--organization', reference.organization, '--expand', 'relations', '--detect', 'false', '--output', 'json', '--only-show-errors']));
+  if (row.id !== reference.number || !row.fields || !segment(row.fields['System.TeamProject']) || (reference.project && row.fields['System.TeamProject'].toLowerCase() !== reference.project.toLowerCase()) || (row.relations != null && !Array.isArray(row.relations))) throw fault('retrieval-failed', 'Incomplete work-item relations');
+  const related = new Map();
+  const urls = rel => (row.relations || []).filter(link => link.rel === rel).map(link => {
+    const match = /\/_apis\/wit\/workItems\/([1-9][0-9]*)$/i.exec(link.url || '');
+    const parsed = address(link.url);
+    if (!match || !positive(match[1]) || !parsed || parsed.username || parsed.organization.toLowerCase() !== reference.organization.toLowerCase()) throw fault('retrieval-failed', 'Invalid native work-item relation identity');
+    const number = Number(match[1]);
+    if (!related.has(number)) {
+      // Relation IDs are organization-wide; the selected item's project is not evidence.
+      const item = JSON.parse(execute(io, ['boards', 'work-item', 'show', '--id', String(number), '--organization', reference.organization, '--detect', 'false', '--output', 'json', '--only-show-errors']));
+      if (item.id !== number || !item.fields || !segment(item.fields['System.TeamProject'])) throw fault('retrieval-failed', 'Related work-item project could not be verified');
+      related.set(number, `${reference.organization}/${encodeURIComponent(item.fields['System.TeamProject'])}/_workitems/edit/${number}`);
+    }
+    return related.get(number);
+  });
+  const parents = urls('System.LinkTypes.Hierarchy-Reverse');
+  if (parents.length > 1) throw fault('retrieval-failed', 'Multiple work-item parents');
+  const assigned = row.fields['System.AssignedTo'];
+  if (assigned != null && (typeof assigned.id !== 'string' || !assigned.id)) throw fault('retrieval-failed', 'Incomplete Azure assignee identity');
+  return { row, parent: parents[0] || null, children: urls('System.LinkTypes.Hierarchy-Forward'), dependencies: urls('System.LinkTypes.Dependency-Reverse'), assignees: assigned ? [assigned.id] : [] };
+}
+const readSet = require('./backlog-provider-import').bind('azuredevops', (url, io, initial) => {
+  const ref = url ? resolve(url, io) : initial, result = read(ref, io);
+  if (result.status !== 'complete') return result;
+  try {
+  const { row, ...relations } = nativeRelations({ ...ref, project: result.item.project }, io);
+  return { ...result, item: { ...result.item, ...relations } };
+  } catch (error) { return { ...result, status: 'incomplete', reason: error.reason || 'retrieval-failed', message: error.message }; }
+});
+module.exports = { classify, resolve, read, readSet, nativeRelations, address, segment };

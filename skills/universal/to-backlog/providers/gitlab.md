@@ -24,3 +24,25 @@ candidates, have the user identify the actual created issue, then pass that
 confirmed canonical `issueUrl` to `recover`. Similar content alone is not proof.
 No verified issue means uncertainty remains; keep the receipt and stop rather
 than retry creation. Report the verified issue link or concrete blocker.
+
+## Slice sets and implementation assignment
+
+For a crystallized set, use the shared `slice-set.md` contract and
+`query-set|publish-set|recover-set|continue-set` with the same destination fields
+and `blocks`. Ordinary GitLab issues use disclosed written parent/child references,
+not a claimed native hierarchy. Immediate dependencies use separately verified
+native `is_blocked_by` issue links. A permission or tier limitation stops the
+pending relation for a human decision; the shared explicitly approved written
+fallback preserves created issues and discloses existing native links. Each issue
+stores the structured correspondence; project configuration is unchanged.
+Read-only `lookup-slice` requires the known project and explicit change name.
+Creation and relation-content writes are separately verified. GitLab has no
+conditional description PUT: a reread protects known changes but not a concurrent
+edit between that read and the PUT. Disclose this interval before approval.
+
+Implementation-start assignment follows `sai/policies/backlog-implementation-start.md`.
+`inspect-assignment|propose-assignment|assign|verify-assignment` use the selected
+child URL. Assignees and the authenticated user are numeric GitLab user IDs.
+`assign` sends only `assignee_ids`; it does not update content, labels or state.
+An existing responsibility requires the common keep/replace/stop decision.
+The parent confirms the child's mapping and is never assigned by this operation.

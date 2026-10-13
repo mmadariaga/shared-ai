@@ -21,14 +21,18 @@ function fakeGithub(state, command, args, input) {
   assert.equal(command, 'gh');
   assert.deepEqual(args, ['api', 'graphql', '--hostname', 'github.com', '--input', '-']);
   const { query, variables } = JSON.parse(input);
-  assert.ok(query.startsWith('query('));
   assert.doesNotMatch(query, /mutation|projectsV2|viewerCanUpdate/);
+  state.calls = (state.calls || 0) + 1;
+  if (state.failure) throw new Error(state.failure);
+  // Hierarchy capability introspection drives the slice-set read and carries no
+  // issue variables; an empty field list keeps this fixture non-native.
+  if (query.includes('__type(')) return JSON.stringify({ data: { __type: { fields: [] } } });
+  assert.ok(query.startsWith('query('));
   assert.equal(variables.owner, 'owner');
   assert.equal(variables.name, 'repo');
   assert.equal(variables.number, 123);
-  state.calls = (state.calls || 0) + 1;
-  if (state.failure) throw new Error(state.failure);
   if (state.errors) return JSON.stringify({ data: {}, errors: [{ message: 'denied' }] });
+  if (query.includes('assignees(first')) return JSON.stringify({ data: { repository: { issue: { assignees: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } } } } } });
   if (query.includes('issueOrPullRequest')) return JSON.stringify({ data: { repository: state.missing ? null : {
     nameWithOwner: 'owner/repo', isArchived: !!state.archived,
     issueOrPullRequest: { __typename: state.pr ? 'PullRequest' : 'Issue', number: 123, url: 'https://github.com/owner/repo/issues/123', title: state.title || 'Exact title', body: state.empty ? '' : state.description ?? body, state: state.closed ? 'CLOSED' : 'OPEN' },

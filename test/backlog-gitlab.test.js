@@ -39,7 +39,7 @@ function mock(state = {}) {
       assert.equal(args.includes('--input'), false);
       assert.equal(input ?? '', '');
     }
-    const row = () => ({ id: 30, project_id: 14, iid: 7, web_url: reference, issue_type: 'issue', title: 'Old', description: 'Before', updated_at: 'version-1', state: 'opened', author: { id: 2 }, ...state.issue });
+    const row = () => ({ id: 30, project_id: 14, iid: 7, web_url: reference, issue_type: 'issue', title: 'Old', description: 'Before', updated_at: 'version-1', state: 'opened', author: { id: 2 }, assignees: [], ...state.issue });
     if (endpoint === 'user') return JSON.stringify({ id: state.otherActor ? 3 : 2 });
     if (method !== 'GET') {
       assert.equal(args[args.indexOf('--header') + 1], 'Content-Type: application/json');
@@ -70,6 +70,11 @@ function mock(state = {}) {
       if (page === state.issuePageFailure) throw new Error('issue page failed');
       if (state.issuePages) return JSON.stringify(state.issuePages[page - 1]);
       return JSON.stringify(state.manyIssues ? page === 1 ? Array.from({ length: 100 }, (_, i) => ({ ...row(), id: i + 100, iid: i + 100, web_url: `${url}/-/issues/${i + 100}` })) : state.rows : state.rows);
+    }
+    if (endpoint.startsWith('projects/14/issues/7/links')) {
+      const page = Number(new URLSearchParams(endpoint.split('?')[1]).get('page'));
+      assert.equal(endpoint, `projects/14/issues/7/links?per_page=100&page=${page}`);
+      return JSON.stringify([]);
     }
     assert.equal(endpoint, 'projects/14/issues/7');
     return JSON.stringify(row());

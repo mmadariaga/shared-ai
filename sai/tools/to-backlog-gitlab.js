@@ -148,4 +148,47 @@ function recoverUpdate(request, io) {
   } catch (error) { return { status: 'uncertain', message: error.message }; }
 }
 
-module.exports = { resolve, query, publish, recover, 'read-update': readUpdate, 'query-update': queryUpdate, update, 'recover-update': recoverUpdate };
+const sliceIdentity = require('./backlog-slice-identity');
+const set = require('./backlog-provider-set').bind('gitlab', {
+  query, representation: { hierarchy: 'written', dependencies: 'native' }, renderBlock: text => text,
+  append: (description, links, value) => `${description}\n\n${links.join('\n')}\n${sliceIdentity.encode(value)}`,
+  inventory: (p, io) => list(p, io).map(row => ({ issue: identity(row), title: row.title, description: row.description ?? '', actor: row.author.id })),
+  read: (p, item, io) => {
+    const ref = source.resolve(item.url, io);
+    if (ref.target.id !== p.repositoryId) throw new Error('Set item destination changed');
+    const row = source.issue(ref.target, item.number, io);
+    return { issue: identity(row), title: row.title, description: row.description ?? '', version: row.updated_at };
+  },
+  create: (p, item, io) => {
+    const row = source.api(p, `projects/${p.repositoryId}/issues`, io, 'POST', content(item));
+    if (!Number.isSafeInteger(row.id) || !Number.isSafeInteger(row.iid) || row.project_id !== p.repositoryId || typeof row.web_url !== 'string') throw new Error('Incomplete GitLab creation identity');
+    return identity(row);
+  },
+  writeReferences: (p, current, description, io) => {
+    const now = source.issue({ id: p.repositoryId, url: p.repository, host: p.host }, current.issue.number, io);
+    if (now.title !== current.title || (now.description ?? '') !== current.description || now.updated_at !== current.version) throw new Error('Concurrent GitLab content change; renew review');
+    source.api(p, `projects/${p.repositoryId}/issues/${current.issue.number}`, io, 'PUT', { description });
+  },
+  hasRelation: (p, item, other, kind, io) => {
+    if (kind !== 'dependency') throw new Error('Ordinary GitLab issues use written hierarchy');
+    return source.dependencies({ id: p.repositoryId, url: p.repository, host: p.host }, item.number, io).includes(other.url);
+  },
+  addRelation: (p, item, other, kind, io) => {
+    if (kind !== 'dependency') throw new Error('Ordinary GitLab issues use written hierarchy');
+    source.api(p, `projects/${p.repositoryId}/issues/${item.number}/links`, io, 'POST', { target_project_id: p.repositoryId, target_issue_iid: other.number, link_type: 'is_blocked_by' });
+  }
+});
+const assignment = require('./backlog-provider-assignment').bind('gitlab', {
+  native: false,
+  inspect: (request, io) => {
+    const ref = source.resolve(request.reference, io);
+    return { result: source.readSet(ref, io), actor: inspect(ref.target.url, io).actor };
+  },
+  assign: (request, proposal, io) => {
+    const ref = source.resolve(request.reference, io);
+    const current = source.issue(ref.target, ref.number, io);
+    if (!Array.isArray(current.assignees) || digest(current.assignees.map(actor => actor.id).sort()) !== digest(proposal.assignees)) throw new Error('GitLab responsibility changed');
+    source.api(ref.target, `projects/${ref.target.id}/issues/${ref.number}`, io, 'PUT', { assignee_ids: proposal.target });
+  }
+});
+module.exports = { resolve, query, publish, recover, 'read-update': readUpdate, 'query-update': queryUpdate, update, 'recover-update': recoverUpdate, ...set, ...assignment };

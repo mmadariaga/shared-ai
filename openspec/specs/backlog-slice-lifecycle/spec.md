@@ -7,17 +7,22 @@ Support a GitHub-first lifecycle for agreed crystallized slices through faithful
 
 ### Requirement: GitHub slice publication preserves agreed work
 
-GitHub create with an explicitly crystallized slice set SHALL publish the existing whole-objective parent and one child per agreed slice, including a one-slice set. Each child's original block SHALL remain intact before appended relationship references. The workflow SHALL NOT repeat decomposition approval. It SHALL show complete parent and child contents, destination, visibility, Project and relationship representations and require explicit publication confirmation. Ordinary non-sliced requests, origin updates and other providers SHALL retain their existing paths.
+GitHub, GitLab and Azure DevOps create with an explicitly crystallized slice set SHALL publish the existing whole-objective parent and one child per agreed slice, including a one-slice set. Each child's original block SHALL remain intact before appended relationship references, with lossless escaping when the provider stores HTML. The workflow SHALL NOT repeat decomposition approval. It SHALL show complete parent and child contents, destination, visibility, applicable Project or work-item type, and relationship representations and require explicit publication confirmation. Ordinary non-sliced requests and origin updates SHALL retain their existing paths.
 
 #### Scenario: One agreed slice
 
-- **WHEN** GitHub creation receives an explicitly sliced one-block set and exact publication approval
+- **WHEN** a supported provider receives an explicitly sliced one-block set and exact publication approval
 - **THEN** it creates a parent and one child rather than treating the slice as ordinary single-item capture.
 
 #### Scenario: No slices
 
 - **WHEN** creation contains no explicitly crystallized slice set
 - **THEN** the existing single-item publication path remains authoritative.
+
+#### Scenario: Origin update
+
+- **WHEN** the request updates an originating issue
+- **THEN** the existing origin-update path remains authoritative without replacement-parent creation.
 
 ### Requirement: Relationship operations are separately verified and truthfully represented
 
@@ -49,16 +54,21 @@ Publication SHALL retain a private receipt and report created issues and pending
 
 ### Requirement: Published correspondence is durable and explicitly validated
 
-Complete publication SHALL return structured correspondence containing version, GitHub platform, parent URL and one unique child URL per change name with immediate dependencies. Each published issue SHALL carry the correspondence in a `sai-backlog-slices@1` marker identifying its role. Validation SHALL reject malformed, duplicate, self-referential, incomplete or cyclic correspondence. Read-only lookup SHALL use explicit change-name correspondence rather than titles and SHALL require a user decision for zero or multiple candidates.
+Complete publication SHALL return structured correspondence containing version, supported platform, parent URL and one unique child URL per change name with immediate dependencies. Each published issue SHALL carry the correspondence in a `sai-backlog-slices@1` marker identifying its role. Azure HTML SHALL carry a visible escaped pre block. Validation SHALL reject malformed, duplicate, self-referential, incomplete or cyclic correspondence. Canonical identities SHALL support GitHub, GitLab and Azure DevOps. Read-only lookup SHALL use explicit change-name correspondence rather than titles, verify matching parent correspondence and require a user decision for zero or multiple candidates.
 
 #### Scenario: Publication correspondence recovered later
 
 - **WHEN** a later workflow no longer has the original conversation mapping
-- **THEN** published markers permit read-only recovery of the explicit change-name-to-child association.
+- **THEN** published markers permit read-only recovery of the explicit change-name-to-child association and matching parent.
+
+#### Scenario: Ambiguous correspondence
+
+- **WHEN** an issue contains duplicate markers or invalid child correspondence
+- **THEN** validation rejects the correspondence rather than selecting a marker or inferring identity from its title.
 
 ### Requirement: Hierarchical GitHub import is complete and preserves selection
 
-GitHub import SHALL retrieve a selected parent's complete content and every direct child's complete content, or a selected child's complete content and its parent as context without importing siblings automatically. It SHALL preserve titles, descriptions, comments, canonical identities, states, assignees and dependencies and exhaust required connection pages. Readable native children SHALL be reconciled with written correspondence, including native children absent from that correspondence. The selected issue SHALL remain the origin. Required read failures SHALL produce incomplete or error outcomes; delivery SHALL remain pending until complete source delivery or a user-approved alternative.
+GitHub, GitLab and Azure DevOps import SHALL retrieve a selected parent's complete content and every direct child's complete content, or a selected child's complete content and its parent as context without importing siblings automatically. It SHALL preserve titles, descriptions, comments, canonical identities, states, assignees and dependencies and exhaust required pages. Readable native children and dependencies SHALL be reconciled with written correspondence. Parent and child relationships SHALL be verified. The selected issue SHALL remain the origin. Required read failures SHALL produce incomplete or error outcomes; delivery SHALL remain pending until complete source delivery or a user-approved alternative.
 
 #### Scenario: Parent with written and native children
 
@@ -75,13 +85,18 @@ GitHub import SHALL retrieve a selected parent's complete content and every dire
 - **WHEN** a required child's comment page cannot be retrieved
 - **THEN** the hierarchical import remains incomplete and the workflow reports the limitation and waits for a retry, delivery or stop decision.
 
+#### Scenario: Required source read fails
+
+- **WHEN** a required child, parent or comment page cannot be retrieved
+- **THEN** import retains available selected content, reports an incomplete or error outcome and leaves delivery pending.
+
 ### Requirement: Actual child identities survive cold workflow dispatch
 
-After completed GitHub set publication in Explore, the identity transport owner SHALL verify complete correspondence against the stored block set, attach each actual child URL as `**Backlog origin**`, validate and persist amendments, recompute hashes and reread the results before branch actions or route disclosure. It SHALL preserve other agreed block content and reject conflicting origins. Partial transport SHALL remain pending. Spec creation SHALL preserve the validator-returned selected issue URL as `backlog_origin` in change metadata without changing other metadata keys. Manual handoff SHALL display the amended stored block.
+After completed set publication on any supported provider in Explore, the identity transport owner SHALL verify complete correspondence against the stored block set, attach each actual child URL as `**Backlog origin**`, validate and persist amendments, recompute hashes and reread the results before branch actions or route disclosure. It SHALL preserve other agreed block content and reject conflicting origins. Partial transport SHALL remain pending. Spec creation SHALL preserve the validator-returned selected issue URL as `backlog_origin` in change metadata without changing other metadata keys. Manual handoff SHALL display the amended stored block.
 
 #### Scenario: Fresh standalone implementation
 
-- **WHEN** a published slice proceeds through amended block delivery and spec creation into a fresh implementation invocation
+- **WHEN** a published slice on any supported provider proceeds through amended block delivery and spec creation into a fresh implementation invocation
 - **THEN** the selected child identity is available from change metadata without title inference or conversation memory.
 
 #### Scenario: Incomplete origin transport
@@ -135,3 +150,41 @@ Claude Code and opencode SHALL install the same canonical lifecycle tools and ow
 
 - **WHEN** selected work proceeds with an already-prepared initial branch
 - **THEN** the existing branch owner remains authoritative and the lifecycle introduces no automatic later-slice branch switching.
+
+### Requirement: GitLab relationships distinguish written hierarchy from native blockers
+
+Ordinary GitLab slice sets SHALL disclose written parent/child hierarchy and separately verified native `is_blocked_by` immediate dependency links. A failed native relationship operation SHALL require explicit approval before continuing with written relationships. Recovery SHALL preserve and disclose previously verified native links and SHALL NOT recreate already identified issues. Import SHALL reconcile readable native blockers with written correspondence. Only established native issue-link capability unavailability together with written dependency correspondence SHALL permit complete import without native discovery, and its limitation SHALL be disclosed. Permission failures, missing items, malformed pages and other failed native reads SHALL leave import pending.
+
+#### Scenario: Additional readable native blocker
+
+- **WHEN** written correspondence identifies an agreed blocker and native discovery returns an additional blocker
+- **THEN** import preserves both dependency identities without remote mutation or selected-origin replacement.
+
+#### Scenario: Native discovery fails without established unavailability
+
+- **WHEN** GitLab native dependency inspection fails because of permissions, a missing item, timeout or malformed response
+- **THEN** import remains incomplete even when written correspondence exists.
+
+#### Scenario: Established unavailable issue-link capability
+
+- **WHEN** native discovery establishes unsupported issue links and the issue carries written dependency correspondence
+- **THEN** import uses the written dependencies and returns an explicit capability-unavailability notice.
+
+### Requirement: Provider parity uses shared owners and isolated responsibility operations
+
+GitLab and Azure DevOps SHALL expose shared set-publication and selected-child assignment operations through their existing registered adapters. Implementation-start ownership SHALL resolve and retain the selected provider rather than assume GitHub. Responsibility inspection SHALL verify the selected child and parent, authenticated identity and exact current assignees. Existing responsibility SHALL require a keep, replace or stop decision. Assignment SHALL require exact proposal approval, change only the selected child's assignees and verify the result before implementation. Keep SHALL verify the exact approved set without mutation. Parent responsibility SHALL remain unchanged. Both Claude Code and opencode SHALL receive the canonical shared tools and contracts without expanded read-only import permissions.
+
+#### Scenario: Existing child responsibility changes
+
+- **WHEN** current responsibility differs from an approved keep or replacement proposal
+- **THEN** verification or assignment rejects the stale approval and implementation waits for a new decision.
+
+#### Scenario: Assignment outcome is uncertain
+
+- **WHEN** the selected-child assignment request has an uncertain outcome
+- **THEN** the adapter directs verification rather than blind replay and leaves parent responsibility unchanged.
+
+#### Scenario: Mirrored installation
+
+- **WHEN** the manifest expands for Claude Code and opencode
+- **THEN** both install the shared set, import and assignment helpers while import access remains read-only.

@@ -43,6 +43,14 @@ function validateInstructions(entry) {
   if (!/^providers\/[a-z0-9-]+\.md$/.test(entry.instructions)) throw new Error('Invalid provider instruction reference');
 }
 
+function dispatch(operation, request, registry, io) {
+  const entry = registry.providers.find(item => item.id === request.provider);
+  if (!entry?.capabilities.includes(operation)) return { status: 'unsupported', provider: request.provider };
+  const adapter = loadAdapter(entry);
+  if (typeof adapter[operation] !== 'function') throw new Error(`Registered provider ${entry.id} does not implement ${operation}`);
+  return adapter[operation](request, io);
+}
+
 function resolve({ explicit = {}, config = {}, remotes = [] }, registry, io = {}) {
   for (const input of [explicit, config]) {
     if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('Destination must be an object');
@@ -130,11 +138,7 @@ function main(argv) {
         result = resolve({ explicit: request.explicit, config, remotes }, registry, io);
       }
     } else {
-      const entry = registry.providers.find(item => item.id === request.provider);
-      if (!entry?.capabilities.includes(operation)) result = { status: 'unsupported', provider: request.provider };
-      else {
-        result = loadAdapter(entry)[operation](request, io);
-      }
+      result = dispatch(operation, request, registry, io);
     }
     process.stdout.write(JSON.stringify(result) + '\n');
     return ['resolved', 'ready', 'complete', 'no_changes'].includes(result.status) ? 0 : 1;
@@ -145,4 +149,4 @@ function main(argv) {
 }
 
 if (require.main === module) process.exitCode = main(process.argv.slice(2));
-module.exports = { run, address, detect, resolve, main };
+module.exports = { run, address, detect, resolve, dispatch, main };

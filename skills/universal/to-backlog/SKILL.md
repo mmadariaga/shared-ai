@@ -45,9 +45,9 @@ and its branch-specific prerequisites are satisfied before content extraction.
 
 ## 2. Prepare one item
 
-For GitHub create with an agreed crystallized slice set (even one slice), read
+For create with an agreed crystallized slice set (even one slice), read
 `slice-set.md` and complete that branch instead of sections 2–4 below. Without
-slices, and for all other providers or origin updates, keep these sections.
+slices, and for origin updates, keep these sections.
 A single ordinary non-sliced proposal is not a slice set: keep one-issue capture
 unless the crystallized context explicitly identifies it as a sliced set.
 
