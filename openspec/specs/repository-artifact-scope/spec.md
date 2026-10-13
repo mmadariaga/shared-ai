@@ -27,8 +27,8 @@ Existing ADR and DDR records SHALL remain unedited historical records. A decisio
 - **THEN** a new related record carries the applicable relationship while existing records stay unchanged
 
 ### Requirement: Role-specific scope retention
-The shared scope SHALL NOT replace a consuming worker's narrower role boundary. RED SHALL remain limited to tests and authorized stubs, GREEN SHALL remain limited to authorized production files, and planning-only phases SHALL gain no broad implementation write permission from the shared policy.
+The shared scope SHALL NOT replace a consuming worker's narrower role boundary. RED SHALL remain limited to tests and authorized stubs, GREEN SHALL remain limited to the production files its Step needs to pass verification, with the plan's file list as the expected set, and planning-only phases SHALL gain no broad implementation write permission from the shared policy.
 
 #### Scenario: RED boundary survives shared scope
 - **WHEN** the shared scope is in force for an apply step
-- **THEN** RED stays limited to tests and authorized stubs and GREEN stays limited to authorized production files
+- **THEN** RED stays limited to tests and authorized stubs and GREEN stays limited to the production files its Step needs to pass verification

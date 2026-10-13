@@ -81,9 +81,9 @@ When the coordinator selects an eligible in-scope RED diagnosis, the RED worker 
 
 ### Requirement: green-worker-contract
 
-The GREEN worker contract (`sai/commands/apply/green-worker.md`) SHALL define the implementation worker: it executes a Step's implementation body (or the GREEN side of a split Step) and verifies GREEN, for Steps whose plan-level file scope contains at least one production file. It SHALL be FORBIDDEN from creating or modifying any test file — an absolute prohibition. The contract SHALL state the prohibition's reason as ownership: the worker's write surface is the Step's production files, test files belong to the Step's RED owner and the worker may read the Step's tests, including in recovery continuations, and when passing needs a test change the worker returns `blocking-contradiction` with the evidence for the coordinator to route. It SHALL iterate on GREEN within bounded attempts confined to non-test files and SHALL STOP with a GREEN-conflict report when passing would require editing a test file or the declared interface, or when iteration makes no progress. A non-testable Step with no production surface SHALL NOT be dispatched to the GREEN worker; it routes to the RED worker under the green-exception.
+The GREEN worker contract (`sai/commands/apply/green-worker.md`) SHALL define the implementation worker: it executes a Step's implementation body (or the GREEN side of a split Step) and verifies GREEN, for Steps whose plan-level file scope contains at least one production file. It SHALL be FORBIDDEN from creating or modifying any test file — an absolute prohibition. The contract SHALL define the worker's write surface as the production files the Step needs to pass its verification. The plan's file list, and the production allowed files named in the task disclosure, SHALL be the expected set and SHALL NOT be the boundary of the write surface: when the Step cannot pass without a production file the plan omits, the worker SHALL write that file. The worker SHALL report every file it wrote in report field 8, and each file outside the plan's list also under Deviations (field 5) with the path and the reason the Step needs it, so that the coordinator verifies the unplanned file and amends the plan. Test files and the declared interface (`interfaces.md`) SHALL be outside the write surface. The contract SHALL state the prohibition's reason as ownership: test files belong to the Step's RED owner and the worker may read the Step's tests, including in recovery continuations, and when passing needs a change to a test or to `interfaces.md` the worker returns `blocking-contradiction` with the evidence for the coordinator to route. It SHALL iterate on GREEN within bounded attempts confined to non-test files and SHALL STOP with a GREEN-conflict report when passing would require editing a test file or the declared interface, or when iteration makes no progress. A non-testable Step with no production surface SHALL NOT be dispatched to the GREEN worker; it routes to the RED worker under the green-exception.
 
-On `continue_after_recovery`, the GREEN worker SHALL resume the same session and apply only the authorized correction within its existing production-file boundary. It SHALL never treat a coordinator-owned `implementation.md` plan-artifact repair as permission to edit production or test files. If it reaches an unpassable GREEN STOP — because passing would require a test/interface edit, because the implementation and test/interface sources are contradictory, or because bounded implementation-only iteration makes no progress — it SHALL return `status: failed` with `failure_class: blocking-contradiction` and a boolean `unrecoverable`. The worker SHALL set `unrecoverable: true` only when its own concrete evidence establishes that continuation is unsafe; otherwise it SHALL return `unrecoverable: false` so the coordinator can apply the shared Cause Locus eligibility rule. The failed summary SHALL contain concrete, non-raw evidence naming the Step, relevant artifact and concrete point, verification command or assertion, and observed failure boundary. Its apply report SHALL set `GREEN result = fail` and `STOP reached? = yes` with the exact existing STOP marker. The worker SHALL leave all test and interface files untouched and SHALL not claim a recoverable GREEN result for this STOP.
+On `continue_after_recovery`, the GREEN worker SHALL resume the same session and apply only the authorized correction within its production write surface; the continuation SHALL never create or modify a test file or `interfaces.md`. It SHALL never treat a coordinator-owned `implementation.md` plan-artifact repair as permission to edit production or test files. If it reaches an unpassable GREEN STOP — because passing would require a test/interface edit, because the implementation and test/interface sources are contradictory, or because bounded implementation-only iteration makes no progress — it SHALL return `status: failed` with `failure_class: blocking-contradiction` and a boolean `unrecoverable`. The worker SHALL set `unrecoverable: true` only when its own concrete evidence establishes that continuation is unsafe; otherwise it SHALL return `unrecoverable: false` so the coordinator can apply the shared Cause Locus eligibility rule. The failed summary SHALL contain concrete, non-raw evidence naming the Step, relevant artifact and concrete point, verification command or assertion, and observed failure boundary. Its apply report SHALL set `GREEN result = fail` and `STOP reached? = yes` with the exact existing STOP marker. The worker SHALL leave all test and interface files untouched and SHALL not claim a recoverable GREEN result for this STOP.
 
 #### Scenario: GREEN worker implements a Step
 
@@ -97,7 +97,7 @@ On `continue_after_recovery`, the GREEN worker SHALL resume the same session and
 
 #### Scenario: E13 unpassable GREEN returns a blocking contradiction
 
-- **WHEN** the GREEN worker determines that a test or interface edit, an out-of-bound production edit, or further no-progress iteration is required to pass
+- **WHEN** the GREEN worker determines that a test or interface edit, or further no-progress iteration, is required to pass
 - **THEN** it returns `status: failed`, `failure_class: blocking-contradiction`, and a boolean `unrecoverable`
 - **AND** its summary and report carry concrete evidence, `GREEN result = fail`, and `STOP reached? = yes`
 - **AND** no test or interface file is created or modified
@@ -118,6 +118,21 @@ On `continue_after_recovery`, the GREEN worker SHALL resume the same session and
 - **WHEN** a reader consults the GREEN worker contract's allowed-files section
 - **THEN** it states that test files belong to the Step's RED owner, that GREEN may read the Step's tests, including in recovery continuations, and that a needed test change is returned as `blocking-contradiction` with evidence
 - **AND** it keeps the sentence forbidding any test-file creation or modification absolutely, including during recovery and even when GREEN believes the test is wrong
+
+#### Scenario: GREEN worker writes a production file the plan omits
+
+- **WHEN** the Step cannot pass its verification without a production file that the plan's file list omits
+- **THEN** the GREEN worker writes that file, lists it in report field 8, and names it under Deviations (field 5) with the path and the reason the Step needs it
+
+#### Scenario: The GREEN contract states the plan list as the expected set
+
+- **WHEN** a reader consults the GREEN worker contract's allowed-files section
+- **THEN** it states that the write surface is the production files the Step needs to pass its verification and that the plan's file list is the expected set, not the boundary of the write surface
+
+#### Scenario: Passing needs an interface change
+
+- **WHEN** the GREEN worker determines that passing needs a change to `interfaces.md`
+- **THEN** it returns `blocking-contradiction` with the evidence and leaves `interfaces.md` unchanged
 
 ### Requirement: Apply worker lifecycle payloads stay timeless
 
