@@ -158,6 +158,17 @@ test('next.follow delivers optional actions and the route picker together, never
   }
 });
 
+test('optional backlog wording retains backlog across languages without changing authorization', () => {
+  const selector = fs.readFileSync(path.join(explorerStepsDir, 'route-selector.md'), 'utf8');
+  const backlog = selector.slice(selector.indexOf('1. **Backlog question:**'), selector.indexOf('2. **Branch question:**'));
+  assert.match(backlog, /Retain the word `backlog` in the question and option descriptions in every language/);
+  assert.match(backlog, /¿Quieres crear o actualizar el backlog con esta propuesta\?/);
+  assert.match(backlog, /Yes as creating or updating the backlog and No as skipping the backlog action/);
+  assert.match(selector, /Offer \*\*Yes\*\* and \*\*No\*\* in that order, with stable values `yes` and `no`/);
+  assert.match(selector, /Claude Code's `AskUserQuestion`[\s\S]*opencode's `question`/);
+  assert.match(selector, /Do not duplicate its rules or treat the optional Yes as a publication confirmation or base selection/);
+});
+
 test('crystallization-protocol.md fetches assessment and language gates', () => {
   const fetches = findFetchDirectives(path.join(explorerStepsDir, 'crystallization-protocol.md'));
   assert.ok(fetches.includes('slicing-assessment.md'),

@@ -49,8 +49,15 @@ or updating remotes. Detached HEAD has no current-branch option.
 Use Claude Code's `AskUserQuestion` (at most four options per question, with its
 automatic free-text Other entry) or opencode's `question` (custom/free-text entry
 enabled). If Claude Code has more than four bases, paginate in returned order
-with a More option; retain free-text entry on every page. Display exact reference
-values, mapping each label back to its full reference. Accept a free-text base
+with a More option; retain free-text entry on every page. Display suggested bases
+as short names: strip only the leading `refs/heads/` or `refs/remotes/` for display
+(for example, `main` or `origin/main`). When short names coincide across local and
+remote branches, add localized `local` or `remote` qualifiers to each affected
+option; check the complete inventory, including other pages. Map each option back
+to its full, exact reference and pass that reference as `{base}` on selection.
+This is a presentation exception only for suggested branch-base options; preserve
+the general verbatim-identifier rule elsewhere and the helper's returned data.
+Accept a free-text base unchanged by this display rule
 even when no suggested option exists. Never automatically choose a base.
 Run `base` with `{base}`. If it does not resolve to a commit, explain and repeat
 the base question. **Complete when:** the user selected or entered one valid
