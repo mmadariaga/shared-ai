@@ -15,18 +15,25 @@
  * Sub-commands:
  *   preflight Read-only delivery/execution compatibility checks using the same parser,
  *            including a Step's named paths against its Files Affected.
- *   baseline  Capture immutable initial file/index state outside the repository.
- *   dispatch-check Refuse initially dirty owned paths; capture a dispatch checkpoint.
+ *   baseline  Capture immutable initial file/index state outside the repository. A dirty path
+ *            whose fingerprint matches an unclosed Step's attempt receipt is recorded as that
+ *            Step's own file.
+ *   dispatch-check Refuse initially dirty foreign paths in the Step scope, returning the two
+ *            exits; capture a dispatch checkpoint.
  *   checkpoint-plan Coordinator-only receipt for authorized plan bookkeeping and for amendments
  *            of tasks.md, interfaces.md, proposal.md, design.md; pass it to verify and close
  *            as --plan-checkpoint. An amendment is accepted only through that receipt; close
  *            commits it with the Step and keeps it out of the file comparison.
- *   inspect   Read-only preservation and owned-change inventory.
+ *   inspect   Read-only preservation and owned-change inventory. With `--step <N>` it also
+ *            reports whether a new run could dispatch that Step (`next_dispatch`).
  *   restore-unrelated-index Coordinator-only staging restoration after guard reset.
  *   verify   After every RED/GREEN return. Sweeps `.tmp/<change>/`, runs the
  *            Step test command and the Step's Automated commands verbatim,
  *            sweeps again, and compares `git status` with the files allowed for
- *            the dispatch kind and with field 8 (the add-list, on stdin).
+ *            the dispatch kind and with field 8 (the add-list, on stdin). Every call saves
+ *            or overwrites the Step's attempt receipt: the paths the unclosed Step wrote and
+ *            each one's content fingerprint, kept in the system temp directory so a later
+ *            run recognises them. The receipt grants no commit and marks no checkbox.
  *   Already-satisfied mode (`--already-satisfied`, `verify --dispatch red` and `close`):
  *            the human-confirmed close of a Step whose RED returned `passes`. The Step test
  *            command is expected to pass, every Automated item runs, the allowed files are the
@@ -38,7 +45,8 @@
  *            text above the first `---` line; the commit message is the text
  *            below it. `--dry-run` runs only the guard and the report.
  *            `--mark-only` only marks the Step's Automated checkboxes, for a
- *            declined commit: no guard, no report, no message, no git.
+ *            declined commit: no guard, no report, no message, no git. A commit and
+ *            a `--mark-only` close both delete the Step's attempt receipt.
  *
  * Usage:
  *   node sai/tools/apply-step.js verify --change <name> --step <N>
@@ -532,12 +540,16 @@ function captureState(cwd, declared = []) {
   return { contents, staged, entries: statusEntries(cwd), head: head.status === 0 ? head.stdout.trim() : null };
 }
 
-function saveRecord(record) {
-  // OS temporary storage is shared by both supported harnesses, outside the sweep.
+/** OS temporary storage: shared by both supported harnesses, outside the repository and the sweep. */
+function tempRoot(cwd) {
   const root = fs.realpathSync(os.tmpdir());
-  const relative = path.relative(record.cwd, root);
+  const relative = path.relative(cwd, root);
   if (relative.split(path.sep)[0] !== '..' && !path.isAbsolute(relative)) throw new ToolError('temporary record directory must be outside the repository');
-  const file = path.join(root, `sai-apply-${crypto.randomUUID()}.json`);
+  return root;
+}
+
+function saveRecord(record) {
+  const file = path.join(tempRoot(record.cwd), `sai-apply-${crypto.randomUUID()}.json`);
   const text = JSON.stringify(record);
   fs.writeFileSync(file, text, { flag: 'wx', mode: 0o600 });
   return `${file}#${digest(text)}`;
@@ -561,6 +573,78 @@ function loadRecord(ref, opts, kind) {
   } catch (err) { throw new ToolError(`missing or corrupt ${kind}: ${err.message}; continuation blocked`); }
 }
 
+// ---------------------------------------------------------------------------
+// Attempt receipt
+// ---------------------------------------------------------------------------
+
+/** One receipt per project root, change and Step: a later run finds it by name alone. */
+function attemptReceiptFile(opts, step) {
+  return path.join(tempRoot(opts.cwd), `sai-apply-attempt-${digest(`${opts.cwd}\0${opts.change}\0${step}`)}.json`);
+}
+
+/** `files` maps each path the unclosed Step wrote to its content fingerprint (null for a removal). */
+function saveAttemptReceipt(opts, files) {
+  const record = { version: 1, kind: 'attempt', cwd: opts.cwd, change: opts.change, step: String(opts.step), files };
+  fs.writeFileSync(attemptReceiptFile(opts, opts.step), JSON.stringify(record), { mode: 0o600 });
+}
+
+/** The receipt's `files`, or null: a missing or unreadable receipt leaves the Step's files foreign. */
+function readAttemptReceipt(opts, step) {
+  try {
+    const record = JSON.parse(fs.readFileSync(attemptReceiptFile(opts, step), 'utf8'));
+    const valid = record.version === 1 && record.kind === 'attempt' && record.cwd === opts.cwd && record.change === opts.change && record.step === String(step) && record.files && typeof record.files === 'object';
+    return valid ? record.files : null;
+  } catch (err) { return null; }
+}
+
+/** A file changed after the receipt was saved no longer matches and stays protected. */
+function matchesReceipt(files, p, contents) {
+  return Boolean(files) && Object.hasOwn(files, p) && files[p] === (contents[p] ?? null);
+}
+
+function dirtyPaths(state) {
+  return unique(state.entries.flatMap((e) => e.from ? [e.path, e.from] : [e.path]));
+}
+
+/** Dirty paths that match a Step's receipt, as {path: step}. `close` deletes receipts, so one that exists belongs to an unclosed Step. */
+function ownFromReceipts(opts, state) {
+  const plan = readIfExists(path.join(changeDir(opts.cwd, opts.change), 'implementation.md')) || '';
+  const dirty = dirtyPaths(state);
+  const own = {};
+  for (const m of plan.matchAll(/^#### Step (\d+):/gm)) {
+    const files = readAttemptReceipt(opts, m[1]);
+    for (const p of dirty) if (!Object.hasOwn(own, p) && matchesReceipt(files, p, state.contents)) own[p] = m[1];
+  }
+  return own;
+}
+
+/** Paths dirty at run start that are foreign to the Step; without a Step, foreign to every Step. */
+function foreignDirty(base, step = null) {
+  const own = base.own || {};
+  return dirtyPaths(base.state).filter((p) => !Object.hasOwn(own, p) || (step !== null && own[p] !== String(step)));
+}
+
+/** The two ways the user settles a foreign file that blocks a Step's dispatch. */
+const SETTLE_EXITS = ['commit the listed files', 'discard the changes in the listed files'];
+
+/** Dirty paths a dispatch scope needs; generated families must also be disjoint from every dirty path. */
+function scopeConflicts(allowed, files, dirty) {
+  const conflicts = dirty.filter((p) => allowed.includes(p));
+  for (const p of dirty) for (const g of files?.generated || []) if (coversGenerated(g, p)) conflicts.push(p);
+  return unique(conflicts);
+}
+
+/** Whether a new run could dispatch the Step: its dirty scope paths must all match its receipt. */
+function nextDispatch(opts, current) {
+  const info = parseStep(readIfExists(path.join(changeDir(opts.cwd, opts.change), 'implementation.md')) || '', opts.step);
+  if (!info) throw new ToolError('Step not found');
+  const files = resolveGenerated(opts.cwd, parseFilesAffected(readIfExists(path.join(changeDir(opts.cwd, opts.change), 'tasks.md')), opts.step));
+  const receipt = readAttemptReceipt(opts, opts.step);
+  const foreign = dirtyPaths(current).filter((p) => !matchesReceipt(receipt, p, current.contents));
+  const conflicts = scopeConflicts(stepScope(info, files, false), files, foreign);
+  return { step: String(opts.step), would_pass: conflicts.length === 0, conflicts, exits: conflicts.length ? SETTLE_EXITS : [] };
+}
+
 function baseline(opts, stdin) {
   if (!/^[\w-]{8,128}$/.test(opts.runId || '')) throw new ToolError('--run-id must be a stable coordinator-supplied identity (8–128 characters)');
   const claim = path.join(fs.realpathSync(os.tmpdir()), `sai-apply-run-${digest(`${opts.cwd}\0${opts.runId}`)}.claim`);
@@ -575,10 +659,11 @@ function baseline(opts, stdin) {
   const dir = `openspec/changes/${opts.change}/`;
   const names = ['implementation.md', 'tasks.md', 'interfaces.md', 'proposal.md', 'design.md', 'change-overview.md', '.openspec.yaml'];
   for (const p of planning) if (!safePath(p) || !p.startsWith(dir) || (!names.includes(p.slice(dir.length)) && !/^specs\/[^/]+\/spec\.md$/.test(p.slice(dir.length)))) throw new ToolError(`planning provenance outside authorized planning input scope: ${p}`);
-  const record = { version: 1, kind: 'baseline', run_id: opts.runId, cwd: opts.cwd, change: opts.change, planning, amended: amendedAtStart, state: captureState(opts.cwd, declaredPaths(opts)) };
+  const state = captureState(opts.cwd, declaredPaths(opts));
+  const record = { version: 1, kind: 'baseline', run_id: opts.runId, cwd: opts.cwd, change: opts.change, planning, amended: amendedAtStart, own: ownFromReceipts(opts, state), state };
   const reference = saveRecord(record);
   fs.writeFileSync(claim, reference);
-  return { baseline: reference, run_id: record.run_id, capture_claim: claim };
+  return { baseline: reference, run_id: record.run_id, capture_claim: claim, own: record.own };
 }
 
 function delta(before, after) {
@@ -595,14 +680,8 @@ function dispatchCheck(opts) {
   const files = resolveGenerated(opts.cwd, parseFilesAffected(readIfExists(path.join(changeDir(opts.cwd, opts.change), 'tasks.md')), opts.step));
   const allowed = allowedFor(opts.dispatch, info, files);
   if (!allowed.every(safePath)) throw new ToolError('unsafe dispatch scope');
-  const dirty = base.state.entries.flatMap((e) => e.from ? [e.path, e.from] : [e.path]);
-  const conflicts = dirty.filter((p) => allowed.includes(p));
-  // Generated families must also be disjoint from every pre-existing dirty path.
-  for (const p of dirty) for (const g of files?.generated || []) {
-    const [prefix, suffix] = g.family.split('*');
-    if (path.posix.dirname(p) === g.directory && path.posix.basename(p).startsWith(prefix) && p.endsWith(suffix)) conflicts.push(p);
-  }
-  if (conflicts.length) return { ok: false, conflicts: unique(conflicts), checkpoint: null };
+  const conflicts = scopeConflicts(allowed, files, foreignDirty(base, opts.step));
+  if (conflicts.length) return { ok: false, conflicts, checkpoint: null, exits: SETTLE_EXITS };
   const record = { version: 1, kind: 'checkpoint', run_id: base.run_id, cwd: opts.cwd, change: opts.change, baseline: opts.baseline, step: String(opts.step), dispatch: opts.dispatch, state: captureState(opts.cwd, declaredPaths(opts)) };
   return { ok: true, conflicts: [], checkpoint: saveRecord(record) };
 }
@@ -611,7 +690,7 @@ function restoreUnrelatedIndex(opts) {
   const base = loadRecord(opts.baseline, opts, 'baseline');
   const state = captureState(opts.cwd, declaredPaths(opts));
   const amendable = amendablePaths(opts.change);
-  const protectedPaths = unique(base.state.entries.flatMap((e) => e.from ? [e.path, e.from] : [e.path])).filter((p) => !base.planning.includes(p) && !(amendable.includes(p) && (state.contents[p] ?? null) !== (base.state.contents[p] ?? null)));
+  const protectedPaths = foreignDirty(base).filter((p) => !base.planning.includes(p) && !(amendable.includes(p) && (state.contents[p] ?? null) !== (base.state.contents[p] ?? null)));
   if (protectedPaths.some((p) => !safePath(p) || (state.contents[p] ?? null) !== (base.state.contents[p] ?? null))) throw new ToolError('unrelated content changed; index restoration blocked, work preserved');
   const entries = [];
   for (const p of protectedPaths) {
@@ -649,7 +728,8 @@ function settledRecord(opts, base) {
 function executionState(opts) {
   const base = loadRecord(opts.baseline, opts, 'baseline');
   const current = captureState(opts.cwd, declaredPaths(opts));
-  const dirty = unique(base.state.entries.flatMap((e) => e.from ? [e.path, e.from] : [e.path]));
+  // The Step's own files are its work, not protected pre-existing work.
+  const dirty = foreignDirty(base, opts.step ?? null);
   const changedFromBase = delta(base.state, current);
   const unrelated = dirty.filter((p) => !base.planning.includes(p) && !changedFromBase.includes(p));
   const preservedDirty = dirty.filter((p) => !base.planning.includes(p));
@@ -932,6 +1012,12 @@ function verify(opts, stdin) {
   // Missing generated outputs are expected during RED, but never at GREEN/close.
   const discrepancies = dispatch === 'red' ? generatedErrors.filter((e) => !e.reason.startsWith('generated ')) : generatedErrors;
   const ok = failures.length === 0 && outOfAllowed.length === 0 && unreported.length === 0 && onlyInSubagent.length === 0 && preservationErrors.length === 0 && discrepancies.length === 0;
+  if (state) {
+    // Everything the unclosed Step wrote, planned or not; foreign work a dispatch touched stays out.
+    const foreign = new Set([...preservationErrors, ...state.unrelated]);
+    const written = unique([...state.changed, ...changed]).filter((p) => safePath(p) && !foreign.has(p));
+    saveAttemptReceipt(opts, Object.fromEntries(written.map((p) => [p, state.current.contents[p] ?? null])));
+  }
   return {
     ok,
     dispatch,
@@ -1173,6 +1259,7 @@ function close(opts, stdin) {
       if (state.preservationErrors.length || state.planningErrors.length || files?.errors.length || state.changed.some((p) => !allowed.includes(p))) throw new ToolError('scope discrepancy blocks checkbox marking');
     }
     const marked = markAutomated(cwd, change, step).marked;
+    fs.rmSync(attemptReceiptFile(opts, step), { force: true });
     return { committed: false, reason: 'mark-only', marked, error: null, ...(opts.baseline ? { settled: settleStep(opts) } : {}) };
   }
   const result = {
@@ -1218,7 +1305,7 @@ function close(opts, stdin) {
     const info = parseStep(readIfExists(path.join(changeDir(cwd, change), 'implementation.md')) || '', step);
     const files = resolveGenerated(cwd, parseFilesAffected(readIfExists(path.join(changeDir(cwd, change), 'tasks.md')), step));
     const allowed = info ? stepScope(info, files, opts.alreadySatisfied) : [];
-    const dirty = state.base.state.entries.flatMap((e) => e.from ? [e.path, e.from] : [e.path]);
+    const dirty = foreignDirty(state.base, step);
     const unsafe = addList.filter((p) => !safePath(p) || !allowed.includes(p) || dirty.includes(p) || state.base.planning.includes(p));
     if (unsafe.length || state.preservationErrors.length || state.planningErrors.length || report.discrepancies.length || ['MISMATCH', 'DEVIATION'].includes(report.letter)) {
       result.reason = 'scope-blocked';
@@ -1271,6 +1358,7 @@ function close(opts, stdin) {
   result.sha = head.stdout.trim();
   // The guard SHA is window-scoped, not the immutable file baseline.
   result.guard_window_closed = true;
+  fs.rmSync(attemptReceiptFile(opts, step), { force: true });
   if (opts.baseline) result.settled = settleStep(opts, addList);
   return result;
 }
@@ -1289,7 +1377,7 @@ function usage() {
     '  node sai/tools/apply-step.js preflight --change <name> [--cwd <dir>] [--json]',
     '  node sai/tools/apply-step.js baseline --change <name> --run-id <stable-id> [--cwd <dir>] (exact planning input paths on stdin; `amended: <path>` marks a run-start plan amendment)',
     '  node sai/tools/apply-step.js dispatch-check --change <name> --step <N> --dispatch <kind> --baseline <ref>',
-    '  node sai/tools/apply-step.js inspect --change <name> --baseline <ref>',
+    '  node sai/tools/apply-step.js inspect --change <name> --baseline <ref> [--step <N>] (--step adds next_dispatch: whether a new run could dispatch that Step)',
     '  node sai/tools/apply-step.js checkpoint-plan --change <name> --baseline <ref> [--settled <ref>] (coordinator only, after authorized plan bookkeeping or plan amendment; returns plan_checkpoint and the registers list)',
     '  node sai/tools/apply-step.js restore-unrelated-index --change <name> --baseline <ref> (coordinator only, after guard remediation)',
     '  node sai/tools/apply-step.js verify --change <name> --step <N> --dispatch red|green|green-direct|green-exception',
@@ -1355,6 +1443,7 @@ function main(argv) {
     if (!opts.change) throw new ToolError('--change is required');
     if (!safePath(opts.change) || opts.change.includes('/')) throw new ToolError('invalid change name');
     if (!['preflight', 'baseline', 'inspect', 'restore-unrelated-index', 'checkpoint-plan'].includes(opts.command) && (!opts.step || !/^[1-9]\d*$/.test(opts.step))) throw new ToolError('--step must be a positive integer');
+    if (opts.step && !/^[1-9]\d*$/.test(opts.step)) throw new ToolError('--step must be a positive integer');
     opts.cwd = path.resolve(opts.cwd || process.cwd());
     if (opts.command === 'verify' && !DISPATCHES.includes(opts.dispatch)) {
       throw new ToolError(`--dispatch must be one of ${DISPATCHES.join('|')}`);
@@ -1381,7 +1470,7 @@ function main(argv) {
       if (opts.command === 'restore-unrelated-index') payload = restoreUnrelatedIndex(opts);
       else {
         const state = executionState(opts);
-        payload = { ok: state.preservationErrors.length === 0 && state.planningErrors.length === 0, changed: state.changed, unrelated: state.unrelated, protected: unique(state.base.state.entries.flatMap((e) => e.from ? [e.path, e.from] : [e.path])), planning: state.base.planning, preservation_errors: [...state.preservationErrors, ...state.planningErrors] };
+        payload = { ok: state.preservationErrors.length === 0 && state.planningErrors.length === 0, changed: state.changed, unrelated: state.unrelated, protected: foreignDirty(state.base, opts.step ?? null), planning: state.base.planning, preservation_errors: [...state.preservationErrors, ...state.planningErrors], ...(opts.step ? { next_dispatch: nextDispatch(opts, state.current) } : {}) };
       }
       process.stdout.write(`${JSON.stringify(payload, null, 2)}\n`);
       return payload.ok ? 0 : 1;
@@ -1425,6 +1514,7 @@ module.exports = {
   preflight,
   baseline,
   dispatchCheck,
+  attemptReceiptFile,
   generatedEntry,
   resolveGenerated,
   parseDeclaration,

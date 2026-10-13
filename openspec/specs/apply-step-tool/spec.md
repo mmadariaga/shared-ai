@@ -145,13 +145,17 @@ Under an active `session_commit_authorized` (including `/sai-build`) the coordin
 
 ### Requirement: The tool is stateless and the coordinator keeps the state machine
 
-`apply-step.js` SHALL read Git, the filesystem, the change's `implementation.md` and `tasks.md`, and coordinator-owned immutable temporary records; it SHALL NOT read or write `sai-state`. Its temporary records SHALL preserve execution evidence without taking ownership of progress or recovery routing.
+`apply-step.js` SHALL read Git, the filesystem, the change's `implementation.md` and `tasks.md`, and coordinator-owned immutable temporary records; it SHALL NOT read or write `sai-state`. Its temporary records SHALL preserve execution evidence without taking ownership of progress or recovery routing. The only state the tool keeps between runs SHALL be one attempt receipt per unclosed Step in the system temporary directory, saved at every `verify` and deleted at `close`; that receipt SHALL record written files only and SHALL NOT take ownership of progress or recovery routing.
 
 The coordinator SHALL keep the `complete-step` emit, every `recovery-ledger@1` event, the guard remediation reset, authorization and receipt references, and commit message authoring per `commit-rules`. Because `close` writes the checkbox marks before the commit, a failed `complete-step` emit after the commit SHALL recover by reseeding `apply-standalone@1` from the on-disk checkboxes. This recovery SHALL retain the original run baseline rather than recapture initial state.
 
 #### Scenario: Emit fails after the commit
 - **WHEN** the `complete-step` emit fails after `close` committed the Step
 - **THEN** a restart reseeds `apply-standalone@1` from the on-disk checkboxes, which `close` already marked, and no Step state is lost
+
+#### Scenario: Receipt is the only state between runs
+- **WHEN** a run ends with an unclosed Step that passed through `verify`
+- **THEN** the only tool state a later run finds is that Step's attempt receipt in the system temporary directory
 
 ### Requirement: The tool resolves identically on both harnesses
 
@@ -207,11 +211,19 @@ The capture registry SHALL refuse another capture for the same run identity, inc
 
 ### Requirement: Dispatch checks protect initially dirty Step paths
 
-Before a worker can write, dispatch-check SHALL compare the dispatch's allowed exact paths and bounded generated families against initially dirty paths in the baseline. A conflict SHALL return `ok: false`, exact conflicts, and no checkpoint. A successful check SHALL return an immutable checkpoint tied to the baseline, run, Step, and dispatch kind.
+Before a worker can write, dispatch-check SHALL compare the dispatch's allowed exact paths and bounded generated families against the initially dirty foreign paths in the baseline: every initially dirty path except those the baseline records as own to the dispatched Step. A conflict SHALL return `ok: false`, exact conflicts, no checkpoint, and the two `exits`, `commit the listed files` and `discard the changes in the listed files`. A successful check SHALL return an immutable checkpoint tied to the baseline, run, Step, and dispatch kind.
 
 #### Scenario: Authorized path contains pre-existing work
 - **WHEN** an allowed Step file has unresolved modifications in the initial baseline
 - **THEN** dispatch-check rejects the dispatch before worker writes
+
+#### Scenario: Authorized path is the Step's own file
+- **WHEN** an allowed Step file is dirty in the initial baseline and the baseline records it as own to the dispatched Step
+- **THEN** dispatch-check returns `ok: true` with a checkpoint
+
+#### Scenario: Refusal names the two exits
+- **WHEN** dispatch-check refuses a dispatch over a foreign file
+- **THEN** the result carries that file in `conflicts`, a null `checkpoint`, and both `exits`
 
 ### Requirement: Settled and plan receipts distinguish authorized bookkeeping
 
@@ -300,3 +312,67 @@ The baseline subcommand SHALL accept stdin lines of the form `amended: <path>` b
 #### Scenario: Amended line names a non-amendable artifact
 - **WHEN** the baseline stdin carries `amended: openspec/changes/demo/implementation.md`
 - **THEN** the subcommand exits with an error
+
+### Requirement: Verify saves an attempt receipt for the unclosed Step
+
+Every `apply-step.js verify` that runs against a run baseline SHALL save or overwrite one attempt receipt for its Step. The receipt SHALL live in the system temporary directory, outside the repository, under a file name derived from the project root, the change name, and the Step number. It SHALL hold every path the unclosed Step wrote, whether or not the plan declares it, together with each path's content fingerprint, and a null fingerprint for a removed path. A foreign path that the dispatch touched SHALL be left out of the receipt. The receipt SHALL grant no commit and mark no checkbox.
+
+#### Scenario: Verify after a RED dispatch
+- **WHEN** `verify` runs after a RED dispatch wrote `src/feature.js` and `test/feature.test.js`
+- **THEN** the Step's receipt file exists in the system temporary directory and lists both paths with their fingerprints
+
+#### Scenario: Dispatch wrote an unplanned file
+- **WHEN** `verify` runs after a dispatch wrote `src/extra.js`, which the Step's `**Files Affected**` does not declare
+- **THEN** `verify` reports `src/extra.js` under `out_of_allowed` and the receipt lists it
+
+#### Scenario: Dispatch touched a foreign file
+- **WHEN** `verify` runs after a dispatch modified `unrelated.txt`, which was dirty and foreign at run start
+- **THEN** `verify` lists `unrelated.txt` under `preservation_errors` and the receipt does not list it
+
+### Requirement: Baseline records receipt-matching dirty files as the Step's own
+
+`apply-step.js baseline` SHALL read the attempt receipt of every Step that `implementation.md` declares. A dirty path whose current content fingerprint equals the fingerprint in a Step's receipt SHALL be recorded as own to that Step, and `baseline` SHALL return the mapping as `own` (path to Step number). For the whole run, `dispatch-check`, `verify`, `close`, and `inspect` SHALL treat an own path as that Step's work and not as protected pre-existing work. Every other dirty path SHALL stay foreign and protected: a path changed after its receipt was saved, a path with a missing or unreadable receipt, a path whose receipt names another project root, change, or Step, and a path that is own to a different Step.
+
+#### Scenario: New run after a failed attempt
+- **WHEN** a new run captures a baseline while `src/feature.js` and `test/feature.test.js` still match the Step 1 receipt
+- **THEN** `baseline` returns `own` mapping both paths to `1` and `dispatch-check` for Step 1 returns a checkpoint
+
+#### Scenario: File changed after the receipt was saved
+- **WHEN** `src/feature.js` is edited after the Step 1 receipt was saved and a new run captures a baseline
+- **THEN** `own` does not contain `src/feature.js` and `dispatch-check` for Step 1 returns `ok: false` with `src/feature.js` in `conflicts`
+
+#### Scenario: Own unplanned file is verified in the new run
+- **WHEN** `verify` runs in a new run whose baseline records the unplanned `src/extra.js` as own to the Step
+- **THEN** `verify` returns empty `unrelated` and empty `preservation_errors` and still lists `src/extra.js` under `out_of_allowed`
+
+#### Scenario: Half-done Step without a receipt
+- **WHEN** a new run captures a baseline over a Step's partial files and no receipt exists for that Step
+- **THEN** `baseline` returns an empty `own` and a later `verify` in that run saves no claim over the files it found dirty
+
+### Requirement: Close discards the Step's attempt receipt
+
+A committing `close` and a `--mark-only` `close` SHALL delete the Step's attempt receipt. A `--dry-run` `close` SHALL keep it. `close` SHALL accept the Step's own files in the add-list and SHALL NOT reject them as initially dirty paths.
+
+#### Scenario: Own files commit with the Step
+- **WHEN** a committing `close` runs in a new run with the Step's own files in the add-list
+- **THEN** `close` commits the Step and the receipt file no longer exists
+
+#### Scenario: Declined commit
+- **WHEN** `close --mark-only` runs for a Step that has a receipt
+- **THEN** the receipt file no longer exists
+
+#### Scenario: Dry run
+- **WHEN** `close --dry-run` runs for a Step that has a receipt
+- **THEN** the receipt file still exists
+
+### Requirement: Inspect reports whether a new run could dispatch a Step
+
+`apply-step.js inspect` SHALL accept an optional `--step <N>`, which MUST be a positive integer. With it, the result SHALL carry `next_dispatch` with the fields `step`, `would_pass`, `conflicts`, and `exits`. The tool SHALL compute it from the current working tree and the Step's attempt receipt: every dirty path in the Step's scope, or in one of its declared generated families, that does not match the receipt SHALL be a conflict. `would_pass` SHALL be `true` only when there is no conflict. `exits` SHALL carry `commit the listed files` and `discard the changes in the listed files` when there is a conflict and SHALL be empty otherwise. The call SHALL stay read-only. Without `--step`, the result SHALL carry no `next_dispatch`.
+
+#### Scenario: Step files match the receipt
+- **WHEN** `inspect --step 1` runs after a `verify` saved the Step 1 receipt and the files are unchanged
+- **THEN** `next_dispatch` equals `step: 1`, `would_pass: true`, empty `conflicts`, and empty `exits`
+
+#### Scenario: Step files have no receipt
+- **WHEN** `inspect --step 1` runs over a half-done Step 1 that has no receipt
+- **THEN** `next_dispatch` carries `would_pass: false`, the Step's dirty scope paths in `conflicts`, and the two `exits`
