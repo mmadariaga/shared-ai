@@ -27,7 +27,7 @@ function cultureGate(source) {
 test('the active implementation step declares the physical-index culture gate', () => {
   const active = cultureGate(artifact(ACTIVE_STEP));
 
-  assert.match(active, /physical `0000-INDEX\.md` as the sole culture signal/);
+  assert.match(active, /physical `0000-INDEX\.md` as the sole culture signal, read from the inventory's `index_exists`/);
   assert.match(active, /`docs\/adr\/0000-INDEX\.md` for `adr`/);
   assert.match(active, /`docs\/ddr\/0000-INDEX\.md` for `ddr`/);
   assert.match(active, /Do not infer culture from any other ADR\/DDR records/);
@@ -48,6 +48,43 @@ test('the gate covers index-present, index-absent, existing-record, empty, and n
     'the approval question must not ask the user to choose a family');
   assert.match(gate, /If the decision does not meet all three criteria, create nothing and ask nothing/,
     'a non-qualifying decision must be a no-op');
+});
+
+function bullet(source, label) {
+  const start = source.indexOf(`- **${label}**:`);
+  assert.ok(start >= 0, `the implementation source should declare "${label}"`);
+  const end = source.indexOf('\n- ', start + 1);
+  return { start, text: source.slice(start, end >= 0 ? end : source.length) };
+}
+
+test('the decision-record inventory is the only source of index existence, records, and the record number', () => {
+  const source = artifact(ACTIVE_STEP);
+  const inventory = bullet(source, 'Decision-record inventory');
+  const existing = bullet(source, 'Existing record before any ask');
+  const number = bullet(source, 'Record number');
+  const culture = source.indexOf('- **Culture check before any ask**:');
+
+  assert.match(inventory.text, /Fetch @sai\/policies\/tool-resolution\.md, resolve `decision-records\.js`/);
+  assert.match(inventory.text, /inventory --family <family> --json --cwd <project-root>/);
+  assert.match(inventory.text, /only source of three facts/);
+  assert.match(inventory.text, /`index_exists`[\s\S]*`records`[\s\S]*`next_number`/);
+  assert.match(inventory.text, /a folder ignored in git included/);
+
+  assert.ok(inventory.start < existing.start && existing.start < culture,
+    'the inventory runs first and the existing-record check precedes the culture gate');
+  assert.match(existing.text, /inventory's `records` for one that already documents the decision/);
+  assert.match(existing.text, /create no record and ask nothing/);
+
+  assert.match(number.text, /takes the inventory's `next_number` as its `NNNN`/);
+  assert.match(number.text, /next consecutive number/);
+});
+
+test('the index step selects its branch from the inventory and keeps its idempotency rule', () => {
+  const indexStep = artifact('sai/commands/implement/steps/decision-record-index.md');
+
+  assert.match(indexStep,
+    /\*\*Branch selection\*\*:[^\n]*read from `index_exists` in the decision-record inventory[^\n]*only source of index existence/);
+  assert.match(indexStep, /\*\*Idempotent on rerun\*\*:[^\n]*a line beginning with the literal form `- \[NNNN —`/);
 });
 
 test('family resolution precedes the culture gate and remains pinned to design.md', () => {
