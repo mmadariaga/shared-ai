@@ -900,8 +900,38 @@ function terminalWidth(output) {
 // frame is redrawn by moving the cursor up a row count, so a wrapped line that
 // counted as 1 would drift the whole frame by one row per keypress.
 function rowsFor(line, width) {
-  const visible = line.replace(ANSI_SEQUENCE, '').length;
-  return visible === 0 ? 1 : Math.ceil(visible / width);
+  return line.split('\n').reduce((total, part) => {
+    const visible = part.replace(ANSI_SEQUENCE, '').length;
+    return total + Math.max(1, Math.ceil(visible / width));
+  }, 0);
+}
+
+// An option can itself be taller than the window. Keep its arrow and leading
+// text visible without allowing the remainder to scroll the frame off screen.
+function clipToRows(line, width, budget) {
+  const parts = [];
+  for (const part of line.split('\n')) {
+    if (budget <= 0) break;
+    const rows = rowsFor(part, width);
+    if (rows <= budget) {
+      parts.push(part);
+      budget -= rows;
+      continue;
+    }
+    let visible = 0;
+    let clipped = '';
+    for (const token of part.match(/\x1B\[[0-9;]*[A-Za-z]|[\s\S]/g) || []) {
+      if (token.startsWith('\x1B[')) clipped += token;
+      else {
+        if (visible >= width * budget) break;
+        clipped += token;
+        visible += 1;
+      }
+    }
+    parts.push(clipped);
+    break;
+  }
+  return parts.join('\n') + '\x1B[0m';
 }
 
 // Consecutive navigator screens share one raw-input session. Tearing raw mode
@@ -989,43 +1019,83 @@ async function runNavigator({
     while (cursor < options.length && isChecklistSeparator(options[cursor])) cursor += 1;
     if (cursor >= options.length && options.length > 0) cursor = 0;
     let previousRows = 0;
+    let viewStart = 0;
     let settled = false;
 
-    function frameLines() {
-      const lines = [];
-      if (question) lines.push(question);
+    function frameLines(width, budget) {
+      let title = question ? [question] : [];
       // Header lines are decoration only: cursor and selection index into
       // `options`, so they never consume movement or toggles.
-      if (header) lines.push(...(Array.isArray(header) ? header : [header]));
-      options.forEach((option, i) => {
+      const headers = header ? [...(Array.isArray(header) ? header : [header])] : [];
+      let instructions = footer ? [footer] : [];
+      const optionLines = options.map((option, i) => {
         if (isChecklistSeparator(option)) {
-          lines.push('');
-          return;
+          return '';
         }
         const label = Array.isArray(displayOptions) && displayOptions[i] !== undefined
           ? displayOptions[i]
           : option;
         const marker = mode === 'multi' ? (selected[i] ? '[x]' : '[ ]') : '  ';
         const arrow = i === cursor ? '>' : ' ';
-        lines.push(`${arrow} ${marker} ${label}`);
+        return `${arrow} ${marker} ${label}`;
       });
-      if (footer) lines.push(footer);
-      return lines;
+      const rowCount = lines => lines.reduce((total, line) => total + rowsFor(line, width), 0);
+      const complete = [...title, ...headers, ...optionLines, ...instructions];
+      if (rowCount(complete) <= budget) {
+        viewStart = 0;
+        return complete;
+      }
+
+      const selectedRows = Math.min(budget, rowsFor(optionLines[cursor] || '', width));
+      const auxiliaryRows = () => rowCount([...title, ...headers, ...instructions]);
+      while (headers.length && auxiliaryRows() + selectedRows > budget) headers.pop();
+      if (auxiliaryRows() + selectedRows > budget) instructions = [];
+      if (auxiliaryRows() + selectedRows > budget) title = [];
+      const available = budget - auxiliaryRows();
+
+      if (cursor < viewStart) viewStart = cursor;
+      while (viewStart < cursor && rowCount(optionLines.slice(viewStart, cursor + 1)) > available) {
+        viewStart += 1;
+      }
+      const visible = [];
+      let used = 0;
+      for (let i = viewStart; i < optionLines.length; i += 1) {
+        const rows = rowsFor(optionLines[i], width);
+        if (used + rows > available) {
+          if (i === cursor) visible.push(clipToRows(optionLines[i], width, available - used));
+          break;
+        }
+        visible.push(optionLines[i]);
+        used += rows;
+      }
+      return [...title, ...headers, ...visible, ...instructions];
     }
 
-    function render() {
-      const lines = frameLines();
+    function render(resized = false) {
       const width = terminalWidth(output);
+      const height = Number.isFinite(output.rows) && output.rows > 0 ? Math.floor(output.rows) : Infinity;
+      // Reserve the cursor's final blank row: a newline at the bottom of the
+      // terminal would otherwise scroll the first row out of reach.
+      const budget = Math.max(1, height - 1);
+      const lines = frameLines(width, budget);
       let frame = '';
-      if (previousRows > 0) {
+      if (resized) {
+        // Resize can reflow or discard old rows. Their old relative coordinates
+        // are no longer safe; clear the visible screen and establish a new origin.
+        frame += '\x1B[2J\x1B[H';
+      } else if (previousRows > 0) {
         // Up to the first row of the previous frame, then erase everything
         // below the cursor so shorter lines leave no tail behind.
         frame += `\x1B[${previousRows}A`;
       }
-      frame += '\x1B[0J';
-      frame += `${lines.join('\n')}\n`;
+      frame += (height === 1 ? '\r' : '') + '\x1B[0J';
+      frame += lines.join('\n') + (height === 1 ? '\r' : '\n');
       output.write(frame);
-      previousRows = lines.reduce((total, line) => total + rowsFor(line, width), 0);
+      previousRows = height === 1 ? 0 : lines.reduce((total, line) => total + rowsFor(line, width), 0);
+    }
+
+    function onResize() {
+      if (!settled) render(true);
     }
 
     function cleanup() {
@@ -1041,6 +1111,7 @@ async function runNavigator({
       input.removeListener('end', onInputClosed);
       input.removeListener('close', onInputClosed);
       input.removeListener('error', onInputClosed);
+      if (typeof output.removeListener === 'function') output.removeListener('resize', onResize);
       releaseRawInput(input);
     }
 
@@ -1109,6 +1180,7 @@ async function runNavigator({
     input.on('end', onInputClosed);
     input.on('close', onInputClosed);
     input.on('error', onInputClosed);
+    if (typeof output.on === 'function') output.on('resize', onResize);
 
     output.write('\x1B[?25l');
     render();
