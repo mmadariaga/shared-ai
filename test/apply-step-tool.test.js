@@ -9,7 +9,8 @@ const { spawnSync } = require('child_process');
 
 const REPO_ROOT = path.join(__dirname, '..');
 const TOOL = path.join(REPO_ROOT, 'sai', 'tools', 'apply-step.js');
-const { statusLetter, classifyAutomated, parseStep, parseFilesAffected, INSTRUCTION_VERBS } = require(TOOL);
+const { statusLetter, classifyAutomated, parseStep, parseFilesAffected, INSTRUCTION_VERBS, attemptReceiptFile } = require(TOOL);
+const receiptOf = (repo, step = 1) => attemptReceiptFile({ cwd: repo, change: 'demo' }, String(step));
 const baselines = new Map();
 const records = new Map();
 
@@ -152,6 +153,7 @@ const cleanup = (parent) => {
   }
   for (const [repo, ref] of baselines) if (repo.startsWith(parent + path.sep)) {
     fs.rmSync(ref.slice(0, ref.lastIndexOf('#')), { force: true });
+    for (const step of [1, 2]) fs.rmSync(receiptOf(repo, step), { force: true });
     baselines.delete(repo);
   }
   fs.rmSync(parent, { recursive: true, force: true });
@@ -1363,4 +1365,131 @@ test('preflight interprets exactly the pinned instruction-verb list', () => {
     fs.writeFileSync(planPath, withLine('Rename'));
     assert.ok(!tool(['preflight', '--change', 'demo'], repo).payload.errors.some((e) => e.reason === 'required instruction path is not recognized'), 'an unlisted verb is not interpreted');
   } finally { cleanup(parent); }
+});
+
+// ---------------------------------------------------------------------------
+// Attempt receipt
+// ---------------------------------------------------------------------------
+
+const EXITS = ['commit the listed files', 'discard the changes in the listed files'];
+
+/** A new run: a fresh baseline over the working tree an earlier attempt left behind. */
+function newRun(repo) {
+  const previous = baselines.get(repo);
+  const captured = tool(['baseline', '--change', 'demo'], repo);
+  assert.equal(captured.status, 0, captured.stderr);
+  baselines.set(repo, captured.payload.baseline);
+  fs.rmSync(previous.slice(0, previous.lastIndexOf('#')), { force: true });
+  return captured.payload;
+}
+
+const inspectStep = (repo, step = 1) => tool(['inspect', '--change', 'demo', '--step', String(step), '--baseline', baselines.get(repo)], repo);
+const dispatchCheck = (repo, dispatch) => tool(['dispatch-check', '--change', 'demo', '--step', '1', '--dispatch', dispatch], repo);
+
+test('E9: a new run takes receipt-matching dirty files as the Step\'s own and dispatches; a file changed since stays foreign', () => {
+  const { parent, repo } = makeRepo();
+  try {
+    const cp = checkpoint(repo, 'red');
+    writeFeature(repo, { passing: false });
+    assert.equal(redVerify(repo, cp).payload.ok, true);
+    assert.equal(fs.existsSync(receiptOf(repo)), true);
+    assert.deepEqual(inspectStep(repo).payload.next_dispatch, { step: '1', would_pass: true, conflicts: [], exits: [] });
+
+    assert.deepEqual(newRun(repo).own, { 'src/feature.js': '1', 'test/feature.test.js': '1' });
+    const dispatched = dispatchCheck(repo, 'red');
+    assert.equal(dispatched.status, 0, JSON.stringify(dispatched.payload));
+
+    fs.appendFileSync(path.join(repo, 'src', 'feature.js'), '// edited after the receipt\n');
+    assert.deepEqual(inspectStep(repo).payload.next_dispatch.conflicts, ['src/feature.js']);
+    assert.deepEqual(newRun(repo).own, { 'test/feature.test.js': '1' });
+    const refused = dispatchCheck(repo, 'red');
+    assert.equal(refused.status, 1);
+    assert.deepEqual(refused.payload.conflicts, ['src/feature.js']);
+    assert.deepEqual(refused.payload.exits, EXITS);
+    assert.equal(refused.payload.checkpoint, null);
+  } finally { cleanup(parent); }
+});
+
+test('E10: the receipt covers unplanned files, and the new run verifies them as Step work, not unrelated work', () => {
+  const { parent, repo } = makeRepo();
+  try {
+    const cp = checkpoint(repo, 'green-exception');
+    writeFeature(repo, { passing: true });
+    fs.appendFileSync(path.join(repo, 'test', 'legacy.test.js'), '// edit\n');
+    fs.writeFileSync(path.join(repo, 'src', 'extra.js'), 'extra\n');
+    const first = tool(['verify', '--change', 'demo', '--step', '1', '--dispatch', 'green-exception', '--checkpoint', cp], repo, `${ADD}src/extra.js\n`);
+    assert.deepEqual(first.payload.out_of_allowed, ['src/extra.js']);
+
+    assert.deepEqual(Object.keys(newRun(repo).own).sort(), ['src/extra.js', 'src/feature.js', 'test/feature.test.js', 'test/legacy.test.js']);
+    const second = tool(['verify', '--change', 'demo', '--step', '1', '--dispatch', 'green-exception', '--checkpoint', checkpoint(repo, 'green-exception')], repo);
+    assert.deepEqual(second.payload.unrelated, []);
+    assert.deepEqual(second.payload.out_of_allowed, ['src/extra.js']);
+    assert.deepEqual(second.payload.preservation_errors, []);
+    // The refreshed receipt still covers the own files this dispatch did not rewrite.
+    assert.equal(Object.keys(newRun(repo).own).length, 4);
+  } finally { cleanup(parent); }
+});
+
+test('E11: own files commit with the Step in the new run, and both close paths discard the receipt', () => {
+  for (const markOnly of [false, true]) {
+    const { parent, repo } = makeRepo();
+    try {
+      const cp = checkpoint(repo, 'green-exception');
+      writeFeature(repo, { passing: true });
+      fs.appendFileSync(path.join(repo, 'test', 'legacy.test.js'), '// edit\n');
+      assert.equal(tool(['verify', '--change', 'demo', '--step', '1', '--dispatch', 'green-exception', '--checkpoint', cp], repo, ADD).payload.ok, true);
+      newRun(repo);
+      const dry = tool(['close', '--change', 'demo', '--step', '1', '--dry-run'], repo, closeInput(ADD, MSG));
+      assert.equal(dry.payload.status_letter, 'OK', dry.payload.report_text);
+      assert.equal(fs.existsSync(receiptOf(repo)), true, 'a dry run keeps the receipt');
+      const out = markOnly
+        ? tool(['close', '--change', 'demo', '--step', '1', '--mark-only'], repo)
+        : tool(['close', '--change', 'demo', '--step', '1'], repo, closeInput(ADD, MSG));
+      assert.equal(out.status, 0, JSON.stringify(out.payload));
+      assert.equal(out.payload.committed, !markOnly, JSON.stringify(out.payload));
+      assert.equal(fs.existsSync(receiptOf(repo)), false);
+    } finally { cleanup(parent); }
+  }
+});
+
+test('E12/E13: a half-done Step without a receipt is refused with the two exits, and inspect reports it before the new run', () => {
+  const { parent, repo } = makeRepo();
+  try {
+    writeFeature(repo, { passing: false });
+    const conflicts = ['src/feature.js', 'test/feature.test.js'];
+    assert.deepEqual(inspectStep(repo).payload.next_dispatch, { step: '1', would_pass: false, conflicts, exits: EXITS });
+
+    assert.deepEqual(newRun(repo).own, {});
+    const refused = dispatchCheck(repo, 'red');
+    assert.equal(refused.status, 1);
+    assert.deepEqual(refused.payload.conflicts, conflicts);
+    assert.deepEqual(refused.payload.exits, EXITS);
+
+    // A verify in the blocked run saves no claim over the files it found dirty.
+    tool(['verify', '--change', 'demo', '--step', '1', '--dispatch', 'red'], repo, RED_REPORT);
+    assert.equal(inspectStep(repo).payload.next_dispatch.would_pass, false);
+  } finally { cleanup(parent); }
+});
+
+test('the receipt leaves out foreign work a dispatch touched', () => {
+  const { parent, repo } = makeRepo();
+  try {
+    fs.writeFileSync(path.join(repo, 'unrelated.txt'), 'initial\n');
+    newRun(repo);
+    const cp = checkpoint(repo, 'red');
+    writeFeature(repo, { passing: false });
+    fs.appendFileSync(path.join(repo, 'unrelated.txt'), 'touched\n');
+    const out = redVerify(repo, cp, `${RED_REPORT}unrelated.txt\n`);
+    assert.ok(out.payload.preservation_errors.includes('unrelated.txt'));
+    assert.deepEqual(Object.keys(JSON.parse(fs.readFileSync(receiptOf(repo), 'utf8')).files).sort(), ['src/feature.js', 'test/feature.test.js']);
+    assert.deepEqual(newRun(repo).own, { 'src/feature.js': '1', 'test/feature.test.js': '1' });
+  } finally { cleanup(parent); }
+});
+
+test('the stop report and the dispatch refusal take the retry state from the tool', () => {
+  const read = (p) => fs.readFileSync(path.join(REPO_ROOT, p), 'utf8');
+  assert.match(read('sai/commands/apply/coordinator.md'), /apply-step\.js inspect --change \{change-name\} --step N[\s\S]{0,200}`next_dispatch`/);
+  assert.match(read('sai/commands/apply/coordinator.md'), /`conflicts` and the two `exits`/);
+  assert.match(read('sai/policies/implementation-closing-report.md'), /`next_dispatch`[\s\S]{0,400}only source of this fact/);
+  assert.match(read('sai/commands/apply/runner.md'), /own files from the baseline's `own`/);
 });
