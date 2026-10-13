@@ -43,3 +43,12 @@ These forms SHALL preserve existing per-harness copy resolution and one-JSON-obj
 #### Scenario: Both harnesses invoke preflight
 - **WHEN** Claude Code or opencode resolves the installed Apply tool for plan validation
 - **THEN** it invokes the same read-only preflight form apart from the resolved tool path
+
+### Requirement: Decision-record inventory invocation form
+
+Shared tool-resolution instructions SHALL declare the `decision-records.js` invocation as `node <tool-path> inventory --family <adr|ddr> --json --cwd <project-root>`, printing one JSON object with `index_exists`, `records`, `next_number`, and `duplicates` read from `docs/<family>/` and its `archive/` on disk. The form SHALL be the same for Claude Code and opencode apart from the resolved tool path.
+
+#### Scenario: Both harnesses invoke the inventory
+
+- **WHEN** Claude Code or opencode resolves the installed `decision-records.js` copy
+- **THEN** it invokes the same `inventory --family <adr|ddr> --json --cwd <project-root>` form apart from the resolved tool path

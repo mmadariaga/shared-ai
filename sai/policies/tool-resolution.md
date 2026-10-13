@@ -69,6 +69,10 @@ takes one — never substitute one for the other.
   with the text on stdin (the dispatchable profile reads its judgment verdicts
   after a `<<<VERDICTS>>>` line). It always prints one JSON verdict; `--json` is
   accepted and changes nothing, and it takes no `--cwd`.
+- `decision-records.js`: `node <tool-path> inventory --family <adr|ddr> --json
+  --cwd <project-root>`. It always prints one JSON object with `index_exists`,
+  `records`, `next_number`, and `duplicates`, read from `docs/<family>/` and
+  its `archive/` on disk.
 - `tool-access.js`: `node <tool-path> <verify|notices>` with JSON on stdin;
   `verify` takes `{required, evidence}`, `notices` takes `{ladder_discards}`.
   It prints JSON and takes neither `--json` nor `--cwd`.

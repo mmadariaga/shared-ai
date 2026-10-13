@@ -369,12 +369,17 @@ Cross-family relationships SHALL be represented in each family's index exactly a
 
 ### Requirement: Select per-family maintenance from the resolved-family index
 
-The decision-record pass SHALL select the maintenance branch only after the record family and creation outcome are resolved. An existing resolved-family index SHALL use warm-splice maintenance. An absent resolved-family index, after explicit approval, SHALL use cold-build maintenance. A family with no records created SHALL receive no maintenance cycle.
+The decision-record pass SHALL select the maintenance branch only after the record family and creation outcome are resolved. Index presence SHALL be read from `index_exists` in the decision-record inventory the artifact-analysis step ran for that family; that inventory SHALL be the only source of index existence. An existing resolved-family index SHALL use warm-splice maintenance. An absent resolved-family index, after explicit approval, SHALL use cold-build maintenance. A family with no records created SHALL receive no maintenance cycle.
 
 #### Scenario: Warm-splice for an indexed family
 
 - **WHEN** a qualifying record is created for a family with an existing `0000-INDEX.md`
 - **THEN** only that family's index receives the warm-splice update while the other family remains untouched
+
+#### Scenario: Branch follows the inventory
+
+- **WHEN** the inventory for a family reports `index_exists: true`
+- **THEN** the maintenance cycle uses the warm-splice branch and does not rebuild the index from the template
 
 ### Requirement: Preserve the approval-gated cold-build path
 

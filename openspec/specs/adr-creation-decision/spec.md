@@ -41,12 +41,22 @@ Implementation planning SHALL evaluate the three ADR/DDR criteria and resolve ex
 
 ### Requirement: Use the resolved family's physical index as the sole culture signal
 
-The creation decision MUST inspect only `docs/adr/0000-INDEX.md` for the `adr` family or `docs/ddr/0000-INDEX.md` for the `ddr` family. Other records, the other family's index, and files outside the recognized locations MUST NOT establish culture.
+The creation decision MUST use only `docs/adr/0000-INDEX.md` for the `adr` family or `docs/ddr/0000-INDEX.md` for the `ddr` family as the culture signal, and MUST read its existence from `index_exists` in the decision-record inventory (`sai/tools/decision-records.js inventory --family <family>`) run once per resolved family after all three criteria hold. That inventory SHALL be the only source of index existence. Other records, the other family's index, and files outside the recognized locations MUST NOT establish culture.
 
 #### Scenario: Existing resolved-family index
 
 - **WHEN** the resolved family's physical `0000-INDEX.md` exists
 - **THEN** a qualifying decision is created directly without an approval question
+
+#### Scenario: Index inside a folder ignored in git
+
+- **WHEN** the resolved family's folder is ignored in git and its `0000-INDEX.md` exists on disk
+- **THEN** the inventory reports the index present and a qualifying decision is created directly without an approval question
+
+#### Scenario: Records exist without an index
+
+- **WHEN** the inventory lists records for the resolved family and reports `index_exists: false`
+- **THEN** the culture signal is absent and creation still requires explicit approval
 
 ### Requirement: Require approval when the resolved-family index is absent
 
@@ -65,3 +75,21 @@ A decision that fails any of the three ADR/DDR criteria SHALL create no record a
 
 - **WHEN** any ADR/DDR criterion is not satisfied
 - **THEN** the flow neither creates a decision record nor asks about creating one
+
+### Requirement: Skip creation for a decision that already has a record
+
+Before any creation ask, implementation planning SHALL look in the resolved family's decision-record inventory `records` for a record that already documents the decision, judging by slug and reading a candidate to confirm. When one exists, planning SHALL create no record and SHALL ask nothing for that decision. This check SHALL precede the culture gate.
+
+#### Scenario: Decision already recorded
+
+- **WHEN** a qualifying decision is already documented by a record listed in the inventory
+- **THEN** planning creates no second record and asks no creation question for it
+
+### Requirement: Number a new record from the inventory
+
+The first record a run creates in a family SHALL take the inventory's `next_number` as its `NNNN`. Each further record of that family in the same run SHALL take the next consecutive number.
+
+#### Scenario: First record of a run
+
+- **WHEN** a run creates its first record in a family whose inventory reports `next_number` `0042`
+- **THEN** the record is created as `docs/<family>/0042-slug.md`
