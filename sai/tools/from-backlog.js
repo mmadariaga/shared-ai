@@ -3,6 +3,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
+const projectSettings = require('./project-settings');
 
 function fault(reason, message) {
   return Object.assign(new Error(message), { reason });
@@ -39,8 +40,16 @@ function resolve(reference, registry, io = {}) {
     return { entry, classification: match ? 'match' : host && entry.resolution === 'provider' ? 'fallback' : null };
   });
   const matched = candidates.filter(candidate => candidate.classification === 'match');
-  const entries = (matched.length ? matched : candidates.filter(candidate => candidate.classification === 'fallback')).map(candidate => candidate.entry);
+  let entries = (matched.length ? matched : candidates.filter(candidate => candidate.classification === 'fallback')).map(candidate => candidate.entry);
   if (parseError && !entries.length) throw parseError;
+  // The configured provider only breaks ties among fallback candidates; a positive match wins.
+  let settingApplied = false;
+  if (!matched.length && entries.length && io.configuredProvider) {
+    const configured = entries.filter(entry => entry.id === io.configuredProvider);
+    if (!configured.length) throw fault('provider-destination-conflict', `The configured backlog provider ${io.configuredProvider} does not accept this issue reference`);
+    settingApplied = entries.length > 1;
+    entries = configured;
+  }
   if (!entries.some(entry => entry.resolution === 'provider') && url && (url.protocol !== 'https:' || url.username || url.password || url.port)) throw fault('invalid-reference', 'Use an HTTPS issue URL without credentials or a custom port');
   if (entries.length !== 1) throw fault('unsupported-provider', readable.some(entry => entry.resolution === 'provider')
     ? 'The issue reference does not select exactly one registered provider; supply a supported, unambiguous reference'
@@ -48,7 +57,7 @@ function resolve(reference, registry, io = {}) {
   const entry = entries[0];
   const adapter = getAdapter(entry);
   const resolved = entry.resolution === 'provider' ? adapter.resolve(value, io) : { status: 'resolved', ...adapter.normalize(value) };
-  return { ...resolved, provider: entry.id, instructions: entry.instructions, adapter: entry.adapter };
+  return { ...resolved, provider: entry.id, instructions: entry.instructions, adapter: entry.adapter, ...(settingApplied ? { settingApplied } : {}) };
 }
 
 function azureRuntime() {
@@ -136,10 +145,13 @@ function main(argv) {
     const [operation, registryPath] = argv;
     if (!['resolve', 'read'].includes(operation) || !registryPath || argv.length !== 2) throw fault('usage', 'Usage: node from-backlog.js resolve|read <registry.json>; JSON {reference} on stdin');
     const request = JSON.parse(fs.readFileSync(0, 'utf8'));
-    const resolved = resolve(request.reference, JSON.parse(fs.readFileSync(registryPath, 'utf8')), { run });
+    const registry = JSON.parse(fs.readFileSync(registryPath, 'utf8'));
+    const settings = projectSettings.readBacklog({ cwd: process.cwd(), providerIds: registry.providers.filter(entry => entry.capabilities.includes('read')).map(entry => entry.id) });
+    const { settingApplied, ...resolved } = resolve(request.reference, registry, { run, configuredProvider: settings.config.provider });
     const adapter = resolved.status === 'resolved' ? require(path.join(__dirname, resolved.adapter)) : null;
     const result = operation === 'resolve' || resolved.status !== 'resolved' ? resolved : (adapter.readSet || adapter.read)(resolved, { run });
-    process.stdout.write(JSON.stringify(result) + '\n');
+    const lines = settingApplied ? [projectSettings.notice('provider', settings.config.provider)] : [];
+    process.stdout.write(JSON.stringify(projectSettings.report(result, { warnings: settings.warnings, notices: lines })) + '\n');
     return ['resolved', 'complete'].includes(result.status) ? 0 : 1;
   } catch (error) {
     process.stdout.write(JSON.stringify({ status: 'error', reason: error.reason || 'retrieval-failed', message: error.message }) + '\n');

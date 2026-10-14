@@ -39,6 +39,10 @@ helper rather than searching or guessing.
 On `needs_input`, report the context ambiguity and ask for the missing
 components before retrieval. Azure DevOps references use organization and project,
 not a repository; supported formats and existing-context checks are provider-owned.
+The tool reads `backlog.provider` from `.sai/settings.jsonc` only to choose among
+providers that accept the reference as a fallback; a reference that matches a
+provider positively keeps that provider. Print the tool's `warnings` and
+`notices` verbatim, one line each.
 Continue only when the status is `resolved`. Read the returned instructions relative to this skill's
 directory. **Complete when:** one provider and canonical item reference are
 resolved and that provider's mechanics are loaded.

@@ -3,6 +3,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
+const projectSettings = require('./project-settings');
 const OPERATIONS = ['resolve', 'resolve-origin', 'query', 'publish', 'recover', 'read-update', 'query-update', 'update', 'recover-update', 'query-set', 'publish-set', 'recover-set', 'continue-set', 'lookup-slice', 'inspect-assignment', 'propose-assignment', 'assign', 'verify-assignment'];
 
 function run(command, args, cwd, input) {
@@ -105,6 +106,8 @@ function resolve({ explicit = {}, config = {}, remotes = [] }, registry, io = {}
 }
 
 function main(argv) {
+  // Settings warnings stay visible when resolution fails after the read.
+  let warnings = [];
   try {
     const [operation, registryPath] = argv;
     if (!OPERATIONS.includes(operation) || !registryPath || argv.length !== 2) {
@@ -127,23 +130,25 @@ function main(argv) {
         result = { status: 'resolved', provider: entry.id, instructions: entry.updateInstructions, adapter: entry.adapter };
       }
     } else if (operation === 'resolve') {
-      let config = {};
-      try { config = JSON.parse(fs.readFileSync(path.join(cwd, '.to-backlog.json'), 'utf8')); }
-      catch (error) { if (error.code !== 'ENOENT') throw error; }
-      if (config.type !== undefined) throw new Error('Work-item type is invocation-scoped, not configuration');
+      const settings = projectSettings.readBacklog({ cwd, providerIds: registry.providers.map(entry => entry.id) });
+      const config = settings.config;
+      warnings = settings.warnings;
       result = resolve({ explicit: request.explicit, config }, registry, io);
       // Unsupported explicit providers and complete destinations need no Git.
       if (result.status === 'needs_input' && ['provider-ambiguous', 'repository-ambiguous', 'destination-ambiguous'].includes(result.reason)) {
         const remotes = run('git', ['remote', '-v'], cwd).split(/\r?\n/).map(line => line.split(/\s+/)[1]).filter(Boolean);
         result = resolve({ explicit: request.explicit, config, remotes }, registry, io);
       }
+      const addressed = detect(request.explicit?.repository, registry);
+      const addressProvider = addressed.length === 1 ? addressed[0].provider : undefined;
+      result = projectSettings.report(result, { warnings, notices: projectSettings.notices(config, request.explicit, result, addressProvider) });
     } else {
       result = dispatch(operation, request, registry, io);
     }
     process.stdout.write(JSON.stringify(result) + '\n');
     return ['resolved', 'ready', 'complete', 'no_changes'].includes(result.status) ? 0 : 1;
   } catch (error) {
-    process.stdout.write(JSON.stringify({ status: 'failure_before_publication', message: error.message }) + '\n');
+    process.stdout.write(JSON.stringify(projectSettings.report({ status: 'failure_before_publication', message: error.message }, { warnings })) + '\n');
     return 2;
   }
 }

@@ -7,10 +7,10 @@ Resolve the backlog provider and destination from ordered evidence through a reg
 
 ### Requirement: Ordered deterministic destination resolution
 
-The Node resolver SHALL accept destination objects containing only nonempty string provider, repository, project, and organization fields. Explicit fields SHALL override optional working-directory `.to-backlog.json` configuration fields, and registered Git remote detection SHALL supply unresolved destination choices. An explicit repository address identifying one registered provider SHALL take precedence over a configured provider. Remote addresses SHALL be parsed as data and duplicate provider-repository candidates SHALL be deduplicated. Positive provider-owned classification SHALL take precedence over host fallback; otherwise registered host matches SHALL take precedence over provider-owned fallback candidates. When a selected provider declares `resolution: provider`, the common resolver SHALL delegate destination resolution before shared host-compatibility or repository checks, passing the unchanged explicit fields, configuration fields, and raw remote addresses.
+The Node resolver SHALL accept destination objects containing only nonempty string provider, repository, project, and organization fields. Explicit fields SHALL override the project `backlog.*` settings read through `sai/tools/project-settings.js` from `.sai/settings.jsonc` (or, for one version, from a legacy `.to-backlog.json` with a deprecation warning), and registered Git remote detection SHALL supply unresolved destination choices. An explicit repository address identifying one registered provider SHALL take precedence over a configured provider. Remote addresses SHALL be parsed as data and duplicate provider-repository candidates SHALL be deduplicated. Positive provider-owned classification SHALL take precedence over host fallback; otherwise registered host matches SHALL take precedence over provider-owned fallback candidates. When a selected provider declares `resolution: provider`, the common resolver SHALL delegate destination resolution before shared host-compatibility or repository checks, passing the unchanged explicit fields, configuration fields, and raw remote addresses.
 
 #### Scenario: Explicit destination precedence
-- **WHEN** explicit destination fields differ from configured defaults
+- **WHEN** explicit destination fields differ from the configured `backlog.*` settings
 - **THEN** resolution uses the explicit fields rather than the conflicting defaults.
 
 #### Scenario: Equivalent remote addresses
@@ -28,6 +28,10 @@ The Node resolver SHALL accept destination objects containing only nonempty stri
 #### Scenario: Provider classifies a variable cloud address
 - **WHEN** one registered provider's pure classifier positively identifies a supported address
 - **THEN** detection selects that provider before host fallback without requiring a separate host enumeration.
+
+#### Scenario: Configured provider resolves an unknown host
+- **WHEN** the only Git remote uses a self-hosted host that no provider matches and `backlog.provider` names `gitlab`
+- **THEN** resolution selects GitLab without returning `provider-ambiguous`.
 
 ### Requirement: Unsupported and ambiguous destinations
 

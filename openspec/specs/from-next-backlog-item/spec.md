@@ -7,7 +7,7 @@ Complete available backlog destination information before asking the user and se
 
 ### Requirement: Resolve available destination information before asking
 
-The selector SHALL use supplied destination information and the existing Git destination resolver to complete missing provider and destination fields before requesting user input. It SHALL preserve complete explicit destinations and supported filters.
+The selector SHALL use supplied destination information, the project `backlog.*` settings read through `sai/tools/project-settings.js`, and the existing Git destination resolver, in that order, to complete missing provider and destination fields before requesting user input. It SHALL preserve complete explicit destinations and supported filters. When no explicit provider is supplied, a configured `backlog.provider` SHALL restrict the Git remotes considered to those that provider accepts. The selector SHALL NOT write the settings file.
 
 #### Scenario: GitLab destination is available from Git
 
@@ -23,6 +23,11 @@ The selector SHALL use supplied destination information and the existing Git des
 
 - **WHEN** remote URLs use different supported address forms for the same host and repository
 - **THEN** the selector SHALL treat those URLs as one destination rather than require a destination choice.
+
+#### Scenario: Configured provider resolves a self-hosted remote
+
+- **WHEN** no provider is supplied, `backlog.provider` names `gitlab`, and the only Git remote uses a self-hosted host
+- **THEN** the selector SHALL resolve GitLab and that project without a provider question and SHALL report the `Project setting backlog.provider: gitlab` notice.
 
 ### Requirement: Retain resolved context while requesting missing information
 

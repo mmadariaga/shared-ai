@@ -21,8 +21,8 @@ validation and partial-result recovery.
 
 Invoke `/to-backlog` in the conversation containing the work to capture. There
 are no documented behavior flags. Supply destination choices in conversation or
-optional `.to-backlog.json`; explicit fields win over configuration, then Git
-remotes. Provider hosting does not override an explicit backlog choice. See
+the [project settings](../project-settings.md) file; explicit fields win over
+settings, then Git remotes. Provider hosting does not override an explicit backlog choice. See
 [destination settings and provider requirements](../backlog.md#capture-or-update-work).
 
 ## In detail

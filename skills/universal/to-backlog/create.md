@@ -4,9 +4,12 @@
 
 Run `node <tool> resolve <registry>` with JSON on stdin:
 `{"explicit":{"provider":"...","repository":"...","project":"...","organization":"..."}}`.
-Include only user-supplied fields. Optional `.to-backlog.json` in the working
-directory has the same destination string fields (no work-item type default). Resolution applies explicit input,
-then configuration, then Git remotes; hosting never overrides a backlog choice.
+Include only user-supplied fields. The tool reads the project's `backlog.*`
+settings (`provider`, `repository`, `project`, `organization`) from
+`.sai/settings.jsonc` in the working directory; the work-item type has no
+setting. Resolution applies explicit input, then those settings, then Git
+remotes; hosting never overrides a backlog choice. Print the tool's `warnings`
+and `notices` verbatim, one line each.
 For `needs_input`, ask for the missing choice using returned candidates and
 resolve again. On `unsupported`, keep the draft and stop. On errors, request
 correction of missing tools, access or destination rather than inventing one.

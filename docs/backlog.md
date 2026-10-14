@@ -125,9 +125,9 @@ replacement. Later reference links do not change the target. Updates preserve
 unrelated description text and existing identifiers; they do not change state,
 comments, labels, assignees, or Project membership.
 
-For creation, explicit destination fields take precedence over optional
-`.to-backlog.json` in the working directory, then Git remotes. Git hosting does
-not override an explicit backlog provider. For example:
+For creation, explicit destination fields take precedence over the project's
+`backlog.*` settings in [`.sai/settings.jsonc`](project-settings.md), then Git
+remotes. Git hosting does not override an explicit backlog provider. For example:
 
 ```json
 {"provider":"github","repository":"owner/repo","project":"https://github.com/orgs/board-owner/projects/1"}
