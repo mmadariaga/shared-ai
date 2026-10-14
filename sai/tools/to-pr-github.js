@@ -1,5 +1,7 @@
 'use strict';
 
+const backlog = require('./from-backlog-github');
+
 function api(target, endpoint, io, method = 'GET', body) {
   const args = ['api', endpoint, '--hostname', target.host, '--method', method];
   if (body !== undefined) args.push('--input', '-');
@@ -39,4 +41,9 @@ function mutate(proposal, io) {
     ? { title: proposal.title, body: proposal.description }
     : { title: proposal.title, body: proposal.description, head: proposal.source, base: proposal.base }));
 }
-module.exports = { inspect, list, mutate };
+// Closing references: how to address an issue and read its children (E5).
+const closing = {
+  issueUrl: (repository, number) => `https://github.com/${repository}/issues/${number}`,
+  children: (url, io) => backlog.readChildren({ url }, io),
+};
+module.exports = { inspect, list, mutate, closing };

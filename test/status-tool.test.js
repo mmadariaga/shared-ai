@@ -119,6 +119,23 @@ test('E2a: absent .openspec.yaml is normal state (returns null)', () => {
   }
 });
 
+test('I5: backlog_origin is read from the archived change metadata and is null when absent', () => {
+  const { cwd, parent } = makeTestOpenspec();
+  try {
+    const archived = path.join(cwd, 'openspec', 'changes', 'archive', '2026-10-15-pr-closing-references');
+    fs.mkdirSync(archived, { recursive: true });
+    const yamlPath = path.join(archived, '.openspec.yaml');
+    fs.writeFileSync(yamlPath, 'schema: sai-workflow\nbacklog_origin: https://github.com/mmadariaga/shared-ai/issues/120\n');
+    assert.equal(readOpenspecYaml(yamlPath).backlog_origin, 'https://github.com/mmadariaga/shared-ai/issues/120');
+    fs.writeFileSync(yamlPath, 'schema: sai-workflow\nbacklog_origin: "https://gitlab.example.com/g/p/-/issues/4"\n');
+    assert.equal(readOpenspecYaml(yamlPath).backlog_origin, 'https://gitlab.example.com/g/p/-/issues/4');
+    fs.writeFileSync(yamlPath, 'schema: sai-workflow\n');
+    assert.equal(readOpenspecYaml(yamlPath).backlog_origin, null);
+  } finally {
+    cleanup(parent);
+  }
+});
+
 test('E2b: unreadable .openspec.yaml throws ToolError with exit code 2', () => {
   const { cwd, parent } = makeTestOpenspec();
   try {

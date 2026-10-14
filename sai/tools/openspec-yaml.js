@@ -32,7 +32,8 @@ function pathExists(target) {
 
 /**
  * Read .openspec.yaml and extract key values by regex.
- * Returns object with: approval_specs_approved_at, overview_state, backfilled
+ * Returns object with: approval_specs_approved_at, overview_state, backfilled,
+ * backlog_origin
  * Returns null if file doesn't exist.
  * Throws ToolError if file is unreadable.
  */
@@ -52,6 +53,7 @@ function readOpenspecYaml(yamlPath) {
     approval_specs_approved_at: null,
     overview_state: null,
     backfilled: false,
+    backlog_origin: null,
   };
 
   // Extract approval.specs.approved_at - look for the nested key more flexibly
@@ -78,6 +80,12 @@ function readOpenspecYaml(yamlPath) {
   const backfilledMatch = content.match(/^\s*backfilled:\s*(true|false)/m);
   if (backfilledMatch) {
     result.backfilled = backfilledMatch[1] === 'true';
+  }
+
+  // Extract the selected backlog issue URL (flat key, optionally quoted)
+  const originMatch = content.match(/^backlog_origin:[ \t]*["']?([^\s"']+)["']?[ \t]*$/m);
+  if (originMatch) {
+    result.backlog_origin = originMatch[1];
   }
 
   return result;

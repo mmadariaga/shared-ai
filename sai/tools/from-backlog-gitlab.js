@@ -126,4 +126,15 @@ const readSet = require('./backlog-provider-import').bind('gitlab', (url, io) =>
     ...(limitation ? { native_dependency_status: 'unavailable', native_dependency_notice: limitation } : {}) } };
   } catch (error) { return { ...result, status: 'incomplete', reason: error.reason || 'retrieval-failed', message: error.message }; }
 });
-module.exports = { project, api, issueURL, resolve, issue, readIssue, read, readSet, dependencies };
+/** Children of an issue with their state, from the written slice correspondence. No comments or assignees. */
+function readChildren(reference, io) {
+  try {
+    const written = require('./backlog-slice-identity').decode(readIssue(reference, io).description);
+    const children = (written?.role === 'parent' ? [...new Set(written.slices.map(slice => slice.issue))] : [])
+      .map(url => { const child = readIssue({ url }, io); return { url: child.url, state: child.state }; });
+    return { status: 'complete', children };
+  } catch (error) {
+    return { status: 'error', reason: error.reason || 'retrieval-failed', message: error.message };
+  }
+}
+module.exports = { project, api, issueURL, resolve, issue, readIssue, read, readSet, readChildren, dependencies };

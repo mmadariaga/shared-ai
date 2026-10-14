@@ -70,6 +70,7 @@ target, and existing request URL if updating. Show the complete proposed title a
 description, not a summary. For update also show the baseline and what changes.
 Before approval show any `proposal.concurrency_warning` verbatim: a reread does
 not protect the interval before a provider's update request.
+Also show every entry of the `query` result's `warnings` verbatim before approval.
 Warn explicitly if public. Then ask: "Publish this exact title and description
 to this destination?" Offer approve, edit, cancel and wait. Cancellation ends
 without publication. Any content, destination or baseline change returns to

@@ -1,6 +1,7 @@
 'use strict';
 
-const { api } = require('./from-backlog-gitlab');
+const backlog = require('./from-backlog-gitlab');
+const { api } = backlog;
 function inspect(repository, io) {
   const row = JSON.parse(io.run('glab', ['repo', 'view', '--output', 'json', '--', repository]));
   const url = new URL(row.web_url);
@@ -38,4 +39,9 @@ function mutate(proposal, io) {
     ? { title: proposal.title, description: proposal.description }
     : { title: proposal.title, description: proposal.description, source_branch: proposal.source, target_branch: proposal.base }));
 }
-module.exports = { inspect, resolve, list, mutate };
+// Closing references: how to address an issue and read its children (E5).
+const closing = {
+  issueUrl: (repository, number, target) => `${target.url.slice(0, -target.repository.length)}${repository}/-/issues/${number}`,
+  children: (url, io) => backlog.readChildren({ url }, io),
+};
+module.exports = { inspect, resolve, list, mutate, closing };

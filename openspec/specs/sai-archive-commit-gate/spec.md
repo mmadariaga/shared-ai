@@ -10,8 +10,8 @@ Defines the post-archive commit gate of `/sai-archive`: the three-option selecto
 
 After `openspec archive <name> --yes --json` succeeds — the delta-spec sync, the archive move, and the archive summary — `/sai-archive` SHALL present a closed-choice action-selector gate through the harness-native option-picker with exactly three options, in this order:
 
-1. Create a new commit — stages exactly the archive paths and creates a new commit whose message is composed per `sai/commands/commit/instructions.md` steps 1–5 and `sai/policies/commit-rules.md`.
-2. Amend the latest commit — stages exactly the archive paths and runs `git commit --amend --no-edit`.
+1. Create a new commit — stages exactly the archive paths and creates a new commit whose message is composed per `sai/commands/commit/instructions.md` steps 1–5 and `sai/policies/commit-rules.md`, plus the archived change's closing lines.
+2. Amend the latest commit — stages exactly the archive paths and amends the latest commit, adding any of the archived change's closing lines that its message lacks.
 3. Do nothing — leaves the index untouched; no staging and no commit.
 
 The new-commit option SHALL carry the `Recommended` marker, and no other option SHALL carry it. Options 1 and 2 SHALL run their commit action only when the shared empty-index guard passes (see the empty-index guard requirement).
@@ -66,7 +66,7 @@ When the CLI archive completes and `git status` shows no changes, `/sai-archive`
 
 ### Requirement: The new-commit message reuses commit.md steps 1–5 and commit-rules.md without duplicating commit rules
 
-For the new-commit option, the agent SHALL compose the commit message by applying `sai/commands/commit/instructions.md` steps 1–5 with `sai/policies/commit-rules.md` as the single source of message rules. After the shared empty-index guard passes, it SHALL pass the complete composed message literally on standard input to `git commit -F -` under `@sai/policies/command-execution.md`, without requiring Bash heredoc syntax or a `git commit -m` argument. The picker selection remains the per-invocation authorization, and no additional authorization question is presented.
+For the new-commit option, the agent SHALL compose the commit message by applying `sai/commands/commit/instructions.md` steps 1–5 with `sai/policies/commit-rules.md` as the single source of message rules. After the retired-capability body lines, it SHALL add the closing lines that `sai/policies/commit-rules.md` § Closing Lines defines for the archived change. After the shared empty-index guard passes, it SHALL pass the complete composed message literally on standard input to `git commit -F -` under `@sai/policies/command-execution.md`, without requiring Bash heredoc syntax or a `git commit -m` argument. The picker selection remains the per-invocation authorization, and no additional authorization question is presented.
 
 #### Scenario: Message is composed from the staged diff per commit.md steps 1–5
 
@@ -88,9 +88,14 @@ For the new-commit option, the agent SHALL compose the commit message by applyin
 - **WHEN** the authorized archive message contains multiline, Unicode, or shell-sensitive characters
 - **THEN** the available Bash or PowerShell 7 transport passes it unchanged to `git commit -F -`
 
+#### Scenario: The new commit carries the archived change's closing line
+
+- **WHEN** the user selects the new-commit option and the archived change has a GitHub `backlog_origin`
+- **THEN** the committed message carries one `Closes owner/repo#N` line for that origin
+
 ### Requirement: The amend path applies the pushed-HEAD guard per commit-rules
 
-For the amend option, the agent SHALL run the pushed-HEAD check before staging with `git log '@{push}..HEAD' --oneline` as one quoted Git argument. When `@{push}` does not resolve, it SHALL treat HEAD as unpushed; when the output is empty with HEAD matching the push target, it SHALL warn and require secondary confirmation before amending. On decline, it SHALL leave the index unchanged. After the check, it SHALL stage only archive paths, run the shared empty-index guard, and run `git commit --amend --no-edit` only when staged changes remain.
+For the amend option, the agent SHALL run the pushed-HEAD check before staging with `git log '@{push}..HEAD' --oneline` as one quoted Git argument. When `@{push}` does not resolve, it SHALL treat HEAD as unpushed; when the output is empty with HEAD matching the push target, it SHALL warn and require secondary confirmation before amending. On decline, it SHALL leave the index unchanged. After the check, it SHALL stage only archive paths and run the shared empty-index guard. When staged changes remain, it SHALL read the latest commit message with `git log -1 --format=%B` and determine which of the archived change's closing lines from `sai/policies/commit-rules.md` § Closing Lines that message lacks. With no missing line, it SHALL run `git commit --amend --no-edit`. Otherwise it SHALL run `git commit --amend -F -` with the current message plus the missing lines passed literally on standard input under `@sai/policies/command-execution.md`.
 
 #### Scenario: Unpushed HEAD amends without extra confirmation
 
@@ -111,6 +116,16 @@ For the amend option, the agent SHALL run the pushed-HEAD check before staging w
 
 - **WHEN** the pushed-HEAD guard fires and the user declines secondary confirmation
 - **THEN** the agent performs no amend or commit and leaves the index as it was at the gate
+
+#### Scenario: Amend adds a missing closing line
+
+- **WHEN** the user selects amend, staging leaves a non-empty staged diff, and the latest commit message lacks the archived change's `Closes` line
+- **THEN** the agent runs `git commit --amend -F -` with the current message plus that line
+
+#### Scenario: Amend keeps a message that already closes the issue
+
+- **WHEN** the user selects amend and the latest commit message already contains every closing line of the archived change
+- **THEN** the agent runs `git commit --amend --no-edit`
 
 ### Requirement: Fast-track auto-selects the new-commit option
 

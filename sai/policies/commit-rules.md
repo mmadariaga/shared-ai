@@ -47,8 +47,20 @@ Pick exactly one Conventional Commits type, in this priority order:
 
 **Footer (optional):**
 - `BREAKING CHANGE: ...` for incompatible API changes (also bump subject to `feat!:`/`fix!:`)
-- `Refs: #123` / `Closes: #123` if the user mentions an issue or it appears in branch name
+- `Refs: #123` if the user mentions an issue or it appears in branch name; a branch-name id is a reference only and is never written as `Closes`
+- `Closes owner/repo#N` lines only as defined in § Closing Lines
 - **No `Co-Authored-By` or AI-generated attribution trailers** unless the user explicitly requests them
+
+## Closing Lines
+
+The only commits that carry a closing line are archive commits. Write one
+`Closes owner/repo#N` footer line per archived change, from the `backlog_origin`
+key of `openspec/changes/archive/<date>-<name>/.openspec.yaml`, converted from
+the issue URL: a GitHub `https://github.com/owner/repo/issues/N` becomes
+`owner/repo#N`, a GitLab `https://host/group/project/-/issues/N` becomes
+`group/project#N`. Always write the fully qualified form: `to-pr`
+normalizes it against the destination repository. A change without a
+`backlog_origin`, or with an Azure DevOps origin, gets no closing line.
 
 ## Repo Commit-Style Detection Rubric
 

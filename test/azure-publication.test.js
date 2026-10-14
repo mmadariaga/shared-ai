@@ -192,6 +192,13 @@ test('E7 I5 I8: exact fetch/push and branch identity, independent push approval 
   assert.deepEqual(Object.keys(state.writes[1].body).sort(), ['description', 'sourceRefName', 'targetRefName', 'title']);
   assert.equal(state.rows[0].description, prRequest.description);
 });
+test('E8 I3: Azure Repos descriptions publish as drafted, without a closing block or a commit-log read', () => {
+  const { io, state } = fixture();
+  const ready = prs.query({ ...prRequest, description: `${prRequest.description}\nCloses #5` }, io);
+  assert.equal(ready.proposal.description, `${prRequest.description}\nCloses #5`);
+  assert.equal(ready.warnings, undefined);
+  assert.equal(state.calls.some(call => call.command === 'git' && call.args[0] === 'log'), false);
+});
 test('E6 E7 I8: PR update warning bound before approval, stale baseline and multiple matches block', () => {
   const { io, state, pr } = fixture(); state.rows = [pr('feat: old', 'Old')];
   const ready = prs.query(prRequest, io);

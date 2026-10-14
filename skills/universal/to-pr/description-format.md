@@ -18,3 +18,5 @@ Omit empty optional sections. Do not claim a test or audit passed merely because
 its document exists. For updates preserve unrelated existing content and explain
 the exact replacement boundary before approval. Final drafting check: all claims
 grounded, title validation passes, full description available for presentation.
+
+The end of the description is the tool's closing block; draft above it.
