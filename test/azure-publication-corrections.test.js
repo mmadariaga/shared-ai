@@ -108,3 +108,30 @@ test('M1: only owned transport payloads are removed on success, runner/JSON/prep
     fs.unlinkSync(receiptFile); fs.rmdirSync(receiptDirectory);
   }
 });
+
+test('I4: the SDK bridge carries the HTTP status of a service error so an unknown-identity 400 is rejected', () => {
+  // Mirrors the installed SDK: _send_request hands a failed response to _handle_error, which raises an error without a status.
+  const prefix = `
+import sys, types
+class ServiceError(Exception): pass
+class Response:
+    def __init__(self, code): self.status_code = code
+class Client:
+    code = 400
+    def _handle_error(self, request, response): raise ServiceError('VS402625: The identity is an unknown identity')
+    def _send(self, **kwargs): self._handle_error(None, Response(self.code))
+services = types.ModuleType('azext_devops.dev.common.services')
+services.get_work_item_tracking_client = lambda organization: Client()
+services.get_location_client = lambda organization: Client()
+sys.modules['azext_devops.dev.common.services'] = services
+`;
+  const run = (route) => spawnSync('python', ['-c', prefix + '\n' + SDK_SCRIPT], { encoding: 'utf8', input: JSON.stringify({ identity: false, location: 'x', method: 'PATCH', route,
+    organization: 'https://dev.azure.com/org', extension: 'offline-installed-extension', version: '7.1-preview.3', query: {}, mediaType: 'application/json-patch+json' }) });
+  const failed = run({ project: 'Team', id: 1 });
+  assert.equal(failed.status, 0, failed.stderr);
+  assert.equal(JSON.parse(failed.stdout).status_code, 400);
+  const rejected = status => { try { azure.api({ organization: 'https://dev.azure.com/org' }, 'wit', 'workitems', { project: 'Team', id: 1 }, { run: () => JSON.stringify({ sdk_error: 'VS402625: The identity is an unknown identity', status_code: status }) }, 'PATCH', [], {}, true); } catch (error) { return error.rejected; } };
+  assert.equal(rejected(400), true);
+  assert.equal(rejected(503), false);
+  assert.equal(rejected(null), false);
+});

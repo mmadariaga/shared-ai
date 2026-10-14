@@ -44,8 +44,10 @@ Parent import on all three providers delivers the complete parent and all direct
 child import delivers that child and parent context, not siblings. Full comments,
 identities, states, assignees and dependencies are retained. The selected issue
 remains the origin. Assignment occurs only at selected-child implementation
-start: unassigned children require approval to assign the authenticated user;
-any existing assignee triggers a keep/replace/stop question. Parent assignees
+start: unassigned children require approval to assign the authenticated user,
+with a Skip option that starts implementation without assigning (also offered
+when an assignment fails; the closing report records a skip); any existing
+assignee triggers a keep/replace/stop question. Parent assignees
 stay unchanged. Keep verifies the exact approved set, including another user or
 multiple assignees, without mutation. Ordinary native GitHub children need no SAI
 marker. Parent import reconciles readable native children with written references,

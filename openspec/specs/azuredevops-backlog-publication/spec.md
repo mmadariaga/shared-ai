@@ -165,7 +165,7 @@ Azure DevOps crystallized slice publication SHALL create the agreed parent and o
 
 ### Requirement: Boards child assignment is revision conditional and separate from content
 
-Azure selected-child assignment SHALL inspect authenticated identity and current responsibility, require exact assignment approval and test the current work-item revision in the same JSON Patch request that changes `System.AssignedTo`. It SHALL NOT change title, description, state, tags or parent responsibility. Keeping existing responsibility SHALL perform verification without mutation. Rejected or uncertain assignment SHALL stop unverified implementation and require appropriate verification or renewed authorization.
+Azure selected-child assignment SHALL inspect authenticated identity and current responsibility, require exact assignment approval and test the current work-item revision in the same JSON Patch request that changes `System.AssignedTo`. The request SHALL write the authenticated user's unique name (email or UPN) reported by `connectionData` to `System.AssignedTo`, while every proposal, verification and identity-changed check SHALL compare identity ids. When no unique name is reported, assignment SHALL fail as a rejection before the PATCH and SHALL leave the work item unchanged. The Azure SDK route SHALL carry the HTTP status of a service error so that a definite client rejection such as an unknown-identity 400 is reported as `rejected`, while a transport error, timeout or 5xx is reported as `uncertain`. It SHALL NOT change title, description, state, tags or parent responsibility. Keeping existing responsibility SHALL perform verification without mutation. A rejected or uncertain assignment SHALL never count as verified responsibility and SHALL return to the implementation-start gate's Retry, Skip or Stop decision, where Retry re-verifies after `uncertain` and requires renewed approval after `rejected`.
 
 #### Scenario: Approved responsibility replacement
 
@@ -176,3 +176,23 @@ Azure selected-child assignment SHALL inspect authenticated identity and current
 
 - **WHEN** the user approves keeping the selected child's current assignee
 - **THEN** verification checks the approved identity without a work-item mutation.
+
+#### Scenario: Unique name is written
+
+- **WHEN** an approved assignment runs and `connectionData` reports the authenticated user's unique name
+- **THEN** the PATCH writes that unique name to `System.AssignedTo` and verification compares the identity id.
+
+#### Scenario: Unknown identity rejection
+
+- **WHEN** Azure answers the assignment PATCH with an HTTP 400 unknown-identity error through the SDK route
+- **THEN** assignment returns `rejected` and the work item stays unassigned.
+
+#### Scenario: Missing unique name
+
+- **WHEN** `connectionData` reports no unique name for the authenticated user
+- **THEN** assignment returns `rejected` before any PATCH request.
+
+#### Scenario: Server or transport failure
+
+- **WHEN** the assignment request fails with a 5xx status, a timeout or a transport error
+- **THEN** assignment returns `uncertain` and directs `verify-assignment`.

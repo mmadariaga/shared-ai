@@ -115,8 +115,10 @@ function api(target, area, resource, route, io, method = 'GET', body, query = {}
 function inspect(value, io, project) {
   const target = destination(value, project);
   const row = api(target, 'core', 'projects', { projectId: target.project }, io);
-  const actor = api(target, 'location', 'connectionData', {}, io).authenticatedUser?.id;
+  const user = api(target, 'location', 'connectionData', {}, io).authenticatedUser, actor = user?.id;
+  // The unique name (email/UPN) is the value Azure resolves when writing an identity field; the id is not.
+  const uniqueName = user?.properties?.Account?.$value;
   if (typeof row.id !== 'string' || !segment(row.name) || !equal(row.name, target.project) || !['private', 'public'].includes(row.visibility) || typeof actor !== 'string' || !actor) throw new Error('Incomplete Azure destination or authenticated identity');
-  return { ...target, project: row.name, projectId: row.id, visibility: row.visibility, actor, url: `${target.organization}/${encodeURIComponent(row.name)}` };
+  return { ...target, project: row.name, projectId: row.id, visibility: row.visibility, actor, ...(typeof uniqueName === 'string' && uniqueName.trim() ? { uniqueName: uniqueName.trim() } : {}), url: `${target.organization}/${encodeURIComponent(row.name)}` };
 }
 module.exports = { repositoryAddress, resolve, destination, api, inspect, equal };

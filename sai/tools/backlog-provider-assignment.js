@@ -20,7 +20,7 @@ function bind(platform, mechanics) {
       const proposal = { ...current, choice: 'keep', target: current.assignees };
       return { status: 'ready', proposal, confirmation: digest(proposal) };
     }
-    if (request.choice && request.choice !== 'replace') throw new Error('Invalid assignment choice');
+    if (request.choice && !['assign', 'replace'].includes(request.choice)) throw new Error('Invalid assignment choice');
     if (current.assignees.length && request.choice !== 'replace') return { ...current, status: 'needs_input', reason: 'already-assigned' };
     const proposal = { ...current, choice: current.assignees.length ? 'replace' : 'assign', target: [current.actor] };
     return { status: 'ready', proposal, confirmation: digest(proposal) };
@@ -39,7 +39,11 @@ function bind(platform, mechanics) {
     const ready = propose(request, io);
     if (ready.status !== 'ready' || ready.confirmation !== request.confirmation) throw new Error('Exact assignment approval and unchanged responsibility required');
     try { mechanics.assign(request, ready.proposal, io); return verify(request, io); }
-    catch (error) { return { status: 'uncertain', issue: ready.proposal.issue, message: error.message, next_operation: 'verify-assignment' }; }
+    catch (error) {
+      // A provider rejection that proves nothing changed is definite; retrying it cannot succeed.
+      if (error.rejected === true) return { status: 'rejected', issue: ready.proposal.issue, message: `No change was applied: ${error.message}` };
+      return { status: 'uncertain', issue: ready.proposal.issue, message: error.message, next_operation: 'verify-assignment' };
+    }
   }
   return { 'inspect-assignment': inspect, 'propose-assignment': propose, assign, 'verify-assignment': verify };
 }

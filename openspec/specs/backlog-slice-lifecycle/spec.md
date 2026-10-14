@@ -120,7 +120,7 @@ The user-facing coordinator SHALL inspect selected-child responsibility before t
 
 ### Requirement: Assignment has separate exact authorization and verification
 
-An unassigned selected child SHALL require approval to assign the authenticated user. Any existing assignee SHALL require a keep, replace or stop decision before implementation. Keep SHALL preserve and verify the exact approved assignee set without mutation, including multiple assignees or another user. Replace SHALL require approval of an exact proposal before assignment. Assignment SHALL change assignees only and SHALL NOT update titles, descriptions, labels or issue state. Fast-track and unattended consent SHALL NOT replace assignment authorization. Verification SHALL precede implementation; uncertain mutations SHALL be verified rather than blindly replayed.
+An unassigned selected child SHALL require an Approve, Stop or Skip decision on the exact proposal to assign the authenticated user. Any existing assignee SHALL require a keep, replace or stop decision before implementation. Keep SHALL preserve and verify the exact approved assignee set without mutation, including multiple assignees or another user. Replace SHALL require approval of an exact proposal before assignment. On approval, `assign` SHALL accept the exact `choice` and `confirmation` that `propose-assignment` returned. Assignment SHALL change assignees only and SHALL NOT update titles, descriptions, labels or issue state. Verification SHALL precede implementation unless the user chose Skip; uncertain mutations SHALL be verified rather than blindly replayed. A provider rejection that proves no change was applied SHALL return `rejected`, and a transport error, timeout or server error SHALL return `uncertain` and lead to verification. After any failed or unverified assignment, the coordinator SHALL report the verified state and ask Retry, Skip or Stop, recommending Skip after `rejected`. Skip SHALL perform no remote operation, SHALL start implementation, and SHALL hold for the implementation stretch, so worker correction, resumption and replacement proceed without re-verifying or re-asking. A new slice or new implementation invocation SHALL ask again. Skip SHALL come only from a user answer: fast-track, injected fast-track and unattended route consent SHALL NOT replace assignment authorization and SHALL NOT choose Skip. After Skip, the closing report SHALL state that the work item stayed unassigned by user choice and list the assignees last verified.
 
 #### Scenario: Keep multiple existing assignees
 
@@ -136,6 +136,31 @@ An unassigned selected child SHALL require approval to assign the authenticated 
 
 - **WHEN** the user approves the exact authenticated-user assignment proposal
 - **THEN** the coordinator executes the separate assignment operation and requires verified responsibility before technical dispatch.
+
+#### Scenario: Proposed choice round-trips to assign
+
+- **WHEN** `assign` receives the `choice: "assign"` and `confirmation` that `propose-assignment` returned for an unassigned child
+- **THEN** the assignment proceeds instead of failing with an invalid assignment choice.
+
+#### Scenario: Skip at the approval stop
+
+- **WHEN** the user answers Skip to the Approve, Stop or Skip question for an unassigned child
+- **THEN** implementation starts with no remote operation and the closing report states the work item stayed unassigned by user choice.
+
+#### Scenario: Rejected assignment recommends Skip
+
+- **WHEN** `assign` returns `rejected` because the provider proved no change was applied
+- **THEN** the coordinator asks Retry, Skip or Stop with Skip as the recommended option.
+
+#### Scenario: Skip survives worker replacement
+
+- **WHEN** a worker is corrected, resumed or replaced within the implementation stretch after Skip
+- **THEN** implementation continues without re-verifying assignment or asking the gate again.
+
+#### Scenario: Fast-track does not choose Skip
+
+- **WHEN** the gate is reached under `--fast-track`, injected fast-track or unattended route consent
+- **THEN** the Approve, Stop or Skip question is still asked and Skip comes only from the user's answer.
 
 ### Requirement: Shared lifecycle ownership preserves excluded workflows
 
@@ -172,7 +197,7 @@ Ordinary GitLab slice sets SHALL disclose written parent/child hierarchy and sep
 
 ### Requirement: Provider parity uses shared owners and isolated responsibility operations
 
-GitLab and Azure DevOps SHALL expose shared set-publication and selected-child assignment operations through their existing registered adapters. Implementation-start ownership SHALL resolve and retain the selected provider rather than assume GitHub. Responsibility inspection SHALL verify the selected child and parent, authenticated identity and exact current assignees. Existing responsibility SHALL require a keep, replace or stop decision. Assignment SHALL require exact proposal approval, change only the selected child's assignees and verify the result before implementation. Keep SHALL verify the exact approved set without mutation. Parent responsibility SHALL remain unchanged. Both Claude Code and opencode SHALL receive the canonical shared tools and contracts without expanded read-only import permissions.
+GitLab and Azure DevOps SHALL expose shared set-publication and selected-child assignment operations through their existing registered adapters. Implementation-start ownership SHALL resolve and retain the selected provider rather than assume GitHub. Responsibility inspection SHALL verify the selected child and parent, authenticated identity and exact current assignees. Existing responsibility SHALL require a keep, replace or stop decision. Assignment SHALL require exact proposal approval, change only the selected child's assignees and verify the result before implementation unless the user chose Skip. Keep SHALL verify the exact approved set without mutation. Parent responsibility SHALL remain unchanged. GitHub, GitLab and Azure DevOps SHALL map a provider rejection that proves no change was applied to `rejected` and every other assignment failure to `uncertain` through the shared assignment contract, and SHALL offer Skip identically. Both Claude Code and opencode SHALL receive the canonical shared tools and contracts without expanded read-only import permissions.
 
 #### Scenario: Existing child responsibility changes
 
@@ -188,3 +213,8 @@ GitLab and Azure DevOps SHALL expose shared set-publication and selected-child a
 
 - **WHEN** the manifest expands for Claude Code and opencode
 - **THEN** both install the shared set, import and assignment helpers while import access remains read-only.
+
+#### Scenario: Definite rejection on any provider
+
+- **WHEN** a GitHub, GitLab or Azure DevOps assignment fails with an error marked as a definite rejection
+- **THEN** `assign` returns `rejected` with a no-change message and no verification operation.
