@@ -5,7 +5,7 @@ TTY-only post-setup customization menu and isolated harness adapters that apply 
 
 ### Requirement: Post-setup customization menu
 
-The setup flow MUST present a post-setup menu only after all existing setup operations have completed. The menu MUST provide exactly five actions: `Customize models`, `Reset to default models`, `Save preset`, `Load preset`, and `Exit`. The menu MUST be presented as a navigable single-select list: up/down arrows move the `>` cursor and Enter (or space) confirms the highlighted action. Selecting `Save preset` or `Load preset` MUST route harness selection to the save-preset or load-preset screen with no scope screen.
+The setup flow MUST present a post-setup menu only after all existing setup operations have completed. The menu MUST provide exactly six actions: `Customize models`, `Reset to default models`, `Save preset`, `Load preset`, `Project settings`, and `Exit`. The menu MUST be presented as a navigable single-select list: up/down arrows move the `>` cursor and Enter (or space) confirms the highlighted action. Selecting `Save preset` or `Load preset` MUST route harness selection to the save-preset or load-preset screen with no scope screen. Selecting `Project settings` MUST open the project settings screen with no harness selection, and when that screen returns, whether saved, unchanged, failed, or interrupted, the flow MUST present the post-setup menu again.
 
 #### Scenario: User exits from the post-setup menu
 
@@ -31,6 +31,16 @@ The setup flow MUST present a post-setup menu only after all existing setup oper
 
 - **WHEN** the user selects `Load preset` at the post-setup menu and chooses a harness
 - **THEN** the flow MUST route to the load-preset screen without presenting scope or settings screens
+
+#### Scenario: User opens project settings from the post-setup menu
+
+- **WHEN** the user selects `Project settings`, edits `backlog.provider`, and leaves the screen
+- **THEN** the flow MUST save the setting through the project settings screen and present the post-setup menu again
+
+#### Scenario: Interrupted project settings return to the menu
+
+- **WHEN** the user interrupts a prompt inside the project settings screen
+- **THEN** the flow MUST present the post-setup menu again and leave `.sai/settings.jsonc` unchanged
 
 ### Requirement: TTY-only interaction
 

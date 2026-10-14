@@ -1,6 +1,6 @@
 # Project settings
 
-`.sai/settings.jsonc` in the project root holds committed, per-project answers to questions that commands otherwise ask each run. It is the same file for Claude Code and opencode. Edit it by hand; no command writes it yet.
+`.sai/settings.jsonc` in the project root holds committed, per-project answers to questions that commands otherwise ask each run. It is the same file for Claude Code and opencode. Edit it with the **Project settings** screen of `node bin/install setup`, or by hand.
 
 The file is JSON with comments and trailing commas allowed. Setting ids are dotted key paths, so `backlog.provider` is the key `provider` inside the object `backlog`:
 
@@ -47,16 +47,26 @@ The work-item type has no setting; it is chosen at each creation. Provider ids c
 - A value outside its allowed set invalidates only that key, with a warning; the other keys still apply.
 - A gate that cannot read a setting (an unreadable file, an invalid value, or an unavailable tool) treats it as absent, prints the warnings or one line naming the failure, and continues at the next level.
 
-## Moving from `.to-backlog.json`
+## Project settings screen
 
-For one version, a project that has only `.to-backlog.json` keeps working: its fields are read as `backlog.*` with a deprecation warning and the same validation. A `type` key now produces an unknown-setting warning. When `.sai/settings.jsonc` exists, even unreadable, it wins and a warning says `.to-backlog.json` is ignored. To migrate, move the fields under `backlog` in `.sai/settings.jsonc` and delete `.to-backlog.json`.
+Run `node bin/install setup` and choose **Project settings** in the post-setup menu. The screen lists three settings with their current values:
+
+- `explore.readyToProposeLanguage`: `ask`, `English`, or a language name you type.
+- `explore.overviewLanguage`: `ask`, `English`, `none`, or a language name you type.
+- `backlog.provider`: `ask` or a provider id from the provider registries.
+
+`backlog.repository`, `backlog.project`, and `backlog.organization` stay hand-edited. A typed language name is checked like the reader checks it, and an entry that is not accepted is asked again. The screen writes the canonical form (`English`, `None`).
+
+Choosing `ask` writes the string `"ask"`, which keeps the normal question and keeps the key's comment in the file. A stored value outside its allowed set shows with the reader's warning, and you may replace it.
+
+Leaving the screen saves when at least one value changed. The file is edited in place: comments, other keys, and every byte outside the edited values stay as they were. The first save creates `.sai/settings.jsonc`. A session without a change touches nothing. Cancelling the menu with Ctrl-C discards the edits. A file that cannot be parsed is reported when the screen opens and is never rewritten; the same holds for a write error, which is reported and leaves the file as it was. Without a TTY the screen is skipped with the rest of the post-setup menu.
 
 ## Reader
 
-`sai/tools/project-settings.js` reads and validates the file and writes nothing. It has no dependencies.
+`sai/tools/project-settings.js` reads and validates the file and writes nothing. It has no dependencies. The screen writes through `bin/project-settings-writer.js`, which validates each value through the reader's catalogue.
 
 ```sh
 node sai/tools/project-settings.js get backlog.provider --json --cwd <project-root>
 ```
 
-It prints `{value, source, warnings}`, where `source` is `setting`, `legacy`, or `absent`.
+It prints `{value, source, warnings}`, where `source` is `setting` or `absent`.

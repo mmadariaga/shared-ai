@@ -6,6 +6,7 @@ const path = require('path');
 const crypto = require('crypto');
 const childProcess = require('child_process');
 const { loadInstallManifest } = require('./install-manifest.js');
+const { runProjectSettingsScreen } = require('./project-settings-screen.js');
 const {
   promptSelect,
   promptChecklist: installFlowPromptChecklist,
@@ -15,7 +16,7 @@ const {
   CHECKLIST_SEPARATOR,
 } = require('./install-flow.js');
 
-const MENU_OPTIONS = Object.freeze(['Customize models', 'Reset to default models', 'Save preset', 'Load preset', 'Exit']);
+const MENU_OPTIONS = Object.freeze(['Customize models', 'Reset to default models', 'Save preset', 'Load preset', 'Project settings', 'Exit']);
 const HARNESS_OPTIONS = Object.freeze(['OpenCode', 'Claude Code']);
 const CANCELLED = Symbol('CANCELLED');
 const SCOPE_OPTIONS = Object.freeze(['All', 'Agents', 'Orchestrators', 'Workers', 'Utilities']);
@@ -1330,6 +1331,10 @@ async function runPostSetupMenuInternal({
         if (action === 'Load preset') {
           mode = 'load-preset';
           screen = 'harness';
+          continue;
+        }
+        if (action === 'Project settings') {
+          await runProjectSettingsScreen({ projectPath, packageRoot, promptChoice, promptInput });
           continue;
         }
         return skippedOutcome('cancelled');
