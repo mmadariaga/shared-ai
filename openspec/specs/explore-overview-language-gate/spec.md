@@ -3,7 +3,9 @@
 ## Purpose
 
 TBD
+
 ## Requirements
+
 ### Requirement: Apply overview-language routing to Plan
 
 The overview-language value SHALL remain conversation-only and SHALL be forwarded through the supervised Plan route only. Build SHALL retain its documented no-op treatment for overview-language selection.
@@ -12,13 +14,13 @@ The overview-language value SHALL remain conversation-only and SHALL be forwarde
 
 - **WHEN** a crystallization route is selected with an overview-language value
 - **THEN** only the Plan route forwards that value to supervised design processing.
+
 ### Requirement: Scope the overview-language gate to supervised Plan activation
 The overview-language gate applies only within `sai-explore`, firing once per crystallized idea or slice set only after deterministic selection confirms a dispatchable change for the displayed `Plan (unattended)` route and before `active_change` is set or the first spec-worker dispatch occurs. It SHALL NOT fire at crystallization emission, mid-run at the spec-to-design transition, on free-form exploration turns, on Manual selection, on the Direct Build (unattended) branch, or when the selection outcome is non-dispatchable (empty set, no uncompleted entry, `Cancel`, or an already-active supervised run); those outcomes end before the gate. No other `sai-*` command is affected.
 
 #### Scenario: Plan activation evaluates the gate
-- **WHEN** deterministic selection confirms a dispatchable change in a supervised Plan (unattended) run without explicit `--overview-lang`, active fast-track, or a stored value
-- **THEN** gate 9 asks exactly once before any spec-worker dispatch
-- **AND** no question ran when the block was emitted at crystallization
+- **WHEN** deterministic selection confirms a dispatchable change in a supervised Plan (unattended) run without explicit `--overview-lang`, a direct user statement, a stored value, an `explore.overviewLanguage` setting, or active fast-track
+- **THEN** gate 9 asks exactly once before any spec-worker dispatch, and no question ran when the block was emitted at crystallization
 
 #### Scenario: exploration and non-Plan selections never fire the gate
 - **WHEN** a turn continues free-form exploration or the user selects Manual or Direct Build (unattended)
@@ -81,17 +83,19 @@ When the overview-language ask fires at a supervised Plan (unattended) activatio
 
 ### Requirement: Preserve explicit and fast-track resolution
 
-An explicit `--overview-lang <language>` value SHALL suppress gate 9 and become the selected conversation-only language. When fast-track is active without that option, the overview language MUST resolve to `None` without asking, including at a supervised Plan (unattended) activation. Fast-track SHALL never turn an absent flag into a generation request and SHALL NOT skip, weaken, or auto-complete any stage; the crystallization language gate keeps its own fast-track behavior.
+An explicit `--overview-lang <language>` value or a direct user statement of the language SHALL suppress gate 9 and become the selected conversation-only language. When fast-track is active without that option, without a resolved value for the same crystallized set, and without an `explore.overviewLanguage` setting, the overview language MUST resolve to `None` without asking, including at a supervised Plan (unattended) activation. A configured `explore.overviewLanguage` SHALL take precedence over the fast-track `None`. Fast-track SHALL never turn an absent flag into a generation request and SHALL NOT skip, weaken, or auto-complete any stage; the crystallization language gate keeps its own fast-track behavior.
 
 #### Scenario: Fast-track at Plan activation without the flag opts out
-- **WHEN** `--fast-track` is active at a supervised Plan (unattended) activation without `--overview-lang`
-- **THEN** gate 9 asks no question
-- **AND** the overview-language value resolves to `None` without overview generation
+- **WHEN** `--fast-track` is active at a supervised Plan (unattended) activation without `--overview-lang` and without an `explore.overviewLanguage` setting
+- **THEN** gate 9 asks no question, and the overview-language value resolves to `None` without overview generation
 
 #### Scenario: Fast-track with an explicit flag opts in
 - **WHEN** `--fast-track` and `--overview-lang spanish` are both active
-- **THEN** gate 9 asks no question
-- **AND** the overview-language value resolves to `spanish`
+- **THEN** gate 9 asks no question, and the overview-language value resolves to `spanish`
+
+#### Scenario: Setting wins over fast-track
+- **WHEN** `--fast-track` is active without `--overview-lang` and `explore.overviewLanguage` is `Español`
+- **THEN** gate 9 asks no question, and the overview-language value resolves to `Español`
 
 #### Scenario: fast-track never bypasses stages
 - **WHEN** `--fast-track` is active
@@ -117,27 +121,27 @@ When the invocation carried an explicit `--overview-lang <language>` option, the
 
 ### Requirement: Keep the selected language chat-scoped
 
-The resolved overview-language value SHALL persist chat-scoped per crystallized idea or slice set and SHALL survive the end of a supervised attempt — including a failed or cancelled one — so that a design-phase retry and a later Plan (unattended) activation over the same set reuse it without asking again. A materially new idea SHALL reset the stored value, and its first eligible Plan (unattended) activation SHALL ask again. Sliced crystallization SHALL resolve the gate once for the whole slice set. Explicit `--overview-lang` suppression remains invocation-scoped. All gate state SHALL remain in conversation only and SHALL NOT be written to a file, artifact, or configuration.
+The resolved overview-language value SHALL persist chat-scoped per crystallized idea or slice set and SHALL survive the end of a supervised attempt — including a failed or cancelled one — so that a design-phase retry and a later Plan (unattended) activation over the same set reuse it without asking again. A materially new idea SHALL reset the stored value, and its first eligible Plan (unattended) activation SHALL ask again. Sliced crystallization SHALL resolve the gate once for the whole slice set. Explicit `--overview-lang` suppression remains invocation-scoped. All gate state SHALL remain in conversation only and SHALL NOT be written to a file, artifact, or configuration. `.sai/settings.jsonc` SHALL be read-only input to the gate.
 
 #### Scenario: re-crystallizing the same idea reuses the value
 - **WHEN** the user re-crystallizes the same idea after gate 9 resolved
-- **THEN** the previous language or `None` decision is reused
-- **AND** gate 9 is not re-asked
+- **THEN** the previous language or `None` decision is reused, and gate 9 is not re-asked
 
 #### Scenario: resolution survives a failed attempt
 - **WHEN** a supervised attempt fails after gate 9 resolved, and a later Plan (unattended) activation selects the same crystallized idea
-- **THEN** the stored value is reused without asking again
-- **AND** its envelope form is reused for any chained design dispatch
+- **THEN** the stored value is reused without asking again, and its envelope form is reused for any chained design dispatch
 
 #### Scenario: A materially new idea resets the value
 - **WHEN** the active idea materially changes and is later crystallized and dispatched
-- **THEN** the prior stored value is discarded
-- **AND** gate 9 asks again at that idea's first eligible Plan (unattended) activation
+- **THEN** the prior stored value is discarded, and gate 9 asks again at that idea's first eligible Plan (unattended) activation
 
 #### Scenario: sliced crystallization resolves once
 - **WHEN** a Plan (unattended) activation covers a slice set crystallized from one idea
-- **THEN** gate 9 resolved once for the whole slice set
-- **AND** the same language or `None` value applies to every slice's dispatch
+- **THEN** gate 9 resolved once for the whole slice set, and the same language or `None` value applies to every slice's dispatch
+
+#### Scenario: a gate answer is not written to the settings
+- **WHEN** the user answers the normal gate 9 question
+- **THEN** the answer stays in the conversation and `.sai/settings.jsonc` is not written
 
 ### Requirement: Decline or non-committal answer falls back to the default policy
 
@@ -179,3 +183,23 @@ The resolved overview-language value is held in conversation-only state without 
 #### Scenario: design-phase retry reuses the stored value
 - **WHEN** a design-phase retry runs after a failed attempt in the same chat over the same crystallized idea
 - **THEN** the retry uses the same one-string envelope including the stored language form without asking gate 9 again
+
+### Requirement: Project setting answers gate 9
+
+At a supervised Plan (unattended) activation, when neither an explicit `--overview-lang`, a direct user statement of the language, nor a value already resolved for the same crystallized idea or slice set answers gate 9, the agent SHALL run `node <tool-path> get explore.overviewLanguage --json --cwd <project-root>` once, before the fast-track rule, resolving `project-settings.js` through the tool-resolution policy. A returned `value` (`English`, `None`, or a language name) SHALL resolve `overview_language` without asking, and the agent SHALL print `Project setting explore.overviewLanguage: <value>` once before the first worker dispatch. A non-zero exit, unparseable output, or `value: null` SHALL count as an absent setting: the agent SHALL print the tool's warnings, or one line naming the failure, and SHALL continue. The setting SHALL NOT be read on Manual, on Direct Build (unattended), or by standalone `/sai-2-design`, and SHALL NOT change the `**Overview language**` block field.
+
+#### Scenario: Setting answers gate 9
+- **WHEN** `explore.overviewLanguage` is `Español` at a Plan (unattended) activation with no explicit override and no resolved value
+- **THEN** the agent prints `Project setting explore.overviewLanguage: Español` once before the first worker dispatch and resolves the overview language to Español without asking
+
+#### Scenario: Setting none opts out
+- **WHEN** `explore.overviewLanguage` is `none`
+- **THEN** gate 9 resolves `None` without asking and no overview is generated
+
+#### Scenario: Explicit flag wins over the setting
+- **WHEN** `--overview-lang english` is active and `explore.overviewLanguage` is `Español`
+- **THEN** the overview language resolves to `english` and no setting notice is printed
+
+#### Scenario: Unavailable setting falls through
+- **WHEN** the settings tool exits non-zero or returns `value: null`
+- **THEN** the agent prints the warnings or one failure line and continues with the fast-track rule or the normal question

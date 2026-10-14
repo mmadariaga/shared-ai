@@ -44,11 +44,11 @@ The crystallization language gate SHALL apply only within `sai-explore`. No othe
 
 ### Requirement: English input skips the gate
 
-When the crystallize turn's dominant natural language is English, the agent SHALL NOT ask the language question and SHALL print the `Ready to Propose` block(s) directly in English.
+When the crystallize turn's dominant natural language is English and no explicit statement or `explore.readyToProposeLanguage` setting answered the gate, the agent SHALL NOT ask the language question and SHALL print the `Ready to Propose` block(s) directly in English.
 
 #### Scenario: English user gets no question
 
-- **WHEN** the user issues an explicit crystallize request while writing in English
+- **WHEN** the user issues an explicit crystallize request while writing in English and no project setting answers the gate
 - **THEN** the agent prints the block(s) in English without asking which language to use
 
 ### Requirement: Non-English input gates crystallization on a language choice
@@ -110,7 +110,7 @@ When a non-English language is chosen, the chosen language SHALL govern the bloc
 
 ### Requirement: Gate persistence tracks the crystallized idea
 
-The gate SHALL fire once per crystallized idea (or slice set). The agent SHALL track the current crystallized idea/slice set in-conversation. WHEN a materially new idea is crystallized, the agent SHALL re-ask the gate before printing its block(s). WHEN the user re-crystallizes the same idea, the agent SHALL reuse the previously chosen language and SHALL NOT re-ask. Persistence is behavioral; the choice and the tracked target SHALL NOT be written to a file or config.
+The gate SHALL fire once per crystallized idea (or slice set). The agent SHALL track the current crystallized idea/slice set in-conversation. WHEN a materially new idea is crystallized, the agent SHALL re-ask the gate before printing its block(s). WHEN the user re-crystallizes the same idea, the agent SHALL reuse the previously chosen language and SHALL NOT re-ask. Persistence is behavioral; the choice and the tracked target SHALL NOT be written to a file or config. The `explore.readyToProposeLanguage` setting in `.sai/settings.jsonc` SHALL be read-only input to the gate, and an answer to the normal question SHALL stay in the conversation.
 
 #### Scenario: re-crystallizing the same idea reuses the language
 
@@ -121,6 +121,11 @@ The gate SHALL fire once per crystallized idea (or slice set). The agent SHALL t
 
 - **WHEN** the user crystallizes an idea materially different from the one most recently crystallized
 - **THEN** the agent re-asks the gate question before printing the new block(s)
+
+#### Scenario: the normal answer is not written to the settings
+
+- **WHEN** the user answers the normal gate question
+- **THEN** the answer stays in the conversation and `.sai/settings.jsonc` is not written
 
 ### Requirement: Decline or non-committal answer falls back to remember.md
 
@@ -181,3 +186,27 @@ Under the crystallization language gate, the `**Out of scope Implementation Deta
 
 - **WHEN** a non-English crystallization language is chosen and a block is emitted
 - **THEN** the `**Out of scope Implementation Details**` label is rendered in English while its `I` statements render in the chosen language with identifiers and order preserved
+
+### Requirement: Project setting answers the crystallization language gate
+
+Once at the crystallization language gate, before the fast-track skip and the English skip, the agent SHALL run `node <tool-path> get explore.readyToProposeLanguage --json --cwd <project-root>`, resolving `project-settings.js` through the tool-resolution policy. The agent SHALL resolve the language in this order: the user's explicit statement of a language for this run, then the returned `value`, then the fast-track value `English`, then the gate's normal question. A returned `value` SHALL answer the gate in every conversation language, English included. When the setting answers, the agent SHALL print `Project setting explore.readyToProposeLanguage: <value>` once before the block and SHALL ask no question. A non-zero exit, unparseable output, or `value: null` SHALL count as an absent setting: the agent SHALL print the tool's warnings, or one line naming the failure, and SHALL continue at the next level. The gate SHALL only read the setting.
+
+#### Scenario: Setting answers a non-English crystallization
+- **WHEN** `explore.readyToProposeLanguage` is `Español` and the user crystallizes in another language without stating a language
+- **THEN** the agent prints `Project setting explore.readyToProposeLanguage: Español` once and emits the block in Español without asking
+
+#### Scenario: Setting applies in an English conversation
+- **WHEN** `explore.readyToProposeLanguage` is `Español` and the user crystallizes in English
+- **THEN** the agent emits the block in Español and asks no question
+
+#### Scenario: Setting wins over fast-track
+- **WHEN** `--fast-track` is active and `explore.readyToProposeLanguage` is `Español`
+- **THEN** the block is emitted in Español instead of English
+
+#### Scenario: Explicit statement wins over the setting
+- **WHEN** the user states a language for this run and `explore.readyToProposeLanguage` names a different language
+- **THEN** the agent uses the stated language and prints no setting notice
+
+#### Scenario: Unavailable setting falls through
+- **WHEN** the settings tool exits non-zero or returns `value: null`
+- **THEN** the agent prints the warnings or one failure line and continues with the fast-track skip, the English skip, or the normal question

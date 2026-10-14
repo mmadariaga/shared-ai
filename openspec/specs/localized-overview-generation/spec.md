@@ -45,7 +45,7 @@ All actual Markdown headings, including complete source Step titles, and structu
 
 Code, public signatures, paths, identifiers, test expressions, commands, state values, source artifact names, result keys, and other technical literals SHALL remain unchanged, including inline code and code blocks. Files Affected wrapper normalization SHALL preserve the entry contents exactly.
 
-Proposal, specs, design, tasks, interfaces, configuration, and other normative artifacts SHALL remain English and SHALL NOT be rewritten by overview generation. Language selection SHALL remain invocation-scoped, with no persisted preference. Existing dispatch selection, five-field result, single-file scope, and re-selection rules SHALL remain unchanged.
+Proposal, specs, design, tasks, interfaces, configuration, and other normative artifacts SHALL remain English and SHALL NOT be rewritten by overview generation. Language selection SHALL remain invocation-scoped, with no persisted preference. A committed, read-only `explore.overviewLanguage` project setting that answers gate 9 at a supervised Plan (unattended) activation SHALL NOT count as a persisted selection; overview generation and the design worker SHALL still read no project setting and SHALL persist no language. Existing dispatch selection, five-field result, single-file scope, and re-selection rules SHALL remain unchanged.
 
 #### Scenario: Normative artifacts remain unchanged
 - **WHEN** overview generation is requested in a language other than English

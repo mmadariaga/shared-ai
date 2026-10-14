@@ -7,7 +7,7 @@ TBD - created by archiving change project-settings-backlog. Update Purpose after
 
 ### Requirement: Read-only project settings reader
 
-`sai/tools/project-settings.js` SHALL be a CommonJS module and CLI that uses only Node built-ins and reads `.sai/settings.jsonc` from the supplied project root. It SHALL be the single source of the setting id catalogue and its validation, and it SHALL NOT write any file. The catalogue SHALL contain exactly `backlog.provider`, `backlog.repository`, `backlog.project`, and `backlog.organization`, where a setting id is the dotted key path inside the file's top-level object.
+`sai/tools/project-settings.js` SHALL be a CommonJS module and CLI that uses only Node built-ins and reads `.sai/settings.jsonc` from the supplied project root. It SHALL be the single source of the setting id catalogue and its validation, and it SHALL NOT write any file. The catalogue SHALL contain exactly `backlog.provider`, `backlog.repository`, `backlog.project`, `backlog.organization`, `explore.readyToProposeLanguage`, and `explore.overviewLanguage`, where a setting id is the dotted key path inside the file's top-level object. A catalogue entry MAY declare a normalization that maps a valid value to the value the reader returns.
 
 #### Scenario: Missing settings file
 - **WHEN** neither `.sai/settings.jsonc` nor `.to-backlog.json` exists in the project root
@@ -16,6 +16,10 @@ TBD - created by archiving change project-settings-backlog. Update Purpose after
 #### Scenario: Nested key resolves to a dotted id
 - **WHEN** the file contains `{"backlog": {"provider": "gitlab"}}` and `gitlab` is a supplied provider id
 - **THEN** the reader returns `backlog.provider` with the value `gitlab` and `source: setting`.
+
+#### Scenario: Nested explore key resolves to a dotted id
+- **WHEN** the file contains `{"explore": {"overviewLanguage": "Español"}}`
+- **THEN** the reader returns `explore.overviewLanguage` with the value `Español` and `source: setting`.
 
 ### Requirement: JSONC parsing
 
@@ -31,7 +35,7 @@ The reader SHALL parse the settings file as JSON after removing line comments, b
 
 ### Requirement: Per-key validation
 
-The reader SHALL skip a key whose value is `"ask"`. It SHALL ignore an id that is not in the catalogue with a warning. It SHALL drop a catalogue value that is not a non-empty string with a warning naming the id, and SHALL drop a `backlog.provider` value that is not among the provider ids supplied by the caller with a warning listing the allowed ids. An invalid or unknown key SHALL NOT affect the other valid keys. The catalogue SHALL hold no copy of the provider list.
+The reader SHALL skip a key whose value is a string that equals `ask` case-insensitively after trimming. It SHALL ignore an id that is not in the catalogue with a warning. It SHALL drop a catalogue value that is not a non-empty string with a warning naming the id, and SHALL drop a `backlog.provider` value that is not among the provider ids supplied by the caller with a warning listing the allowed ids. It SHALL apply each id's own value rules, and SHALL return a valid value through the id's normalization when the catalogue declares one. An invalid or unknown key SHALL NOT affect the other valid keys. The catalogue SHALL hold no copy of the provider list.
 
 #### Scenario: Unknown id and invalid value
 - **WHEN** the file contains a valid `backlog.repository`, an unknown `backlog.type`, and a `backlog.provider` that is not a supplied provider id
@@ -40,6 +44,10 @@ The reader SHALL skip a key whose value is `"ask"`. It SHALL ignore an id that i
 #### Scenario: Ask keeps the normal question
 - **WHEN** `backlog.provider` is `"ask"`
 - **THEN** the reader returns no value for `backlog.provider` and no warning for it.
+
+#### Scenario: Ask matches case-insensitively
+- **WHEN** `explore.readyToProposeLanguage` is `"ASK"`, `explore.overviewLanguage` is `" Ask "`, and `backlog.provider` is `"Ask"`
+- **THEN** the reader returns no value and no warning for each of the three ids, with `source: absent`.
 
 ### Requirement: Legacy `.to-backlog.json` transition
 
@@ -55,7 +63,7 @@ When `.sai/settings.jsonc` is absent and `.to-backlog.json` exists, the reader S
 
 ### Requirement: Single-setting CLI
 
-The CLI `get <id> [--json] [--cwd <root>] [--providers <id,id>]` SHALL print one JSON object `{value, source, warnings}`, where `value` is the validated setting or `null` and `source` is `setting`, `legacy`, or `absent`. An id outside the catalogue or an unknown argument SHALL print an error object and exit with code 2.
+The CLI `get <id> [--json] [--cwd <root>] [--providers <id,id>]` SHALL print one JSON object `{value, source, warnings}`, where `value` is the validated and normalized setting or `null` and `source` is `setting`, `legacy`, or `absent`. An id outside the catalogue or an unknown argument SHALL print an error object and exit with code 2.
 
 #### Scenario: Reading a configured provider
 - **WHEN** `get backlog.provider --json --cwd <root>` runs in a project whose settings file sets `backlog.provider`
@@ -64,6 +72,14 @@ The CLI `get <id> [--json] [--cwd <root>] [--providers <id,id>]` SHALL print one
 #### Scenario: Absent setting
 - **WHEN** `get backlog.project` runs in a project whose settings file has no `backlog.project`
 - **THEN** the CLI prints `value: null` and `source: absent`.
+
+#### Scenario: Reading the explore language ids
+- **WHEN** `get explore.readyToProposeLanguage --json --cwd <root>` and `get explore.overviewLanguage --json --cwd <root>` run in a project that sets them to `english` and `none`
+- **THEN** the CLI prints `English` and `None` with `source: setting` and no warnings.
+
+#### Scenario: Unknown explore id
+- **WHEN** `get explore.itemThree --json --cwd <root>` runs
+- **THEN** the CLI exits with code 2.
 
 ### Requirement: Settings warnings and notices in backlog tool output
 
@@ -80,3 +96,23 @@ The `to-backlog` resolve operation and the `from-next-backlog-item` selection SH
 #### Scenario: Warnings survive a failed resolution
 - **WHEN** the settings file is invalid and the `to-backlog` resolution or the `from-next-backlog-item` selection then fails
 - **THEN** the failed result still carries the settings warnings.
+
+### Requirement: Explore language setting values
+
+The catalogue SHALL include `explore.readyToProposeLanguage` and `explore.overviewLanguage`. Both SHALL accept any non-empty string as a language name, SHALL trim it, and SHALL NOT check it against a list of languages. The values `English` and `none` SHALL match case-insensitively and SHALL be returned as `English` and `None`. In `explore.overviewLanguage`, `none` SHALL resolve to `None`. In `explore.readyToProposeLanguage`, `none` SHALL be an invalid value that is dropped with a warning naming the id. An empty or non-string value SHALL be dropped with a warning for either id.
+
+#### Scenario: Language names and keywords normalize
+- **WHEN** the settings file sets `explore.readyToProposeLanguage` to `" Español "` and `explore.overviewLanguage` to `"NONE"`
+- **THEN** the reader returns `Español` and `None` with `source: setting` and no warnings
+
+#### Scenario: English matches case-insensitively
+- **WHEN** both explore ids are set to a case variant of `english`
+- **THEN** the reader returns `English` for both ids
+
+#### Scenario: none is invalid for the Ready to Propose language
+- **WHEN** `explore.readyToProposeLanguage` is `"none"`
+- **THEN** the reader returns `value: null` and a warning that the setting must name a language
+
+#### Scenario: Empty overview language is invalid
+- **WHEN** `explore.overviewLanguage` is `""`
+- **THEN** the reader returns `value: null` and a warning that the value must be a nonempty string

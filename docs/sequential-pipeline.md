@@ -36,7 +36,7 @@ The on-demand members are also listed in [On-demand commands](on-demand-commands
 
 | Command | What `--fast-track` skips |
 |---------|---------------------------|
-| `/sai-explore` | Skips both language gates (artifact review and crystallization). At a later Plan (unattended) activation, skips the overview-language ask and resolves `overview_language` to `None`. An explicit `--overview-lang` still suppresses the ask in every mode; under Direct Build (unattended) it is a no-op. |
+| `/sai-explore` | Skips both language gates (artifact review and crystallization). At a later Plan (unattended) activation, skips the overview-language ask and resolves `overview_language` to `None`. An explicit `--overview-lang` still suppresses the ask in every mode; under Direct Build (unattended) it is a no-op. A [project setting](project-settings.md) for the crystallization or overview language question answers it before fast-track applies. |
 | `/sai-2-design` | Auto-approves the specs approval gate. |
 | `/sai-3-implement` | Auto-corrects a `sai-2` defect that has exactly one preserving correction path; auto-approves the documentation-area permission ask. Defects in `sai-1` always escalate. |
 | `/sai-4-apply` | Pre-authorizes commits, auto-stays on a non-detached current branch, and approves preserving plan amendments. Pending functional checks are reported at the end. |
