@@ -63,11 +63,12 @@ function perform(receipt, file, io) {
         if (!found || found.title !== item.title || found.body !== item.description) throw new Error('Created issue content could not be verified');
       }
       if (!item.project) {
-        const membership = projectItems(receipt, io);
-        if (!membership.some(node => node.content?.id === item.issue.id)) {
-          adapter().api(io, 'mutation($project:ID!,$issue:ID!){addProjectV2ItemById(input:{projectId:$project,contentId:$issue}){item{id}}}', { project: receipt.proposal.project.id, issue: item.issue.id });
+        const { project } = receipt.proposal;
+        if (!adapter().membership(io, project.id, item.issue.id)) {
+          const added = adapter().api(io, 'mutation($project:ID!,$issue:ID!){addProjectV2ItemById(input:{projectId:$project,contentId:$issue}){item{id}}}', { project: project.id, issue: item.issue.id });
+          // A response without an item id is verified by the issue-side read instead.
+          if (!adapter().verifyMembership(io, project.id, item.issue.id, added.addProjectV2ItemById?.item?.id)) throw new Error('Project membership not verified');
         }
-        if (!projectItems(receipt, io).some(node => node.content?.id === item.issue.id)) throw new Error('Project membership not verified');
         item.project = true; save(file, receipt);
       }
     }
@@ -117,9 +118,6 @@ function perform(receipt, file, io) {
     return recover({ receipt: file }, io);
   } catch (error) { return report(receipt, error.message); }
 }
-function projectItems(receipt, io) {
-  return adapter().pages(cursor => adapter().api(io, 'query($id:ID!,$cursor:String){node(id:$id){... on ProjectV2{items(first:100,after:$cursor){nodes{id content{... on Issue{id}}} pageInfo{hasNextPage endCursor}}}}}', { id: receipt.proposal.project.id, cursor }), data => data.node?.items);
-}
 function subIssues(endpoint, io) {
   const result = [], seen = new Set();
   for (let page = 1; ; page++) {
@@ -165,7 +163,7 @@ function recover(request, io) {
       const expected = receipt.items.every(row => row.issue) ? relationBody(receipt, index) : item.description;
       if (!current || current.title !== item.title || ![item.description, expected, item.previous_relation_body].includes(current.body)) throw new Error('Existing result diverged; no continuation is authorized');
       item.relations = current.body === expected && expected !== item.description;
-      item.project = projectItems(receipt, io).some(node => node.content?.id === item.issue.id);
+      item.project = !!adapter().membership(io, receipt.proposal.project.id, item.issue.id);
       if (index && receipt.proposal.hierarchy === 'native') {
         try { item.hierarchy = subIssues(`repos/${receipt.proposal.repository}/issues/${receipt.items[0].issue.number}/sub_issues`, io).some(issue => issue.html_url === item.issue.url); }
         catch (error) {

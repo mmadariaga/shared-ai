@@ -255,3 +255,47 @@ The helper SHALL create only its unique temporary child and set permissions only
 
 - **WHEN** creation, descriptor access, permission setting, or verification fails
 - **THEN** the helper reports the failure without publishing, deleting receipts, or repairing existing paths.
+
+### Requirement: Direct GitHub Project membership verification
+
+Single-issue creation publication and its recovery SHALL decide Project membership only through direct reads and SHALL NOT read the ProjectV2 `items` connection. The direct item read SHALL read the item returned by `addProjectV2ItemById` and accept it only when its Project is the destination Project and its content is the published issue. The issue-side read SHALL read the issue's Project items across all pages and count only items whose Project is the destination Project, archived items included. A `null` Project items connection SHALL count as no items. Before adding, publication SHALL check membership with the issue-side read, and an issue already in the destination Project, archived or not, SHALL count as verified with no add mutation and no unarchiving. After the add mutation, verification SHALL read immediately and then up to four more times two seconds apart. It SHALL use the direct item read when the response carries an item id, and the issue-side read otherwise. Publication SHALL report complete only after a verified insertion. An exhausted verification SHALL return partial failure with `Project membership not verified`, the insertion left pending, and the created issue preserved.
+
+#### Scenario: Insertion visible on the first read
+
+- **WHEN** the direct item read of the added item returns the destination Project and the published issue on its first read
+- **THEN** publication reports complete without waiting.
+
+#### Scenario: Lagging direct visibility
+
+- **WHEN** the added item becomes visible to the direct read only on a later attempt within five reads
+- **THEN** publication waits two seconds before each repeated read and reports complete.
+
+#### Scenario: Unverified insertion
+
+- **WHEN** none of the five verification reads finds the issue in the destination Project
+- **THEN** publication returns partial failure with `Project membership not verified`, the insertion pending, and the created issue preserved.
+
+#### Scenario: Item of another issue
+
+- **WHEN** the direct item read returns an item whose content is not the published issue
+- **THEN** that read does not count as membership.
+
+#### Scenario: Insertion response without an item id
+
+- **WHEN** the add mutation succeeds without an item id in its response
+- **THEN** publication verifies membership with the issue-side read instead of failing at once.
+
+#### Scenario: Issue already in the Project
+
+- **WHEN** the issue-side read before adding finds an item of the issue in the destination Project, archived or not
+- **THEN** publication counts the issue as verified without sending the add mutation.
+
+#### Scenario: Other Projects and null Project items
+
+- **WHEN** the issue-side read finds only items of other Projects or a `null` Project items connection
+- **THEN** the issue counts as not yet a member of the destination Project.
+
+#### Scenario: Recovery after an unverified insertion
+
+- **WHEN** recovery runs after an unverified insertion and the issue-side read finds the issue in the destination Project
+- **THEN** recovery reports complete without repeating the add mutation or creating another issue.

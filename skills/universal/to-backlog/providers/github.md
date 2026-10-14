@@ -51,6 +51,9 @@ Markdown is preserved as data. It creates one issue, records its id, number and
 URL, then adds it to the verified Project. No labels, assignees, priority,
 estimation, sprint assignment, or Project creation are added.
 
+Membership is verified with direct reads because the Project items index can
+take minutes to reflect changes.
+
 ## Results and recovery operation
 
 - `complete`: verified issue and Project insertion; report both links.
@@ -61,8 +64,8 @@ estimation, sprint assignment, or Project creation are added.
 
 Run `node <tool> recover <registry>` with
 `{"provider":"github","receipt":"<saved path>"}`. Recovery verifies the same
-authenticated identity and destinations and reads all relevant issue and
-Project-item pages. It never creates an issue. If the creation response was
+authenticated identity and destinations and reads all relevant issue pages and
+the issue's Project items. It never creates an issue. If the creation response was
 lost, it reports candidate issues matching approved content and author which
 were absent before the attempt. Show those links and ask the user to verify
 which, if any, belongs to this attempt; a concurrent matching issue is not

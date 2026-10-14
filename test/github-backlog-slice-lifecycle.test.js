@@ -14,11 +14,13 @@ function block(name, dependencies = 'None') {
   return ['## Ready to Propose', ...detector.STRICT_FIELDS.filter(field => !field.optional || field.label === 'Depends on').map(field => `**${field.label}**: ${field.label === 'Change name' ? name : field.label === 'Depends on' ? dependencies : field.inline ? 'None' : '\n- I1: agreed source content'}`), '---'].join('\n');
 }
 function fake({ native = false } = {}) {
-  const state = { native, issues: [], members: new Set(), parents: new Map(), blockers: new Map(), calls: [], fail: null, failNumber: null, failNative: false, lostCreation: false };
+  const state = { native, issues: [], members: new Set(), parents: new Map(), blockers: new Map(), calls: [], fail: null, failNumber: null, failNative: false, lostCreation: false, sleeps: [], reads: new Map(), visibleAfter: 0, noItemId: false, autoAdd: false, archived: false, otherProject: false, nullItems: false };
+  // Direct reads see a member after `visibleAfter` earlier reads of it; the lagging items connection is never read.
+  const seen = id => { if (!state.members.has(id)) return false; state.reads.set(id, (state.reads.get(id) || 0) + 1); return state.reads.get(id) > state.visibleAfter; };
   const page = nodes => ({ nodes, pageInfo: { hasNextPage: false, endCursor: null } });
   const project = { id: 'P', title: 'Project', url: 'https://github.com/users/actor/projects/1', closed: false, viewerCanUpdate: true };
   const repo = { id: 'R', nameWithOwner: 'owner/repo', url: 'https://github.com/owner/repo', visibility: 'PRIVATE', hasIssuesEnabled: true, isArchived: false };
-  const io = { run(command, args, input) {
+  const io = { sleep: ms => state.sleeps.push(ms), run(command, args, input) {
     state.calls.push({ command, args, input });
     if (args[0] !== 'api') return '';
     if (args[1] === 'graphql') {
@@ -29,12 +31,18 @@ function fake({ native = false } = {}) {
       else if (query.includes('createIssue')) {
         const issue = { id: `I${state.issues.length + 1}`, number: state.issues.length + 1, url: `https://github.com/owner/repo/issues/${state.issues.length + 1}`, title: v.title, body: v.body, author: { login: 'actor' }, assignees: [], state: 'OPEN' };
         state.issues.push(issue); data = { createIssue: { issue } };
+        if (state.autoAdd) state.members.add(issue.id);
         if (state.lostCreation) { state.lostCreation = false; throw new Error('lost creation response'); }
       } else if (query.includes('updateIssue')) {
         const issue = state.issues.find(row => row.id === v.id); issue.title = v.title; issue.body = v.body;
         data = { updateIssue: { issue } };
-      } else if (query.includes('addProjectV2ItemById')) { state.members.add(v.issue); data = { addProjectV2ItemById: { item: { id: 'member' } } }; }
-      else if (query.includes('items(first')) data = { node: { items: page([...state.members].map(id => ({ id: `member-${id}`, content: { id } }))) } };
+      } else if (query.includes('addProjectV2ItemById')) { state.members.add(v.issue); data = { addProjectV2ItemById: { item: state.noItemId ? null : { id: `member-${v.issue}` } } }; }
+      else if (query.includes('items(first')) throw new Error('The lagging items connection must not be read');
+      else if (query.includes('on ProjectV2Item{')) { const issue = v.id.replace('member-', ''); data = { node: seen(issue) ? { id: v.id, project: { id: 'P' }, content: { id: issue } } : null }; }
+      else if (query.includes('projectItems(first')) {
+        const own = seen(v.id) ? [{ id: `member-${v.id}`, project: { id: 'P' }, ...(state.archived ? { isArchived: true } : {}) }] : [];
+        data = { node: { projectItems: state.nullItems && !own.length ? null : page(state.otherProject ? [{ id: 'other', project: { id: 'P2' } }, ...own] : own) } };
+      }
       else if (query.includes('issues(first')) data = { repository: { issues: page(state.issues) } };
       else if (query.includes('issueOrPullRequest')) data = { repository: { ...repo, issueOrPullRequest: { __typename: 'Issue', ...state.issues.find(row => row.number === v.number) } } };
       else if (query.includes('comments(first')) data = { repository: { issue: { comments: page([{ id: `C${v.number}`, url: `comment-${v.number}`, body: 'Full comment', author: { login: 'author' } }]) } } };
@@ -140,6 +148,54 @@ test('partial creation has read-only recovery and approved continuation without 
   recovered = github['recover-set']({ receipt: file, identified: { 0: fixture.state.issues[0].url } }, fixture.io);
   assert.equal(github['continue-set']({ receipt: file, confirmation: recovered.continuation }, fixture.io).status, 'complete');
   assert.equal(fixture.state.issues.length, 3);
+});
+const adds = fixture => fixture.state.calls.filter(call => call.input?.includes('addProjectV2ItemById(')).length;
+test('Project membership is verified by direct reads: no wait when visible at once, no items connection', t => {
+  const fixture = fake(); const { result } = publish(t, fixture);
+  assert.equal(result.status, 'complete'); assert.equal(adds(fixture), 3); assert.deepEqual(fixture.state.sleeps, []);
+});
+test('lagging visibility waits two seconds between at most five reads per issue', t => {
+  const fixture = fake(); fixture.state.visibleAfter = 2;
+  const { result } = publish(t, fixture);
+  assert.equal(result.status, 'complete');
+  assert.deepEqual(fixture.state.sleeps, Array(6).fill(2000));
+});
+test('unverified Project membership stops with project pending, then recover-set and continue-set decide by the issue-side read', t => {
+  const fixture = fake(); fixture.state.visibleAfter = 99;
+  const { result, file } = publish(t, fixture);
+  assert.equal(result.status, 'partial_failure'); assert.equal(result.message, 'Project membership not verified');
+  assert.ok(result.pending.includes('project:0')); assert.equal(fixture.state.issues.length, 1);
+  assert.deepEqual(fixture.state.sleeps, Array(4).fill(2000)); assert.equal(adds(fixture), 1);
+  fixture.state.visibleAfter = 0; fixture.state.reads.clear();
+  const recovered = github['recover-set']({ receipt: file }, fixture.io);
+  assert.ok(!recovered.pending.includes('project:0'));
+  assert.equal(github['continue-set']({ receipt: file, confirmation: recovered.continuation }, fixture.io).status, 'complete');
+  assert.equal(fixture.state.issues.length, 3); assert.equal(adds(fixture), 3);
+});
+test('recover-set leaves project pending when the issue-side read sees no item and never repeats the mutation', t => {
+  const fixture = fake(); fixture.state.visibleAfter = 99;
+  const { file } = publish(t, fixture);
+  const recovered = github['recover-set']({ receipt: file }, fixture.io);
+  assert.ok(recovered.pending.includes('project:0')); assert.equal(adds(fixture), 1);
+});
+test('an issue already in the Project, archived or not, counts as member and is never re-added', t => {
+  for (const archived of [false, true]) {
+    const fixture = fake(); fixture.state.autoAdd = true; fixture.state.archived = archived;
+    const { result } = publish(t, fixture);
+    assert.equal(result.status, 'complete'); assert.equal(adds(fixture), 0); assert.deepEqual(fixture.state.sleeps, []);
+  }
+});
+test('only items of the destination Project count, and a null projectItems means no items', t => {
+  for (const option of ['otherProject', 'nullItems']) {
+    const fixture = fake(); fixture.state[option] = true;
+    const { result } = publish(t, fixture);
+    assert.equal(result.status, 'complete', option); assert.equal(adds(fixture), 3, option);
+  }
+});
+test('a mutation response without an item id is verified by the issue-side read', t => {
+  const fixture = fake(); fixture.state.noItemId = true; fixture.state.visibleAfter = 1;
+  const { result } = publish(t, fixture);
+  assert.equal(result.status, 'complete'); assert.deepEqual(fixture.state.sleeps, Array(3).fill(2000));
 });
 test('assignment is isolated, exact-authorized and verified; existing assignment blocks', t => {
   const fixture = fake(); publish(t, fixture);

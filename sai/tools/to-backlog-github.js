@@ -57,6 +57,42 @@ function pages(fetch, connection) {
   } while (true);
 }
 
+// The ProjectV2 `items` connection lags insertions by up to minutes, so
+// membership is only ever read directly: the item itself, or the issue's side.
+const PROJECT_ITEM_QUERY = 'query($id:ID!){node(id:$id){... on ProjectV2Item{id project{id} content{... on Issue{id}}}}}';
+const ISSUE_ITEMS_QUERY = 'query($id:ID!,$cursor:String){node(id:$id){... on Issue{projectItems(first:100,after:$cursor){nodes{id project{id}} pageInfo{hasNextPage endCursor}}}}}';
+const NO_ITEMS = { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } };
+const VERIFICATION_ATTEMPTS = 5;
+const VERIFICATION_INTERVAL_MS = 2000;
+
+// Returns the item that places the issue in the destination Project, or nothing.
+// With an item id: the direct item read, accepted only for this Project and issue.
+// Without: the issue-side read, which counts archived items and only this Project.
+function membership(io, projectId, issueId, itemId) {
+  if (itemId) {
+    const item = api(io, PROJECT_ITEM_QUERY, { id: itemId }).node;
+    return item?.project?.id === projectId && item.content?.id === issueId ? item : undefined;
+  }
+  const nodes = pages(cursor => api(io, ISSUE_ITEMS_QUERY, { id: issueId, cursor }), data => {
+    if (!data.node) return undefined;
+    // The schema made `Issue.projectItems` nullable: null means no items.
+    return data.node.projectItems === null ? NO_ITEMS : data.node.projectItems;
+  });
+  return nodes.find(item => item.project?.id === projectId);
+}
+
+// One immediate read, then up to four more two seconds apart. The wait is
+// synchronous; tests inject `io.sleep` to avoid it.
+function verifyMembership(io, projectId, issueId, itemId) {
+  const sleep = io.sleep || (ms => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms));
+  for (let attempt = 0; attempt < VERIFICATION_ATTEMPTS; attempt++) {
+    if (attempt) sleep(VERIFICATION_INTERVAL_MS);
+    const found = membership(io, projectId, issueId, itemId);
+    if (found) return found;
+  }
+  return undefined;
+}
+
 function repository(value) {
   if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(value || '')) throw new Error('Repository must be owner/name on github.com');
   return value.split('/');
@@ -141,12 +177,12 @@ function insert(receipt, file, io) {
     const current = issues(receipt, io).find(issue => issue.id === receipt.issue.id && issue.url === receipt.issue.url);
     if (!current) throw new Error('Created issue could not be verified');
     if (current.title !== receipt.proposal.title || current.body !== receipt.proposal.description) throw new Error('Issue content changed; fresh review is required before insertion');
-    const items = pages(cursor => api(io, 'query($id:ID!,$cursor:String){node(id:$id){... on ProjectV2{items(first:100,after:$cursor){nodes{id content{... on Issue{id}}} pageInfo{hasNextPage endCursor}}}}}', { id: receipt.proposal.project.id, cursor }), data => data.node?.items);
-    if (!items.some(item => item.content?.id === receipt.issue.id)) {
+    if (!membership(io, receipt.proposal.project.id, receipt.issue.id)) {
       receipt.stage = 'insertion_pending';
       save(file, receipt);
       const data = api(io, 'mutation($project:ID!,$issue:ID!){addProjectV2ItemById(input:{projectId:$project,contentId:$issue}){item{id}}}', { project: receipt.proposal.project.id, issue: receipt.issue.id });
-      if (!data.addProjectV2ItemById?.item?.id) throw new Error('Project insertion response is incomplete; verify before retrying');
+      // A response without an item id is verified by the issue-side read instead.
+      if (!verifyMembership(io, receipt.proposal.project.id, receipt.issue.id, data.addProjectV2ItemById?.item?.id)) throw new Error('Project membership not verified');
     }
     receipt.stage = 'complete';
     save(file, receipt);
@@ -289,7 +325,7 @@ function lookupSlice(request, io) {
   });
   return { status: candidates.length === 1 ? 'complete' : 'needs_input', candidates };
 }
-module.exports = { query, publish, recover, pages, inspect, digest, receiptPath, save, api, 'read-update': readUpdate, 'query-update': queryUpdate, update, 'recover-update': recoverUpdate,
+module.exports = { query, publish, recover, pages, membership, verifyMembership, inspect, digest, receiptPath, save, api, 'read-update': readUpdate, 'query-update': queryUpdate, update, 'recover-update': recoverUpdate,
   'lookup-slice': lookupSlice,
   'query-set': set.query, 'publish-set': set.publish, 'recover-set': set.recover, 'continue-set': set.continueSet,
   'inspect-assignment': assignment.inspect, 'propose-assignment': assignment.propose, assign: assignment.assign, 'verify-assignment': assignment.verify };
