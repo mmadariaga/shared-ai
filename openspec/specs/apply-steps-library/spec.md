@@ -23,11 +23,11 @@ The apply command SHALL provide a step instruction library under `sai/commands/a
 
 ### Requirement: Routing decisions remain exhaustive and exclusive
 
-The five routing files SHALL preserve the five exclusive routing conditions and outcomes verbatim from the original decision tree: each Step routes to exactly one of GREEN direct, RED green-exception (test-only), STOP (missing contract), split-flow (RED to GREEN), or RED green-exception (production-free). The condition-to-file mapping in `runner.md` SHALL remain a closed table with no fall-back to a default dispatch.
+The five routing files SHALL preserve the five exclusive routing conditions and outcomes verbatim from the original decision tree: each Step routes to exactly one of GREEN direct, RED green-exception (test-only), STOP (missing contract), split-flow (RED to GREEN), or RED green-exception (production-free). The mode-to-file mapping SHALL stay closed with no fall-back to a default dispatch. The mode that `apply-step.js route` computes names exactly one file, `sai/commands/apply/steps/routing-<mode>.md`. `apply-standalone@1` returns that file, or the degraded-store fallback derives it from the same pattern. `runner.md` SHALL NOT carry a copy of the condition-to-file table.
 
 #### Scenario: Routing table maps conditions to files
 - **WHEN** the coordinator selects a routing mode
-- **THEN** the routing table in `runner.md` directs it to the corresponding step file with the exact condition preserved.
+- **THEN** the mode returned by `apply-step.js route` names the corresponding `routing-<mode>.md` step file with the exact condition preserved
 
 #### Scenario: All five modes are covered
 - **WHEN** a Step's RED block, production files, and contract availability are evaluated

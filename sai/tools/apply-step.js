@@ -18,8 +18,11 @@
  *   baseline  Capture immutable initial file/index state outside the repository. A dirty path
  *            whose fingerprint matches an unclosed Step's attempt receipt is recorded as that
  *            Step's own file.
- *   dispatch-check Refuse initially dirty foreign paths in the Step scope, returning the two
- *            exits; capture a dispatch checkpoint.
+ *   route     The Step Routing Tree mode of one Step, computed from implementation.md,
+ *            interfaces.md and tasks.md; the coordinator emits it to apply-standalone@1 unchanged.
+ *   dispatch-check Refuse a dispatch kind the Step's mode does not accept (`dispatch-mode-mismatch`,
+ *            returning the mode) and initially dirty foreign paths in the Step scope, returning the
+ *            two exits; capture a dispatch checkpoint.
  *   checkpoint-plan Coordinator-only receipt for authorized plan bookkeeping and for amendments
  *            of tasks.md, interfaces.md, proposal.md, design.md; pass it to verify and close
  *            as --plan-checkpoint. An amendment is accepted only through that receipt; close
@@ -478,6 +481,15 @@ function preflight(opts) {
   return { ok: errors.length === 0, steps, errors, semantic_coverage: 'agent-reviewed, not guaranteed by preflight' };
 }
 
+/**
+ * The one test/support path recognizer: a test directory (`test`, `tests`, `__tests__`, `fixtures`,
+ * `test-support`, `*Tests`, `*.Tests`) or a test file name (`*.test.*`, `*.spec.*`, `*_test.*`, `test_*.py`).
+ * It validates `Existing tests to update` and decides which Step files are production files.
+ */
+function isTestPath(p) {
+  return /(?:^|\/)(?:tests?|__tests__|fixtures|test-support)\/|\.(?:test|spec)\.|_test\.|(?:^|\/)test_[^/]*\.py$/i.test(p) || /(?:^|\/)[^/]*Tests\//.test(p);
+}
+
 function existingTestEntries(text) {
   if (/Existing tests to update:\*\*\s*None\b/.test(text)) return [];
   const tokens = [...text.matchAll(/`([^`]+)`/g)].filter((m) => looksLikePath(m[1]));
@@ -486,7 +498,7 @@ function existingTestEntries(text) {
     const p = norm(m[1]);
     const tail = text.slice(m.index + m[0].length, tokens[i + 1]?.index ?? text.length);
     const mode = tail.match(/^\s*(?:\(\s*`?(compile|runtime)`?\s*\)|[—:,-]\s*`?(compile|runtime)`?\b)/);
-    if (!safePath(p) || !/(?:^|\/)(?:tests?|__tests__|fixtures|test-support)\/|\.(?:test|spec)\./i.test(p)) return { error: `not a recognized test/support path: ${p}` };
+    if (!safePath(p) || !isTestPath(p)) return { error: `not a recognized test/support path: ${p}` };
     if (!mode) return { error: `missing or invalid compile|runtime mode: ${p}` };
     return { path: p, mode: mode[1] || mode[2] };
   });
@@ -677,13 +689,49 @@ function delta(before, after) {
     .filter((p) => (before.contents[p] ?? null) !== (after.contents[p] ?? null) || (before.staged[p] ?? null) !== (after.staged[p] ?? null));
 }
 
+/** The Step Routing Tree's five modes, each with the dispatch kinds it accepts. */
+const MODE_DISPATCHES = Object.freeze({
+  'split-flow': ['red', 'green'],
+  // `red` is the recovery fresh-RED dispatch on a GREEN-only Step (steps/recovery.md).
+  'green-direct': ['green-direct', 'red'],
+  'green-exception-test-only': ['green-exception'],
+  'green-exception-no-production': ['green-exception'],
+  'stop-missing-contract': [],
+});
+
+/**
+ * The single home of the Step Routing Tree. Reads `implementation.md`, `interfaces.md` and `tasks.md`
+ * as they are on disk and returns `{mode, info, files}` for the Step.
+ *
+ * - RED block: the Step's `#### Step N:` section carries a `##### RED phase`.
+ * - Contract: `interfaces.md` has exactly one `## Step N` heading for the Step.
+ * - Production file in scope: any path in the Step's instruction paths or in `tasks.md` Files
+ *   Affected that `isTestPath` does not recognize.
+ */
+function classifyStep(opts) {
+  const dir = changeDir(opts.cwd, opts.change);
+  const plan = readIfExists(path.join(dir, 'implementation.md'));
+  if (plan === null) throw new ToolError(`Step ${opts.step}: implementation.md is missing`);
+  const info = parseStep(plan, opts.step);
+  if (!info) throw new ToolError(`Step ${opts.step}: no "#### Step ${opts.step}:" heading in implementation.md`);
+  const files = resolveGenerated(opts.cwd, parseFilesAffected(readIfExists(path.join(dir, 'tasks.md')), opts.step));
+  const production = unique([...info.instructionPaths, ...(files ? files.declared : [])]).some((p) => !isTestPath(p));
+  let mode;
+  if (!info.hasRedBlock) mode = production ? 'green-direct' : 'green-exception-test-only';
+  else {
+    const headings = (readIfExists(path.join(dir, 'interfaces.md')) || '').split('\n').filter((l) => new RegExp(`^##\\s+Step ${opts.step}(?!\\d)`).test(l));
+    if (headings.length !== 1) mode = 'stop-missing-contract';
+    else mode = production ? 'split-flow' : 'green-exception-no-production';
+  }
+  return { mode, info, files };
+}
+
 function dispatchCheck(opts) {
   const base = loadRecord(opts.baseline, opts, 'baseline');
   const current = executionState(opts);
   if (current.preservationErrors.length || current.planningErrors.length) return { ok: false, conflicts: unique([...current.preservationErrors, ...current.planningErrors]), checkpoint: null };
-  const info = parseStep(readIfExists(path.join(changeDir(opts.cwd, opts.change), 'implementation.md')) || '', opts.step);
-  if (!info) throw new ToolError('Step not found');
-  const files = resolveGenerated(opts.cwd, parseFilesAffected(readIfExists(path.join(changeDir(opts.cwd, opts.change), 'tasks.md')), opts.step));
+  const { mode, info, files } = classifyStep(opts);
+  if (!MODE_DISPATCHES[mode].includes(opts.dispatch)) return { ok: false, reason: 'dispatch-mode-mismatch', mode, checkpoint: null };
   const allowed = allowedFor(opts.dispatch, info, files);
   if (!allowed.every(safePath)) throw new ToolError('unsafe dispatch scope');
   const conflicts = scopeConflicts(allowed, files, foreignDirty(base, opts.step));
@@ -1382,7 +1430,8 @@ function usage() {
     'Usage:',
     '  node sai/tools/apply-step.js preflight --change <name> [--cwd <dir>] [--json]',
     '  node sai/tools/apply-step.js baseline --change <name> --run-id <stable-id> [--cwd <dir>] (exact planning input paths on stdin; `amended: <path>` marks a run-start plan amendment)',
-    '  node sai/tools/apply-step.js dispatch-check --change <name> --step <N> --dispatch <kind> --baseline <ref>',
+    '  node sai/tools/apply-step.js route --change <name> --step <N> [--cwd <dir>] [--json] (the Step Routing Tree mode for the Step: split-flow|green-direct|green-exception-test-only|green-exception-no-production|stop-missing-contract)',
+    '  node sai/tools/apply-step.js dispatch-check --change <name> --step <N> --dispatch <kind> --baseline <ref> (refuses with reason dispatch-mode-mismatch and the Step mode when the mode does not accept the kind)',
     '  node sai/tools/apply-step.js inspect --change <name> --baseline <ref> [--step <N>] (--step adds next_dispatch: whether a new run could dispatch that Step)',
     '  node sai/tools/apply-step.js checkpoint-plan --change <name> --baseline <ref> [--settled <ref>] (coordinator only, after authorized plan bookkeeping or plan amendment; returns plan_checkpoint and the registers list)',
     '  node sai/tools/apply-step.js restore-unrelated-index --change <name> --baseline <ref> (coordinator only, after guard remediation)',
@@ -1445,7 +1494,7 @@ function main(argv) {
     return opts.help ? 0 : 2;
   }
   try {
-    if (!['verify', 'close', 'preflight', 'baseline', 'dispatch-check', 'inspect', 'restore-unrelated-index', 'checkpoint-plan'].includes(opts.command)) throw new ToolError(`unknown sub-command: ${opts.command}`);
+    if (!['verify', 'close', 'preflight', 'baseline', 'dispatch-check', 'inspect', 'restore-unrelated-index', 'checkpoint-plan', 'route'].includes(opts.command)) throw new ToolError(`unknown sub-command: ${opts.command}`);
     if (!opts.change) throw new ToolError('--change is required');
     if (!safePath(opts.change) || opts.change.includes('/')) throw new ToolError('invalid change name');
     if (!['preflight', 'baseline', 'inspect', 'restore-unrelated-index', 'checkpoint-plan'].includes(opts.command) && (!opts.step || !/^[1-9]\d*$/.test(opts.step))) throw new ToolError('--step must be a positive integer');
@@ -1465,6 +1514,12 @@ function main(argv) {
     }
     if (opts.guardBase && opts.guardBase !== guard.N_A && !guard.SHA_RE.test(opts.guardBase)) {
       throw new ToolError('--guard-base must be a git SHA or n/a');
+    }
+    if (opts.command === 'route') {
+      const { mode } = classifyStep(opts);
+      process.stdout.write(`${JSON.stringify({ step: String(opts.step), mode }, null, 2)}
+`);
+      return 0;
     }
     const stdin = readStdin();
     if (opts.command === 'checkpoint-plan') {
@@ -1520,6 +1575,8 @@ module.exports = {
   preflight,
   baseline,
   dispatchCheck,
+  classifyStep,
+  isTestPath,
   attemptReceiptFile,
   generatedEntry,
   resolveGenerated,

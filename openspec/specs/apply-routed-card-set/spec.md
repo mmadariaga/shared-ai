@@ -61,18 +61,17 @@ The contract suite SHALL verify parity across Claude Code and opencode for the r
 
 ### Requirement: apply-card-set-is-routed
 
-The `sai/commands/apply/` folder SHALL contain the routed card set: `coordinator.md`, `runner.md`, `invocation.md`, the RED and GREEN worker contracts, and `worker-common.md`, the rules both workers share (the runner reads its report contract). The utility `body.md` surface SHALL be retired and SHALL NOT be selected by any boot adapter. The active `runner.md` SHALL carry the Step loop directly — the routing table, dispatch plan selection, report validation, checkbox marking, appendices, and the per-Step commit gate (pre-commit file visibility report and STOP & COMMIT checklist). The coordinator SHALL carry verification, scratch sweeps, and recovery. Each routing mode's rules SHALL live in its `steps/routing-*.md` file, and the Final sweep, once-per-run learnings promotion, and terminal documentation commit SHALL live in `steps/terminal-lifecycle.md`, each loaded only when the machine's pointer names it.
+The `sai/commands/apply/` folder SHALL contain the routed card set: `coordinator.md`, `runner.md`, `invocation.md`, the RED and GREEN worker contracts, and `worker-common.md`, the rules both workers share (the runner reads its report contract). The utility `body.md` surface SHALL be retired and SHALL NOT be selected by any boot adapter. The active `runner.md` SHALL carry the Step loop directly — the Step Routing Tree instruction to emit the mode `apply-step.js route` returns, dispatch plan selection, report validation, checkbox marking, appendices, and the per-Step commit gate (pre-commit file visibility report and STOP & COMMIT checklist). The coordinator SHALL carry verification, scratch sweeps, and recovery. Each routing mode's rules SHALL live in its `steps/routing-*.md` file, and the Final sweep, once-per-run learnings promotion, and terminal documentation commit SHALL live in `steps/terminal-lifecycle.md`, each loaded only when the machine's pointer names it.
 
 #### Scenario: apply folder holds the routed surfaces
 
 - **WHEN** the routed card set is implemented
-- **THEN** `sai/commands/apply/` contains `coordinator.md`, `runner.md`, `invocation.md`, `worker-common.md`, and the RED/GREEN worker contracts
-- **AND** `body.md` no longer exists in the apply folder
+- **THEN** `sai/commands/apply/` contains `coordinator.md`, `runner.md`, `invocation.md`, `worker-common.md`, and the RED/GREEN worker contracts, and `body.md` no longer exists in the apply folder
 
 #### Scenario: runner.md carries the complete loop contract
 
 - **WHEN** a maintainer reads `sai/commands/apply/runner.md` after this change lands
-- **THEN** it contains the ordered Step loop, the routing table naming each mode's step file as a plain path, and the per-Step commit gate, and its Step loop hands off to `steps/terminal-lifecycle.md` for the final sweep, promotion pass, terminal documentation commit, and print cluster
+- **THEN** it contains the ordered Step loop, the Step Routing Tree instruction to emit the `apply-step.js route` mode with no condition-to-file table, and the per-Step commit gate, and its Step loop hands off to `steps/terminal-lifecycle.md` for the final sweep, promotion pass, terminal documentation commit, and print cluster
 
 #### Scenario: boot adapter never selects apply body.md
 

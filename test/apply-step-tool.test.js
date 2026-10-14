@@ -116,7 +116,13 @@ M test/legacy.test.js
 A src/other.js
 `;
 
-function makeRepo({ tasks = true } = {}) {
+// A Step whose every file is a test/support file routes to green-exception-no-production, the mode that accepts the whole-Step `green-exception` dispatch.
+const PLAN_X = PLAN.replaceAll('src/feature.js', 'test/support/feature.js');
+const TASKS_X = TASKS.replaceAll('src/feature.js', 'test/support/feature.js');
+
+const INTERFACES ='## Step 1: Add feature\n\nexact contract\n';
+
+function makeRepo({ tasks = true, exception = false } = {}) {
   const parent = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'sai-apply-step-'));
   const repo = path.join(parent, 'demo');
   fs.mkdirSync(repo);
@@ -127,8 +133,9 @@ function makeRepo({ tasks = true } = {}) {
   fs.writeFileSync(path.join(repo, 'test', 'legacy.test.js'), "require('node:test')('x', () => {});\n");
   const dir = path.join(repo, 'openspec', 'changes', 'demo');
   fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(path.join(dir, 'implementation.md'), PLAN);
-  if (tasks) fs.writeFileSync(path.join(dir, 'tasks.md'), TASKS);
+  fs.writeFileSync(path.join(dir, 'implementation.md'), exception ? PLAN_X : PLAN);
+  if (tasks) fs.writeFileSync(path.join(dir, 'tasks.md'), exception ? TASKS_X : TASKS);
+  fs.writeFileSync(path.join(dir, 'interfaces.md'), INTERFACES);
   git(['add', '.'], repo);
   git(['commit', '-m', 'chore: initial'], repo);
   const captured = tool(['baseline', '--change', 'demo'], repo);
@@ -137,12 +144,12 @@ function makeRepo({ tasks = true } = {}) {
   return { parent, repo, planPath: path.join(dir, 'implementation.md') };
 }
 
-function writeFeature(repo, { passing }) {
-  fs.mkdirSync(path.join(repo, 'src'), { recursive: true });
-  fs.writeFileSync(path.join(repo, 'src', 'feature.js'), 'module.exports = 1;\n');
+function writeFeature(repo, { passing, dir = 'src' }) {
+  fs.mkdirSync(path.join(repo, dir), { recursive: true });
+  fs.writeFileSync(path.join(repo, dir, 'feature.js'), 'module.exports = 1;\n');
   fs.writeFileSync(
     path.join(repo, 'test', 'feature.test.js'),
-    `const { test } = require('node:test');\nconst assert = require('node:assert');\ntest('f', () => { assert.strictEqual(require('../src/feature'), ${passing ? 1 : 2}); });\n`,
+    `const { test } = require('node:test');\nconst assert = require('node:assert');\ntest('f', () => { assert.strictEqual(require('../${dir}/feature'), ${passing ? 1 : 2}); });\n`,
   );
 }
 
@@ -237,6 +244,7 @@ test('verify green: runs Automated commands and returns free-text items as unjud
 });
 
 const ADD = 'src/feature.js\ntest/feature.test.js\ntest/legacy.test.js\n';
+const ADD_X = 'test/support/feature.js\ntest/feature.test.js\ntest/legacy.test.js\n';
 const MSG = 'feat: add feature\n\nBody.\n';
 
 function closeInput(add, msg) {
@@ -547,7 +555,7 @@ test('preflight checks RED carry-through of existing tests and fixtures', () => 
 });
 
 test('unchanged unrelated staged and unstaged work is shown, preserved and excluded from commit', () => {
-  const { parent, repo } = makeRepo();
+  const { parent, repo } = makeRepo({ exception: true });
   try {
     fs.writeFileSync(path.join(repo, 'notes.txt'), 'staged\n');
     git(['add', 'notes.txt'], repo);
@@ -555,12 +563,12 @@ test('unchanged unrelated staged and unstaged work is shown, preserved and exclu
     const index = git(['ls-files', '--stage', 'notes.txt'], repo);
     replaceBaseline(repo);
     const cp = checkpoint(repo, 'green-exception');
-    writeFeature(repo, { passing: true });
+    writeFeature(repo, { passing: true, dir: 'test/support' });
     fs.appendFileSync(path.join(repo, 'test', 'legacy.test.js'), '// edit\n');
-    const verified = tool(['verify', '--change', 'demo', '--step', '1', '--dispatch', 'green-exception', '--checkpoint', cp], repo, ADD);
+    const verified = tool(['verify', '--change', 'demo', '--step', '1', '--dispatch', 'green-exception', '--checkpoint', cp], repo, ADD_X);
     assert.equal(verified.payload.ok, true, JSON.stringify(verified.payload));
     assert.deepEqual(verified.payload.unrelated, ['notes.txt']);
-    const out = tool(['close', '--change', 'demo', '--step', '1'], repo, closeInput(ADD, MSG));
+    const out = tool(['close', '--change', 'demo', '--step', '1'], repo, closeInput(ADD_X, MSG));
     assert.equal(out.payload.committed, true, JSON.stringify(out.payload));
     assert.equal(out.payload.status_letter, 'WARN');
     assert.match(out.payload.report_text, /Will NOT be committed:\n  notes.txt/);
@@ -572,7 +580,7 @@ test('unchanged unrelated staged and unstaged work is shown, preserved and exclu
 });
 
 test('a learnings file modified at run start and rewritten during the run is coordinator-owned, never preserved work or Step work', () => {
-  const { parent, repo } = makeRepo();
+  const { parent, repo } = makeRepo({ exception: true });
   try {
     const learnings = path.join(repo, 'SAI_LEARNINGS.md');
     fs.writeFileSync(learnings, '# SAI Learnings\n');
@@ -581,10 +589,10 @@ test('a learnings file modified at run start and rewritten during the run is coo
     fs.appendFileSync(learnings, 'promoted by an earlier stopped run\n');
     replaceBaseline(repo);
     const cp = checkpoint(repo, 'green-exception');
-    writeFeature(repo, { passing: true });
+    writeFeature(repo, { passing: true, dir: 'test/support' });
     fs.appendFileSync(path.join(repo, 'test', 'legacy.test.js'), '// edit\n');
     fs.appendFileSync(learnings, 'promoted by this run\n');
-    const verified = tool(['verify', '--change', 'demo', '--step', '1', '--dispatch', 'green-exception', '--checkpoint', cp], repo, ADD);
+    const verified = tool(['verify', '--change', 'demo', '--step', '1', '--dispatch', 'green-exception', '--checkpoint', cp], repo, ADD_X);
     assert.equal(verified.payload.ok, true, JSON.stringify(verified.payload));
     assert.deepEqual(verified.payload.preservation_errors, []);
     assert.deepEqual(verified.payload.unreported, []);
@@ -594,7 +602,7 @@ test('a learnings file modified at run start and rewritten during the run is coo
     assert.deepEqual(inspected.payload.preservation_errors, []);
     assert.equal(inspected.payload.changed.includes('SAI_LEARNINGS.md'), false);
     assert.equal(inspected.payload.protected.includes('SAI_LEARNINGS.md'), false);
-    const out = tool(['close', '--change', 'demo', '--step', '1'], repo, closeInput(ADD, MSG));
+    const out = tool(['close', '--change', 'demo', '--step', '1'], repo, closeInput(ADD_X, MSG));
     assert.equal(out.payload.committed, true, JSON.stringify(out.payload));
     assert.doesNotMatch(git(['show', '--name-only', '--pretty=format:', 'HEAD'], repo), /SAI_LEARNINGS/);
     assert.match(git(['status', '--porcelain'], repo), / M SAI_LEARNINGS\.md/);
@@ -604,7 +612,7 @@ test('a learnings file modified at run start and rewritten during the run is coo
 });
 
 test('initial dirty Step path stops before dispatch, even when its path is authorized', () => {
-  const { parent, repo } = makeRepo();
+  const { parent, repo } = makeRepo({ exception: true });
   try {
     fs.appendFileSync(path.join(repo, 'test', 'legacy.test.js'), '// unrelated\n');
     replaceBaseline(repo);
@@ -1069,17 +1077,17 @@ test('a registered removal of a declared file that did not change lets the Step 
 });
 
 test('an omitted production file passes verify once its amendment is registered, and a later edit is an error again', () => {
-  const { parent, repo } = makeRepo();
+  const { parent, repo } = makeRepo({ exception: true });
   try {
-    writeFeature(repo, { passing: true });
+    writeFeature(repo, { passing: true, dir: 'test/support' });
     const cp = checkpoint(repo, 'green-exception');
-    fs.writeFileSync(path.join(repo, 'src', 'omitted.js'), 'module.exports = 3;\n');
-    const add = 'src/omitted.js\ntest/legacy.test.js\n';
+    fs.writeFileSync(path.join(repo, 'test', 'support', 'omitted.js'), 'module.exports = 3;\n');
+    const add = 'test/support/omitted.js\ntest/legacy.test.js\n';
     fs.appendFileSync(path.join(repo, 'test', 'legacy.test.js'), '// edit\n');
     const before = tool(['verify', '--change', 'demo', '--step', '1', '--dispatch', 'green-exception', '--checkpoint', cp], repo, add);
     assert.equal(before.payload.ok, false);
-    assert.deepEqual(before.payload.out_of_allowed, ['src/omitted.js']);
-    fs.writeFileSync(tasksPathOf(repo), TASKS.replace('A src/feature.js', 'A src/feature.js\nA src/omitted.js'));
+    assert.deepEqual(before.payload.out_of_allowed, ['test/support/omitted.js']);
+    fs.writeFileSync(tasksPathOf(repo), TASKS_X.replace('A test/support/feature.js', 'A test/support/feature.js\nA test/support/omitted.js'));
     const receipt = tool(['checkpoint-plan', '--change', 'demo'], repo);
     const args = ['verify', '--change', 'demo', '--step', '1', '--dispatch', 'green-exception', '--checkpoint', cp, '--plan-checkpoint', receipt.payload.plan_checkpoint];
     const after = tool(args, repo, add);
@@ -1443,19 +1451,19 @@ test('E9: a new run takes receipt-matching dirty files as the Step\'s own and di
 });
 
 test('E10: the receipt covers unplanned files, and the new run verifies them as Step work, not unrelated work', () => {
-  const { parent, repo } = makeRepo();
+  const { parent, repo } = makeRepo({ exception: true });
   try {
     const cp = checkpoint(repo, 'green-exception');
-    writeFeature(repo, { passing: true });
+    writeFeature(repo, { passing: true, dir: 'test/support' });
     fs.appendFileSync(path.join(repo, 'test', 'legacy.test.js'), '// edit\n');
-    fs.writeFileSync(path.join(repo, 'src', 'extra.js'), 'extra\n');
-    const first = tool(['verify', '--change', 'demo', '--step', '1', '--dispatch', 'green-exception', '--checkpoint', cp], repo, `${ADD}src/extra.js\n`);
-    assert.deepEqual(first.payload.out_of_allowed, ['src/extra.js']);
+    fs.writeFileSync(path.join(repo, 'test', 'support', 'extra.js'), 'extra\n');
+    const first = tool(['verify', '--change', 'demo', '--step', '1', '--dispatch', 'green-exception', '--checkpoint', cp], repo, `${ADD_X}test/support/extra.js\n`);
+    assert.deepEqual(first.payload.out_of_allowed, ['test/support/extra.js']);
 
-    assert.deepEqual(Object.keys(newRun(repo).own).sort(), ['src/extra.js', 'src/feature.js', 'test/feature.test.js', 'test/legacy.test.js']);
+    assert.deepEqual(Object.keys(newRun(repo).own).sort(), ['test/feature.test.js', 'test/legacy.test.js', 'test/support/extra.js', 'test/support/feature.js']);
     const second = tool(['verify', '--change', 'demo', '--step', '1', '--dispatch', 'green-exception', '--checkpoint', checkpoint(repo, 'green-exception')], repo);
     assert.deepEqual(second.payload.unrelated, []);
-    assert.deepEqual(second.payload.out_of_allowed, ['src/extra.js']);
+    assert.deepEqual(second.payload.out_of_allowed, ['test/support/extra.js']);
     assert.deepEqual(second.payload.preservation_errors, []);
     // The refreshed receipt still covers the own files this dispatch did not rewrite.
     assert.equal(Object.keys(newRun(repo).own).length, 4);
@@ -1464,19 +1472,19 @@ test('E10: the receipt covers unplanned files, and the new run verifies them as 
 
 test('E11: own files commit with the Step in the new run, and both close paths discard the receipt', () => {
   for (const markOnly of [false, true]) {
-    const { parent, repo } = makeRepo();
+    const { parent, repo } = makeRepo({ exception: true });
     try {
       const cp = checkpoint(repo, 'green-exception');
-      writeFeature(repo, { passing: true });
+      writeFeature(repo, { passing: true, dir: 'test/support' });
       fs.appendFileSync(path.join(repo, 'test', 'legacy.test.js'), '// edit\n');
-      assert.equal(tool(['verify', '--change', 'demo', '--step', '1', '--dispatch', 'green-exception', '--checkpoint', cp], repo, ADD).payload.ok, true);
+      assert.equal(tool(['verify', '--change', 'demo', '--step', '1', '--dispatch', 'green-exception', '--checkpoint', cp], repo, ADD_X).payload.ok, true);
       newRun(repo);
-      const dry = tool(['close', '--change', 'demo', '--step', '1', '--dry-run'], repo, closeInput(ADD, MSG));
+      const dry = tool(['close', '--change', 'demo', '--step', '1', '--dry-run'], repo, closeInput(ADD_X, MSG));
       assert.equal(dry.payload.status_letter, 'OK', dry.payload.report_text);
       assert.equal(fs.existsSync(receiptOf(repo)), true, 'a dry run keeps the receipt');
       const out = markOnly
         ? tool(['close', '--change', 'demo', '--step', '1', '--mark-only'], repo)
-        : tool(['close', '--change', 'demo', '--step', '1'], repo, closeInput(ADD, MSG));
+        : tool(['close', '--change', 'demo', '--step', '1'], repo, closeInput(ADD_X, MSG));
       assert.equal(out.status, 0, JSON.stringify(out.payload));
       assert.equal(out.payload.committed, !markOnly, JSON.stringify(out.payload));
       assert.equal(fs.existsSync(receiptOf(repo)), false);
@@ -1524,4 +1532,98 @@ test('the stop report and the dispatch refusal take the retry state from the too
   assert.match(read('sai/commands/apply/coordinator.md'), /`conflicts` and the two `exits`/);
   assert.match(read('sai/policies/implementation-closing-report.md'), /`next_dispatch`[\s\S]{0,400}only source of this fact/);
   assert.match(read('sai/commands/apply/runner.md'), /own files from the baseline's `own`/);
+});
+
+function interfacesPathOf(repo) {
+  return path.join(path.dirname(tasksPathOf(repo)), 'interfaces.md');
+}
+
+function routeOf(repo, step) {
+  const out = tool(['route', '--change', 'demo', '--step', String(step)], repo);
+  assert.equal(out.status, 0, out.stderr);
+  return out.payload;
+}
+
+test('route computes the Step Routing Tree mode from the plan on disk', () => {
+  const { parent, repo, planPath } = makeRepo();
+  try {
+    assert.equal(routeOf(repo, 1).mode, 'split-flow');
+    assert.equal(routeOf(repo, 2).mode, 'green-direct');
+    assert.equal(routeOf(repo, 2).step, '2');
+    // Without a RED block, a Step whose files are all test/support files is test-only.
+    fs.writeFileSync(planPath, PLAN.replace('- [ ] Do the thing at `src/other.js`', '- [ ] Do the thing at `test/other.test.js`'));
+    fs.writeFileSync(tasksPathOf(repo), TASKS.replace('A src/other.js', 'A test/other.test.js'));
+    assert.equal(routeOf(repo, 2).mode, 'green-exception-test-only');
+  } finally { cleanup(parent); }
+});
+
+test('route yields green-exception-no-production for a RED Step with a contract and only test files', () => {
+  const { parent, repo } = makeRepo({ exception: true });
+  try {
+    assert.equal(routeOf(repo, 1).mode, 'green-exception-no-production');
+  } finally { cleanup(parent); }
+});
+
+test('route yields stop-missing-contract unless interfaces.md has exactly one heading for the Step', () => {
+  const { parent, repo } = makeRepo();
+  try {
+    for (const text of ['None — no step contracts\n', '## Step 2: Other\n', '## Step 1: A\n\n## Step 1: B\n', '### Step 1: nested\n']) {
+      fs.writeFileSync(interfacesPathOf(repo), text);
+      assert.equal(routeOf(repo, 1).mode, 'stop-missing-contract', text);
+    }
+    fs.rmSync(interfacesPathOf(repo));
+    assert.equal(routeOf(repo, 1).mode, 'stop-missing-contract');
+    fs.writeFileSync(interfacesPathOf(repo), '## Step 12: Other\n');
+    assert.equal(routeOf(repo, 1).mode, 'stop-missing-contract');
+  } finally { cleanup(parent); }
+});
+
+test('route errors name the Step and the cause', () => {
+  const { parent, repo } = makeRepo();
+  try {
+    const missing = tool(['route', '--change', 'demo', '--step', '9'], repo);
+    assert.equal(missing.status, 2);
+    assert.match(missing.stderr, /Step 9: no "#### Step 9:" heading/);
+    fs.rmSync(path.join(path.dirname(tasksPathOf(repo)), 'implementation.md'));
+    const noPlan = tool(['route', '--change', 'demo', '--step', '1'], repo);
+    assert.equal(noPlan.status, 2);
+    assert.match(noPlan.stderr, /Step 1: implementation\.md is missing/);
+  } finally { cleanup(parent); }
+});
+
+test('the test/support recognizer covers common conventions', () => {
+  const { isTestPath } = require(TOOL);
+  for (const p of ['test/a.js', 'tests/a.js', 'src/__tests__/a.js', 'x/fixtures/a.json', 'a/test-support/b.js', 'src/a.test.ts', 'src/a.spec.ts',
+    'App.Tests/Foo.cs', 'AppTests/Foo.cs', 'pkg/a_test.go', 'pkg/test_a.py', 'pkg/a_test.py']) assert.equal(isTestPath(p), true, p);
+  for (const p of ['src/a.js', 'src/latests/a.js', 'docs/testing.md', 'pkg/attest.py', 'src/contest/a.js']) assert.equal(isTestPath(p), false, p);
+});
+
+test('dispatch-check refuses a dispatch kind the Step mode does not accept, before any checkpoint', () => {
+  const { parent, repo } = makeRepo();
+  try {
+    const refused = tool(['dispatch-check', '--change', 'demo', '--step', '1', '--dispatch', 'green-direct'], repo);
+    assert.equal(refused.status, 1);
+    assert.equal(refused.payload.ok, false);
+    assert.equal(refused.payload.reason, 'dispatch-mode-mismatch');
+    assert.equal(refused.payload.mode, 'split-flow');
+    assert.equal(refused.payload.checkpoint, null);
+    assert.equal(tool(['dispatch-check', '--change', 'demo', '--step', '1', '--dispatch', 'green-exception'], repo).payload.reason, 'dispatch-mode-mismatch');
+    for (const kind of ['red', 'green']) assert.equal(tool(['dispatch-check', '--change', 'demo', '--step', '1', '--dispatch', kind], repo).payload.ok, true, kind);
+    // A GREEN-only Step accepts `green-direct` and the recovery fresh-RED `red`, never `green` or `green-exception`.
+    for (const kind of ['green-direct', 'red']) assert.equal(tool(['dispatch-check', '--change', 'demo', '--step', '2', '--dispatch', kind], repo).payload.ok, true, kind);
+    for (const kind of ['green', 'green-exception']) {
+      const out = tool(['dispatch-check', '--change', 'demo', '--step', '2', '--dispatch', kind], repo);
+      assert.equal(out.payload.reason, 'dispatch-mode-mismatch', kind);
+      assert.equal(out.payload.mode, 'green-direct');
+    }
+    fs.rmSync(interfacesPathOf(repo));
+    git(['add', '-A'], repo);
+    git(['commit', '-m', 'chore: drop contract'], repo);
+    replaceBaseline(repo);
+    for (const kind of ['red', 'green', 'green-direct', 'green-exception']) {
+      const out = tool(['dispatch-check', '--change', 'demo', '--step', '1', '--dispatch', kind], repo);
+      assert.equal(out.payload.mode, 'stop-missing-contract', kind);
+      assert.equal(out.payload.checkpoint, null);
+    }
+  } finally { cleanup(parent); }
 });

@@ -376,3 +376,43 @@ A committing `close` and a `--mark-only` `close` SHALL delete the Step's attempt
 #### Scenario: Step files have no receipt
 - **WHEN** `inspect --step 1` runs over a half-done Step 1 that has no receipt
 - **THEN** `next_dispatch` carries `would_pass: false`, the Step's dirty scope paths in `conflicts`, and the two `exits`
+
+### Requirement: apply-step.js route computes the Step routing mode
+
+`apply-step.js route --change <name> --step <N> --cwd <root> --json` SHALL take no stdin and SHALL return `{step, mode}`, where `mode` is one of `split-flow`, `green-direct`, `green-exception-test-only`, `green-exception-no-production`, or `stop-missing-contract`. One classification function SHALL compute the mode for both `route` and `dispatch-check`. It reads the Step's RED block from `implementation.md`, the Step's `## Step N` headings from `interfaces.md`, and the Step's Files Affected from `tasks.md`, as they are on disk. One test/support path recognizer SHALL decide test versus production, and the `Existing tests to update` validation SHALL use the same recognizer. It recognizes a path under a `test`, `tests`, `__tests__`, `fixtures`, `test-support`, `*Tests`, or `*.Tests` directory, or a file name matching `*.test.*`, `*.spec.*`, `*_test.*`, or `test_*.py`. When `implementation.md` is missing or has no `#### Step N:` heading for the Step, `route` SHALL fail with an error naming the Step and the cause, and SHALL return no mode.
+
+#### Scenario: Test-only Step without a RED block
+- **WHEN** `route` runs for a Step with no RED block whose instruction paths and Files Affected are all recognized test or test-support paths
+- **THEN** it returns mode `green-exception-test-only`
+
+#### Scenario: RED Step with a contract and only test files
+- **WHEN** `route` runs for a Step with a RED block, exactly one `## Step N` heading in `interfaces.md`, and only test files in scope
+- **THEN** it returns mode `green-exception-no-production`
+
+#### Scenario: Several contract headings for the Step
+- **WHEN** `route` runs for a RED Step whose integer has zero or more than one `## Step N` heading in `interfaces.md`
+- **THEN** it returns mode `stop-missing-contract`
+
+#### Scenario: Common test conventions are recognized
+- **WHEN** a Step's files are `src/Foo.Tests/BarTests.cs`, `pkg/foo_test.go`, or `tests/test_bar.py`
+- **THEN** the recognizer classifies each as a test path, and no production file is counted for them
+
+#### Scenario: Step heading is missing
+- **WHEN** `route` runs for a Step number with no `#### Step N:` heading in `implementation.md`
+- **THEN** it fails with an error naming the Step and the missing heading, and returns no mode
+
+### Requirement: Dispatch check refuses a dispatch kind the Step mode does not accept
+
+Before its foreign-file scope check, `dispatch-check` SHALL classify the Step with the same function as `route` and SHALL accept only the dispatch kinds of that mode: `split-flow` accepts `red` and `green`; `green-direct` accepts `green-direct` and the recovery fresh-RED `red`; `green-exception-test-only` and `green-exception-no-production` accept `green-exception`; `stop-missing-contract` accepts none. Any other kind SHALL return `ok: false`, `reason: dispatch-mode-mismatch`, the Step's `mode`, and a null `checkpoint`, before any worker writes. On that refusal, the coordinator SHALL emit the returned mode to `apply-standalone@1`, follow the returned `next.follow`, and launch no worker before an accepted `dispatch-check`.
+
+#### Scenario: Mismatched dispatch kind is refused
+- **WHEN** the coordinator runs `dispatch-check --dispatch green-direct` for a Step whose mode is `green-exception-test-only`
+- **THEN** the result is `ok: false` with `reason: dispatch-mode-mismatch`, `mode: green-exception-test-only`, and a null checkpoint
+
+#### Scenario: Recovery fresh-RED on a green-direct Step
+- **WHEN** the coordinator runs `dispatch-check --dispatch red` for a Step whose mode is `green-direct`
+- **THEN** the mode check accepts the dispatch and the remaining checks proceed
+
+#### Scenario: Missing-contract Step accepts no dispatch
+- **WHEN** the coordinator runs `dispatch-check` with any dispatch kind for a Step whose mode is `stop-missing-contract`
+- **THEN** the result is a `dispatch-mode-mismatch` refusal with no checkpoint
