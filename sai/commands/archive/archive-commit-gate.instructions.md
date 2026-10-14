@@ -59,7 +59,9 @@ no further git mutation. Exit 1 continues with the selected action.
 4. Add the retired-capability body lines of
    `sai/commands/archive/retirement-declaration.md` § Disclosure when this run
    retired capabilities.
-5. Commit with the composed message passed literally on standard input to
+5. Add the closing lines of `sai/policies/commit-rules.md` § Closing Lines for
+   the archived change.
+6. Commit with the composed message passed literally on standard input to
    `git commit -F -` under `@sai/policies/command-execution.md`.
 
 ## Amend the latest commit
@@ -72,7 +74,13 @@ no further git mutation. Exit 1 continues with the selected action.
    committed.
 2. Stage the archive paths.
 3. Run the empty-index guard.
-4. Run `git commit --amend --no-edit`.
+4. Read the latest commit message with `git log -1 --format=%B` and add the
+   closing lines of `sai/policies/commit-rules.md` § Closing Lines for the
+   archived change that the message does not already contain. With no missing
+   line, run `git commit --amend --no-edit`. Otherwise run
+   `git commit --amend -F -` with the current message plus the missing lines
+   passed literally on standard input under
+   `@sai/policies/command-execution.md`.
 
 ## Do nothing
 

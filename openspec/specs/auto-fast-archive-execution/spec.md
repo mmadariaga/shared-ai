@@ -130,3 +130,15 @@ In the Direct Build execution continuation, `sai/commands/archive/worker.md` SHA
 
 - **WHEN** neither Bash nor PowerShell 7 is available in the Direct Build execution continuation
 - **THEN** the worker returns a closed `failed` result and performs no mutation through another channel
+
+### Requirement: The Direct Build archive commit SHALL carry the archived change's closing lines
+
+When the Direct Build archive execution creates its one local commit, the worker SHALL add the closing lines that `sai/policies/commit-rules.md` § Closing Lines defines for the archived change. They SHALL follow the retired-capability body lines and come before the complete message is passed to `git commit -F -`. The rule SHALL add no extra commit, no amend, and no push.
+
+#### Scenario: Direct Build archive commit closes the backlog origin
+- **WHEN** the Direct Build archive execution commits a change whose archived `.openspec.yaml` carries a GitHub `backlog_origin`
+- **THEN** the single local commit message carries one `Closes owner/repo#N` line for that origin
+
+#### Scenario: No origin adds no closing line
+- **WHEN** the archived change has no `backlog_origin`
+- **THEN** the Direct Build archive commit carries no closing line

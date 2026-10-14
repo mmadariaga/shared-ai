@@ -278,6 +278,7 @@ test('I2 / I10: skill presents full content before approval, separates push appr
   assert.match(text, /disable-model-invocation: true/);
   assert.match(text, /Decline stops publication/);
   assert.match(text, /Any content, destination or baseline change/);
+  assert.match(text, /every entry of the `query` result's `warnings` verbatim before approval/);
   assert.match(text, /Claude Code.*AskUserQuestion/);
   assert.match(text, /OpenCode[\s\S]*question/);
 });
@@ -322,4 +323,99 @@ test('E9 / I1 / I2 / I10: both harnesses install to-pr and retire managed sai-pr
     flow.cleanupRetiredProjections(harness, { base: directory });
     assert.equal(fs.readFileSync(file, 'utf8'), 'User override');
   }
+});
+
+// Closing references (E1-E6, I1-I3): the tool owns the closing block at the end of the description.
+const { encode } = require('../sai/tools/backlog-slice-identity');
+const START = '<!-- sai-closing-refs:start -->', END = '<!-- sai-closing-refs:end -->';
+const block = (...lines) => `${START}\n${lines.join('\n')}\n${END}`;
+const githubIssue = number => `https://github.com/team/repo/issues/${number}`;
+const gitlabIssue = number => `https://gitlab.example.com/team/repo/-/issues/${number}`;
+// `children` maps the branch issue to its child numbers; `states` marks closed issues; `fail` breaks the provider read.
+function closingFixture(provider, { log = '', source = 'feature', children = [], states = {}, fail = false, description } = {}) {
+  const made = fixture(provider, description !== undefined);
+  const parent = 10, issue = provider === 'github' ? githubIssue : gitlabIssue;
+  if (description !== undefined) made.state.rows = [{ ...made.state.rows[0], title: 'feat: add feature', ...(provider === 'github' ? { body: description } : { description }) }];
+  const base = made.io.run;
+  made.io.run = (command, args, input) => {
+    if (command === 'git' && args[0] === 'log') return log;
+    if (command === 'git' && args[0] === 'symbolic-ref') return `${source}\n`;
+    if (command === 'gh' && args[1] === 'graphql') {
+      if (fail) throw new Error('GitHub unavailable');
+      const { query, variables } = JSON.parse(input);
+      if (query.includes('__type(')) return JSON.stringify({ data: { __type: { fields: [{ name: 'subIssues' }] } } });
+      if (query.includes('subIssues(')) return JSON.stringify({ data: { repository: { issue: { subIssues: { nodes: children.map(number => ({ url: issue(number) })), pageInfo: { hasNextPage: false } } } } } });
+      return JSON.stringify({ data: { repository: { nameWithOwner: 'team/repo', isArchived: false, issueOrPullRequest: { __typename: 'Issue', number: variables.number, url: issue(variables.number), title: 'Issue', body: '', state: states[variables.number] || 'OPEN' } } } });
+    }
+    if (command === 'glab' && args[0] === 'repo') return JSON.stringify({ ...JSON.parse(base(command, args, input)), issues_enabled: true });
+    if (command === 'glab' && args[0] === 'api' && /issues\/\d+$/.test(args[1])) {
+      if (fail) throw new Error('GitLab unavailable');
+      const number = Number(args[1].split('/').pop());
+      const body = number === parent ? encode({ version: 1, platform: 'gitlab', role: 'parent', parent: issue(parent), slices: children.map(child => ({ change_name: `slice-${child}`, issue: issue(child), depends_on: [] })) }) : '';
+      return JSON.stringify({ id: number, project_id: 9, iid: number, web_url: issue(number), issue_type: 'issue', title: 'Issue', description: body, state: states[number] === 'CLOSED' ? 'closed' : 'opened' });
+    }
+    return base(command, args, input);
+  };
+  return made;
+}
+const queried = (provider, options) => {
+  const { request, io, state } = closingFixture(provider, options);
+  return { ...tool.query({ ...request, description: options?.draft ?? request.description }, io), request, state };
+};
+
+for (const provider of ['github', 'gitlab']) {
+  const other = provider === 'github' ? 'other/repo' : 'group/sub/project';
+  const foreign = provider === 'github' ? 'https://gitlab.com/g/p/-/issues/3' : 'https://github.com/g/p/issues/3';
+  const sameUrl = provider === 'github' ? githubIssue(7) : gitlabIssue(7);
+  test(`${provider} E1 / E2 / I1: closing set is the keyword issues of the commits, normalized to the destination`, () => {
+    const log = `${'b'.repeat(40)}\nfeat: add\nCloses #5\nFixes: ${other}#6\nresolved ${sameUrl}\nRefs: #8\nCloses #5\nCloses ${foreign}\n`;
+    const result = queried(provider, { log });
+    assert.equal(result.proposal.description, `## Summary\nCommitted feature\n\n${block('Closes #5', `Closes ${other}#6`, 'Closes #7')}`);
+    assert.equal(result.warnings.length, 1);
+    assert.match(result.warnings[0], /another host/);
+  });
+  test(`${provider} E1: an empty closing set publishes the description without a block`, () => {
+    const result = queried(provider, { log: `${'b'.repeat(40)}\nfeat: add\nRefs: #8\n` });
+    assert.equal(result.proposal.description, '## Summary\nCommitted feature');
+    assert.equal(result.warnings, undefined);
+  });
+  test(`${provider} E3: a hand-written closing line stays and the block omits that issue`, () => {
+    const draft = '## Summary\nCloses #5\nDone';
+    const result = queried(provider, { log: 'Closes #5\nCloses #6\n', draft });
+    assert.equal(result.proposal.description, `${draft}\n\n${block('Closes #6')}`);
+    assert.equal(queried(provider, { log: 'Closes #5\n', draft }).proposal.description, draft);
+  });
+  test(`${provider} E4: an update replaces the previous block and keeps the other text`, () => {
+    const draft = `Intro\n\n## Notes\nKeep this\n\n${block('Closes #99')}`;
+    const result = queried(provider, { log: 'Closes #5\n', draft, description: draft });
+    assert.equal(result.proposal.description, `Intro\n\n## Notes\nKeep this\n\n${block('Closes #5')}`);
+    assert.equal(result.status, 'ready');
+    const same = queried(provider, { log: 'Closes #99\n', draft, description: draft });
+    assert.equal(same.status, 'no_changes');
+    assert.equal(queried(provider, { log: '', draft, description: draft }).proposal.description, 'Intro\n\n## Notes\nKeep this');
+  });
+  test(`${provider} E5 / I2: the branch issue closes only when every child is covered or already closed`, () => {
+    const source = 'feat/10_closing';
+    const done = queried(provider, { source, children: [11, 12, 13], states: { 13: 'CLOSED' }, log: 'Closes #11\nFixes #12\n' });
+    assert.equal(done.proposal.description, `## Summary\nCommitted feature\n\n${block('Closes #11', 'Closes #12', 'Closes #10')}`);
+    const pending = queried(provider, { source, children: [11, 12, 13], log: 'Closes #11\nFixes #12\n' });
+    assert.equal(pending.proposal.description, `## Summary\nCommitted feature\n\n${block('Closes #11', 'Closes #12')}`);
+    const leaf = queried(provider, { source, children: [], log: 'Closes #11\n' });
+    assert.doesNotMatch(leaf.proposal.description, /#10/);
+    const explicit = queried(provider, { source, children: [11, 12], log: 'Closes #10\n' });
+    assert.equal(explicit.proposal.description, `## Summary\nCommitted feature\n\n${block('Closes #10')}`);
+    assert.equal(queried(provider, { source: 'feat/abc_closing', children: [11], log: 'Closes #11\n' }).proposal.description.includes('#10'), false);
+  });
+  test(`${provider} E6: a failed provider read leaves the parent out and warns before approval`, () => {
+    const result = queried(provider, { source: 'feat/10_closing', fail: true, log: 'Closes #11\n' });
+    assert.equal(result.proposal.description, `## Summary\nCommitted feature\n\n${block('Closes #11')}`);
+    assert.match(result.warnings[0], /#10.*not evaluated/);
+  });
+}
+test('I3: publication writes the block into the created request exactly as approved', t => {
+  const { request, io, state } = closingFixture('github', { log: 'Closes #5\n' });
+  const ready = tool.query(request, io);
+  const result = tool.publish({ ...request, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io);
+  assert.equal(result.status, 'complete');
+  assert.equal(state.mutations[0].body.body, `## Summary\nCommitted feature\n\n${block('Closes #5')}`);
 });

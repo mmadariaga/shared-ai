@@ -7,6 +7,7 @@ const crypto = require('node:crypto');
 const backlog = require('./to-backlog');
 const { receiptPath: backlogReceiptPath } = require('./to-backlog-github');
 const { checkPrTitleRules } = require('./lint');
+const { readBacklog } = require('./project-settings');
 const digest = value => crypto.createHash('sha256').update(JSON.stringify(value)).digest('hex');
 function prepare(request, { filesystem = fs, platform = process.platform } = {}) {
   if (!['claude', 'opencode'].includes(request.harness)) throw new Error('Expected harness: claude or opencode');
@@ -104,6 +105,67 @@ function push(request, io) {
   if (verified.status !== 'no_changes') throw new Error('Push could not be verified');
   return { status: 'complete' };
 }
+// Closing references (E1-E6): the tool computes and places the closing block.
+const CLOSING_START = '<!-- sai-closing-refs:start -->', CLOSING_END = '<!-- sai-closing-refs:end -->';
+const CLOSING_BLOCK = new RegExp(`\\s*${CLOSING_START}[\\s\\S]*?${CLOSING_END}`, 'g');
+const CLOSING_KEYWORD = /\b(?:close[sd]?|fix(?:es|ed)?|resolve[sd]?)\b:?[ \t]+(?:https?:\/\/([^\s/]+)\/([^\s#]+?)\/(?:-\/)?(?:issues|work_items)\/(\d+)|([\w.-]+(?:\/[\w.-]+)+)#(\d+)|#(\d+))/gi;
+const ISSUE_URL = /^https?:\/\/([^/]+)\/(.+?)\/(?:-\/)?(?:issues|work_items)\/(\d+)\/?$/;
+const issueKey = ref => `${ref.host}/${ref.repository}#${ref.number}`.toLowerCase();
+const writtenIssue = (ref, target) => (ref.host.toLowerCase() === target.host.toLowerCase() && ref.repository.toLowerCase() === target.repository.toLowerCase() ? `#${ref.number}` : `${ref.repository}#${ref.number}`);
+// Issues preceded by a closing keyword, qualified against the destination (I1).
+function closingReferences(text, target) {
+  return [...text.matchAll(CLOSING_KEYWORD)].map(match => match[3]
+    ? { host: match[1], repository: match[2], number: Number(match[3]) }
+    : { host: target.host, repository: match[4] || target.repository, number: Number(match[5] || match[6]) });
+}
+function uniqueReferences(refs) {
+  const seen = new Set();
+  return refs.filter(ref => !seen.has(issueKey(ref)) && seen.add(issueKey(ref)));
+}
+// E5: the branch id closes its issue only when it has children and all are covered.
+function branchParent(request, selected, provider, covered, io) {
+  const id = /^[^/]+\/([1-9]\d*)_/.exec(selected.source)?.[1];
+  if (!id) return {};
+  const { config } = readBacklog({ cwd: io.cwd || process.cwd() });
+  if (config.provider && config.provider !== request.provider) return {};
+  let repository = selected.target.repository;
+  if (config.repository) {
+    const url = /^https?:\/\//.test(config.repository) ? new URL(config.repository) : null;
+    if (url && url.host.toLowerCase() !== selected.target.host.toLowerCase()) return {};
+    repository = url ? url.pathname.replace(/^\/|\/$|\.git$/g, '') : config.repository;
+  }
+  const ref = { host: selected.target.host, repository, number: Number(id) };
+  if (covered.has(issueKey(ref))) return {};
+  const children = provider.closing.children(provider.closing.issueUrl(repository, ref.number, selected.target), io);
+  if (children.status !== 'complete') return { warning: `Issue ${writtenIssue(ref, selected.target)} from the branch name was not evaluated for closing: ${children.message}` };
+  const done = children.children.length && children.children.every(child => {
+    const found = ISSUE_URL.exec(child.url);
+    return child.state === 'CLOSED' || (found && covered.has(issueKey({ host: found[1], repository: found[2], number: Number(found[3]) })));
+  });
+  return done ? { ref } : {};
+}
+// E1-E6: the description with its closing block, plus warnings to show before approval.
+function withClosingBlock(request, selected, io) {
+  const provider = adapter(request.provider, io);
+  const warnings = [];
+  if (!provider.closing) return { description: request.description, warnings };
+  let log = '';
+  for (const range of [selected.base, `${selected.remote}/${selected.base}`]) {
+    try { log = io.run('git', ['log', `${range}..HEAD`, '--format=%H%n%s%n%b']); break; }
+    catch (error) { if (range !== selected.base) warnings.push(`Commit log unavailable, so no closing references were computed: ${error.message}`); }
+  }
+  const stripped = request.description.replace(CLOSING_BLOCK, '');
+  const text = stripped.trimEnd();
+  const found = uniqueReferences(closingReferences(log, selected.target));
+  const parent = branchParent(request, selected, provider, new Set(found.map(issueKey)), io);
+  if (parent.warning) warnings.push(parent.warning);
+  const handWritten = new Set(closingReferences(text, selected.target).map(issueKey));
+  const closable = [...found, ...(parent.ref ? [parent.ref] : [])].filter(ref => ref.host.toLowerCase() === selected.target.host.toLowerCase());
+  for (const ref of found.filter(ref => !closable.includes(ref))) warnings.push(`Issue ${ref.host}/${ref.repository}#${ref.number} is on another host and cannot be closed from this request.`);
+  const lines = closable.filter(ref => !handWritten.has(issueKey(ref))).map(ref => `Closes ${writtenIssue(ref, selected.target)}`);
+  const block = lines.length ? `${text}${text ? '\n\n' : ''}${CLOSING_START}\n${lines.join('\n')}\n${CLOSING_END}` : stripped === request.description ? request.description : text;
+  return { description: block, warnings };
+}
 function query(request, io) {
   if (typeof request.title !== 'string' || /[\r\n]/.test(request.title) || typeof request.description !== 'string' || !request.description.trim()) throw new Error('Single-line title and nonempty description required');
   const violations = checkPrTitleRules(request.title);
@@ -112,9 +174,10 @@ function query(request, io) {
   const rows = adapter(request.provider, io).list(selected.target, selected.source, selected.base, io);
   if (rows.length > 1) throw new Error('Multiple matching requests; resolve ambiguity before publication');
   const warning = rows[0] && adapter(request.provider, io).concurrencyWarning;
-  const proposal = { provider: request.provider, ...selected, existing: rows[0] || null, title: request.title, description: request.description, ...(warning ? { concurrency_warning: warning } : {}) };
-  const matches = rows[0]?.title === request.title && rows[0]?.description === request.description;
-  return { status: matches ? 'no_changes' : 'ready', proposal, confirmation: digest(proposal) };
+  const { description, warnings } = withClosingBlock(request, selected, io);
+  const proposal = { provider: request.provider, ...selected, existing: rows[0] || null, title: request.title, description, ...(warning ? { concurrency_warning: warning } : {}) };
+  const matches = rows[0]?.title === request.title && rows[0]?.description === description;
+  return { status: matches ? 'no_changes' : 'ready', proposal, confirmation: digest(proposal), ...(warnings.length ? { warnings } : {}) };
 }
 function publish(request, io) {
   const ready = query(request, io);
@@ -171,4 +234,4 @@ function main(argv) {
   } catch (error) { process.stdout.write(JSON.stringify({ status: 'blocked', message: error.message, ...(typeof request?.receipt === 'string' ? { receipt: request.receipt } : {}) }) + '\n'); return 2; }
 }
 if (require.main === module) process.exitCode = main(process.argv.slice(2));
-module.exports = { prepare, resolve, collect, destination, query, pushQuery, push, publish, recover, main };
+module.exports = { prepare, resolve, collect, closingReferences, destination, query, pushQuery, push, publish, recover, main };

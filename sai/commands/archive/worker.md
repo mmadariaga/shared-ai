@@ -106,9 +106,11 @@ Execute exactly this order:
 3. **Commit** — when the index holds staged changes (`git diff --cached --quiet`
    exits 1), author the message from the staged state under the commit rules,
    add the retired-capability body lines of `retirement-declaration.md`
-   § Disclosure, and create one local commit by passing the complete message to
-   `git commit -F -` on standard input under the already-consumed Direct Build
-   authorization, using `@sai/policies/command-execution.md`.
+   § Disclosure, add the closing lines of `sai/policies/commit-rules.md`
+   § Closing Lines for the archived change, and create one local commit by
+   passing the complete message to `git commit -F -` on standard input under
+   the already-consumed Direct Build authorization, using
+   `@sai/policies/command-execution.md`.
    When the index is empty (every approved path was ignored), report
    `[sai-archive] no commit: staging left the index empty` and create nothing.
    Never amend, push, or ask for a second commit.

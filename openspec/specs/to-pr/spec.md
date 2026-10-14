@@ -23,7 +23,7 @@ The to-pr skill SHALL prepare titles and descriptions primarily from committed b
 
 ### Requirement: Create or update the exact matching request
 
-The system SHALL query open requests for the selected source repository, source branch, target repository, and target branch. One existing match SHALL select update instead of duplicate creation; multiple matches SHALL block publication for clarification. Updates SHALL write only title and description. Identical content SHALL end without mutation. Titles SHALL use the existing shared title validator.
+The system SHALL query open requests for the selected source repository, source branch, target repository, and target branch. One existing match SHALL select update instead of duplicate creation; multiple matches SHALL block publication for clarification. Updates SHALL write only title and description. Identical content SHALL end without mutation, where the compared description is the computed description including any tool-owned closing block. Titles SHALL use the existing shared title validator.
 
 #### Scenario: Existing request receives a content update
 - **WHEN** exactly one open request matches the selected source and destination
@@ -34,7 +34,7 @@ The system SHALL query open requests for the selected source repository, source 
 - **THEN** publication stops for clarification without mutation.
 
 #### Scenario: Content is unchanged
-- **WHEN** the existing title and description already match the proposed content
+- **WHEN** the existing title and description already match the proposed content, including the recomputed closing block
 - **THEN** the operation ends without mutation.
 
 #### Scenario: Title validation fails
@@ -43,7 +43,7 @@ The system SHALL query open requests for the selected source repository, source 
 
 ### Requirement: Complete presentation and exact publication approval
 
-The skill SHALL show the operation, platform, repository, visibility, source branch, target branch, existing request URL when updating, and complete proposed title and description before asking for publication approval. Updates SHALL also show their baseline and changes, preserving unrelated description content unless replacement is explicitly approved. Any proposal concurrency warning SHALL be shown verbatim before approval. For Azure updates, the warning SHALL disclose that the interval between reread and PATCH is not protected against concurrent edits; rereading SHALL NOT be described as atomic protection. Public destinations SHALL receive an explicit warning. Invocation, unattended mode, and general prior grants SHALL NOT authorize publication. Changed content, destination, baseline, or HEAD SHALL require renewed review and approval.
+The skill SHALL show the operation, platform, repository, visibility, source branch, target branch, existing request URL when updating, and complete proposed title and description before asking for publication approval. Updates SHALL also show their baseline and changes, preserving unrelated description content unless replacement is explicitly approved. Any proposal concurrency warning SHALL be shown verbatim before approval. Every entry of the `query` result's `warnings` SHALL be shown verbatim before approval. For Azure updates, the warning SHALL disclose that the interval between reread and PATCH is not protected against concurrent edits; rereading SHALL NOT be described as atomic protection. Public destinations SHALL receive an explicit warning. Invocation, unattended mode, and general prior grants SHALL NOT authorize publication. Changed content, destination, baseline, or HEAD SHALL require renewed review and approval.
 
 #### Scenario: Approve publication
 - **WHEN** the complete proposal has been presented
@@ -60,6 +60,10 @@ The skill SHALL show the operation, platform, repository, visibility, source bra
 #### Scenario: Azure update concurrency limitation
 - **WHEN** an Azure update proposal is presented for approval
 - **THEN** the skill shows its exact concurrency warning before the question and the approval token binds that proposal and baseline.
+
+#### Scenario: Query warnings are shown before approval
+- **WHEN** the `query` result carries `warnings`
+- **THEN** the skill shows every entry verbatim before asking for publication approval
 
 ### Requirement: Independent non-force push authorization
 
@@ -144,3 +148,67 @@ The shipped provider registry SHALL include an Azure DevOps Services adapter and
 #### Scenario: Azure adapter is installed on both harnesses
 - **WHEN** installation projections expand for Claude Code and opencode
 - **THEN** both include the Azure provider reference, adapter, and shared transport tools under managed content tracking without new direct Azure CLI or push permission grants.
+
+### Requirement: Closing set from commit closing keywords
+
+For GitHub and GitLab destinations, `query` SHALL compute the closing set from the subjects and bodies of the `base..HEAD` commits. A commit contributes an issue only when a closing keyword precedes that issue's reference. The keywords are `close`, `closes`, `closed`, `fix`, `fixes`, `fixed`, `resolve`, `resolves`, and `resolved`, matched case-insensitively with an optional colon. The reference is `#N`, `owner/repo#N`, `group/project#N`, or an issue URL. Each issue SHALL appear once.
+- An issue in the destination repository or project SHALL be written as `Closes #N`.
+- An issue in another repository or project on the same host SHALL be written as `Closes owner/repo#N` or `Closes group/project#N`.
+- An issue on another host SHALL be left out of the closing set and reported in `warnings`.
+- When the commit log cannot be read, `query` SHALL compute no closing references and SHALL report that in `warnings`.
+
+#### Scenario: Keyword issues are normalized against the destination
+- **WHEN** the commits contain `Closes #5`, `Fixes: other/repo#6`, a closing keyword before a destination issue URL for issue 7, and `Refs: #8`
+- **THEN** the closing block lists `Closes #5`, `Closes other/repo#6`, and `Closes #7`, and it omits issue 8
+
+#### Scenario: An issue on another host is not closable
+- **WHEN** a commit closes an issue URL on a host other than the destination
+- **THEN** that issue is left out of the block and `query` returns a warning naming it as on another host
+
+#### Scenario: An empty closing set adds no block
+- **WHEN** no commit in `base..HEAD` carries a closing keyword before an issue reference
+- **THEN** the description is published without a closing block and `query` returns no warnings
+
+### Requirement: Branch-id parent closes only when every child is covered
+
+When the source branch is named `<type>/<id>_<name>` with a numeric `<id>`, the system SHALL add issue `<id>` to the closing set only when that issue has at least one child and every child is either closed in the provider or closed by a keyword in a `base..HEAD` commit. The issue's repository SHALL be the backlog repository in `.sai/settings.jsonc` when it is set, otherwise the destination repository. Children and their state SHALL be read without paging comments or assignees. When the child read fails, the closing set SHALL be computed without that issue and `query` SHALL return a warning that it was not evaluated.
+
+#### Scenario: The last pending child closes the parent
+- **WHEN** the branch is `feat/10_closing`, issue 10 has children 11, 12, and 13, child 13 is already closed, and the commits close 11 and 12
+- **THEN** the closing block lists `Closes #11`, `Closes #12`, and `Closes #10`
+
+#### Scenario: A pending child keeps the parent open
+- **WHEN** the branch is `feat/10_closing` and child 13 of issue 10 is open and not closed by any commit
+- **THEN** the closing block omits issue 10
+
+#### Scenario: A non-numeric branch id contributes no parent
+- **WHEN** the branch is `feat/abc_closing`
+- **THEN** no branch-derived issue enters the closing set
+
+#### Scenario: A failed child read leaves the parent out
+- **WHEN** reading the children of the branch issue from the provider fails
+- **THEN** the closing set omits that issue and `query` returns a warning that it was not evaluated for closing
+
+### Requirement: Tool-owned closing block at the end of the description
+
+For GitHub and GitLab destinations, `query` SHALL place the closing lines between `<!-- sai-closing-refs:start -->` and `<!-- sai-closing-refs:end -->` at the end of the description before the proposal is presented. On update, the recomputed block SHALL replace any previous marked block and all other text SHALL stay intact. When a closing line elsewhere in the description already covers a closing-set issue, that line SHALL stay where it is and the block SHALL omit that issue. The approved description, including the block, SHALL be what is published.
+
+#### Scenario: A hand-written closing line is kept
+- **WHEN** the drafted description already contains `Closes #5` and the commits close issues 5 and 6
+- **THEN** the hand-written line stays in place and the block lists only `Closes #6`
+
+#### Scenario: An update replaces the previous block
+- **WHEN** the existing description ends with a marked block listing `Closes #99` and the commits now close only issue 5
+- **THEN** the proposed description keeps all other text and ends with a block listing only `Closes #5`
+
+#### Scenario: The approved block is published
+- **WHEN** a GitHub proposal with a closing block is approved and published
+- **THEN** the created request body equals the approved description including the block
+
+### Requirement: Azure Repos descriptions carry no closing block
+
+For Azure Repos destinations, `query` SHALL keep the drafted description unchanged, add no closing block, and read no commit log for closing references.
+
+#### Scenario: Azure description is published as drafted
+- **WHEN** an Azure Repos request is queried with a description that contains `Closes #5`
+- **THEN** the proposed description equals the drafted description, no warnings are returned, and no `git log` call is made

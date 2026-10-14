@@ -142,4 +142,21 @@ function readSet(reference, io) {
   }
 }
 
-module.exports = { normalize, readIssue, read, readSet, connection };
+/** Children of an issue with their state: written slice correspondence plus native sub-issues. No comments or assignees. */
+function readChildren(reference, io) {
+  try {
+    const checked = normalize(reference.url);
+    const written = require('./backlog-slice-identity').decode(readIssue(checked, io).description);
+    const fields = api(io, 'query{__type(name:"Issue"){fields{name}}}', {}).__type?.fields;
+    if (!Array.isArray(fields)) throw fault('incomplete-response', 'Hierarchy capability read is incomplete');
+    const urls = [...new Set([
+      ...(written?.role === 'parent' ? written.slices.map(slice => slice.issue) : []),
+      ...(fields.some(field => field.name === 'subIssues') ? connection(io, checked, 'subIssues') : []),
+    ])];
+    return { status: 'complete', children: urls.map(url => { const child = readIssue({ url }, io); return { url: child.url, state: child.state }; }) };
+  } catch (error) {
+    return { status: 'error', reason: error.reason || 'retrieval-failed', message: error.message };
+  }
+}
+
+module.exports = { normalize, readIssue, read, readSet, readChildren, connection };
