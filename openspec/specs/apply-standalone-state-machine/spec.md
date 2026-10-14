@@ -30,7 +30,7 @@ The machine's `transition()` SHALL implement the derivation formerly stated as p
 
 ### Requirement: Machine provides routing file pointers via self-gating
 
-The coordinator SHALL determine the active Step's routing mode against the five conditions in `runner.md` § Step Routing Tree and emit that mode to the machine. The machine SHALL accept exactly one of `split-flow`, `green-direct`, `green-exception-test-only`, `green-exception-no-production`, or `stop-missing-contract`, and SHALL return a `next.follow` pointer to that mode's file under `sai/commands/apply/steps/`. The coordinator SHALL fetch only the named file and SHALL NOT load the whole routing tree. An unrecognized mode SHALL be rejected without advancing state.
+The coordinator SHALL emit to the machine the active Step's routing mode as `apply-step.js route` returns it, unchanged, and SHALL NOT classify the Step itself. The machine SHALL accept exactly one of `split-flow`, `green-direct`, `green-exception-test-only`, `green-exception-no-production`, or `stop-missing-contract`, and SHALL return a `next.follow` pointer to that mode's file under `sai/commands/apply/steps/`. The coordinator SHALL fetch only the named file and SHALL NOT load the whole routing tree. An unrecognized mode SHALL be rejected without advancing state. The machine stays routing-only: it does not compute the mode.
 
 #### Scenario: machine returns a routing file pointer
 - **WHEN** the machine receives a valid routing mode
@@ -43,6 +43,10 @@ The coordinator SHALL determine the active Step's routing mode against the five 
 #### Scenario: all Steps done routes to the terminal file
 - **WHEN** every Step is done and no Step is active
 - **THEN** the machine returns `next.follow` naming `sai/commands/apply/steps/terminal-lifecycle.md`
+
+#### Scenario: emitted mode comes from the tool
+- **WHEN** the coordinator routes the active Step
+- **THEN** the mode it emits is the `mode` field returned by `apply-step.js route` for that Step
 
 ### Requirement: Machine is a pure function with no file I/O
 
@@ -77,11 +81,11 @@ This machine SHALL NOT introduce a `progress_plan` declaration, a `step_pointer_
 
 ### Requirement: Degraded store never halts apply
 
-When the machine store is unreachable or returns a malformed result, the coordinator SHALL NOT halt the run. It SHALL record the failure, load the routing instructions without the machine, derive the cursor inline from `implementation.md` by the same rule, and complete the run at full context cost. Only the context saving SHALL be lost.
+When the machine store is unreachable or returns a malformed result, the coordinator SHALL NOT halt the run. It SHALL record the failure, derive the cursor inline from `implementation.md` by the same rule, take each Step's routing file as `sai/commands/apply/steps/routing-<mode>.md` from the mode `apply-step.js route` returns, fetch `terminal-lifecycle.md` after the last Step, and complete the run. Only the context saving SHALL be lost.
 
 #### Scenario: store failure falls back instead of halting
 - **WHEN** the coordinator cannot reach the store or receives a malformed result
-- **THEN** it records the failure, derives the cursor inline from `implementation.md`, and completes the run
+- **THEN** it records the failure, derives the cursor inline from `implementation.md`, picks each routing file from the `apply-step.js route` mode, and completes the run
 
 ### Requirement: Chained apply segments share one machine id and re-seed per segment
 

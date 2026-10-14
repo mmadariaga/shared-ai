@@ -150,6 +150,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0183 — Apply self-gating via standalone state machine](./0183-apply-self-gating-via-standalone-state-machine.md) — Refs 0172c
 - [0186 — Gate order after a Step worker report, without a per-Step human gate](./0186-gate-order-without-per-step-human-gate.md) — Supersedes 0019, Refs 0018
 - [0192 — Apply recovery is disclosed on failure, and the Coverage Signature is an invariant](./0192-apply-recovery-is-disclosed-on-failure-with-a-coverage-signature-invariant.md) — **Amends** 0161a, Refs 0160a, Refs 0172c
+- [0193 — The apply Step routing mode is computed by `apply-step.js route`](./0193-apply-step-routing-mode-is-computed-by-the-tool.md) — **Amends** 0183
 
 ### `/sai-5-review`
 
@@ -632,6 +633,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 | [0190](./0190-review-keeps-analysis-without-mutation-execution.md) | amends | [0107b](./0107b-unified-audit-severity-vocabulary.md) |
 | [0191](./0191-spec-restatements-need-a-record-or-an-observed-failure.md) | amends | [0172c](./0172c-step-gated-instruction-delivery.md) |
 | [0192](./0192-apply-recovery-is-disclosed-on-failure-with-a-coverage-signature-invariant.md) | amends | [0161a](./0161a-bounded-plan-artifact-repair-coverage-signature.md) |
+| [0193](./0193-apply-step-routing-mode-is-computed-by-the-tool.md) | amends | [0183](./0183-apply-self-gating-via-standalone-state-machine.md) |
 | [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0033](./archive/0033-echo-line-format-and-placement.md) |
 | [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0034](./archive/0034-resolution-precedence-wrapper-echo-first.md) |
 | [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0035](./archive/0035-harness-specific-adapter-carve-out.md) |

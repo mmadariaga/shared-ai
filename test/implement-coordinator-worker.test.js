@@ -1043,8 +1043,8 @@ test('implement maintains interfaces.md: validation ensures RED block contract i
     'validation should scope RED block invariant to audit-derived steps');
   assert.match(validationStep, /every audit-derived step.*carries a RED block.*exact, unambiguous matching.*## Step N:?.*contract/i,
     'validation should require exact matching contracts for audit RED blocks');
-  assert.match(validationStep, /case 3.*unreachable/,
-    'validation should reference making case 3 unreachable');
+  assert.match(validationStep, /`stop-missing-contract`.*stops before dispatch/,
+    'validation should name the stop-missing-contract mode a missing contract yields');
   assert.match(validationStep, /adding the missing.*## Step N/,
     'validation should describe adding missing contracts as the repair option');
 });

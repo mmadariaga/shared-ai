@@ -687,13 +687,19 @@ test('Step 2 full completion emits exactly the pinned completion literal; fast t
     'specs/apply-routed-card-set/spec.md: fast track must not bypass safe-operations confirmations');
 });
 
-test('routing STOP has one normative home on the runner Step Routing Tree', () => {
+test('the runner Step Routing Tree sends classification to the tool and the STOP rule lives in its routing file', () => {
   const runner = runnerSurface();
   const coordinator = artifact(APPLY_CARDS.coordinator);
   assert.match(runner, /Step Routing Tree/,
     'runner must own the Step Routing Tree heading');
-  assert.match(runner, /RED block present[\s\S]{0,200}STOP|STOP before any dispatch/i,
-    'runner must carry the RED-without-contract STOP rule');
+  assert.match(artifact('sai/commands/apply/steps/routing-stop-missing-contract.md'), /RED block present[\s\S]{0,200}STOP before any dispatch/i,
+    'the stop-missing-contract routing file must carry the RED-without-contract STOP rule');
+  assert.match(runner, /apply-step\.js route/,
+    'runner must send the mode classification to apply-step.js route');
+  assert.doesNotMatch(runner, /\| Mode \| Routing file \|/,
+    'runner must not keep a prose copy of the routing table');
+  assert.match(coordinator, /routing-<mode>\.md/,
+    'the degraded-store fallback derives the routing file from the tool mode');
   // Coordinator may reference the runner home but must not keep a second full five-shape tree
   // with equal STOP authority. If coordinator still mentions STOP, it must point at runner.
   if (/STOP before any dispatch/i.test(coordinator)) {
@@ -1135,10 +1141,9 @@ test('Step 2 both harnesses keep the routed coordinator and workers keep Git aut
 
 // ─── review regressions: routing disclosure, cursor advance, commit gate ────
 
-test('the runner routing table names step files as plain paths so only the machine-returned file loads', () => {
+test('the runner loads no step file eagerly, so only the machine-returned file loads', () => {
   const runner = artifact(APPLY_CARDS.runner);
   for (const file of ROUTING_FILES) {
-    assert.ok(runner.includes(`\`${file}\``), `the routing table must name ${file}`);
     assert.ok(!runner.includes(`Fetch @${file}`), `${file} must not be an eager Fetch directive`);
   }
   assert.doesNotMatch(runner, /Fetch @sai\/commands\/apply\/steps\//,

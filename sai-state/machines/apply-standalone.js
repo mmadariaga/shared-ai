@@ -31,7 +31,7 @@
 
 const machineId = 'apply-standalone@1';
 
-// Five routing conditions from runner.md § Step Routing Tree
+// Five routing modes; the coordinator emits the mode `apply-step.js route` computes (runner.md § Step Routing Tree)
 const ROUTING_MODES = Object.freeze([
   'split-flow',                       // Condition 4: RED + contract + production
   'green-direct',                     // Condition 1: RED absent + production

@@ -11,7 +11,7 @@ The Step loop of `/sai-4-apply`, run by the apply coordinator. Change resolution
 Run these steps for each Step the `apply-standalone@1` cursor makes active (coordinator § Step machine), in order:
 
 1. **Enter.** Send `{kind: step-entry, step: "Step N"}` to `recovery-ledger@1` (coordinator § Known-False Report Recovery).
-2. **Route.** Classify the Step with § Step Routing Tree, emit its mode, and fetch the routing file the machine returns. That file names the dispatches for this Step.
+2. **Route.** Run § Step Routing Tree, emit the mode it returns, and fetch the routing file the machine returns. That file names the dispatches for this Step.
 3. **Dispatch and verify.** For each dispatch the routing file names: select its plan (§ Dispatch plan selection), then immediately before a RED-worker dispatch (`red` or `green-exception`) print exactly `RED N/M`, or immediately before a GREEN-worker dispatch (`green` or `green-direct`) print exactly `GREEN N/M`. `N` is the active Step number; `M` is the count of all `#### Step N:` headings in `implementation.md`, including completed Steps. Completed Steps count toward `M` but get no new line. A same-worker continuation or recovery is the same phase and gets no new line; a phase the routing file omits gets no line. Dispatch, and after every return run coordinator § Post-dispatch sequence (one `apply-step.js verify` call). A non-clean result or a failed verify goes to coordinator § Known-False Report Recovery. Done when the verify passes and the coordinator has judged the `unjudged` items and the RED failure class, or the Step has stopped for a human. If the coordinator receives explicit authorization under `steps/exhausted-step.md`, start one new Step invocation for the same active Step and return to step 1; steps 4–6 remain blocked until that fresh invocation passes verification.
 4. **Record.** In one update of `openspec/changes/{change-name}/implementation.md`, append the Step's § Appendices entry when a field-5 deviation exists. The Automated checkboxes are marked by the `close` call of step 5, not here.
 5. **Close.** Run § Step commit gate: `apply-step.js close` marks the Step's **Automated** checkboxes `[x]` on disk, then adds and commits; a declined commit marks them with `close --mark-only`. After either returns, flip the Step's projected entry to `completed`.
@@ -25,15 +25,7 @@ Apply dispatches one worker per dispatch its routing file names (two in split-fl
 
 ## Step Routing Tree
 
-Classify each Step into exactly one mode before any dispatch. "Contract" means an exact, unambiguous `## Step N` contract: exactly one such heading in `interfaces.md` for this Step's integer. Zero headings, or an ambiguous several, count as no contract.
-
-| # | RED block | Contract | Production file in scope | Mode | Routing file |
-|---|---|---|---|---|---|
-| 1 | absent | — | at least one | `green-direct` | `sai/commands/apply/steps/routing-green-direct.md` |
-| 2 | absent | — | none | `green-exception-test-only` | `sai/commands/apply/steps/routing-green-exception-test-only.md` |
-| 3 | present | none | — | `stop-missing-contract` | `sai/commands/apply/steps/routing-stop-missing-contract.md` |
-| 4 | present | exact | at least one | `split-flow` | `sai/commands/apply/steps/routing-split-flow.md` |
-| 5 | present | exact | none | `green-exception-no-production` | `sai/commands/apply/steps/routing-green-exception-no-production.md` |
+On entering each Step, before any dispatch, run `apply-step.js route --change {change-name} --step N --cwd <project-root> --json`, resolved per `@sai/policies/tool-resolution.md`, and emit `{"mode":"<mode>"}` with the `mode` it returns, unchanged. When `route` errors, it names the Step and the cause; stop that Step before any worker is launched and close with the stop options of `@sai/policies/stop-options.md`.
 
 Fetch only the routing file the machine returns for the active Step.
 
