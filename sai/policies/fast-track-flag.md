@@ -68,7 +68,10 @@ These divergences are intentional and stay byte-stable; do not "unify" them:
   `--no-specs` profile. The late explicit entry into the lane from stages 2
   through 4 is a user request, not a stop: fast-track neither triggers it nor
   suppresses it. Fast-track bypasses only the crystallization language
-  gate and the overview-language ask, never the POC lane machinery.
+  gate and the overview-language ask, never the POC lane machinery. It fixes
+  only the language questions that no project setting answers: a configured
+  `explore.readyToProposeLanguage` or `explore.overviewLanguage` answers its
+  gate first (`docs/project-settings.md`).
 - `sai-explore`'s open-decision reconfirmation at `Crystallize` entry
   (`sai/commands/explore/steps/open-decisions.md`) runs unchanged under
   `--fast-track`: the notice is shown and every open decision is asked, and

@@ -95,6 +95,42 @@ test('the CLI prints value, source and warnings', () => {
   assert.equal(run('get', 'backlog.type', '--json').status, 2);
 });
 
+test('E7: explore language ids accept any language name and normalize English and none', () => {
+  const cwd = project({ '.sai/settings.jsonc': '{"explore":{"readyToProposeLanguage":" Español ","overviewLanguage":"NONE"}}' });
+  assert.deepEqual(settings.get('explore.readyToProposeLanguage', { cwd }), { value: 'Español', source: 'setting', warnings: [] });
+  assert.deepEqual(settings.get('explore.overviewLanguage', { cwd }), { value: 'None', source: 'setting', warnings: [] });
+  const english = project({ '.sai/settings.jsonc': '{"explore":{"readyToProposeLanguage":"eNGLISH","overviewLanguage":"english"}}' });
+  assert.equal(settings.get('explore.readyToProposeLanguage', { cwd: english }).value, 'English');
+  assert.equal(settings.get('explore.overviewLanguage', { cwd: english }).value, 'English');
+});
+
+test('E7: none is invalid for the Ready to Propose language and an empty or non-string value is invalid for both', () => {
+  const cwd = project({ '.sai/settings.jsonc': '{"explore":{"readyToProposeLanguage":"none","overviewLanguage":""}}' });
+  const ready = settings.get('explore.readyToProposeLanguage', { cwd });
+  assert.equal(ready.value, null);
+  assert.match(ready.warnings.join('\n'), /explore\.readyToProposeLanguage.*not none/);
+  const overview = settings.get('explore.overviewLanguage', { cwd });
+  assert.equal(overview.value, null);
+  assert.match(overview.warnings.join('\n'), /explore\.overviewLanguage.*nonempty string/);
+  const number = project({ '.sai/settings.jsonc': '{"explore":{"readyToProposeLanguage":3}}' });
+  assert.match(settings.get('explore.readyToProposeLanguage', { cwd: number }).warnings.join('\n'), /nonempty string/);
+});
+
+test('E1: ask matches case-insensitively and counts as an absent setting', () => {
+  const cwd = project({ '.sai/settings.jsonc': '{"explore":{"readyToProposeLanguage":"ASK","overviewLanguage":" Ask "},"backlog":{"provider":"Ask"}}' });
+  assert.deepEqual(settings.get('explore.readyToProposeLanguage', { cwd }), { value: null, source: 'absent', warnings: [] });
+  assert.deepEqual(settings.get('explore.overviewLanguage', { cwd }), { value: null, source: 'absent', warnings: [] });
+  assert.deepEqual(settings.readBacklog({ cwd, providerIds }), { config: {}, source: 'absent', warnings: [] });
+});
+
+test('the CLI gets both explore ids with canonical values and rejects an unknown explore id', () => {
+  const cwd = project({ '.sai/settings.jsonc': '{"explore":{"readyToProposeLanguage":"english","overviewLanguage":"none"}}' });
+  const run = (...args) => spawnSync(process.execPath, [path.join(root, 'sai/tools/project-settings.js'), ...args], { encoding: 'utf8' });
+  assert.deepEqual(JSON.parse(run('get', 'explore.readyToProposeLanguage', '--json', '--cwd', cwd).stdout), { value: 'English', source: 'setting', warnings: [] });
+  assert.deepEqual(JSON.parse(run('get', 'explore.overviewLanguage', '--json', '--cwd', cwd).stdout), { value: 'None', source: 'setting', warnings: [] });
+  assert.equal(run('get', 'explore.itemThree', '--json', '--cwd', cwd).status, 2);
+});
+
 test('to-backlog resolves an unknown host through the configured provider', () => {
   const remotes = ['https://git.example.com/group/repo.git', 'https://github.com/owner/repo.git'];
   assert.equal(toBacklog.resolve({ remotes }, toRegistry, {}).reason, 'provider-ambiguous');

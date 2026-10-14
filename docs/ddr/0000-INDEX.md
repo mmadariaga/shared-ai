@@ -58,6 +58,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0152 — Cause Locus gates eligibility; unresolved is not out-of-scope](./0152-cause-locus-gates-eligibility.md) — Refs 0151b
 - [0153 — Unclear Architecture Snapshot classification defaults to external](./0153-unclear-architecture-surface-defaults-to-external.md)
 - [0154 — Architecture Snapshot boundary split is prospective only](./0154-architecture-snapshot-boundary-split-is-prospective-only.md)
+- [0164 — A committed project setting is a read-only source for the overview-language gate](./0164-project-settings-answer-the-overview-language-gate-read-only.md) — **Amends** 0123c
 
 ### `/sai-3-implement`
 
@@ -132,6 +133,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0157 — Fast-lane validation and mutation stay in separate actors](./0157-fast-lane-validation-and-mutation-stay-in-separate-actors.md) — Refs adr:0172d
 - [0158 — The autofast implementer receives only the crystallized block](./0158-autofast-implementer-receives-only-the-block.md)
 - [0159 — Fast-lane selection consent pre-authorizes exactly one local commit](./0159-fast-lane-selection-pre-authorizes-one-local-commit.md) — Refs 0157, Refs 0052
+- [0164 — A committed project setting is a read-only source for the overview-language gate](./0164-project-settings-answer-the-overview-language-gate-read-only.md) — **Amends** 0123c
 
 ### `/sai-backfill`
 
@@ -311,6 +313,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 | [0149](./0149-orchestration-core-contracts-live-under-orchestration.md) | supersedes | [0128](./0128-neutral-root-protocols-and-command-cards.md) |
 | [0150](./0150-mode-parameterized-at-fetch-site-not-detected.md) | amends | [0028](../adr/0028-gate-parameters-inline-at-fetch-site.md) |
 | [0151c](./0151c-external-findings-block-is-only-review-evidence.md) | amends | [0133b](./0133b-review-progress-is-evidence-only.md) |
+| [0164](./0164-project-settings-answer-the-overview-language-gate-read-only.md) | amends | [0123c](./0123c-invocation-scoped-overview-language-selection.md) |
 
 | [0160](./0160-multi-dispatcher-phases-validate-at-the-worker.md) | refs | [adr:0048](../adr/0048-single-source-fast-track-parse-in-body-file.md) |
 

@@ -10,12 +10,24 @@ const LEGACY_FILE = '.to-backlog.json';
 const BACKLOG_FIELDS = ['provider', 'repository', 'project', 'organization'];
 const nonEmptyString = value => (typeof value === 'string' && value.trim() ? null : 'must be a nonempty string');
 
+const isKeyword = (value, keyword) => value.trim().toLowerCase() === keyword;
+// Language values are free strings; the two literals reach the gates in canonical form.
+const languageName = value => (isKeyword(value, 'english') ? 'English' : isKeyword(value, 'none') ? 'None' : value.trim());
+
 // The setting id catalogue: the single source of known ids and their validation.
-const CATALOGUE = Object.fromEntries(BACKLOG_FIELDS.map(field => [`backlog.${field}`, {
-  validate: field === 'provider'
-    ? (value, { providerIds }) => nonEmptyString(value) || (providerIds && !providerIds.includes(value) ? `must be one of ${providerIds.join(', ')}` : null)
-    : nonEmptyString,
-}]));
+// An entry may add `normalize`, which maps a valid value to the one the gates compare.
+const CATALOGUE = {
+  ...Object.fromEntries(BACKLOG_FIELDS.map(field => [`backlog.${field}`, {
+    validate: field === 'provider'
+      ? (value, { providerIds }) => nonEmptyString(value) || (providerIds && !providerIds.includes(value) ? `must be one of ${providerIds.join(', ')}` : null)
+      : nonEmptyString,
+  }])),
+  'explore.readyToProposeLanguage': {
+    validate: value => nonEmptyString(value) || (isKeyword(value, 'none') ? 'must name a language, not none' : null),
+    normalize: languageName,
+  },
+  'explore.overviewLanguage': { validate: nonEmptyString, normalize: languageName },
+};
 
 // Replace comments with spaces and drop trailing commas, leaving string
 // contents and every character position untouched, then parse as JSON.
@@ -68,10 +80,10 @@ function validate(parsed, label, providerIds) {
   if (!isObject(parsed)) return { values, warnings: [`${label} must contain a JSON object; every setting asks its normal question.`] };
   for (const [id, value] of flatten(parsed)) {
     if (!CATALOGUE[id]) { warnings.push(`Unknown setting id ${id} in ${label} is ignored.`); continue; }
-    if (value === 'ask') continue;
+    if (typeof value === 'string' && isKeyword(value, 'ask')) continue;
     const problem = CATALOGUE[id].validate(value, { providerIds });
     if (problem) warnings.push(`Setting ${id} in ${label} ${problem}; its question stays normal.`);
-    else values[id] = value;
+    else values[id] = CATALOGUE[id].normalize ? CATALOGUE[id].normalize(value) : value;
   }
   return { values, warnings };
 }

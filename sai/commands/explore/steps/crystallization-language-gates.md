@@ -2,7 +2,9 @@
 
    The gate's machinery — English skip, Non-English gate, question presentation, dominant-language determination, persistence, decline fallback — is identical to the artifact-review language gate's (artifact-review-language-gate.md), with these four deltas:
 
-   **Fast-track skip**: If the fast-track signal is active, produce the review directly in English with no question.
+   **Project setting**: Fetch @sai/policies/tool-resolution.md. Once at this gate, before the fast-track skip and the English skip, run `node <tool-path> get explore.readyToProposeLanguage --json --cwd <project-root>`, resolving `<tool-path>` for `project-settings.js`. Resolve the language in this order: the user's explicit statement of a language for this run, then the returned `value`, then the fast-track skip, then the gate's normal question. A returned `value` is a language name (`English` included) and answers the gate in every conversation language, so the English skip never hides it. When the setting answers, print `Project setting explore.readyToProposeLanguage: <value>` once before the block and ask no question. A non-zero exit, unparseable output, or `value: null` is an absent setting: print the tool's `warnings`, or one line naming the failure, and continue at the next level. The gate only reads the setting, and an answer to the normal question stays in the conversation. Values and validation: `docs/project-settings.md`.
+
+   **Fast-track skip**: If the fast-track signal is active and no project setting answered the gate, produce the review directly in English with no question.
 
    1. **Trigger**: an explicit crystallize request (per the Emission gate's trigger list) instead of an artifact-review request.
    2. **Tracked target**: the current crystallized idea or slice set instead of the reviewed artifact set.
