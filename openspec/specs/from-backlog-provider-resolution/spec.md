@@ -7,7 +7,7 @@ Resolve concrete GitHub issue references and retrieve complete original issue da
 
 ### Requirement: Registry-selected concrete GitHub references
 
-The common helper SHALL select a read-capable provider from the from-backlog registry and return its provider identifier, instruction reference, adapter, item number, and available canonical provenance on successful reference resolution. GitHub and GitLab references SHALL retain repository provenance; Azure DevOps references SHALL carry organization and available project provenance rather than a repository. Entries without classification: provider SHALL retain default selection through registered hosts or an explicit domainless declaration. For default classification, a complete URL without a registered host match SHALL classify entries declaring resolution: provider as fallback candidates. Direct matches from either default classification or provider-owned classification SHALL take precedence over all fallback candidates, and selection SHALL require exactly one candidate in the winning tier. Domainless references under default classification SHALL require an explicit domainless registry declaration. The shipped registry SHALL support github.com and domainless /owner/repo/issues/123 references through GitHub, complete GitLab issue URLs through a GitLab entry declaring resolution: provider without a host catalogue, and Azure DevOps Services references through the read-capable Azure adapter declaring provider-owned classification and resolution. Host-based GitHub full URLs SHALL use HTTPS without credentials or custom ports; query parameters and fragments SHALL NOT change issue identity. Host-based GitHub incomplete paths, pull-request paths, and invalid issue numbers SHALL be rejected without search or guessing. A selected provider-owned resolver SHALL receive the trimmed raw reference and SHALL own protocol, credential, port, and item-path compatibility validation. When shared URL parsing fails and no provider candidate claims the reference, the helper SHALL return the existing invalid-reference parse error.
+The common helper SHALL select a read-capable provider from the from-backlog registry and return its provider identifier, instruction reference, adapter, item number, and available canonical provenance on successful reference resolution. GitHub and GitLab references SHALL retain repository provenance; Azure DevOps references SHALL carry organization and available project provenance rather than a repository. Entries without classification: provider SHALL retain default selection through registered hosts or an explicit domainless declaration. For default classification, a complete URL without a registered host match SHALL classify entries declaring resolution: provider as fallback candidates. Direct matches from either default classification or provider-owned classification SHALL take precedence over all fallback candidates, and selection SHALL require exactly one candidate in the winning tier after the configured `backlog.provider` tie-break among fallback candidates. Domainless references under default classification SHALL require an explicit domainless registry declaration. The shipped registry SHALL support github.com and domainless /owner/repo/issues/123 references through GitHub, complete GitLab issue URLs through a GitLab entry declaring resolution: provider without a host catalogue, and Azure DevOps Services references through the read-capable Azure adapter declaring provider-owned classification and resolution. Host-based GitHub full URLs SHALL use HTTPS without credentials or custom ports; query parameters and fragments SHALL NOT change issue identity. Host-based GitHub incomplete paths, pull-request paths, and invalid issue numbers SHALL be rejected without search or guessing. A selected provider-owned resolver SHALL receive the trimmed raw reference and SHALL own protocol, credential, port, and item-path compatibility validation. When shared URL parsing fails and no provider candidate claims the reference, the helper SHALL return the existing invalid-reference parse error.
 
 #### Scenario: Equivalent concrete references
 
@@ -31,7 +31,7 @@ The common helper SHALL select a read-capable provider from the from-backlog reg
 
 #### Scenario: Multiple fallback providers
 
-- **WHEN** an unmatched URL selects more than one read-capable provider-owned fallback
+- **WHEN** an unmatched URL selects more than one read-capable provider-owned fallback and no `backlog.provider` setting applies
 - **THEN** the helper rejects the reference as not selecting exactly one registered provider.
 
 #### Scenario: Shipped GitLab reference
@@ -201,7 +201,7 @@ Retrieval SHALL perform no remote mutation. Authentication, permission, compatib
 
 ### Requirement: Provider-owned reference classification
 
-Read-capable registry entries declaring classification: provider SHALL classify the trimmed raw reference through their adapter's classify(value) operation, including references that shared URL parsing cannot interpret. The operation SHALL return exactly match for a direct claim, fallback for a compatibility candidate, or null to decline; the helper SHALL reject every other result as invalid-registry. Classification SHALL inspect only the reference and SHALL perform no CLI reads, context lookup, or side effects. Entries without read capability SHALL NOT participate in classification. The helper SHALL resolve context only through the uniquely selected adapter after applying direct-before-fallback selection. It SHALL reuse an adapter loaded for classification when dispatching the selected resolution operation. Classification SHALL NOT replace reference validation; an adapter owning classification SHALL validate its raw reference during resolution. The shipped Azure DevOps registry entry SHALL use this seam to directly claim supported Services hosts and isolated positive safe-integer IDs while existing GitHub classification and GitLab fallback behavior remain unchanged.
+Read-capable registry entries declaring classification: provider SHALL classify the trimmed raw reference through their adapter's classify(value) operation, including references that shared URL parsing cannot interpret. The operation SHALL return exactly match for a direct claim, fallback for a compatibility candidate, or null to decline; the helper SHALL reject every other result as invalid-registry. Classification SHALL inspect only the reference and SHALL perform no CLI reads, context lookup, or side effects. Entries without read capability SHALL NOT participate in classification. The helper SHALL resolve context only through the uniquely selected adapter after applying direct-before-fallback selection and the configured `backlog.provider` tie-break among fallback candidates. It SHALL reuse an adapter loaded for classification when dispatching the selected resolution operation. Classification SHALL NOT replace reference validation; an adapter owning classification SHALL validate its raw reference during resolution. The shipped Azure DevOps registry entry SHALL use this seam to directly claim supported Services hosts and isolated positive safe-integer IDs while existing GitHub classification and GitLab fallback behavior remain unchanged.
 
 #### Scenario: Provider claims a non-URL reference
 
@@ -225,7 +225,7 @@ Read-capable registry entries declaring classification: provider SHALL classify 
 
 #### Scenario: Multiple fallbacks prevent context resolution
 
-- **WHEN** no classifier directly matches and two read-capable classifiers return fallback
+- **WHEN** no classifier directly matches, two read-capable classifiers return fallback, and no `backlog.provider` setting applies
 - **THEN** the helper returns unsupported-provider without invoking either candidate's context resolver.
 
 #### Scenario: Invalid classifier result
@@ -242,3 +242,19 @@ Read-capable registry entries declaring classification: provider SHALL classify 
 
 - **WHEN** an adapter loaded for provider-owned classification becomes the uniquely selected provider
 - **THEN** the helper reuses that adapter for resolution instead of loading it again.
+
+### Requirement: Configured provider among fallback candidates
+
+The `from-backlog` helper SHALL read `backlog.provider` through `sai/tools/project-settings.js`, validated against the read-capable registry provider ids, and SHALL apply it only when no provider matched the reference positively. With several fallback candidates, it SHALL select the one the setting names. With exactly one fallback candidate, it SHALL use that candidate when the setting is absent or names it. When the setting names no fallback candidate, the helper SHALL return the reason `provider-destination-conflict` without resolving context. A positive match SHALL ignore the setting. Without the setting, selection SHALL behave as before.
+
+#### Scenario: Setting breaks a tie between fallback providers
+- **WHEN** an unmatched URL selects two read-capable fallback providers and `backlog.provider` names one of them
+- **THEN** the helper selects the named provider and reports a `Project setting backlog.provider: <value>` notice.
+
+#### Scenario: Setting contradicts the single fallback candidate
+- **WHEN** an unmatched URL selects one fallback provider and `backlog.provider` names a different provider
+- **THEN** the helper returns `provider-destination-conflict` without invoking any context resolver.
+
+#### Scenario: Positive match ignores the setting
+- **WHEN** a reference matches a provider positively and `backlog.provider` names another provider
+- **THEN** the helper selects the positively matched provider.
