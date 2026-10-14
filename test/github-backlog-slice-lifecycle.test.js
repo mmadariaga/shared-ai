@@ -14,7 +14,7 @@ function block(name, dependencies = 'None') {
   return ['## Ready to Propose', ...detector.STRICT_FIELDS.filter(field => !field.optional || field.label === 'Depends on').map(field => `**${field.label}**: ${field.label === 'Change name' ? name : field.label === 'Depends on' ? dependencies : field.inline ? 'None' : '\n- I1: agreed source content'}`), '---'].join('\n');
 }
 function fake({ native = false } = {}) {
-  const state = { native, issues: [], members: new Set(), parents: new Map(), blockers: new Map(), calls: [], fail: null, failNumber: null, failNative: false, lostCreation: false, sleeps: [], reads: new Map(), visibleAfter: 0, noItemId: false, autoAdd: false, archived: false, otherProject: false, nullItems: false };
+  const state = { native, issues: [], members: new Set(), parents: new Map(), blockers: new Map(), calls: [], fail: null, failNumber: null, failNative: false, lostCreation: false, sleeps: [], reads: new Map(), visibleAfter: 0, noItemId: false, autoAdd: false, archived: false, otherProject: false, nullItems: false, hierarchyResponse: null };
   // Direct reads see a member after `visibleAfter` earlier reads of it; the lagging items connection is never read.
   const seen = id => { if (!state.members.has(id)) return false; state.reads.set(id, (state.reads.get(id) || 0) + 1); return state.reads.get(id) > state.visibleAfter; };
   const page = nodes => ({ nodes, pageInfo: { hasNextPage: false, endCursor: null } });
@@ -47,6 +47,12 @@ function fake({ native = false } = {}) {
       else if (query.includes('issueOrPullRequest')) data = { repository: { ...repo, issueOrPullRequest: { __typename: 'Issue', ...state.issues.find(row => row.number === v.number) } } };
       else if (query.includes('comments(first')) data = { repository: { issue: { comments: page([{ id: `C${v.number}`, url: `comment-${v.number}`, body: 'Full comment', author: { login: 'author' } }]) } } };
       else if (query.includes('assignees(first')) data = { repository: { issue: { assignees: page(state.issues.find(row => row.number === v.number).assignees.map(login => ({ login }))) } } };
+      else if (query.includes('parent{url} subIssues(first:1)')) {
+        const parent = state.issues.find(row => row.number === state.parents.get(v.number));
+        const children = state.issues.filter(row => state.parents.get(row.number) === v.number);
+        data = { repository: { issue: { parent: parent ? { url: parent.url } : null, subIssues: { nodes: children.slice(0, 1).map(row => ({ url: row.url })) } } } };
+        if (state.hierarchyResponse) data = state.hierarchyResponse(data);
+      }
       else if (query.includes('parent{url}')) data = { repository: { issue: { parent: state.parents.has(v.number) ? { url: state.issues.find(row => row.number === state.parents.get(v.number)).url } : null } } };
       else if (query.includes('subIssues(first')) data = { repository: { issue: { subIssues: page(state.issues.filter(row => state.parents.get(row.number) === v.number).map(row => ({ url: row.url }))) } } };
       else if (query.includes('blockedBy(first')) data = { repository: { issue: { blockedBy: page(state.issues.filter(row => state.blockers.get(v.number)?.includes(row.number)).map(row => ({ url: row.url }))) } } };
@@ -59,10 +65,6 @@ function fake({ native = false } = {}) {
     if (endpoint === 'user') return JSON.stringify({ login: 'actor' });
     const number = Number(/issues\/(\d+)/.exec(endpoint)?.[1]);
     const issue = state.issues.find(row => row.number === number);
-    if (endpoint.endsWith('/parent')) {
-      const parent = state.issues.find(row => row.number === state.parents.get(number));
-      return JSON.stringify(parent ? { html_url: parent.url, body: parent.body } : {});
-    }
     if (endpoint.includes('/dependencies/blocked_by')) {
       if (state.failNative) throw new Error('Native dependencies unavailable');
       if (method === 'POST') { state.blockers.set(number, [...(state.blockers.get(number) || []), JSON.parse(input).issue_id]); return '{}'; }
@@ -271,7 +273,7 @@ for (const assignees of [['existing'], ['existing', 'another'], ['actor']]) test
   const request = { reference: fixture.state.issues[1].url, choice: 'keep' };
   const ready = assignment.propose(request, fixture.io);
   assert.equal(ready.status, 'ready');
-  const approved = { ...request, expected_assignees: ready.proposal.target, confirmation: ready.confirmation };
+  const approved = { ...request, expected_assignees: ready.proposal.target, expected_parent: ready.proposal.parent, confirmation: ready.confirmation };
   const beforeCalls = fixture.state.calls.length;
   assert.equal(assignment.verify(approved, fixture.io).verified, true);
   assert.deepEqual(fixture.state.issues[1].assignees, assignees);
@@ -296,9 +298,83 @@ test('H3 ordinary native child is independently verified without markers, and pa
   assert.equal(ready.proposal.parent, fixture.state.issues[0].url);
   assert.equal(ready.proposal.correspondence, null);
   assert.equal(assignment.assign({ ...request, confirmation: ready.confirmation }, fixture.io).verified, true);
-  assert.throws(() => assignment.inspect({ reference: fixture.state.issues[0].url }, fixture.io), /no verified native parent/);
+  assert.throws(() => assignment.inspect({ reference: fixture.state.issues[0].url }, fixture.io), /sub-issues; parent responsibility is preserved/);
   assert.deepEqual(fixture.state.issues[0].assignees, ['parent-owner']);
   assert.deepEqual(fixture.state.issues[1].assignees, ['actor']);
+});
+function standalone(options = {}) {
+  const fixture = fake({ native: true });
+  fixture.state.issues.push(ordinaryIssue(1), ordinaryIssue(2), ordinaryIssue(3));
+  Object.assign(fixture.state, options);
+  return fixture;
+}
+test('E1 standalone leaf is inspected with no parent and assigned through the current flow', () => {
+  const fixture = standalone();
+  const request = { reference: fixture.state.issues[0].url };
+  const inspected = assignment.inspect(request, fixture.io);
+  assert.equal(inspected.status, 'complete'); assert.equal(inspected.parent, null); assert.equal(inspected.correspondence, null);
+  const ready = assignment.propose(request, fixture.io);
+  assert.equal(ready.status, 'ready'); assert.equal(ready.proposal.parent, null); assert.deepEqual(ready.proposal.target, ['actor']);
+  const done = assignment.assign({ ...request, confirmation: ready.confirmation }, fixture.io);
+  assert.equal(done.verified, true); assert.equal(done.parent, null);
+  assert.deepEqual(fixture.state.issues[0].assignees, ['actor']);
+  assert.equal(assignment.verify({ ...request, expected_parent: null }, fixture.io).verified, true);
+});
+test('E2 an unmarked issue with sub-issues, open or closed, is a parent and is never assigned', () => {
+  for (const state of ['OPEN', 'CLOSED']) {
+    const fixture = standalone(); fixture.state.parents.set(2, 1); fixture.state.issues[1].state = state;
+    assert.throws(() => assignment.inspect({ reference: fixture.state.issues[0].url }, fixture.io), /sub-issues; parent responsibility is preserved/, state);
+    assert.throws(() => assignment.propose({ reference: fixture.state.issues[0].url }, fixture.io), /sub-issues/, state);
+    assert.deepEqual(fixture.state.issues[0].assignees, []);
+  }
+});
+test('E3 only a complete hierarchy response decides; errors and incomplete responses fail the inspection', () => {
+  const request = { reference: 'https://github.com/owner/repo/issues/1' };
+  const incomplete = [data => ({ repository: { issue: { subIssues: data.repository.issue.subIssues } } }), data => ({ repository: { issue: { parent: null } } }), data => ({ repository: { issue: { parent: null, subIssues: { nodes: null } } } }), data => ({ repository: { issue: { parent: {}, subIssues: { nodes: [] } } } }), data => ({ repository: { issue: null } })];
+  for (const hierarchyResponse of incomplete) assert.throws(() => assignment.inspect(request, standalone({ hierarchyResponse }).io), /Incomplete assignment inspection/);
+  for (const message of ['HTTP 401', 'HTTP 403', 'HTTP 502', 'network unreachable']) {
+    const fixture = standalone(); const run = fixture.io.run;
+    fixture.io.run = (command, args, input) => { if (args[1] === 'graphql' && JSON.parse(input).query.includes('subIssues(first:1)')) throw new Error(message); return run(command, args, input); };
+    assert.throws(() => assignment.inspect(request, fixture.io), new RegExp(message));
+  }
+  const graphqlError = standalone(); const run = graphqlError.io.run;
+  graphqlError.io.run = (command, args, input) => args[1] === 'graphql' && JSON.parse(input).query.includes('subIssues(first:1)') ? JSON.stringify({ errors: [{ message: 'Forbidden' }] }) : run(command, args, input);
+  assert.throws(() => assignment.inspect(request, graphqlError.io), /retrieval failed/);
+});
+test('E4 a marked issue keeps the correspondence flow; a native marker without a native parent is an unverified-parent error', t => {
+  const fixture = fake({ native: true }); publish(t, fixture);
+  const child = fixture.state.issues[1].url;
+  assert.equal(assignment.inspect({ reference: child }, fixture.io).parent, fixture.state.issues[0].url);
+  fixture.state.parents.delete(2);
+  assert.throws(() => assignment.inspect({ reference: child }, fixture.io), /no verified native parent/);
+});
+test('E5 a native child with sub-issues of its own follows the current flow', () => {
+  const fixture = standalone(); fixture.state.parents.set(2, 1); fixture.state.parents.set(3, 2);
+  const inspected = assignment.inspect({ reference: fixture.state.issues[1].url }, fixture.io);
+  assert.equal(inspected.parent, fixture.state.issues[0].url);
+});
+test('E6 verification requires the approved parent for every choice and the approved leaf-or-parent outcome', () => {
+  const fixture = standalone(); fixture.state.parents.set(2, 1);
+  const child = { reference: fixture.state.issues[1].url };
+  const ready = assignment.propose(child, fixture.io);
+  const done = assignment.assign({ ...child, confirmation: ready.confirmation }, fixture.io);
+  assert.equal(done.verified, true);
+  assert.equal(assignment.verify({ ...child, expected_parent: fixture.state.issues[0].url }, fixture.io).verified, true);
+  for (const expected_parent of [null, undefined, fixture.state.issues[2].url]) assert.equal(assignment.verify({ ...child, expected_parent }, fixture.io).verified, false);
+  fixture.state.issues[1].assignees = ['existing'];
+  const keep = assignment.propose({ ...child, choice: 'keep' }, fixture.io);
+  const approved = { ...child, choice: 'keep', expected_assignees: keep.proposal.target, expected_parent: keep.proposal.parent, confirmation: keep.confirmation };
+  assert.equal(assignment.verify(approved, fixture.io).verified, true);
+  fixture.state.parents.delete(2);
+  assert.equal(assignment.verify(approved, fixture.io).verified, false);
+  const leaf = standalone(); const request = { reference: leaf.state.issues[0].url };
+  const approvedLeaf = assignment.propose(request, leaf.io);
+  assert.equal(assignment.assign({ ...request, confirmation: approvedLeaf.confirmation }, leaf.io).verified, true);
+  leaf.state.parents.set(2, 1);
+  assert.throws(() => assignment.verify({ ...request, expected_parent: null }, leaf.io), /sub-issues/);
+  leaf.state.parents.delete(2); leaf.state.parents.set(1, 3);
+  assert.equal(assignment.verify({ ...request, expected_parent: null }, leaf.io).verified, false);
+  assert.equal(assignment.verify({ ...request, expected_parent: leaf.state.issues[2].url }, leaf.io).verified, true);
 });
 test('H4 written correspondence reconciles extra native children, full content and comments, without replacing origin', t => {
   const fixture = fake(); publish(t, fixture);

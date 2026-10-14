@@ -106,7 +106,7 @@ After completed set publication on any supported provider in Explore, the identi
 
 ### Requirement: Responsibility is checked only at implementation start
 
-The user-facing coordinator SHALL inspect selected-child responsibility before the first pending implementation dispatch in standalone apply, chained apply and full Direct Build. Planning, publication, import and optional branch preparation SHALL NOT assign issues. A supplied parent SHALL require explicit child selection. No provenance SHALL trigger no remote operation. Inspection SHALL independently verify a native child and parent or published written correspondence, show the child URL and all assignees and preserve parent responsibility.
+The user-facing coordinator SHALL inspect selected-child responsibility before the first pending implementation dispatch in standalone apply, chained apply and full Direct Build. Planning, publication, import and optional branch preparation SHALL NOT assign issues. A supplied parent SHALL require explicit child selection. No provenance SHALL trigger no remote operation. Inspection SHALL independently verify a native child and parent or published written correspondence, show the child URL and all assignees and preserve parent responsibility. On GitHub, inspection SHALL also accept a standalone leaf (an issue with no SAI correspondence marker, no native parent and no sub-issues) and SHALL report it with `parent: null`. GitHub inspection SHALL read the native parent and the first page of sub-issues through one GraphQL hierarchy query and SHALL decide only from a complete response. Any error or incomplete response SHALL fail the inspection. An unmarked GitHub issue with no native parent and at least one sub-issue, open or closed, SHALL be rejected as a parent. A marked issue whose correspondence declares native hierarchy SHALL be rejected when GitHub reports no native parent.
 
 #### Scenario: Ordinary native child
 
@@ -117,6 +117,31 @@ The user-facing coordinator SHALL inspect selected-child responsibility before t
 
 - **WHEN** apply has no pending Step
 - **THEN** it performs no assignment-start operation.
+
+#### Scenario: GitHub standalone leaf
+
+- **WHEN** a selected GitHub issue has no SAI marker, a `null` native parent and no sub-issues
+- **THEN** inspection returns `status: complete` with `parent: null`, and assignment follows the existing implementation-start flow.
+
+#### Scenario: Unmarked GitHub issue with sub-issues
+
+- **WHEN** a selected GitHub issue has no SAI marker, a `null` native parent and at least one open or closed sub-issue
+- **THEN** inspection fails with the parent-responsibility error and no assignment is proposed.
+
+#### Scenario: Incomplete or failed hierarchy response
+
+- **WHEN** the GitHub hierarchy query fails or returns no issue, no `parent` field, a parent without a URL or no sub-issue page
+- **THEN** inspection fails instead of treating the issue as a standalone leaf.
+
+#### Scenario: Marked native issue without a native parent
+
+- **WHEN** a selected GitHub issue carries an SAI marker declaring native hierarchy and GitHub reports no native parent
+- **THEN** inspection fails with the unverified-parent error.
+
+#### Scenario: Native child with its own sub-issues
+
+- **WHEN** a selected GitHub issue has a native parent and also has sub-issues
+- **THEN** inspection follows the native child flow and reports that parent.
 
 ### Requirement: Assignment has separate exact authorization and verification
 
@@ -197,7 +222,7 @@ Ordinary GitLab slice sets SHALL disclose written parent/child hierarchy and sep
 
 ### Requirement: Provider parity uses shared owners and isolated responsibility operations
 
-GitLab and Azure DevOps SHALL expose shared set-publication and selected-child assignment operations through their existing registered adapters. Implementation-start ownership SHALL resolve and retain the selected provider rather than assume GitHub. Responsibility inspection SHALL verify the selected child and parent, authenticated identity and exact current assignees. Existing responsibility SHALL require a keep, replace or stop decision. Assignment SHALL require exact proposal approval, change only the selected child's assignees and verify the result before implementation unless the user chose Skip. Keep SHALL verify the exact approved set without mutation. Parent responsibility SHALL remain unchanged. GitHub, GitLab and Azure DevOps SHALL map a provider rejection that proves no change was applied to `rejected` and every other assignment failure to `uncertain` through the shared assignment contract, and SHALL offer Skip identically. Both Claude Code and opencode SHALL receive the canonical shared tools and contracts without expanded read-only import permissions.
+GitLab and Azure DevOps SHALL expose shared set-publication and selected-child assignment operations through their existing registered adapters. Implementation-start ownership SHALL resolve and retain the selected provider rather than assume GitHub. Responsibility inspection SHALL verify the selected child and parent, authenticated identity and exact current assignees. Only GitHub SHALL additionally accept a standalone leaf with no parent. GitLab and Azure DevOps SHALL keep requiring a verified child and parent. Existing responsibility SHALL require a keep, replace or stop decision. Assignment SHALL require exact proposal approval, change only the selected child's assignees and verify the result before implementation unless the user chose Skip. Keep SHALL verify the exact approved set without mutation. Parent responsibility SHALL remain unchanged. GitHub, GitLab and Azure DevOps SHALL map a provider rejection that proves no change was applied to `rejected` and every other assignment failure to `uncertain` through the shared assignment contract, and SHALL offer Skip identically. Both Claude Code and opencode SHALL receive the canonical shared tools and contracts without expanded read-only import permissions.
 
 #### Scenario: Existing child responsibility changes
 
@@ -218,6 +243,11 @@ GitLab and Azure DevOps SHALL expose shared set-publication and selected-child a
 
 - **WHEN** a GitHub, GitLab or Azure DevOps assignment fails with an error marked as a definite rejection
 - **THEN** `assign` returns `rejected` with a no-change message and no verification operation.
+
+#### Scenario: GitLab or Azure DevOps issue without a parent
+
+- **WHEN** a selected GitLab or Azure DevOps issue has no verified parent
+- **THEN** responsibility inspection does not accept it as a standalone leaf and keeps the child-and-parent requirement.
 
 ### Requirement: GitHub set publication verifies Project membership with direct reads
 
@@ -252,3 +282,27 @@ On GitHub, `publish-set`, `continue-set` and `recover-set` SHALL decide each iss
 
 - **WHEN** the issue-side read finds only items of other Projects or a `null` Project items connection
 - **THEN** set publication treats the issue as absent from the destination Project and adds it.
+
+### Requirement: GitHub assignment verification requires the approved parent
+
+On GitHub, `verify-assignment` SHALL receive `expected_parent` for every choice: the `parent` URL of the approved proposal, or `null` for a standalone leaf. It SHALL report `verified: true` only when `expected_parent` equals the currently inspected parent and the existing assignee and confirmation checks pass. `assign` SHALL verify against the parent of its approved proposal. The `propose-assignment` confirmation SHALL cover the `parent` field. When the parent changes after approval, or an approved standalone leaf gains a sub-issue, verification SHALL NOT succeed and implementation SHALL stay unstarted.
+
+#### Scenario: Parent changes after approval
+
+- **WHEN** the native parent of an approved GitHub issue changes or disappears before `verify-assignment`, for a keep, assign or replace choice
+- **THEN** verification does not succeed: it returns `verified: false` when re-inspection succeeds with a different parent, or fails with the inspection error when inspection rejects the changed hierarchy, and implementation does not start.
+
+#### Scenario: Expected parent missing
+
+- **WHEN** `verify-assignment` is called without an `expected_parent` equal to the current parent
+- **THEN** it returns `verified: false`.
+
+#### Scenario: Approved standalone leaf gains a sub-issue
+
+- **WHEN** a GitHub standalone leaf approved with `parent: null` gains a sub-issue before verification
+- **THEN** inspection rejects it as a parent, verification does not succeed, and implementation does not start.
+
+#### Scenario: Assigned standalone leaf
+
+- **WHEN** an approved standalone leaf is assigned to the authenticated user
+- **THEN** `assign` verifies with `expected_parent: null` and reports `verified: true` with `parent: null`.
