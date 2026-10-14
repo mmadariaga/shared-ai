@@ -4,6 +4,8 @@ Run project `setup` and choose **Customize models** to change individual models,
 or **Load preset** to start from a subscription-specific mix. Both Claude Code
 and opencode support project-local overrides. See
 [model selection and presets](../README.md#post-install) for the quick guide.
+Project settings, which are not models, have their own menu entry; see
+[project settings](project-settings.md).
 
 The opencode defaults below balance cost and reasoning demand. The command
 coordinates the run; its worker does the technical work. Configure these roles

@@ -112,6 +112,9 @@ OpenSpec skill `SKILL.md` files are **never modified** — the OpenSpec CLI rege
 ### Harness universality
 The pipeline supports two harnesses: **Claude Code** and **opencode**. Every change to a wrapper, shared instruction, skill, installer, or this AGENTS.md MUST consider both. Harness-agnostic content stays harness-agnostic; the moment one harness is named, both are named with their own mechanism. This rule is upstream of Mirror discipline and also governs instruction prose, installer scripts, model tables, and docs. Before finishing any change, scan the diff for a harness name and verify both supported harnesses are addressed.
 
+### No AI attribution
+Commit messages, PR/MR titles and descriptions, issues, and comments carry only the change's own content. They never include AI attribution of any kind: no `Co-Authored-By: Claude …` trailer, no "🤖 Generated with Claude Code" footer, and no similar credit line, even when a harness or tool suggests one.
+
 ### Contract-required tool capabilities
 
 When changing agent or command access, edit the profiles and assignments in
@@ -241,7 +244,10 @@ OpenSpec setup. See [backlog usage](docs/backlog.md),
 [local branch creation](docs/commands/new-change-branch.md). Provider workflows
 load the selected registry reference, keep import read-only, and require exact
 publication approval; `to-pr` gates pushes separately. Branch creation preserves
-dirty work and never fetches, stashes, commits, or pushes.
+dirty work and never fetches, stashes, commits, or pushes. Per-project answers
+to command questions live in `.sai/settings.jsonc`; the `setup` menu's
+**Project settings** screen edits them, and
+[project settings](docs/project-settings.md) is the single reference.
 
 ### Managed agent files (tunable-seed lifecycle)
 

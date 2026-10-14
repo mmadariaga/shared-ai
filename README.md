@@ -284,6 +284,9 @@ command or agent overrides the global file with the same name:
 Keep the original `Fetch @` imports when editing overrides so the command still
 loads its workflow. Model customization preserves your other edits.
 
+To pre-answer the language and backlog provider questions, run `setup` and choose
+**Project settings**. See [project settings](docs/project-settings.md).
+
 ### Default opencode models
 
 The default mix uses Muse Spark for coordination, DeepSeek Flash for most

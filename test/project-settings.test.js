@@ -60,27 +60,16 @@ test('E5: an unparseable file warns once and every setting stays a normal questi
   assert.match(result.warnings[0], /Cannot parse \.sai\/settings\.jsonc/);
 });
 
-test('source distinguishes setting, legacy and absent', () => {
+test('E22: source is setting or absent', () => {
   const options = { providerIds };
   const current = project({ '.sai/settings.jsonc': '{"backlog":{"provider":"gitlab"}}' });
   assert.deepEqual(settings.get('backlog.provider', { ...options, cwd: current }), { value: 'gitlab', source: 'setting', warnings: [] });
-  const legacy = project({ '.to-backlog.json': '{"provider":"gitlab"}' });
-  const fromLegacy = settings.get('backlog.provider', { ...options, cwd: legacy });
-  assert.deepEqual([fromLegacy.value, fromLegacy.source], ['gitlab', 'legacy']);
-  assert.match(fromLegacy.warnings[0], /\.to-backlog\.json is deprecated/);
   assert.equal(settings.get('backlog.repository', { ...options, cwd: current }).source, 'absent');
-});
-
-test('E11: a legacy type key warns instead of failing, and the settings file wins even when unreadable', () => {
-  const legacy = project({ '.to-backlog.json': '{"provider":"github","type":"bug"}' });
-  const result = settings.readBacklog({ cwd: legacy, providerIds });
-  assert.deepEqual(result.config, { provider: 'github' });
-  assert.match(result.warnings.join('\n'), /Unknown setting id backlog\.type/);
-  const both = project({ '.to-backlog.json': '{"provider":"github"}', '.sai/settings.jsonc': '{ nope' });
-  const unreadable = settings.readBacklog({ cwd: both, providerIds });
-  assert.deepEqual([unreadable.config, unreadable.source], [{}, 'absent']);
-  assert.match(unreadable.warnings[0], /\.to-backlog\.json is ignored because \.sai\/settings\.jsonc exists/);
-  assert.match(unreadable.warnings[1], /Cannot parse/);
+  const unreadable = project({ '.sai/settings.jsonc': '{ nope' });
+  const result = settings.readBacklog({ cwd: unreadable, providerIds });
+  assert.deepEqual([result.config, result.source], [{}, 'absent']);
+  assert.equal(result.warnings.length, 1);
+  assert.match(result.warnings[0], /Cannot parse/);
 });
 
 test('E4 notices name only settings that no explicit field replaced and the result took', () => {
@@ -143,13 +132,12 @@ test('to-backlog resolves an unknown host through the configured provider', () =
 });
 
 test('to-backlog resolve output carries settings warnings and no notice for an unsupported explicit provider', () => {
-  const cwd = project({ '.to-backlog.json': '{"provider":"github","project":"board","type":"bug"}' });
+  const cwd = project({ '.sai/settings.jsonc': '{"backlog":{"provider":"github","project":"board","type":"bug"}}' });
   const result = spawnSync(process.execPath, [path.join(root, 'sai/tools/to-backlog.js'), 'resolve', path.join(root, 'skills/universal/to-backlog/providers/registry.json')], {
     cwd, input: JSON.stringify({ explicit: { provider: 'jira' } }), encoding: 'utf8', env: { ...process.env, PATH: '' },
   });
   const output = JSON.parse(result.stdout);
   assert.deepEqual([output.status, output.provider], ['unsupported', 'jira']);
-  assert.match(output.warnings.join('\n'), /deprecated/);
   assert.match(output.warnings.join('\n'), /Unknown setting id backlog\.type/);
   assert.equal(output.notices, undefined);
 });

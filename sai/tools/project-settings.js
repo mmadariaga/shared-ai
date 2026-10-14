@@ -5,8 +5,9 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const SETTINGS_FILE = path.join('.sai', 'settings.jsonc');
-const LEGACY_FILE = '.to-backlog.json';
+// Keep the repo-relative display path stable across platforms. `path.join`
+// normalizes it when resolving the actual filesystem path below.
+const SETTINGS_FILE = '.sai/settings.jsonc';
 const BACKLOG_FIELDS = ['provider', 'repository', 'project', 'organization'];
 const nonEmptyString = value => (typeof value === 'string' && value.trim() ? null : 'must be a nonempty string');
 
@@ -95,23 +96,13 @@ function load(file, label, parse) {
   catch (error) { return { warnings: [`Cannot parse ${label}: ${error.message}; every setting asks its normal question.`] }; }
 }
 
-/** Read every catalogue value: { values: {id: value}, source: setting|legacy|absent, warnings }. */
+/** Read every catalogue value: { values: {id: value}, source: setting|absent, warnings }. */
 function readSettings({ cwd = process.cwd(), providerIds } = {}) {
-  const legacyFile = path.join(cwd, LEGACY_FILE);
-  if (readFile(path.join(cwd, SETTINGS_FILE)).exists) {
-    const loaded = load(path.join(cwd, SETTINGS_FILE), SETTINGS_FILE, parseJsonc);
-    const checked = loaded.parsed === undefined ? { values: {}, warnings: loaded.warnings } : validate(loaded.parsed, SETTINGS_FILE, providerIds);
-    const warnings = [...(fs.existsSync(legacyFile) ? [`${LEGACY_FILE} is ignored because ${SETTINGS_FILE} exists.`] : []), ...checked.warnings];
-    return { values: checked.values, source: Object.keys(checked.values).length ? 'setting' : 'absent', warnings };
-  }
-  if (!fs.existsSync(legacyFile)) return { values: {}, source: 'absent', warnings: [] };
-  const loaded = load(legacyFile, LEGACY_FILE, JSON.parse);
-  const checked = loaded.parsed === undefined ? { values: {}, warnings: loaded.warnings } : validate(isObject(loaded.parsed) ? { backlog: loaded.parsed } : loaded.parsed, LEGACY_FILE, providerIds);
-  return {
-    values: checked.values,
-    source: Object.keys(checked.values).length ? 'legacy' : 'absent',
-    warnings: [`${LEGACY_FILE} is deprecated; move its fields under "backlog" in ${SETTINGS_FILE}.`, ...checked.warnings],
-  };
+  const file = path.join(cwd, SETTINGS_FILE);
+  if (!readFile(file).exists) return { values: {}, source: 'absent', warnings: [] };
+  const loaded = load(file, SETTINGS_FILE, parseJsonc);
+  const checked = loaded.parsed === undefined ? { values: {}, warnings: loaded.warnings } : validate(loaded.parsed, SETTINGS_FILE, providerIds);
+  return { values: checked.values, source: Object.keys(checked.values).length ? 'setting' : 'absent', warnings: checked.warnings };
 }
 
 /** One setting: { value, source, warnings }. */
@@ -170,4 +161,4 @@ function main(argv) {
 }
 
 if (require.main === module) process.exitCode = main(process.argv.slice(2));
-module.exports = { CATALOGUE, SETTINGS_FILE, parseJsonc, readSettings, get, readBacklog, notices, notice, report, main };
+module.exports = { CATALOGUE, SETTINGS_FILE, isKeyword, parseJsonc, readSettings, get, readBacklog, notices, notice, report, main };

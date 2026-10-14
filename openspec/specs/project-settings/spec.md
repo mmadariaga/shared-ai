@@ -7,11 +7,15 @@ TBD - created by archiving change project-settings-backlog. Update Purpose after
 
 ### Requirement: Read-only project settings reader
 
-`sai/tools/project-settings.js` SHALL be a CommonJS module and CLI that uses only Node built-ins and reads `.sai/settings.jsonc` from the supplied project root. It SHALL be the single source of the setting id catalogue and its validation, and it SHALL NOT write any file. The catalogue SHALL contain exactly `backlog.provider`, `backlog.repository`, `backlog.project`, `backlog.organization`, `explore.readyToProposeLanguage`, and `explore.overviewLanguage`, where a setting id is the dotted key path inside the file's top-level object. A catalogue entry MAY declare a normalization that maps a valid value to the value the reader returns.
+`sai/tools/project-settings.js` SHALL be a CommonJS module and CLI that uses only Node built-ins and reads `.sai/settings.jsonc` from the supplied project root, its only settings source. It SHALL be the single source of the setting id catalogue, its validation, and its canonical forms, and it SHALL NOT write any file. The catalogue SHALL contain exactly `backlog.provider`, `backlog.repository`, `backlog.project`, `backlog.organization`, `explore.readyToProposeLanguage`, and `explore.overviewLanguage`, where a setting id is the dotted key path inside the file's top-level object. A catalogue entry MAY declare a normalization that maps a valid value to the value the reader returns. The reader SHALL NOT read `.to-backlog.json`.
 
 #### Scenario: Missing settings file
-- **WHEN** neither `.sai/settings.jsonc` nor `.to-backlog.json` exists in the project root
+- **WHEN** `.sai/settings.jsonc` does not exist in the project root
 - **THEN** the reader returns no values, `source: absent`, and no warnings, so every catalogue question stays a normal question.
+
+#### Scenario: Legacy file is not a source
+- **WHEN** the project root contains `.to-backlog.json` with a valid `provider` and no `.sai/settings.jsonc`
+- **THEN** the reader returns no values, `source: absent`, and no warnings.
 
 #### Scenario: Nested key resolves to a dotted id
 - **WHEN** the file contains `{"backlog": {"provider": "gitlab"}}` and `gitlab` is a supplied provider id
@@ -49,21 +53,9 @@ The reader SHALL skip a key whose value is a string that equals `ask` case-insen
 - **WHEN** `explore.readyToProposeLanguage` is `"ASK"`, `explore.overviewLanguage` is `" Ask "`, and `backlog.provider` is `"Ask"`
 - **THEN** the reader returns no value and no warning for each of the three ids, with `source: absent`.
 
-### Requirement: Legacy `.to-backlog.json` transition
-
-When `.sai/settings.jsonc` is absent and `.to-backlog.json` exists, the reader SHALL read the legacy object's fields as `backlog.*` ids under the same validation, SHALL return a deprecation warning, and SHALL report `source: legacy` when at least one value is valid. A legacy `type` key SHALL produce an unknown-setting warning rather than an error. When `.sai/settings.jsonc` exists, readable or not, the reader SHALL ignore `.to-backlog.json` and SHALL return a warning that it is ignored.
-
-#### Scenario: Only the legacy file exists
-- **WHEN** only `.to-backlog.json` exists with a valid `provider` and a `type` key
-- **THEN** the reader returns `backlog.provider` with `source: legacy`, a deprecation warning, and an unknown-setting warning for `backlog.type`.
-
-#### Scenario: Unreadable settings file wins over the legacy file
-- **WHEN** `.sai/settings.jsonc` exists but cannot be parsed and `.to-backlog.json` is valid
-- **THEN** the reader returns no values, a warning that `.to-backlog.json` is ignored, and the parse warning.
-
 ### Requirement: Single-setting CLI
 
-The CLI `get <id> [--json] [--cwd <root>] [--providers <id,id>]` SHALL print one JSON object `{value, source, warnings}`, where `value` is the validated and normalized setting or `null` and `source` is `setting`, `legacy`, or `absent`. An id outside the catalogue or an unknown argument SHALL print an error object and exit with code 2.
+The CLI `get <id> [--json] [--cwd <root>] [--providers <id,id>]` SHALL print one JSON object `{value, source, warnings}`, where `value` is the validated and normalized setting or `null` and `source` is `setting` or `absent`. An id outside the catalogue or an unknown argument SHALL print an error object and exit with code 2.
 
 #### Scenario: Reading a configured provider
 - **WHEN** `get backlog.provider --json --cwd <root>` runs in a project whose settings file sets `backlog.provider`
