@@ -45,9 +45,12 @@ correspondence, pass the known destination and explicit change name to
 
 1. Run `inspect-assignment`. Require either independently verified native child
    and parent identities, or verified published written correspondence. Ordinary
-   native children need no SAI marker. An unverified/ambiguous written reference
-   stops for a user decision; a parent receives no assignment. Show the issue URL
-   and every current assignee.
+   native children need no SAI marker. On GitHub, a standalone leaf (no SAI
+   marker, no native parent and no sub-issues) is also accepted; show it as
+   having no parent. GitLab and Azure keep the child-and-parent requirement. An
+   unverified/ambiguous written reference stops for a user decision; a parent
+   (including an unmarked issue with sub-issues) receives no assignment. Show the
+   issue URL and every current assignee.
 2. If any assignee exists, ask whether to keep that responsibility and start,
    explicitly replace it with the authenticated user, or stop. Wait. Keep starts
    with no mutation: run `propose-assignment` with `choice: "keep"`, require its
@@ -64,8 +67,11 @@ correspondence, pass the known destination and explicit change name to
    `confirmation` and `choice` that `propose-assignment` returned, unchanged.
    This operation changes assignees only.
 4. Require `verify-assignment` to report `verified: true` before implementation.
-   For keep, send `choice: "keep"`, the retained `expected_assignees` (the exact
-   approved set, including multiple assignees), and `confirmation`. The verifier
+   In every case, send `expected_parent`: the `parent` URL of the approved
+   proposal, or `null` for a GitHub standalone leaf. A changed parent or
+   leaf-or-parent outcome is not verified. For keep, also send `choice: "keep"`,
+   the retained `expected_assignees` (the exact approved set, including multiple
+   assignees), and `confirmation`. The verifier
    checks that set and approval, not whether it contains the authenticated user.
    Keep never calls `assign`; assignment/replacement still verifies the approved
    authenticated user. Same-stretch resumption retains the same target and keep

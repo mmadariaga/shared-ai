@@ -159,4 +159,4 @@ function readChildren(reference, io) {
   }
 }
 
-module.exports = { normalize, readIssue, read, readSet, readChildren, connection };
+module.exports = { normalize, api, readIssue, read, readSet, readChildren, connection };
