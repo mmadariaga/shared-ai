@@ -218,3 +218,37 @@ GitLab and Azure DevOps SHALL expose shared set-publication and selected-child a
 
 - **WHEN** a GitHub, GitLab or Azure DevOps assignment fails with an error marked as a definite rejection
 - **THEN** `assign` returns `rejected` with a no-change message and no verification operation.
+
+### Requirement: GitHub set publication verifies Project membership with direct reads
+
+On GitHub, `publish-set`, `continue-set` and `recover-set` SHALL decide each issue's Project membership with the GitHub publication adapter's direct reads and SHALL NOT read the ProjectV2 `items` connection. Before adding an issue, publication SHALL check membership with the issue-side read, and an issue already in the destination Project, archived or not, SHALL count as verified with no add mutation. After the add mutation, publication SHALL verify with the bounded verification (one immediate read, then up to four more reads two seconds apart), using the direct item read when the response carries an item id and the issue-side read otherwise. When verification finds nothing, publication SHALL stop with `Project membership not verified` and leave that issue's Project operation pending. `recover-set` SHALL decide each Project operation with the issue-side read, leave it pending when no item of the destination Project is found, and never repeat the add mutation.
+
+#### Scenario: Direct reads complete set publication
+
+- **WHEN** each added child is visible to the direct item read on its first read
+- **THEN** set publication completes with one add mutation per issue and no wait.
+
+#### Scenario: Lagging visibility within the bound
+
+- **WHEN** an added issue becomes visible to direct reads only after earlier reads miss it, within five reads
+- **THEN** set publication waits two seconds between reads and completes.
+
+#### Scenario: Unverified membership stops the set
+
+- **WHEN** no verification read finds an added issue in the destination Project
+- **THEN** set publication returns partial failure with `Project membership not verified` and that issue's Project operation pending.
+
+#### Scenario: Recovery decides by the issue-side read
+
+- **WHEN** `recover-set` runs after an unverified insertion
+- **THEN** it marks the Project operation verified when the issue-side read finds the issue in the destination Project and leaves it pending otherwise, without repeating the add mutation.
+
+#### Scenario: Pre-existing membership
+
+- **WHEN** an issue is already in the destination Project before the add, archived or not
+- **THEN** set publication counts it as verified and sends no add mutation for it.
+
+#### Scenario: Other Projects and null Project items
+
+- **WHEN** the issue-side read finds only items of other Projects or a `null` Project items connection
+- **THEN** set publication treats the issue as absent from the destination Project and adds it.

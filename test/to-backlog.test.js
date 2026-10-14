@@ -22,6 +22,12 @@ function temp() { return fs.mkdtempSync(path.join(fs.existsSync('/tmp/opencode')
 // A simulated gh implements the relevant API, including cursor pages and lost
 // mutation responses. No real executable, credentials or network are used.
 function fakeGithub(state, command, args, input) {
+  // Direct reads see a member after `visibleAfter` earlier reads of it. Kept inside: the CLI test serializes this function.
+  const visible = () => {
+    if (!state.member) return false;
+    state.visibleReads = (state.visibleReads || 0) + 1;
+    return state.visibleReads > (state.visibleAfter || 0);
+  };
   if (command !== 'gh') throw new Error('Unexpected command');
   if (state.unavailable) throw new Error('gh unavailable');
   if (args[0] === '--version') return 'gh fake';
@@ -43,9 +49,15 @@ function fakeGithub(state, command, args, input) {
     if (state.failInsertion) throw new Error('Project access denied');
     state.member = true;
     if (state.loseInsertion) throw new Error('insertion response lost');
-    data = { addProjectV2ItemById: { item: { id: 'ITEM' } } };
+    data = { addProjectV2ItemById: { item: state.noItemId ? null : { id: 'ITEM' } } };
   } else if (query.includes('items(first:')) {
-    data = { node: { items: page(state.member ? [{ id: 'ITEM', content: { id: 'I' } }] : []) } };
+    // The Project items connection lags insertions; membership must never depend on it.
+    data = { node: { items: page([]) } };
+  } else if (query.includes('on ProjectV2Item{')) {
+    data = { node: visible() ? { id: variables.id, project: { id: 'P' }, content: { id: state.itemContent || 'I' } } : null };
+  } else if (query.includes('projectItems(first:')) {
+    const own = visible() ? [{ id: 'ITEM', project: { id: 'P' }, ...(state.archived ? { isArchived: true } : {}) }] : [];
+    data = { node: { projectItems: state.nullItems && !own.length ? null : page(state.otherProject ? [{ id: 'OTHER', project: { id: 'P2' } }, ...own] : own) } };
   } else if (query.includes('issues(first:')) {
     data = { repository: { issues: page(state.issue ? [state.issue] : []) } };
   } else if (query.includes('projectsV2(first:')) {
@@ -59,7 +71,7 @@ function fakeGithub(state, command, args, input) {
   } else data = { viewer: { login: state.otherActor ? 'other' : 'me' } };
   return JSON.stringify({ data });
 }
-function mock(state = {}) { return { run: (...args) => fakeGithub(state, ...args) }; }
+function mock(state = {}) { return { sleep: ms => (state.sleeps ||= []).push(ms), run: (...args) => fakeGithub(state, ...args) }; }
 function approved(state = {}) {
   const io = mock(state);
   const ready = github.query(request, io);
@@ -178,6 +190,70 @@ test('publication preserves Markdown exactly and publishes at most once per rece
   assert.equal(state.insertions, 1);
   assert.equal(github.publish(input, io).status, 'failure_before_publication');
   assert.equal(state.creations, 1);
+});
+
+test('Project membership is verified by direct reads and a lagging items connection is never trusted', () => {
+  const state = {};
+  const { input, io } = approved(state);
+  assert.equal(github.publish(input, io).status, 'complete');
+  assert.equal(state.insertions, 1);
+  assert.equal(state.sleeps, undefined);
+});
+
+test('a lagging direct read is retried every two seconds, five reads in total', () => {
+  const state = { visibleAfter: 2 };
+  const { input, io } = approved(state);
+  assert.equal(github.publish(input, io).status, 'complete');
+  assert.deepEqual(state.sleeps, [2000, 2000]);
+});
+
+test('an unverified insertion is a partial failure with the issue preserved; recovery verifies without repeating the mutation', () => {
+  const state = { visibleAfter: 99 };
+  const { input, io, receipt } = approved(state);
+  const result = github.publish(input, io);
+  assert.equal(result.status, 'partial_failure');
+  assert.match(result.message, /Project membership not verified/);
+  assert.equal(result.issue.number, 5);
+  assert.deepEqual(state.sleeps, [2000, 2000, 2000, 2000]);
+  assert.equal(JSON.parse(fs.readFileSync(receipt, 'utf8')).stage, 'insertion_pending');
+  state.visibleAfter = 0;
+  assert.equal(github.recover({ receipt }, io).status, 'complete');
+  assert.equal(state.insertions, 1);
+  assert.equal(state.creations, 1);
+});
+
+test('a direct item read of another issue is not membership', () => {
+  const state = { itemContent: 'OTHER' };
+  const { input, io } = approved(state);
+  assert.equal(github.publish(input, io).status, 'partial_failure');
+  assert.equal(state.sleeps.length, 4);
+});
+
+test('a response without an item id is verified by the issue-side read', () => {
+  const state = { noItemId: true, visibleAfter: 1 };
+  const { input, io } = approved(state);
+  assert.equal(github.publish(input, io).status, 'complete');
+  assert.equal(state.insertions, 1);
+  assert.deepEqual(state.sleeps, [2000]);
+});
+
+test('an issue already in the Project, archived or not, is verified without adding it again', () => {
+  for (const archived of [false, true]) {
+    const state = { member: true, archived };
+    const { input, io } = approved(state);
+    assert.equal(github.publish(input, io).status, 'complete');
+    assert.equal(state.insertions, undefined);
+    assert.equal(state.sleeps, undefined);
+  }
+});
+
+test('only the destination Project counts and a null projectItems means no items', () => {
+  for (const option of ['otherProject', 'nullItems']) {
+    const state = { [option]: true };
+    const { input, io } = approved(state);
+    assert.equal(github.publish(input, io).status, 'complete', option);
+    assert.equal(state.insertions, 1, option);
+  }
 });
 
 test('receipt boundary rejects relative and repository-contained paths before writes, including from nested cwd', () => {
