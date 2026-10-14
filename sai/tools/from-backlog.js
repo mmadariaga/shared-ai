@@ -89,11 +89,19 @@ sys.path.insert(0, request.pop('extension'))
 from azext_devops.dev.common.services import get_work_item_tracking_client, get_location_client
 client = get_location_client(request['organization']) if request['identity'] else get_work_item_tracking_client(request['organization'])
 routes = {k: quote(str(v), safe='') for k, v in request['route'].items()}
+# The SDK's service errors do not carry the HTTP status; record it where the SDK raises them.
+seen = []
+handle = getattr(client, '_handle_error', None)
+if handle:
+    def record(request_message, response):
+        seen.append(response.status_code)
+        return handle(request_message, response)
+    client._handle_error = record
 try:
     response = client._send(http_method=request['method'], location_id=request['location'], version=request['version'], route_values=routes, query_parameters=request['query'], content=request.get('body'), media_type=request['mediaType'])
     print(json.dumps(response.json()))
 except Exception as error:
-    status = getattr(error, 'status_code', None)
+    status = seen[0] if seen else getattr(error, 'status_code', None)
     print(json.dumps({'sdk_error': str(error), 'status_code': status}))
 `;
 function runAzureSdk(input) {

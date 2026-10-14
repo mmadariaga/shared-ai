@@ -164,8 +164,10 @@ const assignment = require('./backlog-provider-assignment').bind('azuredevops', 
     const current = relationRow(target, { number: ref.number }, io);
     const assigned = current.fields['System.AssignedTo'];
     if (digest(assigned ? [assigned.id] : []) !== digest(proposal.assignees) || target.actor !== proposal.actor) throw new Error('Azure responsibility or authenticated identity changed');
+    // Azure resolves an identity field by unique name; the identity id is rejected as an unknown identity.
+    if (!target.uniqueName) throw Object.assign(new Error('Azure did not report the authenticated user unique name; the work item was not changed'), { rejected: true });
     azure.api(target, 'wit', 'workitems', { project: target.project, id: ref.number }, io, 'PATCH', [
-      { op: 'test', path: '/rev', value: current.rev }, { op: 'add', path: '/fields/System.AssignedTo', value: proposal.actor }
+      { op: 'test', path: '/rev', value: current.rev }, { op: 'add', path: '/fields/System.AssignedTo', value: target.uniqueName }
     ], {}, true);
   }
 });

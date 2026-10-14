@@ -5,13 +5,25 @@ this implementation stretch. Same-stretch worker correction or resumption
 re-verifies the retained assignees instead of asking a new start question. A
 changed identity or responsibility stops for a fresh user decision. A new slice
 or new implementation invocation receives no prior assignment authorization.
+The implementation stretch is the span of one implementation invocation or
+slice, including worker correction, resumption, and replacement.
+
+Assignment is backlog bookkeeping, so the user decides whether it gates
+implementation: the approval in step 3 and the failure stop in step 4 each offer
+**Skip**, which starts implementation without assigning the work item. Skip
+performs no remote operation and holds for the whole implementation stretch:
+worker correction, resumption, and replacement proceed without re-verifying or
+re-asking, and the retained skip is not an assignment authorization for a new
+slice or a new invocation, which ask again. Skip comes only from a user answer.
 
 This owner contract runs in the user-facing coordinator, immediately before
 the first implementation worker on standalone apply, chained apply, and Direct
 Build. Planning and optional initial-branch preparation do not run assignment.
 Claude Code uses `AskUserQuestion`; opencode uses `question`. Load
 `safe-operations` before a remote mutation. Fast-track and unattended route
-consent do not approve assignment.
+consent do not approve assignment and never choose Skip; the questions are asked
+under `--fast-track`, `/sai-build`'s injected fast-track, and Direct Build
+alike, for every provider.
 
 Resolve the selected issue from a publication's structured correspondence for
 the explicitly selected change name, explicit originating-issue provenance, the
@@ -45,9 +57,12 @@ correspondence, pass the known destination and explicit change name to
    absent or ambiguous answer starts nothing.
 3. For an unassigned child or an explicit replace choice, run
    `propose-assignment` (with `choice` when applicable). Show the exact child,
-   authenticated user, previous assignees, and proposed assignees. Ask permission
-   for that exact assignment; wait. On approval call `assign` with the unchanged
-   `confirmation` and choice. This operation changes assignees only.
+   authenticated user, previous assignees, and proposed assignees. Ask **Approve /
+   Stop / Skip** for that exact assignment; wait. Stop and a declined, absent or
+   ambiguous answer start nothing. Skip starts implementation with no remote
+   operation (see the opening paragraph). On approval call `assign` with the
+   `confirmation` and `choice` that `propose-assignment` returned, unchanged.
+   This operation changes assignees only.
 4. Require `verify-assignment` to report `verified: true` before implementation.
    For keep, send `choice: "keep"`, the retained `expected_assignees` (the exact
    approved set, including multiple assignees), and `confirmation`. The verifier
@@ -55,9 +70,18 @@ correspondence, pass the known destination and explicit change name to
    Keep never calls `assign`; assignment/replacement still verifies the approved
    authenticated user. Same-stretch resumption retains the same target and keep
    token rather than generating fresh approval for a changed set.
-   After an uncertain mutation, verify rather than replay. On failure, report
-   the verified state and offer verification/retry or stop, then wait. Starting
-   all siblings requires separate selection and authorization for each child.
+   After an `uncertain` mutation, verify rather than replay. `assign` returns
+   `rejected` when the provider's rejection proves no change was applied; there
+   is nothing to verify and a retry cannot succeed. After any failed or
+   unverified assignment (assign or replace, an `uncertain` or `rejected`
+   outcome, or a failed verification), report the verified state and ask
+   **Retry / Skip / Stop**, then wait; Retry re-verifies after `uncertain` and
+   re-runs the step-3 proposal after `rejected`. After `rejected`, Skip is the
+   recommended option. Starting all siblings requires separate selection and
+   authorization for each child.
+
+   After Skip, the coordinator's closing report states that the work item stayed
+   unassigned by user choice and lists the assignees last verified.
 
 Reuse the existing initial branch and its local-work protection. A branch
 question is conditional on the owning branch workflow, not repeated because

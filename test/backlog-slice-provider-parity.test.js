@@ -13,8 +13,8 @@ function block(name, dependencies = 'None') {
 function fixture(platform) {
   const azure = platform === 'azuredevops', repository = azure ? 'https://dev.azure.com/org/Project' : 'https://gitlab.example/group/repo';
   const adapter = require(`../sai/tools/to-backlog-${platform}`), source = require(`../sai/tools/from-backlog-${platform}`);
-  const state = { rows: [], writes: [], calls: [], lost: false, failRead: null, failRelation: false, failLinkRead: null, comments: 0, blockers: new Map() };
-  const actor = azure ? 'actor-id' : 7;
+  const state = { rows: [], writes: [], calls: [], lost: false, failRead: null, failRelation: false, failLinkRead: null, comments: 0, blockers: new Map(), noUniqueName: false, assignmentFailure: null };
+  const actor = azure ? 'actor-id' : 7, uniqueName = 'actor@example.com';
   const url = number => azure ? `${repository}/_workitems/edit/${number}` : `${repository}/-/issues/${number}`;
   function create(title, description) {
     const number = state.rows.length + 1;
@@ -69,7 +69,7 @@ function fixture(platform) {
     }
     if (command === 'azure-sdk') {
       const request = JSON.parse(input), { route, body, method } = request;
-      if (request.identity) return JSON.stringify({ authenticatedUser: { id: actor } });
+      if (request.identity) return JSON.stringify({ authenticatedUser: { id: actor, ...(state.noUniqueName ? {} : { properties: { Account: { $type: 'System.String', $value: uniqueName } } }) } });
       if (method === 'POST') {
         state.writes.push({ method, body });
         const row = create(body.find(part => part.path === '/fields/System.Title').value, body.find(part => part.path === '/fields/System.Description').value);
@@ -80,6 +80,10 @@ function fixture(platform) {
       if (method === 'PATCH') {
         state.writes.push({ method, body });
         assert.equal(body[0].path, '/rev'); assert.equal(body[0].value, row.rev);
+        // Azure resolves an identity field by unique name only; an id is an unknown identity (bridge payload shape).
+        const assigned = body.find(part => part.path === '/fields/System.AssignedTo');
+        if (assigned && state.assignmentFailure) { if (state.assignmentFailure.thrown) throw new Error(state.assignmentFailure.thrown); return JSON.stringify(state.assignmentFailure.payload); }
+        if (assigned && assigned.value !== uniqueName) return JSON.stringify({ sdk_error: `VS402625: Unknown identity ${assigned.value}`, status_code: 400 });
         for (const part of body.slice(1)) {
           if (part.path === '/relations/-') {
             if (state.failRelation) throw new Error('native relation rejected by project rules');
@@ -88,7 +92,7 @@ function fixture(platform) {
             other.relations.push({ rel: part.value.rel.replace('-Reverse', '-Forward'), url: `https://dev.azure.com/org/_apis/wit/workItems/${row.id}` });
           } else {
             const field = part.path.slice('/fields/'.length);
-            row.fields[field] = field === 'System.AssignedTo' ? { id: part.value } : part.value;
+            row.fields[field] = field === 'System.AssignedTo' ? { id: actor } : part.value;
           }
         }
         row.rev++;
@@ -352,5 +356,77 @@ test('provider registry and both managed projections share operations; import ac
     const rows = expandInstallManifest(manifest, { repoRoot, harness, destinationRoot });
     for (const file of ['backlog-provider-set.js', 'backlog-provider-import.js', 'backlog-provider-assignment.js']) assert.ok(rows.some(row => row.sourcePath === path.join(repoRoot, 'sai', 'tools', file)), `${harness}: ${file}`);
     assert.ok(rows.some(row => row.sourcePath === path.join(repoRoot, 'skills', 'universal', 'to-backlog', 'slice-set.md')));
+  }
+});
+
+for (const platform of ['gitlab', 'azuredevops']) {
+  test(`${platform}: propose emits a choice that assign accepts for an unassigned child`, t => {
+    const f = fixture(platform); publish(t, f);
+    const request = { provider: platform, reference: f.url(2) }, ready = f.adapter['propose-assignment'](request, f.io);
+    assert.equal(ready.proposal.choice, 'assign');
+    const echoed = f.adapter['propose-assignment']({ ...request, choice: ready.proposal.choice }, f.io);
+    assert.equal(echoed.confirmation, ready.confirmation);
+    assert.equal(f.adapter.assign({ ...request, choice: ready.proposal.choice, confirmation: ready.confirmation }, f.io).verified, true);
+    assert.throws(() => f.adapter['propose-assignment']({ ...request, choice: 'bogus' }, f.io), /Invalid assignment choice/);
+  });
+}
+test('azuredevops: assignment writes the unique name and compares identity ids', t => {
+  const f = fixture('azuredevops'); publish(t, f);
+  const request = { provider: 'azuredevops', reference: f.url(2) }, ready = f.adapter['propose-assignment'](request, f.io);
+  assert.deepEqual(ready.proposal.target, [f.actor]);
+  const result = f.adapter.assign({ ...request, confirmation: ready.confirmation }, f.io);
+  assert.equal(result.verified, true); assert.deepEqual(result.assignees, [f.actor]);
+  assert.equal(f.state.writes.at(-1).body[1].value, 'actor@example.com');
+});
+test('azuredevops: a provider rejection that proves nothing changed returns rejected, not uncertain', t => {
+  const f = fixture('azuredevops'); publish(t, f);
+  const request = { provider: 'azuredevops', reference: f.url(2) }, ready = f.adapter['propose-assignment'](request, f.io);
+  // The opencode run's failure: Azure answered 400 "unknown identity" through the SDK bridge payload.
+  f.state.assignmentFailure = { payload: { sdk_error: 'VS402625: The identity is an unknown identity', status_code: 400 } };
+  const result = f.adapter.assign({ ...request, confirmation: ready.confirmation }, f.io);
+  assert.equal(result.status, 'rejected'); assert.match(result.message, /No change was applied/);
+  assert.equal(result.next_operation, undefined);
+  assert.equal(f.state.rows[1].fields['System.AssignedTo'], undefined);
+});
+test('azuredevops: transport errors, timeouts and 5xx stay uncertain and lead to verification', t => {
+  for (const failure of [{ payload: { sdk_error: 'Service unavailable', status_code: 503 } }, { payload: { sdk_error: 'read timed out', status_code: null } }, { thrown: 'socket hang up' }]) {
+    const f = fixture('azuredevops'); publish(t, f);
+    const request = { provider: 'azuredevops', reference: f.url(2) }, ready = f.adapter['propose-assignment'](request, f.io);
+    f.state.assignmentFailure = failure;
+    const result = f.adapter.assign({ ...request, confirmation: ready.confirmation }, f.io);
+    assert.equal(result.status, 'uncertain'); assert.equal(result.next_operation, 'verify-assignment');
+  }
+});
+test('azuredevops: without a reported unique name assign fails before the PATCH as rejected', t => {
+  const f = fixture('azuredevops'); publish(t, f);
+  const request = { provider: 'azuredevops', reference: f.url(2) }, ready = f.adapter['propose-assignment'](request, f.io);
+  f.state.noUniqueName = true;
+  const before = f.state.writes.length, result = f.adapter.assign({ ...request, confirmation: ready.confirmation }, f.io);
+  assert.equal(result.status, 'rejected'); assert.equal(f.state.writes.length, before);
+});
+test('all providers: a definite rejection maps to rejected and an unmarked failure to uncertain through one shared contract', () => {
+  const { bind } = require('../sai/tools/backlog-provider-assignment');
+  for (const platform of ['github', 'gitlab', 'azuredevops']) {
+    const item = { url: 'https://example.test/child', parent: 'p', assignees: [], correspondence: undefined };
+    for (const [error, status] of [[Object.assign(new Error('refused'), { rejected: true }), 'rejected'], [new Error('timeout'), 'uncertain']]) {
+      const adapter = bind(platform, { native: true, inspect: () => ({ actor: platform === 'gitlab' ? 7 : 'me', result: { status: 'complete', item, sources: [{ role: 'parent-context', item: { url: 'https://example.test/parent' } }] } }), assign: () => { throw error; } });
+      const ready = adapter['propose-assignment']({}, {});
+      assert.equal(adapter.assign({ confirmation: ready.confirmation }, {}).status, status, platform);
+    }
+  }
+});
+test('the start gate offers Skip identically for every provider and keeps step 2 and consent rules', () => {
+  const policy = fs.readFileSync(path.join(__dirname, '../sai/policies/backlog-implementation-start.md'), 'utf8').replace(/\s+/g, ' ');
+  assert.match(policy, /\*\*Approve \/ Stop \/ Skip\*\*/);
+  assert.match(policy, /\*\*Retry \/ Skip \/ Stop\*\*/);
+  assert.match(policy, /After `rejected`, Skip is the recommended option/);
+  assert.match(policy, /Skip performs no remote operation and holds for the whole implementation stretch/);
+  assert.match(policy, /never choose Skip/);
+  assert.match(policy, /stayed unassigned by user choice and lists the assignees last verified/);
+  assert.match(policy, /keep that responsibility and start, explicitly replace it with the authenticated user, or stop/);
+  for (const provider of ['github', 'gitlab', 'azuredevops']) {
+    const doc = fs.readFileSync(path.join(__dirname, `../skills/universal/to-backlog/providers/${provider}.md`), 'utf8');
+    assert.match(doc, /sai\/policies\/backlog-implementation-start\.md|assignment/i, provider);
+    assert.ok(!/Skip/.test(doc), `${provider} adapter doc must not diverge from the shared gate`);
   }
 });

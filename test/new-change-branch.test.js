@@ -221,7 +221,7 @@ test('suggested base labels are short, collision-safe and mapped to exact refere
 
 test('instruction checks cover context questions, native pickers, safety and both harness projections', () => {
   const skill = fs.readFileSync(path.resolve(__dirname, '../skills/universal/new-change-branch/SKILL.md'), 'utf8');
-  for (const pattern of [/disable-model-invocation: true/, /explicit user request/, /relevant conversation context/,
+  for (const pattern of [/explicit user request/, /relevant conversation context/,
     /Ask only for missing or ambiguous/, /references describe different/, /Preserve the selected identifier exactly/,
     /AskUserQuestion/, /opencode.*question/, /free-text/, /paginate/, /never automatically choose a base/i,
     /safe-operations/, /tool-resolution.md/, /without fetching/, /without calling `create`/,

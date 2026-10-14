@@ -63,7 +63,12 @@ Read-only `lookup-slice` requires project, explicit type and change name.
 
 Implementation-start assignment follows `sai/policies/backlog-implementation-start.md`.
 The separate assignment operations use the selected child's complete URL and
-authenticated identity ID. `assign` tests the current revision and changes only
-`System.AssignedTo`, leaving the parent's responsibility, title, description,
+authenticated identity ID, which every proposal, verification and
+identity-changed check compares. `assign` writes the authenticated user's unique
+name (email/UPN, from `connectionData`) because Azure rejects an identity ID as an
+unknown identity; without a unique name it fails before the write. A definite
+provider rejection returns `rejected` (no change applied); a transport error,
+timeout or 5xx returns `uncertain` and leads to `verify-assignment`. `assign` tests
+the current revision and changes only `System.AssignedTo`, leaving the parent's responsibility, title, description,
 state and tags untouched. Keep verifies the approved existing identity without
 mutation; rules or permissions that reject replacement stop implementation.

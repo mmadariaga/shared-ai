@@ -415,6 +415,11 @@ Once the change is finished, `sai-archive` runs `openspec archive <name> --yes -
 4. If the recommended model changes, update the wrappers in `commands/claude/` and `commands/opencode/`.
 5. Installable files (`sai/`, `skills/`, `agents/`, `commands/`, `openspec/schemas/sai-workflow/`) state their rules in their own text and never cite a shared-ai capability spec, by `openspec/specs/<name>/` path or by capability name: those folders are copied into projects where that directory does not exist. `test/installable-spec-citations.test.js` guards this.
 
+### Prompt-writing principles
+Load the `writing-for-agents` skill before modifying any prompt (cards, steps, policies, skills, agent files, AGENTS.md) and apply its principles: context pointers, context and cognitive load, information hierarchy, progressive disclosure, co-location, sprawl, completion criteria (clarity and demand), premature completion, splitting by sequence, leading words, negation, single source of truth, the environment as cache, relevance and sediment, no-ops.
+
+**Hard gates are the exception.** A gate that halts the whole run must state why nothing less will do: an irreversible or destructive effect, a missing authorization, or a state the run cannot recover from. Everywhere else, stop only the blocked work and close it with stop options (`sai/policies/stop-options.md`) so the user can unblock the run and continue.
+
 ### Change picker
 `sai/policies/change-picker.md` is the shared 0/1/N resolution instruction. A trimmed, non-empty `arguments_value` is authoritative; when it is empty, `sai/tools/change-picker.js` drives the confirm/select outcomes. `sai-status` is deliberately **not** a consumer — it resolves names via `sai/policies/status-picker.md`. `sai-backfill` is detached from the picker.
 
