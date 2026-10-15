@@ -36,14 +36,14 @@ The repository SHALL provide a deterministic script at sai/tools/check-delta-hea
 - **THEN** every requirement of that capability passes only under the ADDED section
 
 ### Requirement: Backfill coordinator runs mandatory pre-write delta-header preflight
-The backfill coordinator SHALL run the deterministic header script as a mandatory pre-write preflight before writing anything, staging each draft capability spec byte-for-byte under a fresh OS-temp directory preserving specs layout and running the script with the confirmed change name. Exit 0 proceeds to writes; exit 1 writes nothing into the change directory and continues the same worker with the verbatim script report plus cited headers and the existence rule; exit 2 writes nothing and stops as a tooling failure with the verbatim error.
+The backfill coordinator SHALL run the deterministic header script as a mandatory pre-write preflight before writing anything, running it directly on the worker's verified transfer files under `<transfer-dir>/specs` (preserving the `specs/<capability>/spec.md` layout) with the confirmed change name and making no staging copy. Exit 0 proceeds to writes; exit 1 writes nothing into the change directory and continues the same worker with the verbatim script report plus cited headers and the existence rule; exit 2 writes nothing and stops as a tooling failure with the verbatim error.
 
 #### Scenario: Clean preflight proceeds to writes
-- **WHEN** the staged drafts exit the header script with 0
+- **WHEN** the draft specs in the transfer directory exit the header script with 0
 - **THEN** the coordinator proceeds to validated writes
 
 #### Scenario: Misclassified headers return to the same worker
-- **WHEN** the staged drafts exit the header script with 1
+- **WHEN** the draft specs in the transfer directory exit the header script with 1
 - **THEN** the coordinator writes nothing and continues the same worker with the verbatim report and cited headers
 
 ### Requirement: Header tooling stays out of install and projection surfaces

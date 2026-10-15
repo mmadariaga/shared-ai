@@ -37,8 +37,11 @@ a payload carrying a legacy time field stays valid with that field ignored. A
 missing required field (not a missing time field) is malformed. No payload
 contains a continuation identifier or binding dispatch metadata. No payload
 carries artifact contents either, except where the phase contract defines a
-terminal payload that returns content for the coordinator to write: backfill's
-draft artifacts and merge's resolution region text.
+terminal payload that returns content for the coordinator to write: merge's
+resolution region text, and the archive reroute's corrected delta specs.
+Backfill's terminal payload returns references (`draft_references`, each
+`{path, sha256, destination}`) to worker-prepared transfer files, never the
+draft content.
 
 Completion is exactly:
 

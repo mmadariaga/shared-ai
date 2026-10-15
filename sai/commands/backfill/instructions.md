@@ -10,7 +10,9 @@
 > it per the instruction's own Delivery rule; where it conditions on an
 > answer, the coordinator forwards the selected value or free text through the
 > binding continuation; and where Phase 6 says **create** or **write**, the
-> worker composes the draft content and returns it as payload text. On the
+> worker composes the draft content, writes each draft as a transfer file
+> with `transfer.js put`, and returns references to those files, never the
+> content (`backfill/worker.md` § Draft transfer). On the
 > ordinary route, schema validation against
 > `openspec/schemas/sai-workflow/schema.yaml` and every final write into
 > `openspec/changes/{name}/` execute coordinator-side per
@@ -232,7 +234,7 @@ Do NOT compose any draft for a write until the name is confirmed (or fast-track-
 
 ## Phase 6: Draft Composition
 
-Only after Phases 1–5 complete with no abort and a confirmed change name, compose the following drafts in order and return their CONTENT as payload text inside your terminal payload. The draft set contains only `.openspec.yaml`, `proposal.md`, and capability specs under the selected change directory. Never compose `design.md`, `tasks.md`, or `implementation.md` — they are prohibited outputs everywhere in this flow.
+Only after Phases 1–5 complete with no abort and a confirmed change name, compose the following drafts in order and hand them over as transfer-file references inside your terminal payload (`backfill/worker.md` § Draft transfer): write each draft with `transfer.js put` and return no draft content in any message. The draft set contains only `.openspec.yaml`, `proposal.md`, and capability specs under the selected change directory. Never compose `design.md`, `tasks.md`, or `implementation.md` — they are prohibited outputs everywhere in this flow.
 
 ### 6a. Draft `.openspec.yaml`
 
@@ -290,7 +292,7 @@ Classify every requirement's delta header per requirement, never per file or per
 
 ## Completion Boundary
 
-On the ordinary route, after all draft artifact content has been returned for
+On the ordinary route, after all draft references have been returned for
 write, stop. Do not create any planning artifact, run another SAI command, or
 invoke an archive command from this flow. The coordinator validates the drafts
 against `openspec/schemas/sai-workflow/schema.yaml` and executes the final

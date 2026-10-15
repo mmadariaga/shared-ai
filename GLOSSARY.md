@@ -317,6 +317,9 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Tracked Crystallized Set**: "The chat-scoped, in-conversation-only list of every `**Change name**` value that this `sai-explore` chat's crystallization turns emitted, held in first-emission order and never derived from repository state."
 *Avoid*: crystallized changes, change list, session changes, active changes
 
+**Transfer File**: "A temporary file a worker creates with `sai/tools/transfer.js put` inside the coordinator's per-invocation transfer directory under the harness temp root, outside the repository, and identifies to its coordinator by a `{path, sha256, destination}` reference instead of returning the content in a message; verified before every use and copied byte-for-byte to its destination by `transfer.js materialize`."
+*Avoid*: draft scratch file, temp draft, inline draft transfer
+
 **Unrecoverability Veto**: "The worker-authored boolean on a failed outcome that stops the remaining bounded recovery attempts when worker-side evidence shows continuation cannot safely repair the failure."
 *Avoid*: retry denial, hard failure flag, fatal error
 
