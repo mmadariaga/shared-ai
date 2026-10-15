@@ -441,6 +441,7 @@ test('H2 publication -> amended stored block/hash -> spec provenance -> cold imp
   }
   const id = cli(['spawn', '--key', `origin-transport-${process.pid}-${require('node:crypto').randomUUID()}`]).id;
   t.after(() => fs.rmSync(sessionFile(id), { force: true }));
+  for (let step = 0; step < 3; step++) cli(['emit', id, 'explore-idea@1', '-'], '{"intent":"next-step"}');
   cli(['emit', id, 'explore-slice@1', '--ready-to-propose', '-'], fixture.request.blocks);
   const before = cli(['block', id, 'dependent']);
   const storedSet = publication.correspondence.slices.map(slice => cli(['block', id, slice.change_name]).text).join('\n\n');

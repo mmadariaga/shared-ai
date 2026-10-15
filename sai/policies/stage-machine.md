@@ -82,7 +82,12 @@ verbs take neither `--json` nor `--cwd`. A missing argument is a usage error
   dispatchable verdict. A non-dispatchable verdict exits 1; `judgment.pending`
   lists the lines awaiting a verdict. Empty stdin, stdin with no block heading,
   or a final block cut off before its `---` line is a delivery failure instead
-  (`INVALID_EVENT` with `reason: "EVENT_UNPARSEABLE"`, exit 1). On any other
+  (`INVALID_EVENT` with `reason: "EVENT_UNPARSEABLE"`, exit 1). A dispatchable
+  set is accepted only while `explore-idea@1` in the same session is at its
+  `crystallize` stage (an absent state counts as `explore-change`); at any
+  other stage nothing is recorded and the response is `INVALID_EVENT` with
+  `reason: "STAGE_NOT_CRYSTALLIZE"`, the found `stage`, and the `explore-idea@1`
+  pointer (exit 1). `--amend` is outside this check. On any other
   machine, or combined with `--progress` or `--with-overview`, the option is a
   usage error (exit 2). A detector module found in neither location relative to
   the CLI exits 2 naming the tried paths.

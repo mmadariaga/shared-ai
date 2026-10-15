@@ -19,6 +19,7 @@ Load any other step file only when a returned `next.follow` names that exact fil
 
 **Step map** (each reached through `next.follow` unless noted):
 - Pre-crystallization TODO, `next-step` advancement, persistence, Phase A panel — `steps/common.md`
+- Issue intake (work question, carried `E`/`I` lists) — `steps/issue-intake.md` (fetched from `steps/common.md` when an issue enters the conversation)
 - `Review edge cases` stage — `steps/review-edge-cases.md`
 - `Implementation details` stage — `steps/implementation-details.md`
 - Crystallization-turn close — `steps/crystallization-protocol.md`
