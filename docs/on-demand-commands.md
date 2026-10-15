@@ -5,7 +5,7 @@ The README keeps short [Main commands](../README.md#main-commands), [Utility com
 
 | Command | Purpose |
 |---------|---------|
-| [`/new-change-branch`](commands/new-change-branch.md) (skill) | Create and switch to a local `feat`, `fix`, `docs`, or `chore` branch. Reuse the discussion for its name and optional work-item ID; always ask for the base. Preserve existing work, with no fetch, stash, commit, or push. |
+| [`/new-change-branch`](commands/new-change-branch.md) (skill) | Create and switch to a local `feat`, `fix`, `docs`, or `chore` branch named `<type>/<id>_<name_with_underscores>`. Reuse the discussion for its name and optional work-item ID; always ask for the base. Preserve existing work, with no fetch, stash, commit, or push. |
 | [`/from-backlog <reference>`](commands/from-backlog.md) (skill) | Import a GitHub/GitLab issue or Azure DevOps Services work item, including description and comments, for discussion. Read-only; does not start implementation. |
 | [`/from-next-backlog-item`](commands/from-next-backlog-item.md) (skill) | With no arguments, resolve a backlog destination from context and remotes, select a highest-priority eligible item, then import it. Unsupported or unverifiable selections stay pending. |
 | [`/to-backlog`](commands/to-backlog.md) (skill) | Create a GitHub issue plus Project insertion, a GitLab issue, or an Azure Boards work item; update only the originating item's title and description when the conversation has an origin. Requires explicit full-content approval. |

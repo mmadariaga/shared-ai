@@ -392,3 +392,39 @@ test('H2 publication -> amended stored block/hash -> spec provenance -> cold imp
   const wrong = structuredClone(publication.correspondence); wrong.slices.pop();
   assert.throws(() => detector.attachBacklogOrigins(fixture.request.blocks, wrong), /complete stored block set|correspondence dependency/);
 });
+test('per-slice chain: later branches start from the previous branch, hold on uncommitted work and detect an occupied name', () => {
+  const { execute } = require('../sai/tools/new-change-branch');
+  const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'slice-branch-chain-'));
+  try {
+    const git = (...args) => { const r = spawnSync('git', args, { cwd, encoding: 'utf8' }); assert.equal(r.status, 0, r.stderr); return r.stdout.trim(); };
+    git('init', '-b', 'main'); git('config', 'user.name', 'Test'); git('config', 'user.email', 'test@example.invalid');
+    fs.writeFileSync(path.join(cwd, 'file'), 'base'); git('add', 'file'); git('commit', '-m', 'base');
+    const start = (name, id, base, extra = {}) => {
+      const resolved = execute('base', { base }, cwd);
+      return execute('create', { type: 'feat', name, id, base, sha: resolved.sha, ...extra }, cwd);
+    };
+    const first = start('first-slice', '11', 'main');
+    assert.equal(first.branch, 'feat/11_first_slice');
+    fs.writeFileSync(path.join(cwd, 'file'), 'slice one');
+    const held = start('second-slice', '12', first.branch, { require_clean: true });
+    assert.equal(held.status, 'failed');
+    assert.equal(held.created, false);
+    assert.equal(git('symbolic-ref', '--short', 'HEAD'), first.branch);
+    git('commit', '-am', 'slice one');
+    const second = start('second-slice', '12', first.branch, { require_clean: true });
+    assert.equal(second.status, 'completed');
+    assert.equal(second.branch, 'feat/12_second_slice');
+    assert.equal(git('rev-parse', 'HEAD'), git('rev-parse', first.branch));
+    git('switch', first.branch);
+    const occupied = execute('name', { type: 'feat', name: 'second-slice', id: '12' }, cwd);
+    assert.equal(occupied.status, 'failed');
+    assert.match(occupied.reason, /Branch already exists: feat\/12_second_slice/);
+    assert.equal(git('rev-parse', '--verify', 'refs/heads/feat/12_second_slice'), second.sha);
+  } finally { fs.rmSync(cwd, { recursive: true, force: true }); }
+});
+test('the shared branch strategy reuses one initial branch, and the chain tracks only conversation state', () => {
+  const text = fs.readFileSync(path.join(__dirname, '../sai/commands/explore/steps/route-selector.md'), 'utf8');
+  assert.match(text, /originating principal issue's identity for `shared`; reuse an already-prepared initial branch/);
+  assert.match(text, /`shared` creates nothing more/);
+  assert.match(text, /Keep `branch_strategy` in conversation state/);
+});

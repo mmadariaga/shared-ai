@@ -244,7 +244,11 @@ OpenSpec setup. See [backlog usage](docs/backlog.md),
 [local branch creation](docs/commands/new-change-branch.md). Provider workflows
 load the selected registry reference, keep import read-only, and require exact
 publication approval; `to-pr` gates pushes separately. Branch creation preserves
-dirty work and never fetches, stashes, commits, or pushes. Per-project answers
+dirty work and never fetches, stashes, commits, or pushes. New branches are named
+`<type>/<id>_<name_with_underscores>`; `/sai-explore` asks a slice set one
+three-choice branch question (`shared`, `per-slice`, `none`) and chains per-slice
+branches through `new-change-branch` with `require_clean`, in conversation state
+only (`route-selector.md` `## Slice branch chain`). Per-project answers
 to command questions live in `.sai/settings.jsonc`; the `setup` menu's
 **Project settings** screen edits them, and
 [project settings](docs/project-settings.md) is the single reference.

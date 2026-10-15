@@ -28,8 +28,9 @@ Ask only for missing or ambiguous information. For type offer `feat`, `fix`,
 the identifier; never invent it. When relevant references describe different
 changes, ask which to use. Preserve the selected identifier exactly.
 Run `name` with `{type,name,id?}`. It normalizes only the name to lowercase
-hyphen-separated words, builds `<type>/<id>_<name>` or `<type>/<name>`, and
-validates with Git. For an empty or invalid name or an occupied branch name,
+underscore-separated words, builds `<type>/<id>_<name_with_underscores>` or
+`<type>/<name_with_underscores>`, and validates with Git. Existing branches are
+never renamed. For an empty or invalid name or an occupied branch name,
 explain the problem and request a correction; never reuse, overwrite, or suffix
 an occupied name automatically. **Complete when:** `name` returns `ready` and
 the branch matches the resolved conversation data.
@@ -58,6 +59,10 @@ This is a presentation exception only for suggested branch-base options; preserv
 the general verbatim-identifier rule elsewhere and the helper's returned data.
 Accept a free-text base unchanged by this display rule
 even when no suggested option exists. Never automatically choose a base.
+The one exception is an invoking workflow that supplies `base` and the user already
+authorized creation in advance (the `per-slice` chain in `sai-explore`): skip the
+base question, run `base` with the supplied value, show the final branch and base
+without waiting, and continue.
 Run `base` with `{base}`. If it does not resolve to a commit, explain and repeat
 the base question. **Complete when:** the user selected or entered one valid
 base and the helper returned its exact commit SHA (commit identifier).
@@ -69,6 +74,9 @@ workflow request and base selection authorize only this local creation and
 switch. Cancellation at any earlier question ends without calling `create` and
 without repository mutation; `create` with `{cancelled:true}` is also read-only.
 Run `create` once with `{type,name,id?,base,sha}` from the completed steps.
+A caller that chains branches adds `require_clean: true`; creation then stops,
+without creating a branch, while the working tree has uncommitted changes. The
+standalone flow omits it.
 It rechecks availability, base validity and unchanged SHA, and merge/rebase
 state, then creates and switches with separate Git arguments and no remote
 tracking. Preserve staged, unstaged and untracked work. If Git prevents switching,

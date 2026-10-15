@@ -30,17 +30,27 @@ The skill SHALL resolve a type, a name, and an optional actual provider-neutral 
 
 ### Requirement: Consistent names preserve actual identifiers
 
-The helper SHALL normalize only the name to lowercase hyphen-separated words and construct `<type>/<id>_<name>` when an identifier is supplied or `<type>/<name>` otherwise. It MUST preserve a supplied identifier exactly, validate the resulting reference with Git, and reject empty or invalid names and occupied local branch names. The skill MUST request a correction rather than reuse, overwrite, or automatically suffix an occupied name.
+The helper SHALL normalize only the name to lowercase words separated by underscores, mapping each run of non-alphanumeric characters to `_` and trimming leading and trailing `_`, and construct `<type>/<id>_<name_with_underscores>` when an identifier is supplied or `<type>/<name_with_underscores>` otherwise. It MUST preserve a supplied identifier exactly, validate the resulting reference with Git, and reject empty or invalid names and occupied local branch names. The skill MUST request a correction rather than reuse, overwrite, or automatically suffix an occupied name. Existing branches MUST NOT be renamed.
 
 #### Scenario: Identifier-bearing name
 
 - **WHEN** the naming inputs are type `fix`, identifier `AbC-42`, and name `Fix Bug`
-- **THEN** the helper returns `fix/AbC-42_fix-bug` when that name is valid and available.
+- **THEN** the helper returns `fix/AbC-42_fix_bug` when that name is valid and available.
 
 #### Scenario: Name without identifier
 
 - **WHEN** the naming inputs are type `docs`, name `User GUIDE!`, and no identifier
-- **THEN** the helper returns `docs/user-guide` when that name is available.
+- **THEN** the helper returns `docs/user_guide` when that name is available.
+
+#### Scenario: Hyphens and underscore runs collapse to one underscore
+
+- **WHEN** the naming inputs are type `feat` and name `underscore-branches--and_slice`
+- **THEN** the helper returns `feat/underscore_branches_and_slice`.
+
+#### Scenario: Existing hyphenated branch keeps its name
+
+- **WHEN** a local branch `feat/new-change` exists and the naming inputs are type `feat` and name `new change`
+- **THEN** the helper returns `feat/new_change` as available and leaves `feat/new-change` unchanged.
 
 #### Scenario: Invalid or occupied name
 
@@ -69,6 +79,8 @@ The helper SHALL inspect at most 20 commits using first-parent traversal from HE
 ### Requirement: User-selected base with native free-text selection
 
 The skill SHALL offer the current branch, detected parent, existing main references, and existing master references in that order, omitting absent and duplicate references. Detached HEAD SHALL have no current-branch option. The skill MUST use Claude Code's `AskUserQuestion` or opencode's `question` with free-text entry and MUST NOT automatically choose a base. Claude Code SHALL paginate more than four bases in returned order with a More option and retain free text on every page. The helper SHALL resolve the selected or entered base to a commit SHA; an unavailable or non-commit base SHALL return the workflow to base selection.
+
+The only exception to the base question SHALL be an invoking workflow that supplies `base` after the user authorized creation in advance (the `per-slice` chain in `sai-explore`): the skill SHALL skip the base question, resolve the supplied base with the helper, show the final branch and base without waiting, and continue. The skill itself SHALL never choose a base.
 
 Suggested branch-base options SHALL display short names by stripping only a leading `refs/heads/` or `refs/remotes/` prefix, such as `main` or `origin/main`. When short names coincide across local and remote branches, the skill SHALL add localized local or remote qualifiers to each affected option after checking the complete inventory, including other pages. Each option SHALL map to its full, exact reference, and the skill SHALL pass that reference as `{base}` on selection.
 
@@ -103,6 +115,11 @@ Short-name display SHALL be a presentation exception only for suggested branch-b
 
 - **WHEN** Claude Code or opencode runs the skill standalone or through Explore
 - **THEN** suggested options follow the same short-name and collision-qualifier rules while preserving returned option order, full-reference mapping, and helper data.
+
+#### Scenario: Advance-authorized chain supplies the base
+
+- **WHEN** `sai-explore` invokes the skill for a `per-slice` chained branch with `base` set to the previous slice's branch
+- **THEN** the skill skips the base question, resolves that base, shows the final branch and base without waiting, and continues.
 
 ### Requirement: Safe local creation and verified switching
 
@@ -155,3 +172,22 @@ Existing projections SHALL install the universal skill and Node helper for Claud
 
 - **WHEN** the install manifest is expanded for Claude Code and opencode
 - **THEN** each projection includes the universal new-change-branch skill and its helper with the declared capability requirements.
+
+### Requirement: Optional clean-tree guard for branch creation
+
+The helper's `create` operation SHALL accept an optional `require_clean` flag. When `require_clean` is `true` and the working tree has staged, unstaged, or untracked changes, creation MUST stop before any branch is created, report that uncommitted changes must be committed first, and leave the active branch unchanged. When the flag is absent or not `true`, creation SHALL keep the existing behavior that preserves dirty work. The standalone skill flow SHALL omit the flag; a caller that chains branches SHALL set it.
+
+#### Scenario: Dirty tree stops guarded creation
+
+- **WHEN** `create` runs with `require_clean: true` while staged, unstaged, or untracked changes exist
+- **THEN** no branch is created and the active branch stays unchanged.
+
+#### Scenario: Clean tree permits guarded creation
+
+- **WHEN** `create` runs with `require_clean: true` on a clean working tree
+- **THEN** the branch is created and switched as in an unguarded creation.
+
+#### Scenario: Unguarded creation keeps dirty work
+
+- **WHEN** `create` runs without `require_clean` or with `require_clean: false` while local changes exist
+- **THEN** creation completes and the local changes remain intact.
