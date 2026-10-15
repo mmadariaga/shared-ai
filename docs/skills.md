@@ -40,10 +40,11 @@ the corresponding agent overrides.
 
 ## Optional third-party skill
 
-**writing-for-agents** helps word the Explore edge-case and implementation-detail
-lists. It is not bundled or SAI-managed. The global installer offers installation
-through skills.sh only in an interactive terminal and only after consent. You
-can also run:
+**writing-for-agents** helps word the Explore edge-case and
+implementation-detail lists: each list is drafted, reviewed for wording, and
+only then displayed. It is not bundled or SAI-managed. The global installer
+offers installation through skills.sh only in an interactive terminal and only
+after consent. You can also run:
 
 ```bash
 npx skills@latest add mattpocock/skills --skill=writing-for-agents

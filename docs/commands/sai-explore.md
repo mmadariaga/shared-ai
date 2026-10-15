@@ -21,8 +21,12 @@ If it detects that the place where the feature would be added mixes too many res
 When the technical approach is uncertain or there are several plausible explanations for a bug, it may propose a disposable proof of concept. This experiment answers the question that separates the alternatives; it is not automatically considered part of the final product. An explicit decision is requested before running it.
 
 The edge-case and implementation-detail lists use the optional third-party
-`writing-for-agents` skill for wording. If unavailable, Explore warns once and
-continues with its own rules; the skill adds no requirements or permissions.
+`writing-for-agents` skill for wording: Explore drafts each list, runs a silent
+review pass over it (after the probes on edge-case lists, and again after every
+adjustment), and only then displays it. If the skill is unavailable, Explore
+warns once (`Warning: the writing-for-agents skill is unavailable, so the list
+is shown without its review.`), skips the review pass, and continues with its
+own rules; the skill adds no requirements or permissions.
 Direct Build also consults existing `SAI_LEARNINGS.md` as repository context.
 
 Explore records a Ready to Propose block set only when every block is dispatchable,
