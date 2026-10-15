@@ -207,3 +207,35 @@ test('caller-side next-step recognition lives in common.md and slice.md points a
   assert.match(common, /negates, defers, quotes, or discusses the token SHALL NOT advance/);
   assert.match(slice, /stage-progression rule in `common\.md`/);
 });
+
+test('issue-shortcut records the issue lists and moves explore-change straight to crystallize', () => {
+  const event = { intent: 'issue-shortcut', edgeCaseList: ['E1 a', 'E4 b'], implementationDetailsList: ['I1 x', 'I3 y'] };
+  const shortcut = idea.transition(idea.initialState, event);
+
+  assert.equal(shortcut.state.stage, 'crystallize');
+  assert.deepEqual(shortcut.state.edgeCaseList, ['E1 a', 'E4 b']);
+  assert.deepEqual(shortcut.state.implementationDetailsList, ['I1 x', 'I3 y']);
+  assert.equal(shortcut.state.pocLane, false);
+  assert.equal(shortcut.next.follow, 'sai/commands/explore/steps/crystallization-protocol.md');
+  assert.ok(!('rejected' in shortcut));
+});
+
+test('issue-shortcut is rejected outside explore-change and with malformed lists', () => {
+  const event = { intent: 'issue-shortcut', edgeCaseList: [], implementationDetailsList: ['I1 x'] };
+  for (const stage of ['review-edge-cases', 'implementation-details', 'crystallize', 'poc-lane']) {
+    const rejected = idea.transition({ stage, ideaList: [], edgeCaseList: null, implementationDetailsList: null }, event);
+    assert.equal(rejected.rejected, 'SHORTCUT_NOT_AT_EXPLORE_CHANGE', stage);
+    assert.equal(rejected.state.stage, stage);
+  }
+  for (const bad of [
+    { intent: 'issue-shortcut' },
+    { intent: 'issue-shortcut', edgeCaseList: [], implementationDetailsList: [] },
+    { intent: 'issue-shortcut', edgeCaseList: 'E1', implementationDetailsList: ['I1 x'] },
+    { intent: 'issue-shortcut', edgeCaseList: [], implementationDetailsList: [1] },
+  ]) {
+    const rejected = idea.transition(idea.initialState, bad);
+    assert.equal(rejected.rejected, 'SHORTCUT_LISTS_INVALID');
+    assert.equal(rejected.state.stage, 'explore-change');
+    assert.equal(rejected.state.implementationDetailsList, null);
+  }
+});

@@ -70,6 +70,19 @@
  * It prints `{ ok: true, hash }` (the same sha256 the dispatchable verdict
  * reports per block) and exits 0 when stdin carries exactly one block; any other
  * count prints `{ ok: false, blocks, error }` and exits 1.
+ *
+ * A third sub-command converts an issue description into a draft block for
+ * `/sai-explore`'s issue shortcut (sai/commands/explore/steps/issue-intake.md):
+ *   node sai/tools/ready-to-propose.js convert [--change-name <name>]
+ *        [--declared-clean] < issue (Markdown or HTML)
+ * It prints `{ ok, converted, ready_to_propose_form, maturity,
+ * proposed_change_name, rejections, block, ... }`. The issue has the Ready to
+ * Propose form when its `Maturity` section reads `Ready to propose`; only then
+ * is a block built, every field from the issue's own text or `- None`, `E`/`I`
+ * items literal, and the draft is validated with the `dispatchable` profile
+ * (`validation.flagged` lists the lines awaiting the bounded judgment).
+ * Exit codes: 0 = converted, or the issue lacks the form; 1 = conversion
+ * rejected (`rejections`); 2 = usage or I/O error.
  */
 
 const crypto = require('crypto');
@@ -636,15 +649,230 @@ function detect(text, profile) {
   throw new Error(`unknown profile: ${profile}`);
 }
 
+/**
+ * Issue format constants, checked against sai/policies/issue-format.md by a
+ * test. The intake reads them from here; the policy stays their definition.
+ */
+const ISSUE_MANDATORY_SECTIONS = ['Problem', 'Goal', 'Scope', 'Non-goals', 'Open questions', 'Maturity'];
+const ISSUE_OPTIONAL_SECTIONS = ['Edge cases', 'Implementation notes', 'Decisions', 'Research leads'];
+const MATURITY_VALUES = ['Idea', 'Scope agreed', 'Edge cases agreed', 'Ready to propose'];
+const READY_MATURITY = 'Ready to propose';
+
+/** The `Request Additional Notes` line a `declared-clean` drift outcome adds. */
+const DECLARED_CLEAN_NOTE = 'The user declared that the issue has no drift from the current code without validating it.';
+
+const NOT_AGREED_OR_NONE = /^(?:not agreed yet|none|n\/a)\.?$/i;
+const UNVERIFIABLE_SCOPE = /\bTBD\b|\bto be decided\b|not agreed yet|\?\s*$/i;
+const NAME_STOP_WORDS = new Set(['a', 'an', 'the', 'to', 'of', 'for', 'in', 'on', 'and', 'or', 'every', 'that', 'is', 'are',
+  'with', 'it', 'its', 'this', 'from', 'by', 'be', 'as', 'at', 'so', 'one', 'when', 'then', 'into', 'than', 'whether']);
+
+const HTML_ENTITIES = { nbsp: ' ', amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" };
+
+/** Turn an HTML issue description into Markdown; comments never survive. */
+function htmlToMarkdown(text) {
+  let out = text;
+  out = out.replace(/<code[^>]*>([\s\S]*?)<\/code>/gi, '`$1`');
+  out = out.replace(/<(?:strong|b)\b[^>]*>([\s\S]*?)<\/(?:strong|b)>/gi, '**$1**');
+  out = out.replace(/<h[1-6][^>]*>([\s\S]*?)<\/h[1-6]>/gi, (_m, inner) => `\n\n## ${inner.replace(/<[^>]+>/g, '').trim()}\n\n`);
+  out = out.replace(/<li\b[^>]*>/gi, '\n- ').replace(/<\/li>/gi, '\n');
+  out = out.replace(/<br\s*\/?>/gi, '\n').replace(/<\/?(?:p|div|ul|ol|blockquote|tr|table)\b[^>]*>/gi, '\n');
+  out = out.replace(/<[^>]+>/g, '');
+  out = out.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (match, entity) => {
+    if (entity[0] === '#') {
+      const code = entity[1].toLowerCase() === 'x' ? parseInt(entity.slice(2), 16) : parseInt(entity.slice(1), 10);
+      return Number.isFinite(code) ? String.fromCodePoint(code) : match;
+    }
+    return Object.prototype.hasOwnProperty.call(HTML_ENTITIES, entity.toLowerCase()) ? HTML_ENTITIES[entity.toLowerCase()] : match;
+  });
+  return out;
+}
+
+/**
+ * Normalize an issue description to Markdown. HTML comments are removed in both
+ * encodings: hidden markers never carry block content.
+ */
+function issueToMarkdown(text) {
+  const withoutComments = normalize(text).replace(/<!--[\s\S]*?-->/g, '');
+  const hasMarkdownHeading = /^#{1,6}[ \t]+\S/m.test(withoutComments);
+  const hasHtmlStructure = /<(?:h[1-6]|p|div|ul|ol|li|br)\b/i.test(withoutComments);
+  return hasHtmlStructure && !hasMarkdownHeading ? htmlToMarkdown(withoutComments) : withoutComments;
+}
+
+/** Split Markdown into `{ name -> body lines }` keyed by the lowercase heading text. */
+function parseIssueSections(markdown) {
+  const sections = new Map();
+  let current = null;
+  for (const line of markdown.split('\n')) {
+    const heading = /^#{1,6}[ \t]+(.+?)[ \t]*#*[ \t]*$/.exec(line);
+    if (heading) {
+      current = heading[1].replace(/[*_`]/g, '').trim().toLowerCase();
+      if (!sections.has(current)) sections.set(current, []);
+      continue;
+    }
+    if (current) sections.get(current).push(line);
+  }
+  return sections;
+}
+
+/** Bullet items of a section body; continuation lines join their item. */
+function sectionItems(lines) {
+  const items = [];
+  for (const raw of lines) {
+    const bullet = /^\s*(?:[-*+]|\d+[.)])\s+(.*\S)\s*$/.exec(raw);
+    if (bullet) {
+      items.push(bullet[1]);
+    } else if (raw.trim() !== '' && items.length > 0 && /^\s+\S/.test(raw)) {
+      items[items.length - 1] += ` ${raw.trim()}`;
+    } else if (raw.trim() !== '') {
+      items.push(raw.trim());
+    }
+  }
+  return items;
+}
+
+/** One-line text of a section body: non-empty lines joined, bullet markers dropped. */
+function sectionText(lines) {
+  return lines
+    .map((line) => line.trim().replace(/^(?:[-*+]|\d+[.)])\s+/, ''))
+    .filter((line) => line !== '')
+    .join(' ');
+}
+
+function isEmptySource(text) {
+  return text === '' || NOT_AGREED_OR_NONE.test(text);
+}
+
+function proposeChangeName(goal) {
+  const words = goal.toLowerCase().replace(/[^a-z0-9]+/g, ' ').split(' ')
+    .filter((word) => word !== '' && !NAME_STOP_WORDS.has(word));
+  return words.slice(0, 5).join('-');
+}
+
+function bulletsOrNone(items) {
+  return items.length === 0 ? ['- None'] : items.map((item) => `- ${item}`);
+}
+
+function rejection(code, detail) {
+  return { code, detail };
+}
+
+/**
+ * Deterministic issue-to-block conversion. Every field is the issue's own text
+ * or `- None`; the model reviews the draft, it does not author it.
+ *
+ * @param {string} text Issue description, Markdown or HTML.
+ * @param {{changeName?: string, declaredClean?: boolean}} [options]
+ */
+function convertIssue(text, options = {}) {
+  const sections = parseIssueSections(issueToMarkdown(text));
+  const maturityLines = sections.get('maturity');
+  const maturity = maturityLines
+    ? sectionText(maturityLines).replace(/[*_`]/g, '').replace(/\.$/, '').trim()
+    : null;
+  const form = maturity !== null && maturity.toLowerCase() === READY_MATURITY.toLowerCase();
+  const goalText = sectionText(sections.get('goal') || []);
+  const proposedName = isEmptySource(goalText) ? null : proposeChangeName(goalText);
+  const base = { ready_to_propose_form: form, maturity, proposed_change_name: proposedName };
+  if (!form) {
+    return Object.assign(base, { ok: true, converted: false, rejections: [], block: null });
+  }
+
+  const rejections = [];
+  for (const name of ISSUE_MANDATORY_SECTIONS) {
+    if (!sections.has(name.toLowerCase())) rejections.push(rejection('MISSING_ISSUE_SECTION', `the issue has no "${name}" section`));
+  }
+  const openQuestions = sectionItems(sections.get('open questions') || []).filter((item) => !NOT_AGREED_OR_NONE.test(item));
+  if (openQuestions.length > 0) {
+    rejections.push(rejection('OPEN_QUESTIONS_PRESENT', `the issue still has ${openQuestions.length} entr${openQuestions.length === 1 ? 'y' : 'ies'} in "Open questions"`));
+  }
+  const problem = sectionText(sections.get('problem') || []);
+  for (const [name, value] of [['Problem', problem], ['Goal', goalText]]) {
+    if (sections.has(name.toLowerCase()) && isEmptySource(value)) {
+      rejections.push(rejection('EMPTY_ISSUE_SECTION', `the "${name}" section has no agreed content`));
+    }
+  }
+  const scope = sectionItems(sections.get('scope') || []);
+  if (sections.has('scope') && (scope.length === 0 || scope.every((item) => NOT_AGREED_OR_NONE.test(item)))) {
+    rejections.push(rejection('EMPTY_ISSUE_SECTION', 'the "Scope" section has no agreed content'));
+  }
+  const capabilities = scope.filter((item) => !NOT_AGREED_OR_NONE.test(item));
+  for (const item of capabilities) {
+    if (UNVERIFIABLE_SCOPE.test(item)) {
+      rejections.push(rejection('SCOPE_NOT_VERIFIABLE', `scope item does not read as a verifiable capability: ${item}`));
+    }
+  }
+
+  const listFor = (sectionName, letter) => {
+    const items = sectionItems(sections.get(sectionName) || []).filter((item) => !NOT_AGREED_OR_NONE.test(item));
+    const identified = new RegExp(`^(?:\\*\\*)?${letter}\\d+(?:\\*\\*)?(?=[\\s:.)\\-\\u2013]|$)`);
+    for (const item of items) {
+      if (!identified.test(item)) {
+        rejections.push(rejection('UNIDENTIFIED_ITEM', `"${sectionName}" item has no ${letter}# identifier: ${item}`));
+      }
+    }
+    return items;
+  };
+  const edgeCases = listFor('edge cases', 'E');
+  const implementation = listFor('implementation notes', 'I');
+
+  const lines = [
+    HEADING,
+    '',
+    `**Change name**: ${options.changeName || proposedName || ''}`,
+    '**Depends on**: None',
+  ];
+  const notNone = (items) => items.filter((item) => !NOT_AGREED_OR_NONE.test(item));
+  lines.push(
+    `**What**: ${goalText}`,
+    `**Why**: ${problem}`,
+    '**Capabilities in scope**:', ...bulletsOrNone(capabilities),
+    '**Research Leads**:', ...bulletsOrNone(notNone(sectionItems(sections.get('research leads') || []))),
+    '**Decisions & Rationale**:', ...bulletsOrNone(notNone(sectionItems(sections.get('decisions') || []))),
+    '**Alternatives Considered**:', '- None',
+    '**Trade-offs Accepted**:', '- None',
+    '**Model / Re-framings**:', '- None',
+    '**Key constraints**:', ...bulletsOrNone(notNone(sectionItems(sections.get('non-goals') || []))),
+    '**Terms**:', '- None',
+    '**Edge Cases**:', ...bulletsOrNone(edgeCases),
+    '**Implementation Details**:', ...bulletsOrNone(implementation),
+    '**Out of scope Implementation Details**:', '- None',
+  );
+  if (options.declaredClean) lines.push('**Request Additional Notes**:', DECLARED_CLEAN_NOTE);
+  lines.push('**Overview language**: None', '', SEPARATOR, '');
+  const block = lines.join('\n');
+
+  const verdict = checkDispatchable(block);
+  for (const entry of verdict.violations.concat(...verdict.blocks.map((b) => b.violations))) {
+    rejections.push(rejection(entry.problem, entry.detail));
+  }
+  const converted = rejections.length === 0;
+  return Object.assign(base, {
+    ok: converted,
+    converted,
+    rejections,
+    block: converted ? block : null,
+    edge_cases: edgeCases,
+    implementation_details: implementation,
+    validation: {
+      ok: verdict.ok,
+      profile: 'dispatchable',
+      hash: verdict.blocks[0] ? verdict.blocks[0].hash : null,
+      flagged: verdict.flagged,
+    },
+  });
+}
+
 function usage() {
   return [
     'Usage: node sai/tools/ready-to-propose.js check --profile loose|strict|dispatchable [--json] < text',
     '       node sai/tools/ready-to-propose.js hash < block',
     '       node sai/tools/ready-to-propose.js dependencies < complete block set',
     '       node sai/tools/ready-to-propose.js attach-origin < JSON {text, correspondence}',
+    '       node sai/tools/ready-to-propose.js convert [--change-name <name>] [--declared-clean] < issue',
     '',
     '  check               Validate the Ready to Propose text read from stdin',
     '  hash                Print the sha256 of the single block read from stdin',
+    '  convert             Convert the issue description (Markdown or HTML) read from stdin into a draft block',
     '  --profile <name>    loose (backfill quorum), strict (full block format), or',
     `                      dispatchable (strict + implementation item + hygiene pre-filter;`,
     `                      verdicts JSON after a ${VERDICTS_MARKER} line)`,
@@ -653,7 +881,7 @@ function usage() {
 }
 
 function parseArgs(argv) {
-  const opts = { command: null, profile: null, help: false };
+  const opts = { command: null, profile: null, help: false, changeName: null, declaredClean: false };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === '--help' || arg === '-h') {
@@ -665,6 +893,13 @@ function parseArgs(argv) {
         return { error: '--profile requires a value' };
       }
       opts.profile = argv[++i];
+    } else if (arg === '--change-name') {
+      if (i + 1 >= argv.length) {
+        return { error: `${arg} requires a value` };
+      }
+      opts.changeName = argv[++i];
+    } else if (arg === '--declared-clean') {
+      opts.declaredClean = true;
     } else if (arg.startsWith('--')) {
       return { error: `unknown flag: ${arg}` };
     } else if (opts.command === null) {
@@ -704,6 +939,14 @@ function main(argv, readInput = () => fs.readFileSync(0, 'utf8')) {
     process.stdout.write(`${JSON.stringify({ ok: true, hash: hashBlock(texts[0]) }, null, 2)}\n`);
     return 0;
   }
+  if (opts.command === 'convert') {
+    let input;
+    try { input = readInput(); }
+    catch (error) { process.stderr.write(`cannot read stdin: ${error.message}\n`); return 2; }
+    const outcome = convertIssue(input, { changeName: opts.changeName, declaredClean: opts.declaredClean });
+    process.stdout.write(`${JSON.stringify(outcome, null, 2)}\n`);
+    return outcome.ok ? 0 : 1;
+  }
   if (opts.command === 'dependencies') {
     let input;
     try { input = readInput(); }
@@ -723,7 +966,7 @@ function main(argv, readInput = () => fs.readFileSync(0, 'utf8')) {
     }
   }
   if (opts.command !== 'check') {
-    process.stderr.write(`sub-command "check" or "hash" required.\n${usage()}\n`);
+    process.stderr.write(`sub-command "check", "hash", "dependencies", "attach-origin" or "convert" required.\n${usage()}\n`);
     return 2;
   }
   if (!PROFILES.includes(opts.profile)) {
@@ -761,6 +1004,12 @@ module.exports = {
   validateDependencies,
   validateDependencySet,
   attachBacklogOrigins,
+  ISSUE_MANDATORY_SECTIONS,
+  ISSUE_OPTIONAL_SECTIONS,
+  MATURITY_VALUES,
+  DECLARED_CLEAN_NOTE,
+  issueToMarkdown,
+  convertIssue,
   detect,
   main,
 };

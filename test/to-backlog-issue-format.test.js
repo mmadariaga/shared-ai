@@ -9,7 +9,7 @@ const { expandInstallManifest } = require('../bin/install-manifest');
 const manifest = require('../sai/install-manifest.json');
 const repoRoot = path.resolve(__dirname, '..');
 const read = file => fs.readFileSync(path.join(repoRoot, file), 'utf8');
-const format = read('skills/universal/to-backlog/issue-format.md');
+const format = read('sai/policies/issue-format.md');
 const skill = read('skills/universal/to-backlog/SKILL.md');
 
 // Inspect instruction regions, not issue drafts: these tests enforce the source
@@ -91,10 +91,10 @@ test('identifier allocation uses retained history rather than remaining-list len
 
 test('both drafting branches must load the same installed reference before drafting', () => {
   const prepare = skill.split('## 2. Prepare one item')[1].split('## 3. Review and confirm')[0];
-  assert.match(prepare, /For both \*\*create\*\* and \*\*update\*\*, read `issue-format\.md`/);
-  assert.match(prepare, /from this skill's\s+directory before drafting/);
+  assert.match(prepare, /For both \*\*create\*\* and \*\*update\*\*, Fetch @sai\/policies\/issue-format\.md/);
+  assert.match(prepare, /read it\s+before drafting/);
   assert.match(prepare, /final drafting checks pass/);
-  assert.ok(prepare.indexOf('read `issue-format.md`') < prepare.indexOf('Draft only a title'));
+  assert.ok(prepare.indexOf('Fetch @sai/policies/issue-format.md') < prepare.indexOf('Draft only a title'));
   assert.match(skill, /Wait for an explicit answer/);
   assert.match(skill, /A prior general grant, unattended mode,\s+or command invocation is not confirmation/);
 });
@@ -164,9 +164,10 @@ test('updates preserve unaffected history and retain maximum-used identifier met
   assert.match(format, /retain it as agreed metadata in the published description/);
 });
 
-test('both harness projections install the canonical companion as managed content', () => {
-  const reference = manifest.projections.find(item => item.id === 'to-backlog-references');
-  assert.ok(reference.include.includes('issue-format.md'));
+test('both harness projections install the canonical format policy as managed content', () => {
+  const reference = manifest.projections.find(item => item.id === 'sai-policies');
+  assert.ok(reference.include.includes('**/*.md'));
+  assert.ok(!manifest.projections.find(item => item.id === 'to-backlog-references').include.includes('issue-format.md'));
   assert.deepEqual(reference.harnesses, ['claude', 'opencode']);
   assert.equal(reference.ownership, 'managed');
   assert.equal(reference.drift, 'content');
@@ -177,9 +178,9 @@ test('both harness projections install the canonical companion as managed conten
     );
     const projections = expandInstallManifest(manifest, { harness, repoRoot, destinationRoot });
     const matches = projections.filter(item =>
-      item.destinationPath === path.join(destinationRoot.skills, 'to-backlog/issue-format.md'));
+      item.destinationPath === path.join(destinationRoot.sai, 'policies/issue-format.md'));
     assert.equal(matches.length, 1);
-    assert.equal(matches[0].sourcePath, path.join(repoRoot, 'skills/universal/to-backlog/issue-format.md'));
+    assert.equal(matches[0].sourcePath, path.join(repoRoot, 'sai/policies/issue-format.md'));
     assert.equal(read(path.relative(repoRoot, matches[0].sourcePath)), format);
   }
 });

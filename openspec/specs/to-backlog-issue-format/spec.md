@@ -102,3 +102,12 @@ Drafting SHALL complete only after applicable section-local rules pass, missing 
 
 - **WHEN** all format checks pass but explicit publication approval has not been given
 - **THEN** preparation may complete while publication remains unauthorized.
+
+### Requirement: The issue format is a shared SAI policy
+
+The issue format definition SHALL live at `sai/policies/issue-format.md`, read both by `to-backlog` drafting and by the `/sai-explore` issue intake to recognize an issue and its `Maturity`, so the intake depends on no skill. No copy of the format SHALL remain under the `to-backlog` skill folder.
+
+#### Scenario: One format source
+
+- **WHEN** the repository is inspected for the issue format definition
+- **THEN** it exists only at `sai/policies/issue-format.md` and the `to-backlog` skill references that path

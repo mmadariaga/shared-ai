@@ -65,7 +65,7 @@ The skill SHALL present the complete final title, description, repository, and r
 
 ### Requirement: Single workflow ownership
 
-The common skill SHALL own mode selection, extraction, clarification, proposal review, confirmation, and result presentation. It SHALL load creation-only or update-only branch instructions only for the selected mode and satisfy that branch's destination or origin prerequisites before content extraction. For both creation and update, preparation SHALL read `issue-format.md` from the same installed skill directory selected during mode selection before drafting, apply its format and final drafting checks, and use its preservation boundary on update. Provider instruction files SHALL supply platform-specific requirements, operations, and results without duplicating the common workflow. Shared and branch steps SHALL declare checkable completion criteria. The skill SHALL load safe-operations before publication and stop when required tools are unavailable or denied, retaining the draft.
+The common skill SHALL own mode selection, extraction, clarification, proposal review, confirmation, and result presentation. It SHALL load creation-only or update-only branch instructions only for the selected mode and satisfy that branch's destination or origin prerequisites before content extraction. For both creation and update, preparation SHALL fetch `sai/policies/issue-format.md` and read it before drafting, apply its format and final drafting checks, and use its preservation boundary on update. Provider instruction files SHALL supply platform-specific requirements, operations, and results without duplicating the common workflow. Shared and branch steps SHALL declare checkable completion criteria. The skill SHALL load safe-operations before publication and stop when required tools are unavailable or denied, retaining the draft.
 
 #### Scenario: Provider-specific inspection
 
@@ -85,7 +85,7 @@ The common skill SHALL own mode selection, extraction, clarification, proposal r
 #### Scenario: Canonical format disclosure
 
 - **WHEN** either creation or update preparation begins drafting
-- **THEN** it first reads issue-format.md from the selected installed skill directory and applies the reference's format, checks, and applicable update boundary.
+- **THEN** it first fetches `sai/policies/issue-format.md` and applies the policy's format, checks, and applicable update boundary.
 
 #### Scenario: Proposal readiness
 

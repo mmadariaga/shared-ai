@@ -68,7 +68,10 @@ takes one — never substitute one for the other.
 - `ready-to-propose.js`: `node <tool-path> check --profile loose|strict|dispatchable`
   with the text on stdin (the dispatchable profile reads its judgment verdicts
   after a `<<<VERDICTS>>>` line). It always prints one JSON verdict; `--json` is
-  accepted and changes nothing, and it takes no `--cwd`.
+  accepted and changes nothing, and it takes no `--cwd`. `convert [--change-name
+  <name>] [--declared-clean]` reads an issue description (Markdown or HTML) on
+  stdin and prints one JSON object: the Ready to Propose form check, the draft
+  block, and the dispatchable validation or the rejection reasons.
 - `decision-records.js`: `node <tool-path> inventory --family <adr|ddr> --json
   --cwd <project-root>`. It always prints one JSON object with `index_exists`,
   `records`, `next_number`, and `duplicates`, read from `docs/<family>/` and

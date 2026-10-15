@@ -189,7 +189,7 @@ Under the crystallization language gate, the `**Out of scope Implementation Deta
 
 ### Requirement: Project setting answers the crystallization language gate
 
-Once at the crystallization language gate, before the fast-track skip and the English skip, the agent SHALL run `node <tool-path> get explore.readyToProposeLanguage --json --cwd <project-root>`, resolving `project-settings.js` through the tool-resolution policy. The agent SHALL resolve the language in this order: the user's explicit statement of a language for this run, then the returned `value`, then the fast-track value `English`, then the gate's normal question. A returned `value` SHALL answer the gate in every conversation language, English included. When the setting answers, the agent SHALL print `Project setting explore.readyToProposeLanguage: <value>` once before the block and SHALL ask no question. A non-zero exit, unparseable output, or `value: null` SHALL count as an absent setting: the agent SHALL print the tool's warnings, or one line naming the failure, and SHALL continue at the next level. The gate SHALL only read the setting.
+Once at the crystallization language gate, before the fast-track skip and the English skip, the agent SHALL run `node <tool-path> get explore.readyToProposeLanguage --json --cwd <project-root>`, resolving `project-settings.js` through the tool-resolution policy. The agent SHALL resolve the language in this order: the source language of a block derived from an external source when it applies, then the user's explicit statement of a language for this run, then the returned `value`, then the fast-track value `English`, then the gate's normal question. A returned `value` SHALL answer the gate in every conversation language, English included. When the setting answers, the agent SHALL print `Project setting explore.readyToProposeLanguage: <value>` once before the block and SHALL ask no question. A non-zero exit, unparseable output, or `value: null` SHALL count as an absent setting: the agent SHALL print the tool's warnings, or one line naming the failure, and SHALL continue at the next level. The gate SHALL only read the setting.
 
 #### Scenario: Setting answers a non-English crystallization
 - **WHEN** `explore.readyToProposeLanguage` is `Español` and the user crystallizes in another language without stating a language
@@ -210,3 +210,17 @@ Once at the crystallization language gate, before the fast-track skip and the En
 #### Scenario: Unavailable setting falls through
 - **WHEN** the settings tool exits non-zero or returns `value: null`
 - **THEN** the agent prints the warnings or one failure line and continues with the fast-track skip, the English skip, or the normal question
+
+### Requirement: A block derived from an external source keeps the source's language
+
+The first level of the crystallization language gate SHALL be the source language: a block derived from an external source, such as an issue taken through the issue shortcut, SHALL keep the source's language, SHALL ask no language question, and SHALL translate nothing, so the issue's `E`/`I` statements and prose reach the block as written. `explore.readyToProposeLanguage` SHALL NOT apply to such a block: when it returns a `value`, the agent SHALL print exactly one line stating that the setting does not apply and the block keeps the issue's language, instead of the `Project setting` line. The project-setting, fast-track, and English levels and the gate's question SHALL NOT run for such a block.
+
+#### Scenario: Shortcut block keeps the issue language
+
+- **WHEN** an issue written in Spanish reaches `Crystallize` through the shortcut in an English conversation
+- **THEN** the block is emitted in Spanish with no language question and no translation
+
+#### Scenario: Project setting does not apply on the shortcut
+
+- **WHEN** `explore.readyToProposeLanguage` is set and the block derives from an issue through the shortcut
+- **THEN** the agent prints one line stating that the setting does not apply and the block keeps the issue's language
