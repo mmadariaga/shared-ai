@@ -35,13 +35,19 @@ instead of duplicated; multiple matches require clarification. Updates change
 only the title and description and preserve unrelated content.
 
 You review the full proposed content, exact destination, visibility, and update
-baseline before approving publication. Editing content or changing the baseline
-requires fresh approval. Azure Repos updates disclose the concurrent-edit interval
-that its reread cannot protect.
+baseline before approving. Editing content or changing the baseline requires fresh
+approval. Azure Repos updates disclose the concurrent-edit interval that its reread
+cannot protect.
 
-**Any push has a separate approval** naming the remote, branch, and commit. A
-publication approval does not authorize a push; no force push or automatic
-commit runs. Declining a required push stops publication and keeps the draft.
+**One combined approval covers a needed push and the publication.** When the remote
+branch does not yet hold the approved commit, you see the exact remote, push URL,
+branch, and commit together with the complete proposal, and one question authorizes
+the non-force push and the publication. Each operation keeps its own token and
+safety checks; the push runs first and publication only follows a verified push. When
+the remote branch already holds the commit, a publication-only approval is asked.
+The options name the provider's term (PR on GitHub and Azure Repos, MR on GitLab):
+approve, edit, or cancel. Cancel runs neither operation and keeps the draft. No force
+push or automatic commit runs, and a failed or unverified push skips publication.
 
 Publication executes once and reports only a verified request URL or a concrete
 blocker with the local receipt. Recovery from an uncertain response is read-only

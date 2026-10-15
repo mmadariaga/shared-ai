@@ -43,43 +43,77 @@ The system SHALL query open requests for the selected source repository, source 
 
 ### Requirement: Complete presentation and exact publication approval
 
-The skill SHALL show the operation, platform, repository, visibility, source branch, target branch, existing request URL when updating, and complete proposed title and description before asking for publication approval. Updates SHALL also show their baseline and changes, preserving unrelated description content unless replacement is explicitly approved. Any proposal concurrency warning SHALL be shown verbatim before approval. Every entry of the `query` result's `warnings` SHALL be shown verbatim before approval. For Azure updates, the warning SHALL disclose that the interval between reread and PATCH is not protected against concurrent edits; rereading SHALL NOT be described as atomic protection. Public destinations SHALL receive an explicit warning. Invocation, unattended mode, and general prior grants SHALL NOT authorize publication. Changed content, destination, baseline, or HEAD SHALL require renewed review and approval.
+The skill SHALL apply the same approval workflow on Claude Code and opencode. Before asking for approval, it SHALL complete `query` and, when publication is ready, `push-query`. It SHALL show the operation, platform, repository, visibility, source branch, target branch, existing request URL when updating, and complete proposed title and description. Updates SHALL also show their baseline and changes, preserving unrelated description content unless replacement is explicitly approved. Any proposal concurrency warning and every entry of the `query` result's `warnings` SHALL be shown verbatim before approval. For Azure updates, the warning SHALL disclose that the interval between reread and PATCH is not protected against concurrent edits; rereading SHALL NOT be described as atomic protection. Public destinations SHALL receive an explicit warning.
+
+When `push-query` returns `ready`, the skill SHALL also show the exact remote, push URL, branch, and commit, then ask exactly "Push this commit to this remote branch without force and publish the title and description above?" It SHALL offer "Approve PR message and push branch", "Edit", and "Cancel" on GitHub and Azure Repos, substituting "MR" for "PR" on GitLab.
+
+When `push-query` returns `no_changes`, the skill SHALL ask "Publish this exact title and description to this destination?" It SHALL offer "Approve PR message", "Edit", and "Cancel" on GitHub and Azure Repos, substituting "MR" for "PR" on GitLab.
+
+The skill SHALL wait for an explicit answer binding the exact proposal and each operation named in the question. Invocation, unattended mode, and general prior grants SHALL NOT authorize these operations. Cancellation SHALL perform none of the operations proposed in that question and SHALL preserve the draft. Editing SHALL apply the edits, rerun `query` and `push-query` as applicable, present the complete updated proposal, and require fresh approval.
+
+Changed content, destination, baseline, or HEAD SHALL invalidate stale approval and require full presentation and renewed approval for still-pending operations only. A completed push SHALL NOT be repeated.
+
+#### Scenario: Approve a combined push and publication
+- **WHEN** publication is ready and the remote branch does not contain the selected commit
+- **THEN** the skill presents the complete publication proposal, warnings, and exact push details, asks the exact combined question, and waits for explicit approval of both operations.
 
 #### Scenario: Approve publication
-- **WHEN** the complete proposal has been presented
-- **THEN** the skill offers approve, edit, or cancel and waits for an explicit answer binding the exact proposal and confirmation token.
+- **WHEN** publication is ready and `push-query` reports that the remote branch already holds the approved commit
+- **THEN** the skill presents the complete publication proposal and asks only the publication approval question with publication-only approval, Edit, and Cancel options.
 
-#### Scenario: Approved content or state changes
-- **WHEN** content, destination, baseline, or HEAD changes before publication
-- **THEN** the system blocks stale approval and returns to full presentation and fresh authorization.
+#### Scenario: Provider terminology matches the destination
+- **WHEN** the skill presents either approval question
+- **THEN** its approval option uses PR on GitHub and Azure Repos and MR on GitLab.
 
 #### Scenario: Cancel publication
-- **WHEN** the user cancels at the publication approval question
-- **THEN** the skill ends without publication.
+- **WHEN** the user selects Cancel at either approval question
+- **THEN** the skill performs none of the operations proposed in that question and preserves the draft.
+
+#### Scenario: Edit before approval
+- **WHEN** the user selects Edit
+- **THEN** the skill applies the edits, reruns the applicable publication and push queries, presents the complete updated proposal, and requests fresh approval.
+
+#### Scenario: Approved content or state changes
+- **WHEN** content, destination, baseline, or HEAD changes before all approved operations finish
+- **THEN** stale approval is rejected and the skill returns to complete presentation and fresh authorization for still-pending operations without repeating a completed push.
 
 #### Scenario: Azure update concurrency limitation
 - **WHEN** an Azure update proposal is presented for approval
-- **THEN** the skill shows its exact concurrency warning before the question and the approval token binds that proposal and baseline.
+- **THEN** the skill shows its exact concurrency warning before the question and the publication token binds that proposal and baseline.
 
 #### Scenario: Query warnings are shown before approval
-- **WHEN** the `query` result carries `warnings`
-- **THEN** the skill shows every entry verbatim before asking for publication approval
+- **WHEN** the `query` result carries warnings
+- **THEN** the skill shows every entry verbatim before asking for approval.
 
 ### Requirement: Independent non-force push authorization
 
-The system SHALL authorize any necessary push independently from publication. It SHALL show the exact remote, push URL, branch, and commit before asking approval. Only the separate push approval and token SHALL permit a non-force push. Declining SHALL stop publication that depends on that push. Publication SHALL require verification that the remote source branch contains the approved HEAD.
+The system SHALL retain independent tokens and validation for a necessary non-force push and publication while permitting one explicit human approval to authorize both exact operations. Before that approval, the skill SHALL show the exact remote, push URL, branch, commit, and complete publication proposal and SHALL name both operations in the combined question.
+
+The same explicit answer SHALL authorize `approved:true` separately for the push token and publication token. Tokens SHALL NOT be combined or interchangeable. The existing token derivation and validation SHALL remain unchanged.
+
+When a push is required, the system SHALL execute that approved non-force push first and verify that the remote source branch contains the approved HEAD before preparing and executing publication. It SHALL NOT offer a publication-only bypass for a required push. Force pushes, automatic commits, authentication changes, and installation SHALL remain prohibited.
+
+A publication `query` result of `no_changes` SHALL end the flow without mutation or a push approval question, including when an existing request has identical content but the branch has unpushed commits.
 
 #### Scenario: Push requires separate consent
-- **WHEN** the remote source branch does not contain the selected HEAD
-- **THEN** the skill asks independently whether to push that commit to that remote branch without force.
+- **WHEN** the remote source branch does not contain the selected HEAD and the user approves the combined question
+- **THEN** the answer authorizes the exact push and publication through their separate tokens and validation checks.
+
+#### Scenario: Tokens cannot substitute for one another
+- **WHEN** a publication token is supplied for a push or a push token is supplied for publication
+- **THEN** validation rejects the operation without performing that mutation.
 
 #### Scenario: Push is declined
-- **WHEN** the user declines a necessary push
-- **THEN** dependent publication stops and the draft is preserved.
+- **WHEN** the user cancels the combined approval question
+- **THEN** neither the required push nor dependent publication executes and the draft is preserved.
 
 #### Scenario: Push is approved
-- **WHEN** the exact push proposal receives its separate approval
-- **THEN** the system pushes without force and verifies the remote branch before publication.
+- **WHEN** the exact combined proposal receives approval and a push is needed
+- **THEN** the system pushes without force, verifies the remote branch contains the approved HEAD, prepares the publication receipt, and only then publishes.
+
+#### Scenario: Identical publication content ends the flow
+- **WHEN** publication `query` returns `no_changes`, even if the source branch contains unpushed commits
+- **THEN** the skill ends without mutation and does not offer a push question.
 
 ### Requirement: Private publication receipts and safe preparation
 
@@ -127,11 +161,13 @@ The system SHALL verify published content by reading the selected destination af
 
 ### Requirement: Azure Repos Services publication adapter
 
-The shipped provider registry SHALL include an Azure DevOps Services adapter and conditional provider reference for to-pr. It SHALL verify organization, project, repository, authenticated identity, and source and target branches before publication, and reject Server or incompatible destinations. Queries SHALL identify active requests by repository and both branches, block multiple matches, and retain Markdown descriptions. Creation SHALL supply the exact source and target refs; updates SHALL change only title and description. Existing complete publication approval and independent non-force branch-push approval SHALL apply unchanged. Azure execution SHALL reuse the existing authenticated runner without installation, login, credential changes, or global-default changes.
+The shipped provider registry SHALL include an Azure DevOps Services adapter and conditional provider reference for to-pr. It SHALL verify organization, project, repository, authenticated identity, and source and target branches before publication, and reject Server or incompatible destinations. Queries SHALL identify active requests by repository and both branches, block multiple matches, and retain Markdown descriptions. Creation SHALL supply the exact source and target refs; updates SHALL change only title and description.
+
+Azure publication SHALL use the shared complete-proposal approval workflow: combined human approval when a push is required and publication-only approval otherwise. Push and publication SHALL retain separate tokens and validation. Azure approval options SHALL use PR terminology. Azure execution SHALL reuse the existing authenticated runner without installation, login, credential changes, or global-default changes. The adapter and its recovery mechanisms SHALL remain unchanged by the combined human approval.
 
 #### Scenario: Azure creation is selected
 - **WHEN** destination resolution selects a valid Azure Repos Services repository with no matching active request
-- **THEN** preparation loads only the Azure provider reference and prepares exact repository, branches, title, and Markdown description for explicit publication approval.
+- **THEN** preparation loads only the Azure provider reference and prepares exact repository, branches, title, and Markdown description for explicit approval.
 
 #### Scenario: Azure update is selected
 - **WHEN** exactly one active Azure request matches the repository and both branches
@@ -139,7 +175,7 @@ The shipped provider registry SHALL include an Azure DevOps Services adapter and
 
 #### Scenario: Azure branch needs publication
 - **WHEN** the remote source branch does not contain the approved commit
-- **THEN** publication remains blocked until the separate non-force push approval and remote verification are completed.
+- **THEN** the skill requests combined push and publication approval with a PR label and publication remains blocked until the approved non-force push and remote verification complete.
 
 #### Scenario: Azure access is unavailable
 - **WHEN** CLI, installed extension, authentication, repository access, or compatible destination identity is unavailable
@@ -212,3 +248,25 @@ For Azure Repos destinations, `query` SHALL keep the drafted description unchang
 #### Scenario: Azure description is published as drafted
 - **WHEN** an Azure Repos request is queried with a description that contains `Closes #5`
 - **THEN** the proposed description equals the drafted description, no warnings are returned, and no `git log` call is made
+
+### Requirement: Preserve separate push and publication failure outcomes
+
+If an approved push fails or cannot be verified, the skill SHALL skip publication, preserve the draft, report the failure, and leave remote history as it is. It SHALL NOT attempt a force push.
+
+When publication fails or remains uncertain after a verified push, the skill SHALL report the completed push and failed or uncertain publication separately and SHALL preserve the draft and pushed branch. Existing read-only recovery SHALL remain in force; an uncertain response SHALL NOT authorize repeated creation or repetition of the completed push.
+
+#### Scenario: Push fails
+- **WHEN** the approved non-force push fails
+- **THEN** the skill skips publication, preserves the draft and remote history, and reports the push failure without attempting force.
+
+#### Scenario: Push cannot be verified
+- **WHEN** a push attempt does not yield verification that the remote branch contains the approved HEAD
+- **THEN** publication remains blocked and the skill reports the unverified push while preserving the draft and existing remote history.
+
+#### Scenario: Publication fails after a verified push
+- **WHEN** the push is verified but publication fails
+- **THEN** the skill reports the completed push and failed publication separately and retains the draft and pushed branch.
+
+#### Scenario: Publication is uncertain after a verified push
+- **WHEN** publication returns an uncertain outcome after a verified push
+- **THEN** the skill reports the two outcomes separately, retains the draft and branch, and uses existing read-only recovery without repeating the push or treating uncertainty as permission to create again.

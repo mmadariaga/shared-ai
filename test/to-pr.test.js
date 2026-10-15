@@ -269,19 +269,91 @@ test('blocked CLI recovery retains the supplied prepared receipt path', t => {
   assert.equal(payload.receipt, result.receipt);
 });
 
-test('I2 / I10: skill presents full content before approval, separates push approval and discloses providers conditionally', () => {
+test('I2 / I10: skill presents full content before one combined approval, covers push and publication and discloses providers conditionally', () => {
   const text = fs.readFileSync('skills/universal/to-pr/SKILL.md', 'utf8');
   assert.ok(text.indexOf('Show the complete proposed title') < text.indexOf('Then ask:'));
+  assert.ok(text.indexOf('Run `push-query`') < text.indexOf('Then ask:'));
   assert.match(text, /load\s+only the returned/);
   assert.match(text, /returned `instructions` reference/);
   assert.doesNotMatch(text, /providers\/(?:github|gitlab|azuredevops)\.md/);
   assert.match(text, /disable-model-invocation: true/);
-  assert.match(text, /Decline stops publication/);
-  assert.match(text, /Any content, destination or baseline change/);
+  assert.ok(text.replace(/\s+/g, ' ').includes('Push this commit to this remote branch without force and publish the title and description above?'));
+  assert.match(text, /"Approve PR message and push branch", "Edit", "Cancel"/);
+  assert.match(text, /"Approve PR message", "Edit", "Cancel"/);
+  assert.match(text, /`PR` on GitHub and Azure Repos and `MR` on GitLab/);
+  assert.match(text, /Cancel runs none of the operations in that question and keeps the draft/);
+  assert.match(text, /a completed push is never repeated/);
+  assert.match(text, /never combined or interchangeable/);
+  assert.doesNotMatch(text, /Independently authorize any push/);
+  assert.doesNotMatch(text, /Offer approve or decline/);
+  assert.match(text, /Any content, destination, baseline or HEAD change/);
   assert.match(text, /every entry of the `query` result's `warnings` verbatim before approval/);
   assert.match(text, /Claude Code.*AskUserQuestion/);
   assert.match(text, /OpenCode[\s\S]*question/);
 });
+
+for (const provider of ['github', 'gitlab']) {
+  test(`${provider} combined approval pushes then publishes with separate non-interchangeable tokens`, t => {
+    const { request, io, state } = fixture(provider);
+    state.remoteHead = null;
+    const ready = tool.query(request, io), pushReady = tool.pushQuery(request, io);
+    assert.equal(pushReady.status, 'ready');
+    assert.notEqual(ready.confirmation, pushReady.confirmation);
+    assert.throws(() => tool.push({ ...request, approved: true, confirmation: ready.confirmation }, io), /push approval/);
+    assert.throws(() => tool.publish({ ...request, approved: true, confirmation: pushReady.confirmation, receipt: receipt(t) }, io), /approval/);
+    assert.equal(state.mutations.length, 0);
+    assert.equal(tool.push({ ...request, approved: true, confirmation: pushReady.confirmation }, io).status, 'complete');
+    assert.equal(tool.publish({ ...request, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io).status, 'complete');
+    assert.equal(state.mutations[0].command, 'git');
+    assert.ok(!state.mutations[0].args.some(arg => /force/.test(arg)));
+    assert.equal(state.mutations.length, 2);
+  });
+  test(`${provider} publication-only approval needs no push when the remote branch holds the commit`, t => {
+    const { request, io, state } = fixture(provider);
+    const ready = tool.query(request, io);
+    assert.equal(tool.pushQuery(request, io).status, 'no_changes');
+    assert.equal(tool.publish({ ...request, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io).status, 'complete');
+    assert.ok(state.mutations.every(mutation => mutation.command !== 'git'));
+  });
+  test(`${provider} failed push skips publication and leaves the remote history untouched`, t => {
+    const { request, io, state } = fixture(provider);
+    state.remoteHead = null;
+    const ready = tool.query(request, io), pushReady = tool.pushQuery(request, io), run = io.run;
+    io.run = (command, args, input) => {
+      if (command === 'git' && args[0] === 'push') throw new Error('Push rejected');
+      return run(command, args, input);
+    };
+    assert.throws(() => tool.push({ ...request, approved: true, confirmation: pushReady.confirmation }, io), /Push rejected/);
+    assert.throws(() => tool.publish({ ...request, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io), /push approval/);
+    assert.equal(state.mutations.length, 0);
+    assert.equal(state.remoteHead, null);
+  });
+  test(`${provider} unverified push is reported and publication stays blocked`, t => {
+    const { request, io, state } = fixture(provider);
+    state.remoteHead = null;
+    const ready = tool.query(request, io), pushReady = tool.pushQuery(request, io), run = io.run;
+    io.run = (command, args, input) => {
+      if (command === 'git' && args[0] === 'push') { state.mutations.push({ command, args }); return ''; }
+      return run(command, args, input);
+    };
+    assert.throws(() => tool.push({ ...request, approved: true, confirmation: pushReady.confirmation }, io), /could not be verified/);
+    assert.throws(() => tool.publish({ ...request, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io), /push approval/);
+    assert.equal(state.mutations.length, 1);
+  });
+  test(`${provider} failed publication after a verified push keeps the pushed branch and recovers read-only`, t => {
+    const { request, io, state } = fixture(provider);
+    state.remoteHead = null;
+    const ready = tool.query(request, io), pushReady = tool.pushQuery(request, io), file = receipt(t);
+    assert.equal(tool.push({ ...request, approved: true, confirmation: pushReady.confirmation }, io).status, 'complete');
+    state.loseResponse = true;
+    assert.equal(tool.publish({ ...request, approved: true, confirmation: ready.confirmation, receipt: file }, io).status, 'uncertain');
+    assert.equal(state.remoteHead, state.head);
+    assert.equal(tool.pushQuery(request, io).status, 'no_changes');
+    const mutations = state.mutations.length;
+    assert.equal(tool.recover({ receipt: file }, io).status, 'complete');
+    assert.equal(state.mutations.length, mutations);
+  });
+}
 
 test('E9 / I2 / I10: both harnesses retain thin explicit-invocation wrappers and bounded tool access', () => {
   const manifest = require('../sai/install-manifest.json');
