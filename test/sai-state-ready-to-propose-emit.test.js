@@ -29,10 +29,23 @@ function runCli(argv, input) {
   return { stdout: result.stdout || '', stderr: result.stderr || '', exitCode: result.status };
 }
 
-function spawnSession(key) {
+const IDEA_MACHINE = 'explore-idea@1';
+
+function advanceIdea(id, steps) {
+  for (let i = 0; i < steps; i++) {
+    const result = runCli(['emit', id, IDEA_MACHINE, '-'], '{"intent":"next-step"}');
+    assert.equal(result.exitCode, 0, result.stderr);
+  }
+}
+
+// The block emit is accepted only at the `crystallize` stage of
+// `explore-idea@1`, so a session advances there unless a case passes `false`.
+function spawnSession(key, atCrystallize = true) {
   const result = runCli(['spawn', '--key', `${key}-${process.pid}-${Date.now()}`]);
   assert.equal(result.exitCode, 0, result.stderr);
-  return JSON.parse(result.stdout).id;
+  const id = JSON.parse(result.stdout).id;
+  if (atCrystallize) advanceIdea(id, 3);
+  return id;
 }
 
 function cleanup(id) {
@@ -96,6 +109,42 @@ test('block emit: a valid single block records its name and returns the route-se
     assert.equal(json.stage, 'waiting');
     assert.equal(json.next.follow, ROUTE_SELECTOR);
     assert.deepEqual(readSet(id), ['one-change']);
+  } finally {
+    cleanup(id);
+  }
+});
+
+test('block guard: a block emitted before the crystallize stage is rejected and records nothing', () => {
+  for (const steps of [0, 1, 2]) {
+    const id = spawnSession(`rtp-guard-${steps}`, false);
+    try {
+      advanceIdea(id, steps);
+      const result = blockEmit(id, block('early-change'));
+      assert.equal(result.exitCode, 1);
+      const json = JSON.parse(result.stdout);
+      assert.equal(json.error, 'INVALID_EVENT');
+      assert.equal(json.reason, 'STAGE_NOT_CRYSTALLIZE');
+      assert.equal(json.stage, ['explore-change', 'review-edge-cases', 'implementation-details'][steps]);
+      assert.match(result.stderr, /crystallize/);
+      assert.equal(readSet(id), null);
+      assert.equal(readStoredBlocks(id), null);
+    } finally {
+      cleanup(id);
+    }
+  }
+});
+
+test('block guard: the block is accepted once the exploration reaches crystallize, and an amendment is not stage-checked', () => {
+  const id = spawnSession('rtp-guard-open', false);
+  try {
+    advanceIdea(id, 3);
+    assert.equal(blockEmit(id, block('late-change')).exitCode, 0);
+    assert.deepEqual(readSet(id), ['late-change']);
+    // The idea leaves crystallize through the late POC entry; the amend stays outside the guard.
+    const lane = runCli(['emit', id, IDEA_MACHINE, '-'], '{"intent":"poc-lane-late"}');
+    assert.equal(lane.exitCode, 0, lane.stderr);
+    const amended = blockEmit(id, block('late-change', { What: ' Adds another thing.' }), MACHINE, ['--amend', 'late-change']);
+    assert.equal(amended.exitCode, 0, amended.stderr);
   } finally {
     cleanup(id);
   }

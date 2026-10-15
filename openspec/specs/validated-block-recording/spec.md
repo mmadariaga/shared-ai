@@ -7,7 +7,7 @@ Record only dispatchable Ready to Propose sets at Explore's crystallization emit
 
 ### Requirement: Emit records only dispatchable sets
 
-`sai-state emit <id> explore-slice@1 --ready-to-propose -` SHALL validate the stdin block set with the `dispatchable` profile and SHALL record the inventory only when the set is structurally valid and every flagged line carries a `context` verdict. A set with a structural violation, an unjudged flagged line, or a `violation` verdict SHALL record nothing, leave the machine untouched, and exit 1, with `validation.judgment.pending` listing the lines awaiting a verdict.
+`sai-state emit <id> explore-slice@1 --ready-to-propose -` SHALL validate the stdin block set with the `dispatchable` profile and SHALL record the inventory only when the set is structurally valid, every flagged line carries a `context` verdict, and the same session's `explore-idea@1` stage is `crystallize`. A set with a structural violation, an unjudged flagged line, or a `violation` verdict SHALL record nothing, leave the machine untouched, and exit 1, with `validation.judgment.pending` listing the lines awaiting a verdict. A dispatchable set emitted while the `explore-idea@1` stage is not `crystallize` SHALL likewise record nothing, leave the machine untouched, and exit 1 with `reason: "STAGE_NOT_CRYSTALLIZE"`.
 
 #### Scenario: An unjudged flagged line records nothing
 
@@ -18,6 +18,11 @@ Record only dispatchable Ready to Propose sets at Explore's crystallization emit
 
 - **WHEN** the set is emitted with a `violation` verdict for its flagged line
 - **THEN** the emit exits 1, reports the verdict in `validation.judgment.violations`, and records nothing
+
+#### Scenario: An emit before crystallize records nothing
+
+- **WHEN** a dispatchable set is emitted while the session's `explore-idea@1` stage is not `crystallize`
+- **THEN** the emit exits 1 with `reason: "STAGE_NOT_CRYSTALLIZE"` and records nothing
 
 ### Requirement: Recorded blocks are stored with text, hash, and verdicts
 

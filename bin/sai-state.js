@@ -104,6 +104,10 @@ const EMIT_AMEND_FORM = "node <tool-path> emit <id> explore-slice@1 --ready-to-p
 // The explore slice machine is the only one that accepts the block emit.
 const READY_TO_PROPOSE_MACHINE = 'explore-slice@1';
 
+// The block emit is accepted only while this machine sits at its final stage.
+const BLOCK_STAGE_MACHINE = 'explore-idea@1';
+const BLOCK_STAGE = 'crystallize';
+
 // The design machine is the only one that accepts the variant option.
 const WITH_OVERVIEW_MACHINE = 'design-standalone@1';
 
@@ -666,6 +670,16 @@ function ensureRecordedBlocks(id, expected) {
   return false;
 }
 
+// The `explore-idea@1` stage recorded for this session; the machine's initial
+// stage when the session holds no state for it.
+function ideaStageOf(id) {
+  const session = getSession(id);
+  seedFromRecord(session, readSessionRecord(id).record);
+  const mod = registry.get(BLOCK_STAGE_MACHINE);
+  const state = session.stateByMachine.has(BLOCK_STAGE_MACHINE) ? session.stateByMachine.get(BLOCK_STAGE_MACHINE) : mod.initialState;
+  return state && typeof state.stage === 'string' ? state.stage : mod.initialState.stage;
+}
+
 function commandEmitReadyToPropose(id, machineIdArg, eventSource, extraArgs, amendName) {
   const amending = amendName !== undefined;
   if (!id || !machineIdArg || eventSource !== '-' || (extraArgs && extraArgs.length > 0) || process.stdin.isTTY || (amending && (typeof amendName !== 'string' || amendName === ''))) {
@@ -709,6 +723,16 @@ function commandEmitReadyToPropose(id, machineIdArg, eventSource, extraArgs, ame
 
   if (amending) {
     commandAmendBlock(id, machineIdArg, detector, verdict, text, validation, amendName);
+    return;
+  }
+
+  const stage = ideaStageOf(id);
+  if (stage !== BLOCK_STAGE) {
+    const session = getSession(id);
+    seedFromRecord(session, readSessionRecord(id).record);
+    process.stderr.write('emit --ready-to-propose is accepted only at the ' + BLOCK_STAGE + ' stage of ' + BLOCK_STAGE_MACHINE + ', found ' + stage + '; no transition occurred. Advance the exploration to ' + BLOCK_STAGE + ' first.\n');
+    writeResponse({ validation, error: 'INVALID_EVENT', reason: 'STAGE_NOT_CRYSTALLIZE', stage, next: pointerFor(session, BLOCK_STAGE_MACHINE) });
+    process.exitCode = 1;
     return;
   }
 

@@ -4,6 +4,8 @@
 
 **Chat-start clear.** At invocation start, before any panel render, start with a fresh chat-scoped idea list and perform the start clear even when no candidate idea or route exists. The start clear removes entries bearing either marker prefix (`sai-explore-stage:` or `sai-idea-list:`), leaving other surfaces' entries in place. Use the per-harness panel binding's selective clear: the marker carrier is Claude Code `description` or opencode `priority`. The read covers the markers only and never derives list content. This is a claim action, not a render; it creates no entries. If the panel tool is unavailable, apply the one-time panel-degradation rule below. Later step loads do not repeat this clear.
 
+**Issue intake.** When an issue enters the conversation, Fetch @sai/commands/explore/steps/issue-intake.md and follow it before the direct-looking request rule applies to that text.
+
 **Pre-crystallization closure:** Maintain a conversation-only **Closure State** for the current idea. The state is exactly one of `active-uncrystallized`, `crystallized`, or `discarded`.
 
 - Before a candidate idea exists, no Closure State is active and this closure rule does not apply. Once a candidate idea exists under active exploration, its state starts as `active-uncrystallized`. A materially changed idea resets the progression (**Material change** below) and begins a new `active-uncrystallized` lifecycle.

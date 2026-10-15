@@ -43,7 +43,7 @@ The store SHALL persist each session's state in a JSON file under `$TMPDIR/sai-s
 
 ### Requirement: Closed error vocabulary via JSON error field
 
-Every failed emit (invalid event, unknown machine, version mismatch) SHALL return a JSON response. The response SHALL carry a mandatory `error` field with one of the closed-vocabulary values `INVALID_EVENT`, `UNKNOWN_MACHINE`, `VERSION_MISMATCH`, `ALREADY_RUNNING`, or `READINESS_IS_NOT_INTENT`. It SHALL also carry the current state's `next` pointer. An `INVALID_EVENT` caused by an event read from stdin that cannot be parsed SHALL additionally carry `reason: "EVENT_UNPARSEABLE"`. A block amendment rejected because stdin carries more than one block SHALL carry `reason: "AMEND_BLOCK_COUNT"`, and one rejected because the block's change name differs from the amended slice SHALL carry `reason: "AMEND_NAME_MISMATCH"`. Every other failed emit SHALL carry no `reason`. Exit code SHALL be 1. In progress mode, stdin that fails validation, including stdin that is not JSON, SHALL produce an invalid `validation` block with exit code 1 and no `error` field, and never `EVENT_UNPARSEABLE`. A machine error after a valid verdict SHALL carry the same `error` vocabulary alongside `validation`. Reset failures also return `error` with closed-vocabulary values, but without a `next` pointer. The `block` verb alone SHALL answer a missing block with `{error: "BLOCK_NOT_FOUND"}` and exit 1, without a `next` pointer.
+Every failed emit (invalid event, unknown machine, version mismatch) SHALL return a JSON response. The response SHALL carry a mandatory `error` field with one of the closed-vocabulary values `INVALID_EVENT`, `UNKNOWN_MACHINE`, `VERSION_MISMATCH`, `ALREADY_RUNNING`, or `READINESS_IS_NOT_INTENT`. It SHALL also carry the current state's `next` pointer. An `INVALID_EVENT` caused by an event read from stdin that cannot be parsed SHALL additionally carry `reason: "EVENT_UNPARSEABLE"`. A block amendment rejected because stdin carries more than one block SHALL carry `reason: "AMEND_BLOCK_COUNT"`, and one rejected because the block's change name differs from the amended slice SHALL carry `reason: "AMEND_NAME_MISMATCH"`. A block emit rejected because the same session's `explore-idea@1` stage is not `crystallize` SHALL carry `reason: "STAGE_NOT_CRYSTALLIZE"` and the found `stage`, with the `explore-idea@1` pointer as its `next`. Every other failed emit SHALL carry no `reason`. Exit code SHALL be 1. In progress mode, stdin that fails validation, including stdin that is not JSON, SHALL produce an invalid `validation` block with exit code 1 and no `error` field, and never `EVENT_UNPARSEABLE`. A machine error after a valid verdict SHALL carry the same `error` vocabulary alongside `validation`. Reset failures also return `error` with closed-vocabulary values, but without a `next` pointer. The `block` verb alone SHALL answer a missing block with `{error: "BLOCK_NOT_FOUND"}` and exit 1, without a `next` pointer.
 
 #### Scenario: Invalid machineId returns INVALID_EVENT
 
@@ -69,6 +69,11 @@ Every failed emit (invalid event, unknown machine, version mismatch) SHALL retur
 
 - **WHEN** a block amendment carries two blocks or a block for another change name
 - **THEN** the response carries `{error: "INVALID_EVENT", reason: "AMEND_BLOCK_COUNT"}` or `{error: "INVALID_EVENT", reason: "AMEND_NAME_MISMATCH"}` with a `next` pointer and exit code 1
+
+#### Scenario: Block emitted before crystallize carries its reason
+
+- **WHEN** a dispatchable block set is emitted while the session's `explore-idea@1` stage is `explore-change`, `review-edge-cases`, or `implementation-details`
+- **THEN** the response carries `{error: "INVALID_EVENT", reason: "STAGE_NOT_CRYSTALLIZE", stage}` with the `explore-idea@1` pointer and exit code 1
 
 ### Requirement: Minimal wire outcomes
 Each CLI verb SHALL return minimal JSON without state serialization, with `received_at` as the first key of every response:
@@ -166,11 +171,11 @@ Every stdout JSON response of `bin/sai-state.js` SHALL carry `received_at` as it
 
 ### Requirement: Ready to Propose block emit
 
-`sai-state emit <id> explore-slice@1 --ready-to-propose -` SHALL read a complete `Ready to Propose` block set as text from stdin, optionally followed by a line equal to `<<<VERDICTS>>>` and the bounded-judgment verdicts as a JSON array. It SHALL validate the set with the `dispatchable` profile of `sai/tools/ready-to-propose.js` before any session, machine, or registry read. `--ready-to-propose` SHALL be a flag that takes no value. On a dispatchable verdict — structurally valid with every flagged line carrying a `context` verdict — the command SHALL derive `{"recordedList": [...]}` from the extracted change names in display order, advance the machine, store per change name each block's text, sha256 hash, and verdicts in the same session-file write, and return the ordinary emit fields. The set SHALL be validated as a whole: a non-dispatchable verdict SHALL exit 1, record no name, and leave the machine untouched. Every response SHALL carry `received_at` as its first key and a `validation` object `{ok, structural_ok, profile, blocks: [{index, line, violations, flagged}], violations, flagged, judgment: {ok, pending, violations, unknown, invalid}}`, where `ok` is true only for a dispatchable set, with no change names on the wire. These inputs SHALL be a delivery failure that answers `INVALID_EVENT` with `reason: "EVENT_UNPARSEABLE"` and a `next` pointer, exits 1, and makes no transition: empty stdin, stdin with no block heading, and a final block cut off before its `---` line. These SHALL be usage errors with exit 2: use on any machine other than `explore-slice@1`; combination with `--progress` or `--with-overview`; a missing id, machine id, or `-` marker; extra positional arguments; and interactive stdin. When the detector module is found in neither candidate location relative to the CLI, the command SHALL exit 2 and name the tried paths.
+`sai-state emit <id> explore-slice@1 --ready-to-propose -` SHALL read a complete `Ready to Propose` block set as text from stdin, optionally followed by a line equal to `<<<VERDICTS>>>` and the bounded-judgment verdicts as a JSON array. It SHALL validate the set with the `dispatchable` profile of `sai/tools/ready-to-propose.js` before any session, machine, or registry read. `--ready-to-propose` SHALL be a flag that takes no value. A dispatchable set SHALL be accepted only while the same session's `explore-idea@1` stage is `crystallize`, where an absent `explore-idea@1` state counts as its initial `explore-change` stage; at any other stage the command SHALL record nothing, leave the machine untouched, answer `INVALID_EVENT` with `reason: "STAGE_NOT_CRYSTALLIZE"`, the found `stage`, and the `explore-idea@1` pointer, and exit 1. A single-slice amendment (`--amend <change-name>`) SHALL be outside this stage check. On a dispatchable verdict at the `crystallize` stage — structurally valid with every flagged line carrying a `context` verdict — the command SHALL derive `{"recordedList": [...]}` from the extracted change names in display order, advance the machine, store per change name each block's text, sha256 hash, and verdicts in the same session-file write, and return the ordinary emit fields. The set SHALL be validated as a whole: a non-dispatchable verdict SHALL exit 1, record no name, and leave the machine untouched. Every response SHALL carry `received_at` as its first key and a `validation` object `{ok, structural_ok, profile, blocks: [{index, line, violations, flagged}], violations, flagged, judgment: {ok, pending, violations, unknown, invalid}}`, where `ok` is true only for a dispatchable set, with no change names on the wire. These inputs SHALL be a delivery failure that answers `INVALID_EVENT` with `reason: "EVENT_UNPARSEABLE"` and a `next` pointer, exits 1, and makes no transition: empty stdin, stdin with no block heading, and a final block cut off before its `---` line. These SHALL be usage errors with exit 2: use on any machine other than `explore-slice@1`; combination with `--progress` or `--with-overview`; a missing id, machine id, or `-` marker; extra positional arguments; and interactive stdin. When the detector module is found in neither candidate location relative to the CLI, the command SHALL exit 2 and name the tried paths.
 
 #### Scenario: Valid single block records its name
 
-- **WHEN** a valid single block is piped to `emit <id> explore-slice@1 --ready-to-propose -` with no active slice
+- **WHEN** a valid single block is piped to `emit <id> explore-slice@1 --ready-to-propose -` with no active slice while the session's `explore-idea@1` stage is `crystallize`
 - **THEN** the process exits 0 with `validation.ok` true, stage `waiting`, and the route-selector pointer
 
 #### Scenario: One invalid block fails the whole set
@@ -207,6 +212,16 @@ Every stdout JSON response of `bin/sai-state.js` SHALL carry `received_at` as it
 
 - **WHEN** a structurally valid set with a flagged line and no verdict is piped
 - **THEN** the process exits 1 with `validation.structural_ok` true, the line in `validation.judgment.pending`, and nothing recorded
+
+#### Scenario: Block emitted before crystallize records nothing
+
+- **WHEN** a dispatchable block set is piped while the session's `explore-idea@1` stage is `explore-change`, `review-edge-cases`, or `implementation-details`
+- **THEN** the process exits 1 with `reason: "STAGE_NOT_CRYSTALLIZE"` and the found `stage`, and nothing is recorded
+
+#### Scenario: Amendment is not stage-checked
+
+- **WHEN** an accepted slice is amended with `--amend <change-name>` after the `explore-idea@1` stage has left `crystallize`
+- **THEN** the amendment is processed without the stage check
 
 ### Requirement: Local CLI verb interface
 The stage machine store SHALL provide five CLI verbs via the `sai-state` script:
