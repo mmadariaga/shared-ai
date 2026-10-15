@@ -8,7 +8,7 @@ TBD
 
 ### Requirement: Crystallization waits for edge-case agreement
 
-`sai-explore` SHALL NOT emit a `Ready to Propose` block until the current stable idea's edge-case review has reached agreement. A non-empty proposed list reaches agreement only through the user's semantic agreement. An empty in-scope list reaches agreement through the deterministic empty-set rule of `explore-edge-case-review`: emitting exactly `- None` and recording the empty list is an explicit content-based agreement form that requires no confirmation response. If the user explicitly asks to crystallize before the review has completed, the request SHALL trigger the review with no skip path; the request remains pending and proceeds through the slicing assessment and language gates only after either agreement form completes. The mandatory edge-case gate SHALL remain in force under `--fast-track`; fast-track SHALL NOT auto-approve, skip, or weaken this gate and SHALL continue to bypass only the existing language gates.
+`sai-explore` SHALL NOT emit a `Ready to Propose` block until the current stable idea's edge-case review has reached agreement. A non-empty proposed list reaches agreement only through the user's semantic agreement. An empty in-scope list reaches agreement through the deterministic empty-set rule of `explore-edge-case-review`: emitting exactly `- None` and recording the empty list is an explicit content-based agreement form that requires no confirmation response. A request to crystallize made before the review has completed SHALL NOT be retained as a pending request and SHALL NOT emit a block; crystallization starts only when the progression enters the `Crystallize` stage after the agreed edge-case and implementation-details lists. The mandatory edge-case gate SHALL remain in force under `--fast-track`; fast-track SHALL NOT auto-approve, skip, or weaken this gate and SHALL continue to bypass only the existing language gates.
 
 #### Scenario: Semantic agreement completes a non-empty edge-case stage
 
@@ -24,9 +24,9 @@ TBD
 
 #### Scenario: A premature crystallize request resumes after empty-set completion
 
-- **WHEN** the user explicitly asks to crystallize before the edge-case review has completed and the review finds no in-scope behavior
+- **WHEN** the user asks to crystallize before the edge-case review has completed and the review finds no in-scope behavior
 - **THEN** the deterministic empty-set agreement form completes the gate
-- **AND** the pending request proceeds through the slicing assessment and language gates
+- **AND** no pending request resumes; the slicing assessment and language gates run only on entry into `Crystallize`
 
 #### Scenario: Fast-track does not bypass the edge-case gate
 

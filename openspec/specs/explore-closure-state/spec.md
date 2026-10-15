@@ -19,12 +19,12 @@ The Closure State begins only when the conversation contains a candidate idea un
 
 #### Scenario: readiness does not end active exploration
 
-- **WHEN** the idea is solid enough for the existing one-time readiness signal but the user has not explicitly requested crystallization
+- **WHEN** the idea is solid enough for the existing one-time readiness signal but the progression has not entered `Crystallize`
 - **THEN** the Closure State remains `active-uncrystallized`
 
 #### Scenario: explicit crystallization ends pre-crystallization closure
 
-- **WHEN** the user explicitly requests crystallization, the assessments and language gates complete, and a feature block is emitted
+- **WHEN** the progression enters `Crystallize`, the assessments and language gates complete, and a feature block is emitted
 - **THEN** the Closure State becomes `crystallized`
 
 #### Scenario: explicit discard ends pre-crystallization closure

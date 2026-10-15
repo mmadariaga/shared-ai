@@ -172,7 +172,7 @@ test('material changes reset every pending selector and staged state before clas
   const source = explore();
 
   assert.match(source, /Material-change detection runs before selector-response classification/);
-  assert.match(source, /reset wins: clear the pending maturity or later selector response, staged progression, pending crystallization request, and both agreed lists/);
+  assert.match(source, /reset wins: clear the pending maturity or later selector response, staged progression, and both agreed lists/);
   assert.match(source, /return the new active-uncrystallized lifecycle to `Explore change`/);
   assert.match(source, /do not emit an edge-case prompt, later selector, crystallization, or advancement automatically/);
   assert.match(source, /The new idea waits for explicit intent under the existing staged-progression rules/);

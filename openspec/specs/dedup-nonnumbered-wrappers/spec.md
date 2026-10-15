@@ -5,8 +5,9 @@
 TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
 
 ## Requirements
+
 ### Requirement: context-isolation-in-explore-instruction
-The Context Isolation block (no write commands, crystallization protocol, inline proposal refusal) SHALL reside in the instruction file loaded by both sai-explore wrappers, not inline in either wrapper body.
+The Context Isolation block (no write commands, crystallization protocol) SHALL reside in the instruction file loaded by both sai-explore wrappers, not inline in either wrapper body.
 
 #### Scenario: block absent from claude explore wrapper
 - **WHEN** `commands/claude/sai-explore.md` is read
@@ -18,7 +19,7 @@ The Context Isolation block (no write commands, crystallization protocol, inline
 
 #### Scenario: block present in explore instruction file
 - **WHEN** the instruction file loaded by both sai-explore wrappers is read
-- **THEN** the full Context Isolation text (including the crystallization block template and inline proposal refusal) is present
+- **THEN** the full Context Isolation text (including the crystallization block template) is present and no inline proposal refusal path remains
 
 ### Requirement: completion-check-in-archive-instruction
 The Completion Check block (inspect `implementation.md` for unchecked items before archiving) SHALL reside in the instruction file loaded by both sai-archive wrappers, not inline in either wrapper body.

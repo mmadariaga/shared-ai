@@ -20,21 +20,21 @@ The crystallization language gate SHALL render the native route-picker context, 
 
 ### Requirement: Scope limited to sai-explore crystallization
 
-The crystallization language gate SHALL apply only within `sai-explore`. No other `sai-*` command's behavior SHALL change. The gate SHALL fire only when the turn is an **explicit crystallize request** — the user asks to crystallize, asks for the paste-ready block, or asks to create a proposal / run `/sai-1-spec` — and SHALL be evaluated before any `Ready to Propose` block is printed. Free-form exploration, idea debate, and readiness-signal turns that do not print a block SHALL NOT trigger the gate.
+The crystallization language gate SHALL apply only within `sai-explore`. No other `sai-*` command's behavior SHALL change. The gate SHALL fire only on entry into the `Crystallize` stage, after the slicing assessment, and SHALL be evaluated before any `Ready to Propose` block is printed. A `crystallize` token or a natural-language crystallization request SHALL NOT be a defined trigger. Free-form exploration, idea debate, and readiness-signal turns that do not print a block SHALL NOT trigger the gate.
 
 #### Scenario: explicit crystallize request evaluates the gate
 
-- **WHEN** a `sai-explore` turn is an explicit crystallize request (e.g. "crystallize", "give me the paste-ready block")
+- **WHEN** a `sai-explore` turn enters the `Crystallize` stage
 - **THEN** the agent evaluates the crystallization language gate before printing any `Ready to Propose` block
 
 #### Scenario: inline-proposal request also fires the gate
 
-- **WHEN** the user asks to create a proposal or run `/sai-1-spec` inline during `sai-explore` (the inline-proposal-refusal path that still prints the paste-ready block)
-- **THEN** the agent evaluates the crystallization language gate before printing the paste-ready block(s)
+- **WHEN** the user asks to create a proposal or run `/sai-1-spec` inline during `sai-explore` outside the `Crystallize` stage
+- **THEN** no inline proposal path exists, the request has no prescribed response, and the gate fires only when the progression enters `Crystallize`
 
 #### Scenario: exploration does not trigger the gate
 
-- **WHEN** a `sai-explore` turn explores or debates the idea without an explicit crystallize request
+- **WHEN** a `sai-explore` turn explores or debates the idea without entering the `Crystallize` stage
 - **THEN** the agent does not ask the language question and prints no `Ready to Propose` block
 
 #### Scenario: other sai commands are unaffected
@@ -48,7 +48,7 @@ When the crystallize turn's dominant natural language is English and no explicit
 
 #### Scenario: English user gets no question
 
-- **WHEN** the user issues an explicit crystallize request while writing in English and no project setting answers the gate
+- **WHEN** the progression enters the `Crystallize` stage while the user writes in English and no project setting answers the gate
 - **THEN** the agent prints the block(s) in English without asking which language to use
 
 ### Requirement: Non-English input gates crystallization on a language choice
@@ -57,7 +57,7 @@ When the crystallize turn's dominant input language is not English, the agent SH
 
 #### Scenario: non-English user is asked before any block
 
-- **WHEN** the user issues an explicit crystallize request while writing in a language other than English
+- **WHEN** the progression enters the `Crystallize` stage while the user writes in a language other than English
 - **THEN** the agent asks one 2-option question and prints no `Ready to Propose` block in that turn until the user responds
 
 #### Scenario: chosen language governs the block prose
@@ -142,7 +142,7 @@ When crystallization is sliced into multiple `Ready to Propose` blocks, the gate
 
 #### Scenario: one gate governs every slice block
 
-- **WHEN** the user issues an explicit crystallize request that resolves to a sliced set of `Ready to Propose` blocks in a non-English language
+- **WHEN** the progression enters the `Crystallize` stage and resolves to a sliced set of `Ready to Propose` blocks in a non-English language
 - **THEN** the agent asks the gate question once for the whole set
 - **AND** applies the chosen language to the free-text prose of every emitted block while keeping each block's scaffolding in English
 
@@ -166,7 +166,7 @@ English fast-track crystallization SHALL apply the same E/I translation with no 
 
 #### Scenario: fast-track English block translates E and I without asking
 
-- **WHEN** a crystallize request runs under fast-track in English with E/I agreed in another language
+- **WHEN** entry into the `Crystallize` stage runs under fast-track in English with E/I agreed in another language
 - **THEN** the emitted block renders those E/I statements in English with identifiers and order preserved and leaves route choice pending until a later valid picker answer
 
 ### Requirement: Request Additional Notes label stays English scaffolding

@@ -44,7 +44,7 @@ The POC lane is a conditional stage and SHALL add no entry until it fires: the l
 
 ### Requirement: Stages advance only on explicit user intent
 
-The stage progression SHALL advance only when the user explicitly requests it: the literal token `next-step` (bare, optionally with trivial punctuation or a greeting, or as the turn's dominant intent — the same recognition machinery as the `review-loop` token), clear natural-language intent naming the next stage or requesting crystallization, or a semantic confirmation of the proposed list at the `Review edge cases` or `Implementation details` stages. Mere containment of the string `next-step` SHALL NOT fire the token: it fires only when the turn is a bare token or when advancing the progression is the turn's dominant intent, and a turn that negates, defers, quotes, or discusses the token SHALL NOT advance the progression. `sai-explore` SHALL NOT advance a stage on its own judgment that the idea is solid or ready. The recorded empty-list conditions — at the `review-edge-cases` stage when the recorded edge-case list is empty, and at the `implementation-details` stage when the recorded implementation-details list is empty — are content-based rules owned by the `explore-idea` machine and do not constitute readiness judgments; they SHALL fire only on an intent-less turn, so a turn carrying an unrecognized intent or a conditional-entry intent emitted outside its own valid stage set SHALL leave the progression where it is even when that stage's own list was recorded empty. The one-line readiness signal (`explore-crystallization-on-demand`) does not advance the stages. The machine consumes the recorded list state and returns the next stage and step pointer to the caller.
+The stage progression SHALL advance only when the user explicitly requests it: the literal token `next-step` (bare, optionally with trivial punctuation or a greeting, or as the turn's dominant intent — the same recognition machinery as the `review-loop` token) or a semantic confirmation of the proposed list at the `Review edge cases` or `Implementation details` stages. Mere containment of the string `next-step` SHALL NOT fire the token: it fires only when the turn is a bare token or when advancing the progression is the turn's dominant intent, and a turn that negates, defers, quotes, or discusses the token SHALL NOT advance the progression. `next-step` SHALL be the only token with a defined stage-advancement action: the `crystallize` token and natural-language requests to crystallize, to print the paste-ready block, to create a proposal, or to move to a named stage SHALL carry no prescribed advancement response, and the agent interprets them in context. `sai-explore` SHALL NOT advance a stage on its own judgment that the idea is solid or ready. The recorded empty-list conditions — at the `review-edge-cases` stage when the recorded edge-case list is empty, and at the `implementation-details` stage when the recorded implementation-details list is empty — are content-based rules owned by the `explore-idea` machine and do not constitute readiness judgments; they SHALL fire only on an intent-less turn, so a turn carrying an unrecognized intent or a conditional-entry intent emitted outside its own valid stage set SHALL leave the progression where it is even when that stage's own list was recorded empty. The one-line readiness signal (`explore-crystallization-on-demand`) does not advance the stages. The machine consumes the recorded list state and returns the next stage and step pointer to the caller.
 
 #### Scenario: The next token advances the progression
 
@@ -53,8 +53,8 @@ The stage progression SHALL advance only when the user explicitly requests it: t
 
 #### Scenario: Natural language names a stage
 
-- **WHEN** the user requests a stage in natural language, such as asking to review edge cases or move on to implementation details
-- **THEN** the progression advances to that stage on that explicit intent
+- **WHEN** the user requests a stage or crystallization in natural language, such as asking to move on to implementation details or to crystallize the idea, without the `next-step` token or a list confirmation
+- **THEN** no fixed advancement response is prescribed and the agent interprets the request in context
 
 #### Scenario: Semantic confirmation advances the stage in the same turn
 
@@ -78,7 +78,7 @@ The stage progression SHALL advance only when the user explicitly requests it: t
 
 ### Requirement: The edge-case review is the second stage and keeps its mandatory gate
 
-The `Review edge cases` stage SHALL run the existing edge-case review when the user advances into it (`explore-edge-case-review`): numbered `E1`…`En` scope-boundary proposals, one plain conversational semantic agreement question, at most once per substantially unchanged idea. When no in-scope edge case bounds the proposed change, the deterministic empty-set rule of `explore-edge-case-review` SHALL apply instead: the agreed empty list is recorded and the progression advances without the agreement question. The mandatory gate SHALL be preserved (`explore-edge-case-gate`): `sai-explore` SHALL NOT emit a `Ready to Propose` block before semantic agreement, an explicit premature crystallize request SHALL enter the review with no skip path, and `--fast-track` SHALL NOT auto-approve, skip, or weaken this gate.
+The `Review edge cases` stage SHALL run the existing edge-case review when the user advances into it (`explore-edge-case-review`): numbered `E1`…`En` scope-boundary proposals, one plain conversational semantic agreement question, at most once per substantially unchanged idea. When no in-scope edge case bounds the proposed change, the deterministic empty-set rule of `explore-edge-case-review` SHALL apply instead: the agreed empty list is recorded and the progression advances without the agreement question. The mandatory gate SHALL be preserved (`explore-edge-case-gate`): `sai-explore` SHALL NOT emit a `Ready to Propose` block before semantic agreement, the block SHALL be emitted only inside the `Crystallize` stage, and `--fast-track` SHALL NOT auto-approve, skip, or weaken this gate.
 
 #### Scenario: Advancing to the stage runs the review
 
@@ -94,21 +94,20 @@ The `Review edge cases` stage SHALL run the existing edge-case review when the u
 
 The `Crystallize` stage SHALL run the size-based slicing assessment and the integration-point friction assessment — two orthogonal judgments — before emitting any `Ready to Propose` block. It SHALL NOT run a technical-uncertainty assessment and SHALL NOT run an uncertainty pause at this stage: that axis is evaluated at the close of the `Explore change` stage and, when taken, runs as the conditional POC stage before `Review edge cases`. The language gate SHALL run only after those two checks complete. It MUST NOT run overview-language gate 9 at stage entry; gate 9 belongs to the later supervised Plan (unattended) activation.
 
-Advancing into the `Crystallize` stage SHALL itself count as an explicit crystallization request. The slicing assessment and language-gate sequence SHALL start only after the crystallization step file named by `next.follow` is fetched. Deterministic empty-set advancement into this stage SHALL have the same effect. An explicit crystallize request made from an earlier stage SHALL first run the mandatory edge-case review when the review has not reached agreement, then proceed through both assessments with no uncertainty pause.
+Entering the `Crystallize` stage SHALL be the only start of the crystallization sequence. The slicing assessment and language-gate sequence SHALL start only after the crystallization step file named by `next.follow` is fetched. Deterministic empty-set advancement into this stage SHALL have the same effect. From `Implementation details`, `next-step`, semantic list confirmation, and deterministic empty-set advancement SHALL be the equivalent ways to enter this stage; a `crystallize` token or a natural-language crystallization request SHALL NOT be a defined way to enter it.
 
 A POC is not a crystallized feature slice and does not clear or replace the stage TODO. The stage TODO is cleared only when feature crystallization begins emitting its first feature slice and the idea progress list takes the panel.
 
 #### Scenario: crystallization runs slicing then the crystallization gate
 
-- **WHEN** the user explicitly requests crystallization, including by advancing into the `Crystallize` stage
+- **WHEN** the progression enters the `Crystallize` stage
 - **THEN** the size and friction assessments run first and then gate 8 before a `Ready to Propose` block prints, with no uncertainty assessment and no uncertainty pause at this stage
 - **AND** overview-language gate 9 is not run during crystallization emission
 
 #### Scenario: natural-language entry into the stage crystallizes
 
-- **WHEN** the user names the `Crystallize` stage in natural language from the `Implementation details` stage
-- **THEN** the advance counts as the explicit crystallization request and both required assessments run before a block prints
-- **AND** overview-language gate 9 remains deferred
+- **WHEN** the user names the `Crystallize` stage in natural language from the `Implementation details` stage without the `next-step` token or a list confirmation
+- **THEN** the request carries no prescribed advancement response, and when the progression does enter `Crystallize` both required assessments run before a block prints with overview-language gate 9 still deferred
 
 #### Scenario: an empty-list chain reaches crystallization in the same turn
 
@@ -118,8 +117,8 @@ A POC is not a crystallized feature slice and does not clear or replace the stag
 
 #### Scenario: premature crystallize enters the review before slicing
 
-- **WHEN** the user explicitly requests crystallization before the edge-case review has reached agreement
-- **THEN** the review runs with no skip path and the size and friction assessments run only after agreement
+- **WHEN** the user asks to crystallize before the edge-case review has reached agreement
+- **THEN** no pending crystallization request is recorded, no `Ready to Propose` block prints, and the size and friction assessments run only after `next-step` reaches `Crystallize`
 
 #### Scenario: fast-track preserves stage and gate boundaries
 
@@ -134,7 +133,7 @@ A POC is not a crystallized feature slice and does not clear or replace the stag
 
 ### Requirement: A materially changed idea resets the stage progression
 
-When the idea under exploration materially changes into a new stable idea, `sai-explore` SHALL close the current sidecar session and spawn a fresh one, resetting the stage progression to the `Explore change` stage: the stage TODO re-renders with `Explore change` as the `in_progress` stage and the remaining stages `pending`, completed stages are no longer rendered as completed, and previously agreed lists are discarded for the new idea's progression. The reset SHALL NOT re-run the edge-case review by itself: a fresh review is entered only when the new idea advances into the `Review edge cases` stage or requests crystallization prematurely. The reset SHALL NOT change the Closure State handling of the new idea (a new `active-uncrystallized` lifecycle).
+When the idea under exploration materially changes into a new stable idea, `sai-explore` SHALL close the current sidecar session and spawn a fresh one, resetting the stage progression to the `Explore change` stage: the stage TODO re-renders with `Explore change` as the `in_progress` stage and the remaining stages `pending`, completed stages are no longer rendered as completed, and previously agreed lists are discarded for the new idea's progression. The reset SHALL NOT re-run the edge-case review by itself: a fresh review is entered only when the new idea advances into the `Review edge cases` stage. The reset SHALL NOT change the Closure State handling of the new idea (a new `active-uncrystallized` lifecycle).
 
 #### Scenario: A materially changed idea re-renders the TODO from stage 1
 
@@ -148,7 +147,7 @@ When the idea under exploration materially changes into a new stable idea, `sai-
 
 #### Scenario: The reset alone does not start a fresh review
 
-- **WHEN** a materially changed idea resets the progression and spawns a fresh sidecar session, but the user has not advanced into `Review edge cases` or requested crystallization
+- **WHEN** a materially changed idea resets the progression and spawns a fresh sidecar session, but the user has not advanced into `Review edge cases`
 - **THEN** no edge-case review runs for the new idea yet
 
 ### Requirement: The stage TODO clears at crystallization
@@ -260,7 +259,7 @@ Explore SHALL obtain pre-crystallization stage order, pointer routing, transitio
 
 ### Requirement: Machine-owned stage state persists in the sidecar store
 
-The stage progression state SHALL be owned by the sidecar rather than held in conversation only: the machine-owned portion (the current stage and the agreed lists) SHALL be persisted by the `sai-state` sidecar in its own session file under the system temp directory and reloaded automatically across process restarts, while the pending crystallization request, Closure State, and readiness tracking remain conversation-held. The agent SHALL memorize no state JSON and SHALL never send state in a request, holding at most one disposable presentation hint (the last rendered stage, used only for panel rendering on event-less turns and to notice regressions); the sidecar response SHALL always win over the hint. The session SHALL NOT write this state to any file, artifact, change directory, configuration, or `.openspec.yaml` inside the project — the only persistence is the sidecar's own session file under the system temp directory — and `sai-explore` remains read-only.
+The stage progression state SHALL be owned by the sidecar rather than held in conversation only: the machine-owned portion (the current stage and the agreed lists) SHALL be persisted by the `sai-state` sidecar in its own session file under the system temp directory and reloaded automatically across process restarts, while the Closure State and readiness tracking remain conversation-held; no pending crystallization request is held. The agent SHALL memorize no state JSON and SHALL never send state in a request, holding at most one disposable presentation hint (the last rendered stage, used only for panel rendering on event-less turns and to notice regressions); the sidecar response SHALL always win over the hint. The session SHALL NOT write this state to any file, artifact, change directory, configuration, or `.openspec.yaml` inside the project — the only persistence is the sidecar's own session file under the system temp directory — and `sai-explore` remains read-only.
 
 #### Scenario: Stage state survives a sidecar process restart
 
@@ -290,7 +289,7 @@ After crystallization, Plan and Manual SHALL close the active slice only on the 
 
 ### Requirement: Caller-side next-step recognition
 
-The explore caller SHALL advance the pre-crystallization progression only on explicit next-step recognition: a bare token with optional trivial punctuation or greeting, or dominant intent naming the next stage, requesting crystallization, or semantic confirmation of the proposed list at Review edge cases or Implementation details. Mere containment of next-step SHALL NOT fire, and a turn that negates, defers, quotes, or discusses the token SHALL NOT advance. Semantic confirmation at either list stage SHALL record the agreed list and advance in the same turn.
+The explore caller SHALL advance the pre-crystallization progression only on explicit next-step recognition: a bare token with optional trivial punctuation or greeting, or dominant intent to advance the progression, or semantic confirmation of the proposed list at Review edge cases or Implementation details. A `crystallize` token or a natural-language crystallization request SHALL NOT be a defined advancement trigger. Mere containment of next-step SHALL NOT fire, and a turn that negates, defers, quotes, or discusses the token SHALL NOT advance. Semantic confirmation at either list stage SHALL record the agreed list and advance in the same turn.
 
 #### Scenario: Bare token and dominant intent advance
 
