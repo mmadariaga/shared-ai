@@ -63,33 +63,44 @@ state, reviewers, labels, assignees, comments and other fields are outside scope
 `no_changes` ends without mutation. **Complete when:** `ready` returns the exact
 proposal, current baseline if updating, and the `publish token`.
 
-## 3. Review and authorize publication
+## 3. Review and authorize
 
-Show the operation (create or update), platform, repository, visibility, source,
-target, and existing request URL if updating. Show the complete proposed title and
-description, not a summary. For update also show the baseline and what changes.
-Before approval show any `proposal.concurrency_warning` verbatim: a reread does
-not protect the interval before a provider's update request.
+Run `push-query` with the destination fields. A `ready` result carries the exact
+remote, push URL, branch, commit and the `push token`; `no_changes` means the remote
+branch already holds the approved commit. Show the operation (create or update),
+platform, repository, visibility, source, target, and existing request URL if
+updating. Show the complete proposed title and description, not a summary. For update
+also show the baseline and what changes. Before approval show any
+`proposal.concurrency_warning` verbatim: a reread does not protect the interval
+before a provider's update request.
 Also show every entry of the `query` result's `warnings` verbatim before approval.
-Warn explicitly if public. Then ask: "Publish this exact title and description
-to this destination?" Offer approve, edit, cancel and wait. Cancellation ends
-without publication. Any content, destination or baseline change returns to
-`query`, complete presentation and fresh approval. Invocation, unattended mode
-and prior general grants never authorize this operation.
-**Complete when:** explicit approval binds the full proposal and `publish token`, or cancel ends.
+Warn explicitly if public. When `push-query` is `ready`, also show the exact remote,
+push URL, branch and commit.
 
-## 4. Independently authorize any push
+Then ask: one question. When `push-query` is `ready` (combined approval): "Push this
+commit to this remote branch without force and publish the title and description
+above?" with options "Approve PR message and push branch", "Edit", "Cancel". When it
+is `no_changes` (publication-only approval): "Publish this exact title and description
+to this destination?" with options "Approve PR message", "Edit", "Cancel". Label the
+approve options with `PR` on GitHub and Azure Repos and `MR` on GitLab. Wait for the
+answer. Cancel runs none of the operations in that question and keeps the draft. Edit
+applies the edits, then returns to `query` and `push-query`, complete presentation and
+fresh approval. Any content, destination, baseline or HEAD change after approval
+returns to complete presentation and fresh approval of the operations still pending
+only; a completed push is never repeated. Invocation, unattended mode and prior
+general grants never authorize these operations.
+**Complete when:** explicit approval binds the full proposal, the `publish token` and,
+when a push is needed, the exact push and its `push token`, or cancel ends.
 
-Run `push-query` with the destination fields. If `ready`, show the exact remote,
-push URL, branch and commit; ask "Push this commit to this remote branch without
-force?" Offer approve or decline and wait. Only this explicit answer permits
-`push`, with those fields, `approved:true` and the `push token`.
-Decline stops publication that depends on this push; preserve the draft. No force
-push, automatic commit, authentication change or installation is allowed.
-The tool verifies that the remote branch has HEAD before publication.
-**Complete when:** no push is needed or the separately approved push is verified.
+## 4. Push, publish once and verify
 
-## 5. Publish once and verify
+One approval answer authorizes each operation it names, and each operation keeps its
+own token: they are never combined or interchangeable. When a push is needed, run
+`push` first with the destination fields, `approved:true` and the `push token`. The
+tool verifies that the remote branch has HEAD before publication. No force push,
+automatic commit, authentication change or installation is allowed. If the push fails
+or cannot be verified, skip publication, keep the draft, report the failure and leave
+the remote history as it is.
 
 Run `prepare` with `{harness:"claude"}` or `{harness:"opencode"}` for the active
 harness. It creates a local temporary directory and returns a new absolute receipt
@@ -101,4 +112,6 @@ selected source and destination for an existing request before any repeated crea
 an uncertain result is not permission to create again. For an unapplied update,
 reconcile current content and obtain fresh approval before retrying.
 Report only a verified request URL or the concrete blocker and receipt location.
+When publication fails or ends uncertain after a verified push, report the completed
+push and the failed publication separately, and keep the draft and the pushed branch.
 **Complete when:** publication is verified or uncertainty is accurately reported.
