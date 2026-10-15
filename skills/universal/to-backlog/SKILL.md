@@ -51,8 +51,8 @@ slices, and for origin updates, keep these sections.
 A single ordinary non-sliced proposal is not a slice set: keep one-issue capture
 unless the crystallized context explicitly identifies it as a sliced set.
 
-For both **create** and **update**, read `issue-format.md` from this skill's
-directory before drafting. Apply its format and final drafting checks; on update, use its preservation boundary.
+For both **create** and **update**, Fetch @sai/policies/issue-format.md and read it
+before drafting. Apply its format and final drafting checks; on update, use its preservation boundary.
 
 Read the conversation, prioritizing recent messages while retaining earlier
 decisions that still apply. Draft only a title and description; Markdown is

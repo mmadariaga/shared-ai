@@ -40,6 +40,13 @@ const CONDITIONAL_ENTRIES = Object.freeze({
   },
 });
 
+// `issue-shortcut` is the one intent that reaches `crystallize` without the
+// intermediate stages. It is valid only at `explore-change` and carries the
+// issue's already agreed `E`/`I` lists, which it records as the two agreed
+// lists. The in-scope implementation list never closes empty, so an empty one
+// is rejected like any other malformed shortcut.
+const SHORTCUT_INTENT = 'issue-shortcut';
+
 const initialState = Object.freeze({
   stage: 'explore-change',
   ideaList: [],
@@ -154,6 +161,23 @@ function transition(state, signal) {
       recordedState[listKey] = sig.recordedList.slice();
       return result(recordedState);
     }
+  }
+
+  // Issue shortcut: records the issue's agreed lists and jumps to `crystallize`.
+  if (sig.intent === SHORTCUT_INTENT) {
+    if (current.stage !== 'explore-change') {
+      return result(cloneState(current), { rejected: 'SHORTCUT_NOT_AT_EXPLORE_CHANGE' });
+    }
+    const isList = (value) => Array.isArray(value) && value.every((item) => typeof item === 'string');
+    if (!isList(sig.edgeCaseList) || !isList(sig.implementationDetailsList) || sig.implementationDetailsList.length === 0) {
+      return result(cloneState(current), { rejected: 'SHORTCUT_LISTS_INVALID' });
+    }
+    const shortcut = Object.assign(cloneState(current), {
+      stage: 'crystallize',
+      edgeCaseList: sig.edgeCaseList.slice(),
+      implementationDetailsList: sig.implementationDetailsList.slice(),
+    });
+    return result(shortcut);
   }
 
   // Conditional-stage entry: a declared entry intent emitted at one of its own

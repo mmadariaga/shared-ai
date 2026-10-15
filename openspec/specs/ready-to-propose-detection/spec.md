@@ -72,3 +72,36 @@ The repository SHALL provide `sai/tools/ready-to-propose.js` with the sub-comman
 #### Scenario: Dispatchable exit follows dispatchability
 - **WHEN** a structurally valid block with an unjudged flagged line is piped to `check --profile dispatchable`
 - **THEN** the verdict carries `"ok": true` and `"dispatchable": false`, and the tool exits 1
+
+### Requirement: Convert sub-command builds a draft block from an issue
+
+`sai/tools/ready-to-propose.js` SHALL provide `convert [--change-name <name>] [--declared-clean]`, reading an issue description from stdin as Markdown or HTML and printing one JSON object. HTML comments SHALL be removed before parsing and SHALL never carry block content. The result SHALL report `ready_to_propose_form` (true only when the `Maturity` section reads `Ready to propose`) and `proposed_change_name` derived from the `Goal`. For an issue without the form, the tool SHALL return no block and exit 0. For an issue with the form, the tool SHALL build the block from the issue's own text, map `Goal`, `Problem`, `Scope`, `Research leads`, `Decisions`, `Non-goals`, `Edge cases`, and `Implementation notes` to their block fields, write `- None` in every field without a source, keep the `E` and `I` items literal, and validate the block with the `dispatchable` profile. It SHALL reject the conversion, exiting 1 with `rejections`, when the issue has entries in `Open questions`, lacks a mandatory section, has an empty `Problem`, `Goal`, or `Scope`, has a scope item that does not read as a verifiable capability, has an `E` or `I` item without its identifier, or fails the `dispatchable` profile. `--declared-clean` SHALL add a `Request Additional Notes` line stating that the user declared no drift without validating it. A missing flag value SHALL be a usage error exiting 2.
+
+#### Scenario: Ready to Propose issue converts
+
+- **WHEN** an issue whose `Maturity` reads `Ready to propose` and whose sections are complete is piped to `convert`
+- **THEN** the tool returns a `dispatchable` block with literal `E`/`I` lists and `- None` in every unsourced field, and exits 0
+
+#### Scenario: HTML issue converts like Markdown
+
+- **WHEN** the same issue is piped as HTML containing an HTML comment
+- **THEN** the tool returns the same block and the comment's content appears nowhere in it
+
+#### Scenario: Open questions reject the conversion
+
+- **WHEN** a Ready to Propose issue still has entries in `Open questions`
+- **THEN** the tool returns `converted: false` with a rejection and exits 1
+
+#### Scenario: Issue without the form returns no block
+
+- **WHEN** an issue whose `Maturity` is not `Ready to propose` is piped to `convert`
+- **THEN** the tool returns `ready_to_propose_form: false`, no block, and exits 0
+
+### Requirement: Issue format constants match the policy
+
+The `convert` sub-command SHALL hold the issue sections and `Maturity` values as constants, and a test SHALL check that they match `sai/policies/issue-format.md`. `sai/policies/tool-resolution.md` SHALL document the `convert` invocation shape.
+
+#### Scenario: Constants agree with the policy
+
+- **WHEN** the regression test reads the tool constants and the issue format policy
+- **THEN** the mandatory sections, optional sections, and `Maturity` values match

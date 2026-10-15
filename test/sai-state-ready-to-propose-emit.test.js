@@ -150,6 +150,37 @@ test('block guard: the block is accepted once the exploration reaches crystalliz
   }
 });
 
+test('block guard: the issue shortcut reaches crystallize in one emit and the block is then accepted', () => {
+  const id = spawnSession('rtp-shortcut', false);
+  try {
+    const event = JSON.stringify({ intent: 'issue-shortcut', edgeCaseList: ['E1: empty input fails.'], implementationDetailsList: ['I1: add the module.'] });
+    const shortcut = runCli(['emit', id, IDEA_MACHINE, '-'], event);
+    assert.equal(shortcut.exitCode, 0, shortcut.stderr);
+    const json = JSON.parse(shortcut.stdout);
+    assert.equal(json.stage, 'crystallize');
+    assert.equal(json.next.follow, 'sai/commands/explore/steps/crystallization-protocol.md');
+    assert.equal(blockEmit(id, block('shortcut-change')).exitCode, 0);
+    assert.deepEqual(readSet(id), ['shortcut-change']);
+  } finally {
+    cleanup(id);
+  }
+});
+
+test('block guard: the issue shortcut is rejected after the exploration left explore-change, so the guard still holds', () => {
+  const id = spawnSession('rtp-shortcut-late', false);
+  try {
+    advanceIdea(id, 1);
+    const event = JSON.stringify({ intent: 'issue-shortcut', edgeCaseList: [], implementationDetailsList: ['I1: add the module.'] });
+    const shortcut = runCli(['emit', id, IDEA_MACHINE, '-'], event);
+    assert.equal(JSON.parse(shortcut.stdout).rejected, 'SHORTCUT_NOT_AT_EXPLORE_CHANGE');
+    const result = blockEmit(id, block('early-change'));
+    assert.equal(result.exitCode, 1);
+    assert.equal(JSON.parse(result.stdout).reason, 'STAGE_NOT_CRYSTALLIZE');
+  } finally {
+    cleanup(id);
+  }
+});
+
 test('dependency set storage orders blockers, hashes internal edges and rejects invalid amendments without replacement', () => {
   const id = spawnSession('dependency-set');
   try {

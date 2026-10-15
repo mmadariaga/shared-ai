@@ -1,7 +1,8 @@
 # Backlog issue format
 
 Use this provider-neutral reference when drafting a title and description for
-`to-backlog`. A backlog item records the current agreement boundary, not a
+`to-backlog`; `/sai-explore` reads the same format to recognize an issue and its
+Maturity. A backlog item records the current agreement boundary, not a
 transcript or permission to implement.
 
 ## Agreement and update boundary

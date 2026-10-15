@@ -73,7 +73,7 @@ test('H3: escapes, reference definitions in paragraphs and task-list semantics f
   }
   assert.equal(convert('`Text\\*literal\\*`'), '<p><code>Text\\*literal\\*</code></p>');
   assert.equal(convert('## Goal\n\nKeep **approval** and [guide](https://example.com).\n\n- E1: Keep `x[y]` literal'), '<h2>Goal</h2>\n<p>Keep <strong>approval</strong> and <a href="https://example.com">guide</a>.</p>\n<ul><li>E1: Keep <code>x[y]</code> literal</li></ul>');
-  const format = fs.readFileSync('skills/universal/to-backlog/issue-format.md', 'utf8');
+  const format = fs.readFileSync('sai/policies/issue-format.md', 'utf8');
   const skeleton = /```markdown\n([\s\S]*?)\n```/.exec(format)[1];
   const html = convert(skeleton);
   for (const name of ['Problem', 'Goal', 'Scope', 'Non-goals', 'Open questions', 'Maturity']) assert.ok(html.includes(`<h2>${name}</h2>`));

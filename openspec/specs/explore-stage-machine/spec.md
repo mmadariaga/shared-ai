@@ -171,6 +171,8 @@ The recorded empty-list auto-advance SHALL be advancement by content, not by int
 
 In addition, the machine SHALL accept exactly two conditional-stage entry intents for the `poc-lane` stage: `poc-lane`, valid only at the `explore-change` stage, and `poc-lane-late`, valid only at the `review-edge-cases`, `implementation-details`, and `crystallize` stages. Each entry intent SHALL declare the set of stages it is valid at, and an entry intent emitted at a stage in its own set SHALL move the progression into the `poc-lane` stage without recording or altering any list and without a rejection, with the returned `next.follow` naming the conditional stage's step file. An entry intent emitted at any stage outside its own set SHALL be rejected with READINESS_IS_NOT_INTENT and an unchanged stage. The retired `crystallize-resume` intent SHALL have no special handling and SHALL be treated as an unknown intent at every stage.
 
+The machine SHALL also accept the `issue-shortcut` intent, the one intent that reaches `crystallize` without the intermediate stages. It SHALL be valid only at `explore-change`, SHALL carry an `edgeCaseList` and a non-empty `implementationDetailsList` of strings, SHALL record both lists as the agreed lists, and SHALL move the stage to `crystallize` with `next.follow` naming the crystallization step file. Emitted at any other stage it SHALL be rejected with SHORTCUT_NOT_AT_EXPLORE_CHANGE, and with missing, non-string, or empty in-scope lists it SHALL be rejected with SHORTCUT_LISTS_INVALID, both with an unchanged state.
+
 #### Scenario: Stray intent does not advance
 
 - **WHEN** the caller emits banana, missing, or empty intent at explore-change without a recorded empty list condition
@@ -210,6 +212,16 @@ In addition, the machine SHALL accept exactly two conditional-stage entry intent
 
 - **WHEN** the caller emits `crystallize-resume` at the crystallize stage
 - **THEN** the machine returns READINESS_IS_NOT_INTENT with an unchanged stage and the crystallize stage's own step file as `next.follow`
+
+#### Scenario: The issue shortcut moves explore-change to crystallize
+
+- **WHEN** the caller emits `issue-shortcut` at explore-change with a string edge-case list and a non-empty string implementation-details list
+- **THEN** the machine records both lists, moves to crystallize, and returns `sai/commands/explore/steps/crystallization-protocol.md` as `next.follow`
+
+#### Scenario: The issue shortcut is rejected outside explore-change or with malformed lists
+
+- **WHEN** the caller emits `issue-shortcut` at any other stage, or at explore-change with missing, non-string, or empty in-scope lists
+- **THEN** the machine returns SHORTCUT_NOT_AT_EXPLORE_CHANGE or SHORTCUT_LISTS_INVALID respectively, with an unchanged state
 
 ### Requirement: The POC lane is a conditional stage of explore-idea
 

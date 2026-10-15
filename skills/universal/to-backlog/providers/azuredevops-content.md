@@ -3,7 +3,7 @@
 `azure-markdown.js` is the conversion authority. Supported: ATX headings,
 paragraphs and line breaks, flat ordered/unordered lists, blockquotes, inline
 code, fenced code with optional language, bold, italic, HTTP(S)/mailto inline
-links, and the exact `backlog-id-counters` comment from issue-format.md.
+links, and the exact `backlog-id-counters` comment from `sai/policies/issue-format.md`.
 Code is literal, HTML text is escaped, counters remain metadata.
 
 Nested/indented blocks, tables, raw HTML, images, reference links, footnotes,
