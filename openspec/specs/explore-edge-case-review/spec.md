@@ -109,14 +109,24 @@ When the user advances to the `Review edge cases` stage and no behavior bounds t
 
 ### Requirement: The edge-case list wording uses writing-for-agents when available
 
-Before drafting the `E` list, the edge-case review SHALL load the `writing-for-agents` skill through the harness-native skill mechanism: the `Skill` tool on Claude Code, the `skill` tool on opencode. It SHALL reuse a copy already loaded in the chat. When the skill is absent, cannot be loaded, or its load is denied, `sai-explore` SHALL print `Warning: the writing-for-agents skill is unavailable, so the list is drafted without it.` once per `/sai-explore` invocation and draft the list with the existing rules. The skill SHALL shape item wording only. Scope, numbering, probes, agreement, and the `- None` rule SHALL stay as the edge-case review defines them, and the skill SHALL add no items.
+Before drafting the `E` list, the edge-case review SHALL load the `writing-for-agents` skill through the harness-native skill mechanism: the `Skill` tool on Claude Code, the `skill` tool on opencode. It SHALL reuse a copy already loaded in the chat. The list SHALL follow the shared sequence in `sai/commands/explore/list-writing.md`: draft the list with the skill, finish the lightweight probes and their private corrections, run the review pass, then emit the one message. The review pass SHALL be a second pass of the skill over the complete list, run inline in the same Explore session with the already-loaded skill, and it SHALL be silent: the user sees only the reviewed list, with no change marks and no review notes. After every user adjustment, the review pass SHALL run again over the complete updated list before it is displayed. An empty list SHALL be displayed directly as `- None` and SHALL skip the review pass. When the skill is absent, cannot be loaded, or its load is denied, `sai-explore` SHALL print `Warning: the writing-for-agents skill is unavailable, so the list is shown without its review.` once per `/sai-explore` invocation, skip the review pass, and display the list under the existing rules. The draft and the review pass SHALL change phrasing only: the item set, each item's meaning, and the `E` numbering SHALL stay as drafted, and neither pass SHALL add an item, a technical decision, or a behavior. Scope, numbering, probes, agreement, and the `- None` rule SHALL stay as the edge-case review defines them.
 
 #### Scenario: Skill available
 
 - **WHEN** the edge-case list is drafted and `writing-for-agents` loads
-- **THEN** the list items are worded with the skill while the numbering, probes, and agreement question are unchanged
+- **THEN** the review pass runs after the probes' private corrections and before the one-message emission, and the displayed list keeps the drafted items, meaning, and `E` numbering
+
+#### Scenario: Revised list
+
+- **WHEN** the user requests additions, removals, or changes to the displayed edge-case list
+- **THEN** the review pass runs again over the complete updated list, reusing the loaded skill, before the updated list is displayed
+
+#### Scenario: Empty list
+
+- **WHEN** no in-scope edge case bounds the proposed change
+- **THEN** the list is displayed directly as `- None` and the review pass is skipped
 
 #### Scenario: Skill unavailable
 
 - **WHEN** the edge-case list is drafted and `writing-for-agents` is absent or denied
-- **THEN** `sai-explore` prints the fixed warning once in the invocation and drafts the list with the existing rules
+- **THEN** `sai-explore` prints `Warning: the writing-for-agents skill is unavailable, so the list is shown without its review.` once in the invocation, skips the review pass, and displays the list under the existing rules

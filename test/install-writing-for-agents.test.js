@@ -276,16 +276,26 @@ test('I6: both Explore list stages reach list-writing.md and keep their list con
   assert.match(listWriting, /`skill` tool/);
   assert.match(listWriting, /once per `\/sai-explore` invocation/);
   assert.match(listWriting, /`- None`/);
+  assert.match(listWriting, /Draft the list with the skill, finish the stage's own pre-display work, run the review pass, then display\./);
+  assert.match(listWriting, /\*\*Review pass\.\*\*/);
+  assert.match(listWriting, /run the review pass again over the complete updated list/);
+  assert.match(listWriting, /skips the review pass/);
+  assert.match(listWriting, /Warning: the writing-for-agents skill is unavailable, so the list is shown without its review\./);
+  assert.doesNotMatch(listWriting, /drafted without it/);
 
   const edge = fs.readFileSync(path.join(REPO, 'sai', 'commands', 'explore', 'steps', 'review-edge-cases.md'), 'utf8');
-  assert.match(edge, /Use the writing-for-agents skill to create the list\./);
+  assert.doesNotMatch(edge, /Use the writing-for-agents skill to create the list\./);
+  assert.match(edge, /draft, review pass, and display sequence/);
+  assert.match(edge, /review pass from `list-writing\.md` runs after these private corrections and before the one-message emission/);
+  assert.ok(edge.indexOf('fixed in the list privately') < edge.indexOf('review pass from `list-writing.md`'));
   assert.match(edge, /Fetch @sai\/commands\/explore\/list-writing\.md/);
   assert.match(edge, /@sai\/commands\/explore\/list-writing\.md/);
   assert.match(edge, /`E1` through `En`/);
   assert.match(edge, /An empty list \(`- None`\) runs no probes\./);
 
   const impl = fs.readFileSync(path.join(REPO, 'sai', 'commands', 'explore', 'steps', 'implementation-details.md'), 'utf8');
-  assert.match(impl, /Use the writing-for-agents skill to create the list\./);
+  assert.doesNotMatch(impl, /Use the writing-for-agents skill to create the list\./);
+  assert.match(impl, /draft, review pass, and display sequence/);
   assert.match(impl, /Fetch @sai\/commands\/explore\/list-writing\.md/);
   assert.match(impl, /@sai\/commands\/explore\/list-writing\.md/);
   assert.match(impl, /`I1` through `In`/);

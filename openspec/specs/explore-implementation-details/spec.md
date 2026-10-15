@@ -61,17 +61,22 @@ When the user semantically confirms the proposed list, `sai-explore` SHALL recor
 
 ### Requirement: The implementation-details list wording uses writing-for-agents when available
 
-Before drafting the `I` list, the implementation-details stage SHALL load the `writing-for-agents` skill through the harness-native skill mechanism: the `Skill` tool on Claude Code, the `skill` tool on opencode. It SHALL reuse a copy already loaded in the chat. When the skill is absent, cannot be loaded, or its load is denied, `sai-explore` SHALL print `Warning: the writing-for-agents skill is unavailable, so the list is drafted without it.` at most once per `/sai-explore` invocation, counting a warning already printed by the edge-case stage, and draft the list with the existing rules. The skill SHALL shape item wording only. Scope, numbering, agreement, and the `- None` rule SHALL stay as the stage defines them, and the skill SHALL add no items.
+Before drafting the `I` list, the implementation-details stage SHALL load the `writing-for-agents` skill through the harness-native skill mechanism: the `Skill` tool on Claude Code, the `skill` tool on opencode. It SHALL reuse a copy already loaded in the chat. The list SHALL follow the shared sequence in `sai/commands/explore/list-writing.md`: draft the list with the skill, run the review pass, then display. The review pass SHALL be a second pass of the skill over the complete list, run inline in the same Explore session with the already-loaded skill, and it SHALL be silent: the user sees only the reviewed list, with no change marks and no review notes. After every user adjustment, the review pass SHALL run again over the complete updated list before it is displayed. When the skill is absent, cannot be loaded, or its load is denied, `sai-explore` SHALL print `Warning: the writing-for-agents skill is unavailable, so the list is shown without its review.` at most once per `/sai-explore` invocation, counting a warning already printed by the edge-case stage, skip the review pass, and display the list under the existing rules. The draft and the review pass SHALL change phrasing only: the item set, each item's meaning, and the `I` numbering SHALL stay as drafted, and neither pass SHALL add an item, a technical decision, or a behavior. Scope, numbering, agreement, and the `- None` rule SHALL stay as the stage defines them.
 
 #### Scenario: Skill available
 
 - **WHEN** the implementation-details list is drafted and `writing-for-agents` loads
-- **THEN** the `I` items are worded with the skill while the numbering and confirmation question are unchanged
+- **THEN** the review pass runs over the complete list before display, and the displayed list keeps the drafted items, meaning, and `I` numbering and is followed by the unchanged confirmation question
+
+#### Scenario: Revised list
+
+- **WHEN** the user requests adjustments to the displayed implementation-details list
+- **THEN** the review pass runs again over the complete updated list, reusing the loaded skill, before the updated list is displayed
 
 #### Scenario: Warning already printed in this invocation
 
 - **WHEN** the edge-case stage already printed the unavailable-skill warning and the implementation-details list is drafted without the skill
-- **THEN** `sai-explore` prints no second warning and drafts the list with the existing rules
+- **THEN** `sai-explore` prints no second warning, skips the review pass, and displays the list under the existing rules
 
 ### Requirement: Every Ready to Propose block carries Implementation Details with at least one in-scope item
 
