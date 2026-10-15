@@ -54,7 +54,7 @@ The seam SHALL validate that the strategy source covers the whole affected confl
 
 ### Requirement: Resolution-payload validation precedes staging
 
-The coordinator MUST NOT stage until the original received result and its payload pass atomic validation: one record per affected conflicted file, exact paths and categories, valid source and complete captured regions, decisions matching the confirmed strategy, no markers in authored text, valid snapshot identity, and preserved outside-region and unrelated content. The post-resolution independent review MUST also confirm the tree matches the confirmed strategy. Mechanical checks SHALL supplement rather than replace that review. Any selected public report SHALL remain separate from the original validation source.
+The coordinator MUST NOT stage until the original received result and its payload pass atomic validation: one record per affected conflicted file, exact paths and categories, valid source and complete captured regions, decisions matching the confirmed strategy, no markers in authored text, valid snapshot identity, and preserved outside-region and unrelated content. The original received result MUST be the worker's verified transfer file, used unchanged as the validation source. The post-resolution independent review MUST also confirm the tree matches the confirmed strategy. Mechanical checks SHALL supplement rather than replace that review. Any selected public report, including the worker's inline application-outcome `summary`, SHALL remain separate from the original validation source and SHALL NOT be compared with it.
 
 #### Scenario: Invalid payload is rejected before review
 
@@ -165,7 +165,7 @@ The Claude Code and opencode projections MUST preserve the same worker-source fi
 
 ### Requirement: Single-source merge strategy explanation
 
-The presentation seam SHALL select the active stage's user-facing report without modifying the original validated worker source. Each strategy or revision SHALL receive its complete strategy and Conflict Analysis presentation once before application in either mode. A normal-mode gate SHALL reuse that already-rendered strategy as context rather than print it again. Successful application SHALL retain the complete resolution payload internally without repeating Conflict Analysis, alternatives, or selected-decision explanations. Later reports SHALL explain new decisions, failures, escalations, repairs, unavailable verification, and state changes while reusing settled outcomes. Compactness SHALL NOT impose an arbitrary length cap or hide necessary evidence.
+The presentation seam SHALL select the active stage's user-facing report without modifying the original validated worker source. Each strategy or revision SHALL receive its complete strategy and Conflict Analysis presentation once before application in either mode. A normal-mode gate SHALL reuse that already-rendered strategy as context rather than print it again. Successful application SHALL present the worker's inline application-outcome `summary` and SHALL retain the complete resolution result only as its transfer-file reference, without reading that file and without repeating Conflict Analysis, alternatives, or selected-decision explanations. Later reports SHALL explain new decisions, failures, escalations, repairs, unavailable verification, and state changes while reusing settled outcomes. Compactness SHALL NOT impose an arbitrary length cap or hide necessary evidence.
 
 #### Scenario: Normal strategy gate does not duplicate its context
 
@@ -174,8 +174,8 @@ The presentation seam SHALL select the active stage's user-facing report without
 
 #### Scenario: Successful application retains evidence without repetition
 
-- **WHEN** the worker returns a successful resolution payload for the presented strategy
-- **THEN** the seam retains the full payload for validation and shows only new errors, escalations, or changed state instead of repeating semantic analysis
+- **WHEN** the worker returns a successful resolution result for the presented strategy
+- **THEN** the seam retains the transfer-file reference to the full result for validation and shows only new errors, escalations, or changed state instead of repeating semantic analysis
 
 #### Scenario: Revised strategy receives a complete presentation
 

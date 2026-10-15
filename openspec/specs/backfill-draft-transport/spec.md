@@ -90,12 +90,12 @@ On the Direct Build route, the `--direct-build-execute` order SHALL carry the co
 
 ### Requirement: Backfill terminal payload carries references, not content
 
-The shared worker core SHALL state that backfill's terminal payload returns `draft_references` to worker-prepared transfer files and never draft content; the only terminal payloads that return content for the coordinator to write SHALL be merge's resolution region text and the archive reroute's corrected delta specs.
+The shared worker core SHALL state that backfill's terminal payload returns `draft_references` to worker-prepared transfer files and never draft content, and that merge's terminal payload returns only the application outcome and one `resolution_reference` (`{path, sha256}`) to the worker's transfer file holding the complete resolution result, never the resolution region text; the only terminal payload that returns content for the coordinator to write SHALL be the archive reroute's corrected delta specs.
 
 #### Scenario: Worker core lists the content exceptions
 
 - **WHEN** `sai/orchestration/worker-core.md` is read
-- **THEN** it names merge's resolution region text and the archive reroute's corrected delta specs as the content-returning payloads and states that backfill returns references
+- **THEN** it names the archive reroute's corrected delta specs as the only content-returning payload and states that backfill and merge return references
 
 ### Requirement: Transfer helper grants on command profiles
 
