@@ -22,7 +22,9 @@
   authorize the closed draft order, then the same backfill worker performs the
   exact writes on its `--direct-build-execute` continuation. Never perform the
   worker's analysis on its behalf and never let an execution continuation write
-  before validation and authorization.
+  before validation and authorization. Draft content never travels as message
+  text on either route: the worker hands each draft over as a reference to a
+  transfer file outside the repository (see Transfer directory below).
 
   Backfill operates on OTHER changes: it authors retroactive artifacts for a
   change that was already implemented without the workflow, whatever else is
@@ -46,7 +48,9 @@
      opaque input history (including forwarded interview answers), the confirmed
      change name, the Direct Build (unattended) mode, the validated draft set and closed
      execution order pending write, the one-shot execution state, and the
-     ordered duplicate-free changed-files union; a replacement worker
+     ordered duplicate-free changed-files union; the validated draft set and
+     the closed execution order are the transfer directory path and the latest
+     draft references only, never draft content; a replacement worker
      reconstructs only from these and can never replay an executed order.
   - `terminal_navigation` — on a run closed by validated artifacts written into
     `openspec/changes/{name}/`: print the worker-authored summary verbatim,
@@ -74,6 +78,31 @@
   Initialize one invocation-scoped ordered, duplicate-free changed-files union
   and an opaque input history. Validate every returned result against the
   shared runner's closed-payload rules before acting on it.
+
+  ## Transfer directory
+
+  Resolve `transfer.js` per `@sai/policies/tool-resolution.md`, substituting
+  `transfer.js` for the filename placeholder `<name>`. Before the first worker
+  dispatch, run `node <tool-path> open --harness <claude|opencode>` (the active
+  harness) and keep the returned `dir` as invocation-scoped state. Exit 2 (for
+  example a missing harness temp root, which the helper never creates or
+  repairs) is a blocker: report the verbatim error and stop with no dispatch and
+  no write. Deliver the directory to the worker only in the task-disclosure
+  continuation, as one extra first line `--transfer-dir <dir>` ahead of the
+  original envelope (the initial dispatch carries no task content, and
+  `original_envelope` stays exactly `arguments_value`). Run
+  `node <tool-path> close --dir <dir>` when the invocation closes, whether it
+  completed, failed, or was cancelled; `close` removes only that directory, and
+  the directory stays available until then, including between Direct Build
+  prepare and execute.
+
+  A **reference** is `{path, sha256, destination}`: the absolute path of one
+  transfer file inside the directory, its sha256, and the repository
+  destination `openspec/changes/{name}/...` it is destined for. A corrected
+  worker result supersedes every earlier reference; use only the latest
+  references, and never send or receive complete draft contents on any
+  continuation or reconstruction. The archive coordinator's
+  `--fix-delta-headers` reroute is not part of this transport.
 
   ## No-commit guard
 
@@ -121,12 +150,32 @@
 
   ## Coordinator-owned validation and execution
 
-  Draft artifact CONTENT travels as payload text. On the ordinary route the
-  worker NEVER writes files. When the worker returns its completed run carrying the draft
-  `.openspec.yaml`, draft `proposal.md`, and draft capability specs:
+  Draft artifact content travels as references to transfer files. On the
+  ordinary route the worker NEVER writes repository files; it writes only
+  transfer files, through `transfer.js put`. When the worker returns its
+  completed run, its terminal payload carries `draft_references`: one reference
+  per draft (`.openspec.yaml`, `proposal.md`, and each capability spec), each
+  `destination` being the final `openspec/changes/{name}/...` path. Before
+  validating, check the references:
 
-  1. Validate every draft against the project schema before writing anything:
-     the `.openspec.yaml` key set matches the no-intent three-key form
+  - Run `node <tool-path> verify --dir <dir> --path <path> --sha256 <sha256>`
+    for every reference. Exit 1 (a missing or unreadable file, a sha256
+    mismatch, a path outside the directory, a repository path, or a path
+    reached through a symbolic link) or exit 2 means no final write: resume the
+    same worker with the verbatim helper report and require a corrected result
+    with new references; never fall back to inline content. A worker that
+    reports the helper unavailable or denied (a failure naming the blocked
+    operation) ends the route with no write.
+  - Reject duplicate destinations, and any destination other than
+    `openspec/changes/{name}/.openspec.yaml`,
+    `openspec/changes/{name}/proposal.md`, and
+    `openspec/changes/{name}/specs/{capability}/spec.md`.
+
+  Then, with every reference verified:
+
+  1. Read each transfer file and validate every draft against the project
+     schema before writing anything: the `.openspec.yaml` key set matches the
+     no-intent three-key form
      (`schema`, `created`, `backfilled`) or the usable-intent four-key form
      (plus `prior_intent`) with `created` a date-only `YYYY-MM-DD`; the
      proposal opens with the exact applicable POST-HOC RECORD blockquote,
@@ -141,34 +190,37 @@
      specs exist in the draft set — never `design.md`, `tasks.md`, or
      `implementation.md`.
    2. Run the deterministic delta-header preflight before writing anything:
-      stage each draft capability spec byte-for-byte under a fresh OS-temp
-      directory preserving `<tmp>/specs/<capability>/spec.md` layout (create
-      it from the project root with
-      `node -e "console.log(require('fs').mkdtempSync(require('path').join(require('os').tmpdir(),'sai-delta-preflight-')))"`),
       resolve the tool path per `@sai/policies/tool-resolution.md`,
       substituting `check-delta-headers.js` for the filename placeholder
       `<name>` (first existing candidate per harness, copied verbatim; if none
       exists, name the tried candidates and stop with no prose fallback), then
-      run `node <tool-path> <change-name> --delta-dir <tmp>/specs`
-      with the confirmed change name in `<change-name>` (main specs resolve
-      from the project root), then remove the temp directory best-effort.
-      Whichever candidate wins, the invocation keeps the tool's own accepted
+      run `node <tool-path> <change-name> --delta-dir <dir>/specs` directly on
+      the worker's transfer files (`<dir>/specs/<capability>/spec.md`), with
+      the confirmed change name in `<change-name>` (main specs resolve from the
+      project root); no staging copy is made. Whichever candidate wins, the
+      invocation keeps the tool's own accepted
       flags (`--json` plus `--root`/`--delta-dir`/`--specs-dir`; no `--cwd`)
       byte-identical; changing nothing else. Exit 0 proceeds;
       exit 1 means misclassified ADDED/MODIFIED/REMOVED headers — write
       nothing into `openspec/changes/{name}/`, continue the same worker with
       the verbatim script report plus the cited headers and the Phase 6c
-      existence rule, then re-validate and re-run this preflight on the
-      corrected drafts. Exit 2 (usage/IO error) is a tooling failure: write
-      nothing, report the verbatim error, and stop.
+      existence rule, then re-verify, re-validate, and re-run this preflight on
+      the corrected references. Exit 2 (usage/IO error) is a tooling failure:
+      write nothing, report the verbatim error, and stop.
    3. On any validation or preflight failure: write nothing, resume the same
       worker with the failure report, and re-validate the corrected drafts
-      (including a fresh preflight run). Only fully valid drafts proceed.
+      (including a fresh verification and preflight run). Only fully valid
+      drafts proceed.
    4. On validated drafts in the ordinary route: execute the final writes
-     yourself, creating exactly `openspec/changes/{name}/.openspec.yaml`,
+     yourself. Re-run `verify` for every reference immediately before the first
+     write (a transfer file that changed after validation is validated again
+     before any use, as a corrected result), then for each reference run
+     `node <tool-path> materialize --dir <dir> --path <path> --sha256 <sha256> --destination <destination> --cwd <project-root>`,
+     creating exactly `openspec/changes/{name}/.openspec.yaml`,
      `openspec/changes/{name}/proposal.md`, and each
-     `openspec/changes/{name}/specs/{capability}/spec.md` from the draft content
-     byte-for-byte. Add every written path to the changed-files union. Then run
+     `openspec/changes/{name}/specs/{capability}/spec.md`; `materialize`
+     copies the verified bytes byte-for-byte and writes nothing on a check
+     failure. Add every written path to the changed-files union. Then run
      `terminal_navigation`.
 
   ## Direct Build (unattended) prepare -> execute routing
@@ -176,25 +228,29 @@
   This route is used only by the Explore Direct Build (unattended) composition
   and does not alter a normal `/sai-backfill` invocation. The composition
   dispatches this worker with an initial `--direct-build-prepare` marker. The worker
-  performs the ordinary technical flow and returns the draft content without
-  writing it. The coordinator then:
+  performs the ordinary technical flow and returns references to the draft
+  transfer files without writing any repository file. The coordinator then:
 
-   1. validates the complete returned draft set against
-      `openspec/schemas/sai-workflow/schema.yaml` and the closed path/content
-      allow-list, plus the same deterministic delta-header preflight above
-      (staged from the prepared draft content into OS-temp); a preflight
-      failure returns to the same worker with the verbatim script report
+   1. verifies the returned references and validates the complete returned
+      draft set against
+      `openspec/schemas/sai-workflow/schema.yaml` and the closed
+      destination allow-list, plus the same deterministic delta-header
+      preflight above (run directly on `<dir>/specs`); a verification or
+      preflight failure returns to the same worker with the verbatim report
       exactly like the ordinary route and never authorizes execution;
-  2. records the validated plan and keeps the invocation-scoped
-     `changed_files` union; and
+  2. records the validated plan (the latest references) and keeps the
+     invocation-scoped `changed_files` union; and
   3. only after the active Direct Build (unattended) authorization and all applicable phase
      gates resolve, continues the same worker with one opaque
-     `--direct-build-execute` payload containing that exact validated order.
+     `--direct-build-execute` payload containing that exact validated order as
+     the confirmed change name plus the references (`{path, sha256,
+     destination}`), never the draft content.
 
   The continuation is the execution authorization. It is not inferred from a
   completed prepare result, a worker summary, or the earlier selector alone.
-  Forward only the byte-for-byte draft content and paths already returned by
-  preparation; do not add new content or an unvalidated path. A successful
+  Forward only the references already returned by preparation and validated
+  (the same `path`, `sha256`, and `destination` values); do not add content, a
+  reference, or an unvalidated path. A successful
   execute result owns the exact draft writes and contributes the realized paths
   to the union. A failed or cancelled execute result follows
   `@sai/policies/unattended-runtime-recovery.md` § Execute orders: a new order
@@ -209,7 +265,7 @@
   interviewing, reconciliation, delegation, and draft-composition procedure
   plus every user-facing ask. The ordinary route keeps all writes in this
   coordinator; the Direct Build (unattended) route hands only its validated closed execution
-  order back to the worker. The `@skills/budget/SKILL.md` load and every
+  order of references back to the worker. The `@skills/budget/SKILL.md` load and every
   `budget-explorer` subagent dispatch belong to the WORKER session. Schema
   validation and authorization remain HERE in this coordinator in both routes.
 
