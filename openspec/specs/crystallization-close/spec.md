@@ -7,7 +7,7 @@ TBD - created by archiving change fix-crystallization-close-selector. Update Pur
 
 ### Requirement: Crystallization-close emission guarantee on every crystallization path
 
-The crystallization-close SHALL invoke the shared close exactly once for the complete block set of a single-change turn or a sliced-feature turn. The close SHALL handle the stage panel. It SHALL then send the complete composed block set, in display order, through exactly one block emit (`sai-state emit <id> explore-slice@1 --ready-to-propose -`), which validates the set, extracts each `**Change name**` in display order, and records the ordered inventory before any block is displayed. The close SHALL complete only when that emit succeeds in the `waiting` state and every block has then been printed exactly as sent. When no slice is active, the successful emit SHALL return the route-selector pointer, which SHALL present the native picker after the printed blocks in the same assistant turn. The close SHALL not emit a route intent, create a route entry, or dispatch a worker until a valid picker answer arrives in a later turn. The inline-refusal path SHALL remain outside this close.
+The crystallization-close SHALL invoke the shared close exactly once for the complete block set of a single-change turn or a sliced-feature turn. The close SHALL handle the stage panel. It SHALL then send the complete composed block set, in display order, through exactly one block emit (`sai-state emit <id> explore-slice@1 --ready-to-propose -`), which validates the set, extracts each `**Change name**` in display order, and records the ordered inventory before any block is displayed. The close SHALL complete only when that emit succeeds in the `waiting` state and every block has then been printed exactly as sent. When no slice is active, the successful emit SHALL return the route-selector pointer, which SHALL present the native picker after the printed blocks in the same assistant turn. The close SHALL not emit a route intent, create a route entry, or dispatch a worker until a valid picker answer arrives in a later turn. No inline-refusal path exists outside this close: every `Ready to Propose` block is printed through it.
 
 #### Scenario: Single crystallization emits selector after recommendation
 
@@ -88,12 +88,12 @@ The crystallization protocol SHALL own block emission, stage-panel handling, ord
 
 ### Requirement: Same-turn close preserves exclusion paths without fusion
 
-The shared close SHALL preserve the inline-refusal path and the uncertainty POC pause without fusing either path with the native route picker. The inline-refusal path SHALL print its block or blocks without the block emit and SHALL record no inventory. A declared panel-tool unavailability SHALL use the prescribed degradation and continue to the block emit. Any other panel error SHALL be reported in one line, and the close SHALL also continue to the block emit, because the panel is presentation only. After a successful block emit, the normal selector pointer may present the picker. Validation failures, delivery failures, store failures, and step-load failures SHALL keep the stop behavior: no picker and no route.
+The shared close SHALL preserve the uncertainty POC pause without fusing it with the native route picker. No inline-refusal path exists: no block is printed without the block emit. A declared panel-tool unavailability SHALL use the prescribed degradation and continue to the block emit. Any other panel error SHALL be reported in one line, and the close SHALL also continue to the block emit, because the panel is presentation only. After a successful block emit, the normal selector pointer may present the picker. Validation failures, delivery failures, store failures, and step-load failures SHALL keep the stop behavior: no picker and no route.
 
 #### Scenario: Exclusion path keeps current behavior
 
-- **WHEN** a crystallization turn follows the inline-refusal path or the uncertainty POC pause, hits a panel error of any kind, or hits a validation, store, or step-load failure
-- **THEN** inline refusal and the uncertainty pause keep their existing paths, a panel error continues to the block emit before normal picker presentation, and the other failures start no picker or route
+- **WHEN** a crystallization turn follows the uncertainty POC pause, hits a panel error of any kind, or hits a validation, store, or step-load failure
+- **THEN** the uncertainty pause keeps its existing path, a panel error continues to the block emit before normal picker presentation, and the other failures start no picker or route
 
 ### Requirement: Pre-selector checkpoint blocks selector until ordered close completes
 
@@ -125,7 +125,7 @@ The checkpoint SHALL run once for the complete set, on the single and sliced pat
 
 ### Requirement: Checkpoint preserves exclusion and failure behavior
 
-The shared close SHALL keep the inline-refusal path outside the checkpoint with its immediate handoff. When the stage panel tool is unavailable, it SHALL record exactly `> Panel rendering unavailable; continuing without task-panel updates.`, disable further panel calls for the chat, and continue to the block emit. Any other panel error SHALL be reported in one line, and the close SHALL continue. These SHALL stop the close before picker presentation: validation failures, delivery failures, state-store failures, other emit errors or rejections, and returned-step load failures. Fast-track SHALL neither skip the checkpoint nor auto-select the route.
+No inline-refusal path bypasses the checkpoint with an immediate handoff. When the stage panel tool is unavailable, it SHALL record exactly `> Panel rendering unavailable; continuing without task-panel updates.`, disable further panel calls for the chat, and continue to the block emit. Any other panel error SHALL be reported in one line, and the close SHALL continue. These SHALL stop the close before picker presentation: validation failures, delivery failures, state-store failures, other emit errors or rejections, and returned-step load failures. Fast-track SHALL neither skip the checkpoint nor auto-select the route.
 
 #### Scenario: Failure and fast-track keep checkpoint guarantees
 

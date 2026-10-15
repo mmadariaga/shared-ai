@@ -44,7 +44,7 @@ The system SHALL treat a same-turn revision paired with `next-step` as a revisio
 
 ### Requirement: Token hygiene and next-step-only scope
 
-The system SHALL never fire or record agreement on mere containment of `next-step`, and SHALL never advance or record agreement on a negated, deferred, quoted, or discussed token; implicit agreement SHALL apply to `next-step` only so a premature `crystallize` before agreement stays pending with no skip path, equally in all modes, and a material idea change SHALL discard prior implicit agreements with prior proposals and pending requests.
+The system SHALL never fire or record agreement on mere containment of `next-step`, and SHALL never advance or record agreement on a negated, deferred, quoted, or discussed token; implicit agreement SHALL apply to `next-step` only, equally in all modes; `crystallize` SHALL carry no defined action and SHALL NOT be retained as a pending request, and a material idea change SHALL discard prior implicit agreements with prior proposals.
 
 #### Scenario: Non-navigation token never records agreement
 

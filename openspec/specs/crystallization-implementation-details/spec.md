@@ -14,15 +14,6 @@ The `Implementation details` list stage SHALL close only with at least one agree
 - **WHEN** the user advances into `Implementation details` and no technical decision has surfaced
 - **THEN** the stage proposes an `I1` item for agreement instead of emitting `- None`
 
-### Requirement: Premature crystallization passes through Implementation details
-
-A crystallization request made before agreement SHALL stay pending through `Review edge cases` and `Implementation details`, neither of which has a skip path, and SHALL enter `Crystallize` only after `Implementation details` closes with at least one agreed item.
-
-#### Scenario: Early crystallize request waits for an agreed item
-
-- **WHEN** the user asks to crystallize during an earlier stage
-- **THEN** Explore runs the edge-case review and the implementation-details stage before slicing and block emission
-
 ### Requirement: Every slice owns at least one in-scope item
 
 In a sliced set every per-slice block SHALL carry at least one in-scope item; a slice with no item of its own SHALL be treated as a slicing defect, resolved by assigning it the item it extends or delivers or by re-cutting the slices.

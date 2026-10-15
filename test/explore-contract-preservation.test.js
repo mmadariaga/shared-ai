@@ -59,7 +59,7 @@ test('approach comparison: fixed choices, refinements, and material-change prece
   assert.match(contract, /refinements of the same idea, explain only what changes and why/);
   assert.match(contract, /\*\*Material change\*\* uses the existing reset and reassesses approaches for the new idea/);
   assert.match(reset, /Material-change detection runs before selector-response classification/);
-  assert.match(reset, /reset wins: clear the pending maturity or later selector response, staged progression, pending crystallization request, and both agreed lists/);
+  assert.match(reset, /reset wins: clear the pending maturity or later selector response, staged progression, and both agreed lists/);
   assert.match(reset, /do not emit an edge-case prompt, later selector, crystallization, or advancement automatically/);
 });
 

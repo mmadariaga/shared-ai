@@ -8,7 +8,7 @@ TBD
 
 ### Requirement: Stable ideas trigger one edge-case review
 
-When the user advances to the `Review edge cases` stage of the pre-crystallization staged progression (`explore-pre-crystallization-stages`), or explicitly asks to crystallize before the review has reached agreement (`explore-edge-case-gate`), `sai-explore` SHALL enter one edge-case review for the current stable idea. The review SHALL run at most once for that stable idea, retain its state in conversation only, and number each in-scope proposed behavior consecutively as `E1` through `En`. Only behaviors that define a scope boundary for the proposed change are eligible; edge cases unrelated to the change SHALL be excluded and remain Non-Goals. The review SHALL NOT be triggered by `sai-explore`'s own judgment that the idea is solid; the one-line readiness signal remains governed by `explore-crystallization-on-demand` and never starts the review.
+When the user advances to the `Review edge cases` stage of the pre-crystallization staged progression (`explore-pre-crystallization-stages`), `sai-explore` SHALL enter one edge-case review for the current stable idea. The review SHALL run at most once for that stable idea, retain its state (the ordered proposed list and its agreement state, with no pending crystallization request) in conversation only, and number each in-scope proposed behavior consecutively as `E1` through `En`. Only behaviors that define a scope boundary for the proposed change are eligible; edge cases unrelated to the change SHALL be excluded and remain Non-Goals. The review SHALL NOT be triggered by `sai-explore`'s own judgment that the idea is solid; the one-line readiness signal remains governed by `explore-crystallization-on-demand` and never starts the review.
 
 #### Scenario: A stage advance starts the review
 
@@ -17,8 +17,8 @@ When the user advances to the `Review edge cases` stage of the pre-crystallizati
 
 #### Scenario: A premature crystallize request starts the review with no skip path
 
-- **WHEN** the user explicitly asks to crystallize while the edge-case review has not reached agreement
-- **THEN** `sai-explore` runs the edge-case review with no skip option and emits the requested crystallization only after agreement
+- **WHEN** the user asks to crystallize while the edge-case review has not reached agreement
+- **THEN** the request is not a defined trigger for the review or for crystallization, no pending request is recorded, and no `Ready to Propose` block is emitted before agreement
 
 #### Scenario: A stable idea does not repeat the review
 
@@ -99,8 +99,8 @@ When the user advances to the `Review edge cases` stage and no behavior bounds t
 
 #### Scenario: A premature crystallize request resumes after the empty-list agreement
 
-- **WHEN** the user explicitly asks to crystallize before the edge-case review has reached agreement and no in-scope edge case bounds the proposed change
-- **THEN** the empty list is recorded as agreed by the empty-set rule and the pending crystallization request proceeds through the slicing assessment and both language gates
+- **WHEN** the user advances into `Review edge cases` and no in-scope edge case bounds the proposed change
+- **THEN** the empty list is recorded as agreed by the empty-set rule, no pending crystallization request exists to resume, and crystallization starts only when the progression enters `Crystallize`
 
 #### Scenario: The empty-set rule never weakens the gate
 

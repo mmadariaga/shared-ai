@@ -65,7 +65,7 @@ Failed, cancelled, STOP-bearing, coordinator-disproved, and unrecovered outcomes
 - **THEN** the active item remains pending, no later item starts, and retrying the selected slice does not change another slice's route state
 
 ### Requirement: Manual handoff definition lives in route selector
-`sai/commands/explore/steps/route-selector.md` SHALL own the post-Manual handoff and keep-window-open recommendation with single-change and sliced wordings plus the inline-refusal immediate handoff, while boot SHALL keep only a pointer with English scaffolding intact.
+`sai/commands/explore/steps/route-selector.md` SHALL own the post-Manual handoff and keep-window-open recommendation with single-change and sliced wordings and no inline-refusal immediate handoff, while boot SHALL keep only a pointer with English scaffolding intact.
 
 #### Scenario: Manual resolution emits selector-owned handoff
 - **WHEN** a deferred choice resolves to Manual

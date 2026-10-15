@@ -139,7 +139,7 @@ test('the native selector follows the authoritative shared close after inventory
 
   assert.match(sharedCloseSpec, /one authoritative crystallization-turn close/i);
   assert.match(sharedCloseSpec, /single-change and sliced-feature items SHALL compose their blocks and reference that definition/i);
-  assert.match(sharedCloseSpec, /Inline proposal refusal SHALL stay outside the shared close/);
+  assert.match(sharedCloseSpec, /No inline proposal refusal path exists outside the shared close/);
   assert.match(source, /`--fast-track` auto-selects nothing: the native picker requires an explicit answer/i);
 });
 
@@ -173,10 +173,8 @@ test('the shared crystallization close records inventory before presenting route
   const protocol = spec('sai/commands/explore/steps/crystallization-protocol.md');
   const selector = spec('sai/commands/explore/steps/route-selector.md');
   const closeStart = protocol.indexOf('**Crystallization-turn close (shared, owns B6).**');
-  const closeEnd = protocol.indexOf('**Inline proposal refusal**', closeStart);
   assert.ok(closeStart >= 0, 'the shared close should exist');
-  assert.ok(closeEnd > closeStart, 'the inline-refusal section should follow the shared close');
-  const close = protocol.slice(closeStart, closeEnd);
+  const close = protocol.slice(closeStart);
 
   const steps = [
     '1. **Stage panel.**',
@@ -202,7 +200,6 @@ test('the shared crystallization close records inventory before presenting route
 
   const singleStart = protocol.indexOf('5. **Crystallization protocol (single change)**');
   const slicedStart = protocol.indexOf('6. **Crystallization protocol (sliced feature)**');
-  const inlineStart = protocol.indexOf('**Inline proposal refusal**', closeStart);
   const single = protocol.slice(singleStart, slicedStart);
   const sliced = protocol.slice(slicedStart, closeStart);
   for (const [name, branch] of [['single-change', single], ['sliced', sliced]]) {
@@ -211,8 +208,7 @@ test('the shared crystallization close records inventory before presenting route
     assert.doesNotMatch(branch, /clear the stage TODO|emit the `recordedList`|present the crystallization-close route selector/i,
       `${name} should not repeat the close procedure`);
   }
-  assert.match(close, /The `inline-refusal` path is excluded and keeps its immediate handoff: it prints its block\(s\) without the block emit and records no inventory/i);
-  assert.match(protocol.slice(inlineStart), /no further choice|no choice/i);
+  assert.doesNotMatch(protocol, /Inline proposal refusal|inline-refusal/i, 'the inline proposal refusal path is retired');
   assert.match(selector, /The shared close in `crystallization-protocol\.md` owns block emission, stage-panel handling, and ordered inventory recording/i);
   assert.match(selector, /its block emit records the complete ordered inventory before any block is displayed/i);
   assert.match(selector, /only after a complete ordered inventory has been recorded successfully/i);
@@ -256,8 +252,7 @@ test('the Ready to Propose format carries no post-block close cue; the block emi
 test('the close records one or many names in order before exposing the native route picker', () => {
   const protocol = spec('sai/commands/explore/steps/crystallization-protocol.md');
   const closeStart = protocol.indexOf('**Crystallization-turn close (shared, owns B6).**');
-  const closeEnd = protocol.indexOf('**Inline proposal refusal**', closeStart);
-  const close = protocol.slice(closeStart, closeEnd);
+  const close = protocol.slice(closeStart);
   assert.match(close, /extracts the change names, and records them as the ordered inventory in one step/i);
   assert.match(close, /The set is validated as a whole: when any block fails, no name is recorded/i);
   assert.match(close, /Use the existing session; do not reset either machine/i);
@@ -295,8 +290,7 @@ test('panel errors never block the close; validation, delivery, store, and step-
   const ideaList = spec('sai/commands/explore/steps/idea-list.md');
   const stageMachine = spec('sai/policies/stage-machine.md');
   const closeStart = protocol.indexOf('**Crystallization-turn close (shared, owns B6).**');
-  const closeEnd = protocol.indexOf('**Inline proposal refusal**', closeStart);
-  const close = protocol.slice(closeStart, closeEnd);
+  const close = protocol.slice(closeStart);
   const panelIndex = close.indexOf('**Stage panel.**');
   const emitIndex = close.indexOf('**Block emit.**');
   const pointerIndex = close.indexOf('**Load the pointer.**');
@@ -373,7 +367,7 @@ test('the crystallization closing recommendation names review-loop and no pipeli
 
   assert.match(source, /The recommendation names no pipeline token/);
   assert.match(source, /names the literal token `review-loop` exactly once/);
-  assert.match(source, /\*\*Inline-refusal path\*\*: stays outside this close and keeps its immediate handoff with no route choice/);
+  assert.doesNotMatch(source, /Inline-refusal path|Creating a proposal opens a new context/);
   assert.match(source, /selector remains a three-option \*\*Plan \(unattended\)\*\*\s*\/\s*\*\*Direct Build \(unattended\)\*\*\s*\/\s*\*\*Manual\*\* choice/i,
     'the review-loop description should name all three selector options');
   assert.doesNotMatch(source, /selector remains a two-option \*\*Auto\*\* \/ \*\*Manual\*\* choice/i);
@@ -823,7 +817,8 @@ test('active exploration closure defines the three conversation-only states and 
   assert.match(source, /On every successful turn while the state is `active-uncrystallized`/);
   assert.match(source, /genuine unresolved question remains/);
   assert.match(source, /When no genuine unresolved question remains/);
-  assert.match(source, /Say `crystallize` when ready; crystallization generates the paste-ready prompt for `\/sai-1-spec`/);
+  assert.match(source, /At stage 3 \(`Implementation details`\), name `next-step`\. At stage 4/);
+  assert.doesNotMatch(source, /Say `crystallize` when ready/);
   assert.match(source, /every later successful qualifying turn/);
 });
 
@@ -1400,8 +1395,7 @@ test('Step 4: the later Manual choice emits every path-specific sai-1 handoff', 
     assert.match(handoffBlock, new RegExp(`\\*\\*${label}\\*\\*[\\s\\S]{0,520}${branch.source}`, 'i'),
       `${label} should keep its handoff wording after a Manual choice`);
   }
-  assert.match(handoffBlock, /\*\*Inline-refusal path\*\*: stays outside this close[\s\S]{0,400}Creating a proposal opens a new context[\s\S]{0,260}\/sai-1-spec[\s\S]{0,200}Do not dispatch a proposal in-session/,
-    'the inline refusal keeps its immediate handoff with no route choice');
+  assert.doesNotMatch(handoffBlock, /Inline-refusal path/, 'the inline refusal path is retired');
   assert.match(selectorSpecFile, /exactly once only after the native picker returns the exact `Manual` label/,
     'the spec places the handoff after the explicit native Manual choice');
 });

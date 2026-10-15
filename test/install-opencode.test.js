@@ -136,7 +136,7 @@ function assertInstalledSelectorContract(source) {
   assert.match(source, /non-empty and empty implementation-detail branches/);
   assert.match(source, /entry into `Crystallize`/);
   assert.match(source, /Material-change detection runs before selector-response classification/);
-  assert.match(source, /reset wins: clear the pending maturity or later selector response, staged progression, pending crystallization request, and both agreed lists/);
+  assert.match(source, /reset wins: clear the pending maturity or later selector response, staged progression, and both agreed lists/);
   assert.match(source, /return the new active-uncrystallized lifecycle to `Explore change`/);
   assert.match(source, /literal `\*\*Overview language\*\*: None`/);
   assert.match(source, /dispatches no overview generation/);

@@ -8,14 +8,14 @@ Define the on-demand emission mechanism for `sai-explore`'s `Ready to Propose` b
 
 ### Requirement: Pre-crystallization closure is distinct from readiness signaling
 
-The readiness statement SHALL remain a once-per-stable-idea emission carried inside the closure reminder line, while the actionable closure for an `active-uncrystallized` idea SHALL be evaluated on every successful qualifying turn. When no genuine unresolved question remains, the stage-aware closure reminder SHALL be emitted and SHALL repeat on each later qualifying turn; when a genuine unresolved question remains, that question takes precedence. The closure reminder SHALL NOT emit the `Ready to Propose` block or weaken the existing explicit-request gate for that block.
+The readiness statement SHALL remain a once-per-stable-idea emission carried inside the closure reminder line, while the actionable closure for an `active-uncrystallized` idea SHALL be evaluated on every successful qualifying turn. When no genuine unresolved question remains, the stage-aware closure reminder SHALL be emitted and SHALL repeat on each later qualifying turn; when a genuine unresolved question remains, that question takes precedence. The closure reminder SHALL NOT emit the `Ready to Propose` block or weaken the `Crystallize`-stage gate for that block.
 
 #### Scenario: Repeated closure does not repeat readiness
 
 - **WHEN** a stable idea has already emitted its once-per-stable-idea readiness statement and a later successful turn has no genuine unresolved question
 - **THEN** `sai-explore` SHALL repeat the actionable closure reminder for the current stage
 - **AND** it does not re-emit the readiness statement
-- **AND** it does not emit a `Ready to Propose` block without an explicit request
+- **AND** it does not emit a `Ready to Propose` block outside the `Crystallize` stage
 
 #### Scenario: A question takes precedence over the reminder
 
@@ -25,7 +25,7 @@ The readiness statement SHALL remain a once-per-stable-idea emission carried ins
 
 ### Requirement: Readiness signal replaces state-triggered auto-emission
 
-When the explored idea becomes solid, `sai-explore` (`sai/commands/explore/instructions.md`) SHALL NOT auto-print the `Ready to Propose` block. Instead, the first closure reminder emitted after solidification SHALL carry the readiness statement — the one-line maturity judgment that the idea is solid enough to crystallize on request — inside the reminder line, never as a separate closing line and never by itself ending a turn. When the idea crystallizes before any closure reminder has fired (for example, a solidification turn that ended with a genuine question followed by a direct crystallize request), the readiness statement SHALL NOT be emitted: the explicit crystallization request itself conveys the trigger action. "Solid" is judged at the same qualitative threshold as today's "idea is clear" wording in §5/§6; only the reaction changes (a statement inside the reminder instead of the block). This gate applies to both the single-change protocol (§5) and the sliced protocol (§6).
+When the explored idea becomes solid, `sai-explore` (`sai/commands/explore/instructions.md`) SHALL NOT auto-print the `Ready to Propose` block. Instead, the first closure reminder emitted after solidification SHALL carry the readiness statement — the one-line maturity judgment that the idea is solid enough to enter `Crystallize` — inside the reminder line, never as a separate closing line and never by itself ending a turn. When the idea crystallizes before any closure reminder has fired (for example, a solidification turn that ended with a genuine question followed by `next-step` into `Crystallize`), the readiness statement SHALL NOT be emitted: entering `Crystallize` itself conveys the trigger action. "Solid" is judged at the same qualitative threshold as today's "idea is clear" wording in §5/§6; only the reaction changes (a statement inside the reminder instead of the block). This gate applies to both the single-change protocol (§5) and the sliced protocol (§6).
 
 #### Scenario: solid idea produces the reminder with the statement, not the block
 
@@ -34,8 +34,8 @@ When the explored idea becomes solid, `sai-explore` (`sai/commands/explore/instr
 
 #### Scenario: crystallization before any reminder drops the statement
 
-- **WHEN** the idea solidifies on a turn that ends with a genuine question and the user then explicitly requests crystallization before any closure reminder fires
-- **THEN** the readiness statement is not emitted and the explicit request itself is the trigger action
+- **WHEN** the idea solidifies on a turn that ends with a genuine question and the progression then enters `Crystallize` before any closure reminder fires
+- **THEN** the readiness statement is not emitted and entering `Crystallize` itself is the trigger action
 
 #### Scenario: continued refinement does not re-print the block
 
@@ -70,34 +70,6 @@ The readiness statement SHALL be carried by the closure reminder at most once pe
 - **WHEN** the readiness statement fires and its per-idea tracking is recorded
 - **THEN** that tracking is held in-conversation only and is not written to any artifact, configuration file, or other on-disk state
 
-### Requirement: Full block is emitted only on explicit user request
-
-`sai-explore` SHALL print or re-print the full `Ready to Propose` block or blocks only when the user explicitly asks to crystallize — for example, by asking for the paste-ready block, asking to crystallize, or asking to create a proposal or run `/sai-1-spec`. Absent such an explicit request, no block is printed even when the idea is solid.
-
-This user-triggered gate applies to both the single-change and sliced protocols. Crystallization SHALL NOT enter, resume, or wait on a POC pause: the POC axis is resolved at the close of the `Explore change` stage and any POC has already run and been discarded before crystallization is reached, so an explicit request SHALL proceed directly through the slicing assessment and the crystallization language gate.
-
-When the user explicitly asks to crystallize before the idea is judged solid, `sai-explore` SHALL honor the request after running the slicing assessment. The existing inline-proposal path remains an explicit-request path and follows the same sequence.
-
-#### Scenario: explicit request prints the single-change block
-
-- **WHEN** the idea fits one change, is solid, and the user explicitly asks for the paste-ready block or to crystallize
-- **THEN** `sai-explore` prints the single-change `Ready to Propose` block
-
-#### Scenario: explicit request prints the full sliced set
-
-- **WHEN** the idea was sliced, is solid, and the user explicitly asks to crystallize
-- **THEN** `sai-explore` prints the full ordered set of per-slice `Ready to Propose` blocks
-
-#### Scenario: no block without an explicit request
-
-- **WHEN** the idea is solid but the user has not explicitly asked to crystallize or for the block
-- **THEN** `sai-explore` prints no `Ready to Propose` block
-
-#### Scenario: explicit request before the idea is solid
-
-- **WHEN** the user explicitly asks to crystallize while the idea has not yet been judged solid
-- **THEN** `sai-explore` honors the request and emits the block or blocks after first running the size and friction assessments, with no POC pause in that path
-
 ### Requirement: Readiness judgment stays qualitative
 
 The judgment of whether the idea is "solid" SHALL remain a qualitative judgment at the same threshold as today's "idea is clear" language. This change SHALL NOT introduce a numeric threshold, score, or count-based metric for readiness.
@@ -116,11 +88,21 @@ This change SHALL alter only *when* the `Ready to Propose` block is emitted, not
 - **WHEN** `sai-explore` prints a `Ready to Propose` block in response to an explicit request
 - **THEN** the block's sections match the existing format defined for the single-change or sliced protocol, with no section added, removed, or reordered by this change
 
-### Requirement: Inline-proposal path does not assume a prior emission
+### Requirement: Full block is emitted only inside the Crystallize stage
 
-The §7 inline-proposal path SHALL NOT presuppose that a `Ready to Propose` block was already emitted earlier in the session. Its wording SHALL NOT use deixis (such as "the block(s) above") that is false when no block was auto-printed; when §7 prints the block on request, its wording refers to the block it prints, not to a nonexistent earlier one. This keeps §7 coherent under on-demand emission, where the user's first explicit act may be to request a proposal with no block yet in the transcript.
+`sai-explore` SHALL print or re-print the full `Ready to Propose` block or blocks only inside the `Crystallize` stage, which `next-step` (or semantic list confirmation or deterministic empty-set advancement) reaches after the agreed edge-case and implementation-details lists. Entering `Crystallize` SHALL be the only start of the crystallization sequence: open decisions when any exist, then the slicing assessment, then the crystallization language gate, then block printing. A `crystallize` token or a natural-language request to crystallize, to print the paste-ready block, to create a proposal, or to run `/sai-1-spec` SHALL carry no prescribed response and SHALL NOT be retained as a pending request; the agent interprets it in context. Crystallization SHALL NOT enter, resume, or wait on a POC pause. This gate applies to both the single-change and sliced protocols.
 
-#### Scenario: inline-proposal request with no prior block
+#### Scenario: entering Crystallize prints the single-change block
 
-- **WHEN** the user's first explicit act is to ask to create a proposal or run `/sai-1-spec` now, with no `Ready to Propose` block earlier in the session
-- **THEN** `sai-explore` prints the block via the §7 path and its wording refers to the block it just printed, not to a block "above" that was never emitted
+- **WHEN** the idea fits one change and the progression enters the `Crystallize` stage
+- **THEN** `sai-explore` runs the slicing assessment and the crystallization language gate and prints the single-change `Ready to Propose` block
+
+#### Scenario: entering Crystallize prints the full sliced set
+
+- **WHEN** the idea was sliced and the progression enters the `Crystallize` stage
+- **THEN** `sai-explore` prints the full ordered set of per-slice `Ready to Propose` blocks
+
+#### Scenario: no block outside the Crystallize stage
+
+- **WHEN** the user asks for the paste-ready block, to crystallize, or to create a proposal before the progression has entered `Crystallize`
+- **THEN** `sai-explore` prints no `Ready to Propose` block on a prescribed path and records no pending crystallization request

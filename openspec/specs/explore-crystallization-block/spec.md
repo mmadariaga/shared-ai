@@ -72,7 +72,7 @@ The companion `explore-handoff-edge-cases` capability governs the same `**Edge C
 
 ### Requirement: Close crystallization with selector
 
-`sai-explore` SHALL define one authoritative crystallization-turn close in `sai/commands/explore/steps/crystallization-protocol.md`. The single-change and sliced-feature items SHALL compose their blocks and reference that definition rather than restating its emission sequence. Inline proposal refusal SHALL stay outside the shared close. The shared close SHALL run, in order: stage-TODO panel handling; the block emit that validates the composed block or blocks and records the ordered inventory; and printing the blocks exactly as sent. After a successful block emit, the close SHALL load the actual `next.follow` before printing. When no slice is active, that pointer SHALL load `route-selector.md`, whose optional actions SHALL start after the printed blocks and whose native picker SHALL wait until both actions finish or are explicitly skipped. When a slice remains active, its returned pointer SHALL remain authoritative and new optional questions SHALL wait until it closes. A later valid picker answer SHALL control whether Manual emits its handoff and recommendation; Plan and Direct Build SHALL not emit that handoff.
+`sai-explore` SHALL define one authoritative crystallization-turn close in `sai/commands/explore/steps/crystallization-protocol.md`. The single-change and sliced-feature items SHALL compose their blocks and reference that definition rather than restating its emission sequence. No inline proposal refusal path exists outside the shared close. The shared close SHALL run, in order: stage-TODO panel handling; the block emit that validates the composed block or blocks and records the ordered inventory; and printing the blocks exactly as sent. After a successful block emit, the close SHALL load the actual `next.follow` before printing. When no slice is active, that pointer SHALL load `route-selector.md`, whose optional actions SHALL start after the printed blocks and whose native picker SHALL wait until both actions finish or are explicitly skipped. When a slice remains active, its returned pointer SHALL remain authoritative and new optional questions SHALL wait until it closes. A later valid picker answer SHALL control whether Manual emits its handoff and recommendation; Plan and Direct Build SHALL not emit that handoff.
 
 #### Scenario: single-change handoff uses the shared close
 
@@ -86,8 +86,8 @@ The companion `explore-handoff-edge-cases` capability governs the same `**Edge C
 
 #### Scenario: inline proposal refusal uses the shared close
 
-- **WHEN** the user asks to create a proposal or run `/sai-1-spec` inline and the paste-ready blocks are emitted
-- **THEN** item 7 stays outside the shared close with its immediate copy-start-new-chat handoff and no selector or in-session dispatch
+- **WHEN** the user asks to create a proposal or run `/sai-1-spec` inline
+- **THEN** no item 7 inline refusal path prints blocks or emits a copy-start-new-chat handoff, and any printed block goes through the shared close inside the `Crystallize` stage
 
 #### Scenario: Manual refers to the existing recommendation once and moves the handoff after the selector
 
