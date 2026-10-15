@@ -62,6 +62,33 @@ Code and opencode, and branch preparation permits no code edits. The backlog
 question and option descriptions retain the word `backlog` in every language
 (for example, “¿Quieres crear o actualizar el backlog con esta propuesta?”).
 Publication confirmation remains a separate step owned by `to-backlog`.
+New branches are named `<type>/<id>_<name_with_underscores>` (or
+`<type>/<name_with_underscores>` without an identifier); existing branches are
+never renamed.
+
+A single change keeps the Yes/No branch question. A slice set (more than one
+recorded change) gets one three-choice question instead, in your language, which
+also stays explicit with `--fast-track` (for example, “¿Quieres crear una nueva
+rama?”):
+
+- `Sí, crea una única para la issue principal` (`shared`): one branch, created
+  before the route picker and reused by every slice.
+- `Crear una rama por slice` (`per-slice`): each slice gets its own branch. The
+  first starts from the base you select. Each later branch starts from the
+  previous slice's branch, in dependency order, so independent slices inherit the
+  preceding branch's changes too. A later branch is created immediately before
+  its slice starts, including Direct Build automatic continuation, and only after
+  the previous slice is completed: archive completed in Direct Build, or
+  `next-slice` at `implement` in Plan or Manual. `next-slice` confirms that the
+  slice is implemented and committed. Uncommitted changes stop the creation until
+  you commit them. Choosing `per-slice` authorizes every local creation and switch
+  in the chain; nothing is pushed.
+- `No crear nada` (`none`): every branch, including the current one, stays as it is.
+
+If a slice's expected branch already exists, the slice resumes on it when this
+conversation prepared it; otherwise you choose between reusing it and giving a
+corrected name. The strategy and slice-to-branch correspondence live in the
+conversation only.
 Branch-base suggestions use the same short names and local/remote qualifiers as
 standalone [`new-change-branch`](new-change-branch.md), while preserving exact
 Git references internally.

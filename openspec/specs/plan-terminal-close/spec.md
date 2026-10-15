@@ -6,10 +6,10 @@ TBD - created by archiving change expand-plan-unattended-terminal-handoff. Updat
 ## Requirements
 
 ### Requirement: Expanded successful Plan terminal close order
-The successful Plan-Unattended terminal SHALL print the expanded close in review → build → next-slice order: review generated artifacts here and give feedback here without touching code, then run `/sai-build {name}` in another chat, then continue with `next-slice` toward the titled active slice. The literals `/sai-build`, `next-slice`, and `{name}` SHALL remain verbatim English with only surrounding prose localized.
+The successful Plan-Unattended terminal SHALL print the expanded close in review → build → next-slice order: review generated artifacts here and give feedback here without touching code, then run `/sai-build {name}` in another chat, then continue with `next-slice` toward the titled active slice, saying that `next-slice` confirms the slice is implemented and committed. The literals `/sai-build`, `next-slice`, and `{name}` SHALL remain verbatim English with only surrounding prose localized.
 #### Scenario: Successful terminal prints ordered close
 - **WHEN** a Plan-Unattended run reaches its successful supervised design terminal
-- **THEN** the terminal prints the review-here, build-in-another-chat, and titled next-slice close in that order with verbatim literals preserved.
+- **THEN** the terminal prints the review-here, build-in-another-chat, and titled next-slice close in that order with verbatim literals preserved, and says that `next-slice` confirms the slice is implemented and committed.
 
 ### Requirement: Same expanded close on both overview branches
 Both overview branches of the successful terminal SHALL emit the same expanded successful close, and `overview_language` (None or a selected language) SHALL NOT change the close. Failure, cancellation, continuation-failure, and STOP paths SHALL keep existing guidance and SHALL NOT use the expanded close.

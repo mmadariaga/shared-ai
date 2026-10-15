@@ -10,7 +10,7 @@ authorize implementation, and publication always needs content approval.
 
 | Skill | Purpose | Input |
 |-------|---------|-------|
-| [`new-change-branch`](commands/new-change-branch.md) | Create and switch to a local change branch; preserve existing work. | Current discussion, then your base selection |
+| [`new-change-branch`](commands/new-change-branch.md) | Create and switch to a local change branch named with underscores (`<type>/<id>_<name_with_underscores>`); preserve existing work. | Current discussion, then your base selection |
 | [`from-backlog`](commands/from-backlog.md) | Import a GitHub/GitLab issue or Azure Boards work item for discussion. | One reference |
 | [`from-next-backlog-item`](commands/from-next-backlog-item.md) | Select a highest-priority eligible backlog item and import it. | No arguments; missing pile context is asked |
 | [`to-backlog`](commands/to-backlog.md) | Create an item or update the originating item's title and description. | Agreed conversation context and approved destination/content |

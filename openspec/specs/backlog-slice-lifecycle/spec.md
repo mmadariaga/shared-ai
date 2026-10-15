@@ -189,7 +189,7 @@ An unassigned selected child SHALL require an Approve, Stop or Skip decision on 
 
 ### Requirement: Shared lifecycle ownership preserves excluded workflows
 
-Claude Code and opencode SHALL install the same canonical lifecycle tools and owner contracts. Import SHALL retain read-only permissions. Explore SHALL retain user choices and calls to publication, identity transport, branch and implementation-start owners rather than duplicating provider mechanics. The lifecycle SHALL reuse an already-prepared initial branch and existing local-work protection. It SHALL NOT add automatic inter-slice switching, issue closure, WIP labels, issue-state transitions, parent assignment or changes to from-next-backlog-item selection. GitLab and Azure DevOps SHALL retain existing simple workflows.
+Claude Code and opencode SHALL install the same canonical lifecycle tools and owner contracts. Import SHALL retain read-only permissions. Explore SHALL retain user choices and calls to publication, identity transport, branch and implementation-start owners rather than duplicating provider mechanics. The lifecycle SHALL reuse an already-prepared initial branch and existing local-work protection. It SHALL NOT add automatic inter-slice switching, issue closure, WIP labels, issue-state transitions, parent assignment or changes to from-next-backlog-item selection; the only inter-slice switching SHALL be the user-chosen `per-slice` branch chain owned by Explore's branch preparation. GitLab and Azure DevOps SHALL retain existing simple workflows.
 
 #### Scenario: Both harness projections
 
@@ -198,8 +198,13 @@ Claude Code and opencode SHALL install the same canonical lifecycle tools and ow
 
 #### Scenario: Imported work already has an initial branch
 
-- **WHEN** selected work proceeds with an already-prepared initial branch
+- **WHEN** selected work proceeds with an already-prepared initial branch and the user did not choose `per-slice`
 - **THEN** the existing branch owner remains authoritative and the lifecycle introduces no automatic later-slice branch switching.
+
+#### Scenario: Shared strategy reuses one initial branch
+
+- **WHEN** the user chooses `shared` for a slice set
+- **THEN** every slice reuses the one initial branch and no later-slice branch is created.
 
 ### Requirement: GitLab relationships distinguish written hierarchy from native blockers
 

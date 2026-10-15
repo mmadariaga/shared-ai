@@ -1908,3 +1908,45 @@ test('Manual route is a completed handoff only and non-clean routes remain pendi
   assert.match(ideaList, /Only a clean terminal result completes the active route/i);
   assert.match(ideaList, /Reset route state when a new slice is chosen; preserve completed slices and all pending slices/i);
 });
+
+test('E2: a single change keeps the yes/no branch question and a slice set gets one explicit three-choice question', () => {
+  const selector = spec('sai/commands/explore/steps/route-selector.md');
+  const question = selector.slice(selector.indexOf('2. **Branch question:**'), selector.indexOf('\n**Free-text answers.**'));
+  assert.match(question, /chosen by its size \(the recorded `explore-slice@1` inventory, not the pending remainder\)/);
+  assert.match(question, /\*\*One recorded change:\*\* “Would you like to create and switch to a local change branch for this crystallized proposal\?”/);
+  assert.match(question, /\*\*More than one recorded change \(a slice set\):\*\* ask one three-choice question/);
+  assert.match(question, /“¿Quieres crear una nueva rama\?”/);
+  const values = [...question.matchAll(/\(`(shared|per-slice|none)`;/g)].map(match => match[1]);
+  assert.deepEqual(values, ['shared', 'per-slice', 'none']);
+  assert.match(question, /Sí, crea una única para la issue principal[\s\S]*Crear una rama por slice[\s\S]*No crear nada/);
+  assert.match(question, /says that no branch is published/);
+  assert.match(selector, /so does the slice-set branch question/);
+  assert.match(question, /On `none`, skip only this action, keep the current branch and every existing branch as they are/);
+  assert.match(question, /On `shared`, load the installed `new-change-branch` skill once[\s\S]*originating principal issue's identity[\s\S]*every slice reuse that branch/);
+  assert.match(question, /On `per-slice`, load it once for the first pending slice, named after that slice/);
+});
+
+test('E4/E5/E6/E7: the slice branch chain grows only from completed slices and stays conversation-scoped', () => {
+  const selector = spec('sai/commands/explore/steps/route-selector.md');
+  const chain = selector.slice(selector.indexOf('## Slice branch chain'), selector.indexOf('\n## Native route picker'));
+  assert.match(chain, /never persist them, never send them to a worker, and never add them to `explore-slice@1`/);
+  assert.match(chain, /Inventory order is dependency order/);
+  assert.match(chain, /only when its previous slice is completed: Direct Build archive completed, or `next-slice` at `implement` in Plan or Manual/);
+  assert.match(chain, /pending, failed, cancelled, parked, or still at sai-1 or sai-2 holds the chain at its position/);
+  assert.match(chain, /planning completion alone never completes a slice/);
+  assert.match(chain, /immediately before that slice starts[\s\S]*automatic continuation before `\{intent: auto-continue\}`/);
+  assert.match(chain, /authorizes every local creation and switch in the chain in advance/);
+  assert.match(chain, /`base` set to the previous slice's branch, and `require_clean: true`/);
+  assert.match(chain, /Never push or publish/);
+  assert.match(chain, /creation stops on uncommitted changes, create nothing and start nothing[\s\S]*previous slice's work must be committed first/);
+  assert.match(chain, /`name` reporting that the branch already exists is the lookup in git/);
+  assert.match(chain, /records that branch for this slice[\s\S]*resume on it[\s\S]*create nothing/);
+  assert.match(chain, /reuse the existing branch[\s\S]*give a corrected name[\s\S]*Never rename, overwrite, or delete the existing branch/);
+  assert.match(selector, /prepare the slice's branch when `branch_strategy` is `per-slice` and it is not yet prepared[\s\S]*then set `route_choice_reply_pending = false` and emit `\{intent: route-choice\}`/);
+  const slice = spec('sai/commands/explore/steps/slice.md');
+  assert.match(slice, /`next-slice` confirms the slice is implemented and committed/);
+  assert.match(slice, /the slice machine, its inventory, and its transitions stay unchanged and carry no branch data/);
+  assert.match(spec('sai/commands/explore/steps/pipeline-plan-unattended.md'), /`next-slice` confirms the slice is implemented and committed/);
+  assert.match(spec('sai/commands/explore/steps/pipeline-direct-build.md'), /an `auto_continue` first prepares the next slice's branch[\s\S]*before `\{intent: auto-continue\}` is emitted and before any worker dispatch/);
+  assert.match(spec('sai/commands/explore/instructions.md'), /choosing `per-slice` in the slice-set branch question is that acceptance in advance/);
+});

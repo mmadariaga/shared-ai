@@ -73,7 +73,7 @@ The explore boot in `sai/commands/explore/instructions.md` SHALL keep only the m
 
 ### Requirement: Simplify explore write prohibition to a single delegated-write rule
 
-The explore instruction SHALL state that the command MUST NOT create, modify, or delete repository files and SHALL otherwise limit exploration to read, search, and discuss. Delegated implementation writes SHALL remain scoped to an explicitly selected crystallization-close route. Explicit acceptance of the optional backlog action SHALL count as a request for `to-backlog` under its existing scoped exception, without replacing that skill's publication confirmation. An explicit acceptance of the branch action or user request for that workflow SHALL permit only local branch creation and switching through the installed `new-change-branch` skill in the current conversation. That skill SHALL own naming, base selection, authorization, safety checks, errors, and cancellation handling. The branch exception SHALL NOT permit production code edits or other repository-file writes. These boundaries SHALL apply in Claude Code and opencode.
+The explore instruction SHALL state that the command MUST NOT create, modify, or delete repository files and SHALL otherwise limit exploration to read, search, and discuss. Delegated implementation writes SHALL remain scoped to an explicitly selected crystallization-close route. Explicit acceptance of the optional backlog action SHALL count as a request for `to-backlog` under its existing scoped exception, without replacing that skill's publication confirmation. An explicit acceptance of the branch action or user request for that workflow SHALL permit only local branch creation and switching through the installed `new-change-branch` skill in the current conversation; choosing `per-slice` in the slice-set branch question SHALL be that acceptance in advance for every later chained branch. That skill SHALL own naming, base selection, authorization, safety checks, errors, and cancellation handling. The branch exception SHALL NOT permit production code edits or other repository-file writes. These boundaries SHALL apply in Claude Code and opencode.
 
 #### Scenario: boot states read-only rule without duplicated detail
 
@@ -84,6 +84,11 @@ The explore instruction SHALL state that the command MUST NOT create, modify, or
 
 - **WHEN** the user explicitly accepts the optional branch action or requests the branch workflow during Explore
 - **THEN** Explore permits only the installed skill's local branch creation and switching workflow without authorizing production code edits or other repository-file writes
+
+#### Scenario: Per-slice choice authorizes the whole chain in advance
+
+- **WHEN** the user chooses `per-slice` in the slice-set branch question
+- **THEN** every later chained local branch creation and switch is authorized without a further prompt, and no production code edit or other repository-file write is authorized
 
 #### Scenario: User accepts backlog capture
 

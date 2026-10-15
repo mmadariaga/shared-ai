@@ -38,7 +38,7 @@ function busy(cwd) {
 function name(cwd, input) {
   if (!['feat', 'fix', 'docs', 'chore'].includes(input.type)) throw new Error('Choose feat, fix, docs, or chore.');
   if (typeof input.name !== 'string') throw new Error('Enter a change name.');
-  const normalized = input.name.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '');
+  const normalized = input.name.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '_').replace(/^_+|_+$/g, '');
   if (!normalized) throw new Error('Enter a non-empty change name.');
   if (input.id !== undefined && (typeof input.id !== 'string' || !input.id)) throw new Error('Provide the actual identifier or omit it.');
   const branch = `${input.type}/${input.id === undefined ? '' : `${input.id}_`}${normalized}`;
@@ -81,6 +81,7 @@ function execute(operation, input = {}, cwd = process.cwd()) {
     const sha = commit(cwd, input.base);
     if (sha !== input.sha) throw new Error('The base changed. Select and resolve the base again.');
     if (busy(cwd)) throw new Error('A merge or rebase is in progress. No branch was created.');
+    if (input.require_clean === true && required(cwd, ['status', '--porcelain'])) throw new Error('Uncommitted changes exist. Commit them before creating this branch.');
     attempted = true;
     const result = git(cwd, ['switch', '--no-track', '-c', branch, sha]);
     const created = git(cwd, ['show-ref', '--verify', '--quiet', `refs/heads/${branch}`]).status === 0;

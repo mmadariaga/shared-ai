@@ -12,8 +12,9 @@ name, and optional relevant work-item identifier from context, asking only when
 information is missing or ambiguous.
 
 - Types: `feat`, `fix`, `docs`, `chore`.
-- Names: `<type>/<name>` or `<type>/<id>_<name>`. The name becomes lowercase,
-  hyphen-separated words; an actual work-item identifier is preserved exactly.
+- Names: `<type>/<name_with_underscores>` or `<type>/<id>_<name_with_underscores>`.
+  The name becomes lowercase, underscore-separated words; an actual work-item
+  identifier is preserved exactly. Existing branches keep their names.
 - Base: you always choose a suggested reference or enter one. Suggestions include
   the current branch, a detected parent, and available `main`/`master` references.
   A detected parent is a convenience, not proof of historical origin. Existing
@@ -33,6 +34,10 @@ An occupied name requires a new choice; it is never reused or automatically
 suffixed. A missing HEAD or an active merge/rebase blocks the workflow. Staged,
 unstaged, and untracked work are preserved. If Git prevents switching, the skill
 stops rather than stashing or discarding work.
+
+A calling workflow can ask the tool to stop on uncommitted changes
+(`require_clean`). `/sai-explore` does this for chained per-slice branches only;
+the standalone flow keeps its behavior.
 
 Success reports the verified active branch and selected base. A failed operation
 reports whether creation occurred and which branch remains active. There is no

@@ -47,8 +47,9 @@ test('E1: no repository and unborn HEAD stop without creating a branch', (t) => 
 
 test('E2/E3: both naming formats, normalization, exact identifiers and invalid input', (t) => {
   const cwd = fixture(t);
-  assert.equal(execute('name', { type: 'docs', name: '  User GUIDE! ' }, cwd).branch, 'docs/user-guide');
-  assert.equal(execute('name', { type: 'fix', name: 'Fix Bug', id: 'AbC-42' }, cwd).branch, 'fix/AbC-42_fix-bug');
+  assert.equal(execute('name', { type: 'docs', name: '  User GUIDE! ' }, cwd).branch, 'docs/user_guide');
+  assert.equal(execute('name', { type: 'fix', name: 'Fix Bug', id: 'AbC-42' }, cwd).branch, 'fix/AbC-42_fix_bug');
+  assert.equal(execute('name', { type: 'feat', name: 'underscore-branches--and_slice' }, cwd).branch, 'feat/underscore_branches_and_slice');
   const before = refs(cwd);
   for (const input of [{ type: 'other', name: 'x' }, { type: 'feat', name: ' ' }, { type: 'feat' },
     { type: 'feat', name: 'x', id: 'bad..id' }, { type: 'feat', name: 'x', id: '' }]) {
@@ -106,7 +107,7 @@ test('E7/E9/E10: invalid bases, moved base, occupied names and cancellation leav
   assert.equal(create(cwd, { sha: '0'.repeat(40) }).status, 'failed');
   assert.equal(create(cwd, { cancelled: true }).status, 'cancelled');
   assert.equal(refs(cwd), before);
-  git(cwd, 'branch', 'feat/new-change');
+  git(cwd, 'branch', 'feat/new_change');
   const occupied = refs(cwd);
   const r = create(cwd);
   assert.equal(r.status, 'failed');
@@ -125,7 +126,7 @@ test('E8: staged, unstaged and untracked work survives successful switch; no tra
   const staged = git(cwd, 'show', ':file');
   const r = create(cwd, { id: 'WI-80' });
   assert.equal(r.status, 'completed');
-  assert.equal(r.branch, 'feat/WI-80_new-change');
+  assert.equal(r.branch, 'feat/WI-80_new_change');
   assert.equal(git(cwd, 'symbolic-ref', '--short', 'HEAD'), r.branch);
   assert.equal(git(cwd, 'rev-parse', 'HEAD'), r.sha);
   assert.equal(git(cwd, 'status', '--porcelain'), status);
@@ -133,6 +134,52 @@ test('E8: staged, unstaged and untracked work survives successful switch; no tra
   assert.equal(fs.readFileSync(path.join(cwd, 'file'), 'utf8'), 'unstaged');
   assert.equal(fs.readFileSync(path.join(cwd, 'untracked'), 'utf8'), 'keep');
   assert.equal(git(cwd, 'for-each-ref', '--format=%(upstream)', `refs/heads/${r.branch}`), '');
+});
+
+test('E1: existing hyphenated branches keep their names and do not occupy the underscore name', (t) => {
+  const cwd = fixture(t);
+  git(cwd, 'branch', 'feat/new-change');
+  const r = create(cwd);
+  assert.equal(r.status, 'completed');
+  assert.equal(r.branch, 'feat/new_change');
+  assert.ok(refs(cwd).includes('refs/heads/feat/new-change:'));
+});
+
+test('E5: require_clean stops creation on staged, unstaged or untracked changes and creates nothing', (t) => {
+  const cwd = fixture(t);
+  const before = refs(cwd);
+  for (const dirty of [() => { fs.writeFileSync(path.join(cwd, 'file'), 'unstaged'); },
+    () => { git(cwd, 'add', 'file'); },
+    () => { git(cwd, 'checkout', 'HEAD', '--', 'file'); fs.writeFileSync(path.join(cwd, 'untracked'), 'x'); }]) {
+    dirty();
+    const r = create(cwd, { require_clean: true });
+    assert.equal(r.status, 'failed');
+    assert.equal(r.attempted, false);
+    assert.equal(r.created, false);
+    assert.equal(r.active_branch, 'main');
+    assert.match(r.reason, /Uncommitted changes/);
+    assert.equal(refs(cwd), before);
+  }
+});
+
+test('E5/E7: require_clean creates on a clean tree; without it dirty work is kept', (t) => {
+  const cwd = fixture(t);
+  assert.equal(create(cwd, { require_clean: true }).status, 'completed');
+  const dirty = fixture(t);
+  fs.writeFileSync(path.join(dirty, 'file'), 'keep');
+  assert.equal(create(dirty, { require_clean: false }).status, 'completed');
+  assert.equal(fs.readFileSync(path.join(dirty, 'file'), 'utf8'), 'keep');
+});
+
+test('E4: a later chained branch starts from the previous branch tip', (t) => {
+  const cwd = fixture(t);
+  const first = create(cwd, { id: '7', name: 'first slice' });
+  git(cwd, 'commit', '--allow-empty', '-m', 'first slice');
+  const second = execute('base', { base: first.branch }, cwd);
+  const r = execute('create', { type: 'feat', name: 'second slice', id: '8', base: first.branch, sha: second.sha, require_clean: true }, cwd);
+  assert.equal(r.status, 'completed');
+  assert.equal(r.branch, 'feat/8_second_slice');
+  assert.equal(git(cwd, 'rev-parse', 'HEAD'), git(cwd, 'rev-parse', first.branch));
 });
 
 test('E8/E10: blocked switching reports state and preserves work without creating a branch', (t) => {

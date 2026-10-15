@@ -302,3 +302,17 @@ test('each directly loaded step file is named by the explore instructions load e
       `${file} must be named by the explicit load exception`);
   }
 });
+
+test('the slice branch chain is reachable from the selector, the slice step and automatic continuation', () => {
+  const read = file => fs.readFileSync(path.join(explorerStepsDir, file), 'utf8');
+  const selector = read('route-selector.md');
+  const chain = selector.indexOf('## Slice branch chain');
+  assert.ok(chain > selector.indexOf('2. **Branch question:**') && chain < selector.indexOf('\n## Native route picker'));
+  assert.match(selector, /as defined in `## Slice branch chain`/);
+  assert.match(read('slice.md'), /`route-selector\.md` `## Slice branch chain`/);
+  assert.match(read('pipeline-direct-build.md'), /`route-selector\.md` `## Slice branch chain`/);
+  assert.match(read('route-selector.md'), /for Manual, before the handoff/);
+  assert.match(selector, /When the user closes a slice with `next-slice`, tell them that `next-slice` confirms the slice is implemented and committed/);
+  const machine = fs.readFileSync(path.join(machinesDir, 'explore-slice.js'), 'utf8');
+  assert.doesNotMatch(machine, /branch/i);
+});
