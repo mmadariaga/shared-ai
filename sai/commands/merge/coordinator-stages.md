@@ -222,10 +222,31 @@ The worker reads the conflicts through `merge.js bundle` on that reference.
 
 The worker places `authored` text through `merge.js write` after the Step 7
 application hand-off (the tool preserves each file's encoding, BOM, and line
-endings, and the `resolution` check below expects those same bytes) and
-returns the `## Complete resolution payload` JSON object defined in
-`instructions.md`. Surrounding prose is explanation, never file content.
-Validate the whole object at once:
+endings, and the `resolution` check below expects those same bytes). It writes
+its complete original result, including the `## Complete resolution payload`
+JSON object defined in `instructions.md`, to a transfer file in the transfer
+directory, and returns only the application outcome plus
+`resolution_reference` `{path, sha256}`. The inline `summary` is the
+application-outcome text you present; the transfer file is the complete result.
+Never read the transfer file into your context, and never reconstruct,
+summarize, or copy its content: the payload's region text is consumed only by
+`merge.js`. Surrounding prose is explanation, never file content.
+
+Before validating, run `node <transfer-tool> verify --dir <dir> --path <path>
+--sha256 <sha256>` for the reference (§ Transfer directory in `coordinator.md`).
+Exit 1 (a missing file, a sha256 mismatch, a path outside the directory, or a
+path reached through a symbolic link) or exit 2 means nothing is staged:
+continue the same worker with the verbatim helper report and require a
+corrected result with a new reference, never an inline payload. A worker that
+reports the helper unavailable or denied ends the stage with nothing staged.
+Then validate the complete original result through the shared runner by piping
+the transfer file to `node <validator-tool> validate --kind terminal`. The
+reference's `path` and `sha256` are the only record you retain, until the
+invocation closes; a corrected result supersedes them.
+
+Validate the whole object at once through `merge.js resolution`, which reads it
+from that transfer file; you read none of its content. The tool enforces the
+following:
 
 1. `selected_contextual_decisions` holds exactly one `ours`, `theirs`, or
    `synthesis` per semantic conflict, each matching the decision the
@@ -243,23 +264,27 @@ Validate the whole object at once:
    the whole payload: touch no conflict and stage nothing.
 
 Run `merge.js resolution --phase authored` with the exact original worker
-source and retained pre-write snapshot:
+source (the transfer file) and retained pre-write snapshot:
 
 ```text
 node <merge-tool> resolution --record <snapshot> --record-hash <retained-sha256> --source <original-worker-result-file> --confirmed <semantic-decision-array-file> --phase authored|materialized --json --cwd <project-root>
 ```
 
-Preserve the received worker result byte-for-byte in `--source`, including
-its original envelope, and validate it through the shared runner first. Do not
-construct a reduced substitute or strip its fields. The confirmed array is
-separate coordinator evidence derived from the exact confirmed strategy, never
-a replacement worker result. On both Claude Code and opencode, create
-`--source` and `--confirmed` inputs as unique files in the same
+The transfer file is the received worker result byte-for-byte, including its
+original envelope: pass its verified `path` as `--source`, validated through
+the shared runner first. Do not construct a reduced substitute, copy the file,
+or strip its fields. The inline payload is a presentation view only; no check
+compares it with the file, because you take no decision from the inline
+section and `merge.js` checks the decisions against `--confirmed`. The
+confirmed array is separate coordinator evidence derived from the exact
+confirmed strategy, never a replacement worker result. On both Claude Code and
+opencode, `--source` is the transfer file inside the transfer directory;
+create the `--confirmed` input as a unique file in the same
 harness-approved temporary area outside the repository as `--record`, and
-retain their exact references and hashes until the invocation closes. These
-are ephemeral validation inputs, not repository artifacts, `changed_files`, or
-staging candidates; creating them inside the repository would contaminate the
-unrelated-content check.
+retain its exact reference and hash, with the `--source` reference and hash,
+until the invocation closes. These are ephemeral validation inputs, not
+repository artifacts, `changed_files`, or staging candidates; both live
+outside the repository, so they never contaminate the unrelated-content check.
 
 Reject on stale/changed snapshot, HEAD/index/operation mismatch, incomplete
 inventory, region mismatch, or unrelated content change. The reference
@@ -305,8 +330,9 @@ offsets in that preimage. Confirm each boundary independently and restrict
 paths to the current affected set before this call. This read-only capture
 creates the same protected snapshot with explicit correction ranges, not
 inferred markers. Continue the worker with the `apply` pointer and the
-authorized correction; it returns the same complete resolution payload.
-Validate and independently review it before re-staging. A correction that
+authorized correction; it returns the same complete resolution result through
+a new transfer file and reference. Verify, validate, and independently review
+it before re-staging. A correction that
 changes a confirmed objective instead re-enters `strategy` and its
 mode-specific hand-off.
 
@@ -476,8 +502,9 @@ error path without bypassing checks or claiming success.
 
 ### Closure
 
-When no operation remains, write the final summary from the final texts'
-template and hand it to `terminal_navigation`.
+When no operation remains, close the transfer directory
+(`coordinator.md` § Transfer directory), write the final summary from the final
+texts' template and hand it to `terminal_navigation`.
 
 Exit: the run is closed with its final summary, or a rebase continued into
 its next stage.

@@ -45,6 +45,37 @@
   `instructions.md` Step 7. The language question and all unrelated gates
   stay.
 
+  ## Transfer directory
+
+  The worker's complete resolution result reaches you as a transfer file, not
+  as message text. Resolve `transfer.js` per `@sai/policies/tool-resolution.md`,
+  substituting `transfer.js` for the filename placeholder `<name>`. At the
+  start of the invocation, before the first stage, run
+  `node <tool-path> open --harness <claude|opencode>` (the active harness) and
+  keep the returned `dir` as invocation-scoped state. Exit 2 (for example a
+  missing harness temp root, which the helper never creates or repairs) is a
+  blocker: report the verbatim error and stop with no dispatch and no write.
+  Deliver the directory to the worker only in the task-disclosure continuation,
+  as one extra first line `--transfer-dir <dir>` ahead of the `Active stage:`
+  pointer of the worker's first task and of every replacement's first task,
+  never in the dispatch envelope (the initial dispatch carries no task content,
+  and `original_envelope` stays exactly the fast-track-cleaned
+  `arguments_value`). Run `node <tool-path> close --dir <dir>` when the
+  invocation closes, whether it completed, failed, or was cancelled, before
+  handing the final summary or stop report to `terminal_navigation`; `close`
+  removes only that directory, and the directory stays available until then,
+  including through every replacement and review correction.
+
+  A **reference** is `{path, sha256}`: the absolute path of one transfer file
+  inside the directory and its sha256; merge references carry no destination.
+  The terminal `completed` payload of a resolution or correction carries
+  exactly one `resolution_reference` beside its application-outcome `summary`.
+  Verify it before use (`coordinator-stages.md` § Resolution validation). A
+  corrected result supersedes every earlier reference; use only the latest.
+  Never receive, send, or reconstruct the complete resolution content on any
+  continuation or reconstruction; strategy confirmations stay separate
+  coordinator evidence and are not part of the transfer.
+
   ## Command-local authorization
 
   Invoking `/sai-merge` authorizes exactly these local finalization operations
@@ -110,7 +141,8 @@
     (`Fetch @sai/orchestration/workers/bindings/merge-worker.md`) with the
     usual ready handshake, declaring `fast_track_active` beside the envelope as
     session state, never as an envelope key. After ready, disclose the task
-    with the `Active stage:` pointer in its `--reconstruct` form and the
+    with the `--transfer-dir <dir>` line (§ Transfer directory), then the
+    `Active stage:` pointer in its `--reconstruct` form and the
     complete state of `replacement_reconstruction_fields`: the worker saw none
     of the earlier stages.
   - `continuation_operation` — continue the same worker through the binding's
@@ -138,7 +170,8 @@
   - `replacement_reconstruction_fields` — the original envelope, the opaque
     input history (ordered `{id, question, options, answer_value}` pairs,
     including any coordinator-owned open branch-entry answer),
-    `fast_track_active`, `branch_selection_source`, `branch_entry` when set,
+    `fast_track_active`, the transfer directory path and the latest
+    `resolution_reference` (never resolution content), `branch_selection_source`, `branch_entry` when set,
     `working_language` once selected, the merge provenance, and the ordered
     duplicate-free changed-files union, plus `active_stage`, complete
     `affected_files` and categories/region ids/stage OIDs, all receipt
@@ -173,10 +206,13 @@
   it or moving on.
 
   Pass the received source bytes to validation, not a reconstructed envelope
-  with shortened summary or substituted fields. Keep the validated original
-  result and its exact external source reference/hash for resolution checking
-  and replacement; compact presentation is a separate view, not validator
-  input. Unknown fields keep the shared validator's existing treatment.
+  with shortened summary or substituted fields: for a resolution result the
+  received source is the transfer file, piped to the validator and passed as
+  `--source`. Keep the validated original result's exact external source
+  reference/hash (the transfer file's `path` and `sha256`) for resolution
+  checking and replacement; compact presentation is a separate view, not
+  validator input. Unknown fields keep the shared validator's existing
+  treatment.
 
   ## No-commit guard
 
