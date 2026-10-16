@@ -16,7 +16,7 @@ The `/sai-3-implement-new` and `/sai-build-new` coordinators SHALL load only cro
 
 ### Requirement: Start preconditions
 
-The coordinator SHALL run the OpenSpec prerequisite check before anything else. It SHALL start a change only when `openspec/changes/{name}/` contains `proposal.md`, `tasks.md`, and at least one file under `specs/`; otherwise it SHALL print `Cannot start /sai-3-implement-new for {name}: missing {list of the absent items}.`, write nothing, and end the run without escalating. A missing `design.md` or `interfaces.md` SHALL be recorded as a deviation and SHALL NOT stop the run. An explicit `--fast-track` token SHALL be dropped from the arguments.
+The coordinator SHALL run the OpenSpec prerequisite check before anything else. It SHALL start a change only when `openspec/changes/{name}/` contains `proposal.md`, `tasks.md`, and at least one file under `specs/`; otherwise it SHALL print `Cannot start /sai-3-implement-new for {name}: missing {list of the absent items}.`, write nothing, and end the run without escalating. A missing `design.md` or `interfaces.md` SHALL be recorded as a deviation and SHALL NOT stop the run. An explicit `--fast-track` token SHALL be dropped from the arguments. Without a change name, it SHALL take the only active change with a `tasks.md`; with none or several, it SHALL print `Cannot start /sai-3-implement-new: name the change ({candidates, or none}).` and end the run without escalating.
 
 #### Scenario: Change lacks its task list
 
@@ -48,7 +48,17 @@ The coordinator SHALL size each step as the smallest group of unchecked tasks th
 
 ### Requirement: Step commits
 
-Each step SHALL close with one local commit authorized by invoking the command. The coordinator SHALL check the `tasks.md` boxes the step completed and stage exactly the workers' reported files, `tasks.md`, and any plan artifact it edited, confirming that `git diff --cached --name-only` lists only those paths. The message SHALL follow Conventional Commits with a subject of at most 50 characters and SHALL carry no `Co-Authored-By` trailer and no AI-attribution line. The coordinator SHALL never push, never rewrite an earlier commit, and SHALL add a new correcting step when a correction invalidates a committed step. Paths in the dirty baseline SHALL never enter a commit.
+Each step SHALL close with one local commit authorized by invoking the command. The coordinator SHALL check the `tasks.md` boxes the step completed and stage exactly the step's paths (the workers' files, `tasks.md`, and any plan artifact it edited), confirming that `git diff --cached --name-only` lists only those paths. Before every `git add`, it SHALL check each path with `git check-ignore` against the project's ignore rules, stage only paths that are not ignored, and never force-add an ignored path. After the commit, `git status --porcelain` minus the dirty baseline, the run directory, and ignored paths SHALL be empty; a leftover path SHALL be committed as a follow-up commit of the same step and recorded as a deviation. The message SHALL follow Conventional Commits with a subject of at most 50 characters and SHALL carry no `Co-Authored-By` trailer and no AI-attribution line. The coordinator SHALL never push, never rewrite an earlier commit, and SHALL add a new correcting step when a correction invalidates a committed step. Paths in the dirty baseline SHALL never enter a commit.
+
+#### Scenario: The project ignores the change directory
+
+- **WHEN** a step completes tasks in a project whose ignore rules cover `openspec/changes/{name}/tasks.md`
+- **THEN** the checkboxes are updated on disk, `tasks.md` is not staged, no path is force-added, and the commit holds the step's other paths.
+
+#### Scenario: A worker forgets to report a file
+
+- **WHEN** a step's commit leaves a changed path that is absent from the dirty baseline
+- **THEN** the coordinator commits it as a follow-up of the same step and records a deviation, and no later step treats it as foreign work.
 
 #### Scenario: Step commit content
 

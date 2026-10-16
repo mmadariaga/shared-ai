@@ -10,7 +10,7 @@ TBD
 
 The canonical worker matrix SHALL define exactly seventeen entries: the eleven canonical phase identities (spec, design, implementation, review, security, performance, accessibility, commit, archive, backfill, merge), followed by the RED then GREEN apply identities, one Direct Build implementer identity, one `/sai-review` fix identity, and the RED then GREEN `/sai-3-implement-new` identities. The Direct Build identity SHALL be `sai-direct-build-worker`, use binding stem `direct-build`, and use contract `sai/commands/explore/direct-build-worker.md`. The review-fix identity SHALL be `sai-review-fix-worker`, use binding stem `review-fix`, and use contract `sai/commands/meta-review/review-fix-worker.md`. The implement-new RED identity SHALL be `sai-red-new-worker`, use phase and binding stem `red-new`, and use contract `sai/commands/implement-new/red-worker.md`; the implement-new GREEN identity SHALL be `sai-green-new-worker`, use phase and binding stem `green-new`, and use contract `sai/commands/implement-new/green-worker.md`; neither SHALL join the apply phase. The former auto-fast implement and hands roles are retired; no hands worker or autofast identity SHALL remain active. Materializing the matrix SHALL project exactly one binding and one managed agent per worker per harness, including `orchestration/workers/bindings/merge-worker.md` and the `sai-merge-worker` managed agent.
 
-#### Scenario: Manifest expansion yields the fifteen-worker roster
+#### Scenario: Manifest expansion yields the seventeen-worker roster
 
 - **WHEN** the install manifest expands for either harness
 - **THEN** exactly seventeen active worker bindings and seventeen managed agents materialize, with the merge phase bound to `sai-merge-worker`, the Direct Build phase bound to `sai-direct-build-worker`, and the `red-new` and `green-new` phases bound to `sai-red-new-worker` and `sai-green-new-worker`.
@@ -31,8 +31,13 @@ Each materialized worker agent SHALL preserve its harness-specific frontmatter i
 
 #### Scenario: Worker continuation and replacement remain bounded
 
-- **WHEN** a worker result requests continuation or a coordinator reconstructs a replacement worker
+- **WHEN** a worker of the shared orchestration requests continuation or its coordinator reconstructs a replacement worker
 - **THEN** the binding continues the captured handle with the runner's continuation payload, reuses its single dispatch call for the replacement, and defers the bounded worker/replacement lifecycle to `sai/orchestration/command-runner.md`.
+
+#### Scenario: Standalone bindings leave the lifecycle to their coordinator
+
+- **WHEN** the `red-new` or `green-new` binding is materialized for either harness
+- **THEN** it renders from that harness's `standalone-worker-template.md`, carries only the create and continue calls, and names neither `sai/orchestration/command-runner.md`, guard windows, nor `replacement_reconstruction_fields`.
 
 ### Requirement: Projection lifecycle integrity covers matrix replacement and retirements
 

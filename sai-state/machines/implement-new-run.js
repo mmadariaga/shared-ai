@@ -9,7 +9,8 @@
 // the run directory; this machine records their paths.
 //
 // Events, all JSON with a `kind`:
-//   start      {dir}                     opens the run; `dir` is the run directory
+//   start      {dir}                     opens the run; `dir` is the run directory;
+//                                        a completed or stopped run starts fresh
 //   step-start {step}                    names the step now in progress
 //   step-done  {step}                    the step is committed
 //   attempt    {obstacle}                spends one of the obstacle's attempts
@@ -149,10 +150,14 @@ function transition(state, signal) {
     case 'start': {
       const dir = usablePath(sig.dir);
       if (!dir) return reject('run directory required');
-      if (current.stage !== 'idle') return reject('ALREADY_RUNNING');
-      current.stage = 'running';
-      current.dir = dir;
-      return outcome(current);
+      // A finished run (completed or stopped) whose session outlived its close
+      // must not block the next run of the same change: it starts fresh.
+      // A running or escalated run is interrupted work and resumes instead.
+      if (current.stage === 'running' || current.stage === 'escalated') return reject('ALREADY_RUNNING');
+      const fresh = cloneState(initialState);
+      fresh.stage = 'running';
+      fresh.dir = dir;
+      return outcome(fresh);
     }
 
     case 'step-start': {

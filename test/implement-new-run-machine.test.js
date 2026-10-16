@@ -153,3 +153,20 @@ test('the sai-state store carries the run view and resumes it after the coordina
     call(['close', id]);
   }
 });
+
+test('a finished run does not block the next start; an interrupted one still resumes', () => {
+  const next = { kind: 'start', dir: '.tmp/demo/run-3c4d' };
+  for (const outcome of ['completed', 'stopped']) {
+    const finished = run(start, { kind: 'step-start', step: 'step-1' }, { kind: 'attempt', obstacle: 'step-1' },
+      { kind: 'step-done', step: 'step-1' }, { kind: 'close', outcome });
+    const fresh = machine.transition(finished.state, next);
+    assert.equal(fresh.rejected, undefined, `start after ${outcome} must be accepted`);
+    assert.equal(fresh.state.stage, 'running');
+    assert.equal(fresh.run.dir, next.dir);
+    assert.deepEqual(fresh.run.committed, []);
+    assert.deepEqual(fresh.budgets, {});
+  }
+  const escalated = run(start, { kind: 'escalate', obstacle: 'step-1' });
+  assert.equal(machine.transition(escalated.state, next).rejected, 'ALREADY_RUNNING');
+  assert.equal(machine.transition(escalated.state, next).state.dir, start.dir);
+});

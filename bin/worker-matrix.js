@@ -82,6 +82,9 @@ const IMPLEMENT_NEW_ROLES = Object.freeze([
 ]);
 
 const APPLY_PHASE = 'apply';
+// The `-new` roles render from their own binding templates, which carry only the
+// create and continue calls: their coordinator owns the lifecycle.
+const STANDALONE_PHASES = new Set(IMPLEMENT_NEW_ROLES.map(role => role.phase));
 // Every role that pins its own contract and is validated by position after the
 // canonical phases and the apply roles.
 const PINNED_ROLES = Object.freeze([...DIRECT_BUILD_ROLES, ...IMPLEMENT_NEW_ROLES]);
@@ -284,6 +287,13 @@ function materializeWorkerMatrix(matrix, templates) {
   }
   return matrix.entries.flatMap(entry => {
     const common = { ...entry, canonicalFetch: `Fetch @${entry.workerContract} and follow it exactly.` };
+    const standalone = STANDALONE_PHASES.has(entry.phase);
+    const bindingTemplate = harness => {
+      if (!standalone) return `${harness}Binding`;
+      const name = `${harness}StandaloneBinding`;
+      if (typeof templates[name] !== 'string') throw new Error(`Missing Worker Matrix template: ${name}`);
+      return name;
+    };
     const panelRenderBinding = harness => entry.phase === APPLY_PHASE
       ? ''
       : [
@@ -298,8 +308,8 @@ function materializeWorkerMatrix(matrix, templates) {
         phase: entry.phase,
         workerName: entry.workerName,
         destinationName: `${entry.bindingStem}-worker.md`,
-        templateName: 'claudeBinding',
-        text: renderWorkerTemplate(templates.claudeBinding, {
+        templateName: bindingTemplate('claude'),
+        text: renderWorkerTemplate(templates[bindingTemplate('claude')], {
           ...common,
           harness: 'Claude Code',
           panelRenderBinding: panelRenderBinding('claude'),
@@ -311,8 +321,8 @@ function materializeWorkerMatrix(matrix, templates) {
         phase: entry.phase,
         workerName: entry.workerName,
         destinationName: `${entry.bindingStem}-worker.md`,
-        templateName: 'opencodeBinding',
-        text: renderWorkerTemplate(templates.opencodeBinding, {
+        templateName: bindingTemplate('opencode'),
+        text: renderWorkerTemplate(templates[bindingTemplate('opencode')], {
           ...common,
           harness: 'opencode',
           panelRenderBinding: panelRenderBinding('opencode'),
