@@ -8,7 +8,7 @@ Audit findings that contradict existing specifications or exceed the change's de
 
 ### Requirement: Three-outcome classification of audit findings
 
-The Judgment Rubric for Audit Findings SHALL classify every finding in an audit artifact as Apply, Discard, or Escalate by evaluating five criteria: Severity, Actionability, Spec-decision consistency, Duplication, and Scope. Apply findings pass all five. Discard findings fail Severity, Actionability, or Duplication. Escalate findings fail Spec-decision consistency — the finding contradicts a decision in `design.md` or a requirement in `specs/**` — or fail Scope, proposing work beyond the change's declared scope that would require an acceptance criterion that does not yet exist.
+In `/sai-3-implement`, the Judgment Rubric for Audit Findings SHALL classify every finding in an audit artifact as Apply, Discard, or Escalate by evaluating five criteria: Severity, Actionability, Spec-decision consistency, Duplication, and Scope. Apply findings pass all five. Discard findings fail Severity, Actionability, or Duplication. Escalate findings fail Spec-decision consistency — the finding contradicts a decision in `design.md` or a requirement in `specs/**` — or fail Scope, proposing work beyond the change's declared scope that would require an acceptance criterion that does not yet exist. `/sai-3-implement-new` SHALL NOT apply this classification: it disposes of audit findings through its own contract, and this requirement does not change `/sai-3-implement`.
 
 #### Scenario: Finding contradicting existing requirement
 
@@ -24,6 +24,11 @@ The Judgment Rubric for Audit Findings SHALL classify every finding in an audit 
 
 - **WHEN** an audit artifact contains a finding passing all five criteria
 - **THEN** the finding SHALL be classified as Apply
+
+#### Scenario: Implement-new does not escalate a finding
+
+- **WHEN** `/sai-3-implement-new` meets an open finding that contradicts the plan
+- **THEN** it leaves the finding open with a deviation that says why instead of classifying it as Escalate
 
 ### Requirement: Exclusive escalation detection in artifact-analysis
 

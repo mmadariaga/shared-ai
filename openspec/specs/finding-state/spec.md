@@ -30,7 +30,7 @@ The policy `sai/policies/finding-state.md` SHALL state that a Question is a find
 
 ### Requirement: Open And Fixed Findings
 
-The policy `sai/policies/finding-state.md` SHALL define a finding as open when it carries no fixed mark, and as fixed when it carries one. A review or audit report SHALL keep its fixed findings, so that it records both what was found and what was fixed. A Question SHALL stay open until it is answered and fixed, and an unanswered Question SHALL stay open. Every consumer of a review or audit report SHALL act on open findings only: the Direct Build close selects from them, and `/sai-3-implement` ingests them.
+The policy `sai/policies/finding-state.md` SHALL define a finding as open when it carries no fixed mark, and as fixed when it carries one. A review or audit report SHALL keep its fixed findings, so that it records both what was found and what was fixed. A Question SHALL stay open until it is answered and fixed, and an unanswered Question SHALL stay open. Every consumer of a review or audit report SHALL act on open findings only: the Direct Build close selects from them, `/sai-3-implement` ingests them, and `/sai-3-implement-new` applies them.
 
 #### Scenario: A marked finding is fixed
 
@@ -42,9 +42,14 @@ The policy `sai/policies/finding-state.md` SHALL define a finding as open when i
 - **WHEN** a Direct Build close converges while a Question of its report was left unanswered
 - **THEN** that Question SHALL carry no fixed mark and SHALL stay open
 
+#### Scenario: Implement-new skips a marked finding
+
+- **WHEN** `/sai-3-implement-new` reads an audit report whose finding carries the fixed mark
+- **THEN** it SHALL run no step for that finding
+
 ### Requirement: Fixed Mark Form
 
-The fixed mark SHALL be the literal ` (FIXED)` appended to the end of the finding's heading line. Marking a finding SHALL change only that heading line: the body, the identifier, the severity, and the report's closing `Summary:` tally SHALL stay as the report wrote them. The mark SHALL carry no commit hash, because `git log` or `git blame` on the marked heading line leads to the commit that fixed the finding. Regenerating a report SHALL replace its findings together with their marks.
+The fixed mark SHALL be the literal ` (FIXED)` appended to the end of the finding's heading line. Marking a finding SHALL change only that heading line: the body, the identifier, the severity, and the report's closing `Summary:` tally SHALL stay as the report wrote them. The mark SHALL carry no commit hash, because `git log` or `git blame` on the marked heading line leads to the commit that fixed the finding. Regenerating a report SHALL replace its findings together with their marks. The Direct Build close SHALL write the marks through its fix worker in the same commit as the fixes, and the `/sai-3-implement-new` coordinator SHALL write each mark itself in the commit of the step that fixed the finding.
 
 #### Scenario: Marking keeps the tally
 
@@ -60,6 +65,11 @@ The fixed mark SHALL be the literal ` (FIXED)` appended to the end of the findin
 
 - **WHEN** a report that carries fixed marks is regenerated
 - **THEN** its findings SHALL be replaced together with their marks
+
+#### Scenario: Implement-new marks in the step commit
+
+- **WHEN** a `/sai-3-implement-new` step fixes an audit finding
+- **THEN** the coordinator SHALL append the fixed mark to that finding's heading line and SHALL commit it together with the fix in that step's commit
 
 ### Requirement: Fixed Mark Documentation
 
