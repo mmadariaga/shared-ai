@@ -23,7 +23,11 @@ Complete when that exact proposal and unchanged token have explicit approval.
 Patch tests `/rev` and changes only title/description in the same request.
 Project rules remain enforced. Confirmed rejection (including revision conflict)
 stops: reread and obtain renewed approval, never auto-retry. `recover-update`
-takes the saved receipt and only queries. `complete` requires content equality;
+takes the saved receipt and only queries. `complete` requires equal content,
+accepting the harmless Azure normalization defined in `azuredevops-content.md`
+(extra block whitespace; a dropped `backlog-id-counters` comment, after which
+removed identifiers can be reused on Azure) instead of exact bytes, and
+`no_changes` applies the same rule;
 `pending` requires fresh approval and receipt before retry; `divergent` requires
 reconciliation and fresh approval. Unreadable outcomes stay `uncertain`.
 Complete when verified or the concrete blocker and receipt are reported.

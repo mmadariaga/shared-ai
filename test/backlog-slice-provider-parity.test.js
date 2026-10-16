@@ -17,6 +17,8 @@ function fixture(platform) {
   const actor = azure ? 'actor-id' : 7, uniqueName = 'actor@example.com';
   const url = number => azure ? `${repository}/_workitems/edit/${number}` : `${repository}/-/issues/${number}`;
   function create(title, description) {
+    // A provider may store a description in a different but harmless form (state.normalize).
+    description = state.normalize ? state.normalize(description) : description;
     const number = state.rows.length + 1;
     const row = azure ? { id: number, rev: 1, fields: { 'System.Title': title, 'System.Description': description, 'System.WorkItemType': 'Task', 'System.TeamProject': 'Project', 'System.State': 'New', 'System.CreatedBy': { id: actor } }, relations: [] }
       : { id: number + 100, iid: number, project_id: 1, title, description, web_url: url(number), author: { id: actor }, assignees: [], issue_type: 'issue', state: 'opened', updated_at: 'v1' };
@@ -61,7 +63,7 @@ function fixture(platform) {
       const row = show(Number(/issues\/(\d+)/.exec(endpoint)[1]));
       if (method === 'PUT') {
         const body = JSON.parse(input); state.writes.push({ method, body });
-        if (body.description !== undefined) row.description = body.description;
+        if (body.description !== undefined) row.description = state.normalize ? state.normalize(body.description) : body.description;
         if (body.assignee_ids) row.assignees = body.assignee_ids.map(id => ({ id }));
         row.updated_at += '+';
       }
@@ -92,7 +94,7 @@ function fixture(platform) {
             other.relations.push({ rel: part.value.rel.replace('-Reverse', '-Forward'), url: `https://dev.azure.com/org/_apis/wit/workItems/${row.id}` });
           } else {
             const field = part.path.slice('/fields/'.length);
-            row.fields[field] = field === 'System.AssignedTo' ? { id: actor } : part.value;
+            row.fields[field] = field === 'System.AssignedTo' ? { id: actor } : field === 'System.Description' && state.normalize ? state.normalize(part.value) : part.value;
           }
         }
         row.rev++;
@@ -222,6 +224,29 @@ for (const platform of ['gitlab', 'azuredevops']) {
     assert.throws(() => f.adapter['continue-set']({ receipt: file }, f.io), /approval/);
   });
 }
+test('azuredevops: harmless Azure normalization does not stop a set publication or its recovery readback', t => {
+  const f = fixture('azuredevops');
+  f.state.normalize = html => html.replace(/<\/p>/g, '\n</p>');
+  const { result, file } = publish(t, f);
+  assert.equal(result.status, 'complete', result.message);
+  assert.equal(f.state.rows.length, 3);
+  assert.equal(f.adapter['recover-set']({ receipt: file }, f.io).status, 'complete');
+  assert.match(f.state.rows[0].fields['System.Description'], /\n<\/p>/);
+});
+test('azuredevops: a meaningful change in a set item stays a divergence', t => {
+  const f = fixture('azuredevops');
+  f.state.normalize = html => html.replace('Full parent', 'Full  parent');
+  const { result } = publish(t, f);
+  assert.equal(result.status, 'partial_failure');
+  assert.match(result.message, /Creation identity or complete content not verified/);
+});
+test('gitlab: a normalized description stays a byte-exact mismatch in a set publication', t => {
+  const f = fixture('gitlab');
+  f.state.normalize = text => `${text}\n`;
+  const { result } = publish(t, f);
+  assert.equal(result.status, 'partial_failure');
+  assert.match(result.message, /Creation identity or complete content not verified/);
+});
 test('GitLab unavailable native blocking links require approved written fallback without duplicate creation', t => {
   const f = fixture('gitlab'); f.state.failRelation = true;
   f.state.failLinkRead = 'GitLab issue links feature is not available for this license';

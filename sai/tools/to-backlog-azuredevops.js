@@ -9,6 +9,45 @@ const classify = value => {
   try { return azure.repositoryAddress(value) || source.address(value) ? 'match' : null; } catch { return null; }
 };
 const resolve = request => azure.resolve(request);
+// Azure re-serializes a description it stores: it adds formatting whitespace between block tags or before a
+// block closing tag and drops the backlog-id-counters comment. Sent content is equivalent to received content
+// only when received is sent plus that whitespace (counters comment optional); everything else is a real change.
+const COUNTERS = /\s*<!-- backlog-id-counters: E=\d+ I=\d+ Q=\d+ -->\s*/g;
+const BLOCK = 'p|li|ul|ol|h[1-6]|pre|blockquote';
+const TAG = /<!--[\s\S]*?-->|<(\/?)([a-zA-Z][a-zA-Z0-9]*)(?:\s[^<>]*)?>/g;
+const blockTagEnd = new RegExp(`<\\/?(?:${BLOCK})(?:\\s[^<>]*)?>$`, 'i');
+const blockTagStart = new RegExp(`^<\\/?(?:${BLOCK})[\\s>]`, 'i');
+const blockCloseStart = new RegExp(`^<\\/(?:${BLOCK})\\s*>`, 'i');
+function literalText(html) {
+  const literal = new Uint8Array(html.length);
+  let pre = 0, code = 0, at = 0;
+  for (const tag of html.matchAll(TAG)) {
+    if (pre || code) literal.fill(1, at, tag.index);
+    const name = tag[2]?.toLowerCase(), step = tag[1] ? -1 : 1;
+    if (name === 'pre') pre = Math.max(0, pre + step);
+    if (name === 'code') code = Math.max(0, code + step);
+    at = tag.index + tag[0].length;
+  }
+  if (pre || code) literal.fill(1, at);
+  return literal;
+}
+function addsOnlyWhitespace(sent, received) {
+  const literal = literalText(received), space = /\s/;
+  let i = 0;
+  for (let j = 0; j < received.length; j++) {
+    if (sent[i] === received[j]) { i++; continue; }
+    if (literal[j] || !space.test(received[j])) return false;
+    let start = j, end = j;
+    while (start > 0 && space.test(received[start - 1])) start--;
+    while (end < received.length && space.test(received[end])) end++;
+    const before = received.slice(0, start), after = received.slice(end);
+    const leading = start === 0 && blockTagStart.test(after), trailing = end === received.length && blockTagEnd.test(before);
+    if (!(leading || trailing || blockCloseStart.test(after) || blockTagEnd.test(before) && blockTagStart.test(after))) return false;
+  }
+  return i === sent.length;
+}
+const equivalent = (sent, received) => typeof sent === 'string' && typeof received === 'string'
+  && (addsOnlyWhitespace(sent, received) || addsOnlyWhitespace(sent.replace(COUNTERS, ''), received));
 function content(request, baseline) {
   if (typeof request.title !== 'string' || !request.title.trim() || /[\r\n]/.test(request.title)) throw new Error('Nonempty single-line title required');
   if (baseline && (request.description === undefined || request.description === baseline.description)) return { title: request.title, description: baseline.description };
@@ -42,7 +81,7 @@ function queryUpdate(request, io) {
   if (digest(current.baseline) !== digest(request.baseline)) return { status: 'needs_input', reason: 'stale-baseline', current, message: 'Boards revision changed; prepare and explicitly approve again' };
   const proposal = { ...current, provider: 'azuredevops', operation: 'update', ...content(request, current.baseline) };
   delete proposal.status;
-  if (proposal.title === current.baseline.title && proposal.description === current.baseline.description) return { status: 'no_changes', issue: current.issue };
+  if (proposal.title === current.baseline.title && equivalent(proposal.description, current.baseline.description)) return { status: 'no_changes', issue: current.issue };
   return { status: 'ready', proposal, confirmation: digest(proposal) };
 }
 function list(proposal, io) {
@@ -62,7 +101,7 @@ function outcome(receipt, io) {
   if (!receipt.issue) return { status: 'uncertain', message: 'No verified creation identity; query candidates and obtain user clarification, never repeat creation' };
   const row = readItem(target, receipt.issue.number, io);
   if (row.issue.url !== receipt.issue.url || row.type !== p.type) throw new Error('Recovery item identity changed');
-  if (row.baseline.title === p.title && row.baseline.description === p.description) return { status: 'complete', issue: row.issue };
+  if (row.baseline.title === p.title && equivalent(p.description, row.baseline.description)) return { status: 'complete', issue: row.issue };
   if (p.operation === 'update' && digest(row.baseline) === digest(p.baseline)) return { status: 'pending', issue: row.issue, message: 'Update is not visible; fresh approval and a new receipt are required before retrying' };
   return { status: p.operation === 'update' ? 'divergent' : 'uncertain', issue: row.issue, current: row.baseline, message: 'Remote content differs; reconcile and obtain fresh approval' };
 }
@@ -100,7 +139,7 @@ function recover(request, io) {
       const p = receipt.proposal, target = azure.inspect(p.repository, io);
       if (target.projectId !== p.projectId || target.actor !== p.actor || target.visibility !== p.visibility) throw new Error('Recovery identity changed');
       const candidates = list(p, io).filter(id => !receipt.baseline.includes(id)).map(id => readItem(target, id, io))
-        .filter(row => row.type === p.type && row.actor === p.actor && row.baseline.title === p.title && row.baseline.description === p.description);
+        .filter(row => row.type === p.type && row.actor === p.actor && row.baseline.title === p.title && equivalent(p.description, row.baseline.description));
       const chosen = candidates.find(row => row.issue.url === request.issueUrl);
       if (!chosen) return { status: 'uncertain', candidates: candidates.map(row => row.issue), message: 'Confirm the actual created item URL; matching title alone is not publication evidence. Do not create again.' };
       receipt.issue = chosen.issue; save(file, receipt);
@@ -127,7 +166,7 @@ function hasRelation(p, item, other, kind, io) {
   return (relationRow(p, item, io).relations || []).some(link => link.rel === relationType(kind) && azure.equal(link.url, relationURL(p, other)));
 }
 const set = require('./backlog-provider-set').bind('azuredevops', {
-  query, representation: { hierarchy: 'native', dependencies: 'native' },
+  query, equivalent, representation: { hierarchy: 'native', dependencies: 'native' },
   // Preserve every character of the agreed block, including the Markdown separator.
   renderBlock: text => `<pre>${sliceIdentity.escape(text)}</pre>`,
   append: (description, links, value) => `${description}\n<p>${links.map(sliceIdentity.escape).join('<br>')}</p>\n${sliceIdentity.encodeHtml(value)}`,

@@ -26,3 +26,16 @@ the exact unchanged baseline: its bytes are preserved and no description field
 is written. For description edits agree the complete supported Markdown
 replacement, preserving unaffected meaning. If that boundary cannot be met,
 ask and stop until resolved. Approval binds the returned exact outgoing HTML.
+
+Verification and no-change detection accept the harmless normalization Azure
+applies to a stored description instead of requiring exact bytes: whitespace
+added between block tags (`p`, `li`, `ul`, `ol`, `h1`-`h6`, `pre`,
+`blockquote`) or immediately before a block closing tag, and the removal of the
+exact `backlog-id-counters` comment. Every other difference stays a real
+difference: whitespace removed anywhere, whitespace added before an inline
+closing tag (`b`, `i`, `a`, `code`), any whitespace change inside `<pre>` or
+`<code>`, another comment, a counters comment with different values, and any
+change to text, links, structure or titles. Azure drops the counters comment,
+so the next update initializes the counters from the visible identifiers and
+an identifier removed from the description can be reused on Azure Boards;
+this limit is accepted and the counters are not stored in another form.

@@ -77,7 +77,7 @@ Updates SHALL apply the agreed refinement to the current baseline and preserve u
 
 ### Requirement: Stable identifiers and retained counters
 
-Updates SHALL preserve existing E#, I#, and Q# identifiers without renumbering or reusing removed identifiers; gaps SHALL be valid. Descriptions SHALL retain maximum-used counters in a Markdown comment shaped as `<!-- backlog-id-counters: E=3 I=2 Q=5 -->`, with actual numeric values. Before allocation, each maximum SHALL be taken from both existing identifiers and its stored counter, and new identifiers SHALL exceed that maximum. Unused families in new items SHALL start at zero. A baseline without counters SHALL initialize them from existing identifiers without inventing unavailable history. Counters SHALL NOT decrease after deletion or resolution. Resolved questions SHALL move agreed content to its appropriate section with a new identifier where applicable while retaining the used Q counter. The comment SHALL remain published metadata and SHALL be shown literally in the complete approval draft.
+Updates SHALL preserve existing E#, I#, and Q# identifiers without renumbering; removed identifiers SHALL NOT be reused while the counter comment is retained; gaps SHALL be valid. Descriptions SHALL retain maximum-used counters in a Markdown comment shaped as `<!-- backlog-id-counters: E=3 I=2 Q=5 -->`, with actual numeric values. Before allocation, each maximum SHALL be taken from both existing identifiers and its stored counter, and new identifiers SHALL exceed that maximum. Unused families in new items SHALL start at zero. A baseline without counters SHALL initialize them from existing identifiers without inventing unavailable history. Counters SHALL NOT decrease after deletion or resolution. Resolved questions SHALL move agreed content to its appropriate section with a new identifier where applicable while retaining the used Q counter. The comment SHALL remain published metadata and SHALL be shown literally in the complete approval draft. As the explicit exception, Azure Boards drops the counter comment from a stored description; on Azure Boards the next update SHALL therefore initialize counters from the visible identifiers, a removed identifier MAY be reused there as an accepted limit, and the Azure provider documentation SHALL state that a removed identifier can be reused there.
 
 #### Scenario: Removed identifier
 
@@ -93,6 +93,11 @@ Updates SHALL preserve existing E#, I#, and Q# identifiers without renumbering o
 
 - **WHEN** Q5 resolves into an agreed implementation detail
 - **THEN** the detail receives a new I identifier above its maximum and the Q counter retains its used maximum.
+
+#### Scenario: Azure Boards dropped the counter comment
+
+- **WHEN** an Azure Boards baseline lost its counter comment after an identifier was removed
+- **THEN** counters initialize from the visible identifiers, and the Azure provider documentation states that the removed identifier can be reused on Azure Boards.
 
 ### Requirement: Drafting completion remains separate from publication
 
