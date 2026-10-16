@@ -10,6 +10,7 @@ const commands = [
   ['sai-1-spec.md', 'spec'],
   ['sai-2-design.md', 'design'],
   ['sai-3-implement.md', 'implement'],
+  ['sai-3-implement-new.md', 'implement-new'],
   ['sai-4-apply.md', 'apply'],
   ['sai-5-review.md', 'review'],
   ['sai-6-security.md', 'security'],
@@ -18,6 +19,7 @@ const commands = [
   ['sai-archive.md', 'archive'],
   ['sai-backfill.md', 'backfill'],
   ['sai-build.md', 'meta-build'],
+  ['sai-build-new.md', 'build-new'],
   ['sai-commit.md', 'commit'],
   ['sai-explore.md', 'explore'],
   ['sai-merge.md', 'merge'],
@@ -26,6 +28,11 @@ const commands = [
   ['sai-status.md', 'status'],
   ['sai-worktree.md', 'worktree'],
 ];
+// The `-new` family runs outside the shared orchestration: its wrappers fetch
+// the harness skill and the coordinator card directly, with no boot adapter and
+// no command bootstrap.
+const NEW_FAMILY = new Set(['sai-3-implement-new.md', 'sai-build-new.md']);
+const bootCommands = commands.filter(([file]) => !NEW_FAMILY.has(file));
 const emptyBootstraps = new Set(['apply', 'explore', 'retire-docs', 'status', 'worktree']);
 const loadFreeBootstraps = new Set([...emptyBootstraps, 'meta-review']);
 function activeWrapperCommands(harness) {
@@ -38,6 +45,7 @@ function activeWrapperCommands(harness) {
 }
 
 const wrapperCommands = activeWrapperCommands('claude');
+const bootWrapperCommands = wrapperCommands.filter(([file]) => !NEW_FAMILY.has(file));
 const movedDirectives = {
   spec: [
     'Fetch @skills/safe-operations/SKILL.md and use it.',
@@ -130,7 +138,7 @@ function fetchLines(source) {
 
 test('exactly 18 harness-neutral command bootstraps exist and budget has none', () => {
   const actual = [];
-  for (const [, folder] of commands) {
+  for (const [, folder] of bootCommands) {
     const relative = `sai/commands/${folder}/command-bootstrap.md`;
     assert.equal(fs.existsSync(path.join(repoRoot, relative)), true, `${relative} should exist`);
     actual.push(relative);
@@ -140,7 +148,7 @@ test('exactly 18 harness-neutral command bootstraps exist and budget has none', 
 });
 
 test('command bootstrap content is exact, ordered, and harness-neutral', () => {
-  for (const [, folder] of commands) {
+  for (const [, folder] of bootCommands) {
     const relative = `sai/commands/${folder}/command-bootstrap.md`;
     assert.equal(fs.existsSync(path.join(repoRoot, relative)), true, `${relative} should exist`);
     const source = read(`sai/commands/${folder}/command-bootstrap.md`);
@@ -238,7 +246,7 @@ function bootstrapCallDirective(folder) {
 
 test('final wrappers: first fetch is harness skill, second is boot adapter, launcher fetch appears exactly once', () => {
   for (const harness of ['claude', 'opencode']) {
-    for (const [file, folder] of wrapperCommands) {
+    for (const [file, folder] of bootWrapperCommands) {
       const lines = fetchLines(read(`commands/${harness}/${file}`));
       assert.equal(lines[0], HARNESS_FETCH[harness], `${harness}/${file} first fetch should be the harness fetch skill`);
       assert.equal(lines[1], BOOT_ADAPTER[harness], `${harness}/${file} second fetch should be the boot adapter`);
@@ -293,6 +301,31 @@ test('change and status pickers use only arguments_value and preserve the empty-
   }
 });
 
+const NEW_FAMILY_COORDINATOR = {
+  'sai-3-implement-new.md': 'Fetch @sai/commands/implement-new/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below.',
+  'sai-build-new.md': 'Fetch @sai/commands/build-new/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below.',
+};
+const CLEAN_START = 'This invocation starts clean: disregard prior conversational context except where a fetched contract explicitly directs otherwise.';
+
+test('the -new family wrappers fetch the harness skill and their coordinator directly, with no boot adapter or bootstrap', () => {
+  for (const harness of ['claude', 'opencode']) {
+    for (const [file, folder] of wrapperCommands.filter(([name]) => NEW_FAMILY.has(name))) {
+      const source = read(`commands/${harness}/${file}`);
+      assert.deepEqual(fetchLines(source), [HARNESS_FETCH[harness], NEW_FAMILY_COORDINATOR[file]],
+        `${harness}/${file} should fetch only the harness skill and its coordinator`);
+      const baseline = JSON.parse(read('fixtures/thin-command-wrappers-baseline.json'));
+      assert.deepEqual(baseline.wrappers[harness][file], fetchLines(source),
+        `${harness}/${file} should match its baseline entry`);
+      assert.ok(source.split(/\r?\n/).includes(CLEAN_START), `${harness}/${file} should carry the session-clean preamble`);
+      assert.doesNotMatch(source, /@sai\/adapters\/|command-bootstrap\.md/, `${harness}/${file} must not load a boot adapter or bootstrap`);
+      assert.equal(fs.existsSync(path.join(repoRoot, 'sai', 'commands', folder, 'command-bootstrap.md')), false,
+        `${folder} has no command bootstrap`);
+      assert.equal(fs.existsSync(path.join(repoRoot, 'sai', 'commands', folder, 'coordinator.md')), true,
+        `${folder} has its coordinator card`);
+    }
+  }
+});
+
 test('final wrappers: no ## Sai heading, User input, @commands/sai/, flat @sai/commands/<name>.md, isolation block, prerequisite section, or behavior-skill fetch', () => {
   for (const harness of ['claude', 'opencode']) {
     for (const [file, folder] of wrapperCommands) {
@@ -341,7 +374,7 @@ test('final wrappers: all known labelled argument lines are absent after the env
 test('final wrappers: wrapper + launcher sorted Fetch set matches baseline', () => {
   const fixture = JSON.parse(read('fixtures/thin-command-wrappers-baseline.json'));
   for (const harness of ['claude', 'opencode']) {
-    for (const [file, folder] of wrapperCommands) {
+    for (const [file, folder] of bootWrapperCommands) {
       const wrapperFetch = fetchLines(read(`commands/${harness}/${file}`));
       const bootstrapFetch = fetchLines(read(`sai/commands/${folder}/command-bootstrap.md`));
       const bootstrapCall = bootstrapCallDirective(folder);
@@ -357,19 +390,19 @@ test('final wrappers: wrapper + launcher sorted Fetch set matches baseline', () 
 });
 
 test('final wrappers: every launcher has no envelope fields and remains harness-neutral', () => {
-  for (const [, folder] of wrapperCommands) {
+  for (const [, folder] of bootWrapperCommands) {
     const source = read(`sai/commands/${folder}/command-bootstrap.md`);
     assert.doesNotMatch(source, /InvocationEnvelope|command_name|wrapper_echo_value|arguments_value/,
       `${folder} launcher should have no envelope fields`);
   }
 });
 
-test('final wrappers: source wrapper directories contain 18 sai files plus all three backlog commands and to-pr, and no budget wrapper', () => {
+test('final wrappers: source wrapper directories contain 20 sai files plus all three backlog commands and to-pr, and no budget wrapper', () => {
   for (const harness of ['claude', 'opencode']) {
     const dir = path.join(repoRoot, 'commands', harness);
     const files = fs.readdirSync(dir);
-    assert.equal(files.filter(file => file.startsWith('sai-')).length, 18, `${harness} should retain exactly 18 sai wrappers`);
-    assert.equal(files.length, 22, `${harness} wrapper directory should contain 22 files`);
+    assert.equal(files.filter(file => file.startsWith('sai-')).length, 20, `${harness} should retain exactly 20 sai wrappers`);
+    assert.equal(files.length, 24, `${harness} wrapper directory should contain 24 files`);
     assert.ok(files.includes('to-backlog.md'), `${harness} should include conversation capture`);
     assert.ok(files.includes('from-backlog.md'), `${harness} should include conversation import`);
     assert.ok(files.includes('from-next-backlog-item.md'), `${harness} should include next-item selection and import`);

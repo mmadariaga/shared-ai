@@ -3,15 +3,17 @@
 ## Purpose
 
 TBD
+
 ## Requirements
+
 ### Requirement: Canonical worker matrix contents
 
-The canonical worker matrix SHALL define exactly fifteen entries: the eleven canonical phase identities (spec, design, implementation, review, security, performance, accessibility, commit, archive, backfill, merge), followed by the RED then GREEN apply identities, one Direct Build implementer identity, and one `/sai-review` fix identity. The Direct Build identity SHALL be `sai-direct-build-worker`, use binding stem `direct-build`, and use contract `sai/commands/explore/direct-build-worker.md`. The review-fix identity SHALL be `sai-review-fix-worker`, use binding stem `review-fix`, and use contract `sai/commands/meta-review/review-fix-worker.md`. The former auto-fast implement and hands roles are retired; no hands worker or autofast identity SHALL remain active. Materializing the matrix SHALL project exactly one binding and one managed agent per worker per harness, including `orchestration/workers/bindings/merge-worker.md` and the `sai-merge-worker` managed agent.
+The canonical worker matrix SHALL define exactly seventeen entries: the eleven canonical phase identities (spec, design, implementation, review, security, performance, accessibility, commit, archive, backfill, merge), followed by the RED then GREEN apply identities, one Direct Build implementer identity, one `/sai-review` fix identity, and the RED then GREEN `/sai-3-implement-new` identities. The Direct Build identity SHALL be `sai-direct-build-worker`, use binding stem `direct-build`, and use contract `sai/commands/explore/direct-build-worker.md`. The review-fix identity SHALL be `sai-review-fix-worker`, use binding stem `review-fix`, and use contract `sai/commands/meta-review/review-fix-worker.md`. The implement-new RED identity SHALL be `sai-red-new-worker`, use phase and binding stem `red-new`, and use contract `sai/commands/implement-new/red-worker.md`; the implement-new GREEN identity SHALL be `sai-green-new-worker`, use phase and binding stem `green-new`, and use contract `sai/commands/implement-new/green-worker.md`; neither SHALL join the apply phase. The former auto-fast implement and hands roles are retired; no hands worker or autofast identity SHALL remain active. Materializing the matrix SHALL project exactly one binding and one managed agent per worker per harness, including `orchestration/workers/bindings/merge-worker.md` and the `sai-merge-worker` managed agent.
 
 #### Scenario: Manifest expansion yields the fifteen-worker roster
 
 - **WHEN** the install manifest expands for either harness
-- **THEN** exactly fifteen active worker bindings and fifteen managed agents materialize, with the merge phase bound to `sai-merge-worker` and the Direct Build phase bound to `sai-direct-build-worker`.
+- **THEN** exactly seventeen active worker bindings and seventeen managed agents materialize, with the merge phase bound to `sai-merge-worker`, the Direct Build phase bound to `sai-direct-build-worker`, and the `red-new` and `green-new` phases bound to `sai-red-new-worker` and `sai-green-new-worker`.
 
 ### Requirement: Materialized worker behavior preserves canonical lifecycle contracts
 
@@ -48,7 +50,7 @@ The manifest and expansion layer SHALL represent the parameterized templates as 
 
 ### Requirement: Canonical tests enforce cross-harness matrix parity
 
-The test suite SHALL verify every routed phase and both apply workers across both harnesses, including parameter substitution, exact worker-contract Fetch targets, frontmatter and tuning preservation, phase-flag isolation, absence of unresolved placeholders, and install/doctor/uninstall retirement integrity. The tests SHALL verify the fifteen-entry roster, the Direct Build phase, `sai-direct-build-worker`, the review-fix phase, `sai-review-fix-worker`, the retired hands role, and the absence of active auto-fast identities. The tests SHALL retain the established thin-agent Fetch-wrapper behavior precedent rather than accepting duplicated worker contract bodies.
+The test suite SHALL verify every routed phase and both apply workers across both harnesses, including parameter substitution, exact worker-contract Fetch targets, frontmatter and tuning preservation, phase-flag isolation, absence of unresolved placeholders, and install/doctor/uninstall retirement integrity. The tests SHALL verify the seventeen-entry roster, the Direct Build phase, `sai-direct-build-worker`, the review-fix phase, `sai-review-fix-worker`, the `red-new` and `green-new` phases with `sai-red-new-worker` and `sai-green-new-worker`, the retired hands role, and the absence of active auto-fast identities. The tests SHALL retain the established thin-agent Fetch-wrapper behavior precedent rather than accepting duplicated worker contract bodies.
 
 #### Scenario: Matrix regression is detected before installation
 

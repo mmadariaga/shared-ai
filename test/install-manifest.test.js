@@ -298,6 +298,40 @@ const MANAGED_WORKER_PROJECTIONS = {
       destinationPath: 'sai-review-fix-worker.md',
     },
   },
+  'sai-red-new-worker': {
+    claudeBinding: {
+      id: 'claude-red-new-worker-binding',
+      sourcePath: 'sai/orchestration/workers/bindings/claude/red-new-worker.md',
+       destinationPath: 'orchestration/workers/bindings/red-new-worker.md',
+    },
+    opencodeBinding: {
+      id: 'opencode-red-new-worker-binding',
+      sourcePath: 'sai/orchestration/workers/bindings/opencode/red-new-worker.md',
+       destinationPath: 'orchestration/workers/bindings/red-new-worker.md',
+    },
+    claudeAgent: {
+      id: 'claude-sai-red-new-worker',
+      sourcePath: 'agents/claude/sai-red-new-worker.md',
+      destinationPath: 'sai-red-new-worker.md',
+    },
+  },
+  'sai-green-new-worker': {
+    claudeBinding: {
+      id: 'claude-green-new-worker-binding',
+      sourcePath: 'sai/orchestration/workers/bindings/claude/green-new-worker.md',
+       destinationPath: 'orchestration/workers/bindings/green-new-worker.md',
+    },
+    opencodeBinding: {
+      id: 'opencode-green-new-worker-binding',
+      sourcePath: 'sai/orchestration/workers/bindings/opencode/green-new-worker.md',
+       destinationPath: 'orchestration/workers/bindings/green-new-worker.md',
+    },
+    claudeAgent: {
+      id: 'claude-sai-green-new-worker',
+      sourcePath: 'agents/claude/sai-green-new-worker.md',
+      destinationPath: 'sai-green-new-worker.md',
+    },
+  },
 };
 
 const ROUTED_PHASES = ['spec', 'design', 'implement', 'review', 'security', 'performance', 'accessibility'];
