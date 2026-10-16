@@ -16,7 +16,27 @@ function resolve({ explicit, config, remotes }, io) {
 }
 function identity(row) {
   if (!Number.isSafeInteger(row.iid) || typeof row.web_url !== 'string' || typeof row.title !== 'string' || (row.description !== null && typeof row.description !== 'string')) throw new Error('Incomplete GitLab MR response');
-  return { number: row.iid, url: row.web_url, title: row.title, description: row.description ?? '', version: row.updated_at };
+  return { number: row.iid, url: row.web_url, title: row.title, description: row.description ?? '', version: row.updated_at,
+    assignees: Array.isArray(row.assignees) ? row.assignees.map(item => item?.username) : [], labels: Array.isArray(row.labels) ? row.labels.map(item => typeof item === 'string' ? item : item?.name) : [] };
+}
+// The authenticated user, who is assigned to a request created through this tool.
+function currentUser(target, io) {
+  const row = api(target, 'user', io);
+  if (!Number.isSafeInteger(row?.id) || typeof row.username !== 'string' || !row.username) throw new Error('Invalid GitLab current user response');
+  return { id: row.id, login: row.username };
+}
+// Every label name of the project, across all pages.
+function labels(target, io) {
+  const names = [];
+  for (let page = 1; ; page++) {
+    const batch = api(target, `projects/${target.id}/labels?per_page=100&page=${page}`, io);
+    if (!Array.isArray(batch)) throw new Error('Invalid GitLab label list');
+    for (const row of batch) {
+      if (typeof row?.name !== 'string' || !row.name) throw new Error('Incomplete GitLab label response');
+      names.push(row.name);
+    }
+    if (batch.length < 100) return [...new Set(names)];
+  }
 }
 function list(target, source, base, io) {
   const rows = [], seen = new Set();
@@ -37,11 +57,12 @@ function mutate(proposal, io) {
   const endpoint = `projects/${proposal.target.id}/merge_requests`;
   return identity(api(proposal.target, proposal.existing ? `${endpoint}/${proposal.existing.number}` : endpoint, io, proposal.existing ? 'PUT' : 'POST', proposal.existing
     ? { title: proposal.title, description: proposal.description }
-    : { title: proposal.title, description: proposal.description, source_branch: proposal.source, target_branch: proposal.base }));
+    : { title: proposal.title, description: proposal.description, source_branch: proposal.source, target_branch: proposal.base,
+      ...(proposal.assignee ? { assignee_ids: [proposal.assignee.id] } : {}), ...(proposal.labels?.length ? { labels: proposal.labels.join(',') } : {}) }));
 }
 // Closing references: how to address an issue and read its children (E5).
 const closing = {
   issueUrl: (repository, number, target) => `${target.url.slice(0, -target.repository.length)}${repository}/-/issues/${number}`,
   children: (url, io) => backlog.readChildren({ url }, io),
 };
-module.exports = { inspect, resolve, list, mutate, closing };
+module.exports = { inspect, resolve, list, currentUser, labels, mutate, closing };

@@ -166,21 +166,75 @@ function withClosingBlock(request, selected, io) {
   const block = lines.length ? `${text}${text ? '\n\n' : ''}${CLOSING_START}\n${lines.join('\n')}\n${CLOSING_END}` : stripped === request.description ? request.description : text;
   return { description: block, warnings };
 }
-function query(request, io) {
+const UNSUPPORTED_LABELLING = 'no assignee or labels: the provider does not support them';
+// Creation only: the current user and the requested labels bounded to the project's real label list.
+// Every read or selection problem is a warning; none of them stops the proposal.
+function labelling(request, selected, provider, io) {
+  if (!provider.currentUser || !provider.labels) return { warnings: [UNSUPPORTED_LABELLING] };
+  const warnings = [];
+  let assignee, available, userFailed = false, labelsFailed = false;
+  try { assignee = provider.currentUser(selected.target, io); } catch (error) { userFailed = true; warnings.push(`The current user could not be read, so no assignee is set: ${error.message}`); }
+  try { available = provider.labels(selected.target, io); } catch (error) { labelsFailed = true; warnings.push(`The project labels could not be read, so no labels are applied: ${error.message}`); }
+  const requested = [...new Set(Array.isArray(request.labels) ? request.labels : [])];
+  const labels = requested.filter(name => typeof name === 'string' && available?.includes(name));
+  const dropped = requested.filter(name => !labels.includes(name));
+  if (dropped.length) warnings.push(`Labels not in the project's label list were dropped: ${dropped.map(String).join(', ')}`);
+  return { assignee, labels, available, warnings, userFailed, labelsFailed };
+}
+const baseline = ({ assignees, labels, ...row }) => row;
+// `build` rebuilds the proposal around a given assignee and labels, for publish's fallback.
+function prepareQuery(request, io) {
   if (typeof request.title !== 'string' || /[\r\n]/.test(request.title) || typeof request.description !== 'string' || !request.description.trim()) throw new Error('Single-line title and nonempty description required');
   const violations = checkPrTitleRules(request.title);
   if (violations.length) throw new Error(`Invalid request title: ${JSON.stringify(violations)}`);
   const selected = destination(request, io);
-  const rows = adapter(request.provider, io).list(selected.target, selected.source, selected.base, io);
+  const provider = adapter(request.provider, io);
+  const rows = provider.list(selected.target, selected.source, selected.base, io);
   if (rows.length > 1) throw new Error('Multiple matching requests; resolve ambiguity before publication');
-  const warning = rows[0] && adapter(request.provider, io).concurrencyWarning;
+  const warning = rows[0] && provider.concurrencyWarning;
   const { description, warnings } = withClosingBlock(request, selected, io);
-  const proposal = { provider: request.provider, ...selected, existing: rows[0] || null, title: request.title, description, ...(warning ? { concurrency_warning: warning } : {}) };
+  const applied = rows[0] ? { warnings: [] } : labelling(request, selected, provider, io);
+  const build = (assignee, labels) => ({ provider: request.provider, ...selected, existing: rows[0] ? baseline(rows[0]) : null, title: request.title, description,
+    ...(assignee ? { assignee } : {}), ...(labels ? { labels } : {}), ...(warning ? { concurrency_warning: warning } : {}) });
+  const proposal = build(applied.assignee, applied.labels);
   const matches = rows[0]?.title === request.title && rows[0]?.description === description;
-  return { status: matches ? 'no_changes' : 'ready', proposal, confirmation: digest(proposal), ...(warnings.length ? { warnings } : {}) };
+  const all = [...warnings, ...applied.warnings];
+  const ready = { status: matches ? 'no_changes' : 'ready', proposal, confirmation: digest(proposal), ...(applied.available ? { available_labels: applied.available } : {}), ...(all.length ? { warnings: all } : {}) };
+  return { ready, applied, build };
+}
+function query(request, io) { return prepareQuery(request, io).ready; }
+// E10: a user or label read that fails when publish re-queries never rejects an approved creation. The assignee and
+// labels the caller echoes back stand in for the failed read only when the approval digest proves they are exactly the approved ones.
+function approvedWithFailedReads({ ready, applied, build }, request) {
+  if (request.confirmation === ready.confirmation || !(applied.userFailed || applied.labelsFailed)) return ready;
+  const echoed = request.assignee;
+  const assignee = applied.userFailed && typeof echoed?.login === 'string' ? { ...(echoed.id !== undefined ? { id: echoed.id } : {}), login: echoed.login } : applied.assignee;
+  const labels = applied.labelsFailed && Array.isArray(request.labels) ? [...new Set(request.labels.filter(name => typeof name === 'string'))] : applied.labels;
+  const proposal = build(assignee, labels);
+  if (digest(proposal) !== request.confirmation) return ready;
+  const note = [applied.userFailed && 'the current user', applied.labelsFailed && 'the project labels'].filter(Boolean).join(' and ');
+  return { ...ready, proposal, confirmation: digest(proposal), warnings: [...(ready.warnings || []), `${note} could not be re-read at publication; the approved assignee and labels are applied unchanged`] };
+}
+// After a creation: every difference between the approved assignee and labels and the request's actual ones is a warning.
+function labellingOutcome(outcome, proposal, result, notices = []) {
+  if (outcome.status !== 'complete' || proposal.existing) return outcome;
+  const warnings = [...notices, ...(result?.warnings || [])];
+  if (!result?.warnings?.length && proposal.labels) {
+    const differences = (expected, actual, label) => {
+      const have = Array.isArray(actual) ? actual : [];
+      const missing = expected.filter(name => !have.includes(name)), unexpected = have.filter(name => !expected.includes(name));
+      if (missing.length) warnings.push(`The request is missing the approved ${label}: ${missing.join(', ')}`);
+      if (unexpected.length) warnings.push(`The request carries ${label} that were not approved: ${unexpected.join(', ')}`);
+    };
+    differences(proposal.assignee ? [proposal.assignee.login] : [], outcome.request?.assignees, 'assignee');
+    differences(proposal.labels, outcome.request?.labels, 'labels');
+  }
+  return warnings.length ? { ...outcome, warnings } : outcome;
 }
 function publish(request, io) {
-  const ready = query(request, io);
+  const prepared = prepareQuery(request, io);
+  const ready = approvedWithFailedReads(prepared, request);
+  const rereadNotices = ready === prepared.ready ? [] : ready.warnings.slice(-1);
   if (request.approved !== true || request.confirmation !== ready.confirmation) throw new Error('Exact destination, baseline and content approval required; review again');
   if (ready.status === 'no_changes') return ready;
   if (pushQuery(request, io).status !== 'no_changes') throw new Error('Branch is not published at the approved commit; obtain independent push approval');
@@ -196,7 +250,7 @@ function publish(request, io) {
       receipt.evidence.result = result;
       fs.writeFileSync(request.receipt, JSON.stringify(receipt), { mode: 0o600 });
     }
-    return recover({ receipt: request.receipt }, io);
+    return labellingOutcome(recover({ receipt: request.receipt }, io), ready.proposal, result, rereadNotices);
   } catch (error) { return { status: !submitted && error.rejected ? 'rejected' : 'uncertain', receipt: request.receipt, message: error.message }; }
 }
 function recover(request, io) {

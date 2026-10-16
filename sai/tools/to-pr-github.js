@@ -33,17 +33,44 @@ function list(target, source, base, io) {
 }
 function identity(row) {
   if (!Number.isSafeInteger(row.number) || typeof row.html_url !== 'string' || typeof row.title !== 'string' || (row.body !== null && typeof row.body !== 'string')) throw new Error('Incomplete GitHub PR response');
-  return { number: row.number, url: row.html_url, title: row.title, description: row.body ?? '', version: row.updated_at };
+  return { number: row.number, url: row.html_url, title: row.title, description: row.body ?? '', version: row.updated_at,
+    assignees: Array.isArray(row.assignees) ? row.assignees.map(item => item?.login) : [], labels: Array.isArray(row.labels) ? row.labels.map(item => item?.name) : [] };
+}
+// The authenticated user, who is assigned to a request created through this tool.
+function currentUser(target, io) {
+  const row = api(target, 'user', io);
+  if (typeof row?.login !== 'string' || !row.login) throw new Error('Invalid GitHub current user response');
+  return { login: row.login };
+}
+// Every label name of the repository, across all pages.
+function labels(target, io) {
+  const names = [];
+  for (let page = 1; ; page++) {
+    const batch = api(target, `repos/${target.repository}/labels?per_page=100&page=${page}`, io);
+    if (!Array.isArray(batch)) throw new Error('Invalid GitHub label list');
+    for (const row of batch) {
+      if (typeof row?.name !== 'string' || !row.name) throw new Error('Incomplete GitHub label response');
+      names.push(row.name);
+    }
+    if (batch.length < 100) return [...new Set(names)];
+  }
 }
 function mutate(proposal, io) {
   const endpoint = `repos/${proposal.target.repository}/pulls`;
-  return identity(api(proposal.target, proposal.existing ? `${endpoint}/${proposal.existing.number}` : endpoint, io, proposal.existing ? 'PATCH' : 'POST', proposal.existing
+  const row = identity(api(proposal.target, proposal.existing ? `${endpoint}/${proposal.existing.number}` : endpoint, io, proposal.existing ? 'PATCH' : 'POST', proposal.existing
     ? { title: proposal.title, body: proposal.description }
     : { title: proposal.title, body: proposal.description, head: proposal.source, base: proposal.base }));
+  if (proposal.existing) return row;
+  // A pull request has no assignee or label field at creation: a second call on its issue sets them.
+  const body = { ...(proposal.assignee ? { assignees: [proposal.assignee.login] } : {}), ...(proposal.labels?.length ? { labels: proposal.labels } : {}) };
+  if (!Object.keys(body).length) return row;
+  try { api(proposal.target, `repos/${proposal.target.repository}/issues/${row.number}`, io, 'PATCH', body); }
+  catch (error) { return { ...row, warnings: [`Pull request ${row.url} was created, but its ${Object.keys(body).map(key => key === 'assignees' ? 'assignee' : key).join(' and ')} could not be applied: ${error.message}`] }; }
+  return row;
 }
 // Closing references: how to address an issue and read its children (E5).
 const closing = {
   issueUrl: (repository, number) => `https://github.com/${repository}/issues/${number}`,
   children: (url, io) => backlog.readChildren({ url }, io),
 };
-module.exports = { inspect, list, mutate, closing };
+module.exports = { inspect, list, currentUser, labels, mutate, closing };
