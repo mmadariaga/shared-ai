@@ -452,6 +452,12 @@ test('block emit: blocks that cannot be stored are reported with BLOCKS_NOT_STOR
     const spawned = run(['spawn', '--key', `rtp-unwritable-${process.pid}-${Date.now()}`]);
     assert.equal(spawned.status, 0, spawned.stderr);
     const id = JSON.parse(spawned.stdout).id;
+    // The block emit is accepted only at the crystallize stage, so reach it
+    // while the state directory is still writable.
+    for (let i = 0; i < 3; i++) {
+      const advanced = run(['emit', id, IDEA_MACHINE, '-'], '{"intent":"next-step"}');
+      assert.equal(advanced.status, 0, advanced.stderr);
+    }
     fs.chmodSync(stateDir, 0o500);
     const result = run(['emit', id, MACHINE, '--ready-to-propose', '-'], block('unstored-change'));
     assert.equal(result.status, 0, result.stderr);
