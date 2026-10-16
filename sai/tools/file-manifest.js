@@ -299,7 +299,7 @@ function persistedBody(designLines, loc) {
 }
 
 function renderBody(lines) {
-  return lines.length === 0 ? [EMPTY_LINE] : lines;
+  return lines.length === 0 ? [EMPTY_LINE] : lines.map((line) => `- ${line}`);
 }
 
 function insertionPoint(designLines) {
@@ -356,7 +356,8 @@ function run(mode, changeName, cwd) {
     if (!loc) return { ...result, ok: false, status: 'missing', divergence: 'design.md has no `### File Manifest`' };
     const persisted = persistedBody(designLines, loc);
     const same =
-      persisted.length === body.length && persisted.every((l, i) => l === body[i]);
+      persisted.length === body.length && persisted.every((l, i) =>
+        l === body[i] || (body[i].startsWith('- ') && l === body[i].slice(2)));
     if (same) return { ...result, ok: true, status: 'match' };
     return { ...result, ok: false, status: 'diverged', expected: body, persisted };
   }

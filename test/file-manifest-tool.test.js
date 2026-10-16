@@ -96,13 +96,63 @@ function run(mode, root) {
 const TASKS = '## Step 1: a\n\n**Files Affected**:\nA x/a.md\nM x/b.md\n\n**What Will Be Done**: y\n\n## Step 2: b\n\n**Files Affected**:\nM x/a.md\n';
 const DESIGN_WITH = '## Target State\n\n### Architecture Snapshot\n\nNone — no planned public surfaces\n\n### File Manifest\n\nOLD\n\n## Context\n\nc\n';
 
+test('verify accepts legacy and bullet manifests without writing; only the prefix is optional', () => {
+  const lines = ['A x/a.md (Step 1, Step 2)', 'M x/b.md (Step 1)'];
+  const { root, design } = project(TASKS, DESIGN_WITH);
+  try {
+    for (const prefix of ['', '- ']) {
+      const original = DESIGN_WITH.replace('OLD', lines.map(line => prefix + line).join('\n'));
+      fs.writeFileSync(design, original);
+      assert.equal(run('verify', root).payload.status, 'match');
+      assert.equal(fs.readFileSync(design, 'utf8'), original);
+      assert.equal(run('fold', root).payload.status, prefix ? 'unchanged' : 'written');
+      const regenerated = fs.readFileSync(design, 'utf8');
+      assert.ok(regenerated.includes(lines.map(line => `- ${line}`).join('\n')));
+      assert.equal(run('fold', root).payload.status, 'unchanged');
+      assert.equal(fs.readFileSync(design, 'utf8'), regenerated);
+    }
+    for (const changed of [
+      [lines[1], lines[0]],
+      [lines[0].replace('x/a.md', 'x/other.md'), lines[1]],
+      [lines[0].replace('A ', 'M '), lines[1]],
+      [lines[0].replace('Step 2', 'Step 3'), lines[1]],
+      [`- ${lines[0]}`, lines[1]],
+      [lines[0] + ' — extra note', lines[1]],
+    ]) {
+      const original = DESIGN_WITH.replace('OLD', changed.map(line => `- ${line}`).join('\n'));
+      fs.writeFileSync(design, original);
+      assert.equal(run('verify', root).payload.status, 'diverged');
+      assert.equal(fs.readFileSync(design, 'utf8'), original);
+    }
+  } finally { fs.rmSync(root, { recursive: true }); }
+});
+
+test('bullet declarations preserve rename folding, notes, and relevant consumer compatibility', () => {
+  const tasks = '## Step 1: move\n\n**Files Affected**:\n- R x/old.md -> x/new.md — relocate helper\n- M x/shared.md — caller to update\n\n**What Will Be Done**: move\n\n## Step 2: use\n\n**Files Affected**:\n- M x/new.md — update implementation\n';
+  const expected = ['- R x/old.md -> x/new.md (Step 1, Step 2)', '- M x/shared.md (Step 1)'];
+  const { root, design } = project(tasks, DESIGN_WITH);
+  try {
+    const apply = require('../sai/tools/apply-step').parseFilesAffected(tasks, 1);
+    assert.deepEqual(apply.errors, []);
+    assert.equal(run('fold', root).status, 0);
+    assert.deepEqual(run('verify', root).payload.lines, expected);
+    const original = fs.readFileSync(design, 'utf8');
+    assert.equal(run('fold', root).payload.status, 'unchanged');
+    assert.equal(fs.readFileSync(design, 'utf8'), original);
+    fs.writeFileSync(design, DESIGN_WITH.replace('OLD', expected.map(line => line.slice(2)).join('\n')));
+    assert.equal(run('verify', root).status, 0);
+    fs.writeFileSync(design, DESIGN_WITH.replace('OLD', expected.join('\n').replace('x/old.md', 'x/wrong.md')));
+    assert.equal(run('verify', root).payload.status, 'diverged');
+  } finally { fs.rmSync(root, { recursive: true }); }
+});
+
 test('fold writes the manifest in place and is idempotent; verify matches', () => {
   const { root, design } = project(TASKS, DESIGN_WITH);
   try {
     assert.equal(run('verify', root).payload.status, 'diverged');
     assert.equal(run('fold', root).payload.status, 'written');
     const text = fs.readFileSync(design, 'utf8');
-    assert.match(text, /### File Manifest\n\nA x\/a\.md \(Step 1, Step 2\)\nM x\/b\.md \(Step 1\)\n\n## Context/);
+    assert.match(text, /### File Manifest\n\n- A x\/a\.md \(Step 1, Step 2\)\n- M x\/b\.md \(Step 1\)\n\n## Context/);
     assert.equal(run('fold', root).payload.status, 'unchanged');
     assert.equal(run('verify', root).status, 0);
   } finally {
@@ -116,7 +166,7 @@ test('fold creates a missing manifest after the Architecture Snapshot', () => {
     assert.equal(run('verify', root).payload.status, 'missing');
     assert.equal(run('fold', root).status, 0);
     const text = fs.readFileSync(design, 'utf8');
-    assert.match(text, /public surfaces\n\n### File Manifest\n\nA x\/a\.md[\s\S]*\n\n## Context/);
+    assert.match(text, /public surfaces\n\n### File Manifest\n\n- A x\/a\.md[\s\S]*\n\n## Context/);
   } finally {
     fs.rmSync(root, { recursive: true });
   }
@@ -127,6 +177,10 @@ test('empty fold carries the None sentinel with a reason', () => {
   try {
     assert.equal(run('fold', root).status, 0);
     assert.match(fs.readFileSync(design, 'utf8'), /### File Manifest\n\nNone — no files affected \(every touched path/);
+    const original = fs.readFileSync(design, 'utf8');
+    assert.equal(run('verify', root).status, 0);
+    assert.equal(run('fold', root).payload.status, 'unchanged');
+    assert.equal(fs.readFileSync(design, 'utf8'), original);
   } finally {
     fs.rmSync(root, { recursive: true });
   }
@@ -157,6 +211,25 @@ test('sai-tools projection installs the tool for both harnesses without a new en
   const tools = JSON.stringify(manifest);
   assert.ok(!tools.includes('file-manifest'), 'no per-tool manifest entry is needed');
   assert.ok(fs.existsSync(TOOL));
+});
+
+test('shared design instructions and spec/design templates require bullet file and source listings', () => {
+  const read = file => fs.readFileSync(path.join(REPO_ROOT, file), 'utf8');
+  const tasks = read('sai/commands/design/steps/tasks.md');
+  assert.ok(tasks.includes('`- <token> <path>`'));
+  assert.ok(tasks.includes('Render every path/URL entry in these three subsections as a Markdown bullet prefixed with `- `'));
+  assert.ok(tasks.includes('keep `None` unbulleted when empty'));
+  const design = read('sai/commands/design/steps/design.md');
+  assert.ok(design.includes('Each non-empty manifest entry is a Markdown bullet prefixed with `- `'));
+  assert.ok(design.includes('Verification accepts legacy unbulleted entries without rewriting existing artifacts'));
+  const tasksTemplate = read('openspec/schemas/sai-workflow/templates/tasks.md');
+  for (const entry of ['- <A|M|D|R> <path>', '- <path> — <note>', '- <URL> — <note>']) {
+    assert.ok(tasksTemplate.includes(entry));
+  }
+  assert.ok(read('openspec/schemas/sai-workflow/templates/design.md').includes('Markdown bullets (- <token> <path> (Step N))'));
+  const proposal = read('openspec/schemas/sai-workflow/templates/proposal.md');
+  assert.match(proposal, /\*\*Local files\*\*:\n<!--[^\n]*Markdown bullets \(- <path>\)[^\n]*one entry per line/);
+  assert.match(proposal, /\*\*External URLs\*\*:\n<!--[^\n]*Markdown bullets \(- <URL>\)[^\n]*one entry per line/);
 });
 
 test('generated families retain counts in fold/verify and share Apply backtick interpretation', () => {
