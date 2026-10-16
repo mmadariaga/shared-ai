@@ -30,8 +30,8 @@ A finding is **open** when it carries no fixed mark and **fixed** when it
 carries one. A report keeps its fixed findings: it records what was found and
 what was fixed, so nothing is removed. A Question is open until it is answered
 and fixed; an unanswered Question stays open. Every consumer of a report acts
-on open findings only: the Direct Build close selects from them, and
-`/sai-3-implement` ingests them.
+on open findings only: the Direct Build close selects from them,
+`/sai-3-implement` ingests them, and `/sai-3-implement-new` applies them.
 
 ## Fixed mark
 
@@ -47,6 +47,8 @@ fixed it. The mark only states that the finding is fixed.
 
 The Direct Build close writes the marks through the fix worker, in a final
 instruction after the coordinator accepts convergence, so the marks enter the
-same commit as their fixes. Only the findings the close fixed are marked:
+same commit as their fixes. The `/sai-3-implement-new` coordinator writes the
+marks itself, in the commit of the step that fixed each finding. Only the
+findings a run fixed are marked:
 excluded findings and unanswered Questions stay open. Regenerating a report
 replaces its findings together with their marks.
