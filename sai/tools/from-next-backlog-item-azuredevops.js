@@ -16,7 +16,7 @@ function select(r, io, { pending, check, positive, text }) {
   if (!segment(r.team)) return pending('missing-context', 'Supply the team whose backlog you want.');
   if (r.filters || r.view) return pending('order-unavailable', 'Additional view filters cannot be established. Keep this pile pending; do not substitute the unfiltered team backlog.');
   function invoke(resource, route = {}) {
-    const data = JSON.parse((io.sdk || runAzureSdk)(JSON.stringify({ organization: org.organization, identity: false,
+    const data = JSON.parse((io.sdk || runAzureSdk)(JSON.stringify({ organization: org.organization, client: 'wit',
       location: LOCATIONS[resource], method: 'GET', version: '7.1', route: { project: r.project, team: r.team, ...route }, query: {}, mediaType: 'application/json' })));
     check(!data.sdk_error && !data.continuationToken && !data.continuation_token, `Incomplete or failed Azure read: ${data.sdk_error || 'unexpected continuation'}`);
     return data;

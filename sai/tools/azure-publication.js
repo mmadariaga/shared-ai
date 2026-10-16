@@ -71,12 +71,16 @@ function destination(value, project) {
 function api(target, area, resource, route, io, method = 'GET', body, query = {}, patch = false) {
   let directory, file;
   try {
-  if ((area === 'wit' && resource === 'workitems') || (area === 'location' && resource === 'connectionData')) {
-    const identity = area === 'location';
-    const location = identity ? '00d9565f-ed9c-4a06-9a50-00e7896ccab4'
-      : route.type !== undefined ? '62d3d110-0047-428c-ad3c-4fe872c91c74' : '72c7ddf8-2cdc-4f60-90cd-ab71c14a399b';
-    const result = JSON.parse(io.run('azure-sdk', [], JSON.stringify({ organization: target.organization, identity, location,
-      version: identity ? '5.0-preview.1' : '7.1-preview.3', method, route, body, query,
+  // invoke picks a location by area and resource name, which is ambiguous for
+  // these resources (two WorkItems locations; project-scoped, GET-only
+  // pull requests), so each goes through the SDK with its fixed location id.
+  if ((area === 'wit' && resource === 'workitems') || (area === 'location' && resource === 'connectionData') || (area === 'git' && resource === 'pullrequests')) {
+    const location = area === 'location' ? '00d9565f-ed9c-4a06-9a50-00e7896ccab4'
+      : area === 'git' ? '9946fd70-0d40-406e-b686-b4744cbbcc37'
+        : route.type !== undefined ? '62d3d110-0047-428c-ad3c-4fe872c91c74' : '72c7ddf8-2cdc-4f60-90cd-ab71c14a399b';
+    const version = area === 'location' ? '5.0-preview.1' : area === 'git' ? '7.1' : '7.1-preview.3';
+    const result = JSON.parse(io.run('azure-sdk', [], JSON.stringify({ organization: target.organization, client: area, location,
+      version, method, route, body, query,
       mediaType: patch ? 'application/json-patch+json' : 'application/json' })));
     if (result.sdk_error) throw new Error(`${result.status_code ? `HTTP status ${result.status_code}: ` : ''}${result.sdk_error}`);
     return result;

@@ -10,8 +10,13 @@ Global configuration and credentials are not modified.
 `az devops invoke` chooses a location by area/resource/version, not by method or
 route keys. WorkItems creation and ID-based access have different location IDs
 but the same resource name, so publication does not use invoke for them.
-The bridge uses the installed extension's `get_work_item_tracking_client` and
-its SDK `_send` with these official location IDs:
+Pull requests have the same ambiguity: invoke resolves `git/pullrequests` to the
+project-scoped, GET-only location, which fails every creation and lists the pull
+requests of every repository in the project. Pull-request calls therefore use the
+SDK too.
+The bridge selects the installed extension's `get_work_item_tracking_client`,
+`get_location_client`, or `get_git_client` through the request's `client` value
+(`wit`, `location`, `git`) and calls its SDK `_send` with these official location IDs:
 
 - Create: `62d3d110-0047-428c-ad3c-4fe872c91c74`, POST,
   `{project}/_apis/wit/workitems/${type}`. The template supplies the literal `$`;
@@ -22,12 +27,17 @@ its SDK `_send` with these official location IDs:
 - Identity: `get_location_client`, `00d9565f-ed9c-4a06-9a50-00e7896ccab4`, GET
   `_apis/connectionData`. Location has no resource-area identifier; do not
   assume an invoke area named `location` exists.
+- Pull requests: `get_git_client`, `9946fd70-0d40-406e-b686-b4744cbbcc37`, GET/POST/PATCH,
+  `{project}/_apis/git/repositories/{repositoryId}/pullrequests[/{pullRequestId}]`,
+  API version `7.1`. Every call carries `repositoryId`, so it reads and writes the
+  selected repository only; `pullRequestId` is present on update only. The JSON body
+  travels in the SDK's UTF-8 stdin, so no payload file is written.
 
 Route values are percent-encoded once before SDK template expansion. The
 bridge supports the existing standard Windows MSI interpreter and absolute
 Python-shebang CLI launchers. Other packaging stops with a concrete launcher
 blocker before publication; it does not guess a system Python or install one.
-Other unambiguous resources retain invoke. Its temporary input files are removed
+Other unambiguous resources, including `git/repositories`, retain invoke. Its temporary input files are removed
 in finally, including on preparation/command/JSON failures; recovery receipts
 are separate and remain available.
 

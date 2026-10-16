@@ -96,7 +96,8 @@ when a push is needed, the exact push and its `push token`, or cancel ends.
 
 One approval answer authorizes each operation it names, and each operation keeps its
 own token: they are never combined or interchangeable. When a push is needed, run
-`push` first with the destination fields, `approved:true` and the `push token`. The
+`push` first with the destination fields, `approved:true` and the `push token` in the
+`confirmation` field (the only field `push` reads it from; any other name is rejected). The
 tool verifies that the remote branch has HEAD before publication. No force push,
 automatic commit, authentication change or installation is allowed. If the push fails
 or cannot be verified, skip publication, keep the draft, report the failure and leave
