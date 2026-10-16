@@ -2,7 +2,7 @@
 
 All artifact paths below resolve under `openspec/changes/{change-name}/` (referred to as `{c}` for brevity).
 
-These are the eight numbered phase commands. The separate `-new` family ([`/sai-3-implement-new`](commands/sai-3-implement-new.md), chained by [`/sai-build-new`](commands/sai-build-new.md)) coexists with them and replaces none yet. `/sai-build` chains `implement` → `apply`, while `/sai-review` chains `review` → whichever audits its triage recommends. The README emphasizes the composed workflow; this file is the full phase-by-phase reference.
+These are the eight numbered phase commands. The separate `-new` family ([`/sai-3-implement-new`](commands/sai-3-implement-new.md) and [`/sai-4-review-new`](commands/sai-4-review-new.md), chained by [`/sai-build-new`](commands/sai-build-new.md)) coexists with them and replaces none yet. `/sai-build` chains `implement` → `apply`, while `/sai-review` chains `review` → whichever audits its triage recommends. The README emphasizes the composed workflow; this file is the full phase-by-phase reference.
 
 | Command | Input | Output | Purpose |
 |---------|-------|--------|---------|

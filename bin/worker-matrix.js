@@ -60,7 +60,7 @@ const DIRECT_BUILD_ROLES = Object.freeze([
   }),
 ]);
 
-// Closed RED/GREEN role identities of the `-new` command family, appended after
+// Closed RED, GREEN, and review role identities of the `-new` command family, appended after
 // the direct-build roles. Each role pins its own contract and binding stem; the
 // family lives outside the shared orchestration, so these roles never join the
 // apply phase.
@@ -78,6 +78,12 @@ const IMPLEMENT_NEW_ROLES = Object.freeze([
     workerContract: 'sai/commands/implement-new/green-worker.md',
     bindingStem: 'green-new',
     tier: 'budget',
+  }),
+  Object.freeze({
+    phase: 'review-new',
+    workerName: 'sai-review-new-worker',
+    workerContract: 'sai/commands/review-new/worker.md',
+    bindingStem: 'review-new',
   }),
 ]);
 

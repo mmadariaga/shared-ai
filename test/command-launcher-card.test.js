@@ -12,6 +12,7 @@ const commands = [
   ['sai-3-implement.md', 'implement'],
   ['sai-3-implement-new.md', 'implement-new'],
   ['sai-4-apply.md', 'apply'],
+  ['sai-4-review-new.md', 'review-new'],
   ['sai-5-review.md', 'review'],
   ['sai-6-security.md', 'security'],
   ['sai-7-performance.md', 'performance'],
@@ -31,7 +32,7 @@ const commands = [
 // The `-new` family runs outside the shared orchestration: its wrappers fetch
 // the harness skill and the coordinator card directly, with no boot adapter and
 // no command bootstrap.
-const NEW_FAMILY = new Set(['sai-3-implement-new.md', 'sai-build-new.md']);
+const NEW_FAMILY = new Set(['sai-3-implement-new.md', 'sai-4-review-new.md', 'sai-build-new.md']);
 const bootCommands = commands.filter(([file]) => !NEW_FAMILY.has(file));
 const emptyBootstraps = new Set(['apply', 'explore', 'retire-docs', 'status', 'worktree']);
 const loadFreeBootstraps = new Set([...emptyBootstraps, 'meta-review']);
@@ -303,6 +304,7 @@ test('change and status pickers use only arguments_value and preserve the empty-
 
 const NEW_FAMILY_COORDINATOR = {
   'sai-3-implement-new.md': 'Fetch @sai/commands/implement-new/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below.',
+  'sai-4-review-new.md': 'Fetch @sai/commands/review-new/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below.',
   'sai-build-new.md': 'Fetch @sai/commands/build-new/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below.',
 };
 const CLEAN_START = 'This invocation starts clean: disregard prior conversational context except where a fetched contract explicitly directs otherwise.';
@@ -397,12 +399,12 @@ test('final wrappers: every launcher has no envelope fields and remains harness-
   }
 });
 
-test('final wrappers: source wrapper directories contain 20 sai files plus all three backlog commands and to-pr, and no budget wrapper', () => {
+test('final wrappers: source wrapper directories contain 21 sai files plus all three backlog commands and to-pr, and no budget wrapper', () => {
   for (const harness of ['claude', 'opencode']) {
     const dir = path.join(repoRoot, 'commands', harness);
     const files = fs.readdirSync(dir);
-    assert.equal(files.filter(file => file.startsWith('sai-')).length, 20, `${harness} should retain exactly 20 sai wrappers`);
-    assert.equal(files.length, 24, `${harness} wrapper directory should contain 24 files`);
+    assert.equal(files.filter(file => file.startsWith('sai-')).length, 21, `${harness} should retain exactly 21 sai wrappers`);
+    assert.equal(files.length, 25, `${harness} wrapper directory should contain 25 files`);
     assert.ok(files.includes('to-backlog.md'), `${harness} should include conversation capture`);
     assert.ok(files.includes('from-backlog.md'), `${harness} should include conversation import`);
     assert.ok(files.includes('from-next-backlog-item.md'), `${harness} should include next-item selection and import`);

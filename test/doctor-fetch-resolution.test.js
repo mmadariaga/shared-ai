@@ -547,7 +547,7 @@ test('matrix worker bindings are the sole active binding inventory for both harn
       .filter(projection => path.relative(destinationRoot.sai, projection.destinationPath)
         .split(path.sep).join('/').startsWith('orchestration/workers/bindings/'))
       .map(projection => path.basename(projection.destinationPath));
-    assert.equal(bindingNames.length, 17, `${harness} should project exactly seventeen worker bindings`);
+    assert.equal(bindingNames.length, 18, `${harness} should project exactly eighteen worker bindings`);
     const phaseBindingNames = bindingNames.filter(name => phases.includes(name.replace(/-worker\.md$/, '')));
     assert.deepEqual(phaseBindingNames.sort(), phases.map(phase => `${phase}-worker.md`).sort(),
       `${harness} phase worker binding names should match the canonical phase matrix`);
@@ -557,8 +557,8 @@ test('matrix worker bindings are the sole active binding inventory for both harn
       .filter(projection => path.relative(destinationRoot.sai, projection.destinationPath)
         .split(path.sep).join('/').startsWith('orchestration/workers/bindings/'))
       .map(projection => path.basename(projection.destinationPath));
-     assert.equal(allBindingNames.length, 17,
-       `${harness} should keep only the seventeen routed worker bindings in the matrix destination`);
+     assert.equal(allBindingNames.length, 18,
+       `${harness} should keep only the eighteen routed worker bindings in the matrix destination`);
      assert.ok(active.some(projection =>
        path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/') ===
        `sai/adapters/${harness}/idea-list-render.md`));

@@ -1295,7 +1295,7 @@ test('Step 1 Claude agent rows remain byte-preserving without ownership sidecars
 
 test('Step 3 binding roster validation yields exactly the seventeen managed workers', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-roster-'));
-  const WORKERS = [...CURRENT_CENSUS, 'sai-4-red-worker', 'sai-4-green-worker', 'sai-direct-build-worker', 'sai-review-fix-worker', 'sai-red-new-worker', 'sai-green-new-worker'];
+  const WORKERS = [...CURRENT_CENSUS, 'sai-4-red-worker', 'sai-4-green-worker', 'sai-direct-build-worker', 'sai-review-fix-worker', 'sai-red-new-worker', 'sai-green-new-worker', 'sai-review-new-worker'];
   try {
     installOpencode(tmpDir);
     const bindingsDir = path.join(tmpDir, 'sai', 'orchestration', 'workers', 'bindings');
@@ -1312,7 +1312,7 @@ test('Step 3 binding roster validation yields exactly the seventeen managed work
 
 test('Step 3 binding files declare exactly the seventeen initial worker dispatches', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-bindings-scan-'));
-  const WORKERS = [...CURRENT_CENSUS, 'sai-4-red-worker', 'sai-4-green-worker', 'sai-direct-build-worker', 'sai-review-fix-worker', 'sai-red-new-worker', 'sai-green-new-worker'];
+  const WORKERS = [...CURRENT_CENSUS, 'sai-4-red-worker', 'sai-4-green-worker', 'sai-direct-build-worker', 'sai-review-fix-worker', 'sai-red-new-worker', 'sai-green-new-worker', 'sai-review-new-worker'];
   try {
     installOpencode(tmpDir);
     const bindingsDir = path.join(tmpDir, 'sai', 'orchestration', 'workers', 'bindings');
@@ -1335,7 +1335,7 @@ test('Step 3 binding files declare exactly the seventeen initial worker dispatch
 
 test('Step 3 roster validation admits dispatch-less render bindings alongside worker bindings', () => {
   const fixtureDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-render-binding-'));
-  const WORKERS = [...CURRENT_CENSUS, 'sai-4-red-worker', 'sai-4-green-worker', 'sai-direct-build-worker', 'sai-review-fix-worker', 'sai-red-new-worker', 'sai-green-new-worker'];
+  const WORKERS = [...CURRENT_CENSUS, 'sai-4-red-worker', 'sai-4-green-worker', 'sai-direct-build-worker', 'sai-review-fix-worker', 'sai-red-new-worker', 'sai-green-new-worker', 'sai-review-new-worker'];
   try {
     const installDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-render-install-'));
     try {
@@ -1546,7 +1546,7 @@ test('opencode installer consumes exactly the seventeen matrix worker bindings a
       .filter(projection => path.relative(destinationRoot.sai, projection.destinationPath)
         .split(path.sep).join('/').startsWith('orchestration/workers/bindings/'))
       .map(projection => path.basename(projection.destinationPath));
-    assert.equal(allBindingNames.length, 17,
+    assert.equal(allBindingNames.length, 18,
       'opencode should keep only the seventeen routed worker bindings in the matrix destination');
     const ideaList = active.find(projection =>
       path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/') ===

@@ -52,6 +52,7 @@ const TARGET_PROFILE = Object.freeze({
   'worker:sai-merge-worker':             { context: 'Large',   difficulty: '↑↑' },
   'worker:sai-red-new-worker':           { context: 'Medium',  difficulty: '↑' },
   'worker:sai-green-new-worker':         { context: 'Medium',  difficulty: '↑↑' },
+  'worker:sai-review-new-worker':        { context: 'Large',   difficulty: '↑↑' },
   'agent:budget':                        { context: 'Medium',  difficulty: '↑' },
   'agent:executor':                      { context: 'Small',   difficulty: '↑' },
   'agent:explore':                       { context: 'Medium',  difficulty: '↑' },
@@ -71,6 +72,7 @@ const TARGET_PROFILE = Object.freeze({
   'command:sai-build':                   { context: 'Large',   difficulty: '↑↑↑' },
   'command:sai-build-new':               { context: 'Large',   difficulty: '↑↑↑' },
   'command:sai-3-implement-new':         { context: 'Large',   difficulty: '↑↑↑' },
+  'command:sai-4-review-new':            { context: 'Medium',  difficulty: '↑↑' },
   'command:sai-explore':                 { context: 'Large',   difficulty: '↑↑↑' },
   'command:sai-merge':                   { context: 'Large',   difficulty: '↑↑↑' },
   'command:sai-review':                  { context: 'Large',   difficulty: '↑↑' },
@@ -137,6 +139,7 @@ const COMMAND_WORKER_ORDER = Object.freeze({
   'sai-3-implement': Object.freeze(['sai-3-implementation-worker']),
   'sai-4-apply': Object.freeze(['sai-4-red-worker', 'sai-4-green-worker']),
   'sai-3-implement-new': Object.freeze(['sai-red-new-worker', 'sai-green-new-worker']),
+  'sai-4-review-new': Object.freeze(['sai-review-new-worker']),
   'sai-5-review': Object.freeze(['sai-5-review-worker', 'sai-review-fix-worker']),
   'sai-6-security': Object.freeze(['sai-6-security-worker']),
   'sai-7-performance': Object.freeze(['sai-7-performance-worker']),
@@ -152,7 +155,7 @@ const COMMAND_WORKER_ORDER = Object.freeze({
 // `archive` as the explicit alphabetical exception.
 const ALL_PHASE_ORDER = Object.freeze([
   Object.freeze(['sai-explore', 'sai-1-spec', 'sai-2-design']),
-  Object.freeze(['sai-build', 'sai-3-implement', 'sai-4-apply', 'sai-build-new', 'sai-3-implement-new']),
+  Object.freeze(['sai-build', 'sai-3-implement', 'sai-4-apply', 'sai-build-new', 'sai-3-implement-new', 'sai-4-review-new']),
   Object.freeze(['sai-review', 'sai-5-review', 'sai-6-security', 'sai-7-performance', 'sai-8-accessibility']),
   Object.freeze(['sai-backfill', 'sai-archive', 'sai-merge', 'sai-commit']),
 ]);

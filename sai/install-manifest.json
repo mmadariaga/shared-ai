@@ -25,7 +25,8 @@
       "apply-coordinator": { "extends": "coordinator", "write": true, "shell": ["*"], "delegate": ["explorer", "executor", "budget", "sai-3-implementation-worker", "sai-4-red-worker", "sai-4-green-worker"] },
       "apply-command": { "extends": "apply-coordinator", "skills": ["safe-operations"], "delegate": ["explorer", "executor", "budget", "sai-4-red-worker", "sai-4-green-worker"] },
       "implement-new-command": { "extends": "apply-coordinator", "skills": ["safe-operations"], "delegate": ["executor", "sai-red-new-worker", "sai-green-new-worker"] },
-      "build-new-command": { "extends": "implement-new-command" },
+      "review-new-command": { "extends": "implement-new-command", "delegate": ["sai-review-new-worker"] },
+      "build-new-command": { "extends": "implement-new-command", "delegate": ["executor", "sai-red-new-worker", "sai-green-new-worker", "sai-review-new-worker"] },
       "mutation-coordinator": { "extends": "coordinator", "write": true, "shell": ["*"] },
       "commit-command": { "extends": "mutation-coordinator", "write": false, "delegate": ["sai-commit-worker"] },
       "archive-command": { "extends": "mutation-coordinator", "shell": ["*", "node {sai}/tools/transfer.js *"], "delegate": ["sai-archive-worker", "sai-backfill-worker"] },
@@ -57,12 +58,13 @@
         "sai-backfill-worker": "worker-backfill", "sai-merge-worker": "worker-write",
         "sai-4-red-worker": "worker-execution", "sai-4-green-worker": "worker-execution",
         "sai-direct-build-worker": "worker-write", "sai-review-fix-worker": "worker-write",
-        "sai-red-new-worker": "worker-execution", "sai-green-new-worker": "worker-execution"
+        "sai-red-new-worker": "worker-execution", "sai-green-new-worker": "worker-execution",
+        "sai-review-new-worker": "worker-research"
       },
       "commands": {
         "sai-1-spec": "spec-command", "sai-2-design": "design-command", "sai-3-implement": "implementation-command",
         "sai-4-apply": "apply-command", "sai-build": "apply-coordinator",
-        "sai-3-implement-new": "implement-new-command", "sai-build-new": "build-new-command",
+        "sai-3-implement-new": "implement-new-command", "sai-4-review-new": "review-new-command", "sai-build-new": "build-new-command",
         "sai-5-review": "review-command", "sai-review": "review-coordinator",
         "sai-6-security": "security-command", "sai-7-performance": "performance-command", "sai-8-accessibility": "accessibility-command",
         "sai-commit": "commit-command", "sai-archive": "archive-command",
@@ -404,6 +406,23 @@
         "opencodeAgent": {
           "description": "GREEN worker for /sai-3-implement-new and /sai-build-new, dispatched only by their coordinators. Lives for the whole run and writes each step's production code, leaving its tests as written.",
           "model": "opencode-go/deepseek-v4.1-flash",
+          "variant": "max"
+        }
+      },
+      {
+        "phase": "review-new",
+        "workerName": "sai-review-new-worker",
+        "workerContract": "sai/commands/review-new/worker.md",
+        "bindingStem": "review-new",
+        "claudeAgent": {
+          "agentName": "sai-review-new-worker",
+          "description": "Review worker for /sai-4-review-new and /sai-build-new, dispatched only by their coordinators. Reviews the change's diff in a fresh worker and writes review.md without fixing anything.",
+          "model": "opus",
+          "effort": "medium"
+        },
+        "opencodeAgent": {
+          "description": "Review worker for /sai-4-review-new and /sai-build-new, dispatched only by their coordinators. Reviews the change's diff in a fresh worker and writes review.md without fixing anything.",
+          "model": "opencode-go/gpt-5.6-luna",
           "variant": "max"
         }
       }
@@ -1497,6 +1516,44 @@
       "matrix": {
         "kind": "agent",
         "phase": "green-new"
+      }
+    },
+    {
+      "id": "claude-sai-review-new-worker",
+      "source": "agents/claude/worker-template.md",
+      "destination": {
+        "class": "agents",
+        "path": "sai-review-new-worker.md"
+      },
+      "harnesses": [
+        "claude"
+      ],
+      "strategy": "tunable-seed",
+      "recursive": false,
+      "ownership": "managed",
+      "drift": "content",
+      "matrix": {
+        "kind": "agent",
+        "phase": "review-new"
+      }
+    },
+    {
+      "id": "opencode-sai-review-new-worker",
+      "source": "agents/opencode/worker-template.md",
+      "destination": {
+        "class": "agents",
+        "path": "sai-review-new-worker.md"
+      },
+      "harnesses": [
+        "opencode"
+      ],
+      "strategy": "tunable-seed",
+      "recursive": false,
+      "ownership": "managed",
+      "drift": "content",
+      "matrix": {
+        "kind": "agent",
+        "phase": "review-new"
       }
     },
     {

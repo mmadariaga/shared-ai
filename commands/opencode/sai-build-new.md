@@ -1,5 +1,5 @@
 ---
-description: Build a change in one run — /sai-3-implement-new today, with the next position reserved for /sai-4-review (commits pre-authorized, no stop between segments).
+description: Build a change in one run — /sai-3-implement-new then /sai-4-review-new, closing with a findings summary for you to triage (commits pre-authorized, no stop between segments).
 model: opencode-go/muse-spark-1.3-contributor#xhigh
 subtask: false
 ---
