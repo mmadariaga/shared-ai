@@ -35,7 +35,18 @@ When RED is closed, `git add` the paths RED reported. The index now holds the te
 
 **GREEN.** Send the brief to the GREEN worker. Run the step's tests through the executor. GREEN is closed when they pass and no test file or `interfaces.md` changed since RED: compare `git diff --name-only` and `git status --porcelain` with the set staged after RED. Restore a touched file from the index, delete a test file GREEN created, and count either as an attempt of the step.
 
-**Review.** Read the step's diff against its brief: every listed behavior is present, nothing beyond the brief is added, and the production files match the plan or are justified in a deviation. A defect goes back to the worker that owns the file as a corrected instruction, which is an attempt of the step.
+**Review.** GREEN saw the tests and can satisfy them without meeting the spec, so attack the step's implementation before a later step builds on it. Read the step's diff (`git diff HEAD`, which holds the staged tests and GREEN's production code) against the brief's spec scenarios and tasks, and form findings with two checks:
+
+- Structural. Every scenario and task maps to changed production paths and to a test that asserts it. The tests are not gamed: no special-casing of the test inputs, no hard-coded expected values, no assertion that proves less than its scenario. Nothing beyond the brief is added, with no anticipatory implementation (no hook, stub, "for later" abstraction, or reference whose only purpose is to serve a later step). The production files match the plan or are justified in a deviation.
+- Empirical. Whenever feasible, exercise the requested behavior through the project's runnable surface (tests, CLI, or script) with the executor, and do not infer it from the diff.
+
+This is the criteria of `sai/commands/explore/steps/pipeline-direct-build.md` Step 2, scoped to spec fidelity, test gaming, and excess scope. Style, design, performance, and general security belong to the later review command, so do not report them.
+
+Fetch @sai/policies/artifact-review-contract.md and form findings in its shape (identifier, severity, location, issue, correction). An observation whose fix needs behavior the approved scope does not ask for is a scope observation, not a finding: it is neither fixed nor recorded as pending, and it extends no round. Write each round's findings to `reviews/step-{n}-round-{k}.md` in the run directory.
+
+A round with findings sends them, as one ordered list, to the worker that owns the defect: a production defect to GREEN, a wrong test to RED. A finding about a spec scenario that has no test goes through RED first: RED writes the test, you run it through the executor and confirm it fails by assertion, `git add` its files, and only then send the finding to GREEN, so the fix stays test-driven. The message reuses the step's pointer line without resetting the machine, and names a new report path. After each fix, run the step's tests again through the executor and re-apply the GREEN closing check. Any file a fix changes joins the step's paths.
+
+Fix rounds are not attempts and spend no budget. Run at most 3 fix rounds, then read the diff once more. A round with no findings converges. Findings that remain after the third fix round are not a failure and not an obstacle, and nothing escalates: write them to `findings.md` in the run directory, one entry per finding with the step, identifier, severity, location, issue, and correction, emit `record` (`finding`) the first time the file is written, and continue to the commit. The later review reads them first. A worker that fails to carry out a fix round (an unreadable report, silence, or drift) is an ordinary obstacle of the step.
 
 **Commit.** Check the checkboxes in `tasks.md` that the step completed. Stage exactly the step's paths: the workers' reported files, `tasks.md`, and any plan artifact you edited. `git diff --cached --name-only` must list only those paths. Commit locally with a Conventional Commits message, subject at most 50 characters and body only when needed. The message carries only the step's own content: no `Co-Authored-By` trailer and no AI-attribution line of any kind, even when the harness suggests one. Invoking the command authorizes these local commits and nothing else: never push.
 
@@ -85,7 +96,7 @@ The `implement-new-run@1` machine in `sai-state` is your memory outside the conv
 
 Emit an event by piping its JSON to `emit <id> implement-new-run@1 -`. The events are `start`, `step-start`, `step-done`, `attempt`, `escalate`, `answer`, `record`, `close`, and `status`, each with the identifier or path fields its use above names. Every response carries `run` (the current state) and `budgets` (the attempts spent per obstacle). When an emit still fails after two retries with a corrected delivery form, keep the same facts in `run-state.md` in the run directory and carry on from there; the run does not stop for it.
 
-Pending findings are defects from a step review that remain at close. Write them to `findings.md` and emit `record` (`finding`).
+Pending findings are defects from a step review that survive the step's third fix round and remain at close. They live in `findings.md`, recorded as the Review section says.
 
 ## Resuming
 
