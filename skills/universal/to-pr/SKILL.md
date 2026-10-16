@@ -58,10 +58,21 @@ Run `query` with `{provider,repository,remote,base,title,description}`. It valid
 the title rules and finds an open request for this exact source and target.
 An existing match selects update, never duplicate creation; multiple matches stop
 for clarification. For update, retain unrelated description content unless the user
-explicitly approves its replacement. Only title and description are writable;
-state, reviewers, labels, assignees, comments and other fields are outside scope.
-`no_changes` ends without mutation. **Complete when:** `ready` returns the exact
-proposal, current baseline if updating, and the `publish token`.
+explicitly approves its replacement. An update writes only title and description;
+state, reviewers, comments and other fields are outside scope.
+`no_changes` ends without mutation.
+
+When `query` is creating a GitHub PR or GitLab MR, its result lists the project's
+`available_labels`, and the proposal carries the current user as `assignee`. Choose zero
+or more labels from that list only: type or area labels that describe the change, judged
+from the title's Conventional Commits type and the description (for example `bug`,
+`enhancement`, `performance`, or the project's own spelling such as `kind/bug`). Never
+choose a state or workflow label (`wontfix`, `duplicate`, `needs review`, `good first
+issue`), never invent a name, and choose none when no label fits. Run `query` again with
+`labels` set to the choice; the tool keeps only exact names from the list. Labels are
+never created, and an update or an Azure Repos request gets no assignee or labels.
+**Complete when:** `ready` returns the exact proposal, current baseline if updating, and
+the `publish token`.
 
 ## 3. Review and authorize
 
@@ -74,6 +85,9 @@ also show the baseline and what changes. Before approval show any
 `proposal.concurrency_warning` verbatim: a reread does not protect the interval
 before a provider's update request.
 Also show every entry of the `query` result's `warnings` verbatim before approval.
+When creating on GitHub or GitLab, show the `assignee` and the chosen `labels`; when no
+label is chosen, say the request is published with no labels. An assignee or label
+warning never blocks the approval question or the publication.
 Warn explicitly if public. When `push-query` is `ready`, also show the exact remote,
 push URL, branch and commit.
 
@@ -106,13 +120,18 @@ the remote history as it is.
 Run `prepare` with `{harness:"claude"}` or `{harness:"opencode"}` for the active
 harness. It creates a local temporary directory and returns a new absolute receipt
 path. Keep the receipt for recovery; never overwrite it or reuse it for a retry.
-Run `publish` once with the approved query fields, `approved:true`, the
+Run `publish` once with the approved query fields (including the chosen `labels` and, when
+the proposal has one, its `assignee` object unchanged), `approved:true`, the
 `publish token`, and `receipt`. A changed baseline or HEAD blocks publication: return to full review rather than renewing a token silently.
 On `uncertain`, run `recover` with `{receipt}`: recovery is read-only. Check the
 selected source and destination for an existing request before any repeated create;
 an uncertain result is not permission to create again. For an unapplied update,
 reconcile current content and obtain fresh approval before retrying.
-Report only a verified request URL or the concrete blocker and receipt location.
+Report only a verified request URL or the concrete blocker and receipt location. After a
+created request, also show every entry of the `publish` or `recover` result's `warnings`:
+they name an assignee or label that could not be applied or that the provider dropped, and
+they leave the request published. Recovery applies nothing; it reports the request's actual
+`assignees` and `labels`.
 When publication fails or ends uncertain after a verified push, report the completed
 push and the failed publication separately, and keep the draft and the pushed branch.
 **Complete when:** publication is verified or uncertainty is accurately reported.

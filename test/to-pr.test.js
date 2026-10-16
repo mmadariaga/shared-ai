@@ -12,7 +12,7 @@ const registry = require('../skills/universal/to-pr/providers/registry.json');
 function fixture(provider, existing = false) {
   const host = provider === 'github' ? 'github.com' : 'gitlab.example.com';
   const url = `https://${host}/team/repo`;
-  const state = { head: 'a'.repeat(40), remoteHead: 'a'.repeat(40), rows: [], mutations: [], calls: [] };
+  const state = { head: 'a'.repeat(40), remoteHead: 'a'.repeat(40), rows: [], mutations: [], calls: [], labels: ['bug', 'enhancement', 'performance', 'wontfix'] };
   const row = (title = 'feat: old content', description = 'Old description') => provider === 'github'
     ? { number: 7, html_url: `${url}/pull/7`, title, body: description, updated_at: 'version', head: { ref: 'feature', repo: { id: 9 } }, base: { ref: 'main' } }
     : { iid: 7, web_url: `${url}/-/merge_requests/7`, title, description, updated_at: 'version', source_project_id: 9, target_project_id: 9, source_branch: 'feature', target_branch: 'main' };
@@ -34,10 +34,19 @@ function fixture(provider, existing = false) {
     assert.equal(command, provider === 'github' ? 'gh' : 'glab');
     const endpoint = args[1], method = args[args.indexOf('--method') + 1];
     if (endpoint === 'repos/team/repo') return JSON.stringify({ id: 9, html_url: url, default_branch: 'main', private: false, archived: false });
+    if (method === 'GET' && endpoint === 'user') return JSON.stringify(provider === 'github' ? { login: 'octo' } : { id: 5, username: 'octo' });
+    if (method === 'GET' && /\/labels\?/.test(endpoint)) return JSON.stringify(Number(/&page=(\d+)/.exec(endpoint)[1]) === 1 ? state.labels.slice(0, 100).map(name => ({ name })) : state.labels.slice(100, 200).map(name => ({ name })));
     if (method === 'GET') return JSON.stringify(state.rows);
     const body = JSON.parse(input);
     state.mutations.push({ command, method, endpoint, body });
+    if (provider === 'github' && /\/issues\/\d+$/.test(endpoint)) {
+      // Second call after creation: the assignee and labels of the created pull request.
+      if (state.labelCallFails) throw new Error('Labelling refused');
+      Object.assign(state.rows[0], { assignees: (body.assignees || []).map(login => ({ login })), labels: (body.labels || []).map(name => ({ name })) });
+      return '{}';
+    }
     state.rows = [row(body.title, body.body ?? body.description)];
+    if (provider === 'gitlab' && !state.dropLabels) Object.assign(state.rows[0], { assignees: (body.assignee_ids || []).map(() => ({ id: 5, username: 'octo' })), labels: body.labels ? body.labels.split(',') : [] });
     if (state.loseResponse) throw new Error('Lost response');
     return JSON.stringify(state.rows[0]);
   } };
@@ -63,10 +72,11 @@ for (const provider of ['github', 'gitlab']) {
     assert.equal(Boolean(ready.proposal.existing), existing);
     const result = tool.publish({ ...request, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io);
     assert.equal(result.status, 'complete');
-    assert.equal(state.mutations.length, 1);
+    // GitHub sets the assignee on the created pull request with a second call on its issue.
+    assert.equal(state.mutations.length, provider === 'github' && !existing ? 2 : 1);
     assert.deepEqual(Object.keys(state.mutations[0].body).sort(), existing
       ? (provider === 'github' ? ['body', 'title'] : ['description', 'title'])
-      : (provider === 'github' ? ['base', 'body', 'head', 'title'] : ['description', 'source_branch', 'target_branch', 'title']));
+      : (provider === 'github' ? ['base', 'body', 'head', 'title'] : ['assignee_ids', 'description', 'source_branch', 'target_branch', 'title']));
   });
   test(`${provider} approvals are independent, declines mutate nothing and changed content invalidates approval`, t => {
     const { request, io, state } = fixture(provider);
@@ -143,7 +153,7 @@ test('I1 / I10: registry metadata selects hosts, adapter and instructions withou
   const file = receipt(t);
   assert.equal(tool.publish({ ...request, approved: true, confirmation: ready.confirmation, receipt: file }, io).status, 'complete');
   assert.equal(tool.recover({ receipt: file }, io).status, 'complete');
-  assert.equal(state.mutations.length, 1, 'Recovery must not publish');
+  assert.equal(state.mutations.length, 2, 'Recovery must not publish');
   assert.equal(tool.query(request, io).status, 'no_changes');
 });
 
@@ -306,7 +316,7 @@ for (const provider of ['github', 'gitlab']) {
     assert.equal(tool.publish({ ...request, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io).status, 'complete');
     assert.equal(state.mutations[0].command, 'git');
     assert.ok(!state.mutations[0].args.some(arg => /force/.test(arg)));
-    assert.equal(state.mutations.length, 2);
+    assert.equal(state.mutations.length, provider === 'github' ? 3 : 2);
   });
   test(`${provider} publication-only approval needs no push when the remote branch holds the commit`, t => {
     const { request, io, state } = fixture(provider);
@@ -491,3 +501,133 @@ test('I3: publication writes the block into the created request exactly as appro
   assert.equal(result.status, 'complete');
   assert.equal(state.mutations[0].body.body, `## Summary\nCommitted feature\n\n${block('Closes #5')}`);
 });
+
+// Assignee and labels on creation (E1-E10, I1-I6): the current user plus existing type/area labels.
+const labelCalls = state => state.calls.filter(call => call.command !== 'git' && (call.args[1] === 'user' || /\/labels\?/.test(call.args[1])));
+for (const provider of ['github', 'gitlab']) {
+  test(`${provider} labelling: creation reads the user and every label page, keeps only listed labels and applies them`, t => {
+    const { request, io, state } = fixture(provider);
+    state.labels = Array.from({ length: 120 }, (_, index) => `label-${index}`).concat(['bug', 'performance']);
+    const ready = tool.query({ ...request, labels: ['bug', 'bug', 'performance', 'invented', 'label-3'] }, io);
+    assert.equal(ready.available_labels.length, 122, 'E6: every page is read');
+    assert.deepEqual(ready.proposal.labels, ['bug', 'performance', 'label-3'], 'E5: exact names only, no duplicates');
+    assert.equal(ready.proposal.assignee.login, 'octo');
+    assert.match(ready.warnings.join('\n'), /dropped: invented/);
+    assert.notEqual(tool.query({ ...request, labels: ['bug'] }, io).confirmation, ready.confirmation, 'I2: labels enter the digest');
+    const chosen = { ...request, labels: ['bug', 'performance', 'label-3'] };
+    const result = tool.publish({ ...chosen, approved: true, confirmation: tool.query(chosen, io).confirmation, receipt: receipt(t) }, io);
+    assert.equal(result.status, 'complete');
+    assert.equal(result.warnings, undefined);
+    assert.deepEqual([...result.request.labels].sort(), ['bug', 'label-3', 'performance']);
+    assert.deepEqual(result.request.assignees, ['octo'], 'I4: the actual assignee and labels are reported');
+    if (provider === 'github') {
+      assert.deepEqual(state.mutations.map(item => `${item.method} ${item.endpoint}`), ['POST repos/team/repo/pulls', 'PATCH repos/team/repo/issues/7']);
+      assert.deepEqual(state.mutations[1].body, { assignees: ['octo'], labels: ['bug', 'performance', 'label-3'] });
+    } else {
+      assert.equal(state.mutations.length, 1);
+      assert.deepEqual([state.mutations[0].body.assignee_ids, state.mutations[0].body.labels], [[5], 'bug,performance,label-3']);
+    }
+  });
+  test(`${provider} labelling: a request without a matching label publishes with the assignee only`, t => {
+    const { request, io, state } = fixture(provider);
+    state.labels = [];
+    const chosen = { ...request, labels: ['bug'] };
+    const ready = tool.query(chosen, io);
+    assert.deepEqual(ready.proposal.labels, []);
+    assert.equal(tool.publish({ ...chosen, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io).status, 'complete');
+    assert.ok(!state.mutations.some(item => item.body.labels));
+  });
+  test(`${provider} labelling: unreadable user or labels warn and never stop publication`, t => {
+    const { request, io, state } = fixture(provider);
+    const run = io.run;
+    io.run = (command, args, input) => {
+      if (command !== 'git' && (args[1] === 'user' || /\/labels\?/.test(args[1]))) throw new Error('Forbidden');
+      return run(command, args, input);
+    };
+    const chosen = { ...request, labels: ['bug'] };
+    const ready = tool.query(chosen, io);
+    assert.equal(ready.warnings.length, 3, 'E3: user, labels and the dropped request are named');
+    assert.equal(ready.proposal.assignee, undefined);
+    assert.deepEqual(ready.proposal.labels, []);
+    assert.equal(tool.publish({ ...chosen, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io).status, 'complete');
+    assert.equal(state.mutations.length, 1);
+  });
+  test(`${provider} labelling: an update reads and sends no assignee or labels`, t => {
+    const { request, io, state } = fixture(provider, true);
+    const chosen = { ...request, labels: ['bug'] };
+    const ready = tool.query(chosen, io);
+    assert.equal(labelCalls(state).length, 0, 'E8: nothing is read');
+    assert.equal(ready.proposal.assignee, undefined);
+    assert.equal(ready.proposal.labels, undefined);
+    assert.equal(ready.proposal.existing.labels, undefined);
+    assert.equal(tool.publish({ ...chosen, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io).status, 'complete');
+    assert.deepEqual(Object.keys(state.mutations[0].body).sort(), provider === 'github' ? ['body', 'title'] : ['description', 'title']);
+  });
+  test(`${provider} labelling: an assignee or label the provider silently drops is reported as a difference`, t => {
+    const { request, io, state } = fixture(provider);
+    const run = io.run;
+    // The provider accepts the creation but keeps neither the assignee nor the labels.
+    io.run = (command, args, input) => {
+      const out = run(command, args, input);
+      if (command !== 'git' && args[0] === 'api' && args[args.indexOf('--method') + 1] !== 'GET') Object.assign(state.rows[0], { assignees: [], labels: [] });
+      return out;
+    };
+    const chosen = { ...request, labels: ['bug'] };
+    const ready = tool.query(chosen, io);
+    const result = tool.publish({ ...chosen, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io);
+    assert.equal(result.status, 'complete', 'E10: the request counts as published');
+    assert.equal(result.warnings.length, 2);
+    assert.match(result.warnings.join('\n'), /missing the approved assignee: octo/);
+    assert.match(result.warnings.join('\n'), /missing the approved labels: bug/);
+  });
+}
+test('labelling: a failed second GitHub call keeps the created request and warns with its URL', t => {
+  const { request, io, state } = fixture('github');
+  state.labelCallFails = true;
+  const chosen = { ...request, labels: ['bug'] };
+  const ready = tool.query(chosen, io);
+  const result = tool.publish({ ...chosen, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io);
+  assert.equal(result.status, 'complete', 'E1: never uncertain');
+  assert.equal(result.warnings.length, 1);
+  assert.match(result.warnings[0], /https:\/\/github\.com\/team\/repo\/pull\/7 was created.*assignee and labels could not be applied: Labelling refused/);
+  assert.equal(state.mutations.length, 2, 'no retry and no deletion');
+});
+test('labelling: recovery of an uncertain creation reports the actual assignee and labels without applying any', t => {
+  const { request, io, state } = fixture('gitlab');
+  const chosen = { ...request, labels: ['bug'] };
+  const ready = tool.query(chosen, io), file = receipt(t);
+  state.loseResponse = true;
+  assert.equal(tool.publish({ ...chosen, approved: true, confirmation: ready.confirmation, receipt: file }, io).status, 'uncertain');
+  const recovered = tool.recover({ receipt: file }, io);
+  assert.equal(recovered.status, 'complete');
+  assert.deepEqual(recovered.request.labels, ['bug']);
+  assert.deepEqual(recovered.request.assignees, ['octo']);
+  assert.equal(state.mutations.length, 1);
+});
+
+// E10: a user or label read that fails when publish re-queries never rejects an approved creation.
+for (const provider of ['github', 'gitlab']) {
+  test(`${provider} labelling: a read failing at publication still publishes exactly the approved assignee and labels`, t => {
+    const { request, io, state } = fixture(provider);
+    const chosen = { ...request, labels: ['bug', 'performance'] };
+    const ready = tool.query(chosen, io);
+    const run = io.run;
+    io.run = (command, args, input) => {
+      if (command !== 'git' && (args[1] === 'user' || /\/labels\?/.test(args[1]))) throw new Error('Rate limited');
+      return run(command, args, input);
+    };
+    const approved = { ...chosen, assignee: ready.proposal.assignee, approved: true, confirmation: ready.confirmation };
+    // Without the approved values echoed back, or with different ones, the digest still rejects.
+    assert.throws(() => tool.publish({ ...chosen, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io), /approval/);
+    assert.throws(() => tool.publish({ ...approved, labels: ['bug', 'wontfix'], receipt: receipt(t) }, io), /approval/);
+    assert.throws(() => tool.publish({ ...approved, assignee: { ...ready.proposal.assignee, login: 'someone-else' }, receipt: receipt(t) }, io), /approval/);
+    assert.equal(state.mutations.length, 0);
+    const result = tool.publish({ ...approved, receipt: receipt(t) }, io);
+    assert.equal(result.status, 'complete', 'the request counts as published');
+    assert.match(result.warnings.join('\n'), /could not be re-read at publication/);
+    assert.deepEqual([...result.request.labels].sort(), ['bug', 'performance']);
+    assert.deepEqual(result.request.assignees, ['octo']);
+    const created = state.mutations.find(item => item.endpoint.endsWith(provider === 'github' ? '/issues/7' : '/merge_requests'));
+    assert.deepEqual(provider === 'github' ? created.body : [created.body.assignee_ids, created.body.labels], provider === 'github' ? { assignees: ['octo'], labels: ['bug', 'performance'] } : [[5], 'bug,performance']);
+  });
+}

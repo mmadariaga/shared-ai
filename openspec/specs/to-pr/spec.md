@@ -243,11 +243,11 @@ For GitHub and GitLab destinations, `query` SHALL place the closing lines betwee
 
 ### Requirement: Azure Repos descriptions carry no closing block
 
-For Azure Repos destinations, `query` SHALL keep the drafted description unchanged, add no closing block, and read no commit log for closing references.
+For Azure Repos destinations, `query` SHALL keep the drafted description unchanged, add no closing block, and read no commit log for closing references. The only warning a creation `query` returns for this reason SHALL be the provider limitation line `no assignee or labels: the provider does not support them`.
 
 #### Scenario: Azure description is published as drafted
-- **WHEN** an Azure Repos request is queried with a description that contains `Closes #5`
-- **THEN** the proposed description equals the drafted description, no warnings are returned, and no `git log` call is made
+- **WHEN** an Azure Repos request is queried for creation with a description that contains `Closes #5`
+- **THEN** the proposed description equals the drafted description, the only warning is `no assignee or labels: the provider does not support them`, and no `git log` call is made
 
 ### Requirement: Preserve separate push and publication failure outcomes
 
@@ -326,3 +326,75 @@ The `to-pr` skill SHALL state that `push` receives the push token in the `confir
 #### Scenario: The token is supplied under another field name
 - **WHEN** `push` receives `approved:true` with the push token in a `push_token` field instead of `confirmation`
 - **THEN** it rejects the push and performs no push
+
+### Requirement: Creation assigns the current user and existing type or area labels
+
+When `query` prepares the creation of a GitHub pull request or GitLab merge request, the system SHALL read the authenticated current user and every page of the project's label list, and SHALL return the label names as `available_labels`. The proposal SHALL carry the current user as `assignee` and the requested `labels`, and both SHALL enter the confirmation digest. The system SHALL keep only requested names that exactly match a name in the project's label list, without duplicates, and SHALL drop every other name with a warning. The system SHALL never create a label. The skill SHALL choose zero or more type or area labels from `available_labels`, judged from the title's Conventional Commits type and the description, and SHALL never choose a state or workflow label or a name outside that list.
+
+#### Scenario: Requested labels are bounded to the project list
+- **WHEN** a creation `query` receives labels of which only some exist in the project's label list
+- **THEN** the proposal keeps the existing names without duplicates and the result warns about every dropped name.
+
+#### Scenario: Assignee and labels are presented before approval
+- **WHEN** the skill presents a GitHub or GitLab creation for approval
+- **THEN** it shows the assignee, the chosen labels or that none were chosen, and every assignee or label warning, and none of them blocks the approval question.
+
+#### Scenario: Every label page is read
+- **WHEN** the project has more labels than one provider page returns
+- **THEN** `available_labels` contains the labels of every page.
+
+#### Scenario: No label fits
+- **WHEN** no type or area label in the project fits the change
+- **THEN** the request is proposed and published with the current user as assignee and no labels.
+
+#### Scenario: GitHub creation applies the assignee and labels with a second call
+- **WHEN** an approved GitHub pull request is created with an assignee or at least one label
+- **THEN** the system sends `POST pulls` and then one `PATCH issues/{number}` with `assignees` and `labels`.
+
+#### Scenario: GitLab creation carries the assignee and labels
+- **WHEN** an approved GitLab merge request is created
+- **THEN** the same `POST merge_requests` carries `assignee_ids` and the chosen labels.
+
+### Requirement: Updates and Azure Repos requests receive no assignee or labels
+
+The system SHALL read, propose, and write no assignee or labels when it updates an existing request, and the update call SHALL send only the title and the description. For Azure Repos, `query` SHALL read neither the current user nor labels and SHALL return the warning `no assignee or labels: the provider does not support them`.
+
+#### Scenario: An update leaves assignee and labels untouched
+- **WHEN** `query` and `publish` select an existing open request for update
+- **THEN** no current user or label read occurs and the update call carries only title and description.
+
+#### Scenario: Azure Repos creation states the limitation
+- **WHEN** `query` prepares an Azure Repos pull request creation
+- **THEN** the proposal carries no assignee or labels and the warnings contain `no assignee or labels: the provider does not support them`.
+
+### Requirement: Assignee and label problems are warnings
+
+A failure to read, choose, apply, or verify the assignee or labels SHALL produce a warning and SHALL NOT block the proposal, the approval, or the publication; the published request SHALL count as successful. A failed current-user or label read during `query` SHALL remove only that part from the proposal. A failure of the GitHub second call SHALL keep the created request, SHALL NOT be retried or produce the `uncertain` status, and SHALL return a warning naming the request URL and what was not applied.
+
+#### Scenario: The user or label read fails during query
+- **WHEN** the current-user or label read fails while preparing a creation
+- **THEN** the proposal continues without that part and the result warns which read failed.
+
+#### Scenario: The GitHub second call fails
+- **WHEN** `PATCH issues/{number}` fails after the pull request was created
+- **THEN** publication completes with the created request and a warning carrying its URL and the assignee or labels not applied.
+
+### Requirement: Created requests report their actual assignee and labels
+
+After creating a request, the system SHALL compare the request's actual assignee and labels with the approved proposal and SHALL add a warning for every approved entry that is missing and every entry that was not approved. Read-only recovery SHALL report the request's actual `assignees` and `labels` and SHALL apply nothing, without changing how it identifies the request.
+
+#### Scenario: The provider silently drops an assignee or label
+- **WHEN** the created request lacks an approved assignee or label
+- **THEN** the publication result warns about each difference and the request remains published.
+
+#### Scenario: Recovery of an uncertain creation
+- **WHEN** recovery finds the request of an uncertain creation
+- **THEN** it reports the request's actual assignees and labels and sends no assignee or label write.
+
+### Requirement: Publication keeps the approved assignee and labels when a re-read fails
+
+When the current-user or label read fails again while `publish` re-runs the query, the system SHALL use the assignee and labels supplied with the publish request only when the proposal rebuilt from them reproduces the approved confirmation digest exactly, and SHALL then add a warning that they could not be re-read and were applied unchanged. Otherwise the ordinary approval check SHALL apply.
+
+#### Scenario: A read fails at publication
+- **WHEN** the label or current-user read fails during `publish` and the supplied assignee and labels match the approved digest
+- **THEN** the request is published with exactly the approved assignee and labels and the result carries the re-read warning.

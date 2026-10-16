@@ -34,6 +34,18 @@ evidence. An existing open request for the same source and target is updated
 instead of duplicated; multiple matches require clarification. Updates change
 only the title and description and preserve unrelated content.
 
+When it **creates** a GitHub pull request or GitLab merge request, the skill also
+assigns the request to you and applies zero or more labels that already exist in the
+project. It reads the project's full label list, chooses type or area labels (for
+example `bug`, `enhancement`, `performance`) from the title's Conventional Commits
+type and the description, and never chooses state labels such as `wontfix` or
+`needs review`. Only exact existing names are applied; labels are never created, and
+when none fits the request is published without labels. The approval shows the
+assignee, the labels, and any warnings. Updates, and every Azure Repos request, get
+no assignee or labels. A problem reading, applying, or verifying them is only a
+warning and never blocks publication; GitHub applies them with a second call after
+creation, so a failure there leaves the request created and reports what was not applied.
+
 You review the full proposed content, exact destination, visibility, and update
 baseline before approving. Editing content or changing the baseline requires fresh
 approval. Azure Repos updates disclose the concurrent-edit interval that its reread

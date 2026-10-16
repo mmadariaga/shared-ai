@@ -208,7 +208,10 @@ test('E8 I3: Azure Repos descriptions publish as drafted, without a closing bloc
   const { io, state } = fixture();
   const ready = prs.query({ ...prRequest, description: `${prRequest.description}\nCloses #5` }, io);
   assert.equal(ready.proposal.description, `${prRequest.description}\nCloses #5`);
-  assert.equal(ready.warnings, undefined);
+  // E9: creation states in one line that Azure has no assignee or labels, and reads neither.
+  assert.deepEqual(ready.warnings, ['no assignee or labels: the provider does not support them']);
+  assert.equal(ready.proposal.assignee, undefined);
+  assert.equal(ready.proposal.labels, undefined);
   assert.equal(state.calls.some(call => call.command === 'git' && call.args[0] === 'log'), false);
 });
 test('E6 E7 I8: PR update warning bound before approval, stale baseline and multiple matches block', () => {

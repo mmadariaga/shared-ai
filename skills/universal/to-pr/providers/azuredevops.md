@@ -18,7 +18,9 @@ Keep common full publication approval and **separate** branch-push approval.
 Before approval for an update show `proposal.concurrency_warning`. The reread
 binds the baseline but Azure PATCH leaves an unprotected concurrent-edit interval
 between reread and write, unlike Boards' atomic revision test. Only title and
-description are updated, without state, reviewers or other fields.
+description are updated, without state, reviewers or other fields. Azure Repos
+requests get no assignee (a reviewer means approval, not ownership) and no labels;
+`query` states this in one line and reads neither.
 
 `publish` saves private destination, authorized content, branches, commit and
 pre-publication IDs, executes once, and verifies remote content. `rejected`
