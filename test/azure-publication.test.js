@@ -255,6 +255,87 @@ test('E5 E6 E8 I7 I9: Boards no-op, pending and divergent recovery require no fu
   assert.equal(boards['recover-update']({ receipt: file }, io).status, 'divergent');
   assert.equal(state.writes.length, 1);
 });
+// Harmless normalization (E1, E2, E5, E6): sent Markdown converts to `sent`; Azure stores and returns `received`.
+const counters = '<!-- backlog-id-counters: E=1 I=2 Q=3 -->';
+function normalizationCase(markdown, received) {
+  const { io, state } = fixture(), reference = `${organization}/${project}/_workitems/edit/1`;
+  state.items.get(1).fields['System.Description'] = received;
+  const baseline = boards['read-update']({ reference }, io).baseline;
+  return { io, state, status: boards['query-update']({ reference, baseline, title: baseline.title, description: markdown }, io).status };
+}
+test('E1 E2 E6 I1 I2: update with only harmless Azure normalization is no_changes and writes nothing', () => {
+  const list = '## Goal\n\ntext\n\n- a\n- b';
+  for (const [markdown, received] of [
+    [list, '<h2>Goal</h2>\n\n<p>text</p>\n<ul>\n<li>a\n</li>\n<li>b</li>\n</ul>'],
+    [list, '<h2>Goal\n</h2>\n  <p>text</p>\n<ul><li>a</li><li>b</li></ul>'],
+    [`text\n\n${counters}`, '<p>text</p>'],
+    [`text\n\n${counters}`, `<p>text</p>\n${counters}`],
+    [`text\n\n${counters}\n\nmore`, '<p>text</p>\n<p>more\n</p>'],
+    ['```\na  b\n```', '<pre><code>a  b</code></pre>'],
+    ['text', '<p>text</p>\n'],
+    [`text\n\n${counters}`, '<p>text</p>\n'],
+    [`text\n\n${counters}`, '\n<p>text</p>\n\n'],
+    ['text', '\n<p>text</p>'],
+    ['## A\n\ntext', '<h2>A</h2>\n<p>text</p>\n']
+  ]) {
+    const result = normalizationCase(markdown, received);
+    assert.equal(result.status, 'no_changes', received);
+    assert.equal(result.state.writes.length, 0);
+  }
+});
+test('E2 E3 E4 I1 I2: meaningful differences, including those next to normalization, stay visible', () => {
+  for (const [markdown, received] of [
+    ['foo bar', '<p>foobar</p>'],
+    ['foo bar', '<p>foo  bar</p>'],
+    ['**foo**bar', '<p><strong>foo </strong>bar</p>'],
+    ['```\na b\n```', '<pre><code>a  b</code></pre>'],
+    ['```\na b\n```', '<pre><code>a b\n</code></pre>'],
+    ['```\na b\n```', '<pre>\n<code>a b</code></pre>'],
+    ['`a b`', '<p><code>a  b</code></p>'],
+    [`text\n\n${counters}`, '<p>text</p>\n<!-- other -->'],
+    [`text\n\n${counters}`, '<p>text</p>\n<!-- backlog-id-counters: E=1 I=2 Q=4 -->'],
+    [`text\n\n${counters}`, '<p>other</p>'],
+    ['[guide](https://a.test)', '<p><a href="https://b.test">guide</a></p>\n'],
+    ['text\n\nmore', '<p>text</p><p>more</p>\n<p>extra</p>'],
+    ['text\n\nmore', '<p>text</p>more'],
+    ['text\n\nmore', '<p>text</p><p>more</p>'],
+    ['text', '<p>text</p> x\n'],
+    ['text', '<p>text</p><b>x</b>\n'],
+    ['```\na\n```', '<pre><code>a</code></pre>\n<pre><code>a\n']
+  ]) assert.equal(normalizationCase(markdown, received).status, 'ready', received);
+  assert.equal(normalizationCase('text\n\nmore', '<p>text\n</p>\n<p>more</p>').status, 'no_changes');
+  assert.equal(normalizationCase('text\n\nmore', '<p>text\n</p>\n<p>changed</p>').status, 'ready');
+});
+test('E5 I2: creation recovery recognizes normalized content once and still rejects different content', () => {
+  for (const [received, found] of [['<h2>Body</h2>\n\n<p>Exact\n</p>', true], ['<h2>Body</h2>\n<p>Exact changed</p>', false]]) {
+    const { io, state } = fixture(), request = { repository: `${organization}/${project}`, type: 'Task', title: 'Create', description: '## Body\nExact' };
+    const ready = boards.query(request, io), file = receipt(); state.lost = true;
+    assert.equal(boards.publish({ ...request, confirmation: ready.confirmation, receipt: file }, io).status, 'uncertain');
+    state.items.get(2).fields['System.Description'] = received;
+    const recovery = boards.recover({ receipt: file }, io);
+    assert.equal(recovery.status, 'uncertain');
+    assert.equal(recovery.candidates.length, found ? 1 : 0);
+    if (found) assert.equal(boards.recover({ receipt: file, issueUrl: recovery.candidates[0].url }, io).status, 'complete');
+    assert.equal(state.writes.length, 1, 'Recovery must not publish');
+  }
+});
+test('E5 I2 I3: update outcome accepts normalized content and compares two Azure reads strictly', () => {
+  const { io, state } = fixture(), reference = `${organization}/${project}/_workitems/edit/1`;
+  const baseline = boards['read-update']({ reference }, io).baseline;
+  const request = { reference, baseline, title: 'New', description: '## Body\nExact' }, ready = boards['query-update'](request, io), file = receipt();
+  state.lost = true;
+  assert.equal(boards.update({ ...request, confirmation: ready.confirmation, receipt: file }, io).status, 'uncertain');
+  state.items.get(1).fields['System.Description'] = '<h2>Body</h2>\n\n<p>Exact\n</p>';
+  assert.equal(boards['recover-update']({ receipt: file }, io).status, 'complete');
+  state.items.get(1).fields['System.Description'] = '<h2>Body</h2>\n<p>Exact  changed</p>';
+  assert.equal(boards['recover-update']({ receipt: file }, io).status, 'divergent');
+  assert.equal(state.writes.length, 1);
+});
+test('E1 E2 E3: the Azure adapter declares normalization only for itself', () => {
+  assert.equal(typeof require('../sai/tools/backlog-provider-set').bind, 'function');
+  const source = fs.readFileSync(path.join(__dirname, '..', 'sai', 'tools', 'to-backlog-github.js'), 'utf8') + fs.readFileSync(path.join(__dirname, '..', 'sai', 'tools', 'to-backlog-gitlab.js'), 'utf8');
+  assert.doesNotMatch(source, /equivalent/);
+});
 test('E1 I1 I2 I4: origin references select one registry reference without commands; az uses the existing launcher', () => {
   const { spawnSync } = require('node:child_process');
   for (const [reference, provider] of [

@@ -7,6 +7,9 @@ const { digest, receiptPath, save } = require('./to-backlog-github');
 
 // The workflow is shared; adapters own destination, content and remote mechanics.
 function bind(provider, mechanics) {
+  // Descriptions compare byte for byte unless the provider declares which stored forms are the same content.
+  const same = mechanics.equivalent || ((sent, received) => sent === received);
+  const accepted = (sent, received) => sent.some(value => typeof value === 'string' && same(value, received));
   function query(request, io) {
     const validation = blocks.validateDependencySet(request.blocks);
     if (!validation.ok) return { status: 'needs_input', reason: 'invalid-dependencies', validation };
@@ -56,7 +59,7 @@ function bind(provider, mechanics) {
     for (let index = 0; index < receipt.items.length; index++) {
       const item = receipt.items[index];
       if (!item.issue && item.attempted) {
-        const matches = mechanics.inventory(receipt.proposal, io).filter(row => !item.baseline.includes(row.issue.id) && row.title === item.title && row.description === item.description && row.actor === receipt.proposal.actor);
+        const matches = mechanics.inventory(receipt.proposal, io).filter(row => !item.baseline.includes(row.issue.id) && row.title === item.title && same(item.description, row.description) && row.actor === receipt.proposal.actor);
         const chosen = matches.find(row => row.issue.url === request.identified?.[index]);
         if (chosen) item.issue = chosen.issue;
         else candidates.push({ index, issues: matches.map(row => row.issue) });
@@ -64,8 +67,8 @@ function bind(provider, mechanics) {
       if (!item.issue) continue;
       const current = mechanics.read(receipt.proposal, item.issue, io);
       const expected = receipt.items.every(row => row.issue) ? body(receipt, index) : item.description;
-      if (digest(current.issue) !== digest(item.issue) || current.title !== item.title || ![item.description, expected, item.previous_body].includes(current.description)) throw new Error('Existing result diverged; no continuation is authorized');
-      item.references = current.description === expected && expected !== item.description;
+      if (digest(current.issue) !== digest(item.issue) || current.title !== item.title || !accepted([item.description, expected, item.previous_body], current.description)) throw new Error('Existing result diverged; no continuation is authorized');
+      item.references = same(expected, current.description) && expected !== item.description;
       if (index && receipt.items[0].issue) {
         try {
         if (receipt.proposal.hierarchy === 'native') item.hierarchy = mechanics.hasRelation(receipt.proposal, item.issue, receipt.items[0].issue, 'parent', io);
@@ -106,14 +109,14 @@ function bind(provider, mechanics) {
         item.attempted = true; save(file, receipt);
         item.issue = mechanics.create(receipt.proposal, item, io); save(file, receipt);
         const current = mechanics.read(receipt.proposal, item.issue, io);
-        if (digest(current.issue) !== digest(item.issue) || current.title !== item.title || current.description !== item.description) throw new Error('Creation identity or complete content not verified');
+        if (digest(current.issue) !== digest(item.issue) || current.title !== item.title || !same(item.description, current.description)) throw new Error('Creation identity or complete content not verified');
       }
       for (let index = 0; index < receipt.items.length; index++) {
         const item = receipt.items[index], expected = body(receipt, index);
         const current = mechanics.read(receipt.proposal, item.issue, io);
-        if (current.title !== item.title || ![expected, item.description, item.previous_body].includes(current.description)) throw new Error('Content diverged; renew approval');
-        if (current.description !== expected) mechanics.writeReferences(receipt.proposal, current, expected, io);
-        if (mechanics.read(receipt.proposal, item.issue, io).description !== expected) throw new Error('Written references not verified');
+        if (current.title !== item.title || !accepted([expected, item.description, item.previous_body], current.description)) throw new Error('Content diverged; renew approval');
+        if (!same(expected, current.description)) mechanics.writeReferences(receipt.proposal, current, expected, io);
+        if (!same(expected, mechanics.read(receipt.proposal, item.issue, io).description)) throw new Error('Written references not verified');
         item.references = true; save(file, receipt);
         if (!index) continue;
         const relations = [ ...(receipt.proposal.hierarchy === 'native' ? [{ other: receipt.items[0].issue, kind: 'parent' }] : []),

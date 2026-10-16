@@ -67,7 +67,7 @@ Before creation approval, the skill SHALL display organization, project, visibil
 
 ### Requirement: Origin-bound revision-conditional Boards updates
 
-Updates SHALL require a complete Services work-item origin URL, verify returned item and project identity, and obtain a baseline containing revision, title, and description. Inaccessible or incomplete origins SHALL NOT become replacement creations. Updates SHALL change only title and description. A changed baseline SHALL require fresh preparation and approval. The write SHALL include a test of the confirmed `/rev` and all title or description changes in the same JSON Patch request. Revision rejection SHALL require rereading and renewed approval without automatic retry. Identical content SHALL end without mutation.
+Updates SHALL require a complete Services work-item origin URL, verify returned item and project identity, and obtain a baseline containing revision, title, and description. Inaccessible or incomplete origins SHALL NOT become replacement creations. Updates SHALL change only title and description. A changed baseline SHALL require fresh preparation and approval. The write SHALL include a test of the confirmed `/rev` and all title or description changes in the same JSON Patch request. Revision rejection SHALL require rereading and renewed approval without automatic retry. Content whose title equals the current baseline title and whose description differs from the current baseline description only by harmless Azure normalization SHALL end without approval request or mutation.
 
 #### Scenario: Baseline changes before publication
 - **WHEN** the current revision or baseline content differs from the approved baseline
@@ -82,8 +82,8 @@ Updates SHALL require a complete Services work-item origin URL, verify returned 
 - **THEN** one request tests that revision and changes only the authorized title and description fields with project rules enabled.
 
 #### Scenario: Update is a no-op
-- **WHEN** the proposed title and description equal the current baseline
-- **THEN** preparation returns no_changes without a remote mutation.
+- **WHEN** the proposed title equals the current baseline title and the proposed description equals the current baseline description or differs from it only by harmless Azure normalization
+- **THEN** preparation returns no_changes without an approval request or a remote mutation.
 
 #### Scenario: Origin cannot be read
 - **WHEN** the originating work item is inaccessible or its identity cannot be verified
@@ -91,7 +91,7 @@ Updates SHALL require a complete Services work-item origin URL, verify returned 
 
 ### Requirement: Boards publication evidence and query-only recovery
 
-Before a write, the adapter SHALL save a new private receipt containing the exact authorized proposal, destination, authenticated identity, and either the update identity or pre-creation item IDs. Completion SHALL require verified remote identity and exact title and description equality. Confirmed write rejection and uncertain outcomes SHALL remain distinct; a failed readback after a write SHALL remain uncertain. Recovery SHALL perform queries only and SHALL NOT repeat publication. Without a verified creation-response identity, recovery SHALL compare saved IDs, type, author, and full content and require the actual created URL to be confirmed. A coincident title SHALL NOT prove publication. Zero or ambiguous compatible candidates SHALL require clarification rather than another creation.
+Before a write, the adapter SHALL save a new private receipt containing the exact authorized proposal, destination, authenticated identity, and either the update identity or pre-creation item IDs. Completion SHALL require verified remote identity, exact title equality, and a description equal to the approved description up to harmless Azure normalization. Confirmed write rejection and uncertain outcomes SHALL remain distinct; a failed readback after a write SHALL remain uncertain. Recovery SHALL perform queries only and SHALL NOT repeat publication. Without a verified creation-response identity, recovery SHALL compare saved IDs, type, author, title, and full description content up to harmless Azure normalization and require the actual created URL to be confirmed. A coincident title SHALL NOT prove publication. Zero or ambiguous compatible candidates SHALL require clarification rather than another creation.
 
 #### Scenario: Verified creation response
 - **WHEN** the write returns an item identity and readback verifies its destination, type, and complete approved content
@@ -99,7 +99,7 @@ Before a write, the adapter SHALL save a new private receipt containing the exac
 
 #### Scenario: Creation response is lost
 - **WHEN** creation may have succeeded without a verified response identity
-- **THEN** recovery queries candidates absent from the saved inventory and requires confirmation of the actual created URL without creating another item.
+- **THEN** recovery queries candidates absent from the saved inventory, including candidates whose description differs only by harmless Azure normalization, and requires confirmation of the actual created URL without creating another item.
 
 #### Scenario: Recovery candidate is incompatible
 - **WHEN** destination identity, type, author, or approved content cannot establish the candidate's eligibility
@@ -110,7 +110,7 @@ Before a write, the adapter SHALL save a new private receipt containing the exac
 - **THEN** the adapter retains the receipt and reports uncertainty without repeating the write.
 
 #### Scenario: Update remains unapplied or diverges
-- **WHEN** recovery finds the old update baseline or different current content
+- **WHEN** recovery finds the old update baseline or current content that differs from the approved content beyond harmless Azure normalization
 - **THEN** it reports pending or divergent state and requires fresh approval or reconciliation before a new attempt.
 
 ### Requirement: Existing authenticated Azure transport without environment mutation
@@ -196,3 +196,27 @@ Azure selected-child assignment SHALL inspect authenticated identity and current
 
 - **WHEN** the assignment request fails with a 5xx status, a timeout or a transport error
 - **THEN** assignment returns `uncertain` and directs `verify-assignment`.
+
+### Requirement: Boards description verification accepts only harmless Azure normalization
+
+The Azure DevOps adapter SHALL compare a sent description with a description read back from Azure Boards directionally. The received description SHALL be equivalent to the sent description only when it equals the sent description plus whitespace inserted between block tags (`p`, `li`, `ul`, `ol`, `h1`-`h6`, `pre`, `blockquote`), immediately before a block closing tag, or at the start or end of the description next to a block tag, with the exact `backlog-id-counters` comment optionally removed. Whitespace removed anywhere, whitespace added before an inline closing tag, any whitespace change inside `<pre>` or `<code>`, any other comment, a counters comment with different values, and any change to text, links, or structure SHALL remain differences. Titles SHALL be compared exactly. Comparisons between two Azure reads (the stale-baseline digest and the pending-update digest) SHALL remain exact. The comparison SHALL be supplied only by the Azure DevOps adapter; GitHub and GitLab publication SHALL compare descriptions byte for byte.
+
+#### Scenario: Added block whitespace and a dropped counters comment
+
+- **WHEN** Azure Boards returns the sent description with whitespace added between block tags or before a block closing tag and without the exact counters comment
+- **THEN** verification treats the description as equal to the sent content.
+
+#### Scenario: Meaningful whitespace or content changes
+
+- **WHEN** the returned description removes whitespace, adds whitespace before an inline closing tag, changes whitespace inside `<pre>` or `<code>`, carries another comment or a counters comment with different values, or changes text, links, or structure
+- **THEN** verification reports a difference, even when harmless normalization also occurs.
+
+#### Scenario: Slice set readback after normalization
+
+- **WHEN** a slice set publication rereads an Azure work item after creation or after writing slice references and finds only harmless normalization
+- **THEN** the set publication continues and its recovery readback reports completion.
+
+#### Scenario: Other providers stay byte-exact
+
+- **WHEN** a GitLab slice set publication reads back a description that differs from the sent one only by added whitespace
+- **THEN** creation verification fails as a content mismatch.
