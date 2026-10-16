@@ -195,6 +195,8 @@ const OPENCODE_AGENT_TEMPLATE = [
 const TEMPLATES = {
   claudeBinding: CLAUDE_BINDING_TEMPLATE,
   opencodeBinding: OPENCODE_BINDING_TEMPLATE,
+  claudeStandaloneBinding: CLAUDE_BINDING_TEMPLATE,
+  opencodeStandaloneBinding: OPENCODE_BINDING_TEMPLATE,
   claudeAgent: CLAUDE_AGENT_TEMPLATE,
   opencodeAgent: OPENCODE_AGENT_TEMPLATE,
 };

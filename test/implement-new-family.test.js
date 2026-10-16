@@ -9,6 +9,7 @@ const repoRoot = path.join(__dirname, '..');
 const manifest = require('../sai/install-manifest.json');
 const registry = require('../sai-state/registry.js');
 const { resolveProfile, translate } = require('../bin/capabilities');
+const { matrixRenderFor } = require('../bin/install-manifest');
 
 const read = relative => fs.readFileSync(path.join(repoRoot, relative), 'utf8');
 const fetches = source => source.split(/\r?\n/).filter(line => line.includes('Fetch @'));
@@ -191,7 +192,7 @@ test('the coordinator carries the resilience contract: attempt budget, escalatio
   assert.match(source, /handover-\{role\}-\{k\}\.md/);
   assert.match(source, /\.tmp\/\{name\}\/run-\{unique-suffix\}\//);
   assert.doesNotMatch(source, /system temp directory/);
-  assert.match(source, /part of no commit/);
+  assert.match(source, /the run never stages it/);
   assert.doesNotMatch(source, /user commits it/);
   assert.match(source, /## Resuming/);
   assert.match(source, /git log/);
@@ -234,4 +235,35 @@ test('the coordinator reviews each step adversarially with bounded fix rounds an
   assert.match(review, /Style, design, performance, and general security belong to the later review command/);
   assert.ok(fs.existsSync(path.join(repoRoot, 'sai/policies/artifact-review-contract.md')));
   assert.doesNotMatch(read('docs/commands/sai-3-implement-new.md'), /no review round after GREEN/);
+});
+
+test('the -new bindings render from the standalone template and leave the lifecycle to the coordinator', () => {
+  for (const harness of ['claude', 'opencode']) {
+    const bindings = matrixRenderFor(manifest, harness, repoRoot)
+      .filter(item => item.kind === 'binding' && /-new$/.test(item.phase));
+    assert.deepEqual(bindings.map(item => item.destinationName), ['red-new-worker.md', 'green-new-worker.md'], harness);
+    for (const item of bindings) {
+      assert.doesNotMatch(item.text, /command-runner|guard window|replacement_reconstruction_fields|continue_after_/, `${harness} ${item.phase}`);
+      assert.match(item.text, harness === 'claude' ? /SendMessage\(to: "<captured agent ID>"/ : /task\(task_id: "<captured task ID>"/);
+      assert.match(item.text, new RegExp(`Fetch @sai/commands/implement-new/${item.phase.replace('-new', '')}-worker\\.md`));
+    }
+    const shared = matrixRenderFor(manifest, harness, repoRoot).find(item => item.kind === 'binding' && item.phase === 'spec');
+    assert.match(shared.text, /command-runner\.md/, 'shared-orchestration bindings keep their lifecycle owner');
+  }
+});
+
+test('every git add checks the ignore rules, the review sees new files, and the commit proves completeness', () => {
+  const source = read(COORDINATORS[0]);
+  assert.match(source, /git check-ignore -q <path>/);
+  assert.match(source, /Never force-add with `-f`/);
+  assert.match(source, /Every `git add` below follows this rule/);
+  const review = source.slice(source.indexOf('**Review.**'), source.indexOf('**Commit.**'));
+  assert.match(review, /git diff --cached/);
+  assert.doesNotMatch(review, /git diff HEAD/);
+  const green = source.slice(source.indexOf('**GREEN.**'), source.indexOf('**Review.**'));
+  assert.match(green, /`git add` GREEN's files/);
+  const commit = source.slice(source.indexOf('**Commit.**'), source.indexOf('## Workers'));
+  assert.match(commit, /`git status --porcelain`, minus the dirty baseline, the run directory, and the ignored paths, must be empty/);
+  assert.doesNotMatch(source, /version control ignores the change directory/);
+  assert.match(source, /Cannot start \/sai-3-implement-new: name the change/);
 });

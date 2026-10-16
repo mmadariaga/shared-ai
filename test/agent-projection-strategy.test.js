@@ -314,6 +314,7 @@ test('OpenCode worker generation omits optional variant without changing Claude 
   delete worker.opencodeAgent.variant;
   const templates = {
     claudeBinding: '{{canonicalFetch}}', opencodeBinding: '{{canonicalFetch}}',
+    claudeStandaloneBinding: '{{canonicalFetch}}', opencodeStandaloneBinding: '{{canonicalFetch}}',
     claudeAgent: 'model: {{model}}\neffort: {{effort}}',
     opencodeAgent: fs.readFileSync(path.join(__dirname, '..', 'agents/opencode/worker-template.md'), 'utf8'),
   };

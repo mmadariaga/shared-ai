@@ -559,6 +559,8 @@ test('missing, duplicated, or misassigned matrix entries fail at manifest expans
   const templates = {
     claudeBinding: '{{phase}}/{{workerName}}',
     opencodeBinding: '{{phase}}/{{workerName}}',
+    claudeStandaloneBinding: '{{phase}}/{{workerName}}',
+    opencodeStandaloneBinding: '{{phase}}/{{workerName}}',
     claudeAgent: '{{phase}}/{{workerName}}',
     opencodeAgent: '{{phase}}/{{workerName}}',
   };

@@ -76,6 +76,8 @@
     "templates": {
       "claudeBinding": "sai/orchestration/workers/bindings/claude/worker-template.md",
       "opencodeBinding": "sai/orchestration/workers/bindings/opencode/worker-template.md",
+      "claudeStandaloneBinding": "sai/orchestration/workers/bindings/claude/standalone-worker-template.md",
+      "opencodeStandaloneBinding": "sai/orchestration/workers/bindings/opencode/standalone-worker-template.md",
       "claudeAgent": "agents/claude/worker-template.md",
       "opencodeAgent": "agents/opencode/worker-template.md"
     },

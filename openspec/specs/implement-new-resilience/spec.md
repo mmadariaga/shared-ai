@@ -7,12 +7,17 @@ TBD - created by archiving change sai-build-new-resilience. Update Purpose after
 
 ### Requirement: Identifiers-only run state
 
-The `/sai-3-implement-new` coordinator SHALL keep its run state in the `implement-new-run@1` stage machine, registered in `sai-state/registry.js`, under the `sai-state` session keyed `implement-new-{name}`. The machine SHALL hold identifiers and paths only: the run directory, the current step, the committed steps, the attempts spent per obstacle, the open escalation, and the paths of the files that hold deviations, overrides, worker reports, findings, and baselines. It SHALL accept the events `start`, `step-start`, `step-done`, `attempt`, `escalate`, `answer`, `record`, `close`, and `status`; `start` SHALL open a run only once, `record` SHALL keep each path once, and `status` SHALL change nothing. Every emit response SHALL carry the `run` view and the per-obstacle `budgets`.
+The `/sai-3-implement-new` coordinator SHALL keep its run state in the `implement-new-run@1` stage machine, registered in `sai-state/registry.js`, under the `sai-state` session keyed `implement-new-{name}`, so that a later session on the same machine finds an interrupted run of the same change; one run per change SHALL run at a time. The machine SHALL hold identifiers and paths only: the run directory, the current step, the committed steps, the attempts spent per obstacle, the open escalation, and the paths of the files that hold deviations, overrides, worker reports, findings, and baselines. It SHALL accept the events `start`, `step-start`, `step-done`, `attempt`, `escalate`, `answer`, `record`, `close`, and `status`; `start` SHALL open a run only once while it is `running` or `escalated`, and SHALL start a fresh run over a `completed` or `stopped` one, `record` SHALL keep each path once, and `status` SHALL change nothing. Every emit response SHALL carry the `run` view and the per-obstacle `budgets`.
 
 #### Scenario: A second start is rejected
 
 - **WHEN** the coordinator emits `start` to a run that is already running
 - **THEN** the machine rejects it with `ALREADY_RUNNING` and keeps the original run directory.
+
+#### Scenario: A finished run does not block the next one
+
+- **WHEN** the coordinator emits `start` to a session whose earlier run is `completed` or `stopped`
+- **THEN** the machine opens a fresh run with the new run directory and no carried steps, attempts, or references.
 
 #### Scenario: Status leaves the state unchanged
 
@@ -62,7 +67,7 @@ A worker that returns no ready, whose report cannot be read, that stays silent p
 
 ### Requirement: Resumption after compaction or in another session
 
-At start, a `status` response with a `running` or `escalated` stage and a run directory SHALL be treated as an interrupted run. After a context compaction or on an interrupted run, the coordinator SHALL read the store and the files it references, compare them with `git log` and the `tasks.md` checkboxes, let commits and checkboxes win over the store, and continue at the first step with an unchecked task, keeping the attempts the store holds for it. It SHALL create new workers whose handles are gone, with the ready handshake and a hand-over summary, spending no attempt, and SHALL ask an open escalation again. In a session that cannot see the store, it SHALL rebuild progress from `git log` and `tasks.md` with every counter at zero, carry the deviations, overrides, and findings of an earlier run directory into the new one, and treat uncommitted paths it did not make as the dirty baseline.
+At start, a `status` response with a `running` or `escalated` stage and a run directory SHALL be treated as an interrupted run. After a context compaction or on an interrupted run, the coordinator SHALL read the store and the files it references, compare them with `git log` and the `tasks.md` checkboxes, let commits and checkboxes win over the store, and continue at the first step with an unchecked task, keeping the attempts the store holds for it. It SHALL create new workers whose handles are gone, with the ready handshake and a hand-over summary, spending no attempt, and SHALL ask an open escalation again. When the store is gone (another machine, or a cleared temporary directory), it SHALL rebuild progress from `git log` and `tasks.md` with every counter at zero, carry the deviations, overrides, and findings of an earlier run directory into the new one, and treat uncommitted paths it did not make as the dirty baseline.
 
 #### Scenario: Resuming without the store
 

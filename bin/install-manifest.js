@@ -24,6 +24,13 @@ const MATRIX_TEMPLATE_NAMES = Object.freeze([
   'claudeAgent',
   'opencodeAgent',
 ]);
+// Binding templates for roles that live outside the shared orchestration (the
+// `-new` family). Loaded only when the manifest declares them; the renderer
+// fails closed when such a role exists without its template.
+const OPTIONAL_MATRIX_TEMPLATE_NAMES = Object.freeze([
+  'claudeStandaloneBinding',
+  'opencodeStandaloneBinding',
+]);
 const MATRIX_KINDS = new Set(['binding', 'agent']);
 const MATRIX_SCRATCH_RELATIVE = path.join('.tmp', 'collapse-sai-worker-matrix', 'matrix-sources');
 const INVOCATION_ENVELOPE_FIELD = 'arguments_value';
@@ -242,6 +249,11 @@ function validateMatrixBlock(matrix) {
       throw new Error(`worker-matrix block must declare template source for ${name}`);
     }
   }
+  for (const name of OPTIONAL_MATRIX_TEMPLATE_NAMES) {
+    if (matrix.templates[name] !== undefined && (typeof matrix.templates[name] !== 'string' || matrix.templates[name].length === 0)) {
+      throw new Error(`worker-matrix block template source for ${name} must be a nonempty string`);
+    }
+  }
   for (const kind of ['bindings', 'agents']) {
     const section = matrix[kind];
     if (!section || typeof section !== 'object' || Array.isArray(section)) {
@@ -389,12 +401,10 @@ function matrixProjectionId(harness, kind, item) {
   return `${harness}-${path.basename(item.destinationName, '.md')}`;
 }
 
-function matrixRenderFor(manifest, harness, repoRoot) {
-  const matrix = manifest['worker-matrix'];
-  if (!matrix) return [];
-  assertWorkerContractsUseOneStringEnvelope(matrix, { harness, repoRoot });
+function loadMatrixTemplates(matrix, harness, repoRoot) {
   const templates = {};
-  for (const name of MATRIX_TEMPLATE_NAMES) {
+  const declared = OPTIONAL_MATRIX_TEMPLATE_NAMES.filter(name => matrix.templates[name] !== undefined);
+  for (const name of [...MATRIX_TEMPLATE_NAMES, ...declared]) {
     const templatePath = path.resolve(repoRoot, matrix.templates[name]);
     if (!fs.existsSync(templatePath)) {
       throw new Error(`${harness} worker matrix: template ${name} does not exist: ${matrix.templates[name]}`);
@@ -402,6 +412,14 @@ function matrixRenderFor(manifest, harness, repoRoot) {
     templates[name] = fs.readFileSync(templatePath, 'utf8');
     assertOneStringInvocationEnvelope(templates[name], `${harness} worker matrix template ${name}`);
   }
+  return templates;
+}
+
+function matrixRenderFor(manifest, harness, repoRoot) {
+  const matrix = manifest['worker-matrix'];
+  if (!matrix) return [];
+  assertWorkerContractsUseOneStringEnvelope(matrix, { harness, repoRoot });
+  const templates = loadMatrixTemplates(matrix, harness, repoRoot);
   const rendered = materializeWorkerMatrix(defineWorkerMatrix(matrix.entries, manifest.capabilities), templates);
   return rendered
     .filter(item => item.harness === harness)
@@ -422,15 +440,7 @@ function expandWorkerMatrix(matrix, { harness, repoRoot, destinationRoot, capabi
     return [];
   }
   validateMatrixEntries(matrix.entries, harness);
-  const templates = {};
-  for (const name of MATRIX_TEMPLATE_NAMES) {
-    const templatePath = path.resolve(repoRoot, matrix.templates[name]);
-    if (!fs.existsSync(templatePath)) {
-      throw new Error(`${harness} worker matrix: template ${name} does not exist: ${matrix.templates[name]}`);
-    }
-    templates[name] = fs.readFileSync(templatePath, 'utf8');
-    assertOneStringInvocationEnvelope(templates[name], `${harness} worker matrix template ${name}`);
-  }
+  const templates = loadMatrixTemplates(matrix, harness, repoRoot);
   let matrixDef;
   let rendered;
   try {
