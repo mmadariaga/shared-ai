@@ -175,3 +175,44 @@ test('both commands have usage pages that the references link', () => {
       new RegExp(`docs/commands/${name}\\.md|commands/${name}\\.md`), `${name} must be linked`);
   }
 });
+
+test('the coordinator carries the resilience contract: attempt budget, escalation, replacement, resumption, build log', () => {
+  const source = read(COORDINATORS[0]);
+  assert.match(source, /implement-new-run@1/);
+  assert.match(source, /budget of 3 attempts/);
+  assert.match(source, /different from the previous one/);
+  assert.match(source, /`exhaustion`, the budget is gone: escalate at once/);
+  assert.match(source, /Do not advance to another task first/);
+  assert.match(source, /`final-suite` obstacle/);
+  assert.match(source, /resets that obstacle's counter/);
+  assert.match(source, /one that stops the run/);
+  assert.match(source, /a new worker/);
+  assert.match(source, /handover-\{role\}-\{k\}\.md/);
+  assert.match(source, /\.tmp\/\{name\}\/run-\{unique-suffix\}\//);
+  assert.doesNotMatch(source, /system temp directory/);
+  assert.match(source, /part of no commit/);
+  assert.doesNotMatch(source, /user commits it/);
+  assert.match(source, /## Resuming/);
+  assert.match(source, /git log/);
+  assert.match(source, /openspec\/changes\/\{name\}\/build-log\.md/);
+  for (const part of ['work done', 'deviations', 'overrides', 'pending findings', 'blocker']) {
+    assert.ok(source.includes(part), `build-log.md must name ${part}`);
+  }
+});
+
+test('workers return the path of a report file and the store event keeps free text out', () => {
+  const common = read('sai/commands/implement-new/worker-common.md');
+  assert.match(common, /return only that path/);
+  assert.match(common, /hand-over summary/);
+  assert.match(common, /run directory `\.tmp\/\{change-name\}\/run-\*\/`/);
+  const coordinator = read(COORDINATORS[0]);
+  assert.match(coordinator, /Free text never goes into an event/);
+  assert.ok(registry.has('implement-new-run@1'));
+});
+
+test('/sai-build-new starts no later segment after a blocked or stopped segment', () => {
+  const build = read(COORDINATORS[1]);
+  assert.match(build, /blocked/);
+  assert.match(build, /do not start any later segment/);
+  assert.match(build, /build-log\.md/);
+});

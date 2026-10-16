@@ -16,9 +16,9 @@ TBD - created by archiving change sai-build-new-walking-skeleton. Update Purpose
 
 ### Requirement: Build-new closing line
 
-When its segment completes, `/sai-build-new` SHALL print the segment's closing report and end with exactly `Build-new done.` in place of the segment's own closing line. When the segment ends in an escalation, a stop, or a failed precondition, it SHALL print that report and end without a closing line.
+When its segment completes, `/sai-build-new` SHALL print the segment's closing report and end with exactly `Build-new done.` in place of the segment's own closing line. When the segment ends blocked (an escalation the user did not resolve), stopped, or with a failed precondition, it SHALL print that report, name `build-log.md` when the segment wrote one, end without a closing line, and start no later segment.
 
 #### Scenario: Segment stops
 
 - **WHEN** the implement-new segment ends with an escalation or a failed precondition
-- **THEN** `/sai-build-new` prints the segment's report and prints no `Build-new done.` line.
+- **THEN** `/sai-build-new` prints the segment's report, prints no `Build-new done.` line, and starts no later segment.

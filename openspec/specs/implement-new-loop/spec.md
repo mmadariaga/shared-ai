@@ -34,7 +34,7 @@ Before the first step, the coordinator SHALL record the dirty baseline with `git
 
 ### Requirement: Per-step RED, GREEN, review, and commit cycle
 
-The coordinator SHALL size each step as the smallest group of unchecked tasks that delivers one testable behavior and SHALL write a brief naming the goal, task ids, spec scenarios, `interfaces.md` signatures, and writable paths. After RED and after GREEN it SHALL run only the step's own tests through the executor. RED SHALL be closed only when the tests fail by assertion on the behavior under test; a pass or a non-assertion failure SHALL return to RED as one corrected instruction, except that a pass whose behavior already exists SHALL commit the tests, skip GREEN, and record a deviation. A step that admits no meaningful test SHALL run GREEN only with a recorded deviation. GREEN SHALL be closed only when the tests pass and no test file or `interfaces.md` changed since RED; the coordinator SHALL restore a touched file from the index, delete a test file GREEN created, and count either as an attempt. The coordinator SHALL then review the step's diff against its brief.
+The coordinator SHALL size each step as the smallest group of unchecked tasks that delivers one testable behavior, SHALL name it `step-{n}` and emit `step-start`, and SHALL write a brief naming the goal, task ids, spec scenarios, `interfaces.md` signatures, writable paths, and the path where the worker writes its report. After RED and after GREEN it SHALL run only the step's own tests through the executor. RED SHALL be closed only when the tests fail by assertion on the behavior under test; a pass or a non-assertion failure SHALL return to RED as a corrected instruction that is an attempt of the step, except that a pass whose behavior already exists SHALL commit the tests, skip GREEN, and record a deviation. A step that admits no meaningful test SHALL run GREEN only with a recorded deviation. GREEN SHALL be closed only when the tests pass and no test file or `interfaces.md` changed since RED; the coordinator SHALL restore a touched file from the index, delete a test file GREEN created, and count either as an attempt. The coordinator SHALL then review the step's diff against its brief, and a defect SHALL return to the worker that owns the file as a corrected instruction that is an attempt of the step. After the step's commit it SHALL emit `step-done`.
 
 #### Scenario: GREEN modifies a test file
 
@@ -44,7 +44,7 @@ The coordinator SHALL size each step as the smallest group of unchecked tasks th
 #### Scenario: RED tests fail for a non-assertion reason
 
 - **WHEN** the step's tests fail because of an import, syntax, or fixture error after RED
-- **THEN** the coordinator sends RED one corrected instruction before GREEN starts.
+- **THEN** the coordinator sends RED a corrected instruction, counted as an attempt of the step, before GREEN starts.
 
 ### Requirement: Step commits
 
@@ -66,16 +66,16 @@ The coordinator SHALL be the only writer of `proposal.md`, `specs/`, `design.md`
 
 ### Requirement: Obstacles and escalation
 
-An obstacle SHALL receive one corrected instruction with an approach different from the previous one; when it remains, the coordinator SHALL escalate. Force majeure SHALL escalate at once without spending an attempt: a change of the What or Why of `proposal.md`, an operation that needs human authorization (push, deletion, shared-system change, missing credential, unavailable external service), or foreign work in a path the run must commit. An escalation SHALL state what happened, what is done and committed, and what was tried, and SHALL ask through the native picker with coordinator-written options, one of which stops the run.
+An obstacle SHALL be anything that prevents closing a step or the run, including a test judged wrong or contrary to the spec, a failing tool, a worker whose report cannot be read, a silent worker, and a worker that drifts from its instruction. Each obstacle SHALL have a budget of 3 attempts, each with an approach different from the previous one; when the budget is exhausted, the coordinator SHALL escalate at once without advancing to another task. Force majeure SHALL escalate at once without spending an attempt: a change of the What or Why of `proposal.md`, an operation that needs human authorization (push, deletion, shared-system change, missing credential, unavailable external service), or foreign work in a path the run must commit; an exhausted budget SHALL be force majeure as well. An escalation SHALL state what happened, what is done and committed, and what was tried, and SHALL ask through the native picker with coordinator-written options, each continuation naming a different approach, and one option that stops the run. A `continue` answer SHALL reset that obstacle's counter.
 
 #### Scenario: Obstacle survives the corrected instruction
 
-- **WHEN** a step still cannot close after one corrected instruction
+- **WHEN** a step still cannot close after 3 attempts with different approaches
 - **THEN** the coordinator escalates through the native picker with continuation options and one option that stops the run.
 
 ### Requirement: Final suite against the baseline
 
-After the last step, the coordinator SHALL run every unit and integration suite through the executor and SHALL never run end-to-end suites. A new or worsened failure compared with the failure baseline SHALL be an obstacle closed with a new step, and an `unavailable` baseline SHALL be reported as is. The closing report SHALL list the committed steps, the deviations, the suite result against the baseline, and what remains open, and the run SHALL end with exactly `Implement-new done.` when every task is checked and the suites show no new failure.
+After the last step, the coordinator SHALL run every unit and integration suite through the executor and SHALL never run end-to-end suites. A new or worsened failure compared with the failure baseline SHALL be the `final-suite` obstacle with its own budget of 3 attempts, each attempt being a new step that corrects the failure, and an `unavailable` baseline SHALL be reported as is. The closing report SHALL list the committed steps, the deviations, the suite result against the baseline, the pending findings, and what remains open, and the run SHALL end with exactly `Implement-new done.` when every task is checked and the suites show no new failure. A run that stopped or escalated SHALL end with its report and no closing line.
 
 #### Scenario: Clean close
 
