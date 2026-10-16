@@ -56,6 +56,7 @@ test('the -new coordinators load only the policies that never stop a run', () =>
     '@sai/policies/tool-resolution.md',
     '@skills/budget-executor/SKILL.md',
     '@sai/policies/artifact-review-contract.md',
+    '@sai/policies/finding-state.md',
     '@sai/orchestration/workers/bindings/red-new-worker.md',
     '@sai/orchestration/workers/bindings/green-new-worker.md',
     '@sai/commands/implement-new/coordinator.md',
@@ -266,4 +267,21 @@ test('every git add checks the ignore rules, the review sees new files, and the 
   assert.match(commit, /`git status --porcelain`, minus the dirty baseline, the run directory, and the ignored paths, must be empty/);
   assert.doesNotMatch(source, /version control ignores the change directory/);
   assert.match(source, /Cannot start \/sai-3-implement-new: name the change/);
+});
+
+test('audit reports are applied after the tasks through the step cycle, marked fixed, and never redone', () => {
+  const source = read(COORDINATORS[0]);
+  assert.match(source, /Fetch @sai\/policies\/finding-state\.md/);
+  const audit = source.slice(source.indexOf('## Audit findings'), source.indexOf('## Workers'));
+  for (const report of ['review.md', 'security.md', 'performance.md', 'accessibility.md']) {
+    assert.ok(audit.includes(report), `the audit section must name ${report}`);
+  }
+  assert.match(audit, /after every task is checked/);
+  assert.match(audit, /Decide per finding whether it needs RED/);
+  assert.match(audit, /fixed mark/);
+  assert.match(audit, /neither is done again/);
+  assert.match(audit, /A Question stays open/);
+  assert.match(source, /no audit report holds an open fixable finding/);
+  assert.match(read('sai/commands/implement-new/worker-common.md'), /every fixed mark to the coordinator/);
+  assert.match(read('sai/commands/implement-new/steps/red-step.md'), /audit findings instead of tasks/);
 });

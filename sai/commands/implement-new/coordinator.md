@@ -5,12 +5,13 @@ Fetch @sai/policies/remember.md
 Fetch @skills/safe-operations/SKILL.md and use it.
 Fetch @skills/budget-executor/SKILL.md
 Fetch @sai/policies/tool-resolution.md
+Fetch @sai/policies/finding-state.md
 
 You are the driver of the run. The invocation carries one string, `arguments_value`: the change name.
 
 ## Goal
 
-Implement the change's plan artifacts end to end with no human in the loop. The change is done when every task in `tasks.md` is checked, each step has its own local commit, and the unit and integration suites show no failure that the base did not already have. A human is needed only for force majeure.
+Implement the change's plan artifacts end to end with no human in the loop. The change is done when every task in `tasks.md` is checked, every open fixable finding of its audit reports carries its fixed mark, each step has its own local commit, and the unit and integration suites show no failure that the base did not already have. A human is needed only for force majeure.
 
 The plan is a plan. You read it, edit it, and override it whenever that is cheaper than obeying it, and you record every difference as a deviation.
 
@@ -19,10 +20,10 @@ The plan is a plan. You read it, edit it, and override it whenever that is cheap
 1. Fetch @sai/policies/prereqs-check.md and run its check. A halt prints the matching literal and ends the run before anything else happens. Fetch @sai/policies/prereqs-paths.md for the artifact paths.
 2. Drop any `--fast-track` token from `arguments_value`; the remainder is the change name. An empty remainder takes the only change directory under `openspec/changes/` (archive excluded) that has a `tasks.md`. When there are none or several, print this and end the run, without escalating and writing nothing: `Cannot start /sai-3-implement-new: name the change ({candidates, or none}).`
 3. The change is startable when `openspec/changes/{name}/` has `proposal.md`, `tasks.md`, and at least one file under `specs/`. Otherwise print this and end the run, without escalating and writing nothing: `Cannot start /sai-3-implement-new for {name}: missing {list of the absent items}.`
-4. Read `proposal.md`, `tasks.md`, `interfaces.md`, `design.md`, and the specs once; read each again when a step needs it. A missing `design.md` or `interfaces.md` is a deviation, not a stop.
+4. Read `proposal.md`, `tasks.md`, `interfaces.md`, `design.md`, the specs, and the audit reports that exist (`review.md`, `security.md`, `performance.md`, `accessibility.md`) once; read each again when a step needs it. A missing `design.md` or `interfaces.md` is a deviation, not a stop.
 5. Open the run state. `spawn` a `sai-state` session and keep its id (key: `implement-new-{name}`), resolving the CLI per `tool-resolution.md`, then emit `status` to `implement-new-run@1`. The key names the change, not the chat, so a later session on this machine finds an interrupted run of the same change; for the same reason, run one `/sai-3-implement-new` per change at a time, because the session file takes one writer. A `running` or `escalated` stage with its `dir` is a run that was interrupted: follow Resuming and skip the rest of Start. Any other stage (`idle`, or `completed` and `stopped` left by an earlier run) starts fresh: create the run directory inside the repository, as `.tmp/{name}/run-{unique-suffix}/` (the already-ignored `.tmp/`, which the workers may write without leaving the project), and emit `start` with its path. The directory holds the free text of the run; the store holds only identifiers and paths (see Run state).
 6. Record the dirty baseline: write `git status --porcelain` to `baseline-dirty.txt` in the run directory and emit `record` (`baseline`). Those paths are not the run's.
-7. Find the project's unit and integration test commands in `SAI_LEARNINGS.md`, `design.md`, `package.json`, or the build files. When every task is already checked, do no new work: run the suites once through the executor, report their result, and close. When no suite can be found or run, say so in that report.
+7. Find the project's unit and integration test commands in `SAI_LEARNINGS.md`, `design.md`, `package.json`, or the build files. When every task is already checked and no audit report holds an open fixable finding, do no new work: run the suites once through the executor, report their result, and close. When no suite can be found or run, say so in that report.
 8. Run the suites once through the executor. The failing tests are the failure baseline: write them to `baseline-failures.txt` in the run directory and emit `record` (`baseline`). When no suite can be found or run, record the baseline as `unavailable`.
 
 ## The step cycle
@@ -52,7 +53,15 @@ Fix rounds are not attempts and spend no budget. Run at most 3 fix rounds, then 
 
 **Commit.** Check the checkboxes in `tasks.md` that the step completed. Stage exactly the step's paths that the staging rule admits: the workers' files, `tasks.md`, and any plan artifact you edited. `git diff --cached --name-only` must list only those paths. Commit locally with a Conventional Commits message, subject at most 50 characters and body only when needed. The message carries only the step's own content: no `Co-Authored-By` trailer and no AI-attribution line of any kind, even when the harness suggests one. Invoking the command authorizes these local commits and nothing else: never push.
 
-After the commit, prove it holds the whole step: `git status --porcelain`, minus the dirty baseline, the run directory, and the ignored paths, must be empty. A leftover path is the run's, because the baseline does not hold it: stage it, commit it as a follow-up commit of the same step, and record the deviation. Then emit `step-done`. Continue with the next step until every task is checked.
+After the commit, prove it holds the whole step: `git status --porcelain`, minus the dirty baseline, the run directory, and the ignored paths, must be empty. A leftover path is the run's, because the baseline does not hold it: stage it, commit it as a follow-up commit of the same step, and record the deviation. Then emit `step-done`. Continue with the next step until every task is checked, then apply the audit reports.
+
+## Audit findings
+
+An audit report (`review.md`, `security.md`, `performance.md`, or `accessibility.md` in the change directory) records defects found in code that already exists. Open, fixed, fixable, Question, and the fixed mark mean what `finding-state.md` says. Apply the reports after every task is checked, because the tasks change the code the findings point at.
+
+Every open fixable finding goes through the step cycle above: one finding per step, or a few that share a location and a fix. The brief carries each finding's identifier, report, location, problem, and suggested fix in place of tasks, and the corrected behavior in place of spec scenarios. Decide per finding whether it needs RED. A finding about behavior that a test can pin, and that no test pins yet, goes through RED first: its test fails by assertion on the current code and passes once the finding is fixed. A finding that an existing test already exposes, or that no test can usefully pin (wording, naming, documentation, configuration, a refactor the suite already covers), goes to GREEN directly, and the step's tests are the suite around the change. Either path is the plan for that finding, not a deviation. The step's commit carries the fix together with the fixed mark you append to each fixed finding's heading line, so the mark and its fix enter history together.
+
+A fixed finding stays as it is, and so does a checked task: neither is done again. A Question stays open and goes to the closing report, because only the user can answer it. A finding you judge mistaken, or whose fix contradicts the plan, stays open with a deviation that says why; a fix that would change `proposal.md`'s What or Why is force majeure.
 
 ## Workers
 
@@ -67,7 +76,7 @@ A worker writes its report to the file named in the brief, `reports/step-{n}-{ro
 
 ## Authority over the plan
 
-You edit `proposal.md`, `specs/`, `design.md`, `tasks.md`, and `interfaces.md` yourself, and workers write only tests, stubs, and production code. An override in a brief takes precedence over the plan. When artifacts contradict each other, keep the reading that preserves the intent of `proposal.md`, edit the other artifact, and move on.
+You edit `proposal.md`, `specs/`, `design.md`, `tasks.md`, and `interfaces.md` yourself, and in the audit reports only the fixed marks; workers write only tests, stubs, and production code. An override in a brief takes precedence over the plan. When artifacts contradict each other, keep the reading that preserves the intent of `proposal.md`, edit the other artifact, and move on.
 
 A correction that invalidates a committed step adds a new step in `tasks.md` that corrects it. Commits are never rewritten. Commits contain only paths the run changed; a path from the dirty baseline that a step must also change cannot be committed without absorbing foreign work, so that is force majeure.
 
@@ -102,18 +111,18 @@ Pending findings are defects from a step review that survive the step's third fi
 
 ## Resuming
 
-After a context compaction, or when Start finds an interrupted run, you may remember little of it. Emit `status` first, read the files the state references, and compare them with `git log` and the checkboxes in `tasks.md`. Commits and checkboxes win over the store. Continue at the first step with an unchecked task: the step in progress restarts and keeps the attempts the store has for it. Your workers' handles may be gone with your context; create new workers, which gets them the ready handshake and a hand-over summary like any replacement, and spends no attempt. An `escalated` stage means the question was not answered: ask it again.
+After a context compaction, or when Start finds an interrupted run, you may remember little of it. Emit `status` first, read the files the state references, and compare them with `git log`, the checkboxes in `tasks.md`, and the fixed marks in the audit reports. Commits, checkboxes, and marks win over the store. Continue at the first step with an unchecked task or, once every task is checked, an open fixable finding: the step in progress restarts and keeps the attempts the store has for it. Your workers' handles may be gone with your context; create new workers, which gets them the ready handshake and a hand-over summary like any replacement, and spends no attempt. An `escalated` stage means the question was not answered: ask it again.
 
-When the store is gone (another machine, or a cleared temporary directory), rebuild progress from `git log` and `tasks.md` the same way and start the run state fresh: every counter is at zero. A run directory left under `.tmp/{name}/` by the earlier run still holds its deviations, overrides, and findings; read them and carry them into the new run directory. Uncommitted paths you did not make count as the dirty baseline, and a step that must change one of them is force majeure.
+When the store is gone (another machine, or a cleared temporary directory), rebuild progress from `git log`, `tasks.md`, and the fixed marks the same way and start the run state fresh: every counter is at zero. A run directory left under `.tmp/{name}/` by the earlier run still holds its deviations, overrides, and findings; read them and carry them into the new run directory. Uncommitted paths you did not make count as the dirty baseline, and a step that must change one of them is force majeure.
 
 ## Close
 
 After the last step, run the unit and integration suites through the executor; end-to-end suites are never run here. Compare with the failure baseline. A new or worsened failure is the `final-suite` obstacle (see Obstacles). An `unavailable` baseline is reported as is.
 
-The run closes when every task is checked and the suites show no new failure, when the user answers an escalation with stop, or when the escalation question is dismissed without an answer. In each case:
+The run closes when every task is checked, every open fixable finding is fixed or carries a deviation, and the suites show no new failure, when the user answers an escalation with stop, or when the escalation question is dismissed without an answer. In each case:
 
-1. Compose `openspec/changes/{name}/build-log.md` from the run directory files. It is the durable report for a later review, which may run in another session after the run directory is gone. It holds: the work done (each committed step with its subject and the tasks it completed), the deviations, the overrides, the suite result against the baseline, the pending findings, and the blocker with the options offered and the answer when the run did not complete. It stays on disk next to the change's artifacts, and the run never stages it.
-2. Print the closing report: the steps committed (subject each), the deviations, the suite result against the baseline, the pending findings, and whatever remains open. Mention that `build-log.md` holds the same record.
+1. Compose `openspec/changes/{name}/build-log.md` from the run directory files. It is the durable report for a later review, which may run in another session after the run directory is gone. It holds: the work done (each committed step with its subject and the tasks it completed), the deviations, the overrides, the suite result against the baseline, the pending findings, the audit findings fixed, the open Questions and the findings left open with their reasons, and the blocker with the options offered and the answer when the run did not complete. It stays on disk next to the change's artifacts, and the run never stages it.
+2. Print the closing report: the steps committed (subject each), the deviations, the suite result against the baseline, the pending findings, the audit findings fixed, and whatever remains open, open Questions included. Mention that `build-log.md` holds the same record.
 3. Emit `close` with the outcome (`completed`, `stopped`, or `escalated` for a dismissed question), then `reset` both step machines and `close` the `sai-state` session.
 
 A run that completed ends with exactly `Implement-new done.`. A run that stopped or escalated ends with its report and no closing line. Inside `/sai-build-new` the line of that command replaces this one.

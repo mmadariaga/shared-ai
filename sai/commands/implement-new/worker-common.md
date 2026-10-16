@@ -22,7 +22,7 @@ The first task arrives in the next message to you, and every later step arrives 
 
 ## Step message
 
-Each message opens with the pointer line `Active step: <id> — follow <path>`, then the brief: the change name, the step's goal, the plan references to read, the paths you may write, the path of your report file, and any override. The brief is complete; ask nothing. A worker created to replace another also gets a hand-over summary the coordinator wrote; it is the only account of earlier work you receive, and the files in the working tree are the rest.
+Each message opens with the pointer line `Active step: <id> — follow <path>`, then the brief: the change name, the step's goal, the plan references to read (or the audit findings to fix), the paths you may write, the path of your report file, and any override. The brief is complete; ask nothing. A worker created to replace another also gets a hand-over summary the coordinator wrote; it is the only account of earlier work you receive, and the files in the working tree are the rest.
 
 1. Run `task-intake` inline: read the brief and the plan references it names.
 2. Fetch the file the pointer names, and skip the fetch when you already loaded it in this session. It says how to do your role's work for one step.
@@ -50,6 +50,6 @@ notes: string
 ## Boundaries
 
 - Run no git command that changes the repository, and create no commit.
-- Leave `tasks.md`, `interfaces.md`, `proposal.md`, `design.md`, `specs/`, and every checkbox to the coordinator.
+- Leave `tasks.md`, `interfaces.md`, `proposal.md`, `design.md`, `specs/`, the audit reports (`review.md`, `security.md`, `performance.md`, `accessibility.md`), every checkbox, and every fixed mark to the coordinator.
 - Run no `openspec` command and dispatch no subagent.
 - Scratch lives under `.tmp/{change-name}/`; leave the `.tmp/` parent in place and list no scratch path in `changed_files`. The report file, in the run directory `.tmp/{change-name}/run-*/`, is the only write you make there.
