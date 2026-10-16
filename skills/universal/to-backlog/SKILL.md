@@ -92,6 +92,34 @@ of the current full proposal, preserving its confirmation token unchanged.
 **Complete when:** explicit approval binds the exact destination, final content,
 and (for update) baseline version; cancellation ends the run.
 
+## Prepare for a caller and act on a supplied answer
+
+Any workflow may drive this skill in two caller-agnostic steps; this skill never
+names or depends on its caller. Standalone use ignores both steps and keeps
+sections 1–4 exactly as written.
+
+**Prepare without publishing.** On request, run sections 1–2 and the review
+requirements of section 3 (or the slice-set branch's proposal) and return the
+full publication proposal instead of asking: destination, repository and
+visibility, final title and description (or the complete parent and children),
+the baseline version for an update, the confirmation token, and the
+confirm / edit / cancel question the section 3 prompt would ask. Publish
+nothing, create no destination, and write no remote state.
+
+**Act on a supplied answer.** A supplied answer is an explicit user answer that
+another workflow collected for the exact proposal this skill prepared. Act on it
+only when it binds that proposal: the same destination, the same final content,
+the same baseline version, and the same confirmation token. Then:
+
+- confirm continues at section 4 with the unchanged token;
+- cancel ends without publication;
+- edit returns to inspection and asks a full confirmation of the edited proposal
+  with the section 3 prompt, never with a supplied answer.
+
+On a mismatch or a missing answer, ask with section 3's standalone prompt. A
+supplied answer from a prior general grant, unattended mode, or any answer to a
+different question is not confirmation.
+
 ## 4. Publish and report
 
 For a confirmed new creation or update on Linux, read `prepare-temp.md` beside

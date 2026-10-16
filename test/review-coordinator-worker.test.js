@@ -117,8 +117,11 @@ test('Direct Build discloses findings and resolves exclusions before the fix wor
   assert.match(selection, /Fix all fixable findings \(Recommended\)[\s\S]*`Fix nothing`[\s\S]*free-text response/);
   assert.match(selection, /`Other` on Claude Code,\s+`Type your own answer` on opencode/);
   assert.match(selection, /Show each open Question in full/);
-  assert.match(selection, /one `AskUserQuestion` call carrying every question/);
-  assert.match(selection, /one call per question, consecutively/);
+  const rounds = artifact('sai/policies/question-rounds.md');
+  assert.match(selection, /Fetch @sai\/policies\/question-rounds\.md/);
+  assert.match(selection, /as one round under `@sai\/policies\/question-rounds\.md`/);
+  assert.match(rounds, /one `AskUserQuestion` call carrying every question/);
+  assert.match(rounds, /one call per question, consecutively/);
   assert.match(selection, /repeats only that report's question, once[\s\S]*second invalid answer[\s\S]*dispatch nothing,\s+commit\s+nothing/);
   assert.match(selection, /every answer is `Fix nothing`[\s\S]*dismissed[\s\S]*no fix or commit/);
   assert.match(selection, /authorizes the writes and a single\s+local commit/);

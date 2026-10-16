@@ -128,7 +128,7 @@ test('the native selector follows the authoritative shared close after inventory
 
   assert.match(source, /\*\*Crystallization-turn close \(shared, owns B6\)\.\*\*/);
   assert.match(source, /Only after that checkpoint succeeds does its `next\.follow` load this selector/i);
-  assert.match(source, /Present the native three-option picker only after both optional actions finish/i);
+  assert.match(source, /Present the native three-option picker \(round 3\) only after rounds 1 and 2 have finished or been skipped/i);
   assert.match(source, /Opening the picker exposes no route and authorizes no work/i);
   assert.match(source, /route intents blocked until a valid picker answer/i);
   assert.match(source, /\*\*Plan - Unattended\*\* \(`plan-unattended`\) — Runs `sai-1` and `sai-2` to create the plan and stops for pre-implementation human review\./);
@@ -149,18 +149,17 @@ test('optional actions preserve skill ownership, negative answers, free text, an
     selector.indexOf('\n## Native route picker'));
   assert.match(actions, /Claude Code's `AskUserQuestion` with its automatic free-text Other entry/);
   assert.match(actions, /opencode's `question` tool with custom\/free-text input enabled/);
-  assert.match(actions, /Both questions remain explicit under `--fast-track` in Claude Code and opencode/);
-  assert.match(actions, /On No, skip only this action and proceed to the branch question/);
-  assert.match(actions, /On No, skip only this action and proceed to the native route picker/);
-  for (const name of ['to-backlog', 'new-change-branch']) {
-    assert.ok(actions.includes('On Yes, load the installed `' + name + '` skill and invoke it in the current conversation'));
-  }
+  assert.match(actions, /All questions remain explicit under `--fast-track` in Claude Code and opencode/);
+  assert.match(actions, /On No, skip only this action and leave out the publication question/);
+  assert.match(actions, /On No, skip only this action and leave out the base question/);
+  assert.match(actions, /invoke the installed `to-backlog` skill in the current conversation[\s\S]*prepare the full publication proposal without publishing/);
+  assert.match(actions, /invoke the installed `new-change-branch` skill and ask it to prepare the suggested bases/);
   assert.match(actions, /Free text may supply instructions or request clarification/);
   assert.match(actions, /resolve intent before executing an action; keep the current question pending/);
   assert.match(actions, /Free text never selects an implementation route/);
-  assert.match(actions, /Each accepted skill owns its scope, naming, destination selection, questions, confirmations, errors, and cancellation handling/);
-  assert.match(actions, /Wait until that skill finishes \(including its own no-change, error, or cancellation close\) before proceeding/);
-  assert.match(actions, /only after the backlog and branch actions have each finished or been explicitly skipped/);
+  assert.match(actions, /Each accepted skill keeps its scope, naming, validation, execution, errors, and cancellation handling/);
+  assert.match(actions, /Wait until each skill finishes \(including its own no-change, error, or cancellation close\) before the next dependent action/);
+  assert.match(actions, /only after the backlog, branch, and assignment answers have each been resolved/);
   assert.match(actions, /A picker retry, Manual re-presentation, or later slice does not repeat completed actions/);
   assert.match(actions, /reset them when a new crystallization replaces the set/);
   assert.match(actions, /These actions authorize no production code edits, route intent, route panel entry, or implementation dispatch/);
@@ -1487,7 +1486,7 @@ test('Plan completion and Direct Build continuation use the native route picker'
   assert.match(pocLane, /deferred crystallization route choice never offers it/);
   assert.doesNotMatch(directBuild, /crystallization-close route selector never offers it/);
   assert.doesNotMatch(pocLane, /crystallization-close route selector never offers it/);
-  assert.match(routeSelector, /This separate question remains a native picker and is not the route choice above/i);
+  assert.match(routeSelector, /This separate question stays a distinct question of round 3 and is not the route choice above/i);
 });
 
 test('Direct Build final report is outcome-first and leaves the Plan report unchanged', () => {
@@ -1859,7 +1858,7 @@ test('Direct Build continuation consent is one-time, set-scoped, context-complet
   assert.match(routeSelector, /`direct_build_continuation_answer`[\s\S]{0,240}to `unasked`[\s\S]{0,80}becomes `yes` or `no`/);
   assert.match(routeSelector, /Initialize `direct_build_continuation_prompted` to `false` and `direct_build_continuation_answer` to `unasked`/);
   assert.match(routeSelector, /Reset both values and set `pending_direct_build_change` to `null` only when a new crystallization replaces that set/i);
-  assert.match(routeSelector, /chosen with more than one pending slice and `direct_build_continuation_prompted` is `false`, ask once/i);
+  assert.match(routeSelector, /when more than one pending slice remains and `direct_build_continuation_prompted` is `false`: ask once/i);
   assert.match(routeSelector, /ask once through the harness-native picker, even if earlier slices used Manual or Plan/i);
   assert.match(routeSelector, /Only an explicit `yes` authorizes automatic continuation/i);
   assert.match(routeSelector, /authorizes one local commit per automatically started slice; nothing is pushed/i);
@@ -1914,10 +1913,10 @@ test('E2: a single change keeps the yes/no branch question and a slice set gets 
   assert.deepEqual(values, ['shared', 'per-slice', 'none']);
   assert.match(question, /Sí, crea una única para la issue principal[\s\S]*Crear una rama por slice[\s\S]*No crear nada/);
   assert.match(question, /says that no branch is published/);
-  assert.match(selector, /so does the slice-set branch question/);
+  assert.match(selector, /All questions remain explicit under `--fast-track`/);
   assert.match(question, /On `none`, skip only this action, keep the current branch and every existing branch as they are/);
-  assert.match(question, /On `shared`, load the installed `new-change-branch` skill once[\s\S]*originating principal issue's identity[\s\S]*every slice reuse that branch/);
-  assert.match(question, /On `per-slice`, load it once for the first pending slice, named after that slice/);
+  assert.match(question, /On `shared`, create the branch once after publication through the installed `new-change-branch` skill[\s\S]*originating principal issue's identity[\s\S]*every slice reuse that branch/);
+  assert.match(question, /On `per-slice`, create the first pending slice's branch the same way, named after that slice/);
 });
 
 test('E4/E5/E6/E7: the slice branch chain grows only from completed slices and stays conversation-scoped', () => {

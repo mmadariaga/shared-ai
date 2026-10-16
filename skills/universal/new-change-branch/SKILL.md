@@ -59,13 +59,29 @@ This is a presentation exception only for suggested branch-base options; preserv
 the general verbatim-identifier rule elsewhere and the helper's returned data.
 Accept a free-text base unchanged by this display rule
 even when no suggested option exists. Never automatically choose a base.
-The one exception is an invoking workflow that supplies `base` and the user already
-authorized creation in advance (the `per-slice` chain in `sai-explore`): skip the
-base question, run `base` with the supplied value, show the final branch and base
-without waiting, and continue.
+The one exception is an invoking workflow that supplies `base` (and a resolved
+type, name, and optional identifier) bound to a user answer it already collected
+for this exact base reference, or an advance authorization of the whole creation:
+skip the base question, run `base` with the supplied value, show the final branch
+and base without waiting, and continue. A supplied base that does not match the
+prepared base reference, or no supplied answer, keeps the base question above.
 Run `base` with `{base}`. If it does not resolve to a commit, explain and repeat
 the base question. **Complete when:** the user selected or entered one valid
 base and the helper returned its exact commit SHA (commit identifier).
+
+## Prepare for a caller
+
+Any workflow may ask this skill to prepare without creating: run section 1's
+`inspect` and return the suggested bases in their returned order, as the display
+options and exact references of the first page (up to four options, plus `More`
+when later pages exist, plus the free-text entry), without asking and without
+repository mutation. The caller presents that question and hands the answer back
+as the supplied base of section 2. This skill never names or depends on its
+caller; standalone use keeps sections 1–3 exactly as written.
+
+A caller may also supply the resolved `type`, `name`, and optional identifier.
+Section 1 still runs `name` with them and asks only for what `name` rejects or
+leaves ambiguous.
 
 ## 3. Create once and verify
 

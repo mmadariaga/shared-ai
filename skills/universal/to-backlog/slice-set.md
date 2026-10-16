@@ -24,8 +24,10 @@ when supported, otherwise written immediate references. Only agreed immediate
 edges are created; execution order and branch ancestry add none.
 The approved relation recipe appends issue URLs and structured correspondence
 to agreed source content after creation; assignees, labels and state stay intact.
-Obtain the existing explicit publication confirmation for this entire proposal.
-The optional backlog Yes, fast-track, and unattended consent do not replace it.
+Obtain the existing explicit publication confirmation for this entire proposal,
+or act on a supplied answer that binds it (`SKILL.md`, "Prepare for a caller and
+act on a supplied answer"). The optional backlog Yes, fast-track, and unattended
+consent do not replace it.
 
 Call `publish-set` with the same request, unchanged `confirmation` and a new
 private receipt path under the existing temporary-directory protocol. Each
@@ -34,10 +36,10 @@ separate verified operation when applicable. Retain returned `correspondence` wi
 `version`, `platform`, `parent`, and `slices` (change_name, issue, depends_on).
 The same mapping is stored in each issue's `sai-backlog-slices@1` marker, so
 import and `lookup-slice` can recover it independently of this conversation.
-When returning to Explore's pre-route action, return the complete verified
-correspondence to `backlog-origin-transport.md`: that owner amends the stored
-blocks with actual child origins and new hashes before cold planning dispatch.
-Conversation-only retention is not sufficient for that path.
+When the caller stores the blocks for later planning dispatch, return the
+complete verified correspondence to `backlog-origin-transport.md`: that owner
+amends the stored blocks with actual child origins and new hashes before cold
+planning dispatch. Conversation-only retention is not sufficient for that path.
 
 On a partial or uncertain result, show `created`, `pending`, and the receipt.
 Offer verify/recover, stop, or explicit continuation when verifiable; wait.
