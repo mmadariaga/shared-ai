@@ -270,3 +270,59 @@ When publication fails or remains uncertain after a verified push, the skill SHA
 #### Scenario: Publication is uncertain after a verified push
 - **WHEN** publication returns an uncertain outcome after a verified push
 - **THEN** the skill reports the two outcomes separately, retains the draft and branch, and uses existing read-only recovery without repeating the push or treating uncertainty as permission to create again.
+
+### Requirement: Azure pull-request calls use the repository-scoped endpoint
+
+The Azure DevOps adapter SHALL send every pull-request list, create, and update call through the installed-SDK bridge with the repository-scoped location id `9946fd70-0d40-406e-b686-b4744cbbcc37`, the `git` client, and API version `7.1`, never through `az devops invoke`. Every pull-request call SHALL carry the `project` and `repositoryId` route values, and only an update SHALL carry `pullRequestId`. Route values SHALL be percent-encoded once before template expansion. The request body SHALL travel as UTF-8 JSON on the bridge's standard input, and a pull-request call SHALL NOT write a temporary payload file. SDK failures SHALL keep the existing reason classification: a missing CLI as `tool-unavailable`, a missing extension as `extension-unavailable`, an authentication failure as `authentication-failed`, and any other failure as `azure-request-failed`, with the HTTP status in the message when the service reports one. `git/repositories` and the other unambiguous resources SHALL keep the `az devops invoke` path.
+
+#### Scenario: Pull requests are listed for the selected repository only
+- **WHEN** the adapter lists active pull requests for a source and target branch
+- **THEN** it sends a `GET` to the repository-scoped location with the selected `repositoryId`, so the result holds only that repository's pull requests
+
+#### Scenario: A pull request is created
+- **WHEN** publication creates a new pull request
+- **THEN** the adapter sends a `POST` to the repository-scoped location with `project` and `repositoryId` and no `pullRequestId`
+
+#### Scenario: A pull request is updated
+- **WHEN** publication updates the one matching pull request
+- **THEN** the adapter sends a `PATCH` to the repository-scoped location with `project`, `repositoryId`, and that request's `pullRequestId`
+
+#### Scenario: Names contain spaces or non-ASCII characters
+- **WHEN** the project or repository name contains spaces or non-ASCII characters
+- **THEN** the bridge resolves the percent-encoded route `{project}/_apis/git/repositories/{repositoryId}/pullrequests[/{pullRequestId}]` of that repository
+
+#### Scenario: Multi-line non-ASCII content is published
+- **WHEN** the title or description contains multi-line Markdown or non-ASCII text
+- **THEN** the body reaches the bridge unchanged as standard-input JSON and no temporary payload file is created
+
+#### Scenario: The SDK call fails
+- **WHEN** the bridge reports a missing CLI, a missing extension, an authentication failure, or a service error with an HTTP status
+- **THEN** the adapter reports `tool-unavailable`, `extension-unavailable`, `authentication-failed`, or `azure-request-failed` with that HTTP status in the message
+
+#### Scenario: Repository inspection keeps invoke
+- **WHEN** the adapter reads `git/repositories`
+- **THEN** it uses `az devops invoke` and not the SDK bridge
+
+### Requirement: SDK bridge client selection
+
+The installed-SDK bridge request SHALL name its client with a `client` value of `location`, `wit`, or `git`, and the bridge SHALL build the location client, the work-item tracking client, or the git client from that value. Authenticated-identity calls SHALL send `location`, work-item calls SHALL send `wit`, and pull-request calls SHALL send `git`. The bridge request SHALL NOT carry a boolean `identity` field.
+
+#### Scenario: Each caller selects its client
+- **WHEN** the bridge receives a request for authenticated identity, a work item, or a pull request
+- **THEN** it builds the location client for `location`, the work-item tracking client for `wit`, and the git client for `git`
+
+#### Scenario: Backlog item import selects the work-item client
+- **WHEN** the next-backlog-item Azure DevOps reader calls the bridge
+- **THEN** its request carries `client: 'wit'` and no `identity` field
+
+### Requirement: Push token travels in the confirmation field
+
+The `to-pr` skill SHALL state that `push` receives the push token in the `confirmation` field. `push` SHALL read the push token only from `confirmation` and SHALL reject a request that supplies the token under any other field name.
+
+#### Scenario: The skill names the push-token field
+- **WHEN** an agent reads the push instructions of the `to-pr` skill
+- **THEN** they state that the push token goes in the `confirmation` field
+
+#### Scenario: The token is supplied under another field name
+- **WHEN** `push` receives `approved:true` with the push token in a `push_token` field instead of `confirmation`
+- **THEN** it rejects the push and performs no push

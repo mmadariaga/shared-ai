@@ -43,10 +43,13 @@ test('H1: actual shared spawn boundary overrides inherited dynamic installation 
 test('H2: installed-SDK bridge selects distinct official location IDs and resolves final encoded REST templates', () => {
   const prefix = fs.readFileSync(path.join(__dirname, 'fixtures/azure-sdk-routing.py'), 'utf8');
   const cases = [
-    { identity: false, location: '62d3d110-0047-428c-ad3c-4fe872c91c74', method: 'POST', route: { project: 'Team Ω', type: 'User Story' }, expected: '/Team%20%CE%A9/_apis/wit/workitems/$User%20Story' },
-    { identity: false, location: '72c7ddf8-2cdc-4f60-90cd-ab71c14a399b', method: 'GET', route: { project: 'Team Ω', id: 12 }, expected: '/Team%20%CE%A9/_apis/wit/workitems/12' },
-    { identity: false, location: '72c7ddf8-2cdc-4f60-90cd-ab71c14a399b', method: 'PATCH', route: { project: 'Team Ω', id: 12 }, expected: '/Team%20%CE%A9/_apis/wit/workitems/12', body: [{ op: 'test', path: '/rev', value: 3 }, { op: 'add', path: '/fields/System.Title', value: 'New' }] },
-    { identity: true, location: '00d9565f-ed9c-4a06-9a50-00e7896ccab4', method: 'GET', route: {}, expected: '/_apis/connectionData' }
+    { client: 'wit', location: '62d3d110-0047-428c-ad3c-4fe872c91c74', method: 'POST', route: { project: 'Team Ω', type: 'User Story' }, expected: '/Team%20%CE%A9/_apis/wit/workitems/$User%20Story' },
+    { client: 'wit', location: '72c7ddf8-2cdc-4f60-90cd-ab71c14a399b', method: 'GET', route: { project: 'Team Ω', id: 12 }, expected: '/Team%20%CE%A9/_apis/wit/workitems/12' },
+    { client: 'wit', location: '72c7ddf8-2cdc-4f60-90cd-ab71c14a399b', method: 'PATCH', route: { project: 'Team Ω', id: 12 }, expected: '/Team%20%CE%A9/_apis/wit/workitems/12', body: [{ op: 'test', path: '/rev', value: 3 }, { op: 'add', path: '/fields/System.Title', value: 'New' }] },
+    { client: 'location', location: '00d9565f-ed9c-4a06-9a50-00e7896ccab4', method: 'GET', route: {}, expected: '/_apis/connectionData' },
+    { client: 'git', location: '9946fd70-0d40-406e-b686-b4744cbbcc37', method: 'GET', route: { project: 'Team Ω', repositoryId: 'Repo Ω' }, expected: '/Team%20%CE%A9/_apis/git/repositories/Repo%20%CE%A9/pullrequests' },
+    { client: 'git', location: '9946fd70-0d40-406e-b686-b4744cbbcc37', method: 'POST', route: { project: 'Team Ω', repositoryId: 'Repo Ω' }, expected: '/Team%20%CE%A9/_apis/git/repositories/Repo%20%CE%A9/pullrequests', body: { title: 'Ω título\nmulti-line', description: '## Body\nñ' } },
+    { client: 'git', location: '9946fd70-0d40-406e-b686-b4744cbbcc37', method: 'PATCH', route: { project: 'Team Ω', repositoryId: 'Repo Ω', pullRequestId: 7 }, expected: '/Team%20%CE%A9/_apis/git/repositories/Repo%20%CE%A9/pullrequests/7', body: { title: 'New' } }
   ];
   for (const request of cases) {
     const result = spawnSync('python', ['-c', prefix + '\n' + SDK_SCRIPT], { encoding: 'utf8', input: JSON.stringify({ ...request,
@@ -56,15 +59,20 @@ test('H2: installed-SDK bridge selects distinct official location IDs and resolv
     assert.equal(response.url, `https://dev.azure.com/org${request.expected}`);
     assert.equal(response.method, request.method);
     assert.deepEqual(response.body, request.body || null);
-    if (request.identity) assert.equal(response.authenticatedUser.id, 'offline-actor');
+    if (request.client === 'location') assert.equal(response.authenticatedUser.id, 'offline-actor');
   }
-  const calls = [];
-  for (const [route, location] of [[{ project: 'Team', type: 'Task' }, cases[0].location], [{ project: 'Team', id: 1 }, cases[1].location]]) {
-    azure.api({ organization: 'https://dev.azure.com/org' }, 'wit', 'workitems', route, { run(command, args, input) {
-      assert.equal(command, 'azure-sdk'); const request = JSON.parse(input); calls.push(request); assert.equal(request.location, location); return '{}';
+  const calls = [], org = { organization: 'https://dev.azure.com/org' };
+  for (const [area, resource, route, location, client] of [['wit', 'workitems', { project: 'Team', type: 'Task' }, cases[0].location, 'wit'],
+    ['wit', 'workitems', { project: 'Team', id: 1 }, cases[1].location, 'wit'],
+    ['git', 'pullrequests', { project: 'Team', repositoryId: 'r' }, '9946fd70-0d40-406e-b686-b4744cbbcc37', 'git']]) {
+    azure.api(org, area, resource, route, { run(command, args, input) {
+      assert.equal(command, 'azure-sdk'); const request = JSON.parse(input); calls.push(request); assert.equal(request.location, location); assert.equal(request.client, client); return '{}';
     } });
   }
-  assert.equal(calls.length, 2);
+  assert.equal(calls.length, 3);
+  assert.equal(calls[2].version, '7.1');
+  // Only git/pullrequests changes transport: repositories keep the invoke path.
+  azure.api(org, 'git', 'repositories', { project: 'Team', repositoryId: 'r' }, { run(command) { assert.equal(command, 'az'); return '{}'; } });
 });
 
 test('H3: escapes, reference definitions in paragraphs and task-list semantics fail closed before approval', () => {
@@ -94,7 +102,7 @@ test('M1: only owned transport payloads are removed on success, runner/JSON/prep
         if (outcome === 'prepare-error' && path.basename(args[0]) === 'payload.json') throw new Error('Preparation failed');
         return originalWrite(...args);
       };
-      const call = () => azure.api({ organization: 'https://dev.azure.com/org' }, 'git', 'pullrequests', {}, { run(command, args) {
+      const call = () => azure.api({ organization: 'https://dev.azure.com/org' }, 'wit', 'wiql', {}, { run(command, args) {
         const file = args[args.indexOf('--in-file') + 1]; assert.ok(fs.existsSync(file));
         if (outcome === 'runner-error') throw new Error('Runner failed');
         return outcome === 'parse-error' ? '{invalid' : '{}';
@@ -107,6 +115,23 @@ test('M1: only owned transport payloads are removed on success, runner/JSON/prep
     fs.mkdtempSync = originalMkdtemp; fs.writeFileSync = originalWrite;
     fs.unlinkSync(receiptFile); fs.rmdirSync(receiptDirectory);
   }
+});
+
+test('M2: pull-request writes travel as SDK stdin JSON and create no temporary payload file', () => {
+  const created = [], originalMkdtemp = fs.mkdtempSync;
+  fs.mkdtempSync = (...args) => { created.push(args); return originalMkdtemp(...args); };
+  try {
+    const body = { title: 'Título\nlínea', description: '## Ω\nbody' };
+    const result = azure.api({ organization: 'https://dev.azure.com/org' }, 'git', 'pullrequests', { project: 'Team', repositoryId: 'r' }, { run(command, args, input) {
+      assert.equal(command, 'azure-sdk'); assert.deepEqual(args, []); assert.deepEqual(JSON.parse(input).body, body); return '{"ok":true}';
+    } }, 'POST', body);
+    assert.deepEqual(result, { ok: true });
+    assert.equal(created.length, 0);
+    for (const [text, reason] of [['ENOENT az not found', 'tool-unavailable'], ['extension not installed', 'extension-unavailable'], ['az login required', 'authentication-failed'], ['no luck', 'azure-request-failed']]) {
+      assert.throws(() => azure.api({ organization: 'https://dev.azure.com/org' }, 'git', 'pullrequests', { project: 'Team', repositoryId: 'r' }, { run: () => { throw new Error(text); } }), error => error.reason === reason);
+    }
+    assert.throws(() => azure.api({ organization: 'https://dev.azure.com/org' }, 'git', 'pullrequests', { project: 'Team', repositoryId: 'r' }, { run: () => JSON.stringify({ sdk_error: 'VS403: denied', status_code: 403 }) }), error => error.reason === 'azure-request-failed' && /HTTP status 403/.test(error.message) && error.rejected === true);
+  } finally { fs.mkdtempSync = originalMkdtemp; }
 });
 
 test('I4: the SDK bridge carries the HTTP status of a service error so an unknown-identity 400 is rejected', () => {
@@ -123,9 +148,10 @@ class Client:
 services = types.ModuleType('azext_devops.dev.common.services')
 services.get_work_item_tracking_client = lambda organization: Client()
 services.get_location_client = lambda organization: Client()
+services.get_git_client = lambda organization: Client()
 sys.modules['azext_devops.dev.common.services'] = services
 `;
-  const run = (route) => spawnSync('python', ['-c', prefix + '\n' + SDK_SCRIPT], { encoding: 'utf8', input: JSON.stringify({ identity: false, location: 'x', method: 'PATCH', route,
+  const run = (route) => spawnSync('python', ['-c', prefix + '\n' + SDK_SCRIPT], { encoding: 'utf8', input: JSON.stringify({ client: 'wit', location: 'x', method: 'PATCH', route,
     organization: 'https://dev.azure.com/org', extension: 'offline-installed-extension', version: '7.1-preview.3', query: {}, mediaType: 'application/json-patch+json' }) });
   const failed = run({ project: 'Team', id: 1 });
   assert.equal(failed.status, 0, failed.stderr);

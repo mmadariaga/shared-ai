@@ -21,7 +21,7 @@ function receipt() {
 // Mocked protocol tests, not live Azure integration. Every test names its
 // crystallized E/I coverage and asserts both results and forbidden operations.
 function fixture() {
-  const state = { calls: [], writes: [], items: new Map(), rows: [], head: 'a'.repeat(40), remoteHead: 'a'.repeat(40), rev: 1 };
+  const state = { calls: [], writes: [], items: new Map(), rows: [], pullRequestCalls: [], head: 'a'.repeat(40), remoteHead: 'a'.repeat(40), rev: 1 };
   const item = (id, title = 'Old', description = '<p>Keep <custom>HTML</custom></p>') => ({ id, rev: state.rev,
     fields: { 'System.TeamProject': project, 'System.WorkItemType': 'Task', 'System.Title': title,
       'System.Description': description, 'System.CreatedBy': { id: 'actor' } } });
@@ -34,7 +34,14 @@ function fixture() {
     const sdk = command === 'azure-sdk' ? JSON.parse(input) : null;
     if (sdk) {
       command = 'az';
-      args = ['devops', 'invoke', '--resource', sdk.identity ? 'connectionData' : 'workitems', '--http-method', sdk.method,
+      // Pull-request calls must select the git client with the repository-scoped location id, and never rely on invoke.
+      if (sdk.client === 'git') {
+        assert.equal(sdk.location, '9946fd70-0d40-406e-b686-b4744cbbcc37'); assert.equal(sdk.version, '7.1');
+        assert.equal(sdk.route.project, project); assert.equal(sdk.route.repositoryId, 'repo-id');
+        assert.equal(sdk.route.pullRequestId !== undefined, sdk.method === 'PATCH');
+        state.pullRequestCalls.push({ method: sdk.method, route: sdk.route, location: sdk.location });
+      }
+      args = ['devops', 'invoke', '--resource', { location: 'connectionData', wit: 'workitems', git: 'pullrequests' }[sdk.client], '--http-method', sdk.method,
         '--detect', 'false', '--route-parameters', ...Object.entries(sdk.route).map(([k,v]) => `${k}=${v}`), '--media-type', sdk.mediaType];
     }
     if (command === 'git') {
@@ -187,10 +194,15 @@ test('E7 I5 I8: exact fetch/push and branch identity, independent push approval 
   assert.throws(() => prs.push({ ...prRequest, approved: true, confirmation: ready.confirmation }, io), /push approval/);
   assert.equal(state.writes.length, 0);
   const pushReady = prs.pushQuery(prRequest, io);
+  assert.throws(() => prs.push({ ...prRequest, approved: true, push_token: pushReady.confirmation }, io), /push approval/);
+  assert.match(fs.readFileSync('skills/universal/to-pr/SKILL.md', 'utf8'), /`push token` in the\s+`confirmation` field/);
   assert.equal(prs.push({ ...prRequest, approved: true, confirmation: pushReady.confirmation }, io).status, 'complete');
   assert.equal(prs.publish({ ...prRequest, approved: true, confirmation: ready.confirmation, receipt: receipt() }, io).status, 'complete');
   assert.deepEqual(Object.keys(state.writes[1].body).sort(), ['description', 'sourceRefName', 'targetRefName', 'title']);
   assert.equal(state.rows[0].description, prRequest.description);
+  assert.ok(state.pullRequestCalls.length >= 2);
+  assert.ok(state.pullRequestCalls.some(call => call.method === 'GET') && state.pullRequestCalls.some(call => call.method === 'POST'));
+  assert.ok(state.calls.every(call => call.command !== 'az' || !call.args.includes('--in-file')), 'no payload file is written');
 });
 test('E8 I3: Azure Repos descriptions publish as drafted, without a closing block or a commit-log read', () => {
   const { io, state } = fixture();
@@ -210,6 +222,7 @@ test('E6 E7 I8: PR update warning bound before approval, stale baseline and mult
   const renewed = prs.query(prRequest, io);
   assert.equal(prs.publish({ ...prRequest, approved: true, confirmation: renewed.confirmation, receipt: receipt() }, io).status, 'complete');
   assert.deepEqual(Object.keys(state.writes[0].body).sort(), ['description', 'title']);
+  assert.ok(state.pullRequestCalls.some(call => call.method === 'PATCH' && call.route.pullRequestId === 7));
   state.rows.push({ ...state.rows[0], pullRequestId: 8 });
   assert.throws(() => prs.query(prRequest, io), /Multiple/);
 });

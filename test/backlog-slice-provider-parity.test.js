@@ -69,7 +69,7 @@ function fixture(platform) {
     }
     if (command === 'azure-sdk') {
       const request = JSON.parse(input), { route, body, method } = request;
-      if (request.identity) return JSON.stringify({ authenticatedUser: { id: actor, ...(state.noUniqueName ? {} : { properties: { Account: { $type: 'System.String', $value: uniqueName } } }) } });
+      if (request.client === 'location') return JSON.stringify({ authenticatedUser: { id: actor, ...(state.noUniqueName ? {} : { properties: { Account: { $type: 'System.String', $value: uniqueName } } }) } });
       if (method === 'POST') {
         state.writes.push({ method, body });
         const row = create(body.find(part => part.path === '/fields/System.Title').value, body.find(part => part.path === '/fields/System.Description').value);
