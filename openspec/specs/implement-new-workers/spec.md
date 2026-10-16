@@ -34,9 +34,23 @@ Each worker SHALL write a report with `status` (`done` or `blocked`), `summary` 
 
 ### Requirement: RED and GREEN write surfaces
 
-The RED worker SHALL write only the step's test files, the fixtures and helpers they need, interface stubs in their production files that return a null, empty, or wrong value, and existing tests the brief names; it SHALL NOT write production logic or edit `interfaces.md`. The GREEN worker SHALL write only production files the step needs and SHALL name any file beyond the brief with its reason in `notes`; it SHALL NOT modify test files, fixtures, or `interfaces.md`, including when it believes a test is wrong. Neither worker SHALL run a git command that changes the repository, edit the plan artifacts or checkboxes, run an `openspec` command, or dispatch a subagent.
+The RED worker SHALL write only the step's test files, the fixtures and helpers they need, interface stubs in their production files that return a null, empty, or wrong value, and existing tests the brief names; it SHALL NOT write production logic or edit `interfaces.md`. The GREEN worker SHALL write only production files the step needs and SHALL name any file beyond the brief with its reason in `notes`; it SHALL NOT modify test files, fixtures, or `interfaces.md`, including when it believes a test is wrong. Neither worker SHALL run a git command that changes the repository, edit the plan artifacts, the audit reports (`review.md`, `security.md`, `performance.md`, `accessibility.md`), the checkboxes, or the fixed marks, run an `openspec` command, or dispatch a subagent.
 
 #### Scenario: GREEN believes a test is wrong
 
 - **WHEN** passing a step's test would require changing the test
 - **THEN** the GREEN worker leaves the test untouched and reports `blocked` with the failing test and the contradiction, and the coordinator arbitrates.
+
+#### Scenario: GREEN fixes an audit finding
+
+- **WHEN** GREEN completes a step that fixes an audit finding
+- **THEN** it leaves the audit report and the finding's fixed mark to the coordinator
+
+### Requirement: Audit-finding briefs
+
+A step brief MAY carry audit findings to fix in place of plan references. When the brief carries audit findings instead of tasks, the RED worker SHALL treat the code as existing and each finding as a defect in it, and SHALL write one test per finding in its brief that asserts the corrected behavior the finding describes, fails by assertion on the current code, and names the finding's identifier in the test name. The GREEN worker SHALL read the audit findings the brief names as it reads plan references.
+
+#### Scenario: RED receives an audit finding
+
+- **WHEN** a RED brief carries an audit finding instead of tasks
+- **THEN** RED writes a test named with the finding's identifier that fails by assertion on the current code

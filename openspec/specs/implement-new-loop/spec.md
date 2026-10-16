@@ -7,12 +7,17 @@ TBD - created by archiving change sai-build-new-walking-skeleton. Update Purpose
 
 ### Requirement: Implement-new loads only non-stopping cross-cutting policies
 
-The `/sai-3-implement-new` and `/sai-build-new` coordinators SHALL load only cross-cutting policies that never stop a run: public chat, `remember`, `safe-operations`, `prereqs-check` with `prereqs-paths`, `tool-resolution`, the budget executor binding, and, for the `/sai-3-implement-new` step review, `artifact-review-contract`. They SHALL NOT load `command-runner`, `worker-core`, `bounded-recovery`, `stop-options`, `unattended-runtime-recovery`, `no-commit-guard`, or `composition.md`.
+The `/sai-3-implement-new` and `/sai-build-new` coordinators SHALL load only cross-cutting policies that never stop a run: public chat, `remember`, `safe-operations`, `prereqs-check` with `prereqs-paths`, `tool-resolution`, the budget executor binding, and, for `/sai-3-implement-new`, `artifact-review-contract` for the step review and `finding-state` for the audit findings. They SHALL NOT load `command-runner`, `worker-core`, `bounded-recovery`, `stop-options`, `unattended-runtime-recovery`, `no-commit-guard`, or `composition.md`.
 
 #### Scenario: Shared stopping orchestration is absent
 
 - **WHEN** the `-new` coordinator cards are inspected
 - **THEN** none of them fetches the shared command runner, worker core, bounded recovery, stop options, unattended runtime recovery, no-commit guard, or composition contract.
+
+#### Scenario: The finding-state policy is loaded
+
+- **WHEN** the `/sai-3-implement-new` coordinator card is inspected
+- **THEN** it fetches `@sai/policies/finding-state.md`
 
 ### Requirement: Start preconditions
 
@@ -25,12 +30,17 @@ The coordinator SHALL run the OpenSpec prerequisite check before anything else. 
 
 ### Requirement: Baselines before the first step
 
-Before the first step, the coordinator SHALL record the dirty baseline with `git status --porcelain` and SHALL run the unit and integration suites once through the executor, recording the failing tests as the failure baseline, or `unavailable` when no suite can be found or run. When every task in `tasks.md` is already checked, it SHALL do no new work, run the suites exactly once, report their result, and close.
+Before the first step, the coordinator SHALL record the dirty baseline with `git status --porcelain` and SHALL run the unit and integration suites once through the executor, recording the failing tests as the failure baseline, or `unavailable` when no suite can be found or run. When every task in `tasks.md` is already checked and no audit report holds an open fixable finding, it SHALL do no new work, run the suites exactly once, report their result, and close.
 
 #### Scenario: Every task is already checked
 
-- **WHEN** the run starts and every task in `tasks.md` is checked
+- **WHEN** the run starts, every task in `tasks.md` is checked, and no audit report holds an open fixable finding
 - **THEN** the coordinator runs the suites once, reports the result, and closes without dispatching a worker.
+
+#### Scenario: Every task is checked but a finding is open
+
+- **WHEN** the run starts, every task in `tasks.md` is checked, and an audit report holds an open fixable finding
+- **THEN** the coordinator records the baselines and applies the audit findings instead of closing
 
 ### Requirement: Per-step RED, GREEN, review, and commit cycle
 
@@ -67,12 +77,17 @@ Each step SHALL close with one local commit authorized by invoking the command. 
 
 ### Requirement: Coordinator authority over the plan
 
-The coordinator SHALL be the only writer of `proposal.md`, `specs/`, `design.md`, `tasks.md`, and `interfaces.md` during the run, and an override in a worker brief SHALL take precedence over the plan. When artifacts contradict each other, it SHALL keep the reading that preserves the intent of `proposal.md` and edit the other artifact without asking. It SHALL record every difference between the work and the plan as a deviation and print the deviation list in the closing report.
+The coordinator SHALL be the only writer of `proposal.md`, `specs/`, `design.md`, `tasks.md`, and `interfaces.md` during the run, and SHALL write only the fixed marks in the audit reports; workers SHALL write only tests, stubs, and production code. An override in a worker brief SHALL take precedence over the plan. When artifacts contradict each other, it SHALL keep the reading that preserves the intent of `proposal.md` and edit the other artifact without asking. It SHALL record every difference between the work and the plan as a deviation and print the deviation list in the closing report.
 
 #### Scenario: Contradictory plan artifacts
 
 - **WHEN** `tasks.md` and `interfaces.md` disagree on a step's signature
 - **THEN** the coordinator edits the artifact that conflicts with the intent of `proposal.md`, records the deviation, and continues without asking.
+
+#### Scenario: Audit report edits are limited to the mark
+
+- **WHEN** the coordinator fixes an audit finding
+- **THEN** its only edit to the audit report is the fixed mark on that finding's heading line
 
 ### Requirement: Obstacles and escalation
 
@@ -85,9 +100,38 @@ An obstacle SHALL be anything that prevents closing a step or the run, including
 
 ### Requirement: Final suite against the baseline
 
-After the last step, the coordinator SHALL run every unit and integration suite through the executor and SHALL never run end-to-end suites. A new or worsened failure compared with the failure baseline SHALL be the `final-suite` obstacle with its own budget of 3 attempts, each attempt being a new step that corrects the failure, and an `unavailable` baseline SHALL be reported as is. The closing report SHALL list the committed steps, the deviations, the suite result against the baseline, the pending findings, and what remains open, and the run SHALL end with exactly `Implement-new done.` when every task is checked and the suites show no new failure. A run that stopped or escalated SHALL end with its report and no closing line.
+After the last step, the coordinator SHALL run every unit and integration suite through the executor and SHALL never run end-to-end suites. A new or worsened failure compared with the failure baseline SHALL be the `final-suite` obstacle with its own budget of 3 attempts, each attempt being a new step that corrects the failure, and an `unavailable` baseline SHALL be reported as is. The closing report SHALL list the committed steps, the deviations, the suite result against the baseline, the pending findings, the audit findings fixed, and what remains open, open Questions included, and the run SHALL end with exactly `Implement-new done.` when every task is checked, every open fixable finding is fixed or carries a deviation, and the suites show no new failure. A run that stopped or escalated SHALL end with its report and no closing line.
 
 #### Scenario: Clean close
 
-- **WHEN** every task is checked and the final suites show no failure absent from the baseline
+- **WHEN** every task is checked, every open fixable finding is fixed or carries a deviation, and the final suites show no failure absent from the baseline
 - **THEN** the coordinator prints the closing report and ends with `Implement-new done.`.
+
+#### Scenario: Open Questions at close
+
+- **WHEN** the run completes while an audit report holds an open Question
+- **THEN** the closing report lists that Question as open
+
+### Requirement: Audit findings applied after the tasks
+
+The `/sai-3-implement-new` coordinator SHALL read the audit reports that exist in the change directory (`review.md`, `security.md`, `performance.md`, `accessibility.md`) at start, and SHALL apply their open fixable findings only after every task in `tasks.md` is checked. Open, fixed, fixable, Question, and the fixed mark SHALL mean what `sai/policies/finding-state.md` defines. Every open fixable finding SHALL go through the step cycle, one finding per step or a few that share a location and a fix, with a brief that carries each finding's identifier, report, location, problem, and suggested fix in place of tasks, and the corrected behavior in place of spec scenarios. The coordinator SHALL decide per finding whether it needs RED: a finding about behavior that a test can pin and that no test pins yet SHALL go through RED first, with a test that fails by assertion on the current code; a finding that an existing test already exposes, or that no test can usefully pin, SHALL go to GREEN directly. Either path SHALL be the plan for that finding, not a deviation. The step's commit SHALL carry the fix together with the fixed mark the coordinator appends to each fixed finding's heading line. A fixed finding SHALL never be done again. A Question SHALL stay open and go to the closing report. A finding the coordinator judges mistaken, or whose fix contradicts the plan, SHALL stay open with a deviation that says why, and a fix that would change the What or Why of `proposal.md` SHALL be force majeure.
+
+#### Scenario: An open finding is fixed in its own step
+
+- **WHEN** every task is checked and `review.md` holds an open fixable finding that no test pins
+- **THEN** the coordinator runs a step whose RED test fails by assertion on the current code, GREEN fixes it, and the step's commit holds the fix and the finding's ` (FIXED)` mark
+
+#### Scenario: A finding no test can pin
+
+- **WHEN** an open fixable finding concerns wording or documentation
+- **THEN** the step goes to GREEN directly and records no deviation for skipping RED
+
+#### Scenario: A fixed finding is skipped
+
+- **WHEN** a finding's heading line already carries the fixed mark
+- **THEN** the coordinator runs no step for it
+
+#### Scenario: A Question stays open
+
+- **WHEN** an audit report holds a Question
+- **THEN** the coordinator runs no step for it, leaves it without a fixed mark, and lists it in the closing report

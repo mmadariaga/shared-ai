@@ -67,9 +67,14 @@ A worker that returns no ready, whose report cannot be read, that stays silent p
 
 ### Requirement: Resumption after compaction or in another session
 
-At start, a `status` response with a `running` or `escalated` stage and a run directory SHALL be treated as an interrupted run. After a context compaction or on an interrupted run, the coordinator SHALL read the store and the files it references, compare them with `git log` and the `tasks.md` checkboxes, let commits and checkboxes win over the store, and continue at the first step with an unchecked task, keeping the attempts the store holds for it. It SHALL create new workers whose handles are gone, with the ready handshake and a hand-over summary, spending no attempt, and SHALL ask an open escalation again. When the store is gone (another machine, or a cleared temporary directory), it SHALL rebuild progress from `git log` and `tasks.md` with every counter at zero, carry the deviations, overrides, and findings of an earlier run directory into the new one, and treat uncommitted paths it did not make as the dirty baseline.
+At start, a `status` response with a `running` or `escalated` stage and a run directory SHALL be treated as an interrupted run. After a context compaction or on an interrupted run, the coordinator SHALL read the store and the files it references, compare them with `git log`, the `tasks.md` checkboxes, and the fixed marks in the audit reports, let commits, checkboxes, and marks win over the store, and continue at the first step with an unchecked task or, once every task is checked, an open fixable finding, keeping the attempts the store holds for it. It SHALL create new workers whose handles are gone, with the ready handshake and a hand-over summary, spending no attempt, and SHALL ask an open escalation again. When the store is gone (another machine, or a cleared temporary directory), it SHALL rebuild progress from `git log`, `tasks.md`, and the fixed marks with every counter at zero, carry the deviations, overrides, and findings of an earlier run directory into the new one, and treat uncommitted paths it did not make as the dirty baseline.
 
 #### Scenario: Resuming without the store
 
 - **WHEN** a new session starts on a change whose earlier run committed some steps and left no visible store
 - **THEN** the coordinator rebuilds progress from `git log` and the `tasks.md` checkboxes and continues at the first step with an unchecked task with its counters at zero.
+
+#### Scenario: Resuming during the audit findings
+
+- **WHEN** an interrupted run resumes after every task is checked and some audit findings carry the fixed mark
+- **THEN** the coordinator continues at the first open fixable finding and runs no step for a marked finding

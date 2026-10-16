@@ -107,12 +107,17 @@ Each audit artifact produces its own dedicated step (e.g., `Step N: Address revi
 
 ### Requirement: The judgment behavior SHALL apply uniformly to all four audit artifacts
 
-The judgment, classification, and Discarded block behaviors SHALL apply to the open findings in `review.md`, `security.md`, `performance.md`, and `accessibility.md`. Every open finding in any of these four audit artifacts is subject to the rubric. A fixed finding is subject to none of them.
+In `/sai-3-implement`, the judgment, classification, and Discarded block behaviors SHALL apply to the open findings in `review.md`, `security.md`, `performance.md`, and `accessibility.md`. Every open finding in any of these four audit artifacts is subject to the rubric. A fixed finding is subject to none of them. `/sai-3-implement-new` SHALL NOT apply this judgment: it disposes of audit findings through its own contract, and this requirement does not change `/sai-3-implement`.
 
 #### Scenario: applies to all four
 
 - **WHEN** any of `review.md`, `security.md`, `performance.md`, or `accessibility.md` exists for the change
 - **THEN** the agent exercises judgment over that artifact's open findings and produces the same Apply/Discard/Discarded-block structure
+
+#### Scenario: Implement-new uses its own contract
+
+- **WHEN** `/sai-3-implement-new` meets an open finding in an audit artifact
+- **THEN** it applies its own audit-findings contract and produces no Apply/Discard/Discarded-block structure
 
 ### Requirement: The re-run preservation contract SHALL be preserved
 
