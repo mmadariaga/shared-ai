@@ -7,12 +7,12 @@ Define the deterministic fold and verification of the design File Manifest by `s
 
 ### Requirement: File Manifest is written by a deterministic tool
 
-The `fold` sub-command of `sai/tools/file-manifest.js` SHALL fold every `## Step N` section's `**Files Affected**` entries of a change's `tasks.md` into the `### File Manifest` subsection of the same change's `design.md` and write it there. When `design.md` has no `### File Manifest` subsection, the tool SHALL create it beneath `### Architecture Snapshot`. The write SHALL be idempotent: a run whose fold equals the persisted manifest SHALL report `unchanged` and SHALL NOT rewrite `design.md`.
+The `fold` sub-command of `sai/tools/file-manifest.js` SHALL fold every `## Step N` section's `**Files Affected**` entries of a change's `tasks.md` into the `### File Manifest` subsection of the same change's `design.md` and write it there. When `design.md` has no `### File Manifest` subsection, the tool SHALL create it beneath `### Architecture Snapshot`. Every non-empty manifest entry SHALL be emitted as a Markdown bullet prefixed with `- `, with one logical entry per line. The empty sentinel and its reason SHALL remain unbulleted. The write SHALL be idempotent: a run whose fold equals the persisted manifest SHALL report `unchanged` and SHALL NOT rewrite `design.md`.
 
 #### Scenario: fold writes the net-folded manifest
 
 - **WHEN** `tasks.md` lists `A x/a.md` and `M x/b.md` in Step 1 and `M x/a.md` in Step 2, and `fold` runs
-- **THEN** the `### File Manifest` subsection of `design.md` contains `A x/a.md (Step 1, Step 2)` and `M x/b.md (Step 1)`
+- **THEN** the `### File Manifest` subsection of `design.md` contains `- A x/a.md (Step 1, Step 2)` and `- M x/b.md (Step 1)` on separate lines
 
 #### Scenario: fold is idempotent
 
@@ -29,14 +29,19 @@ The `fold` sub-command of `sai/tools/file-manifest.js` SHALL fold every `## Step
 - **WHEN** every path in `tasks.md` is created in one Step and deleted in a later Step, and `fold` runs
 - **THEN** the manifest body is the `None — no files affected` sentinel followed by its one-line reason
 
+#### Scenario: Explicit regeneration upgrades legacy presentation once
+
+- **WHEN** fold runs on a valid legacy unbulleted manifest and then runs again without task changes
+- **THEN** the first run emits single-prefixed bullet entries and the second reports unchanged without duplicating bullets
+
 ### Requirement: The tool reproduces the normative net fold
 
-`sai/tools/file-manifest.js` SHALL produce exactly the lines that the net-fold transition table, step attribution, line format, and byte-wise sort of the `design-target-state` capability require, treating that capability as the normative definition and the tool as a move from prose to code rather than a semantic change. Lines SHALL be sorted byte-wise by path, using the destination path for `R` lines.
+`sai/tools/file-manifest.js` SHALL produce exactly the lines that the net-fold transition table, step attribution, line format, and byte-wise sort of the `design-target-state` capability require, treating that capability as the normative definition and the tool as a move from prose to code rather than a semantic change. The rendered non-empty lines SHALL carry a single `- ` presentation prefix; the underlying net-fold transitions, tokens, paths, grouping, and Step attribution SHALL remain unchanged. Lines SHALL be sorted byte-wise by path, using the destination path for `R` lines.
 
 #### Scenario: a chained rename follows the path
 
 - **WHEN** `tasks.md` lists `R a.md -> b.md` in Step 2 and `R b.md -> c.md` in Step 4
-- **THEN** the fold yields `R a.md -> c.md (Step 2, Step 4)` and no line mentions `b.md`
+- **THEN** the fold yields `- R a.md -> c.md (Step 2, Step 4)` and no line mentions `b.md`
 
 #### Scenario: a path created and later deleted is omitted
 
@@ -46,11 +51,11 @@ The `fold` sub-command of `sai/tools/file-manifest.js` SHALL fold every `## Step
 #### Scenario: R lines sort by destination path byte-wise
 
 - **WHEN** a Step renames `z-old.ts` to `a-new.ts`, modifies `b-mid.ts`, and adds `B.ts`
-- **THEN** the fold yields `A B.ts`, then `R z-old.ts -> a-new.ts`, then `M b-mid.ts`, each with its step attribution
+- **THEN** the fold yields `- A B.ts`, then `- R z-old.ts -> a-new.ts`, then `- M b-mid.ts`, each with its step attribution
 
 ### Requirement: Verify mode compares the persisted manifest with the fold
 
-The `verify` sub-command SHALL compute the same fold without writing any file and SHALL compare it with the persisted `### File Manifest` subsection of `design.md`. It SHALL report `match` and exit 0 when they are equal, `diverged` and exit 1 when they differ, and `missing` and exit 1 when `design.md` has no `### File Manifest` subsection.
+The `verify` sub-command SHALL compute the same fold without writing any file and SHALL compare it with the persisted `### File Manifest` subsection of `design.md`. It SHALL report `match` and exit 0 when they are equal after allowing each expected non-empty entry either with its single `- ` prefix or without that prefix, `diverged` and exit 1 when they differ, and `missing` and exit 1 when `design.md` has no `### File Manifest` subsection.
 
 #### Scenario: verify reports a match
 
@@ -66,6 +71,18 @@ The `verify` sub-command SHALL compute the same fold without writing any file an
 
 - **WHEN** `design.md` has no `### File Manifest` subsection and `verify` runs
 - **THEN** it reports `missing` and exits 1
+
+Verification SHALL ignore only this optional presentation prefix. Paths, change indicators, ordering, rename endpoints, Step references, and other line content SHALL still participate in comparison. Verification SHALL NOT rewrite legacy artifacts.
+
+#### Scenario: Legacy manifest verifies without migration
+
+- **WHEN** a persisted manifest contains the expected entries without bullet prefixes and verify runs
+- **THEN** it reports match, exits 0, and leaves design.md byte-identical
+
+#### Scenario: Content differences are not presentation differences
+
+- **WHEN** a persisted manifest changes an entry's path, token, rename endpoint, ordering, Step attribution, or adds an extra prefix or note
+- **THEN** verify reports diverged, exits 1, and leaves design.md unchanged
 
 ### Requirement: Invalid input fails with a located diagnostic and no write
 

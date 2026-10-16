@@ -16,26 +16,26 @@ The file SHALL contain one numbered section per implementation step, structured 
     **Routing**: category=<category> · context=<context> · difficulty=<difficulty>
 
     **Files Affected**:
-    A <path of a file this step creates>
-    M <path of a file this step modifies>
-    D <path of a file this step deletes>
-    R <source path> -> <destination path>
+    - A <path of a file this step creates>
+    - M <path of a file this step modifies>
+    - D <path of a file this step deletes>
+    - R <source path> -> <destination path>
 
     **What Will Be Done**: <prose description of the work in this step>
 
     **Testing Strategy**: <how correctness will be verified for this step>
 
-    **Existing Tests Broken**: <existing tests this step breaks, each with failure mode `compile` or `runtime`; `None` when the step breaks none>
+    **Existing Tests Broken**: <existing tests this step breaks, each on its own `- ` bullet line beneath the label with failure mode `compile` or `runtime`; `None` when the step breaks none>
 
-The `**Files Affected**` sub-field SHALL contain one file-system change per line, not a comma-separated list. Ordinary entries SHALL start with exactly one change-type token from the closed four-letter vocabulary `A` (created), `M` (modified), `D` (deleted), `R` (moved/renamed), followed by exactly one space and then the exact project-root-relative path of the file. An `R` line SHALL instead carry the source path, the separator ` -> `, and the destination path, so a move or rename is recorded as one entry and never as a `D` entry plus an `A` entry.
+The `**Files Affected**` sub-field SHALL contain one file-system change per Markdown bullet line, not a comma-separated list. Newly generated ordinary entries SHALL start with `- ` followed by exactly one change-type token from the closed four-letter vocabulary `A` (created), `M` (modified), `D` (deleted), `R` (moved/renamed), followed by exactly one space and then the exact project-root-relative path of the file. An `R` line SHALL instead carry the source path, the separator ` -> `, and the destination path, so a move or rename is recorded as one entry and never as a `D` entry plus an `A` entry.
 
-As the sole bounded generated-output exception to the exact-file form, an A entry MAY use `A <directory>/<prefix>*<suffix> — generated count=<positive integer>`. The directory SHALL be exact and repository-relative, the basename SHALL have one wildcard between non-empty literal prefix and suffix, and the count SHALL be positive. Recursive and unrestricted wildcards SHALL not be permitted. This exception SHALL add neither a change-type token nor a sixth Step field. Apply SHALL resolve the family to exact paths before close; the derivative manifest SHALL retain the declared count rather than turn the family into an executable path.
+As the sole bounded generated-output exception to the exact-file form, an A entry MAY use `- A <directory>/<prefix>*<suffix> — generated count=<positive integer>`. The directory SHALL be exact and repository-relative, the basename SHALL have one wildcard between non-empty literal prefix and suffix, and the count SHALL be positive. Recursive and unrestricted wildcards SHALL not be permitted. This exception SHALL add neither a change-type token nor a sixth Step field. Apply SHALL resolve the family to exact paths before close; the derivative manifest SHALL retain the declared count rather than turn the family into an executable path.
 
 The `R` token SHALL cover both a pure relocation and a relocation that rewrites the file's content; the extent of the content change is carried by the step's `**What Will Be Done**` prose, not by the token. The token SHALL declare what happens to the file in the step's commit, not what the code inside it does; the four tokens are a closed vocabulary and no fifth letter SHALL be invented.
 
 For ordinary exact entries, the token SHALL be determined by the repository state immediately before that step's commit, not by the step's title or prose verb: a path that does not exist at that baseline and is created by the step is `A`; a path that exists at that baseline and is changed in place is `M`; a path that exists at that baseline and is removed is `D`; a path that exists at that baseline and is moved or renamed is `R`. A file created by an earlier step of the same change therefore carries `M` in a later step that changes it.
 
-Any consumer of an ordinary entry SHALL strip the leading change-type token before interpreting the path, and for an `R` entry SHALL read the two paths on either side of the separator; which of the two paths a consumer then acts on is defined by that consumer's own requirement. No Routing value is derived from these paths. Consumers of bounded generated entries SHALL retain the separate directory, family, and count semantics rather than treat the wildcard declaration as one exact file.
+Any consumer of an ordinary entry SHALL allow the Markdown `- ` presentation prefix and strip it, when present, before stripping the leading change-type token and interpreting the path, and for an `R` entry SHALL read the two paths on either side of the separator; which of the two paths a consumer then acts on is defined by that consumer's own requirement. No Routing value is derived from these paths. Consumers of bounded generated entries SHALL retain the separate directory, family, and count semantics rather than treat the wildcard declaration as one exact file.
 
 The `**Routing**` line SHALL be the first sub-field under the step title, immediately preceding `**Files Affected**`. The line uses key=value tagged pairs (not positional tokens); the three keys `category`, `context`, `difficulty` are mandatory and in that order. The three values are drawn from the enumerations defined in the `tasks-routing-metadata` capability spec, and each value is defined by its goal in the design instructions. No `routing.md`, routing table, or routing JSON sidecar is emitted; the formatted line is the only routing artifact. An optional trailing parenthetical `(... )` is allowed for human audit and MUST be ignored by any parser of the line.
 
@@ -44,6 +44,8 @@ The `**Existing Tests Broken**` sub-field SHALL be the fifth and last sub-field 
 The five sub-fields enumerated above are the complete and closed set for a `## Step N` section. No sixth sub-field SHALL be invented by the design agent.
 
 The file SHALL NOT contain any `- [ ]` or `- [x]` markers.
+
+The bullet presentation SHALL apply to new generation, not require rewriting existing artifacts. Legacy unbulleted entries SHALL remain valid input. Empty-list markers and all existing token, path, generated-family, and note semantics SHALL be preserved.
 
 After all implementation steps, the file SHALL contain the following two mandatory sections in order:
 
@@ -74,15 +76,15 @@ Both sections are mandatory for all new changes. Archived `tasks.md` files that 
 
 #### Scenario: each Files Affected entry declares its change type
 - **WHEN** `sai-2-design` emits a step's `**Files Affected**`
-- **THEN** every change entry starts with a token from `A`, `M`, `D`, `R` and its repository-relative exact path or permitted bounded A family, one entry per line without a comma-separated list
+- **THEN** every change entry starts with `- ` followed by a token from `A`, `M`, `D`, `R` and its repository-relative exact path or permitted bounded A family, one entry per line without a comma-separated list
 
 #### Scenario: a rename is one entry with source and destination
 - **WHEN** a step moves or renames a file
-- **THEN** the sub-field carries one `R <source path> -> <destination path>` entry rather than a D entry plus an A entry
+- **THEN** the sub-field carries one `- R <source path> -> <destination path>` entry rather than a D entry plus an A entry
 
 #### Scenario: consumers read the path after the change-type token
 - **WHEN** a consumer reads an ordinary `**Files Affected**` entry
-- **THEN** it reads the path after the leading token, with both R paths available around ` -> `
+- **THEN** it allows the optional `- ` presentation prefix and reads the path after the leading change-type token, with both R paths available around ` -> `
 
 #### Scenario: R covers relocation with and without rewrite
 - **WHEN** a step both relocates a file and substantially rewrites its content
@@ -112,32 +114,23 @@ Both sections are mandatory for all new changes. Archived `tasks.md` files that 
 
 The `tasks` artifact entry in `openspec/schemas/sai-workflow/schema.yaml` SHALL have its `instruction` field updated to describe the narrative scaffold format including the two mandatory trailing sections, the `**Routing**` keyword line, and the change-type-declaring `**Files Affected**` format. The instruction SHALL NOT contain the sentence "IMPORTANT: The apply phase parses checkbox format." The instruction SHALL describe the Routing line as the first sub-field of every `## Step N` section, SHALL specify the key=value tagged format (`category=<category> · context=<context> · difficulty=<difficulty>`), and SHALL reference the `tasks-routing-metadata` capability spec for the token enumerations and goal definitions. The instruction SHALL describe `**Files Affected**` as one entry per line, each entry starting with exactly one change-type token from the closed vocabulary `A` (created), `M` (modified), `D` (deleted), `R` (moved/renamed, with the source path and the destination path separated by ` -> `), and SHALL NOT describe the sub-field as a comma-separated list of paths.
 
-The template at `openspec/schemas/sai-workflow/templates/tasks.md` SHALL show the `**Routing**` line in its `## Step N` skeleton, immediately after the step title and before `**Files Affected**`, using the key=value format with the placeholders `category=<!-- frontend-ui|frontend-code|backend|data|infra|docs|other -->`, `context=<!-- small|medium|large -->` and `difficulty=<!-- low|medium|high -->`. The template SHALL show `**Files Affected**` as one line per change, each line carrying a change-type token placeholder from the closed vocabulary (`A`/`M`/`D`/`R`) followed by a path placeholder.
+The template at `openspec/schemas/sai-workflow/templates/tasks.md` SHALL show the `**Routing**` line in its `## Step N` skeleton, immediately after the step title and before `**Files Affected**`, using the key=value format with the placeholders `category=<!-- frontend-ui|frontend-code|backend|data|infra|docs|other -->`, `context=<!-- small|medium|large -->` and `difficulty=<!-- low|medium|high -->`. The template SHALL show `**Files Affected**` as one Markdown bullet line per change, each line carrying `- ` followed by a change-type token placeholder from the closed vocabulary (`A`/`M`/`D`/`R`) followed by a path placeholder.
 
 #### Scenario: schema instruction matches narrative format with trailing sections, Routing line, and change-type Files Affected
 
 - **WHEN** `openspec instructions tasks --change <name>` is run
-- **THEN** the returned `instruction` field describes the `## Step N:` scaffold format
-- **THEN** the instruction describes the `**Routing**` line as the first sub-field, in the same position as Files Affected / What Will Be Done / Testing Strategy / Existing Tests Broken
-- **THEN** the instruction specifies the key=value format with the three keys `category`, `context`, `difficulty` in that order
-- **THEN** the instruction describes `**Files Affected**` as one entry per line with change-type tokens from the closed vocabulary `A`, `M`, `D`, `R` and the `R` source -> destination form
-- **THEN** the instruction does not describe `**Files Affected**` as a comma-separated list of paths
-- **THEN** the instruction references `## Required Documentation` and `## Implementation Context` as mandatory trailing sections
-- **THEN** the instruction contains no reference to checkboxes or the apply phase parsing `- [ ]` markers
+- **THEN** the returned `instruction` field describes the `## Step N:` scaffold format; the instruction describes the `**Routing**` line as the first sub-field, in the same position as Files Affected / What Will Be Done / Testing Strategy / Existing Tests Broken; the instruction specifies the key=value format with the three keys `category`, `context`, `difficulty` in that order; the instruction describes `**Files Affected**` as one entry per line with change-type tokens from the closed vocabulary `A`, `M`, `D`, `R` and the `R` source -> destination form; the instruction does not describe `**Files Affected**` as a comma-separated list of paths; the instruction references `## Required Documentation` and `## Implementation Context` as mandatory trailing sections; the instruction contains no reference to checkboxes or the apply phase parsing `- [ ]` markers
 
 #### Scenario: tasks template shows the Routing line in key=value form and change-type Files Affected entries
 
 - **WHEN** `openspec/schemas/sai-workflow/templates/tasks.md` is read
-- **THEN** the `## Step N` template skeleton includes a `**Routing**` line as the first sub-field
-- **THEN** the template's `## Step N` block lists Routing, Files Affected, What Will Be Done, Testing Strategy, and Existing Tests Broken in that order
-- **THEN** the `**Routing**` line in the template uses the key=value format with the three keys `category`, `context`, `difficulty` in that order
-- **THEN** the template's `**Files Affected**` block shows one entry per line with a change-type token placeholder from the closed vocabulary `A`/`M`/`D`/`R` followed by a path placeholder
+- **THEN** the `## Step N` template skeleton includes a `**Routing**` line as the first sub-field; the template's `## Step N` block lists Routing, Files Affected, What Will Be Done, Testing Strategy, and Existing Tests Broken in that order; the `**Routing**` line in the template uses the key=value format with the three keys `category`, `context`, `difficulty` in that order; the template's `**Files Affected**` block shows one Markdown bullet entry per line prefixed with `- ` and a change-type token placeholder from the closed vocabulary `A`/`M`/`D`/`R` followed by a path placeholder
 
 ### Requirement: tasks-design-instruction-updated
 
-The active task-generation step at `sai/commands/design/steps/tasks.md` SHALL describe the `**Files Affected**` sub-field as one entry per line. Ordinary entries SHALL start with exactly one token from `A` (created), `M` (modified), `D` (deleted), `R` (moved/renamed) followed by the exact project-root-relative path; an R entry SHALL carry source and destination separated by ` -> `.
+The active task-generation step at `sai/commands/design/steps/tasks.md` SHALL describe the `**Files Affected**` sub-field as one Markdown bullet entry per line. Newly generated ordinary entries SHALL start with `- ` followed by exactly one token from `A` (created), `M` (modified), `D` (deleted), `R` (moved/renamed) followed by the exact project-root-relative path; an R entry SHALL carry source and destination separated by ` -> `.
 
-The instruction SHALL also permit the bounded generated exception `A <directory>/<prefix>*<suffix> — generated count=<positive integer>`, with an exact repository-relative directory, one basename wildcard, non-empty literal prefix and suffix, and a positive count. It SHALL forbid unrestricted and recursive wildcard declarations, require exact resolution before Apply close, and prohibit workers from widening the declaration. Ordinary paths SHALL remain exact.
+The instruction SHALL also permit the bounded generated exception `- A <directory>/<prefix>*<suffix> — generated count=<positive integer>`, with an exact repository-relative directory, one basename wildcard, non-empty literal prefix and suffix, and a positive count. It SHALL forbid unrestricted and recursive wildcard declarations, require exact resolution before Apply close, and prohibit workers from widening the declaration. Ordinary paths SHALL remain exact.
 
 The instruction SHALL NOT describe Files Affected as a comma-separated list. It SHALL direct the design agent to derive ordinary tokens from whether the path exists immediately before that Step's commit, not from the Step's title or prose verb. An existing file SHALL be M even when prose says "add". R SHALL cover pure relocations and relocations with rewrites, with content changes described by What Will Be Done rather than the token.
 
@@ -145,7 +138,7 @@ The Routing line subsection SHALL define each Routing value by its goal and SHAL
 
 #### Scenario: design instruction emits the change-type format
 - **WHEN** `sai-2-design` loads `sai/commands/design/steps/tasks.md` to generate tasks
-- **THEN** the instruction describes one entry per line with the closed A/M/D/R vocabulary and does not describe Files Affected as a comma-separated list
+- **THEN** the instruction describes one Markdown bullet entry per line prefixed with `- ` and the closed A/M/D/R vocabulary and does not describe Files Affected as a comma-separated list
 
 #### Scenario: Routing is not derived from Files Affected paths
 - **WHEN** `sai-2-design` assigns a Step's Routing values
@@ -164,7 +157,7 @@ The Routing line subsection SHALL define each Routing value by its goal and SHAL
 - **THEN** the Routing line values are not derived from the change-type token and are not affected by it
 
 #### Scenario: task-routing-uses-destination-path
-- **WHEN** a design step renames a file and includes an `R <source> -> <destination>` entry
+- **WHEN** a design step renames a file and includes a `- R <source> -> <destination>` entry
 - **THEN** the Routing line values are not derived from the destination path
 
 ### Requirement: tasks-glossary-term-updated
