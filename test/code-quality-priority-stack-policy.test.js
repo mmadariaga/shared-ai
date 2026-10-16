@@ -18,6 +18,7 @@ const CODE_WRITERS = [
   'sai/commands/apply/worker-common.md',
   'sai/commands/explore/direct-build-worker.md',
   'sai/commands/meta-review/review-fix-worker.md',
+  'sai/commands/implement-new/worker-common.md',
 ];
 const MERGE_INSTRUCTIONS = 'sai/commands/merge/instructions.md';
 

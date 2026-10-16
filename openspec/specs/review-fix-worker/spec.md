@@ -42,7 +42,7 @@ The fix loop SHALL cap at three rounds and SHALL make no commit when selected fi
 The installation SHALL register sai-review-fix-worker as the fifteenth matrix worker with bindings and agents for both harnesses.
 #### Scenario: Roster expansion
 - **WHEN** the manifest is expanded for either harness
-- **THEN** fifteen worker bindings and fifteen managed agents are projected including the review-fix worker
+- **THEN** seventeen worker bindings and seventeen managed agents are projected including the review-fix worker
 
 ### Requirement: Fixed Marks Continuation
 

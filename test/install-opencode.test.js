@@ -1293,9 +1293,9 @@ test('Step 1 Claude agent rows remain byte-preserving without ownership sidecars
 
 // --- Step 3: binding-derived roster replaces the retired registration surface ---
 
-test('Step 3 binding roster validation yields exactly the fifteen managed workers', () => {
+test('Step 3 binding roster validation yields exactly the seventeen managed workers', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-roster-'));
-  const WORKERS = [...CURRENT_CENSUS, 'sai-4-red-worker', 'sai-4-green-worker', 'sai-direct-build-worker', 'sai-review-fix-worker'];
+  const WORKERS = [...CURRENT_CENSUS, 'sai-4-red-worker', 'sai-4-green-worker', 'sai-direct-build-worker', 'sai-review-fix-worker', 'sai-red-new-worker', 'sai-green-new-worker'];
   try {
     installOpencode(tmpDir);
     const bindingsDir = path.join(tmpDir, 'sai', 'orchestration', 'workers', 'bindings');
@@ -1304,15 +1304,15 @@ test('Step 3 binding roster validation yields exactly the fifteen managed worker
       .map(entry => (typeof entry === 'string' ? entry : entry && entry.name))
       .sort();
     assert.deepEqual(names, [...WORKERS].sort(),
-      'specs/opencode-agent-census/spec.md: the binding roster must contain exactly the fifteen managed workers with no extra or missing worker');
+      'specs/opencode-agent-census/spec.md: the binding roster must contain exactly the seventeen managed workers with no extra or missing worker');
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 });
 
-test('Step 3 binding files declare exactly the fifteen initial worker dispatches', () => {
+test('Step 3 binding files declare exactly the seventeen initial worker dispatches', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-bindings-scan-'));
-  const WORKERS = [...CURRENT_CENSUS, 'sai-4-red-worker', 'sai-4-green-worker', 'sai-direct-build-worker', 'sai-review-fix-worker'];
+  const WORKERS = [...CURRENT_CENSUS, 'sai-4-red-worker', 'sai-4-green-worker', 'sai-direct-build-worker', 'sai-review-fix-worker', 'sai-red-new-worker', 'sai-green-new-worker'];
   try {
     installOpencode(tmpDir);
     const bindingsDir = path.join(tmpDir, 'sai', 'orchestration', 'workers', 'bindings');
@@ -1335,7 +1335,7 @@ test('Step 3 binding files declare exactly the fifteen initial worker dispatches
 
 test('Step 3 roster validation admits dispatch-less render bindings alongside worker bindings', () => {
   const fixtureDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-render-binding-'));
-  const WORKERS = [...CURRENT_CENSUS, 'sai-4-red-worker', 'sai-4-green-worker', 'sai-direct-build-worker', 'sai-review-fix-worker'];
+  const WORKERS = [...CURRENT_CENSUS, 'sai-4-red-worker', 'sai-4-green-worker', 'sai-direct-build-worker', 'sai-review-fix-worker', 'sai-red-new-worker', 'sai-green-new-worker'];
   try {
     const installDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-render-install-'));
     try {
@@ -1519,7 +1519,7 @@ test('Step 3 install seeds the seven managed opencode worker agent files with th
   }
 });
 
-test('opencode installer consumes exactly the fifteen matrix worker bindings and agents', () => {
+test('opencode installer consumes exactly the seventeen matrix worker bindings and agents', () => {
   const repoRoot = path.join(__dirname, '..');
   const manifest = loadInstallManifest(repoRoot);
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-matrix-inventory-'));
@@ -1546,8 +1546,8 @@ test('opencode installer consumes exactly the fifteen matrix worker bindings and
       .filter(projection => path.relative(destinationRoot.sai, projection.destinationPath)
         .split(path.sep).join('/').startsWith('orchestration/workers/bindings/'))
       .map(projection => path.basename(projection.destinationPath));
-    assert.equal(allBindingNames.length, 15,
-      'opencode should keep only the fifteen routed worker bindings in the matrix destination');
+    assert.equal(allBindingNames.length, 17,
+      'opencode should keep only the seventeen routed worker bindings in the matrix destination');
     const ideaList = active.find(projection =>
       path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/') ===
       'sai/adapters/opencode/idea-list-render.md');

@@ -11,16 +11,16 @@ The system SHALL declare abstract capability profiles and agent and command
 assignments in `sai/install-manifest.json`. Profiles SHALL support inherited
 flags and replacement of list-valued grants. Resolution SHALL reject unknown
 capabilities, missing profile assignments, invalid values, and inheritance
-cycles. The twenty-three shipped command-requirement assignments SHALL include
+cycles. The twenty-five shipped command-requirement assignments SHALL include
 to-backlog, from-backlog, from-next-backlog-item, to-pr, and the skill-only
 new-change-branch workflow with their own resolvable profiles, alongside the
-eighteen SAI commands. The new-change-branch assignment SHALL NOT require a
+twenty SAI commands, including sai-3-implement-new and sai-build-new. The new-change-branch assignment SHALL NOT require a
 command wrapper. The retired sai-pr command SHALL have no current assignment.
 
 #### Scenario: Required identities receive assignments
 
 - **WHEN** canonical capability assignments are inspected
-- **THEN** all fifteen managed workers, all three Generic Agent roles under both harness names, and all twenty-three command-requirement assignments have resolvable profiles.
+- **THEN** all seventeen managed workers, all three Generic Agent roles under both harness names, and all twenty-five command-requirement assignments have resolvable profiles.
 
 #### Scenario: Invalid profile fails closed
 

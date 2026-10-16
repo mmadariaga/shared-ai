@@ -4,6 +4,7 @@
     "sai-1-spec.md",
     "sai-2-design.md",
     "sai-3-implement.md",
+    "sai-3-implement-new.md",
     "sai-4-apply.md",
     "sai-5-review.md",
     "sai-6-security.md",
@@ -12,6 +13,7 @@
     "sai-archive.md",
     "sai-backfill.md",
     "sai-build.md",
+    "sai-build-new.md",
     "sai-commit.md",
     "sai-explore.md",
     "sai-merge.md",
@@ -38,10 +40,18 @@
         "Fetch @sai/adapters/claude/boot.md and follow it.",
         "Fetch @sai/orchestration/workers/bindings/implementation-worker.md and use it."
       ],
+      "sai-3-implement-new.md": [
+        "Fetch @skills/fetch/SKILL.md",
+        "Fetch @sai/commands/implement-new/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below."
+      ],
       "sai-build.md": [
         "Fetch @skills/fetch/SKILL.md",
         "Fetch @sai/adapters/claude/boot.md and follow it.",
         "Fetch @sai/orchestration/workers/bindings/implementation-worker.md and use it."
+      ],
+      "sai-build-new.md": [
+        "Fetch @skills/fetch/SKILL.md",
+        "Fetch @sai/commands/build-new/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below."
       ],
       "sai-4-apply.md": [
         "Fetch @skills/fetch/SKILL.md",
@@ -126,10 +136,18 @@
         "Fetch @sai/adapters/opencode/boot.md and follow it.",
         "Fetch @sai/orchestration/workers/bindings/implementation-worker.md and use it."
       ],
+      "sai-3-implement-new.md": [
+        "Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.",
+        "Fetch @sai/commands/implement-new/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below."
+      ],
       "sai-build.md": [
         "Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.",
         "Fetch @sai/adapters/opencode/boot.md and follow it.",
         "Fetch @sai/orchestration/workers/bindings/implementation-worker.md and use it."
+      ],
+      "sai-build-new.md": [
+        "Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.",
+        "Fetch @sai/commands/build-new/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below."
       ],
       "sai-4-apply.md": [
         "Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.",

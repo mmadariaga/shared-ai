@@ -243,7 +243,7 @@ test('human doctor output identifies retired-copy cleanup and remains successful
   }
 });
 
-test('doctor inventory parity: the manifest derives exactly fifteen worker bindings and fifteen managed agents per harness', async () => {
+test('doctor inventory parity: the manifest derives exactly seventeen worker bindings and seventeen managed agents per harness', async () => {
   const { projectRoot, claudeBase, opencodeBase } = fixture();
   const { expandInstallManifest } = require('../bin/install-manifest.js');
   const manifest = loadInstallManifest(path.join(__dirname, '..'));
@@ -264,6 +264,8 @@ test('doctor inventory parity: the manifest derives exactly fifteen worker bindi
     'sai-4-green-worker',
     'sai-direct-build-worker',
     'sai-review-fix-worker',
+    'sai-red-new-worker',
+    'sai-green-new-worker',
   ];
   try {
     for (const [harness, base] of [['claude', claudeBase], ['opencode', opencodeBase]]) {
@@ -280,7 +282,7 @@ test('doctor inventory parity: the manifest derives exactly fifteen worker bindi
         .filter(projection => path.relative(destinationRoot.sai, projection.destinationPath)
           .split(path.sep).join('/').startsWith('orchestration/workers/bindings/'))
         .map(projection => path.basename(projection.destinationPath));
-      assert.equal(bindingNames.length, 15, `${harness} should project exactly fifteen worker bindings`);
+      assert.equal(bindingNames.length, 17, `${harness} should project exactly seventeen worker bindings`);
       const phaseBindingNames = bindingNames.filter(name => phases.includes(name.replace(/-worker\.md$/, '')));
       assert.deepEqual(phaseBindingNames.sort(), phases.map(phase => `${phase}-worker.md`).sort(),
         `${harness} phase worker binding names should match the canonical phase matrix`);
@@ -288,7 +290,7 @@ test('doctor inventory parity: the manifest derives exactly fifteen worker bindi
         .filter(projection => projection.destinationPath.startsWith(destinationRoot.agents) &&
           workers.includes(path.basename(projection.destinationPath, '.md')))
         .map(projection => path.basename(projection.destinationPath, '.md'));
-      assert.equal(agentNames.length, 15, `${harness} should project exactly fifteen managed agents`);
+      assert.equal(agentNames.length, 17, `${harness} should project exactly seventeen managed agents`);
       assert.deepEqual(agentNames.sort(), [...workers].sort(),
         `${harness} managed agent names should match the canonical worker matrix`);
     }

@@ -158,12 +158,12 @@ test('install and uninstall inventories are exact and deterministic for every su
       const normalizedActive = rawActive.filter(destination => !isExcludedInventory(destination));
       const activeWorkerBindings = normalizedActive
         .filter(destination => /^sai\/orchestration\/workers\/bindings\/[a-z-]+-worker\.md$/.test(destination));
-       assert.equal(activeWorkerBindings.length, 15,
-         `${harness} should project exactly fifteen active worker bindings`);
+       assert.equal(activeWorkerBindings.length, 17,
+         `${harness} should project exactly seventeen active worker bindings`);
       const activeWorkers = normalizedActive
-         .filter(destination => /^agents\/sai-(?:\d-.*|commit|archive|backfill|merge|direct-build|review-fix)-worker\.md$/.test(destination));
-       assert.equal(activeWorkers.length, 15,
-         `${harness} should project exactly fifteen active managed agents`);
+         .filter(destination => /^agents\/sai-(?:\d-.*|commit|archive|backfill|merge|direct-build|review-fix|red-new|green-new)-worker\.md$/.test(destination));
+       assert.equal(activeWorkers.length, 17,
+         `${harness} should project exactly seventeen active managed agents`);
        const entries = enumerate(base, destinationRoot);
       const normalizedUninstall = normalize(entries
         .filter(entry => entry.assetType !== 'retired-managed-file')

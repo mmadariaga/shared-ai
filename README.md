@@ -124,6 +124,7 @@ does not use the same RED → GREEN process; check its results before publishing
 |---------|------|--------|
 | [`/sai-explore`](docs/commands/sai-explore.md) | Clarify the idea and choose how to build it | Proposal handoff, reviewed plan, or completed Direct Build |
 | [`/sai-build`](docs/commands/sai-build.md) | Turn an approved design into a tested implementation | Tests, production code, and local commits |
+| [`/sai-build-new`](docs/commands/sai-build-new.md) | Build a change through the `-new` family, which coexists with `/sai-build` | Tests, production code, and one local commit per step |
 | [`/sai-review`](docs/commands/sai-review.md) | Coordinate code review and specialized audits, then offer selected fixes | Reports and, if authorized, fixes with one local commit |
 | [`/sai-archive`](docs/commands/sai-archive.md) | Sync specs and archive the completed change | Archived change and optional local commit |
 

@@ -60,14 +60,38 @@ const DIRECT_BUILD_ROLES = Object.freeze([
   }),
 ]);
 
+// Closed RED/GREEN role identities of the `-new` command family, appended after
+// the direct-build roles. Each role pins its own contract and binding stem; the
+// family lives outside the shared orchestration, so these roles never join the
+// apply phase.
+const IMPLEMENT_NEW_ROLES = Object.freeze([
+  Object.freeze({
+    phase: 'red-new',
+    workerName: 'sai-red-new-worker',
+    workerContract: 'sai/commands/implement-new/red-worker.md',
+    bindingStem: 'red-new',
+    tier: 'budget',
+  }),
+  Object.freeze({
+    phase: 'green-new',
+    workerName: 'sai-green-new-worker',
+    workerContract: 'sai/commands/implement-new/green-worker.md',
+    bindingStem: 'green-new',
+    tier: 'budget',
+  }),
+]);
+
 const APPLY_PHASE = 'apply';
-const DIRECT_BUILD_ROLE_BY_WORKER = Object.freeze(Object.fromEntries(
-  DIRECT_BUILD_ROLES.map(role => [role.workerName, role]),
+// Every role that pins its own contract and is validated by position after the
+// canonical phases and the apply roles.
+const PINNED_ROLES = Object.freeze([...DIRECT_BUILD_ROLES, ...IMPLEMENT_NEW_ROLES]);
+const PINNED_ROLE_BY_WORKER = Object.freeze(Object.fromEntries(
+  PINNED_ROLES.map(role => [role.workerName, role]),
 ));
-const DIRECT_BUILD_ROLE_BY_PHASE = Object.freeze(Object.fromEntries(
-  DIRECT_BUILD_ROLES.map(role => [role.phase, role]),
+const PINNED_ROLE_BY_PHASE = Object.freeze(Object.fromEntries(
+  PINNED_ROLES.map(role => [role.phase, role]),
 ));
-const EXPECTED_ENTRY_COUNT = PHASE_ORDER.length + APPLY_ROLES.length + DIRECT_BUILD_ROLES.length;
+const EXPECTED_ENTRY_COUNT = PHASE_ORDER.length + APPLY_ROLES.length + PINNED_ROLES.length;
 
 const REQUIRED_FIELDS = Object.freeze([
   'phase',
@@ -141,11 +165,11 @@ function assertOneStringInvocationEnvelope(entry, index) {
 function validateEntry(entry, index) {
   if (!entry || typeof entry !== 'object') throw new Error(`Worker Matrix entry ${index} must be an object`);
   assertOneStringInvocationEnvelope(entry, index);
-  const autoRole = DIRECT_BUILD_ROLE_BY_PHASE[entry.phase];
+  const autoRole = PINNED_ROLE_BY_PHASE[entry.phase];
   if (entry.phase === APPLY_PHASE && APPLY_CONTRACT_BY_WORKER[entry.workerName] === undefined) {
     throw new Error(`Invalid Worker Matrix worker identity for ${entry.phase}: ${entry.workerName}`);
   }
-  if (autoRole && (!DIRECT_BUILD_ROLE_BY_WORKER[entry.workerName] || DIRECT_BUILD_ROLE_BY_WORKER[entry.workerName].phase !== entry.phase)) {
+  if (autoRole && (!PINNED_ROLE_BY_WORKER[entry.workerName] || PINNED_ROLE_BY_WORKER[entry.workerName].phase !== entry.phase)) {
     throw new Error(`Invalid Worker Matrix worker identity for ${entry.phase}: ${entry.workerName}`);
   }
   for (const field of REQUIRED_FIELDS) {
@@ -177,7 +201,7 @@ function defineWorkerMatrix(entries, capabilities = require('../sai/install-mani
   const seenPhases = new Set();
   const seenWorkers = new Set();
   let applySeen = 0;
-  let directBuildSeen = 0;
+  let pinnedSeen = 0;
   entries.forEach((entry, index) => {
     validateEntry(entry, index);
     if (seenWorkers.has(entry.workerName)) {
@@ -195,15 +219,15 @@ function defineWorkerMatrix(entries, capabilities = require('../sai/install-mani
           `Worker Matrix apply role out of order; expected ${expected.workerName} before ${APPLY_ROLES[applySeen].workerName}`
         );
       }
-    } else if (DIRECT_BUILD_ROLE_BY_PHASE[entry.phase]) {
-      directBuildSeen += 1;
-      if (directBuildSeen > DIRECT_BUILD_ROLES.length) {
+    } else if (PINNED_ROLE_BY_PHASE[entry.phase]) {
+      pinnedSeen += 1;
+      if (pinnedSeen > PINNED_ROLES.length) {
         throw new Error(`Duplicate Worker Matrix phase: ${entry.phase}`);
       }
-      const expected = DIRECT_BUILD_ROLES[directBuildSeen - 1];
+      const expected = PINNED_ROLES[pinnedSeen - 1];
       if (entry.workerName !== expected.workerName) {
         throw new Error(
-          `Worker Matrix direct-build role out of order; expected ${expected.workerName} before ${DIRECT_BUILD_ROLES[directBuildSeen].workerName}`
+          `Worker Matrix direct-build role out of order; expected ${expected.workerName} before ${PINNED_ROLES[pinnedSeen].workerName}`
         );
       }
     } else {
@@ -336,7 +360,7 @@ function assertWorkerIdentity(entry) {
     }
     return;
   }
-  const autoRole = DIRECT_BUILD_ROLE_BY_WORKER[entry.workerName];
+  const autoRole = PINNED_ROLE_BY_WORKER[entry.workerName];
   if (autoRole) {
     if (entry.phase !== autoRole.phase) {
       throw new Error(`Direct-build worker ${entry.workerName} must declare its role phase ${autoRole.phase}; found ${entry.phase}`);
@@ -363,6 +387,7 @@ module.exports = {
   PHASE_ORDER,
   APPLY_ROLES,
   DIRECT_BUILD_ROLES,
+  IMPLEMENT_NEW_ROLES,
   defineWorkerMatrix,
   renderWorkerTemplate,
   materializeWorkerMatrix,
