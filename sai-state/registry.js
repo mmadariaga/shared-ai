@@ -57,6 +57,7 @@ try { register('accessibility-standalone@1', require('./machines/accessibility-s
 try { register('apply-standalone@1', require('./machines/apply-standalone.js')); } catch (err) {}
 try { register('red-new-steps@1', require('./machines/red-new-steps.js')); } catch (err) {}
 try { register('green-new-steps@1', require('./machines/green-new-steps.js')); } catch (err) {}
+try { register('implement-new-run@1', require('./machines/implement-new-run.js')); } catch (err) {}
 try { register('recovery-ledger@1', require('./machines/recovery-ledger.js')); } catch (err) {}
 
 module.exports = { register, get, has, list, machines, clear, reset, close };

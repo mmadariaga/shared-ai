@@ -22,7 +22,7 @@ The first task arrives in the next message to you, and every later step arrives 
 
 ## Step message
 
-Each message opens with the pointer line `Active step: <id> — follow <path>`, then the brief: the change name, the step's goal, the plan references to read, the paths you may write, and any override. The brief is complete; ask nothing.
+Each message opens with the pointer line `Active step: <id> — follow <path>`, then the brief: the change name, the step's goal, the plan references to read, the paths you may write, the path of your report file, and any override. The brief is complete; ask nothing. A worker created to replace another also gets a hand-over summary the coordinator wrote; it is the only account of earlier work you receive, and the files in the working tree are the rest.
 
 1. Run `task-intake` inline: read the brief and the plan references it names.
 2. Fetch the file the pointer names, and skip the fetch when you already loaded it in this session. It says how to do your role's work for one step.
@@ -32,7 +32,7 @@ An override in the brief takes precedence over the plan. The plan is a plan: whe
 
 ## Report
 
-Return exactly this and nothing else: no raw output, file contents, or logs.
+Write the report below to the report path in the brief, creating its directory when needed, and return only that path as your final message: no raw output, file contents, or logs. The coordinator reads the file, so the report survives a long conversation and a replacement.
 
 ```yaml
 status: done | blocked
@@ -43,7 +43,7 @@ notes: string
 ```
 
 - `summary`: at most three plain sentences. When `blocked`, name the obstacle, the affected path, and why your allowed files cannot absorb the fix.
-- `changed_files`: every repo-relative path you created, modified, or removed in this step, scratch excluded. An empty list is valid.
+- `changed_files`: every repo-relative path you created, modified, or removed in this step, scratch and the report file excluded. An empty list is valid.
 - `test_command`: RED gives the exact command that runs only this step's tests. GREEN repeats the command from the brief.
 - `notes`: differences from the plan and anything the coordinator should know, or an empty string.
 
@@ -52,4 +52,4 @@ notes: string
 - Run no git command that changes the repository, and create no commit.
 - Leave `tasks.md`, `interfaces.md`, `proposal.md`, `design.md`, `specs/`, and every checkbox to the coordinator.
 - Run no `openspec` command and dispatch no subagent.
-- Scratch lives under `.tmp/{change-name}/`; leave the `.tmp/` parent in place and list no scratch path in `changed_files`.
+- Scratch lives under `.tmp/{change-name}/`; leave the `.tmp/` parent in place and list no scratch path in `changed_files`. The report file, in the run directory `.tmp/{change-name}/run-*/`, is the only write you make there.

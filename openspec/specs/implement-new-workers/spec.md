@@ -7,7 +7,7 @@ TBD - created by archiving change sai-build-new-walking-skeleton. Update Purpose
 
 ### Requirement: Live workers with a creation-only ready handshake
 
-The RED and GREEN `-new` workers SHALL be created when their first step needs them and SHALL live for the whole run. The creation dispatch SHALL carry no task and the worker SHALL return exactly `event: ready` with an empty `changed_files`; every step SHALL then arrive as a continuation of the same worker (`SendMessage` to the captured agent ID on Claude Code, `task` with the captured `task_id` on opencode). A worker that returns no ready SHALL receive one corrected instruction before the obstacle rules apply.
+The RED and GREEN `-new` workers SHALL be created when their first step needs them and SHALL live for the whole run unless the coordinator replaces one. The creation dispatch SHALL carry no task and the worker SHALL return exactly `event: ready` with an empty `changed_files`; every step SHALL then arrive as a continuation of the same worker (`SendMessage` to the captured agent ID on Claude Code, `task` with the captured `task_id` on opencode). A worker that returns no ready SHALL be an obstacle under the attempt budget. A worker created to replace another SHALL receive the same creation-only handshake and a hand-over summary the coordinator wrote, which SHALL be the only account of earlier work it receives.
 
 #### Scenario: Second step reuses the worker
 
@@ -25,12 +25,12 @@ Each worker role SHALL have its own linear step machine, `red-new-steps@1` and `
 
 ### Requirement: Worker report shape
 
-Each worker SHALL return only a report with `status` (`done` or `blocked`), `summary` of at most three sentences, `changed_files`, `test_command`, and `notes`, with no raw output, file contents, or logs. RED SHALL name the command that runs only the step's tests; GREEN SHALL repeat the command from the brief. The coordinator SHALL ask once again for a report that is missing, unparsable, or lacks `changed_files`.
+Each worker SHALL write a report with `status` (`done` or `blocked`), `summary` of at most three sentences, `changed_files`, `test_command`, and `notes` to the report path the brief names, `reports/step-{n}-{role}-{k}.yaml` in the run directory `.tmp/{change-name}/run-*/`, creating its directory when needed, and SHALL return only that path, with no raw output, file contents, or logs. The report file SHALL be the worker's only write in the run directory and SHALL NOT be listed in `changed_files`. RED SHALL name the command that runs only the step's tests; GREEN SHALL repeat the command from the brief. The coordinator SHALL emit `record` for the report path and then read the file.
 
 #### Scenario: Blocked report
 
 - **WHEN** a worker cannot complete its step within its allowed files
-- **THEN** it returns `status: blocked` naming the obstacle, the affected path, and why its allowed files cannot absorb the fix.
+- **THEN** it writes a report with `status: blocked` naming the obstacle, the affected path, and why its allowed files cannot absorb the fix, and returns only the report path.
 
 ### Requirement: RED and GREEN write surfaces
 
