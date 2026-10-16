@@ -245,9 +245,10 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0174 — Relax the artifact-content-inference prohibition in chained composition successor activation](./0174-relax-composition-successor-inference-prohibition.md) — Refs 0147a, Refs 0151, Refs 0152b, Refs 0173b
 - [0187 — Composition rules live in their own orchestration file](./0187-composition-rules-live-in-their-own-orchestration-file.md) — Supersedes 0147a, Refs 0083, Refs 0152b
 
-### `/sai-build-new` and `/sai-3-implement-new`
+### `/sai-build-new`, `/sai-3-implement-new`, and `/sai-4-review-new`
 
 - [0194 — `/sai-3-implement-new` runs outside the shared orchestration](./0194-implement-new-runs-outside-the-shared-orchestration.md) — **Amends** 0188, Refs 0163, Refs 0187
+- [0195 — `/sai-4-review-new` is a review-only command of the `-new` family](./0195-review-new-is-a-review-only-command-of-the-new-family.md) — **Amends** 0194
 
 ### `/sai-merge`
 
@@ -639,6 +640,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 | [0192](./0192-apply-recovery-is-disclosed-on-failure-with-a-coverage-signature-invariant.md) | amends | [0161a](./0161a-bounded-plan-artifact-repair-coverage-signature.md) |
 | [0193](./0193-apply-step-routing-mode-is-computed-by-the-tool.md) | amends | [0183](./0183-apply-self-gating-via-standalone-state-machine.md) |
 | [0194](./0194-implement-new-runs-outside-the-shared-orchestration.md) | amends | [0188](./0188-subagents-open-with-a-ready-handshake-and-live-per-role.md) |
+| [0195](./0195-review-new-is-a-review-only-command-of-the-new-family.md) | amends | [0194](./0194-implement-new-runs-outside-the-shared-orchestration.md) |
 | [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0033](./archive/0033-echo-line-format-and-placement.md) |
 | [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0034](./archive/0034-resolution-precedence-wrapper-echo-first.md) |
 | [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0035](./archive/0035-harness-specific-adapter-carve-out.md) |

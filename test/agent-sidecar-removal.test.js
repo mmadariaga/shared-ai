@@ -126,8 +126,8 @@ test('enumerateClaude yields managed agent entries without owner sidecar destina
   try {
     flow.installClaude(dir);
     const entries = enumerateClaude(dir).filter(entry => entry.assetType === 'claude-managed-agent');
-    assert.equal(entries.length, 20,
-      'Claude uninstall should enumerate 20 managed agent destinations: the seventeen workers plus the three budget agents');
+    assert.equal(entries.length, 21,
+      'Claude uninstall should enumerate 21 managed agent destinations: the eighteen workers plus the three budget agents');
     assert.ok(entries.every(entry => !/owner\.json$/.test(entry.dest)),
       'no owner sidecar destination may be enumerated as a deletion target');
     const basenames = entries.map(entry => path.basename(entry.dest, '.md'));

@@ -13,6 +13,7 @@ const POLICY = 'sai/policies/code-quality-priority-stack.md';
 const FETCH_LINE = 'Fetch @sai/policies/code-quality-priority-stack.md';
 const IMPLEMENT_COMMON = 'sai/commands/implement/steps/common.md';
 const REVIEW_PASS_6 = 'sai/commands/review/steps/resolve-review-analysis.md';
+const REVIEW_NEW_PASS_6 = 'sai/commands/review-new/steps/resolve-review-analysis.md';
 const STACK_HEADING = '## Code Quality Priority Stack';
 const CODE_WRITERS = [
   'sai/commands/apply/worker-common.md',
@@ -50,6 +51,7 @@ test('the implement step library loads the policy', () => {
 
 test('review pass 6 loads the policy on a tension', () => {
   assert.ok(read(REVIEW_PASS_6).includes(FETCH_LINE));
+  assert.ok(read(REVIEW_NEW_PASS_6).includes(FETCH_LINE));
 });
 
 test('code-writing workers explicitly load the single-source policy within their boundaries', () => {
@@ -88,7 +90,7 @@ test('policy references are limited to the intended planning, review, and code-w
     .filter(file => file.endsWith('.md'))
     .filter(file => fs.readFileSync(file, 'utf8').includes(FETCH_LINE))
     .map(file => path.relative(repoRoot, file).split(path.sep).join('/'));
-  assert.deepEqual(holders.sort(), [IMPLEMENT_COMMON, REVIEW_PASS_6, ...CODE_WRITERS, MERGE_INSTRUCTIONS].sort());
+  assert.deepEqual(holders.sort(), [IMPLEMENT_COMMON, REVIEW_PASS_6, REVIEW_NEW_PASS_6, ...CODE_WRITERS, MERGE_INSTRUCTIONS].sort());
   for (const file of [...CODE_WRITERS, MERGE_INSTRUCTIONS]) {
     assert.doesNotMatch(read(file), /\*\*(?:YAGNI|SOLID|Dependency ladder|Minimum surface area)\*\*/);
   }

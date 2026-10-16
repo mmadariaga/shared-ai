@@ -332,6 +332,23 @@ const MANAGED_WORKER_PROJECTIONS = {
       destinationPath: 'sai-green-new-worker.md',
     },
   },
+  'sai-review-new-worker': {
+    claudeBinding: {
+      id: 'claude-review-new-worker-binding',
+      sourcePath: 'sai/orchestration/workers/bindings/claude/review-new-worker.md',
+       destinationPath: 'orchestration/workers/bindings/review-new-worker.md',
+    },
+    opencodeBinding: {
+      id: 'opencode-review-new-worker-binding',
+      sourcePath: 'sai/orchestration/workers/bindings/opencode/review-new-worker.md',
+       destinationPath: 'orchestration/workers/bindings/review-new-worker.md',
+    },
+    claudeAgent: {
+      id: 'claude-sai-review-new-worker',
+      sourcePath: 'agents/claude/sai-review-new-worker.md',
+      destinationPath: 'sai-review-new-worker.md',
+    },
+  },
 };
 
 const ROUTED_PHASES = ['spec', 'design', 'implement', 'review', 'security', 'performance', 'accessibility'];

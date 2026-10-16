@@ -13,6 +13,7 @@ const performanceMachine = require('../sai-state/machines/performance-standalone
 const accessibilityMachine = require('../sai-state/machines/accessibility-standalone.js');
 const redNewMachine = require('../sai-state/machines/red-new-steps.js');
 const greenNewMachine = require('../sai-state/machines/green-new-steps.js');
+const reviewNewMachine = require('../sai-state/machines/review-new-steps.js');
 const registry = require('../sai-state/registry.js');
 
 const machines = [
@@ -24,6 +25,7 @@ const machines = [
   { name: 'accessibility-standalone@1', machine: accessibilityMachine },
   { name: 'red-new-steps@1', machine: redNewMachine },
   { name: 'green-new-steps@1', machine: greenNewMachine },
+  { name: 'review-new-steps@1', machine: reviewNewMachine },
 ];
 
 for (const { name, machine } of machines) {

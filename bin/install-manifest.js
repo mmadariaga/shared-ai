@@ -169,6 +169,7 @@ const DIRECT_BUILD_CONTRACT_BY_WORKER = Object.freeze({
   'sai-review-fix-worker': 'sai/commands/meta-review/review-fix-worker.md',
   'sai-red-new-worker': 'sai/commands/implement-new/red-worker.md',
   'sai-green-new-worker': 'sai/commands/implement-new/green-worker.md',
+  'sai-review-new-worker': 'sai/commands/review-new/worker.md',
 });
 
 function assertWorkerIdentity(entry, harness) {

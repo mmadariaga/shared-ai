@@ -14,13 +14,28 @@ const { matrixRenderFor } = require('../bin/install-manifest');
 const read = relative => fs.readFileSync(path.join(repoRoot, relative), 'utf8');
 const fetches = source => source.split(/\r?\n/).filter(line => line.includes('Fetch @'));
 
-const COORDINATORS = ['sai/commands/implement-new/coordinator.md', 'sai/commands/build-new/coordinator.md'];
+const COORDINATORS = [
+  'sai/commands/implement-new/coordinator.md',
+  'sai/commands/build-new/coordinator.md',
+  'sai/commands/review-new/coordinator.md',
+];
 const WORKER_CARDS = [
   'sai/commands/implement-new/red-worker.md',
   'sai/commands/implement-new/green-worker.md',
   'sai/commands/implement-new/worker-common.md',
+  'sai/commands/review-new/worker.md',
 ];
-const STEP_FILES = ['sai/commands/implement-new/steps/red-step.md', 'sai/commands/implement-new/steps/green-step.md'];
+const REVIEW_NEW_STEPS = [
+  'sai/commands/review-new/steps/common.md',
+  'sai/commands/review-new/steps/establish-diff-scope.md',
+  'sai/commands/review-new/steps/resolve-review-analysis.md',
+  'sai/commands/review-new/steps/close-review-outcome.md',
+];
+const STEP_FILES = [
+  'sai/commands/implement-new/steps/red-step.md',
+  'sai/commands/implement-new/steps/green-step.md',
+  ...REVIEW_NEW_STEPS,
+];
 const FAMILY_FILES = [...COORDINATORS, ...WORKER_CARDS, ...STEP_FILES];
 
 // Shared orchestration contracts that stop, ask, or recover, and which the family must not load.
@@ -59,7 +74,9 @@ test('the -new coordinators load only the policies that never stop a run', () =>
     '@sai/policies/finding-state.md',
     '@sai/orchestration/workers/bindings/red-new-worker.md',
     '@sai/orchestration/workers/bindings/green-new-worker.md',
+    '@sai/orchestration/workers/bindings/review-new-worker.md',
     '@sai/commands/implement-new/coordinator.md',
+    '@sai/commands/review-new/coordinator.md',
   ];
   for (const file of COORDINATORS) {
     for (const line of fetches(read(file))) {
@@ -72,11 +89,13 @@ test('the -new coordinators load only the policies that never stop a run', () =>
   }
 });
 
-test('/sai-build-new chains only /sai-3-implement-new and reserves the review position', () => {
+test('/sai-build-new chains /sai-3-implement-new then one /sai-4-review-new pass', () => {
   const build = read(COORDINATORS[1]);
   assert.match(build, /Fetch @sai\/commands\/implement-new\/coordinator\.md/);
-  assert.match(build, /\/sai-4-review/);
-  assert.match(build, /reserved/);
+  assert.match(build, /Fetch @sai\/commands\/review-new\/coordinator\.md and follow it exactly as the second segment, with the same `arguments_value`/);
+  assert.doesNotMatch(build, /reserved/);
+  assert.match(build, /one review pass runs per run/);
+  assert.match(build, /never implements findings/);
   assert.doesNotMatch(build, /meta-build|composition\.md/);
   assert.match(build, /Build-new done\./);
 });
@@ -139,8 +158,8 @@ test('the step machines are registered and deliver one filed step by pointer', (
   }
 });
 
-test('both workers join the matrix with the budget tier and the execution capability profile', () => {
-  const entries = manifest['worker-matrix'].entries.filter(entry => /-new-worker$/.test(entry.workerName));
+test('the RED and GREEN workers join the matrix with the budget tier and the execution capability profile', () => {
+  const entries = manifest['worker-matrix'].entries.filter(entry => /^sai-(red|green)-new-worker$/.test(entry.workerName));
   assert.deepEqual(entries.map(entry => entry.workerName), ['sai-red-new-worker', 'sai-green-new-worker']);
   for (const entry of entries) {
     assert.equal(entry.tier, 'budget');
@@ -150,13 +169,35 @@ test('both workers join the matrix with the budget tier and the execution capabi
   }
 });
 
-test('both commands hold a coordinator profile that can edit, commit, and delegate to the new workers only', () => {
-  for (const [command, profile] of [['sai-3-implement-new', 'implement-new-command'], ['sai-build-new', 'build-new-command']]) {
+test('the review worker joins the matrix after RED and GREEN with the research capability profile', () => {
+  const entries = manifest['worker-matrix'].entries.filter(entry => /-new-worker$/.test(entry.workerName));
+  assert.deepEqual(entries.map(entry => entry.workerName), ['sai-red-new-worker', 'sai-green-new-worker', 'sai-review-new-worker']);
+  const review = entries[2];
+  assert.equal(review.phase, 'review-new');
+  assert.equal(review.workerContract, 'sai/commands/review-new/worker.md');
+  assert.equal(review.bindingStem, 'review-new');
+  assert.ok(fs.existsSync(path.join(repoRoot, review.workerContract)), `${review.workerContract} must exist`);
+  assert.equal(manifest.capabilities.assignments.agents[review.workerName], 'worker-research');
+  assert.equal(review.claudeAgent.description, review.opencodeAgent.description);
+});
+
+test('the build and implement commands hold a coordinator profile that can edit, commit, and delegate to their workers only', () => {
+  const delegates = {
+    'sai-3-implement-new': ['executor', 'sai-red-new-worker', 'sai-green-new-worker'],
+    'sai-4-review-new': ['sai-review-new-worker'],
+    'sai-build-new': ['executor', 'sai-red-new-worker', 'sai-green-new-worker', 'sai-review-new-worker'],
+  };
+  const profiles = {
+    'sai-3-implement-new': 'implement-new-command',
+    'sai-4-review-new': 'review-new-command',
+    'sai-build-new': 'build-new-command',
+  };
+  for (const [command, profile] of Object.entries(profiles)) {
     assert.equal(manifest.capabilities.assignments.commands[command], profile);
     const resolved = resolveProfile(manifest.capabilities, profile);
     assert.equal(resolved.write, true);
     assert.deepEqual(resolved.shell, ['*']);
-    assert.deepEqual(resolved.delegate, ['executor', 'sai-red-new-worker', 'sai-green-new-worker']);
+    assert.deepEqual(resolved.delegate, delegates[command]);
     for (const harness of ['claude', 'opencode']) {
       assert.ok(translate(manifest.capabilities, profile, harness).toolRequirements.some(item => item.capability === 'write'));
     }
@@ -171,8 +212,8 @@ test('the existing build, implement, and apply wrappers keep their boot adapter'
   }
 });
 
-test('both commands have usage pages that the references link', () => {
-  for (const name of ['sai-3-implement-new', 'sai-build-new']) {
+test('the three commands have usage pages that the references link', () => {
+  for (const name of ['sai-3-implement-new', 'sai-4-review-new', 'sai-build-new']) {
     assert.ok(fs.existsSync(path.join(repoRoot, 'docs', 'commands', `${name}.md`)), `docs/commands/${name}.md must exist`);
     assert.match(read('docs/on-demand-commands.md') + read('docs/sequential-pipeline.md') + read('README.md'),
       new RegExp(`docs/commands/${name}\\.md|commands/${name}\\.md`), `${name} must be linked`);
@@ -242,11 +283,14 @@ test('the -new bindings render from the standalone template and leave the lifecy
   for (const harness of ['claude', 'opencode']) {
     const bindings = matrixRenderFor(manifest, harness, repoRoot)
       .filter(item => item.kind === 'binding' && /-new$/.test(item.phase));
-    assert.deepEqual(bindings.map(item => item.destinationName), ['red-new-worker.md', 'green-new-worker.md'], harness);
+    assert.deepEqual(bindings.map(item => item.destinationName), ['red-new-worker.md', 'green-new-worker.md', 'review-new-worker.md'], harness);
     for (const item of bindings) {
       assert.doesNotMatch(item.text, /command-runner|guard window|replacement_reconstruction_fields|continue_after_/, `${harness} ${item.phase}`);
       assert.match(item.text, harness === 'claude' ? /SendMessage\(to: "<captured agent ID>"/ : /task\(task_id: "<captured task ID>"/);
-      assert.match(item.text, new RegExp(`Fetch @sai/commands/implement-new/${item.phase.replace('-new', '')}-worker\\.md`));
+      const contract = item.phase === 'review-new'
+        ? 'review-new/worker'
+        : `implement-new/${item.phase.replace('-new', '')}-worker`;
+      assert.match(item.text, new RegExp(`Fetch @sai/commands/${contract}\\.md`));
     }
     const shared = matrixRenderFor(manifest, harness, repoRoot).find(item => item.kind === 'binding' && item.phase === 'spec');
     assert.match(shared.text, /command-runner\.md/, 'shared-orchestration bindings keep their lifecycle owner');
