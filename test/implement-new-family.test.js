@@ -54,6 +54,7 @@ test('the -new coordinators load only the policies that never stop a run', () =>
     '@sai/policies/prereqs-paths.md',
     '@sai/policies/tool-resolution.md',
     '@skills/budget-executor/SKILL.md',
+    '@sai/policies/artifact-review-contract.md',
     '@sai/orchestration/workers/bindings/red-new-worker.md',
     '@sai/orchestration/workers/bindings/green-new-worker.md',
     '@sai/commands/implement-new/coordinator.md',
@@ -215,4 +216,22 @@ test('/sai-build-new starts no later segment after a blocked or stopped segment'
   assert.match(build, /blocked/);
   assert.match(build, /do not start any later segment/);
   assert.match(build, /build-log\.md/);
+});
+
+test('the coordinator reviews each step adversarially with bounded fix rounds and pending findings', () => {
+  const source = read(COORDINATORS[0]);
+  const review = source.slice(source.indexOf('**Review.**'), source.indexOf('**Commit.**'));
+  assert.match(review, /pipeline-direct-build\.md` Step 2/);
+  assert.match(review, /spec fidelity, test gaming, and excess scope/);
+  assert.match(review, /Empirical/);
+  assert.match(review, /Fetch @sai\/policies\/artifact-review-contract\.md/);
+  assert.match(review, /scope observation/);
+  assert.match(review, /no test goes through RED first/);
+  assert.match(review, /Fix rounds are not attempts/);
+  assert.match(review, /at most 3 fix rounds/);
+  assert.match(review, /not a failure and not an obstacle, and nothing escalates/);
+  assert.match(review, /`findings\.md`/);
+  assert.match(review, /Style, design, performance, and general security belong to the later review command/);
+  assert.ok(fs.existsSync(path.join(repoRoot, 'sai/policies/artifact-review-contract.md')));
+  assert.doesNotMatch(read('docs/commands/sai-3-implement-new.md'), /no review round after GREEN/);
 });

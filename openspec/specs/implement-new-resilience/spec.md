@@ -30,7 +30,7 @@ The coordinator SHALL create a run directory inside the repository at `.tmp/{nam
 
 ### Requirement: Per-obstacle attempt budget
 
-Each obstacle SHALL be named with an identifier (`step-{n}`, or `final-suite` for the closing suite run) and SHALL have a budget of 3 attempts. An attempt SHALL be one coordinator response with an approach different from the previous one: a corrected instruction, a plan edit, an override, or a new worker; repeating an approach SHALL NOT count as an attempt. The coordinator SHALL emit `attempt` before each attempt, and the machine SHALL reject a fourth attempt on the same obstacle as `exhaustion` without spending it.
+Each obstacle SHALL be named with an identifier (`step-{n}`, or `final-suite` for the closing suite run) and SHALL have a budget of 3 attempts. An attempt SHALL be one coordinator response with an approach different from the previous one: a corrected instruction, a plan edit, an override, or a new worker; repeating an approach SHALL NOT count as an attempt. A step review fix round SHALL NOT be an attempt and SHALL spend no budget. The coordinator SHALL emit `attempt` before each attempt, and the machine SHALL reject a fourth attempt on the same obstacle as `exhaustion` without spending it.
 
 #### Scenario: The fourth attempt is exhaustion
 
