@@ -50,18 +50,30 @@ block and replaces only that slice's stored block; completed and running slices 
 be amended. Manual has no store and no hash check. Block text is kept in the chat's
 session file under the system temp directory, never in the project.
 
-After displaying the complete Ready to Propose block set, Explore asks first
-whether to create or update a backlog item through `to-backlog`, then whether
-to create and switch to a local branch through `new-change-branch`. Answer Yes,
-No, or free text with instructions or a clarification request. No skips only
-that action; ambiguous intent is clarified before anything runs. Each accepted
-skill runs in the current conversation and owns its details, confirmations,
-errors, and cancellation handling. Explore waits for it to finish before the
-next question. These questions remain explicit with `--fast-track` on Claude
-Code and opencode, and branch preparation permits no code edits. The backlog
+After displaying the complete Ready to Propose block set, Explore normally asks
+in three conditional rounds, each one native interaction (on opencode, one call
+per question when its picker takes a single question). Round 1: whether to
+create or update a backlog item through `to-backlog`, whether to create and
+switch to a local branch through `new-change-branch`, and whether to assign the
+concrete user named in the question to the linked issue when
+implementation starts (left out when no issue is linked yet; implementation start
+then asks it). Round 2: the exact publication approval and the branch
+base. Round 3: the route and, for several pending slices, whether later Direct
+Build slices start automatically (ignored unless you choose Direct Build). Each
+answer authorizes only its own action; a missing or ambiguous answer leaves it
+pending, and cancelling publication skips only the publication. Publication
+runs first, then the branch is named with the created issue's identifier and
+created; assignment runs only when implementation starts, which re-verifies it.
+A publication `edit`, `More` for bases, an ambiguous branch name, or an
+assignee conflict adds an interaction outside the rounds. Answer Yes, No, or
+free text with instructions or a clarification request. No skips only that
+action; ambiguous intent is clarified before anything runs. Each accepted skill
+runs in the current conversation and keeps its details, validation, errors, and
+cancellation handling. These questions remain explicit with `--fast-track` on
+Claude Code and opencode, and branch preparation permits no code edits. The backlog
 question and option descriptions retain the word `backlog` in every language
 (for example, “¿Quieres crear o actualizar el backlog con esta propuesta?”).
-Publication confirmation remains a separate step owned by `to-backlog`.
+Publication approval remains a separate answer bound to the exact proposal `to-backlog` prepared.
 New branches are named `<type>/<id>_<name_with_underscores>` (or
 `<type>/<name_with_underscores>` without an identifier); existing branches are
 never renamed.
@@ -93,7 +105,7 @@ Branch-base suggestions use the same short names and local/remote qualifiers as
 standalone [`new-change-branch`](new-change-branch.md), while preserving exact
 Git references internally.
 
-After both actions finish or are skipped, choose how to continue. `Manual` hands you the
+After rounds 1 and 2 finish or are skipped, choose how to continue. `Manual` hands you the
 Ready to Propose block for `/sai-1-spec`. `Plan - Unattended` runs spec and design
 with adversarial feedback, then stops for your review before `/sai-build`.
 Ambiguous questions still escalate. `Direct Build - Unattended` authorizes

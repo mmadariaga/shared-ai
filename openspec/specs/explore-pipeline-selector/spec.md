@@ -159,7 +159,7 @@ Fast-track SHALL not auto-select Plan or Direct Build and SHALL not suppress rou
 - **THEN** the native picker remains required with no auto-selection, no emission-turn handoff, and unchanged command literals
 
 ### Requirement: Direct Build continuation requests authorization for each pending slice
-The system SHALL ask the one-time Direct Build continuation question once per crystallization set when Direct Build is chosen with more than one pending slice, even if earlier slices used Manual or Plan, and SHALL keep the yes or no answer for the whole set. Despite the title wording for each pending slice, consent is once per set: later slices reuse the stored answer and are never re-asked for the same set. Continuation choices SHALL exclude completed slices and preserve crystallization order. Answer yes SHALL resolve to auto_continue; answer no or a queued route request SHALL resolve to route_choice. Selecting Manual on a continuation selector SHALL dispatch nothing and preserve pending and completed state.
+The system SHALL ask the one-time Direct Build continuation question once per crystallization set as a conditional question of round 3, beside the route question, when more than one pending slice remains and the question has not been prompted for the set, even if earlier slices used Manual or Plan. The answer SHALL take effect only when the same round's route answer is Direct Build; then the system SHALL mark the question prompted and keep the yes or no answer for the whole set. When the route answer is Plan or Manual, or no valid route was answered, the continuation answer SHALL authorize nothing, the question SHALL stay unprompted, and a later Direct Build round SHALL ask it again. Despite the title wording for each pending slice, consent is once per set: later slices reuse the stored answer and are never re-asked for the same set. Continuation choices SHALL exclude completed slices and preserve crystallization order. Answer yes SHALL resolve to auto_continue and authorize one local commit per automatically started slice; answer no or a queued route request SHALL resolve to route_choice. Selecting Manual on a continuation selector SHALL dispatch nothing and preserve pending and completed state.
 
 #### Scenario: pending slices remain after clean completion
 - **WHEN** a clean Direct Build slice completes and pending_slices is non-empty
@@ -172,6 +172,10 @@ The system SHALL ask the one-time Direct Build continuation question once per cr
 #### Scenario: One-time consent with queued change applies after current slice
 - **WHEN** an explicit chat-stated yes, no, or route request arrives during an active slice
 - **THEN** it queues without interrupting the slice and applies after the clean terminal result.
+
+#### Scenario: Continuation answer ignored for a Plan route
+- **WHEN** round 3 returns `Plan - Unattended` together with a continuation answer of yes
+- **THEN** the continuation answer authorizes nothing and a later Direct Build round asks the question again.
 
 ### Requirement: Obsolete token forms dispatch nothing
 

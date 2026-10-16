@@ -7,7 +7,7 @@ Define the optional backlog and local branch preparation workflows offered after
 
 ### Requirement: Offer backlog then branch preparation before route selection
 
-After every block in the recorded crystallized proposal set is visible and a pending slice exists, `sai-explore` SHALL ask whether to create or update a backlog item, then ask the branch question, and only then present the implementation route picker. It SHALL ask one optional question at a time in the user's language with concise context naming the crystallized work. Claude Code SHALL use `AskUserQuestion` with its automatic free-text Other entry; opencode SHALL use `question` with custom/free-text input enabled. The backlog question SHALL offer Yes then No, with stable values `yes` and `no`. Both questions SHALL remain explicit under `--fast-track`.
+After every block in the recorded crystallized proposal set is visible and a pending slice exists, `sai-explore` SHALL ask the backlog question, the branch question, and the conditional assignment question together in round 1, then the applicable publication approval and branch base in round 2, and only then present the implementation route picker as round 3, each round presented under `sai/policies/question-rounds.md`. It SHALL ask in the user's language with concise context naming the crystallized work and each question's action. Claude Code SHALL use `AskUserQuestion` with its automatic free-text Other entry; opencode SHALL use `question` with custom/free-text input enabled. The backlog question SHALL offer Yes then No, with stable values `yes` and `no`. All questions SHALL remain explicit under `--fast-track`.
 
 The branch question SHALL be chosen by the size of the recorded `explore-slice@1` inventory, not the pending remainder. When the inventory has one change, Explore SHALL ask whether to create and switch to a local change branch, offering Yes then No with stable values `yes` and `no`. When the inventory has more than one change (a slice set), Explore SHALL instead ask one three-choice question for the whole set, localized from “Would you like to create a new branch?” (Spanish example: “¿Quieres crear una nueva rama?”), offering in this order: one branch for the main issue (`shared`; Spanish “Sí, crea una única para la issue principal”), one branch per slice (`per-slice`; Spanish “Crear una rama por slice”), and no branch (`none`; Spanish “No crear nada”). Labels and descriptions SHALL be localized and the stable values SHALL NOT be. The question SHALL say that no branch is published.
 
@@ -16,12 +16,12 @@ The backlog question and its option descriptions SHALL retain the word `backlog`
 #### Scenario: Complete proposal precedes optional actions
 
 - **WHEN** a successful crystallization close displays the complete recorded block set with a pending slice and no active route
-- **THEN** Explore asks the backlog question first, the branch question after the backlog action finishes or is skipped, and presents the route picker only after both actions finish or are explicitly skipped
+- **THEN** Explore asks the backlog, branch, and applicable assignment questions in round 1, the applicable publication and base questions in round 2, and presents the route picker only after rounds 1 and 2 finish or are skipped
 
 #### Scenario: Fast-track preserves both questions on both harnesses
 
 - **WHEN** Claude Code or opencode runs Explore with `--fast-track` and reaches the optional actions
-- **THEN** both questions, including the slice-set three-choice branch question, remain explicit with free-text support rather than receiving automatic answers
+- **THEN** every round question, including the slice-set three-choice branch question, remains explicit with free-text support rather than receiving automatic answers
 
 #### Scenario: Localized backlog question retains recognizable terminology
 
@@ -45,22 +45,22 @@ The backlog question and its option descriptions SHALL retain the word `backlog`
 
 ### Requirement: Resolve optional action replies without selecting an implementation route
 
-A Yes or clear free-text request to perform the current action SHALL invoke its existing skill with the user's instructions. A No or clear free-text decline SHALL skip only the current action. A clarification request or ambiguous intent SHALL leave the current action pending until intent is resolved, without executing it. Empty, absent, or cancelled question responses SHALL remain unresolved. Free text at an optional action SHALL NOT select an implementation route. A reply that materially revises the idea SHALL follow the existing material-change rule before action classification.
+A Yes or clear free-text request to perform the current action SHALL record that action's Yes with the user's instructions. A No or clear free-text decline SHALL skip only the current action and leave out the round 2 question that depends on it (the publication question for the backlog, the base question for the branch). A clarification request or ambiguous intent SHALL leave the current action pending until intent is resolved, without executing it. Empty, absent, or cancelled question responses SHALL remain unresolved. Free text at an optional action SHALL NOT select an implementation route. A reply that materially revises the idea SHALL follow the existing material-change rule before action classification.
 
 #### Scenario: Backlog action is declined
 
 - **WHEN** the user answers No to the backlog question
-- **THEN** Explore skips backlog capture only and asks the branch question without selecting an implementation route
+- **THEN** Explore skips backlog capture only, leaves out the publication question, and selects no implementation route
 
 #### Scenario: Branch action is declined
 
-- **WHEN** the user answers No to the branch question after the backlog action finishes or is skipped
-- **THEN** Explore skips branch preparation only and presents the existing native implementation route picker
+- **WHEN** the user answers No to the branch question
+- **THEN** Explore skips branch preparation only and leaves out the base question
 
 #### Scenario: Free text clearly requests the action
 
 - **WHEN** free text clearly requests the currently offered backlog or branch action and supplies instructions
-- **THEN** Explore invokes the corresponding skill with those instructions and does not interpret that reply as an implementation route selection
+- **THEN** Explore records that action's Yes with those instructions and does not interpret that reply as an implementation route selection
 
 #### Scenario: Free text needs clarification
 
@@ -74,17 +74,17 @@ A Yes or clear free-text request to perform the current action SHALL invoke its 
 
 ### Requirement: Existing skills own accepted optional workflows
 
-On backlog acceptance, Explore SHALL load the installed `to-backlog` skill in the current conversation with the complete crystallized context and user instructions. On branch acceptance, it SHALL load the installed `new-change-branch` skill with that context, exactly one issue identity, and user instructions: the current slice's returned identity for a single change or `per-slice`, or the originating principal issue's identity for `shared` when one exists. Each skill SHALL retain ownership of scope, naming, destination selection, questions, confirmations, errors, and cancellation handling. Explore SHALL NOT duplicate those rules or treat backlog acceptance as publication confirmation, a link as an origin decision, or branch acceptance as base selection; the only supplied base SHALL be the previous slice's branch for a later branch in a `per-slice` chain. Explore SHALL wait for the skill's close, including a no-change, error, or cancellation close, before advancing. Missing or denied skill access SHALL leave the action pending while Explore reports the blocker and asks whether to retry or skip; it SHALL NOT substitute its own mechanics.
+On backlog acceptance, Explore SHALL invoke the installed `to-backlog` skill in the current conversation with the complete crystallized context and user instructions to prepare the publication proposal without publishing, present that proposal's confirmation in round 2, and hand the explicit answer back as a supplied answer bound to that proposal. On branch acceptance, it SHALL invoke the installed `new-change-branch` skill to prepare the suggested bases, present the base question in round 2, and hand the answer back as a supplied base together with the resolved name and exactly one issue identity: the current slice's returned identity for a single change or `per-slice`, or the originating principal issue's identity for `shared` when one exists. Each skill SHALL retain its scope, naming, validation, execution, errors, and cancellation handling. Explore SHALL NOT duplicate those rules or treat backlog acceptance as publication confirmation, a link as an origin decision, or branch acceptance as base selection. Explore SHALL wait for each skill's close, including a no-change, error, or cancellation close, before the next dependent action. Missing or denied skill access SHALL leave the action pending while Explore reports the blocker and asks whether to retry or skip; it SHALL NOT substitute its own mechanics.
 
 #### Scenario: Backlog workflow is accepted
 
-- **WHEN** the user accepts backlog capture
-- **THEN** Explore invokes `to-backlog` in the current conversation with complete crystallized context and instructions, leaves creation-versus-update and publication confirmation to that skill, and waits for its close before asking about the branch
+- **WHEN** the user accepts backlog capture in round 1
+- **THEN** Explore has `to-backlog` prepare the proposal without publishing, asks its confirmation in round 2, and publishes only through a supplied answer bound to that proposal
 
 #### Scenario: Branch workflow is accepted
 
-- **WHEN** the user accepts branch preparation
-- **THEN** Explore invokes `new-change-branch` in the current conversation with crystallized context, any returned backlog reference, and instructions, leaving its internal decisions and confirmations to that skill
+- **WHEN** the user accepts branch preparation in round 1
+- **THEN** Explore has `new-change-branch` prepare the suggested bases, asks the base in round 2, and creates the branch after publication through a supplied base
 
 #### Scenario: Shared strategy names the branch from the principal issue
 
@@ -93,13 +93,13 @@ On backlog acceptance, Explore SHALL load the installed `to-backlog` skill in th
 
 #### Scenario: Skill pauses for input
 
-- **WHEN** an accepted skill asks for input before closing
-- **THEN** Explore keeps the current action pending and resumes that workflow rather than opening the next optional question or implementation picker
+- **WHEN** an accepted skill asks for input outside a round before closing
+- **THEN** Explore keeps the current action pending and resumes that workflow rather than opening another question
 
 #### Scenario: Skill closes without performing its operation
 
 - **WHEN** an accepted skill finishes with its own no-change, error, or cancellation close
-- **THEN** Explore treats that invocation as finished and proceeds to the next optional question or, after both actions finish, the route picker
+- **THEN** Explore treats that invocation as finished and proceeds to the next dependent action or, after rounds 1 and 2 finish, the route picker
 
 #### Scenario: Skill access is unavailable
 
@@ -127,16 +127,16 @@ Explore SHALL maintain the current optional action and completion state in conve
 
 ### Requirement: Optional actions grant no implementation authorization
 
-Explore SHALL present the native implementation route picker only after both optional actions finish or are explicitly skipped. Optional action replies and accepted skills SHALL NOT authorize production code edits, route intents, route panel entries, or implementation dispatch. Existing implementation routes SHALL require their existing explicit native-picker selection.
+Explore SHALL present the native implementation route picker only after the backlog, branch, and assignment answers have each been resolved (executed, deferred to implementation start, or explicitly skipped) and every authorized action of rounds 1 and 2 has finished. Optional action replies and accepted skills SHALL NOT authorize production code edits, route intents, route panel entries, or implementation dispatch, and only the assignment question's own answer SHALL authorize assignment. Existing implementation routes SHALL require their existing explicit native-picker selection.
 
 #### Scenario: Optional workflow succeeds
 
 - **WHEN** a backlog or branch workflow completes successfully
-- **THEN** Explore continues the optional-action sequence or presents the route picker without starting implementation or emitting a route intent
+- **THEN** Explore continues the round sequence or presents the route picker without starting implementation or emitting a route intent
 
 #### Scenario: Both optional actions finish
 
-- **WHEN** both optional actions have finished or been explicitly skipped
+- **WHEN** the backlog, branch, and assignment answers are resolved and every authorized action of rounds 1 and 2 has finished
 - **THEN** Explore presents the existing route picker and waits for an explicit valid route selection before starting its selected route
 
 ### Requirement: Slice-set branch strategies stay local and conversation-scoped

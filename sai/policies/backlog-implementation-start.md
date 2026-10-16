@@ -16,6 +16,32 @@ worker correction, resumption, and replacement proceed without re-verifying or
 re-asking, and the retained skip is not an assignment authorization for a new
 slice or a new invocation, which ask again. Skip comes only from a user answer.
 
+**Advance approval.** A caller may collect the assignment answer before
+implementation starts, in an earlier question round. It is valid only when it
+names a concrete user and binds either an existing selected issue or the
+publication proposal whose issue the caller then created, and only when the
+user explicitly chose one of: assign that user, keep the current responsibility
+(naming its assignees), replace the current responsibility with that user
+(naming the previous assignees), or Skip. An advance approval names every issue it
+covers, authorizes only those assignments, and is consumed per issue: each
+implementation stretch uses only the approval for its own selected issue, and
+the same-stretch retention rules above apply to it. Without a valid advance approval, steps 1–4 below ask
+as written. With one, this owner runs only the checks, with no new question:
+
+- resolve the selected issue and run `inspect-assignment` (steps 1 and 4's
+  correspondence and parent checks);
+- require the verified issue to equal the approved issue (the created child's
+  identity replaces the proposal), the authenticated user to equal the approved
+  user, and the current assignees to equal the approved context (none for
+  assign, the approved set for keep and for replace);
+- on a match, continue with `propose-assignment` and `assign` (assign) or the
+  keep verification (keep) using the `confirmation` those calls return; for
+  replace, run `propose-assignment` with `choice: "replace"` and `assign` with
+  the `confirmation` it returns; then step 4's verification; an approved Skip starts with no remote operation;
+- on any conflict, a lapsed approval (its proposal was never published), or a
+  changed identity or responsibility, ask again for that authorization only,
+  through steps 2–3, and wait.
+
 This owner contract runs in the user-facing coordinator, immediately before
 the first implementation worker on standalone apply, chained apply, and Direct
 Build. Planning and optional initial-branch preparation do not run assignment.

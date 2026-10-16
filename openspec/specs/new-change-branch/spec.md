@@ -80,11 +80,11 @@ The helper SHALL inspect at most 20 commits using first-parent traversal from HE
 
 The skill SHALL offer the current branch, detected parent, existing main references, and existing master references in that order, omitting absent and duplicate references. Detached HEAD SHALL have no current-branch option. The skill MUST use Claude Code's `AskUserQuestion` or opencode's `question` with free-text entry and MUST NOT automatically choose a base. Claude Code SHALL paginate more than four bases in returned order with a More option and retain free text on every page. The helper SHALL resolve the selected or entered base to a commit SHA; an unavailable or non-commit base SHALL return the workflow to base selection.
 
-The only exception to the base question SHALL be an invoking workflow that supplies `base` after the user authorized creation in advance (the `per-slice` chain in `sai-explore`): the skill SHALL skip the base question, resolve the supplied base with the helper, show the final branch and base without waiting, and continue. The skill itself SHALL never choose a base.
+The only exception to the base question SHALL be an invoking workflow that supplies `base` (and optionally a resolved type, name, and identifier) bound to a user answer it already collected for that exact base reference, or an advance authorization of the whole creation: the skill SHALL skip the base question, resolve the supplied base with the helper, show the final branch and base without waiting, and continue. A supplied base that does not match the prepared base reference, or no supplied answer, SHALL keep the base question. The skill itself SHALL never choose a base and SHALL NOT name its caller.
 
 Suggested branch-base options SHALL display short names by stripping only a leading `refs/heads/` or `refs/remotes/` prefix, such as `main` or `origin/main`. When short names coincide across local and remote branches, the skill SHALL add localized local or remote qualifiers to each affected option after checking the complete inventory, including other pages. Each option SHALL map to its full, exact reference, and the skill SHALL pass that reference as `{base}` on selection.
 
-Short-name display SHALL be a presentation exception only for suggested branch-base options. The skill SHALL preserve the general verbatim-identifier rule elsewhere and the helper's returned data. Free-text bases SHALL remain unchanged by this display rule. These presentation rules SHALL apply in standalone use and when Explore invokes the skill.
+Short-name display SHALL be a presentation exception only for suggested branch-base options. The skill SHALL preserve the general verbatim-identifier rule elsewhere and the helper's returned data. Free-text bases SHALL remain unchanged by this display rule. These presentation rules SHALL apply in standalone use and when another workflow invokes the skill.
 
 #### Scenario: User enters an unavailable base
 
@@ -113,12 +113,12 @@ Short-name display SHALL be a presentation exception only for suggested branch-b
 
 #### Scenario: Explore and standalone use share presentation rules
 
-- **WHEN** Claude Code or opencode runs the skill standalone or through Explore
+- **WHEN** Claude Code or opencode runs the skill standalone or through another workflow
 - **THEN** suggested options follow the same short-name and collision-qualifier rules while preserving returned option order, full-reference mapping, and helper data.
 
 #### Scenario: Advance-authorized chain supplies the base
 
-- **WHEN** `sai-explore` invokes the skill for a `per-slice` chained branch with `base` set to the previous slice's branch
+- **WHEN** an invoking workflow supplies a base bound to the user's answer for the exact base reference the skill prepared, or under an advance authorization of the whole creation
 - **THEN** the skill skips the base question, resolves that base, shows the final branch and base without waiting, and continues.
 
 ### Requirement: Safe local creation and verified switching

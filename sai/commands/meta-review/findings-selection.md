@@ -2,6 +2,7 @@
 
 Fetch @sai/policies/finding-state.md
 Fetch @sai/policies/question-context.md
+Fetch @sai/policies/question-rounds.md
 Fetch @sai/policies/remember.md
 
 The round is the whole user interaction of the Direct Build close: one group of
@@ -51,10 +52,7 @@ its open counts. Each question offers three answers:
 
 Localize the visible wording to the user's language; keep ids literal.
 
-On Claude Code the round is one `AskUserQuestion` call carrying every question.
-On opencode it is the same questions in one `question` call when the picker
-accepts several questions, and one call per question, consecutively and in the
-same order, otherwise.
+Present the questions as one round under `@sai/policies/question-rounds.md`.
 
 ## Resolve the answers
 
