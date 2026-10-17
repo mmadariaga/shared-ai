@@ -59,7 +59,7 @@ test('all 36 Claude shipped roles match the unchanged OPUS preset exactly', () =
 });
 
 test('generated opencode agents, command wrappers, and configuration remain byte-identical', () => {
-  // Fingerprint captured before the Claude-only defaults alignment; refreshed for the review and audit wrapper descriptions (options) and the -new family wrappers and workers (including /sai-4-review-new).
+  // Fingerprint captured before the Claude-only defaults alignment; refreshed for the explore load-receipt pointer, the review and audit wrapper descriptions (options) and the -new family wrappers and workers (including /sai-4-review-new).
   const { base, entries } = projections('opencode');
   const output = entries.map(entry => [
     path.relative(base, entry.destinationPath).split(path.sep).join('/'),
@@ -67,5 +67,5 @@ test('generated opencode agents, command wrappers, and configuration remain byte
   ]).filter(([name]) => /^(agents|commands|config)\//.test(name))
     .sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0);
   assert.equal(output.length, 47);
-  assert.equal(hash(JSON.stringify(output)), 'da9064134e37e7948ce08dc1701c079c08afbc13a7003a3933f61e8d5907213c');
+  assert.equal(hash(JSON.stringify(output)), '8597e0dd4b3f3fe1d90e3d85c6a086a0462c90a902c68d52c183e98dafb510df');
 });

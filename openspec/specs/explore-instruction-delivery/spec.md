@@ -46,12 +46,12 @@ Each deferred explore step SHALL be fetched only after the complete sentence or 
 
 ### Requirement: Preserve startup and deferred byte figures
 
-The startup delivery SHALL total 26,506 bytes, consisting of the 11,415-byte nucleus and the 15,091-byte `steps/common.md`; the remaining 130,780 bytes SHALL remain deferred.
+The startup delivery SHALL total 31,410 bytes, consisting of the 6,891-byte nucleus `sai/commands/explore/instructions.md` and the 24,519-byte `steps/common.md`; the remaining 235,494 bytes of `sai/commands/explore/steps/` SHALL remain deferred.
 
 #### Scenario: byte figures match the implemented split
 
 - **WHEN** the split instruction files are measured
-- **THEN** startup delivery measures 26,506 bytes and deferred delivery measures 130,780 bytes
+- **THEN** startup delivery measures 31,410 bytes and deferred delivery measures 235,494 bytes
 
 ### Requirement: Update harness renderer references with harness-specific carriers
 

@@ -442,6 +442,8 @@ test('installOpencode projects the adapter idea-list render glue and resolves it
     const wrapper = fs.readFileSync(path.join(tmpDir, 'commands', 'sai-explore.md'), 'utf8');
     assert.match(wrapper, /Fetch @sai\/adapters\/opencode\/idea-list-render\.md/,
       'sai-explore should resolve the opencode idea-list adapter');
+    assert.match(wrapper, /^Receipt: .*@sai\/commands\/explore\/body\.md § Load receipt/m,
+      'sai-explore should carry the load receipt pointer');
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }

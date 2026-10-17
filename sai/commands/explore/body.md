@@ -2,6 +2,15 @@
 
   Fetch @sai/policies/verified-precondition-handback.md
 
+  ## Load receipt
+  The load is the sequence of reads and calls of this command, from the wrapper through `sai-state spawn`. It ends with the load receipt: the `verdict: pass` of the `prereqs.js` check plus the id returned by `sai-state spawn`, both produced after the most recent `/sai-explore` invocation in the chat. The receipt is made of those two tool outputs; only they count, and a receipt from before the latest invocation does not.
+  - **Turn check.** Every explore turn (any turn after a `/sai-explore` invocation) starts by looking for the receipt. With the receipt present, handle the turn's message. With it missing — an interrupted load, a compaction that removed it, or a stale cached wrapper — complete the load first (the prerequisite check, the instruction loads, and `sai-state spawn`, with the invocation's arguments), then handle the turn's message. A recovery load keeps the current stage and the agreed lists, because `sai-state spawn` with the same key returns the existing session.
+  - **Deferred messages.** Acknowledge a message that arrives while the load is in progress in one line, and evaluate it once the receipt exists, in arrival order. This holds for every load, a recovery load included. A deferred message that invokes a skill or command (for example `/from-backlog <url>`) runs once the receipt exists, under the explore contract: read-only, with staged progression; when it finishes, exploration continues at its current stage.
+  - **Cancellation.** A cancellation during the load takes effect at once: stop the load and discard the remaining deferred messages.
+  - **Prerequisite halt.** On `verdict: halt`, print the policy's literal for the reported `failed_check` and close the command; handle the deferred messages as ordinary chat outside explore.
+  - **Spawn failure.** When `sai-state spawn` fails, stop the load with the store error visible; the next explore turn retries the load through the turn check.
+  - **Harnesses.** Claude Code (a message delivered mid-turn) and opencode (a queued user message) follow these same rules.
+
   ## Prerequisite checks
   Fetch @sai/policies/prereqs-paths.md and retain the OpenSpec path table in this conversation — local artifact reads use the direct paths from it.
   Fetch @sai/policies/prereqs-check.md and run its `sai/tools/prereqs.js` check inline in the main session, before any other step, on every invocation — including sessions that never touch `openspec/`; never delegate or defer it. Pass `--require-openspec-skills claude` on Claude Code and `--require-openspec-skills opencode` on opencode. Continue only on exit 0 (`verdict: pass`); on a halt print the policy's literal for the reported `failed_check`, and treat an incomplete check exactly as the policy says — never as `verdict: pass`.
@@ -31,6 +40,7 @@
   Fetch @sai/commands/explore/instructions.md
   Fetch @skills/openspec-explore/SKILL.md and follow those instructions exactly.
   Fetch @sai/policies/remember.md
+  Run `sai-state spawn --key <stable-key>` per `@sai/policies/stage-machine.md` as the final step of the load, and retain the returned `id` as the load receipt's session id: every stage event of this invocation emits against it.
 
   ## Run
   **User's request:** the cleaned request after the fast-track and overview-language parses.
