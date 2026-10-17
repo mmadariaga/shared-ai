@@ -4,7 +4,8 @@ Retain the completed assignment check and its exact selected-child identity for
 this implementation stretch. Same-stretch worker correction or resumption
 re-verifies the retained assignees instead of asking a new start question. A
 changed identity or responsibility stops for a fresh user decision. A new slice
-or new implementation invocation receives no prior assignment authorization.
+or new implementation invocation receives no prior assignment authorization,
+except that a set-level answer (below) authorizes every later slice of its set.
 The implementation stretch is the span of one implementation invocation or
 slice, including worker correction, resumption, and replacement.
 
@@ -14,7 +15,8 @@ implementation: the approval in step 3 and the failure stop in step 4 each offer
 performs no remote operation and holds for the whole implementation stretch:
 worker correction, resumption, and replacement proceed without re-verifying or
 re-asking, and the retained skip is not an assignment authorization for a new
-slice or a new invocation, which ask again. Skip comes only from a user answer.
+slice or a new invocation, which ask again unless a set-level answer covers
+them. Skip comes only from a user answer.
 
 **Advance approval.** A caller may collect the assignment answer before
 implementation starts, in an earlier question round. It is valid only when it
@@ -41,6 +43,40 @@ as written. With one, this owner runs only the checks, with no new question:
 - on any conflict, a lapsed approval (its proposal was never published), or a
   changed identity or responsibility, ask again for that authorization only,
   through steps 2–3, and wait.
+
+**Set-level answer.** A caller that crystallized a set of slices may collect one
+assignment answer for the whole set, in the earlier question round, and keep it in
+conversation state for that set until a new crystallization replaces it. It is
+valid under the Advance approval rules, with these differences: it covers the
+selected issue of every slice in the set, and it is not consumed by the first
+slice. Every later slice of the same set reuses it, whether the slice starts
+automatically after a Direct Build continuation `yes` or through a later route
+picker answer, and asks no assignment question for it; the continuation `yes`
+itself authorizes no assignment. For each later slice this owner resolves the
+slice's selected issue, runs `inspect-assignment`, and applies the answer:
+
+- `skip` starts with no remote operation, for every slice of the set;
+- `assign` and an intent (below) proceed with `propose-assignment`, `assign`, and
+  step 4's verification when the issue has no assignees or only the approved user
+  (for that case, the keep verification); when the issue already has other
+  assignees, stop before that slice's implementation and ask keep, replace, or
+  skip through step 2, then continue with the chosen action and, afterwards, the
+  chain;
+- `keep` and `replace` apply to a later issue only when its current assignees
+  equal the approved context; otherwise ask the same keep, replace, or skip
+  question;
+- a changed identity, authenticated user, or failed assignment follows steps 2–4
+  (Retry, Skip, and Stop included): Retry and Skip continue the chain from that
+  slice, and Stop ends it. The answer to such a question applies to that slice
+  only and does not replace the set-level answer.
+
+An **intent** answer is collected when the issue does not exist yet, so it names
+no user: it authorizes assigning the authenticated user of the provider to the
+issue created from the published proposal. At the first implementation start,
+`inspect-assignment` on the created issue resolves that user and binds the
+answer to it, with no new question; from then on it is a concrete set-level
+answer. An intent whose publication was cancelled or failed lapses, and that
+slice asks steps 1–4 as written.
 
 This owner contract runs in the user-facing coordinator, immediately before
 the first implementation worker on standalone apply, chained apply, and Direct

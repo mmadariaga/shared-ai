@@ -59,17 +59,37 @@ Before round 2, Explore SHALL prepare read-only: for a backlog Yes it SHALL invo
 
 ### Requirement: Round 1 assignment question is conditional on a linked issue
 
-When a linked issue exists (the originating issue, the selected `Backlog origin`, or an issue published earlier in this conversation), Explore SHALL resolve read-only, through the provider's `inspect-assignment` and `propose-assignment` capabilities, the concrete assignee, every current assignee, and every affected issue before round 1, and SHALL ask the assignment question in round 1 naming them and stating that nothing is assigned until implementation starts. The options SHALL be, in this order, `assign`, `keep` and `replace` (the latter two only when the issue already has assignees), and `skip`. When no issue is linked, the assignment question SHALL be left out of round 1 and implementation start SHALL ask it. When the condition ends up unmet, the answer SHALL be recorded as not applicable and SHALL authorize nothing. An approved answer SHALL be recorded in conversation state bound to the concrete user, the approved previous assignees, and the issue, and SHALL be verified at implementation start.
+When a linked issue exists (the originating issue, the selected `Backlog origin`, or an issue published earlier in this conversation), Explore SHALL resolve read-only, through the provider's `inspect-assignment` and `propose-assignment` capabilities, the concrete assignee, every current assignee, and every affected issue before round 1, and SHALL ask the assignment question in round 1 naming them and stating that nothing is assigned until implementation starts. The options SHALL be, in this order, `assign`, `keep` and `replace` (the latter two only when the issue already has assignees), and `skip`. The question SHALL be asked once for the whole `last_crystallization_set`, and its answer SHALL be the set-level assignment answer, which applies to the issue of every slice in the set so that later slices start without asking it again. When no issue is linked and the backlog answer is Yes, Explore SHALL ask the question in its intent form: it SHALL name no user, SHALL state that the authenticated user of the backlog provider will be assigned once the issue exists, and SHALL offer only `assign` and `skip`. When no issue is linked and the backlog answer is No, the assignment question SHALL be left out of round 1. When the condition ends up unmet, the answer SHALL be recorded as not applicable and SHALL authorize nothing. The answer SHALL be recorded in conversation state as the set-level assignment answer, scoped to the current set: an approved answer bound to the concrete user, the approved previous assignees, and the issue; an intent answer bound to the issue that will be created, with its user resolved at the first implementation start; `skip` bound to the set. A new crystallization that replaces the set SHALL reset the set-level assignment answer together with the overview answer. An approval or an intent answer bound to a proposal whose publication was cancelled or failed SHALL lapse, and implementation start SHALL ask again for that authorization only. The answer SHALL be verified when each slice starts.
 
 #### Scenario: Linked issue gets the assignment question
 
 - **WHEN** the crystallized change has a linked backlog origin issue
 - **THEN** round 1 includes the assignment question naming the authenticated user and the affected issue, and nothing is assigned before implementation starts
 
+#### Scenario: One answer for the whole slice set
+
+- **WHEN** a linked issue exists before round 1 for a set of more than one slice
+- **THEN** round 1 asks the assignment question once and its answer applies to the issue of every slice in the set
+
+#### Scenario: Issue that will be created
+
+- **WHEN** no issue is linked before round 1 and the backlog answer is Yes
+- **THEN** round 1 asks the assignment question in its intent form with only `assign` and `skip`, naming no user
+
 #### Scenario: No linked issue
 
 - **WHEN** no issue is linked before round 1
-- **THEN** round 1 leaves out the assignment question and implementation start asks it
+- **THEN** round 1 asks the assignment question in its intent form when the backlog answer can be Yes, and asks no assignment question when the backlog answer is No
+
+#### Scenario: Publication cancelled after an intent answer
+
+- **WHEN** an intent answer was recorded and the backlog publication is cancelled or fails
+- **THEN** the intent answer lapses and implementation start asks the assignment question again
+
+#### Scenario: New crystallization resets the answer
+
+- **WHEN** a new crystallization replaces `last_crystallization_set`
+- **THEN** the set-level assignment answer and the overview answer are reset
 
 ### Requirement: Round state is conversation-scoped
 
