@@ -175,7 +175,10 @@ Take an order snapshot immediately before sending any execute order and hold
 it as `order_snapshot`, listing the order's target paths
 (`@sai/policies/slice-path-scope.md` § No-effect check).
 
-When an execute order fails, run that no-effect check before anything else:
+When an execute order fails, first restore any pending foreign index entries
+under `@sai/policies/foreign-index-preservation.md` § Recovery; a restore that
+stops ends recovery and is reported. Then run that no-effect check before
+anything else:
 
 - **No effect verified** — the order changed nothing. The step is a failed
   step like any other: correct its cause through § Recovery path, then issue a

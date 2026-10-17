@@ -45,7 +45,7 @@ An automatic correction SHALL be allowed only while every invariant holds, and t
 
 ### Requirement: One-shot operations are verified before any retry
 
-Immediately before sending any execute order (a closed order whose effects are harmful to apply twice, such as a draft write, a spec sync, the move into `archive/`, or a commit), the coordinator SHALL take an order snapshot listing the order's target paths and hold it as `order_snapshot`. When an execute order fails, the coordinator SHALL run the no-effect check of `sai/policies/slice-path-scope.md` before anything else. When the check verifies that the order changed nothing, the step SHALL be a failed step like any other: its cause is corrected through the recovery path and a new order is issued to the step's owner. When the mutation completed, part of it landed, or the check returns `n/a`, the coordinator SHALL issue no order and SHALL stop, reporting the exact state. An order that succeeded SHALL be consumed and SHALL never be issued again.
+Immediately before sending any execute order (a closed order whose effects are harmful to apply twice, such as a draft write, a spec sync, the move into `archive/`, or a commit), the coordinator SHALL take an order snapshot listing the order's target paths and hold it as `order_snapshot`. When an execute order fails, the coordinator SHALL first restore any pending foreign index entries under `sai/policies/foreign-index-preservation.md` § Recovery; a restore that stops SHALL end recovery and SHALL be reported. The coordinator SHALL then run the no-effect check of `sai/policies/slice-path-scope.md` before anything else. When the check verifies that the order changed nothing, the step SHALL be a failed step like any other: its cause is corrected through the recovery path and a new order is issued to the step's owner. When the mutation completed, part of it landed, or the check returns `n/a`, the coordinator SHALL issue no order and SHALL stop, reporting the exact state. An order that succeeded SHALL be consumed and SHALL never be issued again.
 
 #### Scenario: The outcome of a one-shot operation can be established
 
@@ -56,6 +56,11 @@ Immediately before sending any execute order (a closed order whose effects are h
 
 - **WHEN** the no-effect check after a failed execute order returns `n/a` or reports a completed or partial mutation
 - **THEN** the run stops and reports the exact state without issuing another order
+
+#### Scenario: Pending foreign index entries are restored first
+
+- **WHEN** an execute order fails and a foreign-index record is pending
+- **THEN** the coordinator restores the pending foreign entries before the no-effect check, and ends recovery with a report when that restore stops
 
 ### Requirement: Corrections consume the existing budget and add no loop rounds
 

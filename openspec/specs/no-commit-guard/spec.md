@@ -123,7 +123,7 @@ The guard SHALL detect a violation when its window closes at the next boundary, 
 
 ### Requirement: Apply restores initial unrelated index entries after remediation
 
-Apply SHALL retain the existing HEAD-only guard and prescribed mixed-reset remediation. Its coordinator SHALL then use the immutable file baseline to restore only initial unrelated index entries after verifying that their working-tree content is unchanged.
+Apply SHALL retain the existing HEAD-only guard and prescribed mixed-reset remediation. Its coordinator SHALL then use the immutable file baseline to restore only initial unrelated index entries after verifying that their working-tree content is unchanged. This restoration SHALL be apply's realization of the shared rule in `sai/policies/foreign-index-preservation.md`, through `apply-step.js restore-unrelated-index`.
 
 This bounded restoration SHALL not restore working-tree bytes, capture another baseline, or grant a worker Git authority. A restoration failure SHALL stop with work preserved. The next worker SHALL require a fresh HEAD snapshot. Other commands SHALL retain the existing remediation behavior.
 
@@ -134,6 +134,10 @@ This bounded restoration SHALL not restore working-tree bytes, capture another b
 #### Scenario: Unrelated content changed before restoration
 - **WHEN** initial unrelated content no longer equals the baseline
 - **THEN** restoration stops without rewriting that content or recapturing the baseline
+
+#### Scenario: Restoration runs under the shared rule
+- **WHEN** Apply's coordinator restores initial unrelated index entries
+- **THEN** it acts under `sai/policies/foreign-index-preservation.md` through `apply-step.js restore-unrelated-index`
 
 ### Requirement: A recovery hand-off to the budget agent opens its own guard window
 

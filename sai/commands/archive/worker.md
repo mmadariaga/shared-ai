@@ -7,6 +7,7 @@ Fetch @sai/commands/archive/retirement-declaration.md
 Fetch @sai/policies/command-execution.md and follow it exactly.
 Fetch @skills/safe-operations/SKILL.md and use it for every Direct Build (unattended) mutation.
 Fetch @sai/policies/commit-rules.md and follow it for the Direct Build (unattended) commit.
+Fetch @sai/policies/foreign-index-preservation.md and follow it for the Direct Build (unattended) index.
 
 ## Invocation
 
@@ -102,7 +103,11 @@ Execute exactly this order:
    and any other error is terminal. For an untracked path, run
    `git check-ignore --quiet -- <path>`: exit 0 means ignored, so omit it and
    append `[sai-archive] warning: omitted ignored untracked path: <path>` to
-   the summary; exit 1 means eligible; anything else is terminal. Then stage
+   the summary; exit 1 means eligible; anything else is terminal. Before
+   staging, set aside the foreign entries under
+   `foreign-index-preservation.md`, with the exact owned staging paths as the
+   owned paths; a pending record from an earlier order is restored first, and a
+   restore that stops ends the order. Then stage
    every eligible path with the exact allowlist, deletion-aware, never with
    `-A`, `.`, or `-f`, and never an unrelated path. A classification or staging
    error stops the order with the exact completed state.
@@ -116,7 +121,10 @@ Execute exactly this order:
    `@sai/policies/command-execution.md`.
    When the index is empty (every approved path was ignored), report
    `[sai-archive] no commit: staging left the index empty` and create nothing.
-   Never amend, push, or ask for a second commit.
+   Never amend, push, or ask for a second commit. Whether the commit was created
+   or not, finish by restoring the foreign entries under
+   `foreign-index-preservation.md`; a restore that stops is reported in the
+   summary with its exact paths, and the record stays for recovery.
 
 The summary names every retired capability, as the prepare summary does.
 Record each realized path in `changed_files`, taking spec paths from the
