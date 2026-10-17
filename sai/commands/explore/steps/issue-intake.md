@@ -53,7 +53,7 @@ The tool `ready-to-propose.js convert` owns the form check and the issue-to-bloc
 
 ## Shortcut question
 
-Ask it after `clean` or `declared-clean` when the conversion succeeded, through the harness-native picker. Two options, in this order:
+Ask it after `clean` or `declared-clean` when the conversion succeeded, through the harness-native picker. When the issue carries no implementation notes (`implementation_details` is empty), show `- None` as the implementation-details list in the question's context: accepting the shortcut then counts as the user's confirmation of that `- None`, and declining it takes the normal path through `Implementation details`. Two options, in this order:
 
 - `shortcut` — go directly to the implementation routes: the issue is converted into the `Ready to Propose` block and the exploration enters `Crystallize`.
 - `planned-steps` — follow the planned Explore steps, with the issue's lists preloaded as in **On `work`**.
@@ -67,6 +67,6 @@ Ask it after `clean` or `declared-clean` when the conversion succeeded, through 
    - the `E` and `I` lists stay literal: identifiers, wording, and order are untouched;
    - the block keeps the issue's language: translate nothing;
    - every correction is shown with its reason before the route choice.
-2. **Record the shortcut.** Send `{"intent":"issue-shortcut","edgeCaseList":[...],"implementationDetailsList":[...]}` to `explore-idea@1` per `@sai/policies/stage-machine.md`, the two lists being the tool's `edge_cases` and `implementation_details` strings verbatim. The intent is valid only at `Explore change` and moves the stage to `Crystallize`; the block guard still rejects a block emit on every other path. On `rejected`, report it in one line and continue with the planned Explore steps.
+2. **Record the shortcut.** Send `{"intent":"issue-shortcut","edgeCaseList":[...],"implementationDetailsList":[...]}` to `explore-idea@1` per `@sai/policies/stage-machine.md`, the two lists being the tool's `edge_cases` and `implementation_details` strings verbatim (an empty `implementation_details` is sent as `[]`, the confirmed `- None`). The intent is valid only at `Explore change` and moves the stage to `Crystallize`; the block guard still rejects a block emit on every other path. On `rejected`, report it in one line and continue with the planned Explore steps.
 3. **Crystallize.** Follow the returned `next.follow`. The slicing assessment runs as always, because a mature issue may not fit one change. A single change takes the reviewed draft as its block. A sliced set derives each slice's block from the draft and distributes the `I` items across the slices with their literal text, as `crystallization-protocol.md` sets. Every block of the set is dispatchable and in the issue's language: the crystallization language gate applies its source-language level and asks no language question.
 4. **Show the corrections.** Immediately before the block set at the shared close's print step, print the corrections you made, each as the field, the change, and its reason. With none, print one line saying the draft needed none. The route choice follows the printed blocks as usual.

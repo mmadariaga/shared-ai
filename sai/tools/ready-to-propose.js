@@ -25,9 +25,12 @@
  *   dispatchable
  *           The one contract every implementation route accepts (Plan -
  *           Unattended, Direct Build - Unattended, Manual). A superset of
- *           `strict` that also requires at least one in-scope item under
- *           `**Implementation Details**` (`- None` is valid only under
- *           `**Out of scope Implementation Details**`), computes each block's
+ *           `strict` that also checks the implementation item rules: `- None`
+ *           is a valid `**Implementation Details**` value of a single change,
+ *           each `I<n>` appears exactly once across a block's two
+ *           implementation sections, and in a sliced set (more than one block)
+ *           every slice carries at least one in-scope item and every `I<n>` is
+ *           in scope of at least one slice. It computes each block's
  *           sha256 hash, and runs a lexical pre-filter that reports the lines
  *           a bounded judgment must clear against the four block-hygiene
  *           clauses (HYGIENE_CLAUSES, the single source of the clause ids).
@@ -485,30 +488,45 @@ function flagBlock(lines, range, index) {
   return flagged;
 }
 
-/** Count the in-scope items of a block's `**Implementation Details**` section. */
+/**
+ * Collect the items of a block's `**Implementation Details**` and
+ * `**Out of scope Implementation Details**` sections: the in-scope item count
+ * (`- None` is no item) and each section's `I<n>` identifiers in order.
+ */
 function implementationItems(lines, range) {
   const bodyEnd = range.end === -1 ? lines.length : range.end;
   let labelIndex = -1;
   let count = 0;
+  const inScopeIds = [];
+  const outOfScopeIds = [];
+  let section = null;
   for (let i = range.start + 1; i < bodyEnd; i++) {
     const match = LABEL_LINE.exec(lines[i]);
     if (match && STRICT_FIELDS.some((field) => field.label === match[1])) {
-      if (labelIndex !== -1) {
-        break;
-      }
       if (match[1] === 'Implementation Details') {
+        section = 'in';
         labelIndex = i;
+      } else if (match[1] === 'Out of scope Implementation Details') {
+        section = 'out';
+      } else {
+        section = null;
       }
       continue;
     }
-    if (labelIndex !== -1) {
+    if (section !== null) {
       const item = /^[-*]\s+(.*)$/.exec(lines[i].trim());
       if (item && item[1].trim() !== 'None') {
-        count++;
+        const id = /^(I\d+)\b/.exec(item[1].trim());
+        if (section === 'in') {
+          count++;
+        }
+        if (id) {
+          (section === 'in' ? inScopeIds : outOfScopeIds).push({ id: id[1], line: i + 1 });
+        }
       }
     }
   }
-  return { labelIndex, count };
+  return { labelIndex, count, inScopeIds, outOfScopeIds };
 }
 
 /**
@@ -577,8 +595,9 @@ function resolveJudgment(flagged, verdicts) {
 }
 
 /**
- * Dispatchable profile: `strict` plus the in-scope implementation item, block
- * hashes, and the lexical pre-filter; the optional verdicts after
+ * Dispatchable profile: `strict` plus the implementation item rules (each `I`
+ * once per block, every `I` owned by a slice, one in-scope item per slice of a
+ * sliced set), block hashes, and the lexical pre-filter; the optional verdicts after
  * VERDICTS_MARKER are resolved against the flagged lines.
  */
 function checkDispatchable(text) {
@@ -587,14 +606,31 @@ function checkDispatchable(text) {
   const ranges = splitBlocks(lines);
   const strict = checkStrict(blocksText);
 
+  const sliced = strict.blocks.length > 1;
+  const ownedIds = new Set();
+  const allIds = new Map();
   const blocks = strict.blocks.map((block, i) => {
     const range = ranges[i];
     const last = range.end === -1 ? lines.length - 1 : range.end;
     const violations = block.violations.slice();
-    const { labelIndex, count } = implementationItems(lines, range);
-    if (labelIndex !== -1 && count === 0) {
+    const { labelIndex, count, inScopeIds, outOfScopeIds } = implementationItems(lines, range);
+    if (sliced && labelIndex !== -1 && count === 0) {
       violations.push(violation(labelIndex + 1, 'NO_IMPLEMENTATION_ITEM',
-        '"**Implementation Details**" must carry at least one in-scope item; "- None" is valid only under "**Out of scope Implementation Details**"'));
+        '"**Implementation Details**" must carry at least one in-scope item in a sliced set; "- None" is valid only for a single change or under "**Out of scope Implementation Details**"'));
+    }
+    const seen = new Set();
+    for (const entry of inScopeIds.concat(outOfScopeIds)) {
+      if (seen.has(entry.id)) {
+        violations.push(violation(entry.line, 'DUPLICATE_IMPLEMENTATION_ITEM',
+          `"${entry.id}" must appear exactly once across "**Implementation Details**" and "**Out of scope Implementation Details**" of one block`));
+      }
+      seen.add(entry.id);
+      if (!allIds.has(entry.id)) {
+        allIds.set(entry.id, { block: i, line: entry.line });
+      }
+    }
+    for (const entry of inScopeIds) {
+      ownedIds.add(entry.id);
     }
     return Object.assign({}, block, {
       violations,
@@ -605,6 +641,14 @@ function checkDispatchable(text) {
   const flagged = blocks.flatMap((block) => block.flagged);
 
   const violations = strict.violations.slice();
+  if (sliced) {
+    for (const [id, where] of allIds) {
+      if (!ownedIds.has(id)) {
+        violations.push(violation(where.line, 'UNOWNED_IMPLEMENTATION_ITEM',
+          `"${id}" is in scope of no slice: every implementation item must appear under "**Implementation Details**" of at least one slice`));
+      }
+    }
+  }
   let verdicts = [];
   if (verdictsText !== null && verdictsText.trim() !== '') {
     try {
@@ -874,7 +918,7 @@ function usage() {
     '  hash                Print the sha256 of the single block read from stdin',
     '  convert             Convert the issue description (Markdown or HTML) read from stdin into a draft block',
     '  --profile <name>    loose (backfill quorum), strict (full block format), or',
-    `                      dispatchable (strict + implementation item + hygiene pre-filter;`,
+    `                      dispatchable (strict + implementation item rules + hygiene pre-filter;`,
     `                      verdicts JSON after a ${VERDICTS_MARKER} line)`,
     '  --json              Accepted for symmetry; the verdict is always JSON',
   ].join('\n');

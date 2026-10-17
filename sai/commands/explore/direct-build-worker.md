@@ -52,6 +52,12 @@ out-of-scope item and never do anticipatory implementation — no whole item,
 stub, hook, "for later" abstraction, or reference whose only purpose is to
 serve a later slice.
 
+**Empty Implementation Details.** When `**Implementation Details**` is
+`- None`, the user confirmed that no technical decision qualifies: implement the
+request within the bounds of the `**Edge Cases**` and `**Capabilities in
+scope**`. An empty list never causes a stop without a report; return `failed`
+only when that request cannot be implemented as written.
+
 Write any artifact the crystallized change requires, within the
 repository-artifact scope and its protected update protocols, under these role
 restrictions:

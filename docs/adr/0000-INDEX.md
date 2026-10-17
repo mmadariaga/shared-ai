@@ -215,6 +215,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0175b — The auto-fast implementer's writable surface is a closed exclusion list, not a defined "production code" term](./0175b-autofast-closed-exclusion-write-scope.md) — Refs 0172d
 - [0185 — Remove hang rationale from sibling dispatch, keep recovery isolation](./0185-remove-hang-rationale-from-sibling-dispatch.md) — **Amends** 0172d
 - [0188 — Subagents open with a ready handshake and live per role](./0188-subagents-open-with-a-ready-handshake-and-live-per-role.md) — Refs 0025, Refs 0076, Refs 0077
+- [0196 — An empty Implementation Details list is a user-confirmed `- None`](./0196-empty-implementation-details-needs-user-confirmation.md) — **Amends** 0137a
 
 ### `/sai-backfill`
 
@@ -567,6 +568,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0159c — Path-specific next-step lives only on Manual/unmapped after the selector](./0159c-path-specific-next-step-after-manual-selector.md) — **Amends** 0158a, Refs 0146a
 - [0160b — Interactive artifact feedback gate gains a non-option review-loop note only](./0160b-interactive-gate-review-loop-note-only.md) — Refs 0028, Refs ddr:0150, Refs 0158c
 - [0161b — Capability deltas stay change-local until archive sync](./0161b-capability-deltas-stay-change-local-until-archive.md) — Refs 0158c
+- [0196 — An empty Implementation Details list is a user-confirmed `- None`](./0196-empty-implementation-details-needs-user-confirmation.md) — **Amends** 0137a
 
 ### Artifact metadata & routing tokens
 
@@ -641,6 +643,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 | [0193](./0193-apply-step-routing-mode-is-computed-by-the-tool.md) | amends | [0183](./0183-apply-self-gating-via-standalone-state-machine.md) |
 | [0194](./0194-implement-new-runs-outside-the-shared-orchestration.md) | amends | [0188](./0188-subagents-open-with-a-ready-handshake-and-live-per-role.md) |
 | [0195](./0195-review-new-is-a-review-only-command-of-the-new-family.md) | amends | [0194](./0194-implement-new-runs-outside-the-shared-orchestration.md) |
+| [0196](./0196-empty-implementation-details-needs-user-confirmation.md) | amends | [0137a](./0137a-stage-advancement-token-literal-next-step.md) |
 | [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0033](./archive/0033-echo-line-format-and-placement.md) |
 | [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0034](./archive/0034-resolution-precedence-wrapper-echo-first.md) |
 | [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0035](./archive/0035-harness-specific-adapter-carve-out.md) |

@@ -106,10 +106,12 @@ test('open questions, empty scope, unverifiable scope, and unidentified items ar
   assert.ok(codes(issue({ edge: '- no identifier here' })).includes('UNIDENTIFIED_ITEM'));
 });
 
-test('an issue with no implementation notes is rejected by the dispatchable profile', () => {
+test('an issue with no implementation notes converts with - None as the I-list (E8)', () => {
   const { status, payload } = run([], issue({ notes: null }));
-  assert.equal(status, 1);
-  assert.ok(payload.rejections.some((r) => r.code === 'NO_IMPLEMENTATION_ITEM'));
+  assert.equal(status, 0);
+  assert.equal(payload.converted, true);
+  assert.deepEqual(payload.implementation_details, []);
+  assert.match(payload.block, /\*\*Implementation Details\*\*:\n- None\n/);
 });
 
 test('an issue without optional sections converts those fields to None', () => {

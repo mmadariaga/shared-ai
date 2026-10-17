@@ -112,7 +112,7 @@ Explore SHALL NOT write the block from the issue itself. It SHALL run `ready-to-
 
 ### Requirement: The shortcut question offers the shortcut or the planned steps
 
-After a `clean` or `declared-clean` outcome with a successful conversion, Explore SHALL ask the shortcut question through the harness-native picker with the options `shortcut` and `planned-steps` in that order. `planned-steps` SHALL continue as on `work`, with the issue's lists preloaded; after `declared-clean`, the block composed at `Crystallize` SHALL carry the same `Request Additional Notes` line produced by a `convert --declared-clean` run. `--fast-track` SHALL NOT skip the shortcut question.
+After a `clean` or `declared-clean` outcome with a successful conversion, Explore SHALL ask the shortcut question through the harness-native picker with the options `shortcut` and `planned-steps` in that order. When the issue carries no implementation notes (the conversion's `implementation_details` is empty), the question's context SHALL show `- None` as the implementation-details list; accepting `shortcut` SHALL count as the user's confirmation of that `- None` and SHALL send the empty list as `[]` with the `issue-shortcut` intent, and declining it SHALL take the normal path through `Implementation details`. `planned-steps` SHALL continue as on `work`, with the issue's lists preloaded; after `declared-clean`, the block composed at `Crystallize` SHALL carry the same `Request Additional Notes` line produced by a `convert --declared-clean` run. `--fast-track` SHALL NOT skip the shortcut question.
 
 #### Scenario: Planned steps keep the preloaded lists
 
@@ -123,6 +123,11 @@ After a `clean` or `declared-clean` outcome with a successful conversion, Explor
 
 - **WHEN** the drift check outcome was `declared-clean`
 - **THEN** the block carries a `Request Additional Notes` line stating that the user declared no drift without validating it
+
+#### Scenario: An issue without implementation notes shows None
+
+- **WHEN** the converted issue carries no implementation notes and the shortcut question is asked
+- **THEN** the question shows `- None` as the implementation-details list, and answering `shortcut` records the empty list as confirmed and enters `Crystallize`
 
 ### Requirement: The shortcut reviews the draft under fixed invariants and enters Crystallize
 

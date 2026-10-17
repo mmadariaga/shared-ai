@@ -14,20 +14,6 @@ Define one Ready to Propose block contract that every implementation route accep
 - **WHEN** a block set passes the `dispatchable` profile and every flagged line carries a `context` verdict
 - **THEN** the set is valid for Plan - Unattended, Direct Build - Unattended, and Manual alike
 
-### Requirement: Every block carries at least one in-scope implementation item
-
-The `**Implementation Details**` field of every Ready to Propose block, and of every slice in a sliced set, SHALL carry at least one in-scope `I` item. `- None` SHALL be valid only under `**Out of scope Implementation Details**`, which still carries exactly one `- None` bullet when no item is out of scope.
-
-#### Scenario: An empty Implementation Details field is not dispatchable
-
-- **WHEN** a block carries `**Implementation Details**` as exactly `- None`
-- **THEN** the block is not dispatchable
-
-#### Scenario: Out of scope None stays valid
-
-- **WHEN** a non-sliced block carries every agreed item in scope and `**Out of scope Implementation Details**` as exactly `- None`
-- **THEN** the block satisfies the implementation-item rule
-
 ### Requirement: The block-hygiene clauses belong to the shared contract
 
 The four block-hygiene clauses — no planning-artifact creation (`design.md`, `tasks.md`, `implementation.md`), no mutating git command, no subagent dispatch, and no direct edit of published `openspec/specs/**` as implementation work — SHALL be part of the dispatchable contract and SHALL be single-sourced in `sai/policies/block-hygiene-judgment.md`. Every other repository artifact, including other content under `openspec/`, SHALL remain ordinary implementation scope.
@@ -54,3 +40,41 @@ When `/sai-3-implement` audit ingestion escalates findings as a Ready to Propose
 
 - **WHEN** audit ingestion composes an escalation block
 - **THEN** its `**Implementation Details**` carries one proposed `I1` item
+
+### Requirement: Dispatchable implementation item rules
+
+The `**Implementation Details**` field of a single-change block SHALL carry either at least one in-scope `I` item or exactly `- None`, and a block with `- None` there SHALL be dispatchable by Plan - Unattended, Direct Build - Unattended, and Manual. Every slice of a sliced set SHALL carry at least one in-scope `I` item. Within one block each `I` identifier SHALL appear exactly once across `**Implementation Details**` and `**Out of scope Implementation Details**`, and in a sliced set every `I` SHALL be in scope of at least one slice; a shared `I` MAY be in scope of several slices. `**Out of scope Implementation Details**` still carries exactly one `- None` bullet when no item is out of scope.
+
+#### Scenario: A single change with None is dispatchable
+
+- **WHEN** a single-change block carries `**Implementation Details**` as exactly `- None`
+- **THEN** the block is dispatchable
+
+#### Scenario: A slice with None is not dispatchable
+
+- **WHEN** one slice of a sliced set carries `**Implementation Details**` as exactly `- None`
+- **THEN** the set is not dispatchable
+
+#### Scenario: A duplicated item is not dispatchable
+
+- **WHEN** an `I` appears in both implementation sections of one block, or twice in one section
+- **THEN** the block is not dispatchable
+
+#### Scenario: An unowned item is not dispatchable
+
+- **WHEN** an `I` of a sliced set is in scope of no slice
+- **THEN** the set is not dispatchable, while an `I` in scope of several slices stays valid
+
+### Requirement: Workers define the empty Implementation Details case
+
+When a dispatched block carries `**Implementation Details**` as `- None`, the Direct Build implementer SHALL implement the request within the bounds of `**Edge Cases**` and `**Capabilities in scope**`, and SHALL NOT stop without a report because the list is empty; it SHALL return `failed` only when that request cannot be implemented as written. The `/sai-1-spec` worker SHALL derive the proposal and specs from `**Capabilities in scope**`, the request, and `**Edge Cases**` only.
+
+#### Scenario: Direct Build implements a None block
+
+- **WHEN** the Direct Build implementer receives a block whose `**Implementation Details**` is `- None`
+- **THEN** it implements the request within the Edge Cases and Capabilities and reports its result
+
+#### Scenario: Spec worker derives from the remaining fields
+
+- **WHEN** the `/sai-1-spec` worker receives a dispatchable block whose `**Implementation Details**` is `- None`
+- **THEN** it derives the proposal and specs from Capabilities in scope, the request, and Edge Cases only

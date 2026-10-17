@@ -8,7 +8,7 @@ TBD
 
 ### Requirement: The implementation-details stage surfaces and confirms technical decisions
 
-When the user advances to the `Implementation details` stage of the pre-crystallization staged progression (`explore-pre-crystallization-stages`), `sai-explore` SHALL surface the technical decisions surfaced during exploration as numbered proposed statements `I1` through `In`, followed by one plain conversational confirmation question asking whether the list accurately captures the agreed technical decisions or needs adjustment. The question SHALL name the `next-step` token as the advancement action — confirming completes the stage and advances into the `Crystallize` stage, which counts as the explicit crystallization request (`explore-pre-crystallization-stages`) — and SHALL state that a bare `next-step` turn confirms the list as written and advances in the same turn. The question SHALL follow the `@sai/policies/question-context.md` anatomy, SHALL be understandable in the conversation's ambient language, SHALL NOT depend on a fixed confirmation phrase, and SHALL NOT use a native yes/no option picker. Only technical decisions that direct or constrain the implementation qualify as `I` items — the "what"; the rationale behind a decision and rejected alternatives SHALL NOT be surfaced as `I` items, as they belong in the block's **Decisions & Rationale** and **Alternatives Considered** sections. A decision whose object is a bookkeeping artifact of the change (`openspec/changes/{name}/**`, `openspec/specs/**`) does not qualify as an `I` item — it is a consequence owned by backfill and archive. An agreed `I` item MAY carry exact repository-relative paths when the agreed decision is grounded in specific files; this adds no field to the block template and does not convert the block into an implementation plan.
+When the user advances to the `Implementation details` stage of the pre-crystallization staged progression (`explore-pre-crystallization-stages`), `sai-explore` SHALL surface the technical decisions surfaced during exploration as numbered proposed statements `I1` through `In`, followed by one plain conversational confirmation question asking whether the list accurately captures the agreed technical decisions or needs adjustment. When no technical decision qualifies, it SHALL propose exactly `- None` as the list and ask the same confirmation question; the stage SHALL never close on its own. The question SHALL name the `next-step` token as the advancement action — confirming completes the stage and advances into the `Crystallize` stage, which counts as the explicit crystallization request (`explore-pre-crystallization-stages`) — and SHALL state that a bare `next-step` turn confirms the list as written and advances in the same turn. The question SHALL follow the `@sai/policies/question-context.md` anatomy, SHALL be understandable in the conversation's ambient language, SHALL NOT depend on a fixed confirmation phrase, and SHALL NOT use a native yes/no option picker. Only technical decisions that direct or constrain the implementation qualify as `I` items — the "what"; the rationale behind a decision and rejected alternatives SHALL NOT be surfaced as `I` items, as they belong in the block's **Decisions & Rationale** and **Alternatives Considered** sections. A decision whose object is a bookkeeping artifact of the change (`openspec/changes/{name}/**`, `openspec/specs/**`) does not qualify as an `I` item — it is a consequence owned by backfill and archive. An agreed `I` item MAY carry exact repository-relative paths when the agreed decision is grounded in specific files; this adds no field to the block template and does not convert the block into an implementation plan.
 
 #### Scenario: Advancing to the stage surfaces the decisions
 
@@ -17,7 +17,7 @@ When the user advances to the `Implementation details` stage of the pre-crystall
 
 #### Scenario: The question states that a bare next-step confirms the list
 
-- **WHEN** the implementation-details confirmation question is asked for a non-empty list
+- **WHEN** the implementation-details confirmation question is asked for a non-empty list or for a proposed `- None`
 - **THEN** the question states that a bare `next-step` confirms the list as written and advances in the same turn
 
 #### Scenario: Grounded I item carries exact target paths
@@ -40,19 +40,29 @@ When the user advances to the `Implementation details` stage of the pre-crystall
 - **WHEN** the stage-3 implementation-details list includes a decision whose object is a bookkeeping artifact of the change
 - **THEN** that decision is excluded from the proposed `I` items and does not appear in the confirmation question or agreed list
 
+#### Scenario: No qualifying decision proposes None for confirmation
+
+- **WHEN** no technical decision qualifies, including when every decision is a bookkeeping-artifact decision
+- **THEN** the stage proposes exactly `- None` with the confirmation question and advances only after a bare `next-step` or explicit agreement
+
 #### Scenario: Empty list after exclusion emits None deterministically
 
 - **WHEN** all technical decisions in the exploration would qualify as bookkeeping-artifact decisions
-- **THEN** the stage emits exactly `- None` and advances without a confirmation question
+- **THEN** the stage proposes exactly `- None` with the confirmation question and does not advance until a bare `next-step` or explicit agreement confirms it
 
 ### Requirement: Confirmation converges the implementation-details stage
 
-When the user semantically confirms the proposed list, `sai-explore` SHALL record the current ordered list as agreed, complete the stage, and advance the progression to the `Crystallize` stage within the same turn. A disagreement, removal, addition, or material revision SHALL update and renumber the proposed list consecutively, keep the stage open, and ask the confirmation question again. An ambiguous response SHALL be treated as continued discussion and the question SHALL be clarified and re-asked.
+When the user semantically confirms the proposed list, including a proposed `- None`, `sai-explore` SHALL record the current ordered list as agreed, complete the stage, and advance the progression to the `Crystallize` stage within the same turn. A disagreement, removal, addition, or material revision SHALL update and renumber the proposed list consecutively, keep the stage open, and ask the confirmation question again. An ambiguous response SHALL be treated as continued discussion and the question SHALL be clarified and re-asked.
 
 #### Scenario: Semantic confirmation closes the stage and advances
 
 - **WHEN** the user communicates that the proposed technical-decision list is correct
 - **THEN** the list is recorded as agreed, the stage completes, and the progression advances to the `Crystallize` stage within the same turn
+
+#### Scenario: Confirming None records the empty list
+
+- **WHEN** the user confirms a proposed `- None`
+- **THEN** the empty list is recorded as agreed and the progression advances to the `Crystallize` stage within the same turn
 
 #### Scenario: A requested change iterates the list
 
@@ -78,14 +88,19 @@ Before drafting the `I` list, the implementation-details stage SHALL load the `w
 - **WHEN** the edge-case stage already printed the unavailable-skill warning and the implementation-details list is drafted without the skill
 - **THEN** `sai-explore` prints no second warning, skips the review pass, and displays the list under the existing rules
 
-### Requirement: Every Ready to Propose block carries Implementation Details with at least one in-scope item
+### Requirement: Every Ready to Propose block carries both Implementation Details sections
 
-Every `Ready to Propose` block — the single-change protocol and each per-slice block of the sliced protocol — SHALL include a dedicated `**Implementation Details**` section placed immediately after `**Edge Cases**`, followed immediately by a mandatory `**Out of scope Implementation Details**` section. `**Implementation Details**` SHALL carry at least one in-scope agreed `I` statement and never `- None`; `**Out of scope Implementation Details**` SHALL carry every other agreed statement, or exactly one `- None` bullet when it holds no item; both sections SHALL keep the established global order with identifiers and wording preserved. In a single-change block every agreed item SHALL be in scope and `**Out of scope Implementation Details**` SHALL be exactly `- None`. In each per-slice block the agreed list SHALL be split by judgment: the items the slice needs are in scope and every other item, from an earlier or a later slice, is out of scope. Within one block each identifier SHALL appear exactly once, in exactly one of the two sections, and together the sections SHALL cover the full agreed list. An item that several slices need SHALL be in scope in each of those slices' blocks; an item that an earlier slice delivered SHALL be out of scope unless this slice must extend it. A slice with no item of its own SHALL be a slicing defect resolved before emission. The sections SHALL carry only the agreed technical decisions; their rationale and alternatives SHALL remain in **Decisions & Rationale** and **Alternatives Considered**.
+Every `Ready to Propose` block — the single-change protocol and each per-slice block of the sliced protocol — SHALL include a dedicated `**Implementation Details**` section placed immediately after `**Edge Cases**`, followed immediately by a mandatory `**Out of scope Implementation Details**` section. In a single-change block `**Implementation Details**` SHALL carry every agreed `I` statement, or exactly one `- None` bullet when the user confirmed that no technical decision qualifies, and `**Out of scope Implementation Details**` SHALL be exactly `- None`. In each per-slice block `**Implementation Details**` SHALL carry at least one in-scope agreed `I` statement and never `- None`; the agreed list SHALL be split by judgment: the items the slice needs are in scope and every other item, from an earlier or a later slice, is out of scope. `**Out of scope Implementation Details**` SHALL carry every other agreed statement, or exactly one `- None` bullet when it holds no item; both sections SHALL keep the established global order with identifiers and wording preserved. Within one block each identifier SHALL appear exactly once, in exactly one of the two sections, and together the sections SHALL cover the full agreed list. Every agreed item SHALL be in scope of at least one slice of a sliced set. An item that several slices need SHALL be in scope in each of those slices' blocks; an item that an earlier slice delivered SHALL be out of scope unless this slice must extend it. A slice with no item of its own SHALL be a slicing defect resolved before emission. The sections SHALL carry only the agreed technical decisions; their rationale and alternatives SHALL remain in **Decisions & Rationale** and **Alternatives Considered**.
 
 #### Scenario: A single-change block includes the agreed decisions
 
-- **WHEN** a single-change block is emitted
+- **WHEN** a single-change block is emitted with agreed `I` items
 - **THEN** the block's `**Implementation Details**` section lists the agreed `I1`…`In` statements in order immediately after `**Edge Cases**`, and `**Out of scope Implementation Details**` follows as exactly `- None`
+
+#### Scenario: A single-change block carries a confirmed None
+
+- **WHEN** the user confirmed `- None` at the `Implementation details` stage and a single-change block is emitted
+- **THEN** both `**Implementation Details**` and `**Out of scope Implementation Details**` carry exactly `- None`
 
 #### Scenario: Every per-slice block carries the section with an own item
 

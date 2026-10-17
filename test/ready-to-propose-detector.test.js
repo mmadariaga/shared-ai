@@ -223,24 +223,46 @@ test('dispatchable: a canonical block passes, carries a hash, and flags nothing'
   assert.match(verdict.blocks[0].hash, /^[0-9a-f]{64}$/);
 });
 
-test('dispatchable: a block with no in-scope implementation item fails (E1)', () => {
-  const verdict = checkDispatchable(block('add-thing', { 'Implementation Details': '\n- None' }));
-  assert.equal(verdict.ok, false);
-  assert.ok(allViolations(verdict).some((v) => v.problem === 'NO_IMPLEMENTATION_ITEM'));
-  assert.equal(checkStrict(block('add-thing', { 'Implementation Details': '\n- None' })).ok, true,
-    'strict still accepts the empty section; only dispatchable rejects it');
+test('dispatchable: a single change with - None under Implementation Details is dispatchable (E4)', () => {
+  const text = block('add-thing', { 'Implementation Details': '\n- None' });
+  const verdict = checkDispatchable(text);
+  assert.equal(verdict.ok, true, JSON.stringify(allViolations(verdict)));
+  assert.equal(verdict.dispatchable, true);
+  assert.equal(checkStrict(text).ok, true);
 });
 
 test('dispatchable: - None stays valid under Out of scope Implementation Details', () => {
   assert.equal(checkDispatchable(block('add-thing')).ok, true);
 });
 
-test('dispatchable: every slice of a set needs its own in-scope item', () => {
+test('dispatchable: every slice of a sliced set needs its own in-scope item (E7)', () => {
   const text = `${block('slice-one')}\n${block('slice-two', { 'Implementation Details': '\n- None' })}`;
   const verdict = checkDispatchable(text);
   assert.equal(verdict.ok, false);
   assert.deepEqual(verdict.blocks[0].violations, []);
   assert.ok(verdict.blocks[1].violations.some((v) => v.problem === 'NO_IMPLEMENTATION_ITEM'));
+});
+
+test('dispatchable: an I in both sections of one block is a duplicate (E13)', () => {
+  const text = block('add-thing', { 'Out of scope Implementation Details': '\n- I1: add the module.' });
+  const verdict = checkDispatchable(text);
+  assert.equal(verdict.ok, false);
+  assert.ok(verdict.blocks[0].violations.some((v) => v.problem === 'DUPLICATE_IMPLEMENTATION_ITEM'));
+
+  const twice = checkDispatchable(block('add-thing', { 'Implementation Details': '\n- I1: add the module.\n- I1: add it again.' }));
+  assert.ok(twice.blocks[0].violations.some((v) => v.problem === 'DUPLICATE_IMPLEMENTATION_ITEM'));
+});
+
+test('dispatchable: an I in scope of no slice is rejected, a shared I is accepted (E13)', () => {
+  const one = block('slice-one', { 'Implementation Details': '\n- I1: add the module.', 'Out of scope Implementation Details': '\n- I2: wire it.\n- I3: document it.' });
+  const unowned = checkDispatchable(`${one}\n${block('slice-two', { 'Implementation Details': '\n- I2: wire it.', 'Out of scope Implementation Details': '\n- I1: add the module.' })}`);
+  assert.equal(unowned.ok, false);
+  const codes = unowned.violations.filter((v) => v.problem === 'UNOWNED_IMPLEMENTATION_ITEM');
+  assert.equal(codes.length, 1);
+  assert.match(codes[0].detail, /"I3"/);
+
+  const shared = checkDispatchable(`${one}\n${block('slice-two', { 'Implementation Details': '\n- I2: wire it.\n- I3: document it.\n- I1: add the module.', 'Out of scope Implementation Details': '\n- None' })}`);
+  assert.equal(shared.ok, true, JSON.stringify(allViolations(shared)));
 });
 
 test('dispatchable: the pre-filter flags each clause with block, line, and clause id', () => {

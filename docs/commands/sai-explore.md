@@ -31,9 +31,11 @@ Direct Build also consults existing `SAI_LEARNINGS.md` as repository context.
 
 Explore records a Ready to Propose block set only when every block is dispatchable,
 so any route you choose receives a block it can run. A dispatchable block follows the
-block format, carries at least one in-scope implementation detail (the implementation
-details stage never closes empty, and every slice, a refactor-first slice 0 included,
-owns an item), and requests none of the following as work: creating planning
+block format, carries a confirmed `- None` or at least one in-scope implementation
+detail (the implementation details stage proposes `- None` when no technical decision
+qualifies and advances only on your confirmation; every slice of a sliced set, a
+refactor-first slice 0 included, owns an item, and no item is repeated within a block
+or left without a slice), and requests none of the following as work: creating planning
 artifacts, running mutating git commands, dispatching subagents, or editing
 published specs directly. Lines that merely mention these are judged as context.
 A confirmed violation records nothing; Explore shows the clause, line, and evidence,
