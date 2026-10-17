@@ -130,3 +130,27 @@ The backfill coordinator SHALL run the guard's `snapshot` step at each window op
 
 - **WHEN** a backfill window spanning a dispatch or execute continuation closes with a verify
 - **THEN** the window carries no `allow_commit`, any HEAD movement during it resolves as a violation to remediate, and the coordinator's final validated writes run only between windows
+
+### Requirement: Backfill checks scenario preservation at author and receiver boundaries
+
+Claude Code and opencode SHALL use the same shared scenario-preservation policy and checker for ordinary backfill and Direct Build. After writing the complete temporary draft set and separate exception metadata through `transfer.js put`, the worker SHALL check the temporary specs against current published specifications before returning any completed draft result, including corrected drafts. The coordinator SHALL independently verify references, approve each exception against explicit accepted scope, and repeat the checker before materialization. A failed check SHALL return its report for correction without writing repository drafts. A worker declaration, implementation diff, fast-track flag, or checker pass SHALL NOT constitute exception approval. Published specifications SHALL remain read-only inputs to these checks.
+
+#### Scenario: Author detects accidental scenario loss
+- **WHEN** the worker's temporary MODIFIED draft omits an existing scenario without an applicable exception
+- **THEN** the worker corrects the draft before returning completed draft references
+
+#### Scenario: Receiver independently checks the complete set
+- **WHEN** the coordinator receives a completed draft result or corrected result
+- **THEN** it verifies the references and exception approvals and runs the checker on the temporary draft set before any materialization
+
+#### Scenario: A worker cannot authorize its own exception
+- **WHEN** a worker proposes a removal or rename without explicit approval in the accepted block, interview answers, or approved change artifacts
+- **THEN** the receiver restores the scenario through correction or asks for approval of that exact difference and does not materialize the affected draft meanwhile
+
+#### Scenario: Fast-track preserves independent approval
+- **WHEN** fast-track is active and the worker proposes a scenario exception
+- **THEN** the coordinator still checks that individual exception against explicit approved scope
+
+#### Scenario: Correction repeats the checks
+- **WHEN** draft content or temporary exception bytes change after feedback
+- **THEN** the author check and independent receiver verification and approval repeat on the corrected result

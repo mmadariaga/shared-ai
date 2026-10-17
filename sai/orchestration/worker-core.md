@@ -40,7 +40,10 @@ carries artifact contents either, except where the phase contract defines a
 terminal payload that returns content for the coordinator to write: the
 archive reroute's corrected delta specs. Backfill's terminal payload returns
 references (`draft_references`, each `{path, sha256, destination}`) to
-worker-prepared transfer files, never the draft content. Merge's terminal
+worker-prepared transfer files, never the draft content. Backfill also returns
+`scenario_exception_reference: {path, sha256}` for temporary exception metadata
+under `@sai/policies/scenario-preservation.md`, separately from draft destinations.
+Merge's terminal
 payload returns only the application outcome and one `resolution_reference`
 (`{path, sha256}`) to the worker's transfer file holding the complete
 resolution result, never the resolution region text.

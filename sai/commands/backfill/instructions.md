@@ -300,6 +300,14 @@ Classify every requirement's delta header per requirement, never per file or per
 
 ## Completion Boundary
 
+For MODIFIED drafting and all corrected drafts, use
+`@sai/policies/scenario-preservation.md` (loaded by the worker's Draft transfer
+section). Preserve scenario identities within each requirement unless the
+approved scope explicitly removes or renames them. Put proposed exceptions in
+the separate temporary metadata, then check the complete temporary draft set
+before delivery. The coordinator independently verifies approval and repeats
+the check before materialization or archive.
+
 On the ordinary route, after all draft references have been returned for
 write, stop. Do not create any planning artifact, run another SAI command, or
 invoke an archive command from this flow. The coordinator validates the drafts

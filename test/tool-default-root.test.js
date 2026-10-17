@@ -27,11 +27,11 @@ function write(root, relative, content) {
 function makeProject(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-tool-root-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
-  write(root, 'openspec/specs/fixture-capability/spec.md', '# Spec\n\n### Requirement: Existing\n');
+  write(root, 'openspec/specs/fixture-capability/spec.md', '# Spec\n\n### Requirement: Existing\n#### Scenario: Preserved\n');
   write(
     root,
     `openspec/changes/${CHANGE}/specs/fixture-capability/spec.md`,
-    '## MODIFIED Requirements\n\n### Requirement: Existing\n',
+    '## MODIFIED Requirements\n\n### Requirement: Existing\n#### Scenario: Preserved\n',
   );
   write(root, `openspec/changes/${CHANGE}/proposal.md`, '**Local files**: src/only-in-fixture.js\n');
   write(root, 'src/only-in-fixture.js', '');

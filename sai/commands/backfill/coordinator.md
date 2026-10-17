@@ -194,19 +194,25 @@
      `- **THEN**` line; only `.openspec.yaml`, `proposal.md`, and capability
      specs exist in the draft set — never `design.md`, `tasks.md`, or
      `implementation.md`.
-   2. Run the deterministic delta-header preflight before writing anything:
+   2. Fetch @sai/policies/scenario-preservation.md and apply its receiver
+      boundary, including independent exception approval and checking temporary
+      metadata separately from the draft destination allow-list. Retain its
+      verified metadata reference for Direct Build execution; it has no
+      materialization destination and never enters the draft writes. Run the
+      deterministic delta-header preflight before writing anything:
       resolve the tool path per `@sai/policies/tool-resolution.md`,
       substituting `check-delta-headers.js` for the filename placeholder
       `<name>` (first existing candidate per harness, copied verbatim; if none
       exists, name the tried candidates and stop with no prose fallback), then
-      run `node <tool-path> <change-name> --delta-dir <dir>/specs` directly on
+      run `node <tool-path> <change-name> --delta-dir <dir>/specs --scenario-exceptions <metadata-file>` directly on
       the worker's transfer files (`<dir>/specs/<capability>/spec.md`), with
       the confirmed change name in `<change-name>` (main specs resolve from the
       project root); no staging copy is made. Whichever candidate wins, the
       invocation keeps the tool's own accepted
-      flags (`--json` plus `--root`/`--delta-dir`/`--specs-dir`; no `--cwd`)
+      flags (`--json` plus `--root`/`--delta-dir`/`--specs-dir` and temporary
+      `--scenario-exceptions`; no `--cwd`)
       byte-identical; changing nothing else. Exit 0 proceeds;
-      exit 1 means misclassified ADDED/MODIFIED/REMOVED headers — write
+      exit 1 means misclassified ADDED/MODIFIED/REMOVED headers or unapproved scenario loss — write
       nothing into `openspec/changes/{name}/`, continue the same worker with
       the verbatim script report plus the cited headers and the Phase 6c
       existence rule, then re-verify, re-validate, and re-run this preflight on

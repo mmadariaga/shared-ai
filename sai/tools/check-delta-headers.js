@@ -3,7 +3,7 @@
 'use strict';
 
 /**
- * check-delta-headers — deterministic ADDED/MODIFIED/REMOVED header preflight.
+ * check-delta-headers — requirement headers and MODIFIED scenario preservation.
  *
  * Decides every delta requirement header by verbatim existence, never by
  * inference: a requirement belongs under `## ADDED Requirements` if and only
@@ -32,9 +32,10 @@
  * Usage:
  *   node sai/tools/check-delta-headers.js <change-name> [--json]
  *     [--root <dir>] [--delta-dir <dir>] [--specs-dir <dir>]
+ *     [--scenario-exceptions <temporary-json-file>]
  *
- * Exit codes: 0 = all headers correctly classified; 1 = misclassified
- * headers found (report on stdout); 2 = usage or I/O error.
+ * Exit codes: 0 = headers and scenario preservation pass; 1 = violations
+ * found (report on stdout); 2 = usage, I/O, or incomplete comparison.
  */
 
 const fs = require('fs');
@@ -43,6 +44,70 @@ const path = require('path');
 const SECTION_RE = /^##\s+(ADDED|MODIFIED|REMOVED|RENAMED)\s+Requirements\s*$/;
 const ANY_H2_RE = /^##\s+/;
 const REQUIREMENT_PREFIX = '### Requirement:';
+
+// Examples in fenced code are not specification structure. Preserve line numbers.
+function structuralLines(content) {
+  let fence = null;
+  const lines = content.split('\n').map((raw) => {
+    const line = raw.replace(/\r$/, '');
+    const marker = line.match(/^ {0,3}(`{3,}|~{3,})/);
+    if (marker && !fence) { fence = marker[1]; return ''; }
+    if (fence) {
+      if (new RegExp(`^ {0,3}${fence[0]}{${fence.length},}\\s*$`).test(line)) fence = null;
+      return '';
+    }
+    return line;
+  });
+  if (fence) throw new Error('unterminated fenced code block');
+  return lines;
+}
+
+function collectScenarioRequirements(content) {
+  const requirements = new Map();
+  let current = null;
+  for (const line of structuralLines(content)) {
+    const name = extractRequirementName(line);
+    if (name !== null) {
+      current = { scenarios: new Set(), invalid: !name || requirements.has(name) };
+      if (requirements.has(name)) current.invalid = true;
+      requirements.set(name, current);
+    } else if (current && /^#{1,6}\s+Scenario\b/.test(line) && !/^#### Scenario: /.test(line)) {
+      current.invalid = true;
+    } else if (/^#{1,3}\s/.test(line)) {
+      current = null;
+    } else if (current && /^####\s/.test(line)) {
+      const scenario = line.match(/^#### Scenario: (\S(?:.*\S)?)\s*$/);
+      if (!scenario || current.scenarios.has(scenario[1])) current.invalid = true;
+      else current.scenarios.add(scenario[1]);
+    }
+  }
+  return requirements;
+}
+
+function readExceptions(file) {
+  if (!file) return [];
+  const exceptions = JSON.parse(fs.readFileSync(file, 'utf8'));
+  if (!Array.isArray(exceptions)) throw new Error('scenario exceptions must be a JSON array');
+  const seen = new Set();
+  for (const item of exceptions) {
+    const fields = ['capability', 'requirement', 'original_name', 'operation'];
+    if (item && item.operation === 'rename') fields.push('new_name');
+    if (!item || Object.keys(item).length !== fields.length ||
+        fields.some((key) => typeof item[key] !== 'string' || !item[key].trim()) ||
+        !['remove', 'rename'].includes(item.operation) ||
+        (item.operation === 'rename' && item.new_name === item.original_name)) {
+      throw new Error('invalid scenario exception; expected capability, requirement, original_name, operation (remove|rename), and new_name only for rename');
+    }
+    const key = JSON.stringify([item.capability, item.requirement, item.original_name]);
+    if (seen.has(key)) throw new Error('duplicate scenario exception');
+    seen.add(key);
+  }
+  return exceptions;
+}
+
+function readSpec(file) {
+  return new TextDecoder('utf-8', { fatal: true }).decode(fs.readFileSync(file));
+}
 
 /**
  * Extract the verbatim requirement name from a source line, or null when the
@@ -62,7 +127,7 @@ function extractRequirementName(line) {
  */
 function collectDeltaRequirements(content) {
   const out = [];
-  const lines = content.split('\n');
+  const lines = structuralLines(content);
   let section = null;
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].replace(/\r$/, '');
@@ -86,7 +151,7 @@ function collectDeltaRequirements(content) {
 /** Collect the verbatim set of every `### Requirement:` heading in a file. */
 function collectMainHeaders(content) {
   const out = new Set();
-  for (const raw of content.split('\n')) {
+  for (const raw of structuralLines(content)) {
     const name = extractRequirementName(raw.replace(/\r$/, ''));
     if (name !== null) out.add(name);
   }
@@ -104,7 +169,8 @@ function usage() {
     '  --delta-dir <dir>  Delta specs root holding <capability>/spec.md files',
     '                  (default: <root>/openspec/changes/<name>/specs; use an',
     '                  OS-temp staging copy for pre-write draft checks).',
-    '  --specs-dir <dir>  Main specs root (default: <root>/openspec/specs).',
+     '  --specs-dir <dir>  Main specs root (default: <root>/openspec/specs).',
+    '  --scenario-exceptions <file>  Temporary JSON array of approved removals/renames.',
   ].join('\n');
 }
 
@@ -117,10 +183,17 @@ function parseArgs(argv) {
     else if (arg === '--root') opts.root = argv[++i];
     else if (arg === '--delta-dir') opts.deltaDir = argv[++i];
     else if (arg === '--specs-dir') opts.specsDir = argv[++i];
+    else if (arg === '--scenario-exceptions') opts.exceptionsFile = argv[++i];
     else if (arg.startsWith('--')) {
       return { error: `unknown flag: ${arg}` };
     } else if (opts.name === null) opts.name = arg;
     else return { error: `unexpected positional argument: ${arg}` };
+  }
+  for (const flag of ['--root', '--delta-dir', '--specs-dir', '--scenario-exceptions']) {
+    const index = argv.indexOf(flag);
+    if (index !== -1 && (!argv[index + 1] || argv[index + 1].startsWith('--'))) {
+      return { error: `value required for ${flag}` };
+    }
   }
   return { opts };
 }
@@ -149,6 +222,11 @@ function main(argv) {
     ? path.resolve(opts.specsDir)
     : path.join(root, 'openspec', 'specs');
 
+  let exceptions;
+  try { exceptions = readExceptions(opts.exceptionsFile); }
+  catch (err) { process.stderr.write(`cannot load scenario exceptions: ${err.message}\n`); return 2; }
+  const usedExceptions = new Set();
+
   let entries;
   try {
     entries = fs.readdirSync(deltaDir, { withFileTypes: true });
@@ -161,6 +239,10 @@ function main(argv) {
   try {
     fs.readdirSync(specsDir);
   } catch (err) {
+    if (err.code !== 'ENOENT') {
+      process.stderr.write(`cannot read main specs directory: ${specsDir}: ${err.message}\n`);
+      return 2;
+    }
     specsDirPresent = false;
     process.stderr.write(`warning: main specs directory not found: ${specsDir} — treating every capability as new (E1).\n`);
   }
@@ -175,24 +257,32 @@ function main(argv) {
     if (!fs.existsSync(deltaFile)) continue;
     capabilities += 1;
 
-    let deltaContent;
+    let requirements;
+    let deltaRequirements;
     try {
-      deltaContent = fs.readFileSync(deltaFile, 'utf8');
+      const deltaContent = readSpec(deltaFile);
+      requirements = collectDeltaRequirements(deltaContent);
+      deltaRequirements = collectScenarioRequirements(deltaContent);
     } catch (err) {
-      process.stderr.write(`cannot read delta spec: ${deltaFile}\n`);
+      process.stderr.write(`cannot read or interpret delta spec: ${deltaFile}: ${err.message}\n`);
       return 2;
     }
-    const requirements = collectDeltaRequirements(deltaContent);
     checkedRequirements += requirements.length;
 
     const mainFile = path.join(specsDir, entry.name, 'spec.md');
     let mainHeaders = null;
-    if (specsDirPresent && fs.existsSync(mainFile)) {
+    let mainRequirements = null;
+    if (specsDirPresent) {
       try {
-        mainHeaders = collectMainHeaders(fs.readFileSync(mainFile, 'utf8'));
+        const content = readSpec(mainFile);
+        mainHeaders = collectMainHeaders(content);
+        mainRequirements = collectScenarioRequirements(content);
       } catch (err) {
-        process.stderr.write(`cannot read main spec: ${mainFile}\n`);
-        return 2;
+        if (err.code === 'ENOENT') { mainHeaders = null; }
+        else {
+          process.stderr.write(`cannot read main spec: ${mainFile}\n`);
+          return 2;
+        }
       }
     }
 
@@ -229,7 +319,37 @@ function main(argv) {
           problem,
           detail,
         });
+      } else if (req.section === 'MODIFIED') {
+        const original = mainRequirements.get(req.name);
+        const draft = deltaRequirements.get(req.name);
+        if (!original || !draft || original.invalid || draft.invalid ||
+            original.scenarios.size === 0 || draft.scenarios.size === 0) {
+          process.stderr.write(`scenario comparison could not complete: ${entry.name} / ${req.name}: ambiguous or malformed requirement/scenario headings, or no scenarios\n`);
+          return 2;
+        }
+        for (const originalName of original.scenarios) {
+          if (draft.scenarios.has(originalName)) continue;
+          const exception = exceptions.find((item) => item.capability === entry.name &&
+            item.requirement === req.name && item.original_name === originalName);
+          if (exception && (exception.operation === 'remove' || draft.scenarios.has(exception.new_name))) {
+            usedExceptions.add(exception);
+            continue;
+          }
+          violations.push({ capability: entry.name, file: path.relative(root, deltaFile),
+            line: req.line, section: req.section, name: req.name,
+            mainSpec: path.relative(root, mainFile), problem: 'MODIFIED_SCENARIO_MISSING',
+            scenario: originalName,
+            detail: `existing scenario '${originalName}' is missing without an applicable approved exception` });
+        }
       }
+    }
+  }
+
+  for (const exception of exceptions) {
+    if (!usedExceptions.has(exception)) {
+      violations.push({ capability: exception.capability, name: exception.requirement,
+        section: 'MODIFIED', scenario: exception.original_name,
+        problem: 'SCENARIO_EXCEPTION_UNUSED', detail: 'exception does not match an actual removal or rename in this requirement' });
     }
   }
 
@@ -244,17 +364,17 @@ function main(argv) {
     }, null, 2)}\n`);
   } else if (ok) {
     process.stdout.write(
-      `delta-header check passed for change '${opts.name}': ${checkedRequirements} requirement(s) across ${capabilities} capabilit(ies), no misclassified headers.\n`,
+      `delta-header check passed for change '${opts.name}': ${checkedRequirements} requirement(s) across ${capabilities} capabilit(ies), no misclassified headers or scenario losses.\n`,
     );
   } else {
     for (const v of violations) {
-      const mainRef = v.mainSpec === null ? 'no main spec' : `main: ${v.mainSpec}`;
+      const mainRef = v.mainSpec == null ? 'no main spec' : `main: ${v.mainSpec}`;
       process.stdout.write(
-        `[${v.capability}] ${v.file}:${v.line} ${v.section} '### Requirement: ${v.name}' [${v.problem}] — ${v.detail} (${mainRef}).\n`,
+        `[${v.capability}] ${v.file || 'exception metadata'}${v.line ? `:${v.line}` : ''} ${v.section} '### Requirement: ${v.name}' [${v.problem}] — ${v.detail} (${mainRef}).\n`,
       );
     }
     process.stdout.write(
-      `delta-header check FAILED for change '${opts.name}': ${violations.length} misclassified header(s).\n`,
+      `delta-header check FAILED for change '${opts.name}': ${violations.length} header/scenario violation(s).\n`,
     );
   }
   return ok ? 0 : 1;

@@ -13,6 +13,14 @@ Reconstructs the basic documentation for a change that was made directly in code
 
 ## In detail
 
+Both Claude Code and opencode check MODIFIED requirements against current
+published specifications before draft delivery and again before materialization
+or archive. Existing scenario names must remain in the same requirement.
+Reordering, editing scenario text, and adding scenarios are allowed. An
+intentional removal or rename needs an exact, scope-approved exception; worker
+metadata alone is not approval. An unreadable or ambiguous comparison does not
+count as a pass. Exception metadata stays temporary and is never archived.
+
 The user identifies the manual change to regularize or chooses a change source using the available selector. The command studies that difference to separate what can be demonstrated from the code from what would only be an assumption.
 
 It then interviews the user about the original intent: what problem was meant to be solved, why that behavior was chosen, and which boundaries mattered. It also looks for possible contradictions with existing documentation and presents them before drafting anything.
