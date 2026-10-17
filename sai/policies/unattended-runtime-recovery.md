@@ -191,27 +191,30 @@ An order that succeeded is consumed and is never issued again.
 
 ## Attempts
 
-Each failed step allows three attempts, shared between the two recovery paths.
-Count them on the counter the route already keeps in conversation state.
+Each route keeps one budget per scope, shared between the two recovery paths:
+one diagnosis round per Plan phase, and three attempts per failed Direct Build
+step. Count them on the counter the route already keeps in conversation state.
 Charge the route's existing counter immediately before sending the attempt. A
 delivery failure, repeated error, or malformed result does not refund or reset
 the charge:
 
 - **Plan - Unattended:** `diagnosis_rounds.spec` or `diagnosis_rounds.design`
-  for the active phase. The Explore Diagnosis Round and its **Bounded
-  Recovery** continuation are attempts on this same counter.
+  for the active phase, which allows one diagnosis round per phase. The
+  Explore Diagnosis Round and its **Bounded Recovery** continuation form that
+  one round, charged once on this counter.
 - **Direct Build - Unattended:** `diagnosis_rounds.direct_build`, keyed by the
-  failed step's scope: `direct-build` for the implementer across Steps 1–2,
-  `backfill` across Steps 3–6, and `archive` across Steps 7–8. A route
-  diagnosis or **Bounded Recovery** continuation in a scope is an attempt on
-  its key.
+  failed step (`step-1`, `step-2`, `step-2b`, and `step-3` through `step-8`),
+  which allows three attempts per failed step. A route diagnosis or
+  **Bounded Recovery** continuation in a step is an attempt on its key; a
+  step's attempts never draw on another step's key.
 - **Direct Build close of `/sai-5-review` and `/sai-review`:** the lane keeps
   no diagnosis counter; count the three attempts per close in conversation.
   An attempt never adds a fix-loop round.
 
-Stop (§ Stop condition) when the counter reaches three with the step still
-failing, or when the budget agent returns the diagnosis the previous attempt
-already returned.
+Stop (§ Stop condition) when the Plan phase's diagnosis round is used with the
+step still failing, when a Direct Build step's counter reaches three with that
+step still failing, or when the budget agent returns the diagnosis the
+previous attempt already returned.
 
 Reset these counters only where the existing route resets its diagnosis state
 for a new Plan attempt or a new Direct Build slice. Progress, a question
