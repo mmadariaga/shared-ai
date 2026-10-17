@@ -400,9 +400,10 @@ test('supervised spec dispatch preserves the selected block and branches between
   const source = exploreContract();
 
   assert.match(source, /SpecWorkerRequest/);
-  assert.match(source, /complete emitted Ready to Propose block/);
+  assert.match(source, /--block-file/);
+  assert.match(source, /--export --harness <claude\|opencode>/);
   assert.match(source, /selected change.*complete.*Ready to Propose|complete.*emitted Ready to Propose/i);
-  assert.match(source, /only that complete emitted Ready to Propose block|receives only.*block/i);
+  assert.match(source, /verified file is the worker's only substantive block input/i);
   assert.match(source, /needs_input/);
   assert.match(source, /ordered option|options.*order|order.*option/i);
   assert.match(source, /auto[- ]answer/i);
@@ -1050,7 +1051,7 @@ test('Plan spec envelope carries leading --supervised only in arguments_value', 
   assert.doesNotMatch(source, /\bwrapper_echo_value\s*:/,
     'spec Plan dispatch must not construct or forward the wrapper echo field');
   assert.match(source, /arguments_value:[\s\S]{0,200}--supervised/, 'spec Plan dispatch should put --supervised on arguments_value');
-  assert.match(source, /arguments_value:[\s\S]{0,200}--supervised[\s\S]{0,200}Ready to Propose|arguments_value[\s\S]{0,120}line `--supervised`[\s\S]{0,200}Ready to Propose/i, 'spec arguments_value should begin with --supervised ahead of the Ready-to-Propose body');
+  assert.match(source, /arguments_value:[\s\S]{0,100}--supervised\s+--block-file[^\n]+\s+--block-hash/i, 'spec arguments_value should begin with --supervised ahead of the paired stored-file/hash reference');
   assert.doesNotMatch(source, /\bwrapper_echo_value\s*:\s*"--supervised"/,
     'explore must not carry the marker as a bare non-empty wrapper echo');
 });

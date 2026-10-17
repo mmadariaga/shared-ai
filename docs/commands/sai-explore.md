@@ -41,16 +41,21 @@ published specs directly. Lines that merely mention these are judged as context.
 A confirmed violation records nothing; Explore shows the clause, line, and evidence,
 and corrects the block.
 
-Plan - Unattended and Direct Build - Unattended send a worker the exact validated
-block read from the per-chat `sai-state` store, together with its hash; the receiving
-worker recomputes the hash before doing any work and stops with no changes if the
-block was truncated or altered. A compaction of the conversation therefore cannot
+Plan - Unattended and Direct Build - Unattended export the exact validated block
+directly from the per-chat `sai-state` store into a private temporary file. Workers
+receive its path and hash, not a model-copied message body. This works the same in
+Claude Code and opencode. The receiving worker verifies the file before doing any
+dependent work and stops with no changes if it is missing, unreadable, or altered.
+A compaction of the conversation therefore cannot
 lose or change the next slice's block. If the stored block is missing, Explore
 dispatches nothing and offers stop options that include emitting the block again.
 To correct one slice that is pending or stopped, Explore validates the corrected
 block and replaces only that slice's stored block; completed and running slices cannot
 be amended. Manual has no store and no hash check. Block text is kept in the chat's
 session file under the system temp directory, never in the project.
+An amendment gets a fresh file/hash reference; prior files remain available while
+continuation or recovery may need them. Registration and amendment attach hygiene
+verdicts mechanically, including when the stored separator has no final newline.
 
 After displaying the complete Ready to Propose block set, Explore normally asks
 in three conditional rounds, each one native interaction (on opencode, one call

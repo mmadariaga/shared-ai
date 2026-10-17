@@ -17,6 +17,8 @@ const { sessionFile } = require('../bin/sai-state.js');
 const { RECEIVED_AT_PATTERN } = require('../sai/tools/worker-report-validator.js');
 
 const { hashBlock, VERDICTS_MARKER } = require('../sai/tools/ready-to-propose.js');
+const { composeVerdicts, checkDispatchable, verifyBlockFile } = require('../sai/tools/ready-to-propose.js');
+const transfer = require('../sai/tools/transfer.js');
 
 const REPO_ROOT = path.join(__dirname, '..');
 const SAI_STATE_TOOL = path.join(REPO_ROOT, 'bin', 'sai-state.js');
@@ -95,6 +97,192 @@ function block(name, overrides = {}) {
   lines.push('', '---', '');
   return lines.join('\n');
 }
+
+test('stored-file transport: both harnesses export exact Unicode bytes and retain old references across amendments', () => {
+  const id = spawnSession('rtp-private-export');
+  const directories = [];
+  try {
+    const original = block('private-change', { What: ' Preserves café, 日本語 and 🐋.' }).trimEnd();
+    assert.equal(blockEmit(id, composeVerdicts(original, [])).exitCode, 0);
+    for (const harness of ['claude', 'opencode']) {
+      const result = runCli(['block', id, 'private-change', '--export', '--harness', harness]);
+      if (harness === 'opencode' && process.platform === 'linux' && !fs.existsSync('/tmp/opencode')) {
+        assert.equal(result.exitCode, 1);
+        assert.match(JSON.parse(result.stdout).reason, /temporary root.*missing/);
+        continue;
+      }
+      assert.equal(result.exitCode, 0, result.stderr);
+      const reference = JSON.parse(result.stdout);
+      directories.push(reference.transfer_dir);
+      assert.equal(Object.keys(reference)[0], 'received_at');
+      assert.equal(reference.text, undefined);
+      assert.equal(fs.readFileSync(reference.block_file, 'utf8'), original);
+      assert.equal(reference.hash, hashBlock(original));
+      assert.equal(verifyBlockFile(reference.block_file, reference.hash), original);
+      const tool = path.join(REPO_ROOT, 'sai/tools/ready-to-propose.js');
+      const verified = spawnSync(process.execPath, [tool, 'verify-file', '--block-file', reference.block_file, '--block-hash', reference.hash], { encoding: 'utf8' });
+      assert.equal(verified.status, 0, verified.stderr);
+      assert.equal(JSON.parse(verified.stdout).ok, true);
+      const checked = spawnSync(process.execPath, [tool, 'check', '--profile', 'dispatchable', '--block-file', reference.block_file], { encoding: 'utf8' });
+      assert.equal(checked.status, 0, checked.stderr);
+      assert.equal(JSON.parse(checked.stdout).dispatchable, true);
+      if (process.platform !== 'win32') {
+        assert.equal(fs.statSync(reference.transfer_dir).mode & 0o777, 0o700);
+        assert.equal(fs.statSync(reference.block_file).mode & 0o777, 0o600);
+      }
+    }
+    const old = JSON.parse(runCli(['block', id, 'private-change', '--export', '--harness', 'claude']).stdout);
+    directories.push(old.transfer_dir);
+    const amended = original.replace('Preserves café', 'Amends café');
+    assert.equal(blockEmit(id, composeVerdicts(amended, []), MACHINE, ['--amend', 'private-change']).exitCode, 0);
+    const next = JSON.parse(runCli(['block', id, 'private-change', '--export', '--harness', 'claude']).stdout);
+    directories.push(next.transfer_dir);
+    assert.notEqual(old.block_file, next.block_file);
+    assert.notEqual(old.hash, next.hash);
+    assert.equal(verifyBlockFile(old.block_file, old.hash), original);
+    assert.equal(verifyBlockFile(next.block_file, next.hash), amended);
+    assert.throws(() => verifyBlockFile(old.block_file, next.hash), /hash/);
+    fs.writeFileSync(next.block_file, amended.replace('日本語', 'altered'));
+    assert.throws(() => verifyBlockFile(next.block_file, next.hash), /hash/);
+    assert.throws(() => verifyBlockFile(path.join(next.transfer_dir, 'missing.md'), next.hash), /ENOENT/);
+    assert.throws(() => verifyBlockFile(next.block_file), /hash/);
+    assert.throws(() => verifyBlockFile(next.transfer_dir, next.hash));
+    if (process.platform !== 'win32') {
+      fs.symlinkSync(old.block_file, path.join(next.transfer_dir, 'linked.md'));
+      assert.throws(() => verifyBlockFile(path.join(next.transfer_dir, 'linked.md'), old.hash), /regular file/);
+    }
+  } finally {
+    directories.forEach(dir => transfer.close(dir));
+    cleanup(id);
+  }
+});
+
+test('stored-file transport: export rejects missing entries, corrupt hashes and unspecified harnesses', () => {
+  const id = spawnSession('rtp-export-errors');
+  try {
+    assert.equal(runCli(['block', id, 'absent', '--export', '--harness', 'claude']).exitCode, 1);
+    assert.equal(runCli(['block', id, 'absent', '--export']).exitCode, 2);
+    assert.equal(runCli(['block', id, 'absent', '--export', '--harness', 'unknown']).exitCode, 2);
+    assert.equal(blockEmit(id, block('corrupt-change')).exitCode, 0);
+    const record = JSON.parse(fs.readFileSync(sessionFile(id), 'utf8'));
+    record.blocks['corrupt-change'].hash = '0'.repeat(64);
+    fs.writeFileSync(sessionFile(id), JSON.stringify(record));
+    const result = runCli(['block', id, 'corrupt-change', '--export', '--harness', 'claude']);
+    assert.equal(result.exitCode, 1);
+    assert.equal(JSON.parse(result.stdout).error, 'BLOCK_EXPORT_FAILED');
+    assert.equal(JSON.parse(result.stdout).block_file, undefined);
+  } finally { cleanup(id); }
+});
+
+test('verdict composition: executable file boundary handles newline/no-newline registration and amendment', () => {
+  const id = spawnSession('rtp-compose');
+  const { dir } = transfer.open('claude');
+  const tool = path.join(REPO_ROOT, 'sai/tools/ready-to-propose.js');
+  try {
+    for (const ending of ['', '\n']) {
+      const text = block('compose-change', { Why: ' Documents git commit behavior.' }).trimEnd() + ending;
+      const pending = checkDispatchable(text).flagged;
+      const verdicts = pending.map(entry => ({ ...entry, verdict: 'context', evidence: 'Subject matter, not a requested operation.' }));
+      const inputFile = transfer.put(dir, 'block.md', text).path;
+      const verdictFile = transfer.put(dir, 'verdicts.json', JSON.stringify(verdicts)).path;
+      const result = spawnSync(process.execPath, [tool, 'compose', '--block-file', inputFile, '--verdicts-file', verdictFile], { encoding: 'utf8' });
+      assert.equal(result.status, 0, result.stderr);
+      assert.ok(result.stdout.includes('\n<<<VERDICTS>>>\n'));
+      assert.equal(checkDispatchable(result.stdout).blocks[0].hash, hashBlock(text.trimEnd()));
+      const emitted = blockEmit(id, result.stdout, MACHINE, ending ? ['--amend', 'compose-change'] : []);
+      assert.equal(emitted.exitCode, 0, emitted.stdout);
+      assert.equal(JSON.parse(emitted.stdout).validation.ok, true);
+      assert.equal(readStoredBlocks(id)['compose-change'].text, text.trimEnd());
+      assert.throws(() => composeVerdicts(text.replace(/---\s*$/, ''), verdicts), /separator/);
+      assert.throws(() => composeVerdicts(text, {}), /array/);
+      assert.throws(() => composeVerdicts(text, []), /verdicts/);
+      assert.throws(() => composeVerdicts(text, [{ ...verdicts[0], verdict: 'invalid' }]), /verdicts/);
+      assert.equal(checkDispatchable(text.trimEnd() + VERDICTS_MARKER + '\n[]').dispatchable, false);
+    }
+    transfer.put(dir, 'verdicts.json', '{');
+    const rejected = spawnSync(process.execPath, [tool, 'compose', '--block-file', path.join(dir, 'block.md'), '--verdicts-file', path.join(dir, 'verdicts.json')], { encoding: 'utf8' });
+    assert.equal(rejected.status, 1);
+    assert.equal(rejected.stdout, '');
+  } finally { transfer.close(dir); cleanup(id); }
+});
+
+test('file-backed emits compose registration and amendment without shell re-encoding', () => {
+  const id = spawnSession('rtp-file-emits');
+  const { dir } = transfer.open('claude');
+  try {
+    const verdictFile = transfer.put(dir, 'verdicts.json', '[]').path;
+    const inputFile = transfer.put(dir, 'block.md', block('file-change', { What: ' Retains 日本語.' }).trimEnd()).path;
+    for (const options of [[], ['--amend', 'file-change']]) {
+      const result = runCli(['emit', id, MACHINE, '--ready-to-propose', ...options, '--block-file', inputFile, '--verdicts-file', verdictFile]);
+      assert.equal(result.exitCode, 0, result.stdout + result.stderr);
+      assert.equal(JSON.parse(result.stdout).validation.ok, true);
+      assert.equal(readStoredBlocks(id)['file-change'].text, fs.readFileSync(inputFile, 'utf8'));
+    }
+    const before = fs.readFileSync(sessionFile(id), 'utf8');
+    for (const invalid of ['{}', '[{"verdict":"invalid"}]', '{']) {
+      transfer.put(dir, 'verdicts.json', invalid);
+      const rejected = runCli(['emit', id, MACHINE, '--ready-to-propose', '--amend', 'file-change', '--block-file', inputFile, '--verdicts-file', verdictFile]);
+      assert.equal(rejected.exitCode, 1);
+      assert.equal(JSON.parse(rejected.stdout).reason, 'BLOCK_COMPOSITION_FAILED');
+      assert.equal(fs.readFileSync(sessionFile(id), 'utf8'), before);
+    }
+  } finally { transfer.close(dir); cleanup(id); }
+});
+
+test('origin attachment transports verified input and amended output as file references', () => {
+  const { dir } = transfer.open('claude');
+  let outputDir;
+  try {
+    const text = block('origin-file', { What: ' Retains café.' }).trimEnd();
+    const source = transfer.put(dir, 'block.md', text);
+    const request = {
+      block_files: [{ block_file: source.path, hash: hashBlock(text) }],
+      correspondence: { version: 1, platform: 'github', role: 'parent', parent: 'https://github.com/team/repo/issues/10', slices: [{ change_name: 'origin-file', issue: 'https://github.com/team/repo/issues/11', depends_on: [] }] },
+    };
+    const tool = path.join(REPO_ROOT, 'sai/tools/ready-to-propose.js');
+    const result = spawnSync(process.execPath, [tool, 'attach-origin', '--harness', 'claude'], { input: JSON.stringify(request), encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+    const output = JSON.parse(result.stdout);
+    outputDir = output.transfer_dir;
+    assert.equal(output.blocks[0].text, undefined);
+    const amended = verifyBlockFile(output.blocks[0].block_file, output.blocks[0].hash);
+    assert.equal(amended.replace('**Backlog origin**: https://github.com/team/repo/issues/11\n', ''), text);
+    assert.equal(fs.readFileSync(source.path, 'utf8'), text);
+    assert.equal(composeVerdicts(amended, []).includes('\n<<<VERDICTS>>>\n[]'), true);
+    request.block_files[0].hash = '0'.repeat(64);
+    const rejected = spawnSync(process.execPath, [tool, 'attach-origin', '--harness', 'claude'], { input: JSON.stringify(request), encoding: 'utf8' });
+    assert.equal(rejected.status, 1);
+    assert.equal(JSON.parse(rejected.stdout).ok, false);
+  } finally { if (outputDir) transfer.close(outputDir); transfer.close(dir); }
+});
+
+test('stored file verification reports unreadable input without substituting content', t => {
+  const { dir } = transfer.open('claude');
+  try {
+    const text = block('unreadable-change').trimEnd();
+    const source = transfer.put(dir, 'block.md', text);
+    const originalRead = fs.readFileSync;
+    const mocked = t.mock.method(fs, 'readFileSync', function (filename, ...args) {
+      if (filename === source.path) throw Object.assign(new Error('EACCES: file unreadable'), { code: 'EACCES' });
+      return originalRead.call(this, filename, ...args);
+    });
+    assert.throws(() => verifyBlockFile(source.path, hashBlock(text)), /unreadable/);
+    mocked.mock.restore();
+  } finally { transfer.close(dir); }
+});
+
+test('both harness routes and all three consuming workers use file/hash references', () => {
+  const read = name => fs.readFileSync(path.join(REPO_ROOT, name), 'utf8');
+  for (const name of ['sai/commands/explore/direct-build-worker.md', 'sai/commands/backfill/worker.md', 'sai/commands/spec/worker.md']) {
+    assert.match(read(name), /--block-file/);
+    assert.match(read(name), /--block-hash/);
+    assert.match(read(name), /Stored block transport/);
+  }
+  for (const name of ['sai/commands/explore/steps/pipeline-direct-build.md', 'sai/commands/explore/steps/pipeline-plan-unattended.md']) {
+    assert.match(read(name), /--export --harness <claude\|opencode>/);
+    assert.match(read(name), /--block-file/);
+  }
+});
 
 test('block emit: a valid single block records its name and returns the route-selector pointer', () => {
   const id = spawnSession('rtp-single');

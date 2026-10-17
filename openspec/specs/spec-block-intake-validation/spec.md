@@ -7,7 +7,7 @@ Validate Ready to Propose blocks pasted into `/sai-1-spec` creation with the dis
 
 ### Requirement: Block attempts are validated before resolution or any write
 
-In creation mode, a request SHALL be a block attempt when it carries the `## Ready to Propose` heading or passes the `loose` profile. For a block attempt the spec worker SHALL pipe the request body to `ready-to-propose.js check --profile dispatchable` before change resolution or any write; on a structural violation it SHALL write nothing and show every violation with its block index, line number, problem, and detail. A degraded paste such as lost bold labels or a missing `---` line SHALL fail this check.
+In creation mode a request SHALL be a block attempt when it carries the Ready to Propose heading or passes the loose profile. Before resolution or writes the spec worker SHALL validate the request with `check --profile dispatchable`, using `--block-file` for a verified supervised request and stdin for a manual paste. Structural violations SHALL write nothing and identify every block index, line, problem, and detail. A degraded paste SHALL fail validation. Existing implementation-item rules SHALL remain in force.
 
 #### Scenario: Degraded paste is rejected
 
@@ -21,7 +21,7 @@ In creation mode, a request SHALL be a block attempt when it carries the `## Rea
 
 ### Requirement: Flagged lines are judged before creation proceeds
 
-When the verdict lists pending flagged lines, the spec worker SHALL judge exactly those lines per `sai/policies/block-hygiene-judgment.md` and run the check again with the verdicts after a `<<<VERDICTS>>>` line. A `violation` verdict SHALL fail validation before change resolution, writing nothing and showing its clause, line number, and evidence. Creation SHALL proceed only when the verdict reports `"dispatchable": true`, after which the change name SHALL resolve from the block's `Change name`. No hash comparison SHALL apply, so a hand-edited block is validated on its own merits.
+When validation lists pending flagged lines the worker SHALL judge exactly those lines, save a JSON-array verdict file, and rerun dispatchable validation with `--block-file` and `--verdicts-file` through the shared composer. Manual pasted requests SHALL first be saved to a file for this step. A violation SHALL prevent resolution and writes and report its clause, line, and evidence. Creation SHALL proceed only on `dispatchable: true`, then resolve the block change name. Manual requests SHALL remain validated on their own merits without hash comparison; supervised requests SHALL first pass stored-file verification.
 
 #### Scenario: Hand-edited dispatchable block proceeds
 

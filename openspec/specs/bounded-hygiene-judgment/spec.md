@@ -30,12 +30,17 @@ The judgment SHALL decide each flagged `(line, clause)` pair and nothing else, w
 
 ### Requirement: Verdict shape and transport
 
-Each verdict SHALL be a JSON object `{clause, line, evidence, verdict}` with `verdict` either `violation` or `context`, collected in one array sent after a `<<<VERDICTS>>>` line below the block set to `sai-state emit --ready-to-propose` or to `ready-to-propose.js check --profile dispatchable`. Line numbers SHALL refer to the exact text sent; after any edit of the block, the tool SHALL be run again and the lines judged again.
+Each verdict SHALL be `{clause, line, evidence, verdict}` with `verdict` either `violation` or `context`, collected in a JSON array. For registration and amendment alike, callers SHALL keep block content and verdicts in separate UTF-8 files and use the shared `ready-to-propose.js compose` interface or the equivalent file options on `sai-state emit` and `check --profile dispatchable`. The composer SHALL put `<<<VERDICTS>>>` on a separate line, adding the separating newline only to delivery, outside the hashed block. Parsing SHALL remain strict. Line numbers SHALL refer to the exact block text; editing SHALL require a new check and judgment.
 
 #### Scenario: Edited block is judged again
 
 - **WHEN** a block is corrected after a violation verdict
 - **THEN** the corrected set is checked again and its flagged lines receive fresh verdicts
+
+#### Scenario: No final newline still separates verdicts
+
+- **WHEN** a complete block without a final newline is composed with valid verdicts
+- **THEN** the marker occupies its own line, the block hash stays unchanged, and dispatchable validation succeeds.
 
 ### Requirement: A violation makes the block undispatchable
 

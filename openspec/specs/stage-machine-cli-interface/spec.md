@@ -43,7 +43,7 @@ The store SHALL persist each session's state in a JSON file under `$TMPDIR/sai-s
 
 ### Requirement: Closed error vocabulary via JSON error field
 
-Every failed emit (invalid event, unknown machine, version mismatch) SHALL return a JSON response. The response SHALL carry a mandatory `error` field with one of the closed-vocabulary values `INVALID_EVENT`, `UNKNOWN_MACHINE`, `VERSION_MISMATCH`, `ALREADY_RUNNING`, or `READINESS_IS_NOT_INTENT`. It SHALL also carry the current state's `next` pointer. An `INVALID_EVENT` caused by an event read from stdin that cannot be parsed SHALL additionally carry `reason: "EVENT_UNPARSEABLE"`. A block amendment rejected because stdin carries more than one block SHALL carry `reason: "AMEND_BLOCK_COUNT"`, and one rejected because the block's change name differs from the amended slice SHALL carry `reason: "AMEND_NAME_MISMATCH"`. A block emit rejected because the same session's `explore-idea@1` stage is not `crystallize` SHALL carry `reason: "STAGE_NOT_CRYSTALLIZE"` and the found `stage`, with the `explore-idea@1` pointer as its `next`. Every other failed emit SHALL carry no `reason`. Exit code SHALL be 1. In progress mode, stdin that fails validation, including stdin that is not JSON, SHALL produce an invalid `validation` block with exit code 1 and no `error` field, and never `EVENT_UNPARSEABLE`. A machine error after a valid verdict SHALL carry the same `error` vocabulary alongside `validation`. Reset failures also return `error` with closed-vocabulary values, but without a `next` pointer. The `block` verb alone SHALL answer a missing block with `{error: "BLOCK_NOT_FOUND"}` and exit 1, without a `next` pointer.
+Every failed emit (invalid event, unknown machine, version mismatch) SHALL return a JSON response. The response SHALL carry a mandatory `error` field with one of the closed-vocabulary values `INVALID_EVENT`, `UNKNOWN_MACHINE`, `VERSION_MISMATCH`, `ALREADY_RUNNING`, or `READINESS_IS_NOT_INTENT`. It SHALL also carry the current state's `next` pointer. An `INVALID_EVENT` caused by an event read from stdin that cannot be parsed SHALL additionally carry `reason: "EVENT_UNPARSEABLE"`. A block amendment rejected because stdin carries more than one block SHALL carry `reason: "AMEND_BLOCK_COUNT"`, and one rejected because the block's change name differs from the amended slice SHALL carry `reason: "AMEND_NAME_MISMATCH"`. A block emit rejected because the same session's `explore-idea@1` stage is not `crystallize` SHALL carry `reason: "STAGE_NOT_CRYSTALLIZE"` and the found `stage`, with the `explore-idea@1` pointer as its `next`. A file-backed block emit composition failure SHALL carry `reason: "BLOCK_COMPOSITION_FAILED"` with `error: "INVALID_EVENT"` and exit 1 before any state read or write; this pre-state failure need not carry `next`. Every other failed emit SHALL carry no `reason`. Exit code SHALL be 1. In progress mode, stdin that fails validation, including stdin that is not JSON, SHALL produce an invalid `validation` block with exit code 1 and no `error` field, and never `EVENT_UNPARSEABLE`. A machine error after a valid verdict SHALL carry the same `error` vocabulary alongside `validation`. Reset failures also return `error` with closed-vocabulary values, but without a `next` pointer. The `block` verb SHALL answer a missing block with `{error: "BLOCK_NOT_FOUND"}` and export failures with `{error: "BLOCK_EXPORT_FAILED", reason}`, exit 1 and no `next`.
 
 #### Scenario: Invalid machineId returns INVALID_EVENT
 
@@ -79,13 +79,13 @@ Every failed emit (invalid event, unknown machine, version mismatch) SHALL retur
 Each CLI verb SHALL return minimal JSON without state serialization, with `received_at` as the first key of every response:
 - `spawn`: `{received_at, id}`
 - `emit` success: `{received_at, stage, next: {follow, hint}, rejected?, warnings?}`
-- `emit` failure: `{received_at, error: <name>, reason?, next: {follow, hint}}`, where `reason` is present only as `EVENT_UNPARSEABLE` on a delivery failure or as `AMEND_BLOCK_COUNT` or `AMEND_NAME_MISMATCH` on a rejected block amendment
+- `emit` failure: `{received_at, error: <name>, reason?, next: {follow, hint}}`, where the existing reason vocabulary additionally permits `STAGE_NOT_CRYSTALLIZE` and file-backed `BLOCK_COMPOSITION_FAILED`; composition failure before state reads omits `next`
 - `emit --progress`: `{received_at, validation}` on an invalid verdict; on a valid verdict, `{received_at, validation, …}` followed by the `emit` success or failure fields above, unchanged
 - `reset` success: `{received_at, reset: <machineId>}`, or `{received_at, reset: <machineId>, stage, next: {follow, hint}}` on a machine that exposes a first filed step
 - `reset` failure: `{received_at, error: <name>}`
 - `close`: `{received_at, closed: id}`
-- `block` success: `{received_at, hash, text}`
-- `block` failure: `{received_at, error: "BLOCK_NOT_FOUND"}`
+- `block` success: `{received_at, hash, text}`, or with export `{received_at, hash, block_file, transfer_dir}` without text
+- `block` failure: `{received_at, error: "BLOCK_NOT_FOUND"}` or `{received_at, error: "BLOCK_EXPORT_FAILED", reason}`
 
 The machine's internal state remains in the session file; no snapshot or state object is serialized to stdout.
 
@@ -120,7 +120,7 @@ The store SHALL operate as a local-only service with no HTTP server, no listenin
 - **THEN** the session file is deleted immediately with no tombstone delay, graceful shutdown period, or lingering liveness window
 
 ### Requirement: Event delivery on stdin
-The `emit` verb SHALL read its event JSON only from stdin, marked by `-` as the third and last positional argument, and SHALL read all of stdin as UTF-8. Before parsing, it SHALL strip a leading BOM (`U+FEFF`) and trim surrounding whitespace and line breaks. In progress mode, it SHALL instead pass the raw, unnormalized stdin text to the validator module, so its verdict matches `validate --kind progress` byte-for-byte. `--progress` is a flag that takes no value, so the following `-` stays positional. It SHALL return a usage error with exit code 2, without reading stdin, in any of these cases:
+Except for the Ready to Propose block file form, the `emit` verb SHALL read its event JSON only from stdin, marked by `-` as the third and last positional argument, and SHALL read all of stdin as UTF-8. Before parsing, it SHALL strip a leading BOM (`U+FEFF`) and trim surrounding whitespace and line breaks. In progress mode, it SHALL instead pass the raw, unnormalized stdin text to the validator module, so its verdict matches `validate --kind progress` byte-for-byte. `--progress` is a flag that takes no value, so the following `-` stays positional. It SHALL return a usage error with exit code 2, without reading stdin, in any of these cases:
 - the id or machine id is missing;
 - the third positional argument is not `-`;
 - any positional argument follows `-`;
@@ -144,7 +144,7 @@ The usage-error stderr message SHALL show the canonical form `echo '<json>' | no
 - **THEN** the process exits 0 and the event is applied as received
 
 ### Requirement: Delivery failure reason on unparseable events
-When the normalized stdin text fails `JSON.parse`, `emit` SHALL answer `{error: "INVALID_EVENT", reason: "EVENT_UNPARSEABLE", next: {follow, hint}}` with exit code 1 and no transition. This SHALL apply to every parse failure of an event emit, including empty stdin, truncated JSON, trailing text, and broken or escaped quotes. `emit` SHALL write one stderr line showing the canonical stdin form. The `reason` field SHALL appear only on these delivery failures. An `INVALID_EVENT` for a valid event that the machine rejects, or for a malformed machine id, SHALL carry no `reason`, and neither SHALL `UNKNOWN_MACHINE` or `VERSION_MISMATCH`. In progress mode, a parse failure SHALL instead be an invalid `validation` verdict carrying the validator's invalid-JSON error, with no `reason` and no machine read. The store SHALL NOT detect quote-stripping or escaped-quote signatures and SHALL NOT write a hint pointing to a quoting section.
+When the normalized stdin text fails `JSON.parse`, `emit` SHALL answer `{error: "INVALID_EVENT", reason: "EVENT_UNPARSEABLE", next: {follow, hint}}` with exit code 1 and no transition. This SHALL apply to every parse failure of an event emit, including empty stdin, truncated JSON, trailing text, and broken or escaped quotes. `emit` SHALL write one stderr line showing the canonical stdin form. For ordinary JSON events the `reason` field SHALL appear only on these delivery failures; Ready to Propose file composition separately permits `BLOCK_COMPOSITION_FAILED` before any state read or write. An `INVALID_EVENT` for a valid event that the machine rejects, or for a malformed machine id, SHALL carry no `reason`, and neither SHALL `UNKNOWN_MACHINE` or `VERSION_MISMATCH`. In progress mode, a parse failure SHALL instead be an invalid `validation` verdict carrying the validator's invalid-JSON error, with no `reason` and no machine read. The store SHALL NOT detect quote-stripping or escaped-quote signatures and SHALL NOT write a hint pointing to a quoting section.
 
 #### Scenario: Empty stdin is a delivery failure
 - **WHEN** the caller invokes `emit <id> explore-idea@1 -` with empty stdin
@@ -172,6 +172,8 @@ Every stdout JSON response of `bin/sai-state.js` SHALL carry `received_at` as it
 ### Requirement: Ready to Propose block emit
 
 `sai-state emit <id> explore-slice@1 --ready-to-propose -` SHALL read a complete `Ready to Propose` block set as text from stdin, optionally followed by a line equal to `<<<VERDICTS>>>` and the bounded-judgment verdicts as a JSON array. It SHALL validate the set with the `dispatchable` profile of `sai/tools/ready-to-propose.js` before any session, machine, or registry read. `--ready-to-propose` SHALL be a flag that takes no value. A dispatchable set SHALL be accepted only while the same session's `explore-idea@1` stage is `crystallize`, where an absent `explore-idea@1` state counts as its initial `explore-change` stage; at any other stage the command SHALL record nothing, leave the machine untouched, answer `INVALID_EVENT` with `reason: "STAGE_NOT_CRYSTALLIZE"`, the found `stage`, and the `explore-idea@1` pointer, and exit 1. A single-slice amendment (`--amend <change-name>`) SHALL be outside this stage check. On a dispatchable verdict at the `crystallize` stage — structurally valid with every flagged line carrying a `context` verdict — the command SHALL derive `{"recordedList": [...]}` from the extracted change names in display order, advance the machine, store per change name each block's text, sha256 hash, and verdicts in the same session-file write, and return the ordinary emit fields. The set SHALL be validated as a whole: a non-dispatchable verdict SHALL exit 1, record no name, and leave the machine untouched. Every response SHALL carry `received_at` as its first key and a `validation` object `{ok, structural_ok, profile, blocks: [{index, line, violations, flagged}], violations, flagged, judgment: {ok, pending, violations, unknown, invalid}}`, where `ok` is true only for a dispatchable set, with no change names on the wire. These inputs SHALL be a delivery failure that answers `INVALID_EVENT` with `reason: "EVENT_UNPARSEABLE"` and a `next` pointer, exits 1, and makes no transition: empty stdin, stdin with no block heading, and a final block cut off before its `---` line. These SHALL be usage errors with exit 2: use on any machine other than `explore-slice@1`; combination with `--progress` or `--with-overview`; a missing id, machine id, or `-` marker; extra positional arguments; and interactive stdin. When the detector module is found in neither candidate location relative to the CLI, the command SHALL exit 2 and name the tried paths.
+
+The block emit SHALL additionally accept `--block-file <path> --verdicts-file <path>` in place of stdin and its `-` marker, for both registration and amendment. It SHALL compose the files through the shared composer before validation or state reads. Composition failures SHALL answer `INVALID_EVENT` with `BLOCK_COMPOSITION_FAILED`, exit 1, and make no transition or write. Successful file composition SHALL enter the same dispatchable validation, crystallize gate, amendment rules, and storage behavior as stdin.
 
 #### Scenario: Valid single block records its name
 
@@ -205,7 +207,7 @@ Every stdout JSON response of `bin/sai-state.js` SHALL carry `received_at` as it
 
 #### Scenario: Misuse is a usage error
 
-- **WHEN** the option is used on another machine, combined with `--progress` or `--with-overview`, or given without the `-` marker
+- **WHEN** the option is used on another machine, combined with `--progress` or `--with-overview`, or given without either the `-` marker or paired file options
 - **THEN** the process exits 2 with no transition
 
 #### Scenario: Unjudged flagged line records nothing
@@ -231,6 +233,8 @@ The stage machine store SHALL provide five CLI verbs via the `sai-state` script:
 4. `close <id>` terminates a session by deleting the session file and returns `{received_at, closed: id}` on success.
 5. `block <id> <change-name>` returns `{received_at, hash, text}` for one recorded slice's stored block, or `{received_at, error: "BLOCK_NOT_FOUND"}` with exit code 1 when the block is absent.
 Each verb writes minimal JSON to stdout on success and writes error text to stderr on failure. Exit code 0 indicates success; exit code 1 or 2 indicates failure.
+
+Ready to Propose registration and amendment SHALL also accept paired block/verdict file options, composed before validation without shell text re-encoding. `block --export --harness <claude|opencode>` SHALL validate the stored hash and return a private file/hash reference without text. Invalid or omitted export harness SHALL be a usage error with exit 2. Export failure SHALL return `BLOCK_EXPORT_FAILED` with exit 1. Existing non-export and ordinary event forms SHALL remain available.
 
 #### Scenario: CLI spawn returns session id
 - **WHEN** the caller invokes `sai-state spawn --key <key>` for a new or existing session

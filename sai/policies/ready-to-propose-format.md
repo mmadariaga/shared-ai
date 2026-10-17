@@ -68,11 +68,18 @@ One contract makes a block valid for every route that consumes it — Plan - Una
 
 ## Stored block transport
 
-Plan - Unattended and Direct Build - Unattended dispatch a block only from the `sai-state` store: the coordinator reads the text and hash with `sai-state block <id> <change-name>` (`@sai/policies/stage-machine.md`) and sends the text unaltered with the hash. Every worker that receives a block this way verifies it before any other work, because only the receiver can detect a block that was truncated or altered in transit:
+Plan - Unattended and Direct Build - Unattended dispatch a block only from the `sai-state` store. In Claude Code and opencode, run `sai-state block <id> <change-name> --export --harness <claude|opencode>` and send the returned `block_file` and `hash` together as `--block-file <absolute path>` and `--block-hash <sha256>` envelope lines. The tool writes the stored text directly into a private transfer file under the active harness temp root; no model copies its content into a message or heredoc.
 
-1. Take the `--block-hash <sha256>` envelope line named by the worker's own contract. When it is absent in a route that requires it, return `failed` with no changes and a summary naming the missing line.
-2. Pipe the received block text (the request after every envelope marker line) on stdin to `node <tool-path> hash`, where `<tool-path>` resolves `ready-to-propose.js` per `@sai/policies/tool-resolution.md`.
-3. When the printed `hash` differs from the envelope hash, or the tool reports anything other than exactly one block, return `failed` with no changes and a summary stating that the received block does not match its hash. Do not read the repository or write anything first, and do not repair, complete, or guess the block.
+Every receiving worker, including direct implementation, backfill prepare, and supervised specification, verifies before dependent work:
+
+1. Require both envelope lines. Resolve `ready-to-propose.js` per `@sai/policies/tool-resolution.md` and run `node <tool-path> verify-file --block-file <path> --block-hash <hash>`.
+2. On a missing, unreadable, unsafe, or mismatched file, return `failed` with no changes, naming the problem. Never reconstruct or repair the block from chat. Read the verified file as the sole block input only after success.
+
+Export anew after every amendment and before every fresh dispatch or replacement; carry the new file and its hash as one reference. Retain transfer directories while any continuation or recovery may need them, and close them with `transfer.js close --dir <dir>` only after that possibility ends. A previous file is never paired with a new hash. Existing LF-normalized block hashing remains unchanged: separators and non-ASCII content remain significant, and transport preserves the stored bytes, including the absence of a final newline.
+
+### Block and verdict delivery
+
+For both registration and amendment, author or update block content in a UTF-8 file and keep judgment verdicts in a separate JSON-array file. Run `sai-state emit <id> explore-slice@1 --ready-to-propose [--amend <name>] --block-file <path> --verdicts-file <path>`. It calls the shared `ready-to-propose.js` composer internally, avoiding shell text re-encoding in both Bash and PowerShell. Composition failure returns `BLOCK_COMPOSITION_FAILED` without a store mutation. The composer inserts the newline before `<<<VERDICTS>>>` mechanically, outside the hashed block, and rejects incomplete blocks and invalid or incomplete verdicts; the parser still requires a separate marker line. Use `[]` when no line needs judgment. Never concatenate a marker onto a stored separator or transcribe a stored block to attach verdicts. The same composer is available as `node <tool-path> compose --block-file <path> --verdicts-file <path>` when a caller needs its composed stdout.
 
 The Manual route has no store and no hash.
 

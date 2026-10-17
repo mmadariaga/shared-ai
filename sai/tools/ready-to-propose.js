@@ -90,6 +90,7 @@
 
 const crypto = require('crypto');
 const fs = require('fs');
+const path = require('path');
 
 const PROFILES = ['loose', 'strict', 'dispatchable'];
 
@@ -463,6 +464,34 @@ function splitVerdicts(text) {
     blocksText: lines.slice(0, at).join('\n'),
     verdictsText: lines.slice(at + 1).join('\n'),
   };
+}
+
+/** Add a delivery boundary, not a byte to the block that is hashed. */
+function composeVerdicts(blocksText, verdicts) {
+  if (splitVerdicts(blocksText).verdictsText !== null) throw new Error('Block input already contains verdicts');
+  if (!Array.isArray(verdicts)) throw new Error('Verdicts must be a JSON array');
+  const structural = checkStrict(blocksText);
+  if (!structural.ok) throw new Error('Complete valid blocks, including final separators, are required');
+  const composed = blocksText + (blocksText.endsWith('\n') ? '' : '\n') + VERDICTS_MARKER + '\n' + JSON.stringify(verdicts) + '\n';
+  const validation = checkDispatchable(composed);
+  if (!validation.dispatchable) throw new Error('Invalid or incomplete hygiene verdicts');
+  return composed;
+}
+
+/** Verify before returning the file content; never rebuild a block from chat. */
+function verifyBlockFile(filename, hash) {
+  if (typeof filename !== 'string' || !path.isAbsolute(filename)) throw new Error('--block-file must be an absolute transfer-file path');
+  const transfer = require('./transfer');
+  // Stored blocks are LF text, heading through separator, with no final newline.
+  // Check location/regular-file safety separately from the established block hash.
+  const dir = path.dirname(filename);
+  transfer.checkTransferDir(dir);
+  const stat = fs.lstatSync(filename);
+  if (!stat.isFile() || stat.isSymbolicLink()) throw new Error('Block file must be a regular file');
+  const text = fs.readFileSync(filename, 'utf8');
+  const texts = extractBlockTexts(text);
+  if (!/^[0-9a-f]{64}$/.test(hash || '') || texts.length !== 1 || hashBlock(texts[0]) !== hash || hashBlock(text) !== hash) throw new Error('Block file does not match its hash');
+  return text;
 }
 
 /** The text of each block, in block order: heading line through its `---` line. */
@@ -908,10 +937,13 @@ function convertIssue(text, options = {}) {
 
 function usage() {
   return [
-    'Usage: node sai/tools/ready-to-propose.js check --profile loose|strict|dispatchable [--json] < text',
+    'Usage: node sai/tools/ready-to-propose.js check --profile loose|strict|dispatchable [--json] [--block-file <path> [--verdicts-file <path>]] < text',
     '       node sai/tools/ready-to-propose.js hash < block',
+    '       node sai/tools/ready-to-propose.js verify-file --block-file <path> --block-hash <hash>',
+    '       node sai/tools/ready-to-propose.js compose --block-file <path> --verdicts-file <path> | sai-state emit ... --ready-to-propose -',
     '       node sai/tools/ready-to-propose.js dependencies < complete block set',
     '       node sai/tools/ready-to-propose.js attach-origin < JSON {text, correspondence}',
+    '       node sai/tools/ready-to-propose.js attach-origin --harness <claude|opencode> < JSON {block_files: [{block_file, hash}], correspondence}',
     '       node sai/tools/ready-to-propose.js convert [--change-name <name>] [--declared-clean] < issue',
     '',
     '  check               Validate the Ready to Propose text read from stdin',
@@ -942,6 +974,9 @@ function parseArgs(argv) {
         return { error: `${arg} requires a value` };
       }
       opts.changeName = argv[++i];
+    } else if (['--block-file', '--block-hash', '--verdicts-file', '--harness'].includes(arg)) {
+      if (i + 1 >= argv.length || argv[i + 1].startsWith('--')) return { error: `${arg} requires a value` };
+      opts[arg.slice(2)] = argv[++i];
     } else if (arg === '--declared-clean') {
       opts.declaredClean = true;
     } else if (arg.startsWith('--')) {
@@ -965,6 +1000,21 @@ function main(argv, readInput = () => fs.readFileSync(0, 'utf8')) {
   if (opts.help) {
     process.stdout.write(`${usage()}\n`);
     return 0;
+  }
+  if (opts.command === 'verify-file' || opts.command === 'compose') {
+    try {
+      if (opts.command === 'verify-file') {
+        verifyBlockFile(opts['block-file'], opts['block-hash']);
+        process.stdout.write(`${JSON.stringify({ ok: true, hash: opts['block-hash'], block_file: opts['block-file'] })}\n`);
+      } else {
+        if (!opts['block-file'] || !opts['verdicts-file']) throw new Error('compose requires --block-file and --verdicts-file');
+        process.stdout.write(composeVerdicts(fs.readFileSync(opts['block-file'], 'utf8'), JSON.parse(fs.readFileSync(opts['verdicts-file'], 'utf8'))));
+      }
+      return 0;
+    } catch (error) {
+      process.stderr.write(`${error.message}\n`);
+      return 1;
+    }
   }
   if (opts.command === 'hash') {
     // Hash transport remains independent of complete-set validation.
@@ -1002,7 +1052,17 @@ function main(argv, readInput = () => fs.readFileSync(0, 'utf8')) {
   if (opts.command === 'attach-origin') {
     try {
       const request = JSON.parse(readInput());
-      process.stdout.write(`${JSON.stringify(attachBacklogOrigins(request.text, request.correspondence), null, 2)}\n`);
+      if (request.block_files) {
+        const text = request.block_files.map(reference => verifyBlockFile(reference.block_file, reference.hash)).join('\n\n');
+        const result = attachBacklogOrigins(text, request.correspondence);
+        const transfer = require('./transfer');
+        const { dir } = transfer.open(opts['harness']);
+        result.blocks = result.blocks.map(block => {
+          const reference = transfer.put(dir, `${block.name}.md`, Buffer.from(block.text, 'utf8'));
+          return { name: block.name, hash: block.hash, backlog_origin: block.backlog_origin, block_file: reference.path };
+        });
+        process.stdout.write(`${JSON.stringify({ ...result, transfer_dir: dir }, null, 2)}\n`);
+      } else process.stdout.write(`${JSON.stringify(attachBacklogOrigins(request.text, request.correspondence), null, 2)}\n`);
       return 0;
     } catch (error) {
       process.stdout.write(`${JSON.stringify({ ok: false, error: error.message })}\n`);
@@ -1010,7 +1070,7 @@ function main(argv, readInput = () => fs.readFileSync(0, 'utf8')) {
     }
   }
   if (opts.command !== 'check') {
-    process.stderr.write(`sub-command "check", "hash", "dependencies", "attach-origin" or "convert" required.\n${usage()}\n`);
+    process.stderr.write(`sub-command "check", "hash", "verify-file", "compose", "dependencies", "attach-origin" or "convert" required.\n${usage()}\n`);
     return 2;
   }
   if (!PROFILES.includes(opts.profile)) {
@@ -1020,7 +1080,8 @@ function main(argv, readInput = () => fs.readFileSync(0, 'utf8')) {
 
   let input;
   try {
-    input = readInput();
+    input = opts['block-file'] ? fs.readFileSync(opts['block-file'], 'utf8') : readInput();
+    if (opts['verdicts-file']) input = composeVerdicts(input, JSON.parse(fs.readFileSync(opts['verdicts-file'], 'utf8')));
   } catch (err) {
     process.stderr.write(`cannot read stdin: ${err.message}\n`);
     return 2;
@@ -1044,6 +1105,8 @@ module.exports = {
   resolveJudgment,
   hashBlock,
   splitVerdicts,
+  composeVerdicts,
+  verifyBlockFile,
   extractBlockTexts,
   validateDependencies,
   validateDependencySet,
