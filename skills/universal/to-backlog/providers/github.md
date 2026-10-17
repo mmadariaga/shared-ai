@@ -52,7 +52,13 @@ URL, then adds it to the verified Project. No labels, assignees, priority,
 estimation, sprint assignment, or Project creation are added.
 
 Membership is verified with direct reads because the Project items index can
-take minutes to reflect changes.
+take minutes to reflect changes. For `publish`, `publish-set`, and `continue-set`,
+the shared tool handles a concurrent auto-add workflow's `Content already exists`
+response by querying membership again. Only confirmed membership in the requested
+Project counts as success. If the query fails or membership remains unconfirmed,
+retain the partial result and receipt with the existing issue identities for
+recovery. Other insertion errors keep their failure behavior. This rule applies
+to both Claude Code and opencode; it adds no publication or continuation approval.
 
 ## Results and recovery operation
 

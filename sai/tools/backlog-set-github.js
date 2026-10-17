@@ -64,11 +64,7 @@ function perform(receipt, file, io) {
       }
       if (!item.project) {
         const { project } = receipt.proposal;
-        if (!adapter().membership(io, project.id, item.issue.id)) {
-          const added = adapter().api(io, 'mutation($project:ID!,$issue:ID!){addProjectV2ItemById(input:{projectId:$project,contentId:$issue}){item{id}}}', { project: project.id, issue: item.issue.id });
-          // A response without an item id is verified by the issue-side read instead.
-          if (!adapter().verifyMembership(io, project.id, item.issue.id, added.addProjectV2ItemById?.item?.id)) throw new Error('Project membership not verified');
-        }
+        adapter().ensureMembership(io, project.id, item.issue.id);
         item.project = true; save(file, receipt);
       }
     }

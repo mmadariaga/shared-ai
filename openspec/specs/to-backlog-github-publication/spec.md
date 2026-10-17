@@ -260,6 +260,8 @@ The helper SHALL create only its unique temporary child and set permissions only
 
 Single-issue creation publication and its recovery SHALL decide Project membership only through direct reads and SHALL NOT read the ProjectV2 `items` connection. The direct item read SHALL read the item returned by `addProjectV2ItemById` and accept it only when its Project is the destination Project and its content is the published issue. The issue-side read SHALL read the issue's Project items across all pages and count only items whose Project is the destination Project, archived items included. A `null` Project items connection SHALL count as no items. Before adding, publication SHALL check membership with the issue-side read, and an issue already in the destination Project, archived or not, SHALL count as verified with no add mutation and no unarchiving. After the add mutation, verification SHALL read immediately and then up to four more times two seconds apart. It SHALL use the direct item read when the response carries an item id, and the issue-side read otherwise. Publication SHALL report complete only after a verified insertion. An exhausted verification SHALL return partial failure with `Project membership not verified`, the insertion left pending, and the created issue preserved.
 
+Single-issue publication and recovery SHALL use the same membership check, insertion, and verification operation as GitHub set publication and continuation. If insertion returns the specific `Content already exists` error, the operation SHALL verify membership with fresh issue-side reads under the existing verification bound before reporting complete. A structured GraphQL error response SHALL qualify only when every error message is exactly `Content already exists` and each error path is absent or starts with `addProjectV2ItemById`. A command error SHALL qualify only when its trimmed message is exactly `Content already exists`, optionally prefixed by repeated `gh:` prefixes and optionally suffixed by ` (addProjectV2ItemById)`. Other errors SHALL retain their failure treatment without duplicate-error verification. If fresh verification fails or does not establish membership in the destination Project, publication SHALL retain the existing issue identity and receipt with insertion pending and report partial failure. Recovery SHALL reuse the existing issue rather than create another issue to resolve membership.
+
 #### Scenario: Insertion visible on the first read
 
 - **WHEN** the direct item read of the added item returns the destination Project and the published issue on its first read
@@ -299,3 +301,23 @@ Single-issue creation publication and its recovery SHALL decide Project membersh
 
 - **WHEN** recovery runs after an unverified insertion and the issue-side read finds the issue in the destination Project
 - **THEN** recovery reports complete without repeating the add mutation or creating another issue.
+
+#### Scenario: Concurrent auto-add establishes requested membership
+
+- **WHEN** auto-add inserts the issue after the initial membership check and insertion returns a qualifying duplicate-content error
+- **THEN** publication performs fresh issue-side verification and reports complete only when the destination Project membership is confirmed within the existing bound.
+
+#### Scenario: Duplicate response without verified destination membership
+
+- **WHEN** insertion returns a qualifying duplicate-content error but subsequent reads find no membership, find only another Project, or fail
+- **THEN** publication reports partial failure and retains the existing issue identity and receipt with insertion pending for recovery.
+
+#### Scenario: Unrelated insertion error remains a failure
+
+- **WHEN** insertion fails with another message, mixed GraphQL errors, or a duplicate error tied to another mutation
+- **THEN** the operation preserves the failure rather than accepting the error as membership or starting duplicate-error verification.
+
+#### Scenario: Recovery encounters concurrent insertion
+
+- **WHEN** recovery retries pending insertion of the existing issue and receives a qualifying duplicate-content error
+- **THEN** it verifies destination membership through fresh issue-side reads and completes only on confirmation without creating another issue.

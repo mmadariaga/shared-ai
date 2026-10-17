@@ -36,10 +36,18 @@ function fake({ native = false } = {}) {
       } else if (query.includes('updateIssue')) {
         const issue = state.issues.find(row => row.id === v.id); issue.title = v.title; issue.body = v.body;
         data = { updateIssue: { issue } };
-      } else if (query.includes('addProjectV2ItemById')) { state.members.add(v.issue); data = { addProjectV2ItemById: { item: state.noItemId ? null : { id: `member-${v.issue}` } } }; }
+      } else if (query.includes('addProjectV2ItemById')) {
+        if (state.insertionError) {
+          if (state.raceMember) state.members.add(v.issue);
+          state.afterInsertionError = true;
+          throw new Error(state.insertionError);
+        }
+        state.members.add(v.issue); data = { addProjectV2ItemById: { item: state.noItemId ? null : { id: `member-${v.issue}` } } };
+      }
       else if (query.includes('items(first')) throw new Error('The lagging items connection must not be read');
       else if (query.includes('on ProjectV2Item{')) { const issue = v.id.replace('member-', ''); data = { node: seen(issue) ? { id: v.id, project: { id: 'P' }, content: { id: issue } } : null }; }
       else if (query.includes('projectItems(first')) {
+        if (state.afterInsertionError && state.failRaceRead) throw new Error('Membership query denied');
         const own = seen(v.id) ? [{ id: `member-${v.id}`, project: { id: 'P' }, ...(state.archived ? { isArchived: true } : {}) }] : [];
         data = { node: { projectItems: state.nullItems && !own.length ? null : page(state.otherProject ? [{ id: 'other', project: { id: 'P2' } }, ...own] : own) } };
       }
@@ -199,6 +207,43 @@ test('a mutation response without an item id is verified by the issue-side read'
   const { result } = publish(t, fixture);
   assert.equal(result.status, 'complete'); assert.deepEqual(fixture.state.sleeps, Array(3).fill(2000));
 });
+test('set publication resolves concurrent auto-add for every issue through fresh membership reads', t => {
+  const fixture = fake();
+  Object.assign(fixture.state, { insertionError: 'gh: gh: Content already exists (addProjectV2ItemById)', raceMember: true, visibleAfter: 1 });
+  const { result } = publish(t, fixture);
+  assert.equal(result.status, 'complete', JSON.stringify(result));
+  assert.equal(fixture.state.issues.length, 3);
+  assert.equal(adds(fixture), 3);
+  assert.ok([...fixture.state.reads.values()].every(reads => reads >= 2));
+});
+for (const option of ['absent', 'wrong-project', 'read-error', 'unrelated-error']) test(`set partial result and approved continuation preserve existing issues: ${option}`, t => {
+  const fixture = fake();
+  Object.assign(fixture.state, { insertionError: option === 'unrelated-error' ? 'Permission denied' : 'Content already exists', otherProject: option === 'wrong-project', failRaceRead: option === 'read-error', raceMember: option === 'read-error' || option === 'unrelated-error' });
+  const { result, file } = publish(t, fixture);
+  assert.equal(result.status, 'partial_failure');
+  assert.ok(result.pending.includes('project:0'));
+  assert.equal(result.created[0].id, 'I1');
+  assert.equal(JSON.parse(fs.readFileSync(file)).items[0].issue.id, 'I1');
+  assert.match(result.message, option === 'read-error' ? /Membership query denied/ : option === 'unrelated-error' ? /Permission denied/ : /Project membership not verified/);
+  fixture.state.failRaceRead = false;
+  fixture.state.members.clear();
+  const recovered = github['recover-set']({ receipt: file }, fixture.io);
+  assert.ok(recovered.pending.includes('project:0'));
+  fixture.state.insertionError = 'Content already exists'; fixture.state.raceMember = false;
+  const incomplete = github['continue-set']({ receipt: file, confirmation: recovered.continuation }, fixture.io);
+  assert.equal(incomplete.status, 'partial_failure');
+  assert.ok(incomplete.pending.includes('project:0'));
+  assert.equal(incomplete.created[0].id, 'I1');
+  assert.equal(fixture.state.issues.length, 1);
+  const retry = github['recover-set']({ receipt: file }, fixture.io);
+  fixture.state.insertionError = 'Content already exists'; fixture.state.raceMember = true;
+  const done = github['continue-set']({ receipt: file, confirmation: retry.continuation }, fixture.io);
+  assert.equal(done.status, 'complete', JSON.stringify(done));
+  assert.equal(fixture.state.issues.length, 3);
+  assert.equal(done.created[0].id, 'I1');
+  assert.equal(adds(fixture), 5);
+});
+
 test('assignment is isolated, exact-authorized and verified; existing assignment blocks', t => {
   const fixture = fake(); publish(t, fixture);
   const ref = fixture.state.issues[1].url;
