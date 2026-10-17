@@ -209,3 +209,121 @@ test('E5/E6: settings warnings stay on a failed from-next-backlog-item selection
   assert.deepEqual([output.status, output.reason], ['pending', 'retrieval-failed']);
   assert.match(output.warnings.join('\n'), /Unknown setting id backlog\.bogus/);
 });
+
+// E9-E11: the settings root is the git top-level directory, then the main worktree.
+const git = (cwd, ...args) => {
+  const result = spawnSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@example.com', ...args], { cwd, encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stderr);
+  return result.stdout;
+};
+const realTemp = prefix => fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), prefix));
+
+test('E9: a reader run from a subdirectory finds the settings at the git top-level directory', t => {
+  const top = realTemp('settings-root-');
+  t.after(() => fs.rmSync(top, { recursive: true, force: true }));
+  git(top, 'init', '-q');
+  fs.mkdirSync(path.join(top, '.sai'));
+  fs.writeFileSync(path.join(top, '.sai/settings.jsonc'), '{"backlog":{"provider":"gitlab"}}');
+  fs.mkdirSync(path.join(top, 'a/b'), { recursive: true });
+  assert.deepEqual(settings.get('backlog.provider', { cwd: path.join(top, 'a/b') }), { value: 'gitlab', source: 'setting', warnings: [] });
+  assert.equal(settings.readBacklog({ cwd: path.join(top, 'a'), providerIds }).config.provider, 'gitlab');
+});
+
+test('E10: a linked worktree without settings reads the main worktree and says so; its own file wins', t => {
+  const top = realTemp('settings-main-');
+  const linked = path.join(realTemp('settings-linked-'), 'wt');
+  t.after(() => { fs.rmSync(top, { recursive: true, force: true }); fs.rmSync(path.dirname(linked), { recursive: true, force: true }); });
+  git(top, 'init', '-q');
+  git(top, 'commit', '-q', '--allow-empty', '-m', 'init');
+  git(top, 'worktree', 'add', '-q', linked);
+  fs.mkdirSync(path.join(top, '.sai'));
+  fs.writeFileSync(path.join(top, '.sai/settings.jsonc'), '{"backlog":{"provider":"gitlab"}}');
+  const inherited = settings.get('backlog.provider', { cwd: linked });
+  assert.equal(inherited.value, 'gitlab');
+  assert.match(inherited.notices.join('\n'), /main worktree/);
+  assert.equal(settings.readBacklog({ cwd: linked, providerIds }).notices.length, 1);
+  fs.mkdirSync(path.join(linked, '.sai'));
+  fs.writeFileSync(path.join(linked, '.sai/settings.jsonc'), '{"backlog":{"provider":"github"}}');
+  assert.deepEqual(settings.get('backlog.provider', { cwd: linked }), { value: 'github', source: 'setting', warnings: [] });
+});
+
+test('E11: outside a git repository only the current directory is read', () => {
+  const parent = project({ '.sai/settings.jsonc': '{"backlog":{"provider":"gitlab"}}' });
+  const child = path.join(parent, 'child');
+  fs.mkdirSync(child);
+  assert.equal(settings.get('backlog.provider', { cwd: child }).value, null);
+  assert.equal(settings.get('backlog.provider', { cwd: parent }).value, 'gitlab');
+});
+
+test('pr.*: readPr returns the four code-host keys and drops an invalid provider with a warning (E12)', () => {
+  const cwd = project({ '.sai/settings.jsonc': '{"backlog":{"provider":"github"},"pr":{"provider":"gitlab","repository":"g/r","organization":"o","project":"p"}}' });
+  assert.deepEqual(settings.readPr({ cwd, providerIds: ['github', 'gitlab'] }).config, { provider: 'gitlab', repository: 'g/r', organization: 'o', project: 'p' });
+  assert.equal(settings.readBacklog({ cwd, providerIds }).config.provider, 'github');
+  const invalid = project({ '.sai/settings.jsonc': '{"pr":{"provider":"jira","repository":"g/r"}}' });
+  const read = settings.readPr({ cwd: invalid, providerIds: ['github', 'gitlab'] });
+  assert.deepEqual(read.config, { repository: 'g/r' });
+  assert.match(read.warnings.join('\n'), /Setting pr\.provider .*must be one of github, gitlab/);
+  assert.equal(settings.get('pr.provider', { cwd, prProviderIds: ['github', 'gitlab'] }).value, 'gitlab');
+});
+
+// E6-E8: a configured backlog provider decides bare references; a full URL keeps its own provider.
+const realFromRegistry = require('../skills/universal/from-backlog/providers/registry.json');
+const remoteIo = (remote, extra = {}) => ({
+  ...extra,
+  run: command => { assert.equal(command, 'git'); return `origin\t${remote} (fetch)\norigin\t${remote} (push)\n`; },
+  loadAdapter: entry => entry.id === 'gitlab' ? { resolve: value => ({ status: 'resolved', value }) } : require(`../sai/tools/${entry.adapter.replace('.js', '')}`),
+});
+
+test('E6: with backlog.provider gitlab, N and #N resolve against the repository of the remote', () => {
+  for (const reference of ['8', '#8']) {
+    const resolved = fromBacklog.resolve(reference, realFromRegistry, remoteIo('git@git.example.com:group/sub/repo.git', { configuredProvider: 'gitlab' }));
+    assert.deepEqual([resolved.provider, resolved.value, resolved.settingApplied], ['gitlab', 'https://git.example.com/group/sub/repo/-/issues/8', true]);
+  }
+  const http = fromBacklog.resolve('8', realFromRegistry, remoteIo('http://git.example.com:8080/g/r.git', { configuredProvider: 'gitlab' }));
+  assert.equal(http.value, 'http://git.example.com:8080/g/r/-/issues/8');
+});
+
+test('E6: with backlog.provider github, #N resolves against the github.com remote; no single repository asks for a URL', () => {
+  const resolved = fromBacklog.resolve('#8', realFromRegistry, remoteIo('https://github.com/owner/repo.git', { configuredProvider: 'github' }));
+  assert.deepEqual([resolved.provider, resolved.repository, resolved.number, resolved.settingApplied], ['github', 'owner/repo', 8, true]);
+  const none = fromBacklog.resolve('8', realFromRegistry, remoteIo('https://git.example.com/g/r.git', { configuredProvider: 'github' }));
+  assert.deepEqual([none.status, none.reason], ['needs_input', 'context-ambiguous']);
+});
+
+test('E6: with backlog.provider azuredevops, N resolves against the configured organization and project', () => {
+  const configuredDestination = { organization: 'https://dev.azure.com/acme', project: 'Board One' };
+  const resolved = fromBacklog.resolve('#8', realFromRegistry, remoteIo('https://git.example.com/g/r.git', { configuredProvider: 'azuredevops', configuredDestination }));
+  assert.deepEqual([resolved.provider, resolved.organization, resolved.project, resolved.number], ['azuredevops', 'https://dev.azure.com/acme', 'Board One', 8]);
+});
+
+test('E6: a configured provider that does not read the registry stops with provider-destination-conflict', () => {
+  assert.throws(() => fromBacklog.resolve('8', realFromRegistry, remoteIo('https://github.com/o/r.git', { configuredProvider: 'jira' })), { reason: 'provider-destination-conflict' });
+});
+
+test('E7: a full URL keeps its own provider and reports that the setting was overridden', () => {
+  const resolved = fromBacklog.resolve('https://github.com/owner/repo/issues/3', realFromRegistry, remoteIo('https://git.example.com/g/r.git', { configuredProvider: 'gitlab' }));
+  assert.deepEqual([resolved.provider, resolved.settingOverridden, resolved.settingApplied], ['github', true, undefined]);
+});
+
+test('E8: without backlog.provider, a bare number keeps its current resolution', () => {
+  const io = { run: () => '', loadAdapter: remoteIo('x').loadAdapter };
+  assert.throws(() => fromBacklog.resolve('#8', realFromRegistry, io), { reason: 'invalid-reference' });
+  const bare = fromBacklog.resolve('8', realFromRegistry, io);
+  assert.deepEqual([bare.provider, bare.status, bare.reason, bare.settingApplied], ['azuredevops', 'needs_input', 'context-ambiguous', undefined]);
+});
+
+test('E6: the from-backlog CLI prints the settings notice and reads the root from a subdirectory', t => {
+  const top = realTemp('from-backlog-root-');
+  t.after(() => fs.rmSync(top, { recursive: true, force: true }));
+  git(top, 'init', '-q');
+  git(top, 'remote', 'add', 'origin', 'https://github.com/owner/repo.git');
+  fs.mkdirSync(path.join(top, '.sai'));
+  fs.writeFileSync(path.join(top, '.sai/settings.jsonc'), '{"backlog":{"provider":"github"}}');
+  fs.mkdirSync(path.join(top, 'sub'));
+  const result = spawnSync(process.execPath, [path.join(root, 'sai/tools/from-backlog.js'), 'resolve', path.join(root, 'skills/universal/from-backlog/providers/registry.json')], {
+    cwd: path.join(top, 'sub'), input: JSON.stringify({ reference: '#4' }), encoding: 'utf8',
+  });
+  const output = JSON.parse(result.stdout);
+  assert.deepEqual([output.status, output.provider, output.repository, output.number], ['resolved', 'github', 'owner/repo', 4]);
+  assert.deepEqual(output.notices, ['Project setting backlog.provider: github']);
+});

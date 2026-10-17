@@ -201,11 +201,11 @@ Retrieval SHALL perform no remote mutation. Authentication, permission, compatib
 
 ### Requirement: Provider-owned reference classification
 
-Read-capable registry entries declaring classification: provider SHALL classify the trimmed raw reference through their adapter's classify(value) operation, including references that shared URL parsing cannot interpret. The operation SHALL return exactly match for a direct claim, fallback for a compatibility candidate, or null to decline; the helper SHALL reject every other result as invalid-registry. Classification SHALL inspect only the reference and SHALL perform no CLI reads, context lookup, or side effects. Entries without read capability SHALL NOT participate in classification. The helper SHALL resolve context only through the uniquely selected adapter after applying direct-before-fallback selection and the configured `backlog.provider` tie-break among fallback candidates. It SHALL reuse an adapter loaded for classification when dispatching the selected resolution operation. Classification SHALL NOT replace reference validation; an adapter owning classification SHALL validate its raw reference during resolution. The shipped Azure DevOps registry entry SHALL use this seam to directly claim supported Services hosts and isolated positive safe-integer IDs while existing GitHub classification and GitLab fallback behavior remain unchanged.
+Read-capable registry entries declaring classification: provider SHALL classify the trimmed raw reference through their adapter's classify(value) operation, including references that shared URL parsing cannot interpret. The operation SHALL return exactly match for a direct claim, fallback for a compatibility candidate, or null to decline; the helper SHALL reject every other result as invalid-registry. Classification SHALL inspect only the reference and SHALL perform no CLI reads, context lookup, or side effects. Entries without read capability SHALL NOT participate in classification. The helper SHALL resolve context only through the uniquely selected adapter after applying direct-before-fallback selection and the configured `backlog.provider` tie-break among fallback candidates, except for a bare `N` or `#N` reference that a configured `backlog.provider` decides. It SHALL reuse an adapter loaded for classification when dispatching the selected resolution operation. Classification SHALL NOT replace reference validation; an adapter owning classification SHALL validate its raw reference during resolution. The shipped Azure DevOps registry entry SHALL use this seam to directly claim supported Services hosts and isolated positive safe-integer IDs while existing GitHub classification and GitLab fallback behavior remain unchanged.
 
 #### Scenario: Provider claims a non-URL reference
 
-- **WHEN** one read-capable provider-owned classifier returns match for the trimmed reference 123
+- **WHEN** one read-capable provider-owned classifier returns match for the trimmed reference 123 and no `backlog.provider` setting applies
 - **THEN** the helper invokes that adapter's selected resolution operation with 123 and the supplied IO rather than rejecting it solely because shared URL parsing failed.
 
 #### Scenario: Provider claims an organization-specific host
@@ -245,7 +245,7 @@ Read-capable registry entries declaring classification: provider SHALL classify 
 
 ### Requirement: Configured provider among fallback candidates
 
-The `from-backlog` helper SHALL read `backlog.provider` through `sai/tools/project-settings.js`, validated against the read-capable registry provider ids, and SHALL apply it only when no provider matched the reference positively. With several fallback candidates, it SHALL select the one the setting names. With exactly one fallback candidate, it SHALL use that candidate when the setting is absent or names it. When the setting names no fallback candidate, the helper SHALL return the reason `provider-destination-conflict` without resolving context. A positive match SHALL ignore the setting. Without the setting, selection SHALL behave as before.
+The `from-backlog` helper SHALL read `backlog.provider` through `sai/tools/project-settings.js`, validated against the read-capable registry provider ids. For a reference that is not a bare `N` or `#N`, it SHALL apply the setting only when no provider matched the reference positively. With several fallback candidates, it SHALL select the one the setting names. With exactly one fallback candidate, it SHALL use that candidate when the setting is absent or names it. When the setting names no fallback candidate, the helper SHALL return the reason `provider-destination-conflict` without resolving context. A positive match SHALL keep its provider; when the setting names a different provider, the output SHALL carry the notice `Project setting backlog.provider: <value> is overridden by the issue URL, which selects <provider>`. Without the setting, selection SHALL behave as before.
 
 #### Scenario: Setting breaks a tie between fallback providers
 - **WHEN** an unmatched URL selects two read-capable fallback providers and `backlog.provider` names one of them
@@ -256,5 +256,33 @@ The `from-backlog` helper SHALL read `backlog.provider` through `sai/tools/proje
 - **THEN** the helper returns `provider-destination-conflict` without invoking any context resolver.
 
 #### Scenario: Positive match ignores the setting
-- **WHEN** a reference matches a provider positively and `backlog.provider` names another provider
-- **THEN** the helper selects the positively matched provider.
+- **WHEN** the full URL `https://github.com/owner/repo/issues/3` matches GitHub positively and `backlog.provider` is `gitlab`
+- **THEN** the helper selects GitHub and reports that the setting was overridden by the issue URL.
+
+### Requirement: Configured provider decides bare references
+
+When `backlog.provider` is set, the `from-backlog` helper SHALL resolve a bare reference `N` or `#N` (a positive integer without leading zero, optionally prefixed by `#`) in that provider before provider classification. For GitLab and GitHub, it SHALL derive the repository from the Git remotes whose host belongs to that provider (its declared hosts, or for a provider without declared hosts any host no other provider declares) and SHALL resolve the issue in that repository; when the remotes name no single such repository, it SHALL return `needs_input` with reason `context-ambiguous` and ask for a complete issue URL. For Azure DevOps, it SHALL resolve the work item against `backlog.organization` and `backlog.project` when both are set, and otherwise against the adapter's existing context. When the configured provider is not a read-capable registry provider or its classifier does not accept the number, the helper SHALL return `provider-destination-conflict`. A resolved bare reference SHALL carry the `Project setting backlog.provider: <value>` notice. Without `backlog.provider`, bare-reference resolution SHALL behave as before.
+
+#### Scenario: GitLab number resolves against the remote repository
+- **WHEN** `backlog.provider` is `gitlab`, the reference is `8` or `#8`, and the only remote is `git@git.example.com:group/sub/repo.git`
+- **THEN** the helper resolves `https://git.example.com/group/sub/repo/-/issues/8` in GitLab with the settings notice.
+
+#### Scenario: GitHub number resolves against the github.com remote
+- **WHEN** `backlog.provider` is `github`, the reference is `#8`, and the only remote is `https://github.com/owner/repo.git`
+- **THEN** the helper resolves repository `owner/repo` and number `8` in GitHub.
+
+#### Scenario: No matching remote asks for a URL
+- **WHEN** `backlog.provider` is `github` and no remote is on a GitHub host
+- **THEN** the helper returns `needs_input` with reason `context-ambiguous`.
+
+#### Scenario: Azure DevOps number uses the configured organization and project
+- **WHEN** `backlog.provider` is `azuredevops`, `backlog.organization` is `https://dev.azure.com/acme`, `backlog.project` is `Board One`, and the reference is `#8`
+- **THEN** the helper resolves work item `8` in organization `https://dev.azure.com/acme` and project `Board One`.
+
+#### Scenario: Unreadable configured provider conflicts
+- **WHEN** the configured provider is not a read-capable registry provider and the reference is `8`
+- **THEN** the helper returns `provider-destination-conflict`.
+
+#### Scenario: No setting keeps the previous resolution
+- **WHEN** no `backlog.provider` is set and the reference is `#8`
+- **THEN** the helper rejects it as `invalid-reference`, as before.

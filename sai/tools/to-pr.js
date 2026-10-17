@@ -7,7 +7,8 @@ const crypto = require('node:crypto');
 const backlog = require('./to-backlog');
 const { receiptPath: backlogReceiptPath } = require('./to-backlog-github');
 const { checkPrTitleRules } = require('./lint');
-const { readBacklog } = require('./project-settings');
+const projectSettings = require('./project-settings');
+const { readBacklog } = projectSettings;
 const digest = value => crypto.createHash('sha256').update(JSON.stringify(value)).digest('hex');
 function prepare(request, { filesystem = fs, platform = process.platform } = {}) {
   if (!['claude', 'opencode'].includes(request.harness)) throw new Error('Expected harness: claude or opencode');
@@ -41,17 +42,39 @@ function adapter(provider, io) {
   if (!entry?.capabilities.includes('publish')) throw new Error('Unsupported provider');
   return loadAdapter(entry);
 }
+const LEGACY_CONFIG = '.to-pr.json';
+// E1/E2/E12: `pr.*` in the project settings first, then the deprecated `.to-pr.json` in the project root.
+function configuration(registry, io) {
+  const settings = projectSettings.readPr({ cwd: io.cwd, providerIds: registry.providers.filter(entry => entry.capabilities.includes('publish')).map(entry => entry.id) });
+  const warnings = [...settings.warnings], notices = [...(settings.notices || [])];
+  let legacy;
+  try { legacy = JSON.parse(fs.readFileSync(path.join(settings.root, LEGACY_CONFIG), 'utf8')); } catch (error) { if (error.code !== 'ENOENT') throw error; }
+  const fromSettings = Object.keys(settings.config).length > 0;
+  if (legacy !== undefined) warnings.push(`${LEGACY_CONFIG} is deprecated${fromSettings ? ' and ignored because pr.* in .sai/settings.jsonc is set' : ''}; move its keys to pr.* in .sai/settings.jsonc and delete it.`);
+  if (fromSettings) return { config: settings.config, settings: true, warnings, notices };
+  if (legacy?.type !== undefined) throw new Error('Work-item type is invocation-scoped');
+  return { config: legacy || {}, settings: false, warnings, notices };
+}
 function resolve(request, registry, io) {
-  const explicit = request.explicit || {}, config = request.config || {};
+  const explicit = request.explicit || {};
+  // An injected `config` stands in for the files; otherwise the working directory's files supply it.
+  const read = request.config === undefined && io.cwd ? configuration(registry, io) : { config: request.config || {}, settings: false, warnings: [], notices: [] };
+  const config = read.config;
+  const finish = result => {
+    const addressed = read.settings ? backlog.detect(explicit.repository, registry, loadAdapter) : [];
+    const addressProvider = addressed.length === 1 ? addressed[0].provider : undefined;
+    const lines = read.settings ? [...projectSettings.notices(config, explicit, result, addressProvider, 'pr'), ...projectSettings.overrides(config, explicit, addressProvider, 'pr')] : [];
+    return projectSettings.report(result, { warnings: read.warnings, notices: [...read.notices, ...lines] });
+  };
   if (!explicit.provider && !config.provider) {
     const values = explicit.repository ? [explicit.repository] : config.repository ? [config.repository] : request.remotes || [];
     const hosts = registry.providers.flatMap(entry => entry.hosts || []);
     const unknownHosts = [...new Set(values.filter(value => !registry.providers.some(entry => entry.classification === 'provider' && loadAdapter(entry).classify(value) === 'match')).map(backlog.address).filter(Boolean).map(item => item.host).filter(host => !hosts.includes(host)))];
-    if (unknownHosts.length) return { status: 'needs_input', reason: 'provider-ambiguous', unknownHosts };
+    if (unknownHosts.length) return finish({ status: 'needs_input', reason: 'provider-ambiguous', unknownHosts });
   }
-  const result = backlog.resolve(request, registry, { ...io, loadAdapter });
+  const result = backlog.resolve({ ...request, explicit, config }, registry, { ...io, loadAdapter });
   if (result.status === 'resolved') loadAdapter(registry.providers.find(entry => entry.id === result.provider));
-  return result;
+  return finish(result);
 }
 function ref(value) {
   if (typeof value !== 'string' || !value || value.startsWith('-') || /[\s~^:?*\[\\]/.test(value) || value.includes('..') || value.includes('@{')) throw new Error('Invalid branch or remote');
@@ -279,10 +302,7 @@ function main(argv) {
     const io = { registry, cwd: process.cwd(), run: (command, args, input) => backlog.run(command, args, process.cwd(), input) };
     let result;
     if (operation === 'resolve') {
-      let config = {};
-      try { config = JSON.parse(fs.readFileSync('.to-pr.json', 'utf8')); } catch (error) { if (error.code !== 'ENOENT') throw error; }
-      if (config.type !== undefined) throw new Error('Work-item type is invocation-scoped');
-      result = resolve({ explicit: request.explicit || {}, config, remotes: collect({}, io).remotes.map(row => row.url) }, registry, io);
+      result = resolve({ explicit: request.explicit || {}, remotes: collect({}, io).remotes.map(row => row.url) }, registry, io);
     } else result = operations[operation](request, io);
     process.stdout.write(JSON.stringify(result) + '\n');
     return ['ready', 'resolved', 'complete', 'no_changes'].includes(result.status) || ['collect', 'destination'].includes(operation) ? 0 : 1;

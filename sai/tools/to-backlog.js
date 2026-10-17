@@ -141,7 +141,7 @@ function main(argv) {
       }
       const addressed = detect(request.explicit?.repository, registry);
       const addressProvider = addressed.length === 1 ? addressed[0].provider : undefined;
-      result = projectSettings.report(result, { warnings, notices: projectSettings.notices(config, request.explicit, result, addressProvider) });
+      result = projectSettings.report(result, { warnings, notices: [...(settings.notices || []), ...projectSettings.notices(config, request.explicit, result, addressProvider)] });
     } else {
       result = dispatch(operation, request, registry, io);
     }

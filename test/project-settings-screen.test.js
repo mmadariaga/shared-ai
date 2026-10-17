@@ -131,7 +131,7 @@ test('writer: CRLF files keep CRLF in inserted text', () => {
   assert.equal(read(directory).replace(/\r\n/g, '').includes('\n'), false);
 });
 
-test('E15: the screen lists exactly the three setting ids with their current values', async () => {
+test('E15: the screen lists exactly the four setting ids with their current values', async () => {
   const directory = project(COMMENTED);
   const seen = [];
   const result = await screen.runProjectSettingsScreen({
@@ -142,6 +142,7 @@ test('E15: the screen lists exactly the three setting ids with their current val
     'explore.readyToProposeLanguage: ask',
     'explore.overviewLanguage: ask',
     'backlog.provider: gitlab',
+    'pr.provider: ask',
     'Done',
   ]);
 });

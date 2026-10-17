@@ -29,9 +29,11 @@ Run `collect` with `{}`; distinguish committed HEAD from `pending` staged,
 unstaged and untracked files. The request covers committed HEAD only: if `pending`
 is non-empty, tell the user those files stay out of the request and continue.
 Run `resolve` with `{explicit:{provider,repository,organization?,project?}}`, omitting unspecified
-fields. Resolution follows explicit input, optional `.to-pr.json`, then Git
-remotes. Ask and repeat on `needs_input`; for `unknownHosts`, ask the user to pick
-the provider. Once resolved, load only the returned `instructions` reference,
+fields. Resolution follows explicit input, the `pr.*` keys of
+`.sai/settings.jsonc`, the deprecated `.to-pr.json`, then Git remotes; `backlog.*`
+never chooses the destination. Print the tool's `warnings` and `notices` verbatim,
+one line each. Ask and repeat on `needs_input`; for `unknownHosts`, ask the user to pick
+the provider. A configured `pr.provider` resolves a self-hosted host without that question. Once resolved, load only the returned `instructions` reference,
 relative to this skill's directory. The selected registry entry supplies both
 that reference and the tool's adapter; keep provider-specific mechanics there.
 

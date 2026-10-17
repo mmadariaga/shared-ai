@@ -14,9 +14,59 @@ function loadAdapter(entry) {
   return require(path.join(__dirname, entry.adapter));
 }
 
+const BARE_REFERENCE = /^#?([1-9][0-9]*)$/;
+
+// A bare number names no host, so the configured provider supplies the missing context:
+// the provider's own context (Azure DevOps) or the repository of the Git remotes.
+function remoteRepositories(entry, registry, io) {
+  let output = '';
+  try { output = io.run('git', ['remote', '-v']); } catch { return []; }
+  const others = registry.providers.filter(item => item.id !== entry.id).flatMap(item => item.hosts || []);
+  const found = new Map();
+  for (const line of output.split(/\r?\n/)) {
+    const value = line.trim().split(/\s+/)[1];
+    const scp = value && !value.includes('://') ? /^(?:[^@/:]+@)?([^/:]+):(.+)$/.exec(value) : null;
+    let host, protocol = 'https:', pathname;
+    try {
+      if (scp) [host, pathname] = [scp[1], scp[2]];
+      else if (value) { const url = new URL(value); [host, pathname] = [/^https?:$/.test(url.protocol) ? url.host : url.hostname, url.pathname]; if (/^https?:$/.test(url.protocol)) protocol = url.protocol; }
+    } catch { continue; }
+    const repository = pathname?.replace(/^\/+|\/+$/g, '').replace(/\.git$/, '');
+    const name = host?.toLowerCase().split(':')[0];
+    if (!repository || !repository.includes('/') || (entry.hosts ? !entry.hosts.includes(name) : others.includes(name))) continue;
+    found.set(`${host.toLowerCase()}/${repository}`, { host, protocol, repository });
+  }
+  return [...found.values()];
+}
+
+function configuredReference(number, entry, registry, adapter, io) {
+  if (entry.classification === 'provider') {
+    const { organization, project } = io.configuredDestination || {};
+    return organization && project ? `${organization.replace(/\/+$/, '')}/${encodeURIComponent(project)}/_workitems/edit/${number}` : String(number);
+  }
+  const repositories = remoteRepositories(entry, registry, io);
+  if (repositories.length !== 1) return null;
+  const { host, protocol, repository } = repositories[0];
+  if (entry.resolution === 'provider') return `${protocol}//${host}/${repository}/-/issues/${number}`;
+  return `/${repository}/issues/${number}`;
+}
+
+// E6: the configured backlog provider decides a bare `N` or `#N`.
+function resolveBare(number, registry, readable, getAdapter, io) {
+  const entry = readable.find(item => item.id === io.configuredProvider);
+  if (!entry) throw fault('provider-destination-conflict', `The configured backlog provider ${io.configuredProvider} does not accept this issue reference`);
+  const adapter = getAdapter(entry);
+  if (entry.classification === 'provider' && adapter.classify(String(number)) !== 'match') throw fault('provider-destination-conflict', `The configured backlog provider ${io.configuredProvider} does not accept this issue reference`);
+  const value = configuredReference(number, entry, registry, adapter, io);
+  if (value === null) return { status: 'needs_input', reason: 'context-ambiguous', provider: entry.id, message: 'Supply a complete issue URL; the Git remotes name no single repository for this provider' };
+  const resolved = entry.resolution === 'provider' ? adapter.resolve(value, io) : { status: 'resolved', ...adapter.normalize(value) };
+  return { ...resolved, provider: entry.id, instructions: entry.instructions, adapter: entry.adapter, settingApplied: true };
+}
+
 function resolve(reference, registry, io = {}) {
   if (typeof reference !== 'string' || !reference.trim()) throw fault('invalid-reference', 'Supply a complete issue URL or /owner/repo/issues/123');
   const value = reference.trim();
+  const bare = BARE_REFERENCE.exec(value);
   let host, url, parseError;
   if (value.startsWith('/') && !value.startsWith('//')) host = null;
   else {
@@ -29,6 +79,7 @@ function resolve(reference, registry, io = {}) {
     if (!adapters.has(entry)) adapters.set(entry, (io.loadAdapter || loadAdapter)(entry));
     return adapters.get(entry);
   };
+  if (bare && io.configuredProvider) return resolveBare(Number(bare[1]), registry, readable, getAdapter, io);
   const candidates = readable.map(entry => {
     // Classification is pure; only the selected adapter may resolve context.
     if (entry.classification === 'provider') {
@@ -42,7 +93,7 @@ function resolve(reference, registry, io = {}) {
   const matched = candidates.filter(candidate => candidate.classification === 'match');
   let entries = (matched.length ? matched : candidates.filter(candidate => candidate.classification === 'fallback')).map(candidate => candidate.entry);
   if (parseError && !entries.length) throw parseError;
-  // The configured provider only breaks ties among fallback candidates; a positive match wins.
+  // The configured provider only breaks ties among fallback candidates; a full URL's positive match wins.
   let settingApplied = false;
   if (!matched.length && entries.length && io.configuredProvider) {
     const configured = entries.filter(entry => entry.id === io.configuredProvider);
@@ -57,7 +108,8 @@ function resolve(reference, registry, io = {}) {
   const entry = entries[0];
   const adapter = getAdapter(entry);
   const resolved = entry.resolution === 'provider' ? adapter.resolve(value, io) : { status: 'resolved', ...adapter.normalize(value) };
-  return { ...resolved, provider: entry.id, instructions: entry.instructions, adapter: entry.adapter, ...(settingApplied ? { settingApplied } : {}) };
+  const settingOverridden = Boolean(matched.length && io.configuredProvider && entry.id !== io.configuredProvider);
+  return { ...resolved, provider: entry.id, instructions: entry.instructions, adapter: entry.adapter, ...(settingApplied ? { settingApplied } : {}), ...(settingOverridden ? { settingOverridden } : {}) };
 }
 
 function azureRuntime() {
@@ -148,10 +200,11 @@ function main(argv) {
     const request = JSON.parse(fs.readFileSync(0, 'utf8'));
     const registry = JSON.parse(fs.readFileSync(registryPath, 'utf8'));
     const settings = projectSettings.readBacklog({ cwd: process.cwd(), providerIds: registry.providers.filter(entry => entry.capabilities.includes('read')).map(entry => entry.id) });
-    const { settingApplied, ...resolved } = resolve(request.reference, registry, { run, configuredProvider: settings.config.provider });
+    const { settingApplied, settingOverridden, ...resolved } = resolve(request.reference, registry, { run, configuredProvider: settings.config.provider, configuredDestination: settings.config });
     const adapter = resolved.status === 'resolved' ? require(path.join(__dirname, resolved.adapter)) : null;
     const result = operation === 'resolve' || resolved.status !== 'resolved' ? resolved : (adapter.readSet || adapter.read)(resolved, { run });
-    const lines = settingApplied ? [projectSettings.notice('provider', settings.config.provider)] : [];
+    const lines = [...(settings.notices || []), ...(settingApplied ? [projectSettings.notice('provider', settings.config.provider)] : []),
+      ...(settingOverridden ? [`${projectSettings.notice('provider', settings.config.provider)} is overridden by the issue URL, which selects ${resolved.provider}`] : [])];
     process.stdout.write(JSON.stringify(projectSettings.report(result, { warnings: settings.warnings, notices: lines })) + '\n');
     return ['resolved', 'complete'].includes(result.status) ? 0 : 1;
   } catch (error) {
