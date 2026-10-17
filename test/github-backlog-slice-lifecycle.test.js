@@ -11,7 +11,7 @@ const source = require('../sai/tools/from-backlog-github');
 const assignment = require('../sai/tools/backlog-assignment-github');
 const identity = require('../sai/tools/backlog-slice-identity');
 function block(name, dependencies = 'None') {
-  return ['## Ready to Propose', ...detector.STRICT_FIELDS.filter(field => !field.optional || field.label === 'Depends on').map(field => `**${field.label}**: ${field.label === 'Change name' ? name : field.label === 'Depends on' ? dependencies : field.inline ? 'None' : '\n- I1: agreed source content'}`), '---'].join('\n');
+  return ['## Ready to Propose', ...detector.STRICT_FIELDS.filter(field => !field.optional || field.label === 'Depends on').map(field => `**${field.label}**: ${field.label === 'Change name' ? name : field.label === 'Depends on' ? dependencies : field.inline ? 'None' : field.label === 'Out of scope Implementation Details' ? '\n- None' : '\n- I1: agreed source content'}`), '---'].join('\n');
 }
 function fake({ native = false } = {}) {
   const state = { native, issues: [], members: new Set(), parents: new Map(), blockers: new Map(), calls: [], fail: null, failNumber: null, failNative: false, lostCreation: false, sleeps: [], reads: new Map(), visibleAfter: 0, noItemId: false, autoAdd: false, archived: false, otherProject: false, nullItems: false, hierarchyResponse: null };

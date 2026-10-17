@@ -358,14 +358,26 @@ test('block emit: usage errors exit 2 (other machine, missing marker, combined f
   }
 });
 
-test('block emit: a block with no in-scope implementation item records nothing (E1)', () => {
+test('block emit: a single change with - None under Implementation Details is recorded (E4)', () => {
   const id = spawnSession('rtp-no-item');
   try {
     const result = blockEmit(id, block('empty-details', { 'Implementation Details': '\n- None' }));
+    assert.equal(result.exitCode, 0, result.stdout);
+    assert.equal(JSON.parse(result.stdout).validation.ok, true);
+    assert.notEqual(readStoredBlocks(id), null);
+  } finally {
+    cleanup(id);
+  }
+});
+
+test('block emit: a slice of a sliced set with no in-scope item records nothing (E7)', () => {
+  const id = spawnSession('rtp-slice-no-item');
+  try {
+    const result = blockEmit(id, `${block('slice-a')}\n${block('slice-b', { 'Implementation Details': '\n- None' })}`);
     assert.equal(result.exitCode, 1);
     const json = JSON.parse(result.stdout);
     assert.equal(json.validation.ok, false);
-    assert.ok(json.validation.blocks[0].violations.some((v) => v.problem === 'NO_IMPLEMENTATION_ITEM'));
+    assert.ok(json.validation.blocks[1].violations.some((v) => v.problem === 'NO_IMPLEMENTATION_ITEM'));
     assert.equal(json.stage, undefined);
     assert.equal(readSet(id), null);
     assert.equal(readStoredBlocks(id), null);
@@ -649,14 +661,41 @@ test('amend: an unknown slice name is rejected and nothing is stored', () => {
   }
 });
 
+test('amend: a slice of a stored multi-slice set cannot be amended to - None, a single stored slice can (E4, E7)', () => {
+  const id = spawnSession('rtp-amend-none-set');
+  try {
+    assert.equal(blockEmit(id, `${block('slice-a')}\n${block('slice-b')}`).exitCode, 0);
+    const before = readStoredBlocks(id);
+    const result = amendEmit(id, 'slice-b', block('slice-b', { 'Implementation Details': '\n- None' }));
+    assert.equal(result.exitCode, 1);
+    const json = JSON.parse(result.stdout);
+    assert.equal(json.validation.ok, false);
+    assert.ok(json.validation.blocks.flatMap((b) => b.violations).some((v) => v.problem === 'NO_IMPLEMENTATION_ITEM'));
+    assert.deepEqual(readStoredBlocks(id), before);
+  } finally {
+    cleanup(id);
+  }
+
+  const single = spawnSession('rtp-amend-none-single');
+  try {
+    assert.equal(blockEmit(single, block('slice-a')).exitCode, 0);
+    const amended = block('slice-a', { 'Implementation Details': '\n- None' });
+    const result = amendEmit(single, 'slice-a', amended);
+    assert.equal(result.exitCode, 0, result.stdout);
+    assert.equal(readStoredBlocks(single)['slice-a'].text, blockTextOf(amended));
+  } finally {
+    cleanup(single);
+  }
+});
+
 test('amend: the block is validated with the dispatchable contract and invalid text replaces nothing', () => {
   const id = spawnSession('rtp-amend-invalid');
   try {
     assert.equal(blockEmit(id, block('slice-a')).exitCode, 0);
     const before = readStoredBlocks(id);
-    const noItem = amendEmit(id, 'slice-a', block('slice-a', { 'Implementation Details': '\n- None' }));
-    assert.equal(noItem.exitCode, 1);
-    assert.equal(JSON.parse(noItem.stdout).validation.ok, false);
+    const duplicated = amendEmit(id, 'slice-a', block('slice-a', { 'Out of scope Implementation Details': '\n- I1: add the module.' }));
+    assert.equal(duplicated.exitCode, 1);
+    assert.equal(JSON.parse(duplicated.stdout).validation.ok, false);
     const unjudged = amendEmit(id, 'slice-a', block('slice-a', { Why: ' About git push.' }));
     assert.equal(unjudged.exitCode, 1);
     assert.equal(JSON.parse(unjudged.stdout).validation.judgment.pending.length, 1);

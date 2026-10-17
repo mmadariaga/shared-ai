@@ -7,12 +7,22 @@ Define how one pending or stopped slice of a recorded crystallization set is cor
 
 ### Requirement: Amend emit validates one block for the named slice
 
-`sai-state emit <id> explore-slice@1 --ready-to-propose --amend <change-name> -` SHALL read one `Ready to Propose` block as text from stdin, in the block emit's delivery form and with the same optional `<<<VERDICTS>>>` suffix, and SHALL validate it with the `dispatchable` profile exactly as the block emit does. A non-dispatchable block SHALL return `validation` alone, exit 1, and replace nothing. Stdin carrying more than one block SHALL answer `INVALID_EVENT` with `reason: "AMEND_BLOCK_COUNT"`, and a block whose `**Change name**` differs from `<change-name>` SHALL answer `INVALID_EVENT` with `reason: "AMEND_NAME_MISMATCH"`. Each of these answers SHALL exit 1 with no transition. `--amend` without a non-empty change name, or outside `--ready-to-propose` on `explore-slice@1`, SHALL be a usage error with exit 2.
+`sai-state emit <id> explore-slice@1 --ready-to-propose --amend <change-name> -` SHALL read one `Ready to Propose` block as text from stdin, in the block emit's delivery form and with the same optional `<<<VERDICTS>>>` suffix, and SHALL validate it with the `dispatchable` profile exactly as the block emit does. When the stored inventory holds more than one slice, the emit SHALL also validate the resulting set — the stored blocks with the named slice replaced by the amended block — with the `dispatchable` profile, so that every slice keeps an in-scope `I` and no `I` is duplicated or left without a slice. A non-dispatchable block or resulting set SHALL return `validation` alone, exit 1, and replace nothing. Stdin carrying more than one block SHALL answer `INVALID_EVENT` with `reason: "AMEND_BLOCK_COUNT"`, and a block whose `**Change name**` differs from `<change-name>` SHALL answer `INVALID_EVENT` with `reason: "AMEND_NAME_MISMATCH"`. Each of these answers SHALL exit 1 with no transition. `--amend` without a non-empty change name, or outside `--ready-to-propose` on `explore-slice@1`, SHALL be a usage error with exit 2.
 
 #### Scenario: Invalid amended text replaces nothing
 
-- **WHEN** an amended block lacks an in-scope implementation item, carries an unjudged flagged line, or is cut off before its `---` line
+- **WHEN** an amended block duplicates an implementation item, carries an unjudged flagged line, or is cut off before its `---` line
 - **THEN** the emit exits non-zero and the slice's stored block stays unchanged
+
+#### Scenario: A slice of a multi-slice set cannot be amended to None
+
+- **WHEN** one slice of a stored two-slice set is amended to carry `**Implementation Details**` as `- None`
+- **THEN** the resulting-set validation reports `NO_IMPLEMENTATION_ITEM`, the emit exits 1, and the stored blocks stay unchanged
+
+#### Scenario: A single stored slice can be amended to None
+
+- **WHEN** the only stored slice is amended to carry `**Implementation Details**` as `- None`
+- **THEN** the emit exits 0 and the stored text is the amended block
 
 #### Scenario: Wrong block count or name is rejected
 

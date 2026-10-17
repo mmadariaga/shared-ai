@@ -809,6 +809,18 @@ function commandAmendBlock(id, machineIdArg, detector, verdict, text, validation
     return;
   }
   const resulting = Object.entries(recorded).map(([name, entry]) => name === amendName ? detector.extractBlockTexts(text)[0] : entry.text);
+  // The amended block alone reads as a single change, so a multi-slice
+  // inventory validates the resulting set: every slice keeps an in-scope `I`
+  // and no `I` is duplicated or left without a slice.
+  if (resulting.length > 1) {
+    const setVerdict = detector.detect(resulting.join('\n\n'), 'dispatchable');
+    if (!setVerdict.ok) {
+      const setValidation = Object.assign(projectBlockVerdict(setVerdict), { flagged: validation.flagged, judgment: validation.judgment });
+      writeResponse({ validation: setValidation });
+      process.exitCode = 1;
+      return;
+    }
+  }
   const dependencies = detector.validateDependencySet(resulting.join('\n\n'));
   if (!dependencies.ok) {
     writeResponse({ validation: Object.assign({}, validation, { ok: false, structural_ok: false, violations: validation.violations.concat(dependencies.violations) }), dependencies, error: 'INVALID_EVENT', reason: 'AMEND_DEPENDENCIES_INVALID' });

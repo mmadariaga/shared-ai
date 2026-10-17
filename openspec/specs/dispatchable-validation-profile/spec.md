@@ -7,17 +7,32 @@ Provide a deterministic `dispatchable` profile in `sai/tools/ready-to-propose.js
 
 ### Requirement: Dispatchable profile is a superset of strict with an implementation item check
 
-`ready-to-propose.js check --profile dispatchable` SHALL apply every `strict` check and SHALL additionally report `NO_IMPLEMENTATION_ITEM` on a block whose `**Implementation Details**` field carries no in-scope item other than `None`. Every dispatchable block SHALL pass `strict`. The verdict SHALL carry `ok` (the deterministic structural result), `profile`, `names`, `blocks`, set-level `violations`, `flagged`, `judgment`, and `dispatchable`.
+`ready-to-propose.js check --profile dispatchable` SHALL apply every `strict` check and SHALL additionally check the implementation item rules. In a sliced set (more than one block) it SHALL report `NO_IMPLEMENTATION_ITEM` on a block whose `**Implementation Details**` field carries no in-scope item other than `None`; a single block with `- None` there SHALL NOT be reported. It SHALL report `DUPLICATE_IMPLEMENTATION_ITEM` on a block where an `I<n>` identifier appears more than once across `**Implementation Details**` and `**Out of scope Implementation Details**`, and, in a sliced set, a set-level `UNOWNED_IMPLEMENTATION_ITEM` for each `I<n>` that is in scope of no block. Every dispatchable block SHALL pass `strict`. The verdict SHALL carry `ok` (the deterministic structural result), `profile`, `names`, `blocks`, set-level `violations`, `flagged`, `judgment`, and `dispatchable`.
+
+#### Scenario: A single block with None is dispatchable
+
+- **WHEN** a single block with `**Implementation Details**` as exactly `- None` is checked
+- **THEN** the `dispatchable` profile reports `ok` true and `dispatchable` true, and the `strict` profile also accepts it
 
 #### Scenario: Empty implementation section fails only the dispatchable profile
 
-- **WHEN** a block with `**Implementation Details**` as exactly `- None` is checked
+- **WHEN** a block in a sliced set has `**Implementation Details**` as exactly `- None` and is checked
 - **THEN** the `dispatchable` profile reports `NO_IMPLEMENTATION_ITEM` with `ok` false, while the `strict` profile still accepts it
 
 #### Scenario: Each slice needs its own item
 
 - **WHEN** a two-block set has one block with an in-scope item and one with `- None`
 - **THEN** only the second block carries `NO_IMPLEMENTATION_ITEM`
+
+#### Scenario: A duplicated identifier is reported
+
+- **WHEN** a block lists `I1` under both implementation sections, or twice under `**Implementation Details**`
+- **THEN** the block carries `DUPLICATE_IMPLEMENTATION_ITEM` and `ok` is false
+
+#### Scenario: An unowned identifier is reported once per item
+
+- **WHEN** a sliced set lists `I3` only under `**Out of scope Implementation Details**` in every block
+- **THEN** the set-level violations carry exactly one `UNOWNED_IMPLEMENTATION_ITEM` naming `I3`, and a set where `I3` is in scope of some block passes
 
 ### Requirement: Each block carries a sha256 hash
 

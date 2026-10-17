@@ -43,8 +43,8 @@ const CONDITIONAL_ENTRIES = Object.freeze({
 // `issue-shortcut` is the one intent that reaches `crystallize` without the
 // intermediate stages. It is valid only at `explore-change` and carries the
 // issue's already agreed `E`/`I` lists, which it records as the two agreed
-// lists. The in-scope implementation list never closes empty, so an empty one
-// is rejected like any other malformed shortcut.
+// lists. An empty implementation list is a valid agreed `- None`: the shortcut
+// question shows it and accepting the shortcut is the user's confirmation.
 const SHORTCUT_INTENT = 'issue-shortcut';
 
 const initialState = Object.freeze({
@@ -169,7 +169,7 @@ function transition(state, signal) {
       return result(cloneState(current), { rejected: 'SHORTCUT_NOT_AT_EXPLORE_CHANGE' });
     }
     const isList = (value) => Array.isArray(value) && value.every((item) => typeof item === 'string');
-    if (!isList(sig.edgeCaseList) || !isList(sig.implementationDetailsList) || sig.implementationDetailsList.length === 0) {
+    if (!isList(sig.edgeCaseList) || !isList(sig.implementationDetailsList)) {
       return result(cloneState(current), { rejected: 'SHORTCUT_LISTS_INVALID' });
     }
     const shortcut = Object.assign(cloneState(current), {
@@ -193,15 +193,15 @@ function transition(state, signal) {
   }
 
   // Determine if auto-advance is allowed based on stage and recorded list content.
-  // Auto-advance only at stages with content-based empty-set rules: review-edge-cases and implementation-details.
+  // Auto-advance only at the stage with a content-based empty-set rule: review-edge-cases.
+  // An empty implementation-details list never advances on its own: the user
+  // confirms the proposed `- None` with the `next-step` intent.
   // It is reserved for intent-less emits, so an unrecognized or out-of-stage
   // intent still falls through to the allowlist rejection below instead of
   // taking a free advance the caller never asked for.
   const intentless = isIntentless(sig);
   let shouldAutoAdvance = false;
   if (intentless && current.stage === 'review-edge-cases' && current.edgeCaseList !== null && current.edgeCaseList.length === 0) {
-    shouldAutoAdvance = true;
-  } else if (intentless && current.stage === 'implementation-details' && current.implementationDetailsList !== null && current.implementationDetailsList.length === 0) {
     shouldAutoAdvance = true;
   }
 
@@ -212,7 +212,7 @@ function transition(state, signal) {
   // Intent allowlist: only the exact `next-step` intent advances. Any other
   // intent (including any non-empty stray string) stays put with the in-band
   // rejection, mirroring explore-slice.js. Missing/empty intent rejects the
-  // same way. Empty-list auto-advance above is unchanged.
+  // same way. The empty edge-case auto-advance above is unchanged.
   if (!isAdvanceIntent(sig)) {
     return result(cloneState(current), { rejected: 'READINESS_IS_NOT_INTENT' });
   }
