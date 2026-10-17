@@ -85,6 +85,10 @@ Return each ask as its own `needs_input` result, shaped per
 
 ## Draft transfer
 
+Fetch @sai/policies/scenario-preservation.md and apply its author boundary before
+returning completed drafts, including corrected drafts. Return its temporary
+`scenario_exception_reference` separately from `draft_references`.
+
 The worker never returns draft content in a message. After composing the drafts
 (instruction Phase 6), write each one with
 `node <tool-path> put --dir <transfer-dir> --path <relative>` (content on
@@ -121,7 +125,9 @@ latest prepared references and may name only these destinations:
 The worker validates the marker, change name, destination allow-list,
 duplicate-free destination set, reference identity (each `path` and `sha256`
 equal to the prepared reference), and pending execution state before writing.
-It then runs `transfer.js verify` for every reference, and only when all pass
+It then runs `transfer.js verify` for every reference, repeats the scenario
+preservation check against current main specs using the prepared, coordinator-
+approved exception metadata, and only when all pass
 runs `transfer.js materialize --dir <transfer-dir> --path <path> --sha256
 <sha256> --destination <destination>` for each, which copies the verified bytes
 byte-for-byte and creates only the parent directories those destinations need.
@@ -132,7 +138,19 @@ verbatim helper report. It never creates `design.md`,
 
 After a successful execution, a repeated execute continuation carrying the same closed order is rejected without another write. A write or parent-directory failure returns a closed `failed` result with the exact completed and uncompleted state, sets `unrecoverable: true` only when the evidence establishes that continuation is unsafe, and ends the order there: the worker leaves the state as it is for the coordinator to verify. A new execute order is accepted only after an order that failed before its first write; the coordinator issues one under `@sai/policies/unattended-runtime-recovery.md` § Execute orders.
 
-Correction feedback is the other accepted continuation after execution: the same run may continue this worker with the verbatim archive failure plus the named draft sections to recompose. The worker recomposes only those named sections from the staged diff, the block grounding, and the CLI error, rewrites only those draft files, and reports every rewritten path in the invocation-scoped `changed_files` union. Corrections rewrite drafts only and carry no commit authorization. A defect that repeats without progress after correction ends this worker's corrections: return `failed` with the verbatim failure.
+Correction feedback is the other accepted continuation after execution: the same
+run may continue this worker with the verbatim archive failure plus the named
+draft sections to recompose. Recompose only those sections from the staged diff,
+the block grounding, and the CLI error. Put corrected drafts and metadata into
+transfer files, run the author preservation check, and return the complete latest
+references without rewriting repository files. After the coordinator independently
+validates them under the receiver boundary, it may continue this correction with
+explicit authorization of those exact corrected references. Verify them again,
+repeat the preservation check, and materialize only the named corrected drafts;
+report every rewritten path in `changed_files`. This completes the pending
+correction, not a replay of the consumed initial execute order. Corrections carry
+no commit authorization. A defect that repeats without progress after correction
+ends this worker's corrections: return `failed` with the verbatim failure.
 
 This execution route does not change the ordinary route: without
 `direct_build_mode: prepare` and the explicit `--direct-build-execute` continuation,
@@ -169,7 +187,7 @@ state-changing git commands.
 For the ordinary route and the prepare stretch, NEVER write any repository
 file — no artifact, no draft on disk in the repository, no `.openspec.yaml` key,
 nothing outside reporting duties. The only files the worker creates there are
-the transfer files written through `transfer.js put` under Draft transfer,
+the transfer files and temporary scenario metadata written through `transfer.js put` under Draft transfer,
 outside the repository. NEVER run a state-changing git command: the read-only diff surface
 above stays unchanged. Schema validation and every final write into
 `openspec/changes/{name}/` belong exclusively to the coordinator unless the

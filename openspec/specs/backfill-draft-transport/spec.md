@@ -7,17 +7,15 @@ TBD - created by archiving change transfer-file-references-backfill. Update Purp
 
 ### Requirement: One transfer directory per backfill invocation
 
-The `/sai-backfill` coordinator, and the Explore Direct Build route for its backfill stage, SHALL run `transfer.js open --harness <claude|opencode>` for the active harness before the first backfill worker dispatch and SHALL keep the returned directory as invocation-scoped state. An `open` exit 2, such as a missing harness temp root, SHALL stop the route with the verbatim error before any dispatch and any final write. The directory SHALL remain available until the invocation closes, including between Direct Build prepare and execute, and at close — completed, failed, or cancelled, or for Direct Build when Step 6 is accepted or the route ends non-cleanly — the coordinator SHALL run `transfer.js close` once, removing only that directory.
+The `/sai-backfill` coordinator and Explore Direct Build route SHALL run `transfer.js open --harness <claude|opencode>` before the first backfill worker dispatch and retain its returned directory as invocation-scoped state. Exit 2 SHALL report the verbatim error and stop before dispatch or final writes. Ordinary backfill SHALL retain its invocation-close cleanup. Direct Build SHALL retain its transfer directory through archive, including corrections, rather than closing it at Step 6 acceptance, and SHALL close it at terminal cleanup. The coordinator SHALL run `transfer.js close` to remove only that directory when the applicable completed, failed, or cancelled invocation or route closes.
 
 #### Scenario: A missing temp root stops before dispatch
-
 - **WHEN** `open` exits 2 at backfill invocation start
 - **THEN** the coordinator reports the verbatim error and dispatches no worker and writes no file
 
 #### Scenario: The directory survives until close
-
 - **WHEN** a Direct Build backfill stage moves from prepare to execute
-- **THEN** the transfer directory still exists, and it is removed only when the stage or invocation closes
+- **THEN** the transfer directory still exists and remains available through archive and corrections until terminal cleanup
 
 ### Requirement: Transfer directory disclosed only in task disclosure
 
@@ -76,24 +74,25 @@ On the ordinary `/sai-backfill` route, after validation and the delta-header pre
 
 ### Requirement: Direct Build execute order carries references
 
-On the Direct Build route, the `--direct-build-execute` order SHALL carry the confirmed change name and the validated references `{path, sha256, destination}` and no draft content. The worker SHALL validate the marker, change name, destination allow-list, duplicate-free destination set, reference identity with its latest prepared references, and pending execution state, SHALL run `transfer.js verify` for every reference, and only when all pass SHALL run `transfer.js materialize` for each. A verification failure SHALL write nothing and return `failed` with the verbatim helper report.
+On the Direct Build route, the `--direct-build-execute` order SHALL carry the confirmed change name and validated references `{path, sha256, destination}` without draft content. The worker SHALL validate the marker, name, destination allow-list, duplicate-free destination set, identity with its latest prepared references, and pending execution state. It SHALL verify every reference and repeat scenario-preservation checking against current main specs using prepared, coordinator-approved temporary exception metadata before materializing any draft. Only after all checks pass SHALL it materialize the verified drafts byte-for-byte. A failed reference verification or preservation check SHALL write nothing and return the concrete failure. Temporary metadata SHALL NOT become a materialization destination.
 
 #### Scenario: Execute materializes verified references
-
 - **WHEN** the worker receives a valid execute order of references
-- **THEN** it verifies every reference and materializes each to its destination, reporting every realized destination in `changed_files`
+- **THEN** it verifies every reference, repeats scenario-preservation checking, and only after success materializes each destination and reports every realized destination in `changed_files`
 
 #### Scenario: An unverifiable reference writes nothing
-
 - **WHEN** any reference in the execute order fails `verify`
 - **THEN** the worker writes no destination and returns `failed` with the verbatim report
 
+#### Scenario: Changed main specs invalidate stale preservation evidence
+- **WHEN** current main specs cause preservation checking to fail before the execute continuation materializes drafts
+- **THEN** the worker writes no draft destination and reports the failed comparison
+
 ### Requirement: Backfill terminal payload carries references, not content
 
-The shared worker core SHALL state that backfill's terminal payload returns `draft_references` to worker-prepared transfer files and never draft content, and that merge's terminal payload returns only the application outcome and one `resolution_reference` (`{path, sha256}`) to the worker's transfer file holding the complete resolution result, never the resolution region text; the only terminal payload that returns content for the coordinator to write SHALL be the archive reroute's corrected delta specs.
+The shared worker core SHALL state that backfill returns `draft_references` to worker-prepared transfer files and never draft content, with a separate `scenario_exception_reference: {path, sha256}` for temporary exception metadata. Merge SHALL return only its application outcome and one `resolution_reference: {path, sha256}` for the complete resolution result, never region text. The archive reroute's corrected delta specs SHALL remain the only terminal payload returning artifact content for the coordinator to write.
 
 #### Scenario: Worker core lists the content exceptions
-
 - **WHEN** `sai/orchestration/worker-core.md` is read
 - **THEN** it names the archive reroute's corrected delta specs as the only content-returning payload and states that backfill and merge return references
 
@@ -105,3 +104,35 @@ The shared worker core SHALL state that backfill's terminal payload returns `dra
 
 - **WHEN** the archive, backfill, and merge command profiles are read from the install manifest
 - **THEN** each shell grant list contains `node {sai}/tools/transfer.js *`
+
+### Requirement: Temporary scenario metadata is separate and verified
+
+The backfill worker SHALL write `scenario-exceptions.json` through `transfer.js put` inside its transfer directory, using an empty array when no exceptions are proposed. It SHALL return its `{path, sha256}` as `scenario_exception_reference` separately from destination-bearing `draft_references`. Every corrected result SHALL return the complete latest metadata reference and drafts. Receivers SHALL verify metadata before every use and independently approve each exception against explicit accepted scope. Changed bytes SHALL require fresh approval and checking. Metadata SHALL never be a scenario or repository artifact and SHALL NOT enter materialization, staging, archive artifacts, or commits.
+
+#### Scenario: No proposed exceptions still produces metadata
+- **WHEN** the worker proposes no scenario removal or rename
+- **THEN** it returns a separate reference to an empty JSON array written through the transfer helper
+
+#### Scenario: Metadata has no destination
+- **WHEN** a receiver processes the worker's temporary exception reference
+- **THEN** it verifies that reference separately without adding it to the allowed draft destination list
+
+#### Scenario: Corrected metadata supersedes prior bytes
+- **WHEN** a corrected result changes temporary exceptions
+- **THEN** the receiver uses the complete latest references and repeats metadata verification, approval, and preservation checking
+
+### Requirement: Direct Build corrections are verified before rewriting drafts
+
+After a Direct Build archive failure, the same backfill worker SHALL recompose only the named draft sections from existing grounding and failure evidence. It SHALL put corrected drafts and metadata into transfer files, run the author preservation check, and return the complete latest references without rewriting repository files. Only after independent receiver validation and explicit authorization of those exact corrected references SHALL it verify again, repeat preservation checking, and materialize the named corrected drafts. This SHALL complete the pending correction rather than replay the consumed initial execution order and SHALL grant no commit authorization. Repeating a defect without progress SHALL end corrections with the verbatim failure.
+
+#### Scenario: Correction first returns temporary references
+- **WHEN** the worker receives archive-failure feedback naming draft sections to correct
+- **THEN** it returns checked temporary references without rewriting repository drafts
+
+#### Scenario: Receiver approves exact corrected bytes
+- **WHEN** the coordinator independently validates corrected references and authorizes those exact references
+- **THEN** the worker verifies and checks them again before rewriting only the named drafts and reporting the rewritten paths
+
+#### Scenario: Correction does not replay execution or authorize commit
+- **WHEN** an authorized correction finishes
+- **THEN** it closes the pending correction without replaying the original execute order or gaining commit authorization

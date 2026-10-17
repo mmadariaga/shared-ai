@@ -2,6 +2,12 @@
 
 ## Command function
 
+Before syncing specifications, both Claude Code and opencode independently check
+that each MODIFIED requirement preserves its existing scenario names. An exact
+removal or rename is allowed only when the approved scope explicitly covers it.
+Temporary exception metadata is verified separately and never archived. A
+missing scenario or incomplete comparison must be corrected before sync.
+
 Checks that a change is ready and moves it from the active changes area to the archive of completed changes, keeping the active workspace clean.
 
 ## Flags and behavior modifiers

@@ -374,12 +374,23 @@ The Direct Build - Unattended route of `/sai-explore` SHALL load the binding for
 
 ### Requirement: Build spec review checks MODIFIED-delta completeness
 
-The Direct Build - Unattended route's step-4 spec review SHALL run a MODIFIED-delta completeness check read-only over the returned backfill draft content: for every `## MODIFIED Requirements` entry in a draft, compare its scenario set against the existing main-spec requirement at `openspec/specs/{capability}/spec.md`. A MODIFIED that drops an existing scenario is a High completeness finding routed through the same findings continuation, because syncing it would silently destroy content.
+The Direct Build - Unattended route's step-4 spec review SHALL apply the shared scenario-preservation receiver boundary to temporary backfill drafts and their separate exception reference. It SHALL verify references, independently approve every exception against the approved block, and run the deterministic checker against current published specifications, comparing scenario names within each capability and MODIFIED requirement. Unapproved missing scenarios SHALL be High completeness findings routed to the same backfill worker within the existing findings budget. A failed or incomplete comparison SHALL NOT be accepted through review-round cap exhaustion. Verified temporary metadata and approval evidence SHALL remain available through archive, and the coordinator SHALL repeat the independent archive boundary on current deltas immediately before archive execution. Worker-authored exceptions alone SHALL grant no approval.
 
 #### Scenario: A draft MODIFIED drops an existing scenario
-
-- **WHEN** the step-4 spec review finds a MODIFIED requirement whose draft scenario set omits a scenario the main spec already holds
+- **WHEN** the step-4 spec review finds a MODIFIED requirement whose draft scenario set omits a scenario the main spec already holds without an applicable exception independently approved against the accepted scope
 - **THEN** explore records a High completeness finding and continues it once to the same backfill worker within the remaining `fix_rounds` budget.
+
+#### Scenario: Approved exception permits only its named difference
+- **WHEN** an exception explicitly covered by the approved block permits one scenario removal or rename
+- **THEN** the checker permits only that difference and still reports any unrelated missing scenario
+
+#### Scenario: Exhausted review budget does not accept invalid preservation
+- **WHEN** the review budget is exhausted but the scenario comparison still fails or cannot complete
+- **THEN** the affected drafts are not accepted for materialization or archive
+
+#### Scenario: Metadata survives until the archive check
+- **WHEN** validated backfill drafts have been materialized but archive has not completed
+- **THEN** the transfer directory and verified metadata remain available for the independent archive check and any corrections until terminal cleanup
 
 ### Requirement: The Direct Build run has three guard windows
 
