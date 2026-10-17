@@ -31,7 +31,8 @@ carries one. A report keeps its fixed findings: it records what was found and
 what was fixed, so nothing is removed. A Question is open until it is answered
 and fixed; an unanswered Question stays open. Every consumer of a report acts
 on open findings only: the Direct Build close selects from them,
-`/sai-3-implement` ingests them, and `/sai-3-implement-new` applies them.
+`/sai-3-implement` ingests them, and `/sai-3-implement-new` applies them,
+except the findings that carry the excluded mark (see Excluded mark).
 
 ## Fixed mark
 
@@ -50,5 +51,24 @@ instruction after the coordinator accepts convergence, so the marks enter the
 same commit as their fixes. The `/sai-3-implement-new` coordinator writes the
 marks itself, in the commit of the step that fixed each finding. Only the
 findings a run fixed are marked:
-excluded findings and unanswered Questions stay open. Regenerating a report
+findings the run left out and unanswered Questions stay open. Regenerating a report
 replaces its findings together with their marks.
+
+## Excluded mark
+
+The **excluded mark** is the literal ` (EXCLUDED: <reason>)` appended to the end
+of the finding's heading line, for example
+`#### M2 — Rename helper (EXCLUDED: cosmetic, outside the change's behavior)`.
+The `/sai-build-new` coordinator writes it after its assessment pass, for a
+fixable finding it decides not to fix; a user may also write it by hand. The
+reason is concrete and fits on the heading line. Only the heading line changes,
+as with the fixed mark: the body, the identifier, the severity, and the closing
+`Summary:` tally stay exactly as the report wrote them. A Question never
+carries it.
+
+An excluded finding stays open for every consumer except `/sai-3-implement-new`,
+which skips it, standalone or inside `/sai-build-new`. The Direct Build close of
+`/sai-review` and `/sai-5-review` does not honor the mark. Removing the mark
+reopens the finding for `/sai-3-implement-new`, which then fixes it and writes
+the fixed mark. Regenerating a report replaces its excluded marks together with
+its fixed marks, so no exclusion carries over to a new report.

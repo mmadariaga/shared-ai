@@ -114,7 +114,7 @@ After the last step, the coordinator SHALL run every unit and integration suite 
 
 ### Requirement: Audit findings applied after the tasks
 
-The `/sai-3-implement-new` coordinator SHALL read the audit reports that exist in the change directory (`review.md`, `security.md`, `performance.md`, `accessibility.md`) at start, and SHALL apply their open fixable findings only after every task in `tasks.md` is checked. Open, fixed, fixable, Question, and the fixed mark SHALL mean what `sai/policies/finding-state.md` defines. Every open fixable finding SHALL go through the step cycle, one finding per step or a few that share a location and a fix, with a brief that carries each finding's identifier, report, location, problem, and suggested fix in place of tasks, and the corrected behavior in place of spec scenarios. The coordinator SHALL decide per finding whether it needs RED: a finding about behavior that a test can pin and that no test pins yet SHALL go through RED first, with a test that fails by assertion on the current code; a finding that an existing test already exposes, or that no test can usefully pin, SHALL go to GREEN directly. Either path SHALL be the plan for that finding, not a deviation. The step's commit SHALL carry the fix together with the fixed mark the coordinator appends to each fixed finding's heading line. A fixed finding SHALL never be done again. A Question SHALL stay open and go to the closing report. A finding the coordinator judges mistaken, or whose fix contradicts the plan, SHALL stay open with a deviation that says why, and a fix that would change the What or Why of `proposal.md` SHALL be force majeure.
+The `/sai-3-implement-new` coordinator SHALL read the audit reports that exist in the change directory (`review.md`, `security.md`, `performance.md`, `accessibility.md`) at start, and SHALL apply their open fixable findings only after every task in `tasks.md` is checked. Open, fixed, fixable, Question, the fixed mark, and the excluded mark SHALL mean what `sai/policies/finding-state.md` defines. A finding whose heading carries the excluded mark, written by `/sai-build-new` or by the user, SHALL be skipped standalone and inside `/sai-build-new`: it SHALL NOT be applied, marked, reported as a pending finding, or treated as an obstacle, and wherever this command acts on open fixable findings it SHALL leave excluded findings out. A finding whose excluded mark the user removed SHALL be open again and SHALL go through the step cycle like any other. Every open fixable finding SHALL go through the step cycle, one finding per step or a few that share a location and a fix, with a brief that carries each finding's identifier, report, location, problem, and suggested fix in place of tasks, and the corrected behavior in place of spec scenarios. The coordinator SHALL decide per finding whether it needs RED: a finding about behavior that a test can pin and that no test pins yet SHALL go through RED first, with a test that fails by assertion on the current code; a finding that an existing test already exposes, or that no test can usefully pin, SHALL go to GREEN directly. Either path SHALL be the plan for that finding, not a deviation. The step's commit SHALL carry the fix together with the fixed mark the coordinator appends to each fixed finding's heading line. A fixed finding SHALL never be done again. A Question SHALL stay open and go to the closing report. A finding the coordinator judges mistaken, or whose fix contradicts the plan, SHALL stay open with a deviation that says why, and a fix that would change the What or Why of `proposal.md` SHALL be force majeure.
 
 #### Scenario: An open finding is fixed in its own step
 
@@ -130,6 +130,16 @@ The `/sai-3-implement-new` coordinator SHALL read the audit reports that exist i
 
 - **WHEN** a finding's heading line already carries the fixed mark
 - **THEN** the coordinator runs no step for it
+
+#### Scenario: An excluded finding is skipped
+
+- **WHEN** a finding's heading line carries ` (EXCLUDED: <reason>)`, including a mark the user wrote by hand
+- **THEN** the coordinator runs no step for it, writes no mark on it, and does not report it as pending or as an obstacle
+
+#### Scenario: A reopened finding is fixed
+
+- **WHEN** the user removed the excluded mark from a finding's heading before the run
+- **THEN** the coordinator treats the finding as open, fixes it in a step, and appends ` (FIXED)` in that step's commit
 
 #### Scenario: A Question stays open
 

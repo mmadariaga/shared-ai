@@ -251,6 +251,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 
 - [0194 — `/sai-3-implement-new` runs outside the shared orchestration](./0194-implement-new-runs-outside-the-shared-orchestration.md) — **Amends** 0188, Refs 0163, Refs 0187
 - [0195 — `/sai-4-review-new` is a review-only command of the `-new` family](./0195-review-new-is-a-review-only-command-of-the-new-family.md) — **Amends** 0194
+- [0198 — `/sai-build-new` selects and fixes the findings of its own review](./0198-build-new-selects-and-fixes-findings-after-its-review.md) — **Amends** 0195
 
 ### `/sai-merge`
 
@@ -647,6 +648,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 | [0195](./0195-review-new-is-a-review-only-command-of-the-new-family.md) | amends | [0194](./0194-implement-new-runs-outside-the-shared-orchestration.md) |
 | [0196](./0196-empty-implementation-details-needs-user-confirmation.md) | amends | [0137a](./0137a-stage-advancement-token-literal-next-step.md) |
 | [0197](./0197-next-step-is-the-only-stage-advancement-keyword.md) | amends | [0137a](./0137a-stage-advancement-token-literal-next-step.md) |
+| [0198](./0198-build-new-selects-and-fixes-findings-after-its-review.md) | amends | [0195](./0195-review-new-is-a-review-only-command-of-the-new-family.md) |
 | [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0033](./archive/0033-echo-line-format-and-placement.md) |
 | [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0034](./archive/0034-resolution-precedence-wrapper-echo-first.md) |
 | [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0035](./archive/0035-harness-specific-adapter-carve-out.md) |

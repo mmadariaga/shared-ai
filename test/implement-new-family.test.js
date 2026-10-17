@@ -89,13 +89,15 @@ test('the -new coordinators load only the policies that never stop a run', () =>
   }
 });
 
-test('/sai-build-new chains /sai-3-implement-new then one /sai-4-review-new pass', () => {
+test('/sai-build-new chains /sai-3-implement-new, one /sai-4-review-new pass, and a fix segment', () => {
   const build = read(COORDINATORS[1]);
   assert.match(build, /Fetch @sai\/commands\/implement-new\/coordinator\.md/);
   assert.match(build, /Fetch @sai\/commands\/review-new\/coordinator\.md and follow it exactly as the second segment, with the same `arguments_value`/);
   assert.doesNotMatch(build, /reserved/);
   assert.match(build, /one review pass runs per run/);
-  assert.match(build, /never implements findings/);
+  assert.match(build, /No review runs after segment 3/);
+  assert.match(build, /It fixes nothing\./);
+  assert.doesNotMatch(build, /never implements findings/);
   assert.doesNotMatch(build, /meta-build|composition\.md/);
   assert.match(build, /Build-new done\./);
 });

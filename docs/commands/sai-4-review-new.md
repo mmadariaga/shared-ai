@@ -27,4 +27,4 @@ It then prints the severity counts, the top Critical findings, the report path, 
 
 The command ends with `Review-new done.`.
 
-To apply the findings, review `review.md`, delete the findings you do not want, and run [`/sai-3-implement-new`](sai-3-implement-new.md). [`/sai-build-new`](sai-build-new.md) runs the implementation and this review in one invocation.
+To apply the findings, review `review.md`, delete the findings you do not want (or mark them ` (EXCLUDED: <reason>)`), and run [`/sai-3-implement-new`](sai-3-implement-new.md). [`/sai-build-new`](sai-build-new.md) runs the implementation, this review, and the fixes it selects in one invocation.
