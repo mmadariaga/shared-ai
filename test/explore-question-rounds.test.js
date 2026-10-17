@@ -35,8 +35,9 @@ test('answer combinations: each question keeps its own scope and condition', () 
   assert.match(round1, /On No, skip only this action and leave out the publication question/);
   assert.match(round1, /On No, skip only this action and leave out the base question/);
   assert.match(round1, /On `none`, skip only this action[\s\S]*leave out the base question/);
-  assert.match(round1, /Ask it only when a linked issue exists[\s\S]*with no linked issue it is left out and implementation start asks it/);
-  assert.match(actions, /No registry capability returns the authenticated user without an existing issue, so when no issue exists yet the assignment question is left out of round 1 and implementation start asks it/);
+  assert.match(round1, /Ask it when a linked issue exists\. With no linked issue, ask it in its intent form only when the backlog answer is Yes[\s\S]*when the backlog answer is No it is left out/);
+  assert.match(round1, /set-level assignment answer[\s\S]*applies to the issue of every slice in the set/);
+  assert.match(actions, /No registry capability returns the authenticated user without an existing issue, so when no issue exists yet the concrete assignee cannot be named: the assignment question is then asked in its intent form when the backlog answer can be Yes/);
   assert.doesNotMatch(actions, /read-only lookup resolves it without an issue/);
   assert.match(round1, /record the answer as not applicable: it authorizes nothing/);
   assert.match(round1, /`assign`[\s\S]*`keep`[\s\S]*`replace`[\s\S]*`skip`/);
@@ -159,6 +160,9 @@ test('implementation start verifies an advance assignment approval instead of as
   assert.match(start, /ask again for that authorization only/);
   assert.match(start, /a lapsed approval \(its proposal was never published\)/);
   assert.match(start, /Fast-track and unattended route\s+consent do not approve assignment/);
+  assert.match(start, /\*\*Set-level answer\.\*\*/);
+  assert.match(start, /Every later slice of the same set reuses it/);
+  assert.match(start, /stop before that slice's implementation and ask keep, replace, or\s+skip/);
   for (const caller of ['sai/commands/explore/steps/pipeline-direct-build.md', 'sai/commands/apply/coordinator.md']) {
     assert.match(read(caller), /Fetch @sai\/policies\/backlog-implementation-start\.md/, `${caller} keeps invoking it`);
   }

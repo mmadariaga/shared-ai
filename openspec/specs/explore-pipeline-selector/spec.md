@@ -159,7 +159,7 @@ Fast-track SHALL not auto-select Plan or Direct Build and SHALL not suppress rou
 - **THEN** the native picker remains required with no auto-selection, no emission-turn handoff, and unchanged command literals
 
 ### Requirement: Direct Build continuation requests authorization for each pending slice
-The system SHALL ask the one-time Direct Build continuation question once per crystallization set as a conditional question of round 3, beside the route question, when more than one pending slice remains and the question has not been prompted for the set, even if earlier slices used Manual or Plan. The answer SHALL take effect only when the same round's route answer is Direct Build; then the system SHALL mark the question prompted and keep the yes or no answer for the whole set. When the route answer is Plan or Manual, or no valid route was answered, the continuation answer SHALL authorize nothing, the question SHALL stay unprompted, and a later Direct Build round SHALL ask it again. Despite the title wording for each pending slice, consent is once per set: later slices reuse the stored answer and are never re-asked for the same set. Continuation choices SHALL exclude completed slices and preserve crystallization order. Answer yes SHALL resolve to auto_continue, SHALL authorize only starting each later slice in order and that slice's single local commit, and SHALL authorize nothing else; switches between chained branches SHALL stay authorized by the `per-slice` answer of the branch question, and no continuation answer SHALL select another route; answer no or a queued route request SHALL resolve to route_choice. Selecting Manual on a continuation selector SHALL dispatch nothing and preserve pending and completed state.
+The system SHALL ask the one-time Direct Build continuation question once per crystallization set as a conditional question of round 3, beside the route question, when more than one pending slice remains and the question has not been prompted for the set, even if earlier slices used Manual or Plan. The answer SHALL take effect only when the same round's route answer is Direct Build; then the system SHALL mark the question prompted and keep the yes or no answer for the whole set. When the route answer is Plan or Manual, or no valid route was answered, the continuation answer SHALL authorize nothing, the question SHALL stay unprompted, and a later Direct Build round SHALL ask it again. Despite the title wording for each pending slice, consent is once per set: later slices reuse the stored answer and are never re-asked for the same set. Continuation choices SHALL exclude completed slices and preserve crystallization order. Answer yes SHALL resolve to auto_continue, SHALL authorize only starting each later slice in order and that slice's single local commit, and SHALL authorize nothing else; switches between chained branches SHALL stay authorized by the `per-slice` answer of the branch question, assignment of each later slice's issue SHALL stay authorized only by the set-level assignment answer of round 1, and no continuation answer SHALL select another route; answer no or a queued route request SHALL resolve to route_choice. Selecting Manual on a continuation selector SHALL dispatch nothing and preserve pending and completed state.
 
 #### Scenario: pending slices remain after clean completion
 - **WHEN** a clean Direct Build slice completes and pending_slices is non-empty
@@ -180,6 +180,10 @@ The system SHALL ask the one-time Direct Build continuation question once per cr
 #### Scenario: Continuation yes keeps its own authorization scope
 - **WHEN** round 3 returns Direct Build with a continuation answer of yes under the `per-slice` branch strategy
 - **THEN** yes authorizes starting each later slice in order with its single local commit and nothing else, while the chained branch switches rest on the `per-slice` branch answer.
+
+#### Scenario: Continuation yes does not authorize assignment
+- **WHEN** round 3 returns Direct Build with a continuation answer of yes and later slices start automatically
+- **THEN** assignment of each later slice's issue rests only on the set-level assignment answer of round 1.
 
 ### Requirement: Obsolete token forms dispatch nothing
 
@@ -336,3 +340,19 @@ Before presenting the initial native route picker, Explore SHALL distinguish a p
 
 - **WHEN** recovery attempts are exhausted or an execute operation has uncertain effects
 - **THEN** Explore offers no automatic retry for exhaustion and offers verification rather than replay for uncertainty
+
+### Requirement: Direct Build automatic chain stays open across an assignment question
+
+For the full Direct Build route, Step 1 SHALL complete `sai/policies/backlog-implementation-start.md` for each slice before technical dispatch. For a slice started by `auto_continue`, it SHALL apply the set's assignment answer from the route selector without a question. A question that the policy raises for that slice (other assignees, or a failed assignment) SHALL be asked in Step 1 and waited on, and SHALL keep the chain open: the answer, or Retry or Skip after a failed assignment, SHALL continue that slice and the chain, and only Stop SHALL end the chain.
+
+#### Scenario: Automatic slice with a matching set-level answer
+- **WHEN** a slice starts through `auto_continue` and the set-level assignment answer applies without conflict
+- **THEN** Step 1 applies it without a question and dispatches the implementer
+
+#### Scenario: Assignment question during the chain
+- **WHEN** the policy asks keep, replace, or skip for a slice started through `auto_continue`
+- **THEN** Step 1 waits for the answer and then continues that slice and the remaining chain
+
+#### Scenario: Stop after a failed assignment
+- **WHEN** an assignment fails for a chained slice and the user answers Stop
+- **THEN** the chain ends
