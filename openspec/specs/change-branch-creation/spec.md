@@ -7,12 +7,22 @@ TBD - created by archiving change group-post-crystallization-question-rounds. Up
 
 ### Requirement: Prepare suggested bases for a caller without creating
 
-On request from any workflow, `new-change-branch` SHALL run its inspection and return the suggested bases in their returned order, as the display options and exact references of the first page (up to four options, plus `More` when later pages exist, plus the free-text entry), without asking and without repository mutation. The caller SHALL present that question and hand the answer back as a supplied base. The skill SHALL NOT name or depend on its caller, and standalone use SHALL keep its existing sections unchanged.
+On request from any workflow, `new-change-branch` SHALL run its inspection and return the suggested bases in their returned order, as the display options and exact references of the first page (up to four options in all: with more than four bases, three bases plus `More`; with four or fewer, every base without `More`; plus the free-text entry), without asking and without repository mutation. The caller SHALL present that question and hand the answer back as a supplied base. The skill SHALL NOT name or depend on its caller, and standalone use SHALL keep its existing sections unchanged.
 
 #### Scenario: Caller requests base preparation
 
 - **WHEN** a workflow asks `new-change-branch` to prepare bases
 - **THEN** the skill returns the first page of suggested bases with their exact references and creates nothing
+
+#### Scenario: More than four bases are prepared
+
+- **WHEN** inspection returns more than four suggested bases
+- **THEN** the prepared first page carries the first three bases in returned order plus `More` and the free-text entry
+
+#### Scenario: Four or fewer bases are prepared
+
+- **WHEN** inspection returns four or fewer suggested bases
+- **THEN** the prepared first page carries every base in returned order without `More`, plus the free-text entry
 
 ### Requirement: Accept a supplied base and resolved name
 

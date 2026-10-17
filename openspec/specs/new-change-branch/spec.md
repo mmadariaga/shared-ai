@@ -78,7 +78,7 @@ The helper SHALL inspect at most 20 commits using first-parent traversal from HE
 
 ### Requirement: User-selected base with native free-text selection
 
-The skill SHALL offer the current branch, detected parent, existing main references, and existing master references in that order, omitting absent and duplicate references. Detached HEAD SHALL have no current-branch option. The skill MUST use Claude Code's `AskUserQuestion` or opencode's `question` with free-text entry and MUST NOT automatically choose a base. Claude Code SHALL paginate more than four bases in returned order with a More option and retain free text on every page. The helper SHALL resolve the selected or entered base to a commit SHA; an unavailable or non-commit base SHALL return the workflow to base selection.
+The skill SHALL offer the current branch, detected parent, existing main references, and existing master references in that order, omitting absent and duplicate references. Detached HEAD SHALL have no current-branch option. The skill MUST use Claude Code's `AskUserQuestion` or opencode's `question` with free-text entry and MUST NOT automatically choose a base. Claude Code SHALL paginate more than four bases in returned order, with the first page carrying three bases plus a More option; four or fewer bases SHALL show all of them without More. Free text SHALL remain on every page. The helper SHALL resolve the selected or entered base to a commit SHA; an unavailable or non-commit base SHALL return the workflow to base selection.
 
 The only exception to the base question SHALL be an invoking workflow that supplies `base` (and optionally a resolved type, name, and identifier) bound to a user answer it already collected for that exact base reference, or an advance authorization of the whole creation: the skill SHALL skip the base question, resolve the supplied base with the helper, show the final branch and base without waiting, and continue. A supplied base that does not match the prepared base reference, or no supplied answer, SHALL keep the base question. The skill itself SHALL never choose a base and SHALL NOT name its caller.
 
@@ -120,6 +120,16 @@ Short-name display SHALL be a presentation exception only for suggested branch-b
 
 - **WHEN** an invoking workflow supplies a base bound to the user's answer for the exact base reference the skill prepared, or under an advance authorization of the whole creation
 - **THEN** the skill skips the base question, resolves that base, shows the final branch and base without waiting, and continues.
+
+#### Scenario: More than four bases fit the picker cap
+
+- **WHEN** Claude Code offers more than four suggested bases
+- **THEN** the first page shows the first three bases in returned order plus More, with free-text entry available
+
+#### Scenario: Four or fewer bases show without More
+
+- **WHEN** Claude Code offers four or fewer suggested bases
+- **THEN** the page shows every base in returned order without More, with free-text entry available
 
 ### Requirement: Safe local creation and verified switching
 

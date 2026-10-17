@@ -124,7 +124,7 @@ test('to-backlog and new-change-branch stay caller-agnostic and expose preparati
   assert.match(toBacklog, /edit returns to inspection and asks a full confirmation/);
   const branch = read('skills/universal/new-change-branch/SKILL.md');
   assert.match(branch, /## Prepare for a caller/);
-  assert.match(branch, /up to four options, plus `More`\s+when later pages exist, plus the free-text entry/);
+  assert.match(branch, /up to four options in all: with\s+more than four bases, three bases plus `More`; with four or fewer, every base\s+without `More`; plus the free-text entry/);
   assert.match(branch, /supplies `base` \(and a resolved\s+type, name, and optional identifier\)/);
   assert.match(branch, /keeps the base question above/);
   for (const kept of ['safe-operations', 'sai/policies/tool-resolution.md', 'sai/tools/new-change-branch.js']) {
