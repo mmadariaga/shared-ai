@@ -175,3 +175,33 @@ test('open decisions: the step adds no stage, event, or panel entry to explore-i
   assert.doesNotMatch(source('sai-state/machines/explore-idea.js'), /open-decision/);
   assert.deepEqual(ideaMachine.STAGES, ['explore-change', 'poc-lane', 'review-edge-cases', 'implementation-details', 'crystallize']);
 });
+
+test('load receipt: wrappers carry only the pointer and body.md owns the rule (I1, I3)', () => {
+  for (const harness of ['claude', 'opencode']) {
+    const wrapper = source(`commands/${harness}/sai-explore.md`);
+    const lines = wrapper.split('\n');
+    const closing = lines.indexOf('---', 1);
+    assert.match(lines[closing + 1], /^Receipt: .*every explore turn.*@sai\/commands\/explore\/body\.md § Load receipt\.$/,
+      `${harness} wrapper must lead with the receipt pointer after the frontmatter`);
+    assert.doesNotMatch(wrapper, /deferred message/i, `${harness} wrapper must not restate the rule`);
+  }
+  const body = source('sai/commands/explore/body.md');
+  assert.match(body, /^ {2}## Load receipt$/m);
+  const section = body.slice(body.indexOf('## Load receipt'), body.indexOf('## Prerequisite checks'));
+  for (const rule of ['Turn check', 'Deferred messages', 'Cancellation', 'Prerequisite halt', 'Spawn failure']) {
+    assert.ok(section.includes(`**${rule}.**`), `Load receipt must define ${rule}`);
+  }
+  assert.match(section, /`verdict: pass` of the `prereqs\.js` check plus the id returned by `sai-state spawn`/);
+  assert.match(section, /in arrival order/);
+  assert.match(section, /keeps the current stage and the agreed lists/);
+});
+
+test('load receipt: sai-state spawn is the final load step and stage events emit on the receipt id (I2)', () => {
+  const body = source('sai/commands/explore/body.md');
+  const spawn = body.indexOf('Run `sai-state spawn --key <stable-key>`');
+  assert.ok(spawn > body.indexOf('Fetch @sai/policies/remember.md'), 'spawn must follow the instruction loads');
+  assert.ok(spawn < body.indexOf('## Run'), 'spawn must precede the Run section');
+  const instructions = source('sai/commands/explore/instructions.md');
+  assert.match(instructions, /emits against the owning machine on the receipt id from the load/);
+  assert.doesNotMatch(instructions, /spawn-then-emit/);
+});

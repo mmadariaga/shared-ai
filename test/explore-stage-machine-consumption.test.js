@@ -27,13 +27,13 @@ test('CLI invocation surface: instructions.md fetches the common policy and name
   assert.match(policy, /sai-state close/);
 });
 
-test('store-owned state cycle: the policy owns the durable store and the spawn-then-emit cycle', () => {
+test('store-owned state cycle: the policy owns the durable store and stage events emit on the load receipt id', () => {
   const instructions = fs.readFileSync(path.join(__dirname, '..', 'sai', 'commands', 'explore', 'instructions.md'), 'utf8');
   const policy = fs.readFileSync(path.join(__dirname, '..', 'sai', 'policies', 'stage-machine.md'), 'utf8');
 
   // The prompt keeps only its event table: the stage-event turn and the owning machine.
   assert.match(instructions, /[Ee]very stage-event turn/);
-  assert.match(instructions, /spawn-then-emit cycle/);
+  assert.match(instructions, /emits against the owning machine on the receipt id from the load/);
 
   // The operational detail lives in the policy.
   assert.match(policy, /durable store/);

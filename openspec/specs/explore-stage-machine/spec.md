@@ -261,3 +261,21 @@ The `explore-idea` machine SHALL carry `poc-lane` as a conditional stage positio
 
 - **WHEN** the caller emits `next-step` at `poc-lane` after entering it with `poc-lane-late` from `implementation-details` or `crystallize`
 - **THEN** the stage becomes `review-edge-cases`, `pocLane` remains true, and the previously recorded edge-case and implementation-detail lists are returned unchanged
+
+### Requirement: Explore spawns its session at the end of the load
+
+`/sai-explore` SHALL run `sai-state spawn --key <stable-key>` per `@sai/policies/stage-machine.md` as the final step of its load, after the instruction loads and before the `## Run` section of `sai/commands/explore/body.md`, and SHALL retain the returned `id` as the load receipt's session id. The spawn SHALL run on every explore load, including loads that never reach a stage event.
+
+#### Scenario: Spawn closes the load
+
+- **WHEN** `/sai-explore` is invoked and the prerequisite check passes
+- **THEN** the instruction loads complete, `sai-state spawn` runs as the last load step, and its returned id is kept as the receipt's session id before the user's request is handled
+
+### Requirement: Stage events emit on the load receipt id
+
+Every explore stage-event turn (a user intent that advances the progression, or a recorded list at an agreement gate) SHALL emit against the owning machine (`explore-idea@1` or `explore-slice@1`) on the receipt id from the load and SHALL open no session of its own. `sai/commands/explore/instructions.md` § Stage machines SHALL NOT prescribe a per-turn spawn-then-emit cycle.
+
+#### Scenario: Stage event reuses the receipt id
+
+- **WHEN** a stage-event turn emits to `explore-idea@1` or `explore-slice@1` after the load
+- **THEN** the emit targets the session id retained from the load's `sai-state spawn` and no new spawn runs for that turn

@@ -5,6 +5,7 @@ model: opus
 effort: medium
 allowed-tools: {{capabilityAllowedTools}}
 ---
+Receipt: check the load receipt at the start of every explore turn and finish the load first when it is missing; the rule lives in @sai/commands/explore/body.md § Load receipt.
 Fetch @skills/fetch/SKILL.md
 Fetch @sai/adapters/claude/boot.md and follow it.
 Required capability profile: {{capabilityProfile}}.
