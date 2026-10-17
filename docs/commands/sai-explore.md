@@ -6,7 +6,7 @@ Helps think through an idea before committing to an implementation. It clarifies
 
 ## Flags and behavior modifiers
 
-- `--fast-track`: skips the artifact-review and crystallization language gates. On Plan - Unattended, also skips the overview-language question and selects no overview unless a language was explicitly supplied. A [project setting](../project-settings.md) for the crystallization or overview language question answers it before fast-track applies. It never skips the backlog and branch questions, closing route selector, uncertainty decisions, or POC choices.
+- `--fast-track`: skips the artifact-review and crystallization language gates. Also skips the overview-language question of round 3 of the route round and selects no overview unless a language was explicitly supplied. A [project setting](../project-settings.md) for the crystallization or overview language question answers it before fast-track applies. It never skips the backlog and branch questions, closing route selector, uncertainty decisions, or POC choices.
 - `--overview-lang <language>`: sets the overview language for Plan - Unattended without asking. It has no effect on Direct Build - Unattended.
 - Closing selector: lets the user choose between `Manual`, `Plan - Unattended`, and `Direct Build - Unattended` when the exploration is ready to continue.
 

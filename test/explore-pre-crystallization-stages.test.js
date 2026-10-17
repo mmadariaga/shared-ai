@@ -73,13 +73,17 @@ test('the Ready to Propose block template orders Edge Cases, Implementation Deta
 test('gate 9 is opt-in at supervised Plan activation, puts do-not-create first, and has no Recommended marker', () => {
   const source = explore();
   const supervised = readArtifact('sai/commands/explore/steps/pipeline-plan-unattended.md');
-  const selectorStart = supervised.search(/Gate 9 at Plan \(unattended\) activation/i);
-  assert.ok(selectorStart >= 0, 'the opt-in overview-language selector should be specified');
+  const routeSelector = readArtifact('sai/commands/explore/steps/route-selector.md');
+  const questionStart = routeSelector.search(/## Change overview question/i);
+  assert.ok(questionStart >= 0, 'the opt-in overview-language question should be specified in round 3');
 
-  const selector = supervised.slice(selectorStart);
-  assert.match(selector, /(?:None\s*(?:—|-)\s*do[- ]not[- ]create|do[- ]not[- ]create[\s\S]{0,120}None)/i);
-  assert.match(selector, /after the native route picker returns a clear \*\*Plan \(unattended\)\*\* selection for a dispatchable change/i);
-  assert.match(selector, /before setting `active_change` or dispatching the first spec worker/i);
+  const question = routeSelector.slice(questionStart);
+  assert.match(question, /(?:None\s*(?:—|-)\s*do[- ]not[- ]create|do[- ]not[- ]create[\s\S]{0,120}None)/i);
+  assert.match(question, /Round 3 carries it as a conditional question beside the route question/i);
+  assert.match(question, /takes effect only when the same round's route answer is \*\*Plan - Unattended\*\*/i);
+  assert.match(question, /When the route answer is Direct Build, Manual, or no valid route, ignore the overview answer/i);
+  assert.match(supervised, /after the native route picker returns a clear \*\*Plan \(unattended\)\*\* selection for a dispatchable change/i);
+  assert.match(supervised, /before setting `active_change` or dispatching the first spec worker/i);
   assert.doesNotMatch(source, /emitted first and carrying the `Recommended` marker/);
   assert.doesNotMatch(source, /emitted second, carrying no marker/);
   assert.doesNotMatch(readArtifact('sai/commands/explore/steps/crystallization-language-gates.md'), /gate 9/i);
@@ -182,8 +186,8 @@ test('selector flows keep overview opt-out and renderer ownership unchanged', ()
   const source = explore();
 
   assert.match(source, /The route choice itself never selects or infers an `Overview language`/);
-  assert.match(source, /deferred crystallization route choice's explicit \*\*Plan \(unattended\)\*\* branch is the only route path that may resolve gate 9/);
-  assert.match(source, /only route path that may resolve gate 9/);
+  assert.match(source, /only the overview answer of round 3 or this fallback resolves it, and only when the route answer is \*\*Plan \(unattended\)\*\*/);
+  assert.match(source, /ignore the round-3 overview answer/);
   assert.match(source, /\*\*Manual\*\* and \*\*Direct Build \(unattended\)\*\* MUST NOT resolve or dispatch/);
   assert.match(source, /separately supported explicit `--overview-lang <language>` remains a distinct opt-in and suppresses gate 9/);
   assert.match(source, /literal `\*\*Overview language\*\*: None`/);
