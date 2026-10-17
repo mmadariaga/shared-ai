@@ -48,8 +48,9 @@ or updating remotes. Detached HEAD has no current-branch option.
 
 Use Claude Code's `AskUserQuestion` (at most four options per question, with its
 automatic free-text Other entry) or opencode's `question` (custom/free-text entry
-enabled). If Claude Code has more than four bases, paginate in returned order
-with a More option; retain free-text entry on every page. Display suggested bases
+enabled). If Claude Code has more than four bases, paginate in returned order,
+with the first page carrying three bases plus a More option (four or fewer bases
+carry all of them without More); retain free-text entry on every page. Display suggested bases
 as short names: strip only the leading `refs/heads/` or `refs/remotes/` for display
 (for example, `main` or `origin/main`). When short names coincide across local and
 remote branches, add localized `local` or `remote` qualifiers to each affected
@@ -73,8 +74,9 @@ base and the helper returned its exact commit SHA (commit identifier).
 
 Any workflow may ask this skill to prepare without creating: run section 1's
 `inspect` and return the suggested bases in their returned order, as the display
-options and exact references of the first page (up to four options, plus `More`
-when later pages exist, plus the free-text entry), without asking and without
+options and exact references of the first page (up to four options in all: with
+more than four bases, three bases plus `More`; with four or fewer, every base
+without `More`; plus the free-text entry), without asking and without
 repository mutation. The caller presents that question and hands the answer back
 as the supplied base of section 2. This skill never names or depends on its
 caller; standalone use keeps sections 1–3 exactly as written.

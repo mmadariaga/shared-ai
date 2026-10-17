@@ -35,7 +35,7 @@ A round SHALL collect every answer before it executes any action. Each answer SH
 
 ### Requirement: Round 2 prepares through the skills and executes in dependency order
 
-Before round 2, Explore SHALL prepare read-only: for a backlog Yes it SHALL invoke the installed `to-backlog` skill to prepare the full publication proposal without publishing, and for a branch decision it SHALL invoke the installed `new-change-branch` skill to prepare the suggested bases. Explore SHALL show the complete proposal and its confirmation question before the picker. The branch base question SHALL show the first page of suggested bases in the skill's order, plus `More` when more pages exist and the free-text entry; `More` SHALL open one extra interaction for the base only while the round's other answers stand. After round 2, Explore SHALL execute in this order: publication through a supplied answer bound to the prepared proposal; branch name resolution, taking the created issue's identifier after publication, or the existing linked issue's identifier or none when publication was cancelled or failed; branch creation through a supplied base bound to the prepared base reference, creating nothing when the base answer is cancelled or missing. An `edit` publication answer SHALL return to preparation and ask a full confirmation of the edited proposal in an extra interaction while the base answer stays valid. When the change does not determine the branch type or name unambiguously, Explore SHALL ask for it in an extra interaction after publication. Nothing SHALL be assigned in this sequence.
+Before round 2, Explore SHALL prepare read-only: for a backlog Yes it SHALL invoke the installed `to-backlog` skill to prepare the full publication proposal without publishing, and for a branch decision it SHALL invoke the installed `new-change-branch` skill to prepare the suggested bases. Explore SHALL show the complete proposal and its confirmation question before the picker. The branch base question SHALL show the first page of suggested bases in the skill's order (with more than four bases, three bases plus `More`; with four or fewer, every base without `More`) and the free-text entry; `More` SHALL open one extra interaction for the base only while the round's other answers stand. After round 2, Explore SHALL execute in this order: publication through a supplied answer bound to the prepared proposal; branch name resolution, taking the created issue's identifier after publication, or the existing linked issue's identifier or none when publication was cancelled or failed; branch creation through a supplied base bound to the prepared base reference, creating nothing when the base answer is cancelled or missing. An `edit` publication answer SHALL return to preparation and ask a full confirmation of the edited proposal in an extra interaction while the base answer stays valid. When the change does not determine the branch type or name unambiguously, Explore SHALL ask for it in an extra interaction after publication. Nothing SHALL be assigned in this sequence.
 
 #### Scenario: Created issue names the branch
 
@@ -46,6 +46,11 @@ Before round 2, Explore SHALL prepare read-only: for a backlog Yes it SHALL invo
 
 - **WHEN** the publication answer is `edit`
 - **THEN** Explore returns to preparation, asks a full confirmation of the edited proposal in an extra interaction, and keeps the round's base answer
+
+#### Scenario: Branch base page stays within the picker cap
+
+- **WHEN** the prepared suggested bases number more than four
+- **THEN** the branch base question shows three bases plus `More` and the free-text entry, and with four or fewer it shows every base without `More`
 
 ### Requirement: Round 1 assignment question is conditional on a linked issue
 
