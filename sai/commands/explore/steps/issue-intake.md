@@ -31,7 +31,7 @@ An **issue** is any issue, bug, or ticket whose content is in the conversation, 
 
 ## Drift check
 
-Ask it only for an issue with the Ready to Propose form, once `work` is answered. No earlier assessment of the issue replaces it, because an assessment of an empty or open-ended issue validates nothing. Present it through the harness-native picker (same rule as the work question), with the question following `@sai/policies/question-context.md`. Two options, in this order:
+Ask it only for an issue with the Ready to Propose form, once `work` is answered. No earlier assessment of the issue replaces it, because an assessment of an empty or open-ended issue validates nothing. Present it through the harness-native picker per the "Closed-choice prompts" rule in `sai/policies/remember.md` (`AskUserQuestion` on Claude Code, `question` on opencode), with the question following `@sai/policies/question-context.md`. Two options, in this order:
 
 - `validate` — Explore compares the issue's agreed behaviors, constraints, and implementation notes with the current code, read-only, delegating bulk lookups per `sai/policies/remember.md`, and reports each mismatch with its path.
 - `declared-clean` — skip validation: the user declares that the issue has no drift.
@@ -53,7 +53,7 @@ The tool `ready-to-propose.js convert` owns the form check and the issue-to-bloc
 
 ## Shortcut question
 
-Ask it after `clean` or `declared-clean` when the conversion succeeded, through the harness-native picker. When the issue carries no implementation notes (`implementation_details` is empty), show `- None` as the implementation-details list in the question's context: accepting the shortcut then counts as the user's confirmation of that `- None`, and declining it takes the normal path through `Implementation details`. Two options, in this order:
+Ask it after `clean` or `declared-clean` when the conversion succeeded. Present it through the harness-native picker per the "Closed-choice prompts" rule in `sai/policies/remember.md` (`AskUserQuestion` on Claude Code, `question` on opencode). When the issue carries no implementation notes (`implementation_details` is empty), show `- None` as the implementation-details list in the question's context: accepting the shortcut then counts as the user's confirmation of that `- None`, and declining it takes the normal path through `Implementation details`. Two options, in this order:
 
 - `shortcut` — go directly to the implementation routes: the issue is converted into the `Ready to Propose` block and the exploration enters `Crystallize`.
 - `planned-steps` — follow the planned Explore steps, with the issue's lists preloaded as in **On `work`**.
