@@ -316,7 +316,7 @@ After a successful slice completion, explore SHALL preserve completed progress s
 
 ### Requirement: Direct Build - Unattended run state and failure handling
 
-Direct Build slice inventory (`set` / `active` / `done`) and TODO (`mode` plus `stage` cursor) SHALL be owned by `explore-slice@1` in sidecar-owned state. Remaining Direct Build run state SHALL remain conversation-only, SHALL include `order_snapshot` (the no-effect reference for the execute order in flight) and the attempt counters `diagnosis_rounds.direct_build` with the keys `direct-build`, `backfill`, and `archive`, and SHALL preserve the fixed worker order, execution boundaries, owned-path staging, and pre-authorized local commit. Every segment SHALL apply Bounded Recovery for the diagnosis record and its Cause Locus. Recovery itself — which agent corrects, the hand-off, the attempts, a failed execute order, and the stop — SHALL follow `sai/policies/unattended-runtime-recovery.md`. A backfill or archive worker failure SHALL be evaluated by the resilience rule first, and the run SHALL stop only when the rule answers no. A stop SHALL report the exact draft paths written or the exact CLI, staging, or commit state, and a partial plan SHALL never be committed. A failed execute order SHALL be issued again only after the no-effect check verifies that it changed nothing; no order SHALL be issued onto a completed, partial, or unknown state. A late continuation after success SHALL be rejected without mutation. A stopped slice SHALL carry no finality and SHALL run new retries or changes only at explicit user request. Manual `/sai-backfill`, `/sai-archive`, and `/sai-commit` guidance SHALL be reported as applicable. Incomplete Archive SHALL NOT mark the slice done.
+Direct Build slice inventory (`set` / `active` / `done`) and TODO (`mode` plus `stage` cursor) SHALL be owned by `explore-slice@1` in sidecar-owned state. Remaining Direct Build run state SHALL remain conversation-only, SHALL include `order_snapshot` (the no-effect reference for the execute order in flight) and the attempt counters `diagnosis_rounds.direct_build` with one key per step (`step-1`, `step-2`, `step-2b`, and `step-3` through `step-8`), each allowing three attempts for its failed step, initialized to zero only by a new slice and persisting across a same-slice resume, and SHALL preserve the fixed worker order, execution boundaries, owned-path staging, and pre-authorized local commit. Every segment SHALL apply Bounded Recovery for the diagnosis record and its Cause Locus. Recovery itself — which agent corrects, the hand-off, the attempts, a failed execute order, and the stop — SHALL follow `sai/policies/unattended-runtime-recovery.md`. A backfill or archive worker failure SHALL be evaluated by the resilience rule first, and the run SHALL stop only when the rule answers no. A stop SHALL report the exact draft paths written or the exact CLI, staging, or commit state, and a partial plan SHALL never be committed. A failed execute order SHALL be issued again only after the no-effect check verifies that it changed nothing; no order SHALL be issued onto a completed, partial, or unknown state. A late continuation after success SHALL be rejected without mutation. A stopped slice SHALL carry no finality and SHALL run new retries or changes only at explicit user request. Manual `/sai-backfill`, `/sai-archive`, and `/sai-commit` guidance SHALL be reported as applicable. Incomplete Archive SHALL NOT mark the slice done.
 
 #### Scenario: Archive failure stops the unattended flow
 
@@ -335,7 +335,7 @@ Direct Build slice inventory (`set` / `active` / `done`) and TODO (`mode` plus `
 
 #### Scenario: A failed order without effect is corrected and issued again
 
-- **WHEN** a backfill or archive execute order fails, the no-effect check verifies that it changed nothing, and the scope has an attempt left
+- **WHEN** a backfill or archive execute order fails, the no-effect check verifies that it changed nothing, and the failed step has an attempt left
 - **THEN** the route corrects the cause through the recovery path and issues a new order to the step's owner
 
 ### Requirement: Explore worker bindings load at their dispatch points
@@ -431,7 +431,7 @@ After a valid native picker answer for `Direct Build - Unattended` activates `ro
 
 ### Requirement: Direct Build archive failure correction routing
 
-The supervision SHALL route an archive preparation or execution failure through `sai/policies/unattended-runtime-recovery.md`: the coordinator continues the current subagent or hands off to the budget agent, within the three attempts of the `archive` scope. Before the Step 6 backfill execute continuation and before the Step 8 archive execute continuation, the coordinator SHALL take the `order_snapshot`. A failed execute order SHALL be issued again only under the policy's execute-order rule. A late continuation after success SHALL be rejected without mutation. A stop SHALL report the exact CLI, staging, or commit state and SHALL never commit a partial plan. A stopped slice SHALL carry no finality and SHALL run new retries or changes only at explicit user request. Manual backfill, archive, and commit guidance SHALL be reported as applicable.
+The supervision SHALL route an archive preparation or execution failure through `sai/policies/unattended-runtime-recovery.md`: the coordinator continues the current subagent or hands off to the budget agent, within the three attempts of the failed step's own key (`step-7` or `step-8`). Before the Step 6 backfill execute continuation and before the Step 8 archive execute continuation, the coordinator SHALL take the `order_snapshot`. A failed execute order SHALL be issued again only under the policy's execute-order rule. A late continuation after success SHALL be rejected without mutation. A stop SHALL report the exact CLI, staging, or commit state and SHALL never commit a partial plan. A stopped slice SHALL carry no finality and SHALL run new retries or changes only at explicit user request. Manual backfill, archive, and commit guidance SHALL be reported as applicable.
 
 #### Scenario: Backfill-artifact archive failure relaunches after correction
 
@@ -440,7 +440,7 @@ The supervision SHALL route an archive preparation or execution failure through 
 
 #### Scenario: Repeated defect without progress closes as failed-retryable
 
-- **WHEN** the same diagnosis repeats after a correction or the three attempts are spent
+- **WHEN** the same diagnosis repeats after a correction or the failed step's three attempts are spent
 - **THEN** the supervision SHALL stop with the policy's stop notice and the verbatim failure in view, and the slice stays retryable at explicit user request
 
 ### Requirement: Plan slice-machine emits

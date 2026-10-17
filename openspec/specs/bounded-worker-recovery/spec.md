@@ -722,22 +722,22 @@ An automatic correction SHALL be eligible only while the resilience rule answers
 
 ### Requirement: Runtime repair consumes the shared diagnosis allowance
 
-An attempt SHALL be charged on the route's existing counter immediately before it is sent, and each failed step SHALL allow three attempts shared between the two recovery paths. Plan - Unattended SHALL charge the active phase's `diagnosis_rounds.spec` or `diagnosis_rounds.design`. Direct Build - Unattended SHALL charge `diagnosis_rounds.direct_build` keyed by the failed step's scope: `direct-build` for the implementer across Steps 1–2, `backfill` across Steps 3–6, and `archive` across Steps 7–8. The Direct Build close of `/sai-5-review` and `/sai-review` SHALL count three attempts per close in conversation without adding a fix-loop round. A route diagnosis or Bounded Recovery continuation for the same scope SHALL be an attempt on the same counter.
+An attempt SHALL be charged on the route's existing counter immediately before it is sent, and each route SHALL keep one budget per scope shared between the two recovery paths. Plan - Unattended SHALL charge the active phase's `diagnosis_rounds.spec` or `diagnosis_rounds.design`, which allows one diagnosis round per phase; the Explore Diagnosis Round and its Bounded Recovery continuation SHALL form that one round, charged once. Direct Build - Unattended SHALL charge `diagnosis_rounds.direct_build` keyed by the failed step (`step-1`, `step-2`, `step-2b`, and `step-3` through `step-8`), which allows three attempts per failed step; a step's attempts SHALL never draw on another step's key. The Direct Build close of `/sai-5-review` and `/sai-review` SHALL count three attempts per close in conversation without adding a fix-loop round. A route diagnosis or Bounded Recovery continuation in a step SHALL be an attempt on that step's key.
 
 #### Scenario: A Plan phase uses its existing allowance
 
 - **WHEN** an attempt is selected for a Plan - Unattended spec or design worker
-- **THEN** the attempt is charged on that phase's existing counter rather than on a second recovery budget
+- **THEN** the attempt is charged once on that phase's existing counter as its one diagnosis round rather than on a second recovery budget
 
 #### Scenario: A Direct Build implementer uses one slice allowance
 
-- **WHEN** an attempt is selected for a Direct Build implementer during Steps 1–2
-- **THEN** the implementation and functional-fix stretches share the three attempts of the `direct-build` key rather than receiving a counter per step
+- **WHEN** an attempt is selected for a Direct Build implementer during Step 1, Step 2, or Step 2b
+- **THEN** the attempt is charged on the failed step's own key with three attempts for that step, rather than on one counter shared by the implementer's steps
 
 #### Scenario: A spent allowance cannot stack
 
 - **WHEN** progress, a question answer, a continuation, a review round, a transport retry, a replacement, a step transition, a delivery failure, or a repeated error follows a charged attempt
-- **THEN** the route does not refund or reset the counter, and it grants no attempt beyond the three of that scope
+- **THEN** the route does not refund or reset the counter, and it grants no attempt beyond the budget of that phase or step
 
 #### Scenario: The review close uses one correction
 

@@ -128,19 +128,22 @@ test('each failed step allows three attempts shared by both paths on the counter
   const charge = attempts.indexOf("Charge the route's existing counter immediately before sending the attempt");
   const nonRefund = attempts.indexOf('does not refund or reset the charge');
   const planCounter = attempts.indexOf('`diagnosis_rounds.spec` or `diagnosis_rounds.design`');
-  const directBuildCounter = attempts.indexOf("`diagnosis_rounds.direct_build`, keyed by the failed step's scope");
+  const directBuildCounter = attempts.indexOf('`diagnosis_rounds.direct_build`, keyed by the');
   const reset = attempts.indexOf('Reset these counters only where the existing route resets its diagnosis state');
 
   assert.ok(charge >= 0 && charge < nonRefund && nonRefund < planCounter && planCounter < directBuildCounter && directBuildCounter < reset,
     'the existing phase/slice counter is charged before the attempt and its reset boundary is explicit');
-  assert.match(attempts, /Each failed step allows three attempts, shared between the two recovery paths/);
+  assert.match(attempts, /one diagnosis round per Plan phase, and three attempts per failed Direct Build\s+step/);
+  assert.match(attempts, /shared between the two recovery paths/);
   assert.match(attempts, /Count them on the counter the route already keeps in conversation state/);
-  assert.match(attempts, /`direct-build` for the implementer across Steps 1–2, `backfill` across Steps 3–6, and `archive` across Steps 7–8/);
+  assert.match(attempts, /one diagnosis round per phase\. The\s+Explore Diagnosis Round and its \*\*Bounded Recovery\*\* continuation form that\s+one round/);
+  assert.match(attempts, /keyed by the\s+failed step \(`step-1`, `step-2`, `step-2b`, and `step-3` through `step-8`\)/);
+  assert.doesNotMatch(attempts, /across Steps 1–2/);
   assert.match(attempts, /count the three attempts per close in conversation\. An attempt never adds a fix-loop round/);
-  assert.match(attempts, /when the counter reaches three with the step still failing, or when the budget agent returns the diagnosis the previous attempt already returned/);
+  assert.match(attempts, /when a Direct Build step's counter reaches three with that\s+step still failing, or when the budget agent returns the diagnosis the\s+previous attempt already returned/);
   assert.match(attempts, /dispatch-retry limit, replacement limit, three-round review\/fix limits, and mutation gates remain unchanged/);
   assert.doesNotMatch(policy, /one-shot diagnosis allowance|Whichever is first consumes it/);
-  assert.match(directBuild, /`diagnosis_rounds\.direct_build = \{ direct-build: 0, backfill: 0, archive: 0 \}`/);
+  assert.match(directBuild, /`diagnosis_rounds\.direct_build` holds one counter per step, `step-1`, `step-2`, `step-2b`, and `step-3` through `step-8`, each starting at `0`/);
 });
 
 test('one open resilience rule leads the policy and agreed content passes through unchanged', () => {
