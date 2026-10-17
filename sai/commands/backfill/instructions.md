@@ -238,7 +238,14 @@ Only after Phases 1–5 complete with no abort and a confirmed change name, comp
 
 ### 6a. Draft `.openspec.yaml`
 
-For a run with no usable intent context, carry exactly these three keys and no others:
+Fetch @sai/policies/issue-origin-preservation.md and apply it to the received
+block and the selected change's existing metadata, when present. Preserve the
+validated `backlog_origin` as an optional key in either form below; it is
+independent of usable intent and never sets `prior_intent` by itself. Compare
+the draft with the known origin before handing over its transfer reference.
+
+For a run with no usable intent context, carry these three required keys and
+only the optional `backlog_origin` key:
 
 ```yaml
 schema: sai-workflow
@@ -246,7 +253,8 @@ created: {calendar date in YYYY-MM-DD, e.g. 2026-05-21}
 backfilled: true
 ```
 
-For a run with usable intent context, carry exactly these four keys and no others:
+For a run with usable intent context, carry these four required keys and
+only the optional `backlog_origin` key:
 
 ```yaml
 schema: sai-workflow

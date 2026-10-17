@@ -59,7 +59,9 @@ no further git mutation. Exit 1 continues with the selected action.
 4. Add the retired-capability body lines of
    `sai/commands/archive/retirement-declaration.md` § Disclosure when this run
    retired capabilities.
-5. Add the closing lines of `sai/policies/commit-rules.md` § Closing Lines for
+5. Fetch @sai/policies/issue-origin-preservation.md and check the known
+   pre-move origin against the archived metadata, warning without blocking
+   when lost or unverifiable. Add the closing lines of `sai/policies/commit-rules.md` § Closing Lines for
    the archived change.
 6. Commit with the composed message passed literally on standard input to
    `git commit -F -` under `@sai/policies/command-execution.md`.

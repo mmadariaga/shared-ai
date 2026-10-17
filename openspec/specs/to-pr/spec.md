@@ -207,14 +207,14 @@ For GitHub and GitLab destinations, `query` SHALL compute the closing set from t
 
 ### Requirement: Branch-id parent closes only when every child is covered
 
-When the source branch is named `<type>/<id>_<name>` with a numeric `<id>`, the system SHALL add issue `<id>` to the closing set only when that issue has at least one child and every child is either closed in the provider or closed by a keyword in a `base..HEAD` commit. The issue's repository SHALL be the backlog repository in `.sai/settings.jsonc` when it is set, otherwise the destination repository. Children and their state SHALL be read without paging comments or assignees. When the child read fails, the closing set SHALL be computed without that issue and `query` SHALL return a warning that it was not evaluated.
+When the source branch is named `<type>/<id>_<name>` with a numeric `<id>`, the system SHALL add issue `<id>` to the closing set only when that issue has at least one child and every child is either closed in the provider, closed by a keyword in a `base..HEAD` commit, or explicitly covered by a manual closing reference outside the tool-owned closing block in the drafted description. Coverage SHALL distinguish repository-qualified issue identities, so an equally numbered issue in another repository does not cover a child. Ordinary `Refs` mentions SHALL NOT establish coverage. The issue's repository SHALL be the backlog repository in `.sai/settings.jsonc` when it is set, otherwise the destination repository. Children and their state SHALL be read without paging comments or assignees. When the child read fails, the closing set SHALL be computed without that issue and `query` SHALL return a warning that it was not evaluated. Manual closing text SHALL remain in place, SHALL NOT be duplicated in the generated block, and repeating the same description update SHALL leave the closing references unchanged.
 
 #### Scenario: The last pending child closes the parent
 - **WHEN** the branch is `feat/10_closing`, issue 10 has children 11, 12, and 13, child 13 is already closed, and the commits close 11 and 12
 - **THEN** the closing block lists `Closes #11`, `Closes #12`, and `Closes #10`
 
 #### Scenario: A pending child keeps the parent open
-- **WHEN** the branch is `feat/10_closing` and child 13 of issue 10 is open and not closed by any commit
+- **WHEN** the branch is `feat/10_closing` and child 13 of issue 10 is open and not closed by any commit or manual closing reference
 - **THEN** the closing block omits issue 10
 
 #### Scenario: A non-numeric branch id contributes no parent
@@ -224,6 +224,22 @@ When the source branch is named `<type>/<id>_<name>` with a numeric `<id>`, the 
 #### Scenario: A failed child read leaves the parent out
 - **WHEN** reading the children of the branch issue from the provider fails
 - **THEN** the closing set omits that issue and `query` returns a warning that it was not evaluated for closing
+
+#### Scenario: Three child closing references cover the parent
+- **WHEN** the branch identifies parent 10 with children 11, 12, and 13 and commits explicitly close all three children
+- **THEN** the description contains exactly the four closing references for children 11, 12, and 13 and parent 10
+
+#### Scenario: A manual child closing reference completes coverage
+- **WHEN** the commits close children 11 and 12 and the description manually closes open child 13 of parent 10
+- **THEN** the manual child line remains in place and the tool-owned block contains children 11 and 12 and parent 10 without duplicating child 13
+
+#### Scenario: Another repository does not cover a pending child
+- **WHEN** child 13 remains open and the description or commits close issue 13 in another repository and merely mention the actual child with `Refs`
+- **THEN** parent 10 is omitted because its child 13 is still uncovered
+
+#### Scenario: Repeated description update remains stable
+- **WHEN** the same commit history, provider child state, and description are queried again on GitHub or GitLab
+- **THEN** the resulting description retains manual closing text and contains no duplicate closing references or additional content change
 
 ### Requirement: Tool-owned closing block at the end of the description
 

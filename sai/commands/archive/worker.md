@@ -93,6 +93,9 @@ Execute exactly this order:
    move primitive. On failure or invalid JSON, return `failed` with the exact
    error, verbatim, and end the order there; recovery belongs to the
    coordinator.
+   Fetch @sai/policies/issue-origin-preservation.md and compare the known
+   pre-move origin with the archived metadata after the move; warn and continue
+   when it is lost or unverifiable.
 2. **Staging** — classify every approved path before staging any. A path is
    tracked (including a tracked deletion) when
    `git ls-files --error-unmatch -- <path>` succeeds, untracked on its exit 1,

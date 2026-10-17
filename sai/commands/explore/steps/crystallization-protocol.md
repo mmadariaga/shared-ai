@@ -3,6 +3,8 @@
 Fetch @sai/commands/explore/steps/slicing-assessment.md
 Fetch @sai/commands/explore/steps/artifact-review-language-gate.md
 Fetch @sai/commands/explore/steps/crystallization-language-gates.md
+Fetch @sai/policies/issue-origin-preservation.md and carry each selected
+issue's verified origin into its own block before validation and storage.
 
    **No POC lane here.** The POC lane is not part of crystallization: its trigger is evaluated at the close of stage 1 and the lane, when taken, runs as the conditional stage between `Explore change` and `Review edge cases` (`common.md` **POC trigger**, `poc-lane.md`). Crystallization owns no part of the lane: it never triggers it, never resumes a suspended one, and asks nothing about it, so by the time this file runs any POC has already been discarded and the slicing assessment (4) judges the original repository. The single exception is user-authored: an explicit POC request during this stage leaves crystallization for the lane per `common.md` (**Late explicit POC entry**), emits no `Ready to Propose` block, and returns the progression to `Review edge cases` rather than back here — crystallization is re-entered later only through ordinary advancement.
 

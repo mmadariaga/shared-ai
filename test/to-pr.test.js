@@ -416,8 +416,14 @@ const gitlabIssue = number => `https://gitlab.example.com/team/repo/-/issues/${n
 // `children` maps the branch issue to its child numbers; `states` marks closed issues; `fail` breaks the provider read.
 function closingFixture(provider, { log = '', source = 'feature', children = [], states = {}, fail = false, description } = {}) {
   const made = fixture(provider, description !== undefined);
+  // Closing tests must not inherit this checkout's configured backlog provider.
+  made.io.cwd = os.tmpdir();
   const parent = 10, issue = provider === 'github' ? githubIssue : gitlabIssue;
   if (description !== undefined) made.state.rows = [{ ...made.state.rows[0], title: 'feat: add feature', ...(provider === 'github' ? { body: description } : { description }) }];
+  if (description !== undefined) {
+    if (provider === 'github') made.state.rows[0].head.ref = source;
+    else made.state.rows[0].source_branch = source;
+  }
   const base = made.io.run;
   made.io.run = (command, args, input) => {
     if (command === 'git' && args[0] === 'log') return log;
@@ -449,6 +455,24 @@ for (const provider of ['github', 'gitlab']) {
   const other = provider === 'github' ? 'other/repo' : 'group/sub/project';
   const foreign = provider === 'github' ? 'https://gitlab.com/g/p/-/issues/3' : 'https://github.com/g/p/issues/3';
   const sameUrl = provider === 'github' ? githubIssue(7) : gitlabIssue(7);
+  test(`${provider} parent and three children produce four stable closing references`, () => {
+    const options = { source: 'feat/10_closing', children: [11, 12, 13], log: 'Closes team/repo#11\nCloses team/repo#12\nCloses team/repo#13' };
+    const first = queried(provider, options).proposal.description;
+    assert.equal(first, `## Summary\nCommitted feature\n\n${block('Closes #11', 'Closes #12', 'Closes #13', 'Closes #10')}`);
+    assert.equal(queried(provider, { ...options, draft: first, description: first }).status, 'no_changes');
+  });
+  test(`${provider} manually written child closing references count toward parent coverage`, () => {
+    const draft = 'Summary\nCloses #13';
+    const options = { source: 'feat/10_closing', children: [11, 12, 13], log: 'Closes #11\nCloses #12', draft };
+    const first = queried(provider, options).proposal.description;
+    assert.equal(first, `${draft}\n\n${block('Closes #11', 'Closes #12', 'Closes #10')}`);
+    assert.equal(queried(provider, { ...options, draft: first, description: first }).status, 'no_changes');
+  });
+  test(`${provider} a same-numbered issue in another repository does not cover a child`, () => {
+    const result = queried(provider, { source: 'feat/10_closing', children: [11, 12, 13], log: `Closes #11\nCloses #12\nCloses ${other}#13\nRefs: #13` });
+    assert.doesNotMatch(result.proposal.description, /Closes #10\b/);
+    assert.match(result.proposal.description, new RegExp(`Closes ${other}#13`));
+  });
   test(`${provider} E1 / E2 / I1: closing set is the keyword issues of the commits, normalized to the destination`, () => {
     const log = `${'b'.repeat(40)}\nfeat: add\nCloses #5\nFixes: ${other}#6\nresolved ${sameUrl}\nRefs: #8\nCloses #5\nCloses ${foreign}\n`;
     const result = queried(provider, { log });

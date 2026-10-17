@@ -61,6 +61,10 @@ the issue URL: a GitHub `https://github.com/owner/repo/issues/N` becomes
 `group/project#N`. Always write the fully qualified form: `to-pr`
 normalizes it against the destination repository. A change without a
 `backlog_origin`, or with an Azure DevOps origin, gets no closing line.
+Apply `issue-origin-preservation.md`'s known-origin handoff check. An invalid,
+unverifiable, or known lost origin emits a warning and no invented closing
+line; a change that never had an issue emits no warning. Retain the existing
+provider and host restrictions when converting an origin.
 
 ## Repo Commit-Style Detection Rubric
 

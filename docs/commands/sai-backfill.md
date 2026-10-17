@@ -19,4 +19,12 @@ It then interviews the user about the original intent: what problem was meant to
 
 Using the answers and available evidence, it prepares a proposal and behavior criteria that can be justified. It does not invent technical decisions that are unsupported by the change or the answers. For that reason, it reconstructs the basic documentation but does not automatically create a detailed design, a complete task list, or interface contracts that would require new decisions.
 
+A verified originating issue is retained as `backlog_origin` in the change's
+`.openspec.yaml`, including on Direct Build runs. An existing valid origin is
+preserved. Each child change keeps its own issue URL, not the parent's. A known
+lost or unverifiable origin produces a warning without blocking the remaining
+work; a change without an associated issue produces no warning. Archive commits
+use the retained origin for closing references, which the pull request tool
+includes in its description. Azure Boards closing references are not supported.
+
 Before writing, it validates that the documents have the expected form. If they are valid, it saves them in the corresponding change; if information is missing or an unresolvable conflict appears, it stops and asks for a decision. `--fast-track` reduces these specific pauses, but it does not remove the questions needed to identify the change source or turn an assumption into a fact.

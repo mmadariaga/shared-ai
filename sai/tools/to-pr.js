@@ -157,9 +157,10 @@ function withClosingBlock(request, selected, io) {
   const stripped = request.description.replace(CLOSING_BLOCK, '');
   const text = stripped.trimEnd();
   const found = uniqueReferences(closingReferences(log, selected.target));
-  const parent = branchParent(request, selected, provider, new Set(found.map(issueKey)), io);
+  const manual = closingReferences(text, selected.target);
+  const parent = branchParent(request, selected, provider, new Set([...found, ...manual].map(issueKey)), io);
   if (parent.warning) warnings.push(parent.warning);
-  const handWritten = new Set(closingReferences(text, selected.target).map(issueKey));
+  const handWritten = new Set(manual.map(issueKey));
   const closable = [...found, ...(parent.ref ? [parent.ref] : [])].filter(ref => ref.host.toLowerCase() === selected.target.host.toLowerCase());
   for (const ref of found.filter(ref => !closable.includes(ref))) warnings.push(`Issue ${ref.host}/${ref.repository}#${ref.number} is on another host and cannot be closed from this request.`);
   const lines = closable.filter(ref => !handWritten.has(issueKey(ref))).map(ref => `Closes ${writtenIssue(ref, selected.target)}`);
