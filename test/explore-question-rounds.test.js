@@ -83,12 +83,25 @@ test('recovery never repeats completed actions and execution follows dependency 
 });
 
 test('round 3 carries the continuation question only for a multi-slice Direct Build', () => {
-  assert.match(picker, /the route question is single-select and always present, and the Direct Build continuation question below joins the same round only when its condition is met/);
+  assert.match(picker, /the route question is single-select and always present, and the Direct Build continuation question and the change overview question below join the same round only when their conditions are met/);
   assert.match(continuation, /when more than one pending slice remains and `direct_build_continuation_prompted` is `false`: ask once/);
   assert.match(continuation, /takes effect only when the same round's route answer is Direct Build/);
   assert.match(continuation, /When the route answer is Plan or Manual, or no valid route was answered, ignore the continuation answer: it authorizes nothing/);
   assert.match(continuation, /so a later Direct Build round asks again/);
   assert.match(continuation, /authorizes one local commit per automatically started slice; nothing is pushed/);
+});
+
+test('round 3 carries the overview question as a conditional question resolved once per set', () => {
+  const overview = selector.slice(selector.indexOf('\n## Change overview question'), selector.indexOf('\n## Selection, panel, and route state'));
+
+  assert.match(actions, /\*\*round 3\*\* asks the route and, conditionally, the Direct Build continuation and the change overview question/);
+  assert.match(overview, /Round 3 carries it as a conditional question beside the route question/);
+  assert.match(overview, /1\. An explicit `--overview-lang <language>` or the user's direct statement[\s\S]*?2\. A value already resolved[\s\S]*?3\. [\s\S]*?explore\.overviewLanguage[\s\S]*?4\. [\s\S]*?`--fast-track`/);
+  assert.match(overview, /first match wins and no overview question joins the round/);
+  assert.match(overview, /takes effect only when the same round's route answer is \*\*Plan - Unattended\*\*/);
+  assert.match(overview, /A missing or cancelled answer leaves `overview_language` unresolved, and `pipeline-plan-unattended\.md` asks gate 9 on its own before the spec worker is dispatched/);
+  assert.match(overview, /resolved once per set/);
+  assert.match(overview, /Direct Build and Manual never generate a change overview, and no overview question runs at block emission/);
 });
 
 test('the slice-set branch question and the per-slice chain use the generic supplied-base capability', () => {

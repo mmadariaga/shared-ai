@@ -97,7 +97,7 @@ The `Review edge cases` stage SHALL run the existing edge-case review when the u
 
 ### Requirement: Crystallize stage defers overview-language resolution
 
-The `Crystallize` stage SHALL run the size-based slicing assessment and the integration-point friction assessment — two orthogonal judgments — before emitting any `Ready to Propose` block. It SHALL NOT run a technical-uncertainty assessment and SHALL NOT run an uncertainty pause at this stage: that axis is evaluated at the close of the `Explore change` stage and, when taken, runs as the conditional POC stage before `Review edge cases`. The language gate SHALL run only after those two checks complete. It MUST NOT run overview-language gate 9 at stage entry; gate 9 belongs to the later supervised Plan (unattended) activation.
+The `Crystallize` stage SHALL run the size-based slicing assessment and the integration-point friction assessment — two orthogonal judgments — before emitting any `Ready to Propose` block. It SHALL NOT run a technical-uncertainty assessment and SHALL NOT run an uncertainty pause at this stage: that axis is evaluated at the close of the `Explore change` stage and, when taken, runs as the conditional POC stage before `Review edge cases`. The language gate SHALL run only after those two checks complete. It MUST NOT run overview-language gate 9 at stage entry; gate 9 is asked only as a conditional question in round 3 of the post-crystallization route round, beside the route question, and applies only when the route answer is `Plan - Unattended`.
 
 Entering the `Crystallize` stage SHALL be the only start of the crystallization sequence. The slicing assessment and language-gate sequence SHALL start only after the crystallization step file named by `next.follow` is fetched. Deterministic empty-set advancement into this stage SHALL have the same effect. From `Implementation details`, `next-step`, semantic list confirmation, and deterministic empty-set advancement SHALL be the equivalent ways to enter this stage; a `crystallize` token or a natural-language crystallization request SHALL NOT be a defined way to enter it.
 
@@ -127,7 +127,7 @@ A POC is not a crystallized feature slice and does not clear or replace the stag
 
 #### Scenario: fast-track preserves stage and gate boundaries
 
-- **WHEN** `--fast-track` is active during crystallization and later supervised Plan (unattended) activation
+- **WHEN** `--fast-track` is active during crystallization and the later round 3 of the route round
 - **THEN** language questions resolve by their separate rules without weakening or skipping any stage, and without auto-approving or skipping any of the POC lane's stops when the lane is the current stage
 - **AND** mandatory edge-case review and staged progression remain neither skipped nor weakened
 

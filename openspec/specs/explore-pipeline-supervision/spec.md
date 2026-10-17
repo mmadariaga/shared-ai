@@ -17,7 +17,7 @@ The supervised pipeline SHALL use `Plan - Unattended` and route identity `plan-u
 
 ### Requirement: Reuse supervised lifecycle
 
-The supervised pipeline SHALL resolve gate 9 immediately after the native picker returns exactly `Plan - Unattended` and route-choice activation succeeds for a dispatchable route, and before `active_change` is set or the first spec worker is dispatched. The displayed label SHALL map to route identity `plan-unattended`, which SHALL remain limited to `sai-1` and `sai-2`.
+The supervised pipeline SHALL use the overview language that round 3 of the route round resolved immediately after the native picker returns exactly `Plan - Unattended` and route-choice activation succeeds for a dispatchable route, and before `active_change` is set or the first spec worker is dispatched. Only when round 3 left the overview language unresolved, because the overview answer was missing or cancelled, SHALL the supervised pipeline ask gate 9 on its own exactly once at that point, with the same options and rules as the round-3 question. The displayed label SHALL map to route identity `plan-unattended`, which SHALL remain limited to `sai-1` and `sai-2`.
 
 A resolved overview language SHALL remain available for a retry over the same crystallized idea or slice set, and SHALL reset for a materially new idea without being persisted.
 
@@ -37,6 +37,11 @@ On Claude Code and opencode, `sai-explore` SHALL act only as the lifecycle coord
 
 - **WHEN** the spec phase ends by cap exhaustion with the worker returning `completed`
 - **THEN** the run continues to the chained design phase rather than stopping at the spec phase, and the chained design envelope carries `--supervised`
+
+#### Scenario: missing round-3 overview answer asks before the spec worker
+
+- **WHEN** the native picker returns exactly `Plan - Unattended` for a dispatchable change and the round-3 overview answer was missing or cancelled
+- **THEN** gate 9 asks on its own exactly once before `active_change` is set and before the first spec worker is dispatched
 
 ### Requirement: Supervision preserves worker terminal behavior
 

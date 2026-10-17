@@ -315,7 +315,7 @@ test('panel errors never block the close; validation, delivery, store, and step-
   assert.match(stageMachine, /The literal `none` is a no-file sentinel, not a path/i);
 });
 
-test('overview-language gate is deferred from crystallization until a dispatchable supervised Plan selection', () => {
+test('overview-language gate is deferred from crystallization until round 3 of the route round', () => {
   const crystallization = [
     spec('sai/commands/explore/steps/common.md'),
     spec('sai/commands/explore/steps/slicing-assessment.md'),
@@ -326,7 +326,8 @@ test('overview-language gate is deferred from crystallization until a dispatchab
 
   assert.doesNotMatch(crystallization, /overview-language gate \(gate 9|gate 9.*before.*Ready to Propose/i);
   assert.match(supervised, /Gate 9 at Plan \(unattended\) activation/);
-  assert.match(supervised, /after the native route picker returns Plan and before dispatchable work starts/i);
+  assert.match(supervised, /Round 3 of the route round asks gate 9 beside the route question/i);
+  assert.match(supervised, /Only when round 3 left `overview_language` unresolved[\s\S]*?ask gate 9 on its own exactly once here/i);
   assert.match(supervised, /before setting `active_change` or dispatching the first spec worker/i);
   assert.match(supervised, /Empty or completed crystallization sets, an ambiguous or invalid reply, and an already-active run end before this gate/i);
   assert.match(supervised, /The ask never occurs at crystallization emission.*\*\*Manual\*\*.*\*\*Direct Build \(unattended\)\*\*/i);
@@ -872,7 +873,7 @@ test('Step 1 gate 9 uses the opt-in overview-language selector and deterministic
     exploreContract(),
     spec('sai/commands/explore/body.md'),
   ].join('\n');
-  const selectorStart = contract.search(/Gate 9 at Plan \(unattended\) activation/i);
+  const selectorStart = contract.search(/## Change overview question/i);
 
   assert.ok(selectorStart >= 0, 'the opt-in overview-language selector should be specified');
   const selector = contract.slice(selectorStart);
@@ -895,7 +896,7 @@ test('Step 1 gate 9 defaults to None for absent fast-track or noncommittal input
     exploreContract(),
     spec('sai/commands/explore/body.md'),
   ].join('\n');
-  const selectorStart = contract.search(/Gate 9 at Plan \(unattended\) activation/i);
+  const selectorStart = contract.search(/## Change overview question/i);
 
   assert.ok(selectorStart >= 0, 'the opt-in overview-language selector should be specified');
   const selector = contract.slice(selectorStart);
