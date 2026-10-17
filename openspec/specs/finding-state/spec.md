@@ -30,7 +30,7 @@ The policy `sai/policies/finding-state.md` SHALL state that a Question is a find
 
 ### Requirement: Open And Fixed Findings
 
-The policy `sai/policies/finding-state.md` SHALL define a finding as open when it carries no fixed mark, and as fixed when it carries one. A review or audit report SHALL keep its fixed findings, so that it records both what was found and what was fixed. A Question SHALL stay open until it is answered and fixed, and an unanswered Question SHALL stay open. Every consumer of a review or audit report SHALL act on open findings only: the Direct Build close selects from them, `/sai-3-implement` ingests them, and `/sai-3-implement-new` applies them.
+The policy `sai/policies/finding-state.md` SHALL define a finding as open when it carries no fixed mark, and as fixed when it carries one. A review or audit report SHALL keep its fixed findings, so that it records both what was found and what was fixed. A Question SHALL stay open until it is answered and fixed, and an unanswered Question SHALL stay open. Every consumer of a review or audit report SHALL act on open findings only: the Direct Build close selects from them, `/sai-3-implement` ingests them, and `/sai-3-implement-new` applies them, except the findings that carry the excluded mark, which `/sai-3-implement-new` skips.
 
 #### Scenario: A marked finding is fixed
 
@@ -46,6 +46,11 @@ The policy `sai/policies/finding-state.md` SHALL define a finding as open when i
 
 - **WHEN** `/sai-3-implement-new` reads an audit report whose finding carries the fixed mark
 - **THEN** it SHALL run no step for that finding
+
+#### Scenario: Implement-new skips an excluded finding
+
+- **WHEN** `/sai-3-implement-new` reads an audit report whose finding carries the excluded mark
+- **THEN** it SHALL run no step for that finding, while other consumers still treat it as open
 
 ### Requirement: Fixed Mark Form
 
@@ -79,3 +84,27 @@ The fixed mark SHALL be the literal ` (FIXED)` appended to the end of the findin
 
 - **WHEN** a reader opens the documentation of `/sai-review`, `/sai-5-review`, or `/sai-3-implement`
 - **THEN** it SHALL describe the fixed mark or the open-findings-only behavior and SHALL state that it holds on Claude Code and opencode
+
+### Requirement: Excluded Mark
+
+The policy `sai/policies/finding-state.md` SHALL define the excluded mark as the literal ` (EXCLUDED: <reason>)` appended to the end of a finding's heading line, with a concrete reason that fits on that line. The `/sai-build-new` coordinator SHALL write it after its assessment pass for a fixable finding it decides not to fix, and a user MAY write it by hand. Marking a finding as excluded SHALL change only its heading line: the body, the identifier, the severity, and the report's closing `Summary:` tally SHALL stay as the report wrote them. A Question SHALL never carry the mark. An excluded finding SHALL stay open for every consumer except `/sai-3-implement-new`, which skips it standalone and inside `/sai-build-new`; the Direct Build close of `/sai-review` and `/sai-5-review` SHALL NOT honor the mark. Removing the mark SHALL reopen the finding for `/sai-3-implement-new`, which then fixes it and writes the fixed mark. Regenerating a report SHALL replace its excluded marks together with its fixed marks, so no exclusion carries over to a new report.
+
+#### Scenario: Excluding keeps the tally
+
+- **WHEN** a finding of `review.md` is marked as excluded
+- **THEN** its heading line SHALL end with ` (EXCLUDED: <reason>)`, and its body, identifier, severity, and the closing `Summary:` tally SHALL stay unchanged
+
+#### Scenario: Direct Build close ignores the mark
+
+- **WHEN** the Direct Build close of `/sai-review` or `/sai-5-review` reads a finding that carries the excluded mark and no fixed mark
+- **THEN** it SHALL treat that finding as open
+
+#### Scenario: Removing the mark reopens the finding
+
+- **WHEN** the user removes ` (EXCLUDED: …)` from a finding's heading and runs `/sai-3-implement-new {name}`
+- **THEN** the finding SHALL be open again, SHALL be fixed, and SHALL carry the fixed mark
+
+#### Scenario: Regeneration drops excluded marks
+
+- **WHEN** a report that carries excluded marks is regenerated
+- **THEN** its findings SHALL be replaced together with their excluded marks

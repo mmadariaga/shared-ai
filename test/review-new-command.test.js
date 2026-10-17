@@ -121,17 +121,57 @@ test('the worker is created once with the ready handshake, dispatches only budge
   assert.match(coordinator, /review-new-steps@1/);
 });
 
-test('/sai-build-new closes with the counts by category, the audits, and a triage invitation without running an audit', () => {
+test('/sai-build-new closes with the counts, the audits, and the fixed, excluded, and left-open lists without running an audit', () => {
   const build = read('sai/commands/build-new/coordinator.md');
   assert.match(build, /Critical, High, Medium, Low, Questions/);
   assert.match(build, /`## Recommended Audits` block/);
   assert.match(build, /Run no audit/);
-  assert.match(build, /delete the findings they do not want applied, and run `\/sai-3-implement-new \{name\}`/);
-  assert.match(build, /Questions stay open until the user answers them, because `\/sai-3-implement-new` applies only fixable findings/);
-  assert.match(build, /With zero findings, report the zero counts and omit the invitation/);
+  assert.match(build, /remove its ` \(EXCLUDED: …\)` mark from the heading in `review\.md` and run `\/sai-3-implement-new \{name\}`/);
+  assert.doesNotMatch(build, /invite the user/);
+  assert.match(build, /\*\*Fixed\*\*/);
+  assert.match(build, /\*\*Excluded\*\*/);
+  assert.match(build, /\*\*Left open by the fix segment\*\*/);
+  assert.match(build, /Never list it as excluded/);
+  assert.match(build, /Questions stay open until the user answers them, because the fix segment applies only fixable findings/);
+  assert.match(build, /With zero findings, report the zero counts and print none of these lists/);
   assert.match(build, /no review ran/);
   assert.match(build, /print both reports and end the run without a closing line/);
   assert.match(build, /A segment starts only when the previous one completed, including a segment 1 that completed with no new work/);
+});
+
+test('/sai-build-new assesses the findings itself once, marks the excluded ones, commits review.md alone, and fixes the rest in segment 3', () => {
+  const build = read('sai/commands/build-new/coordinator.md');
+  const assessment = build.slice(build.indexOf('## Assessment pass'), build.indexOf('## Close'));
+  assert.match(assessment, /You run this pass yourself, once, after segment 2 completes and wrote `review\.md`/);
+  assert.match(assessment, /never in a worker/);
+  assert.match(assessment, /No fixed selection rule, threshold, or severity cutoff applies/);
+  assert.match(assessment, /never mandatory checks/);
+  assert.match(assessment, /` \(EXCLUDED: <reason>\)`/);
+  assert.match(assessment, /Never mark a Question/);
+  assert.match(assessment, /`git commit -m "<subject>" -- <path>`/);
+  assert.match(assessment, /at most 50 characters/);
+  assert.match(assessment, /no `Co-Authored-By` trailer/);
+  assert.match(assessment, /never push/);
+  assert.match(assessment, /Start segment 3 only when that count is above zero/);
+  assert.match(assessment, /never runs when `review\.md` holds no fixable finding/);
+  assert.match(assessment, /keeps no memory/);
+  assert.match(build, /3\. `\/sai-3-implement-new` again/);
+  assert.match(build, /one review pass runs per run/);
+  assert.match(build, /When segment 1 or segment 3 ends blocked/);
+});
+
+test('finding-state defines the excluded mark and /sai-3-implement-new skips excluded findings', () => {
+  const state = read('sai/policies/finding-state.md');
+  assert.match(state, /## Excluded mark/);
+  assert.match(state, /` \(EXCLUDED: <reason>\)`/);
+  assert.match(state, /A Question never\s+carries it/);
+  assert.match(state, /stays open for every consumer except `\/sai-3-implement-new`/);
+  assert.match(state, /does not honor the mark/);
+  assert.match(state, /Regenerating a report replaces its excluded marks together with\s+its fixed marks/);
+  const implement = read('sai/commands/implement-new/coordinator.md');
+  assert.match(implement, /excluded mark \(` \(EXCLUDED: …\)`/);
+  assert.match(implement, /is skipped: it is not applied, not marked, not a pending finding, and not an obstacle/);
+  assert.match(implement, /Wherever this command says open fixable finding, it leaves excluded findings out/);
 });
 
 test('the command wrappers and the ADR that extends 0194 exist', () => {
@@ -143,6 +183,10 @@ test('the command wrappers and the ADR that extends 0194 exist', () => {
   }
   const adr = read('docs/adr/0195-review-new-is-a-review-only-command-of-the-new-family.md');
   assert.match(adr, /adr-index: amends 0194/);
+  const supersession = read('docs/adr/0198-build-new-selects-and-fixes-findings-after-its-review.md');
+  assert.match(supersession, /adr-index: amends 0195/);
+  assert.match(supersession, /Supersedes Decision 4 of \[ADR 0195\]/);
+  assert.match(read('docs/adr/0000-INDEX.md'), /0198-build-new-selects-and-fixes-findings-after-its-review\.md\) — \*\*Amends\*\* 0195/);
   assert.match(read('docs/adr/0000-INDEX.md'), /0195-review-new-is-a-review-only-command-of-the-new-family\.md/);
 });
 
