@@ -48,7 +48,7 @@ function resolveDestination(request, io, report) {
     result = destination.resolve({ explicit, config, remotes }, registry, io);
   }
   const addressed = destination.detect(explicit.repository, registry);
-  report.notices = projectSettings.notices(config, explicit, result, addressed.length === 1 ? addressed[0].provider : undefined);
+  report.notices = [...(settings.notices || []), ...projectSettings.notices(config, explicit, result, addressed.length === 1 ? addressed[0].provider : undefined)];
   if (result.provider) r.provider = result.provider;
   if (result.status === 'resolved') {
     if (r.provider === 'gitlab') r.project ??= result.repository;

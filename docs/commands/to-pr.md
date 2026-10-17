@@ -9,12 +9,17 @@ works in Claude Code and opencode without OpenSpec and replaces `/sai-pr`.
 ## Inputs and choices
 
 There are no documented behavior flags. Supply destination context in the
-conversation or use optional `.to-pr.json` in the working directory. Explicit
-fields take precedence over configuration, then Git remotes. For example:
+conversation or set the `pr.*` keys in `.sai/settings.jsonc`. Explicit fields take
+precedence over the settings, then Git remotes; `backlog.*` never chooses the
+destination, because the backlog provider and the code host can differ. For example:
 
-```json
-{"provider":"github","repository":"owner/repo"}
+```jsonc
+{ "pr": { "provider": "gitlab", "repository": "group/project" } }
 ```
+
+`pr.provider` also settles a self-hosted host, which `/to-pr` would otherwise ask
+about on every run. A `.to-pr.json` in the project root is deprecated: it still
+works when no `pr.*` key is set, with a warning, and is ignored when one is.
 
 GitLab uses its project address as `repository`; Azure DevOps Services accepts
 organization/project/repository context. The selected provider requires an

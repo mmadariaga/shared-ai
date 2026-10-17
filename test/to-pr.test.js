@@ -655,3 +655,89 @@ for (const provider of ['github', 'gitlab']) {
     assert.deepEqual(provider === 'github' ? created.body : [created.body.assignee_ids, created.body.labels], provider === 'github' ? { assignees: ['octo'], labels: ['bug', 'performance'] } : [[5], 'bug,performance']);
   });
 }
+
+// pr.* settings and the deprecated .to-pr.json (E1-E5, E12).
+function settingsProject(t, files) {
+  const directory = temporaryDirectory(t, 'to-pr-settings-');
+  for (const [name, text] of Object.entries(files)) {
+    fs.mkdirSync(path.dirname(path.join(directory, name)), { recursive: true });
+    fs.writeFileSync(path.join(directory, name), text);
+  }
+  return directory;
+}
+const SETTINGS = '.sai/settings.jsonc';
+const selfHosted = ['https://git.example.com/team/repo.git'];
+
+test('E3: pr.provider resolves a self-hosted remote without asking and names the setting', t => {
+  const { io } = fixture('gitlab');
+  const cwd = settingsProject(t, { [SETTINGS]: '{"pr":{"provider":"gitlab"}}' });
+  assert.equal(tool.resolve({ explicit: {}, config: {}, remotes: selfHosted }, registry, io).reason, 'provider-ambiguous');
+  const result = tool.resolve({ explicit: {}, remotes: selfHosted }, registry, { ...io, cwd });
+  assert.deepEqual([result.status, result.provider, result.notices], ['resolved', 'gitlab', ['Project setting pr.provider: gitlab']]);
+  assert.equal(result.warnings, undefined);
+});
+
+test('E5: backlog.* never chooses the pull request destination', t => {
+  const { io } = fixture('gitlab');
+  const cwd = settingsProject(t, { [SETTINGS]: '{"backlog":{"provider":"gitlab","repository":"g/r"}}' });
+  const result = tool.resolve({ explicit: {}, remotes: selfHosted }, registry, { ...io, cwd });
+  assert.deepEqual([result.status, result.reason, result.notices], ['needs_input', 'provider-ambiguous', undefined]);
+});
+
+test('E1: pr.* wins over .to-pr.json, which is reported as deprecated', t => {
+  const { io } = fixture('gitlab');
+  const cwd = settingsProject(t, { [SETTINGS]: '{"pr":{"provider":"gitlab"}}', '.to-pr.json': '{"provider":"github","repository":"o/r"}' });
+  const result = tool.resolve({ explicit: {}, remotes: selfHosted }, registry, { ...io, cwd });
+  assert.equal(result.provider, 'gitlab');
+  assert.match(result.warnings.join('\n'), /\.to-pr\.json is deprecated and ignored because pr\.\* in \.sai\/settings\.jsonc is set/);
+});
+
+test('E2: only .to-pr.json is used and reported as deprecated', t => {
+  const { io } = fixture('github');
+  const cwd = settingsProject(t, { '.to-pr.json': '{"provider":"github","repository":"team/repo"}' });
+  const result = tool.resolve({ explicit: {}, remotes: [] }, registry, { ...io, cwd });
+  assert.deepEqual([result.status, result.provider, result.repository], ['resolved', 'github', 'team/repo']);
+  assert.match(result.warnings.join('\n'), /\.to-pr\.json is deprecated; move its keys to pr\.\* in \.sai\/settings\.jsonc/);
+  assert.equal(result.notices, undefined);
+  const typed = settingsProject(t, { '.to-pr.json': '{"type":"bug"}' });
+  assert.throws(() => tool.resolve({ explicit: {}, remotes: [] }, registry, { ...io, cwd: typed }), /invocation-scoped/);
+});
+
+test('E4: an explicit provider or repository wins over pr.* with a notice', t => {
+  const { io } = fixture('github');
+  const cwd = settingsProject(t, { [SETTINGS]: '{"pr":{"provider":"gitlab","repository":"https://gitlab.example.com/team/repo"}}' });
+  const result = tool.resolve({ explicit: { provider: 'github', repository: 'team/repo' }, remotes: [] }, registry, { ...io, cwd });
+  assert.deepEqual([result.provider, result.repository], ['github', 'team/repo']);
+  assert.deepEqual(result.notices, [
+    'Project setting pr.provider: gitlab is overridden by the explicit provider github',
+    'Project setting pr.repository: https://gitlab.example.com/team/repo is overridden by the explicit repository team/repo',
+  ]);
+  const address = tool.resolve({ explicit: { repository: 'https://github.com/other/repo' }, remotes: [] }, registry, { ...io, cwd });
+  assert.equal(address.provider, 'github');
+  assert.match(address.notices.join('\n'), /pr\.provider: gitlab is overridden by the explicit repository address, which selects github/);
+});
+
+test('E12: an invalid pr.provider is dropped with a warning and resolution continues', t => {
+  const { io } = fixture('gitlab');
+  const cwd = settingsProject(t, { [SETTINGS]: '{"pr":{"provider":"jira"}}' });
+  const result = tool.resolve({ explicit: {}, remotes: selfHosted }, registry, { ...io, cwd });
+  assert.equal(result.reason, 'provider-ambiguous');
+  assert.match(result.warnings.join('\n'), /Setting pr\.provider .*must be one of github, gitlab, azuredevops/);
+});
+
+test('the resolve CLI reads pr.* from the project root, not the subdirectory', t => {
+  const top = temporaryDirectory(t, 'to-pr-cli-root-');
+  const run = (cwd, ...args) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@example.com', ...args], { cwd, encoding: 'utf8' });
+  run(top, 'init', '-q');
+  run(top, 'commit', '-q', '--allow-empty', '-m', 'init');
+  run(top, 'remote', 'add', 'origin', 'https://github.com/team/repo.git');
+  fs.mkdirSync(path.join(top, '.sai'));
+  fs.writeFileSync(path.join(top, SETTINGS), '{"pr":{"provider":"github","repository":"other/repo"}}');
+  fs.mkdirSync(path.join(top, 'sub'));
+  const result = spawnSync(process.execPath, [path.join(__dirname, '../sai/tools/to-pr.js'), 'resolve', path.join(__dirname, '../skills/universal/to-pr/providers/registry.json')], {
+    cwd: path.join(top, 'sub'), input: '{}', encoding: 'utf8',
+  });
+  const output = JSON.parse(result.stdout);
+  assert.deepEqual([output.status, output.provider, output.repository], ['resolved', 'github', 'other/repo']);
+  assert.deepEqual(output.notices, ['Project setting pr.provider: github', 'Project setting pr.repository: other/repo']);
+});

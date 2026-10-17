@@ -18,11 +18,11 @@ try {
 const isObject = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 
 /** Validate one value through the catalogue: { ok: true, value } with the canonical form, or { ok: false, problem }. */
-function checkValue(id, value, providerIds) {
+function checkValue(id, value, providerIds, prProviderIds) {
   const entry = CATALOGUE[id];
   if (!entry) return { ok: false, problem: `Unknown setting id ${id}` };
   if (typeof value === 'string' && isKeyword(value, 'ask')) return { ok: true, value: 'ask' };
-  const problem = entry.validate(value, { providerIds });
+  const problem = entry.validate(value, { providerIds, prProviderIds });
   if (problem) return { ok: false, problem: `${id} ${problem}` };
   return { ok: true, value: entry.normalize ? entry.normalize(value) : value };
 }
@@ -79,12 +79,12 @@ function writeAtomic(file, text) {
  * Save { id: value } into `.sai/settings.jsonc` in place. Returns { ok: true, file } or
  * { ok: false, error }; on failure the file is untouched. An empty change set writes nothing.
  */
-function saveSettings(projectPath, changes, { providerIds } = {}) {
+function saveSettings(projectPath, changes, { providerIds, prProviderIds } = {}) {
   const entries = Object.entries(changes);
   if (entries.length === 0) return { ok: true, changed: false };
   const normalized = [];
   for (const [id, value] of entries) {
-    const checked = checkValue(id, value, providerIds);
+    const checked = checkValue(id, value, providerIds, prProviderIds);
     if (!checked.ok) return { ok: false, error: checked.problem };
     normalized.push([id, checked.value]);
   }

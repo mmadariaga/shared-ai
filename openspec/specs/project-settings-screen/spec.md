@@ -7,18 +7,22 @@ Lets a user see and edit the project settings that pre-answer command questions 
 
 ### Requirement: Project settings screen contents
 
-The `Project settings` screen in `bin/project-settings-screen.js` SHALL list exactly `explore.readyToProposeLanguage`, `explore.overviewLanguage`, and `backlog.provider`, in that order, each as a row `<id>: <current value>`, followed by a `Done` row. The current value SHALL be the value edited in this session. Otherwise it SHALL be the reader's normalized value, `ask` when the id is unset or set to `ask`, or the stored value in JSON form followed by ` (invalid)` when the stored value is outside its allowed set. `backlog.repository`, `backlog.project`, and `backlog.organization` SHALL NOT appear on the screen.
+The `Project settings` screen in `bin/project-settings-screen.js` SHALL list exactly `explore.readyToProposeLanguage`, `explore.overviewLanguage`, `backlog.provider`, and `pr.provider`, in that order, each as a row `<id>: <current value>`, followed by a `Done` row. The current value SHALL be the value edited in this session. Otherwise it SHALL be the reader's normalized value, `ask` when the id is unset or set to `ask`, or the stored value in JSON form followed by ` (invalid)` when the stored value is outside its allowed set. `backlog.repository`, `backlog.project`, `backlog.organization`, `pr.repository`, `pr.organization`, and `pr.project` SHALL NOT appear on the screen. The screen SHALL read the settings file of the project path it was given, without the git top-level or main-worktree lookup.
 
 #### Scenario: Rows show current values
 - **WHEN** the screen opens on a settings file that sets only `backlog.provider` to `gitlab`
-- **THEN** the rows are `explore.readyToProposeLanguage: ask`, `explore.overviewLanguage: ask`, `backlog.provider: gitlab`, and `Done`
+- **THEN** the rows are `explore.readyToProposeLanguage: ask`, `explore.overviewLanguage: ask`, `backlog.provider: gitlab`, `pr.provider: ask`, and `Done`
 
 ### Requirement: Value choices per setting
 
-Selecting a row SHALL offer that id's choices. `backlog.provider` SHALL offer `ask` followed by the union of the provider ids in `skills/universal/to-backlog/providers/registry.json` and `skills/universal/from-backlog/providers/registry.json`. `explore.readyToProposeLanguage` SHALL offer `ask`, `English`, and `Other language...`. `explore.overviewLanguage` SHALL offer `ask`, `English`, `none`, and `Other language...`. `Other language...` SHALL ask for a free-text language name. Every chosen or typed value SHALL be validated through the reader's catalogue: a rejected free-text entry SHALL be reported and asked again, and an accepted value SHALL be recorded in the canonical form the catalogue returns. Back from a value prompt SHALL return to the rows without recording a change.
+Selecting a row SHALL offer that id's choices. `backlog.provider` SHALL offer `ask` followed by the union of the provider ids in `skills/universal/to-backlog/providers/registry.json` and `skills/universal/from-backlog/providers/registry.json`. `pr.provider` SHALL offer `ask` followed by the provider ids in `skills/universal/to-pr/providers/registry.json`. `explore.readyToProposeLanguage` SHALL offer `ask`, `English`, and `Other language...`. `explore.overviewLanguage` SHALL offer `ask`, `English`, `none`, and `Other language...`. `Other language...` SHALL ask for a free-text language name. Every chosen or typed value SHALL be validated through the reader's catalogue: a rejected free-text entry SHALL be reported and asked again, and an accepted value SHALL be recorded in the canonical form the catalogue returns. Back from a value prompt SHALL return to the rows without recording a change.
 
 #### Scenario: Provider choices come from the registries
 - **WHEN** the user selects the `backlog.provider` row and the registries list `github`, `gitlab`, and `azuredevops`
+- **THEN** the choices are `ask`, `github`, `gitlab`, and `azuredevops`
+
+#### Scenario: Code-host choices come from the to-pr registry
+- **WHEN** the user selects the `pr.provider` row and the to-pr registry lists `github`, `gitlab`, and `azuredevops`
 - **THEN** the choices are `ask`, `github`, `gitlab`, and `azuredevops`
 
 #### Scenario: Rejected language is asked again
