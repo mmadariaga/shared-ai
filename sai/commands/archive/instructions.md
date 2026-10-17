@@ -13,6 +13,12 @@ that route.
 
 ## Classification Check
 
+Fetch @sai/policies/issue-origin-preservation.md. Read the selected change's
+`backlog_origin` before the archive move and carry that known value in the
+pre-flight summary for the mutation owner to compare with archived metadata.
+If a known origin is absent or unverifiable, warn and continue. Do not infer
+an association from a branch number or an ordinary `Refs` mention.
+
 1. Run `openspec status --change "$ARGUMENTS" --json` for the artifact
    completion status.
 2. Resolve `backfilled` from `openspec/changes/$ARGUMENTS/.openspec.yaml`: it is

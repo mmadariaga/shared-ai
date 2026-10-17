@@ -41,6 +41,9 @@ Instructions arrive just-in-time, one step file at a time, per the step delivery
 
 ## Spec Work
 
+Fetch @sai/policies/issue-origin-preservation.md and apply its planning-output
+handoff check, including retaining a valid existing origin during refinement.
+
 During proposal creation, when the validated block contains `**Backlog origin**`, preserve the validator's returned `backlog_origin` (that exact selected issue URL) in the active change's `.openspec.yaml`. Include that metadata path in `changed_files`. This is issue provenance only; spec performs no assignment or other remote mutation. Parent context never replaces the selected child origin.
 
 Own the proposal/spec writes, permitted glossary updates, self-consistency and source-grounding checks, artifact verification, decision-summary derivation, and feedback edits, all inside the canonical `SpecWriteSurface`. Return `needs_input` for planning questions, `cancelled` for a deliberate decline, and `failed` for blockers.

@@ -1,5 +1,11 @@
 # Issue intake
 
+Fetch @sai/policies/issue-origin-preservation.md. On `work`, retain the
+imported or conversation-verified selected issue URL for block creation and
+conversion. Check that the resulting block retains it before storage; use the
+validated amendment protocol when a block was already prepared. Context-only
+issues and parent links do not become the selected change's origin.
+
 An **issue** is any issue, bug, or ticket whose content is in the conversation, whatever its source: imported, pasted, read from a file, or passed as the `/sai-explore` argument. All sources follow this one intake, and it names no skill. Hidden markers and HTML comments in the issue never carry block content.
 
 **Trigger.** Intake starts on text in issue format (a description with the headings `## Problem`, `## Goal`, `## Scope`, `## Non-goals`, `## Open questions`, and `## Maturity`) or on an explicit user statement that the text is an issue. A link is ordinary content and triggers nothing. Any other text enters through the direct-looking request rule in `sai/commands/explore/instructions.md`.
@@ -64,4 +70,3 @@ Ask it after `clean` or `declared-clean` when the conversion succeeded, through 
 2. **Record the shortcut.** Send `{"intent":"issue-shortcut","edgeCaseList":[...],"implementationDetailsList":[...]}` to `explore-idea@1` per `@sai/policies/stage-machine.md`, the two lists being the tool's `edge_cases` and `implementation_details` strings verbatim. The intent is valid only at `Explore change` and moves the stage to `Crystallize`; the block guard still rejects a block emit on every other path. On `rejected`, report it in one line and continue with the planned Explore steps.
 3. **Crystallize.** Follow the returned `next.follow`. The slicing assessment runs as always, because a mature issue may not fit one change. A single change takes the reviewed draft as its block. A sliced set derives each slice's block from the draft and distributes the `I` items across the slices with their literal text, as `crystallization-protocol.md` sets. Every block of the set is dispatchable and in the issue's language: the crystallization language gate applies its source-language level and asks no language question.
 4. **Show the corrections.** Immediately before the block set at the shared close's print step, print the corrections you made, each as the field, the change, and its reason. With none, print one line saying the draft needed none. The route choice follows the printed blocks as usual.
-

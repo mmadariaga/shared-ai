@@ -173,11 +173,16 @@
 
   Then, with every reference verified:
 
+   Fetch @sai/policies/issue-origin-preservation.md and apply its handoff check
+   to the draft and, after materialization, the selected change's metadata.
+   A known lost or unverifiable origin produces a warning, not a write blocker.
+
   1. Read each transfer file and validate every draft against the project
      schema before writing anything: the `.openspec.yaml` key set matches the
      no-intent three-key form
      (`schema`, `created`, `backfilled`) or the usable-intent four-key form
-     (plus `prior_intent`) with `created` a date-only `YYYY-MM-DD`; the
+      (plus `prior_intent`), each allowing the optional validated `backlog_origin`
+      from instruction section 6a, with `created` a date-only `YYYY-MM-DD`; the
      proposal opens with the exact applicable POST-HOC RECORD blockquote,
      carries the required headings in order (`## Why`, `## What Changes`,
      `## Capabilities`, `### New Capabilities`, `### Modified Capabilities`,
