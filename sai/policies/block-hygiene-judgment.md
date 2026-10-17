@@ -30,7 +30,7 @@ One JSON object per flagged `(line, clause)` pair, collected in one array:
 {"clause": "<clause id>", "line": <line number reported by the tool>, "evidence": "<one sentence>", "verdict": "violation|context"}
 ```
 
-The array travels on stdin after a line equal to `<<<VERDICTS>>>`, below the block set, to `sai-state emit --ready-to-propose` or to `ready-to-propose.js check --profile dispatchable`. The tool matches verdicts to flagged lines by `line` and `clause`; a missing verdict, a verdict for a line the tool did not flag, and a malformed verdict each leave the set undispatchable. A block set is dispatchable when it is structurally valid and every flagged line carries a `context` verdict. Line numbers refer to the exact text sent: after any edit of the block, run the tool again and judge again.
+The array travels on stdin after a line equal to `<<<VERDICTS>>>`, below the block set, to `sai-state emit --ready-to-propose` or to `ready-to-propose.js check --profile dispatchable`. Compose this boundary mechanically with `ready-to-propose.js compose --block-file <path> --verdicts-file <path>` per `ready-to-propose-format.md` § Block and verdict delivery, for registration and amendment alike. The tool matches verdicts to flagged lines by `line` and `clause`; a missing verdict, a verdict for a line the tool did not flag, and a malformed verdict each leave the set undispatchable. A block set is dispatchable when it is structurally valid and every flagged line carries a `context` verdict. Line numbers refer to the exact text sent: after any edit of the block, run the tool again and judge again.
 
 ## Violation handling
 

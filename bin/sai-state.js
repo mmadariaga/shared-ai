@@ -358,7 +358,7 @@ function persistMachineOutcome(id, record, machineId, nextState, eventId, wire) 
 }
 
 // Flags that never take a value, so a following `-` stays positional.
-const BOOLEAN_FLAGS = new Set(['progress', 'ready-to-propose']);
+const BOOLEAN_FLAGS = new Set(['progress', 'ready-to-propose', 'export']);
 
 function parseArgs(argv) {
   const out = { command: null, positional: [], named: {} };
@@ -681,9 +681,10 @@ function ideaStageOf(id) {
   return state && typeof state.stage === 'string' ? state.stage : mod.initialState.stage;
 }
 
-function commandEmitReadyToPropose(id, machineIdArg, eventSource, extraArgs, amendName) {
+function commandEmitReadyToPropose(id, machineIdArg, eventSource, extraArgs, amendName, blockFile, verdictsFile) {
   const amending = amendName !== undefined;
-  if (!id || !machineIdArg || eventSource !== '-' || (extraArgs && extraArgs.length > 0) || process.stdin.isTTY || (amending && (typeof amendName !== 'string' || amendName === ''))) {
+  const fromFiles = blockFile !== undefined || verdictsFile !== undefined;
+  if (!id || !machineIdArg || (fromFiles ? (eventSource !== undefined && eventSource !== '-') : eventSource !== '-') || (extraArgs && extraArgs.length > 0) || (!fromFiles && process.stdin.isTTY) || (amending && (typeof amendName !== 'string' || amendName === ''))) {
     process.stderr.write('emit --ready-to-propose requires <id> explore-slice@1 --ready-to-propose [--amend <change-name>] - and reads the block set from stdin: ' + (amending ? EMIT_AMEND_FORM : EMIT_BLOCKS_FORM) + '\n');
     process.exitCode = 2;
     return;
@@ -703,7 +704,18 @@ function commandEmitReadyToPropose(id, machineIdArg, eventSource, extraArgs, ame
   }
 
   let text = '';
-  try { text = readStdinSync(); } catch (err) { text = ''; }
+  if (fromFiles) {
+    try {
+      if (typeof blockFile !== 'string' || typeof verdictsFile !== 'string') throw new Error('--block-file and --verdicts-file are both required');
+      text = detector.composeVerdicts(fs.readFileSync(blockFile, 'utf8'), JSON.parse(fs.readFileSync(verdictsFile, 'utf8')));
+    } catch (error) {
+      writeResponse({ error: 'INVALID_EVENT', reason: 'BLOCK_COMPOSITION_FAILED', detail: error.message });
+      process.exitCode = 1;
+      return;
+    }
+  } else {
+    try { text = readStdinSync(); } catch (err) { text = ''; }
+  }
   const verdict = detector.detect(text, 'dispatchable');
   const validation = projectBlockVerdict(verdict);
 
@@ -849,7 +861,7 @@ function commandAmendBlock(id, machineIdArg, detector, verdict, text, validation
 // `sai-state block <id> <change-name>`: returns the stored block text and hash
 // of one recorded slice. A missing record, session, or entry is BLOCK_NOT_FOUND
 // (exit 1) with no text; the caller dispatches nothing.
-function commandBlock(id, name) {
+function commandBlock(id, name, exportFile, harness) {
   if (!id || !name) {
     process.stderr.write('block requires <id> <change-name>\n');
     process.exitCode = 2;
@@ -867,7 +879,23 @@ function commandBlock(id, name) {
     process.exitCode = 1;
     return;
   }
-  writeResponse({ hash: entry.hash, text: entry.text });
+  if (exportFile) {
+    try {
+      const detector = loadDetector();
+      const texts = detector.extractBlockTexts(entry.text);
+      if (texts.length !== 1 || detector.hashBlock(texts[0]) !== entry.hash) throw new Error('Stored block does not match its hash');
+      // Both installed and source layouts put transfer beside the detector.
+      const detectorPath = DETECTOR_CANDIDATES.find(candidate => fs.existsSync(candidate));
+      const transfer = require(path.join(path.dirname(detectorPath), 'transfer.js'));
+      const { dir } = transfer.open(harness);
+      const reference = transfer.put(dir, 'block.md', Buffer.from(entry.text, 'utf8'));
+      writeResponse({ hash: entry.hash, block_file: reference.path, transfer_dir: dir });
+    } catch (error) {
+      writeResponse({ error: 'BLOCK_EXPORT_FAILED', reason: error.message });
+      process.exitCode = 1;
+      return;
+    }
+  } else writeResponse({ hash: entry.hash, text: entry.text });
   process.exitCode = 0;
 }
 
@@ -1016,7 +1044,7 @@ function main(argv) {
       process.exitCode = 2;
       return;
     }
-    commandEmitReadyToPropose(parsed.positional[0], parsed.positional[1], parsed.positional[2], parsed.positional.slice(3), parsed.named.amend);
+    commandEmitReadyToPropose(parsed.positional[0], parsed.positional[1], parsed.positional[2], parsed.positional.slice(3), parsed.named.amend, parsed.named['block-file'], parsed.named['verdicts-file']);
     return;
   }
   if (parsed.command === 'emit' && parsed.named.progress === true) {
@@ -1036,7 +1064,12 @@ function main(argv) {
     return;
   }
   if (parsed.command === 'block') {
-    commandBlock(parsed.positional[0], parsed.positional[1]);
+    if (parsed.named.export !== undefined && (parsed.named.export !== true || !['claude', 'opencode'].includes(parsed.named.harness))) {
+      process.stderr.write('block --export requires --harness <claude|opencode>\n');
+      process.exitCode = 2;
+      return;
+    }
+    commandBlock(parsed.positional[0], parsed.positional[1], parsed.named.export === true, parsed.named.harness);
     return;
   }
   process.stderr.write('Usage: sai-state spawn --key <stable-key>\n');
@@ -1044,7 +1077,8 @@ function main(argv) {
   process.stderr.write('       sai-state emit <id> <machineId> --progress [--with-overview true|false] -   (worker progress payload JSON on stdin)\n');
   process.stderr.write('       sai-state emit <id> explore-slice@1 --ready-to-propose -   (Ready to Propose block set on stdin)\n');
   process.stderr.write('       sai-state emit <id> explore-slice@1 --ready-to-propose --amend <change-name> -   (one amended block on stdin)\n');
-  process.stderr.write('       sai-state block <id> <change-name>\n');
+  process.stderr.write('       sai-state emit <id> explore-slice@1 --ready-to-propose [--amend <name>] --block-file <path> --verdicts-file <path>\n');
+  process.stderr.write('       sai-state block <id> <change-name> [--export --harness <claude|opencode>]\n');
   process.stderr.write('       sai-state reset <id> <machineId>\n');
   process.stderr.write('       sai-state close <id>\n');
   process.exitCode = 2;

@@ -26,11 +26,7 @@ Define the hash recomputation that every worker receiving a stored block perform
 
 ### Requirement: Receiving workers verify the block hash before any work
 
-Every worker that receives a stored block SHALL verify it before any other work, per `sai/policies/ready-to-propose-format.md` § Stored block transport. The worker SHALL take the `--block-hash <sha256>` envelope line its contract names and pipe the received block text (the request after every envelope marker line) to the `hash` sub-command of `ready-to-propose.js`, resolved per `sai/policies/tool-resolution.md`. It SHALL return `failed` with no changes when the hash line is absent in a route that requires it, when the printed hash differs from the envelope hash, or when the tool reports anything other than exactly one block. The worker SHALL NOT read the repository or write anything before the check passes, and SHALL NOT repair, complete, or guess the block. The receivers SHALL be:
-
-- the Direct Build implementer, whose second envelope line is the required `--block-hash` line after `--direct-build`;
-- the backfill worker in Direct Build prepare mode, whose `--direct-build-prepare` marker line is followed by the required `--block-hash` line; and
-- the spec worker under an Explore-supervised envelope, whose `--block-hash` line follows the `--supervised` flag line and is required when `supervised` is true.
+The Direct Build implementer after `--direct-build`, the backfill prepare worker after `--direct-build-prepare`, and the supervised spec worker after `--supervised` SHALL require paired `--block-file <absolute path>` and `--block-hash <sha256>` lines. Before dependent work each SHALL invoke `ready-to-propose.js verify-file` with those references. Verification SHALL require a safe regular transfer file containing exactly one block and matching the existing LF-normalized hash; it SHALL reject missing, unreadable, unsafe, or mismatched files. Each receiver SHALL return `failed` with no changes and identify the problem before repository reads or writes when verification fails. After success the verified file SHALL supply the sole block input. Workers SHALL never reconstruct, complete, or repair a block from chat.
 
 #### Scenario: Hash mismatch fails without changes
 
@@ -41,6 +37,11 @@ Every worker that receives a stored block SHALL verify it before any other work,
 
 - **WHEN** a Direct Build implementer, backfill prepare, or supervised spec envelope carries no `--block-hash` line
 - **THEN** the worker returns `failed` with no changes and a summary naming the missing line
+
+#### Scenario: Missing or unreadable file fails before work
+
+- **WHEN** a required file line is absent or the supplied file cannot be read
+- **THEN** the worker returns failed without changes or dependent work and names the missing line or file problem.
 
 ### Requirement: Unstored blocks carry no hash check
 

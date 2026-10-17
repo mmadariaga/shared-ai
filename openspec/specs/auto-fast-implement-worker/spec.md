@@ -14,7 +14,7 @@ TBD - created by archiving change auto-fast-selector-option. Update Purpose afte
 
 ### Requirement: Alpha input model
 
-The implementer worker SHALL receive exactly one opaque `arguments_value` whose first line is the marker `--direct-build`, whose second line is `--block-hash <sha256>`, and whose remainder is the complete crystallized Ready to Propose block, exactly as Explore read it from the `sai-state` store. Before any other work it SHALL verify that block against the hash per `sai/policies/ready-to-propose-format.md` § Stored block transport; a missing hash line or a mismatch SHALL return `failed` with no changes. The pinned `--no-specs` POC profile is the one exception: its first line is `--direct-build --no-specs`, it carries no hash line, and nothing is verified. The worker SHALL then strip the marker and hash lines and treat that block as its sole substantive input, with no conversation context forwarded and no requirements inferred from repository discovery beyond what implementing the block requires. `**Capabilities in scope**` and `**Implementation Details**` SHALL bound the run, and the worker SHALL implement exactly the items listed under `**Implementation Details**`. `**Out of scope Implementation Details**` SHALL be context only: the worker SHALL use its items solely to choose among options that are equivalent for this run, SHALL NOT implement an out-of-scope item, and SHALL NOT do anticipatory implementation — no whole item, stub, hook, "for later" abstraction, or reference whose only purpose is to serve a later slice.
+The implementer SHALL receive one opaque `arguments_value` beginning with `--direct-build`, followed by `--block-file <absolute path>` and `--block-hash <sha256>`, with no inline stored block. It SHALL verify the file before dependent work and fail without changes on a missing line, unreadable file, or mismatch. The verified block SHALL be its sole substantive input; no parent conversation or inferred requirements beyond implementation needs SHALL enter the request. The pinned `--direct-build --no-specs` POC SHALL remain exempt with no stored file or hash verification. Capabilities in scope, Key constraints, Edge Cases, and in-scope Implementation Details SHALL bound implementation. Research Leads and Out of scope Implementation Details SHALL be non-authoritative context only. Out-of-scope details SHALL only inform equivalent choices, never implementation, stubs, hooks, future abstractions, or references serving later slices.
 
 #### Scenario: Block-only input
 
@@ -34,7 +34,7 @@ The implementer worker SHALL receive exactly one opaque `arguments_value` whose 
 
 #### Scenario: Altered block is refused before work
 
-- **WHEN** the block after the `--block-hash` line does not match that hash
+- **WHEN** the file named by `--block-file` does not match the paired `--block-hash`
 - **THEN** the worker returns `failed` with no changes before reading the repository
 
 ### Requirement: Write containment

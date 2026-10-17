@@ -111,6 +111,7 @@ verbs take neither `--json` nor `--cwd`. A missing argument is a usage error
   `validation` alone, exits 1, and replaces nothing. The option is accepted
   only with `--ready-to-propose` on `explore-slice@1`; otherwise it is a usage
   error (exit 2).
+  Both registration and amendment also accept `--block-file <path> --verdicts-file <path>` instead of stdin and the `-` positional marker. This invokes `ready-to-propose.js`'s shared composer before validation or state reads, inserting the required newline boundary without changing the hashed block. Invalid/missing files, incomplete blocks, or invalid verdicts return `INVALID_EVENT` with `reason: "BLOCK_COMPOSITION_FAILED"` (exit 1), with no transition or write. Use this file form for stored-block amendments and registration with verdicts in both harnesses.
 - **Block**: `sai-state block <id> <change-name>` returns
   `{received_at, hash, text}` for one recorded slice: the exact validated block
   text and its sha256 hash as the block emit (or the latest amendment) stored
@@ -120,7 +121,7 @@ verbs take neither `--json` nor `--cwd`. A missing argument is a usage error
   by an Explore route, take block text only from this verb, never from
   conversation. The receiving worker recomputes the hash of the block it
   received (`@sai/policies/ready-to-propose-format.md` § Stored block
-  transport); the verb performs no check of its own.
+  transport). For worker delivery use `sai-state block <id> <change-name> --export --harness <claude|opencode>` instead: it checks the stored hash and writes the text directly through `transfer.js` into a private file. It returns `{received_at, hash, block_file, transfer_dir}` without text. An export failure returns `BLOCK_EXPORT_FAILED` and its reason (exit 1); a missing block still returns `BLOCK_NOT_FOUND`. The harness is mandatory for export (exit 2 on omission or invalid value). Refresh and retain these references per the stored-block transport policy.
 - **Reset**: `sai-state reset <id> <machineId>` clears that one machine's state
   and returns `{received_at, reset: <machineId>}`; other machines in the session keep theirs.
   A linear step machine (§ Step machines) also returns

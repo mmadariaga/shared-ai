@@ -7,7 +7,7 @@ Define how one pending or stopped slice of a recorded crystallization set is cor
 
 ### Requirement: Amend emit validates one block for the named slice
 
-`sai-state emit <id> explore-slice@1 --ready-to-propose --amend <change-name> -` SHALL read one `Ready to Propose` block as text from stdin, in the block emit's delivery form and with the same optional `<<<VERDICTS>>>` suffix, and SHALL validate it with the `dispatchable` profile exactly as the block emit does. When the stored inventory holds more than one slice, the emit SHALL also validate the resulting set — the stored blocks with the named slice replaced by the amended block — with the `dispatchable` profile, so that every slice keeps an in-scope `I` and no `I` is duplicated or left without a slice. A non-dispatchable block or resulting set SHALL return `validation` alone, exit 1, and replace nothing. Stdin carrying more than one block SHALL answer `INVALID_EVENT` with `reason: "AMEND_BLOCK_COUNT"`, and a block whose `**Change name**` differs from `<change-name>` SHALL answer `INVALID_EVENT` with `reason: "AMEND_NAME_MISMATCH"`. Each of these answers SHALL exit 1 with no transition. `--amend` without a non-empty change name, or outside `--ready-to-propose` on `explore-slice@1`, SHALL be a usage error with exit 2.
+`sai-state emit <id> explore-slice@1 --ready-to-propose --amend <change-name>` SHALL accept either the existing stdin `-` form or paired `--block-file <path> --verdicts-file <path>` options. The file form SHALL use the shared composer before session reads or changes. Composition failure SHALL answer `INVALID_EVENT` with `reason: "BLOCK_COMPOSITION_FAILED"`, exit 1, and store nothing. Both forms SHALL validate exactly one block with the dispatchable profile and validate the resulting multi-slice set when applicable. Non-dispatchable content SHALL replace nothing. Wrong block count SHALL report `AMEND_BLOCK_COUNT`; wrong change name SHALL report `AMEND_NAME_MISMATCH`, each with exit 1 and no transition. Missing amend name or use outside the supported block emit SHALL remain usage errors with exit 2.
 
 #### Scenario: Invalid amended text replaces nothing
 
@@ -33,6 +33,11 @@ Define how one pending or stopped slice of a recorded crystallization set is cor
 
 - **WHEN** `--amend` is given without a change name or on another machine
 - **THEN** the process exits 2 with no transition
+
+#### Scenario: File amendment composes before storage
+
+- **WHEN** separate block and verdict files describe a valid pending-slice amendment
+- **THEN** the same amendment validation applies and only that slice is replaced; invalid composition changes no stored bytes.
 
 ### Requirement: Only a pending or stopped slice is amendable
 
@@ -74,9 +79,9 @@ An accepted amendment SHALL replace only that slice's stored text, hash, and ver
 
 ### Requirement: Amendment re-opens no route
 
-To correct one slice of the recorded set without re-crystallizing the whole set, Explore SHALL display the corrected block, validate it with the same bounded judgment as the block emit, and emit it with `--amend <change-name>` instead of a new block emit. An accepted amendment SHALL emit no route intent and re-open no picker, and a stopped slice SHALL resume at its saved cursor over the amended block. A `SLICE_COMPLETED` or `SLICE_RUNNING` rejection SHALL change nothing, and the correction SHALL wait until the slice stops or the set is re-crystallized.
+Explore SHALL display and validate the corrected block with bounded judgment and submit its amendment using separate block and verdict files and the shared composer. An accepted amendment SHALL emit no route intent and reopen no picker. A stopped slice SHALL retain its cursor and resume over a fresh export of the amended block paired with its new hash. Running or completed slice rejections SHALL change nothing and wait until the slice stops or the set is re-crystallized.
 
 #### Scenario: Stopped slice resumes over the amended block
 
 - **WHEN** a stopped Direct Build slice is amended and then resumed
-- **THEN** it resumes at its saved cursor and its next dispatch carries the amended block and hash from the store
+- **THEN** it resumes at its saved cursor and its next dispatch carries a fresh private-file reference and paired hash for the amended stored block

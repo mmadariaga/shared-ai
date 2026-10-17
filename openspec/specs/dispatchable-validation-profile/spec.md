@@ -84,3 +84,17 @@ For the `dispatchable` profile the CLI SHALL exit 0 only when `dispatchable` is 
 
 - **WHEN** a structurally valid block with an unjudged flagged line is checked
 - **THEN** the CLI exits 1
+
+### Requirement: File-backed checking composes verdict delivery mechanically
+
+`ready-to-propose.js` SHALL accept `check --profile dispatchable --block-file <path>` and optional `--verdicts-file <path>`. Its shared composer SHALL accept complete block text and a verdict array, reject an existing verdict suffix, incomplete blocks, non-array or invalid/incomplete verdicts, and place the marker on a separate line without changing the established block hash rules. The executable `compose --block-file <path> --verdicts-file <path>` SHALL emit composed stdout on success and no content on failure. A marker glued to the final separator SHALL remain invalid.
+
+#### Scenario: Composition handles both final-newline states
+
+- **WHEN** valid blocks with and without a final newline are composed with their evidenced verdict arrays
+- **THEN** both deliveries validate, contain a separate marker line, and retain the original extracted-block hash.
+
+#### Scenario: Incomplete composition remains rejected
+
+- **WHEN** a block lacks its final separator or its verdicts are invalid, unknown, or incomplete
+- **THEN** composition fails instead of weakening structural or verdict validation.

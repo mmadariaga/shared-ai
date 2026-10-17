@@ -23,7 +23,7 @@ Claude Code and opencode SHALL carry the selected change's verified issue URL as
 
 ### Requirement: Amend stored origin through validated block transport
 
-An origin added to an already prepared block SHALL use the existing validated amendment mechanism, including dispatchable validation, bounded hygiene judgment, hash recomputation, and readback of the amended origin and hash. Published slice sets SHALL use verified child correspondence and the existing origin attachment protocol. The workflow SHALL NOT patch session storage directly, reuse a pre-amendment hash, or introduce a second origin envelope.
+An origin attached to a stored block SHALL use validated amendment, dispatchable checking, bounded hygiene judgment, refreshed hashes, and readback. Published slice sets SHALL export each original block, send verified `block_files: [{block_file, hash}]` with complete child correspondence to `attach-origin --harness <claude|opencode>`, and receive new private file/hash references rather than amended message text. The tool SHALL verify input files and preserve other block bytes, dependencies, scope, and E/I items. It SHALL refuse conflicting origins or incomplete correspondence. Callers SHALL validate the amended files, emit each through the file-backed amendment form, export again, and mechanically compare bytes/hash and selected origin before dispatch. Transfer directories SHALL remain until recovery cannot need them. Workflows SHALL NOT patch storage directly, reuse an old hash, or add a second origin envelope.
 
 #### Scenario: Attach an imported issue after block preparation
 - **WHEN** a verified issue origin is attached to an already stored block
@@ -32,6 +32,11 @@ An origin added to an already prepared block SHALL use the existing validated am
 #### Scenario: Attach a published slice set
 - **WHEN** a published parent has verified child correspondence for several change blocks
 - **THEN** each block receives its corresponding child's URL through the existing validated attachment mechanism
+
+#### Scenario: Origin attachment keeps file references paired
+
+- **WHEN** verified child correspondence is attached to exported blocks
+- **THEN** each amended output has its own private-file reference and new hash, and mismatched input references fail without substituting text.
 
 ### Requirement: Backfill accepts origin independently of intent
 

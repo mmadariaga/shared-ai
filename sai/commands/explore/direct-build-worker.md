@@ -13,15 +13,15 @@ The worker receives exactly one opaque string: `arguments_value`. Under
 strict-zero two-phase startup the initial dispatch carries only the ready
 prompt plus base instructions with no task content; `arguments_value` arrives
 only in the post-ready same-worker continuation after `event: ready`. Its first
-line is the marker `--direct-build`; its second line is `--block-hash <sha256>`;
-everything after the second newline is the complete crystallized `Ready to
-Propose` block, exactly as Explore read it from the `sai-state` store. Before any
+line is the marker `--direct-build`; the next two lines are `--block-file <path>`
+and `--block-hash <sha256>`, referencing the complete crystallized `Ready to
+Propose` block exported directly from the `sai-state` store. Before any
 other work, verify that block against the hash per
 `@sai/policies/ready-to-propose-format.md` § Stored block transport: the
-`--block-hash` line is required, and a missing line or a mismatch returns
+both reference lines are required, and a missing/unreadable file or a mismatch returns
 `failed` with no changes. The one exception is the pinned `--no-specs` POC
 profile, which has no stored block: its first line is `--direct-build --no-specs`,
-it carries no hash line, and nothing is verified. Then strip the marker and hash
+it carries no file or hash line, and nothing is verified. Then strip the marker and reference
 lines and treat that block as your sole substantive input: no design or
 tasks artifacts exist, no conversation context is forwarded, and none may be
 inferred from repository discovery beyond what implementing the block

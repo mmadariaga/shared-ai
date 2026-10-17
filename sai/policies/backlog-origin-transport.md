@@ -12,25 +12,31 @@ Fetch @sai/policies/block-hygiene-judgment.md for amendment validation.
 
 1. Require the verified publication result's complete `correspondence`, with
    one child URL per recorded change name and the parent URL separately. Read
-   every corresponding original block through `sai-state block <id> <name>`;
+   every corresponding original block through `sai-state block <id> <name> --export --harness <claude|opencode>`;
    a missing block or conflicting origin stops transport before route dispatch.
-2. Call `ready-to-propose.js attach-origin` with JSON `{text, correspondence}`
-   on stdin. `text` is the complete stored block set, not reconstructed work.
+2. Call `ready-to-propose.js attach-origin --harness <claude|opencode>` with JSON
+   `{block_files: [{block_file, hash}], correspondence}` on stdin. Supply all
+   exported references, not block text. The tool verifies each file, reads and
+   updates the set mechanically, and returns new private `block_file`/`hash`
+   references with their `transfer_dir`, not amended text for model copying.
    Require `ok: true`. The tool inserts only each actual child URL as
    `**Backlog origin**`; it preserves the other bytes, dependencies, E/I items,
    constraints and scope. It refuses incomplete mappings or conflicting origins.
-3. Validate all returned blocks with the dispatchable contract and bounded
-   hygiene judgment, then persist each through the existing
-   `sai-state emit <id> explore-slice@1 --ready-to-propose --amend <name> -`
+3. Validate each returned file with the dispatchable contract and bounded
+   hygiene judgment. Save its verdicts in a separate JSON-array file and use
+   `sai-state emit <id> explore-slice@1 --ready-to-propose --amend <name> --block-file <new path> --verdicts-file <path>`
    operation. Preserve the inventory and route state. The store recomputes the
    hashes; never patch the session file or reuse an old hash/verdict line number.
-4. Re-read every amended block. Require its text/hash to equal the tool's amended
-   output, and the validator-extracted `backlog_origin` to match the selected
+4. Export every amended block again. Require its file bytes/hash to equal the tool's amended
+   output through a mechanical comparison, and the validator-extracted `backlog_origin` to match the selected
    child correspondence. A rejection or
    partial transport remains pending: report it and wait for retry/stop before
    branch questions, route selection or any cold worker dispatch.
 
-Later planning dispatch reads only these amended stored texts and hashes. Spec
+Retain all export and amended-output directories until continuations and recovery
+no longer need them, then close them through `transfer.js close`. Later planning
+dispatch uses only fresh amended stored-file/hash references under
+`ready-to-propose-format.md` § Stored block transport. Spec
 persists the validated `backlog_origin` in the change's `.openspec.yaml` during
 proposal creation; fresh standalone implementation reads that key and verifies
 the actual child independently. Parent context never replaces child origin.

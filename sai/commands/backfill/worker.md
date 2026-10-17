@@ -27,13 +27,14 @@ never falls back to inline draft content. The `--fix-delta-headers` envelope
 below carries no such line and keeps its inline contract.
 
 The Direct Build (unattended) composition may prefix the initial envelope with the marker
-`--direct-build-prepare` on its own line, followed on the next line by
-`--block-hash <sha256>`, the hash of the crystallized block the envelope carries.
+`--direct-build-prepare` on its own line, followed by `--block-file <path>` and
+`--block-hash <sha256>`, the reference to the exported crystallized block.
 Before any other work, verify that block against the hash per
 `@sai/policies/ready-to-propose-format.md` § Stored block transport: the hash
-line is required in prepare mode, and a missing line or a mismatch returns
-`failed` with no changes. Strip the marker and the hash line before applying the
-ordinary envelope-token parse and retain `direct_build_mode: prepare` as
+and file lines are required in prepare mode, and a missing/unreadable file or a mismatch returns
+`failed` with no changes. Strip the marker and reference lines, use the verified
+file as the crystallized-block intake alongside the remaining envelope tokens,
+and retain `direct_build_mode: prepare` as
 invocation-scoped worker state. The marker is composition-only; an ordinary
 `/sai-backfill` invocation without it follows the normal route byte-for-byte.
 An `--direct-build-execute` marker is valid only on the explicit same-worker
