@@ -268,6 +268,8 @@ GitLab and Azure DevOps SHALL expose shared set-publication and selected-child a
 
 On GitHub, `publish-set`, `continue-set` and `recover-set` SHALL decide each issue's Project membership with the GitHub publication adapter's direct reads and SHALL NOT read the ProjectV2 `items` connection. Before adding an issue, publication SHALL check membership with the issue-side read, and an issue already in the destination Project, archived or not, SHALL count as verified with no add mutation. After the add mutation, publication SHALL verify with the bounded verification (one immediate read, then up to four more reads two seconds apart), using the direct item read when the response carries an item id and the issue-side read otherwise. When verification finds nothing, publication SHALL stop with `Project membership not verified` and leave that issue's Project operation pending. `recover-set` SHALL decide each Project operation with the issue-side read, leave it pending when no item of the destination Project is found, and never repeat the add mutation.
 
+GitHub `publish-set` and `continue-set` SHALL share the single-issue publication adapter's membership check, insertion, and verification operation. A specific `Content already exists` insertion error SHALL trigger fresh issue-side membership verification under the existing verification bound, not unconditional success. Eligibility SHALL require every structured GraphQL error to have the exact message `Content already exists` with no path or a path starting with `addProjectV2ItemById`, or a trimmed command error matching exactly that message with optional repeated `gh:` prefixes and optional ` (addProjectV2ItemById)` suffix. Other errors SHALL retain their failure treatment. When fresh membership reads fail or do not confirm the destination Project, the operation SHALL return partial failure, retain the receipt and created issue identities, and leave the affected Project operation pending. Recovery and approved continuation SHALL reuse already-created issues rather than create replacements to resolve membership.
+
 #### Scenario: Direct reads complete set publication
 
 - **WHEN** each added child is visible to the direct item read on its first read
@@ -297,6 +299,26 @@ On GitHub, `publish-set`, `continue-set` and `recover-set` SHALL decide each iss
 
 - **WHEN** the issue-side read finds only items of other Projects or a `null` Project items connection
 - **THEN** set publication treats the issue as absent from the destination Project and adds it.
+
+#### Scenario: Concurrent auto-add during set publication
+
+- **WHEN** `publish-set` receives a qualifying duplicate-content insertion error for an issue added concurrently by auto-add
+- **THEN** it verifies the issue's destination Project membership through fresh issue-side reads and continues only after confirmation.
+
+#### Scenario: Concurrent auto-add during approved continuation
+
+- **WHEN** approved `continue-set` retries a pending Project operation and receives a qualifying duplicate-content insertion error
+- **THEN** it uses the same fresh membership verification as single publication and retains the existing issue identity without creating a replacement.
+
+#### Scenario: Duplicate error leaves set membership unconfirmed
+
+- **WHEN** fresh reads after a qualifying duplicate-content insertion error find no membership, find only another Project, or fail
+- **THEN** the set result remains partial with the existing receipt, created issue identities, and affected Project operation pending for recovery and approved continuation.
+
+#### Scenario: Other set insertion errors remain visible
+
+- **WHEN** a set insertion fails with an error other than the qualifying duplicate-content response
+- **THEN** publication or continuation reports the failure and retains partial results rather than treating the issue as a verified Project member.
 
 ### Requirement: GitHub assignment verification requires the approved parent
 

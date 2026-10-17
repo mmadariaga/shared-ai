@@ -46,6 +46,12 @@ function fakeGithub(state, command, args, input) {
     data = { createIssue: { issue: state.issue } };
   } else if (query.includes('addProjectV2ItemById(')) {
     state.insertions = (state.insertions || 0) + 1;
+    if (state.insertionError) {
+      state.member = !!state.raceMember;
+      state.afterInsertionError = true;
+      if (state.graphqlError) return JSON.stringify({ errors: [{ message: state.insertionError }] });
+      throw new Error(state.insertionError);
+    }
     if (state.failInsertion) throw new Error('Project access denied');
     state.member = true;
     if (state.loseInsertion) throw new Error('insertion response lost');
@@ -56,6 +62,7 @@ function fakeGithub(state, command, args, input) {
   } else if (query.includes('on ProjectV2Item{')) {
     data = { node: visible() ? { id: variables.id, project: { id: 'P' }, content: { id: state.itemContent || 'I' } } : null };
   } else if (query.includes('projectItems(first:')) {
+    if (state.afterInsertionError && state.failRaceRead) throw new Error('Membership query denied');
     const own = visible() ? [{ id: 'ITEM', project: { id: 'P' }, ...(state.archived ? { isArchived: true } : {}) }] : [];
     data = { node: { projectItems: state.nullItems && !own.length ? null : page(state.otherProject ? [{ id: 'OTHER', project: { id: 'P2' } }, ...own] : own) } };
   } else if (query.includes('issues(first:')) {
@@ -256,6 +263,70 @@ test('only the destination Project counts and a null projectItems means no items
   }
 });
 
+for (const graphqlError of [false, true]) test(`concurrent auto-add completes only after a fresh destination read (${graphqlError ? 'GraphQL' : 'gh'})`, () => {
+  const state = { insertionError: graphqlError ? 'Content already exists' : 'gh: gh: Content already exists (addProjectV2ItemById)\n', graphqlError, raceMember: true, visibleAfter: 2 };
+  const { input, io, receipt } = approved(state);
+  assert.equal(github.publish(input, io).status, 'complete');
+  assert.equal(state.visibleReads, 3);
+  assert.equal(state.creations, 1);
+  assert.equal(state.insertions, 1);
+  assert.equal(github.recover({ receipt }, io).status, 'complete');
+  assert.equal(state.creations, 1);
+  assert.equal(state.insertions, 1);
+});
+
+for (const option of ['absent', 'wrong-project', 'read-error', 'unrelated-error']) test(`auto-add recovery preserves the receipt when membership is unconfirmed: ${option}`, () => {
+  const state = { insertionError: option === 'unrelated-error' ? 'Project access denied' : 'Content already exists', otherProject: option === 'wrong-project', failRaceRead: option === 'read-error', raceMember: option === 'read-error' || option === 'unrelated-error' };
+  const { input, io, receipt } = approved(state);
+  const result = github.publish(input, io);
+  assert.equal(result.status, 'partial_failure');
+  assert.equal(result.issue.id, 'I');
+  const saved = JSON.parse(fs.readFileSync(receipt, 'utf8'));
+  assert.equal(saved.stage, 'insertion_pending');
+  assert.equal(saved.issue.id, 'I');
+  assert.match(result.message, option === 'read-error' ? /Membership query denied/ : option === 'unrelated-error' ? /Project access denied/ : /Project membership not verified/);
+  state.insertionError = null; state.failRaceRead = false; state.member = true;
+  assert.equal(github.recover({ receipt }, io).status, 'complete');
+  assert.equal(state.creations, 1);
+  assert.equal(state.insertions, 1);
+});
+
+test('single-issue recovery also resolves a concurrent insertion without recreating the issue', () => {
+  const state = { failInsertion: true };
+  const { input, io, receipt } = approved(state);
+  assert.equal(github.publish(input, io).status, 'partial_failure');
+  state.failInsertion = false;
+  state.insertionError = 'Content already exists';
+  state.raceMember = true;
+  assert.equal(github.recover({ receipt }, io).status, 'complete');
+  assert.equal(state.creations, 1);
+  assert.equal(state.insertions, 2);
+});
+
+test('only the specific duplicate-content response is eligible for automatic verification', () => {
+  const failures = [
+    { message: 'Content already exists but permission denied' },
+    { message: 'Network failure: Content already exists' },
+    { message: 'gh: Content already exists (createIssue)' },
+    { errors: [{ message: 'Content already exists' }, { message: 'Forbidden' }] },
+    { errors: [{ message: 'Content already exists', path: ['createIssue'] }] },
+  ];
+  for (const failure of failures) {
+    let reads = 0;
+    const io = { run(command, args, input) {
+      const { query } = JSON.parse(input);
+      if (query.includes('addProjectV2ItemById')) {
+        if (failure.errors) return JSON.stringify({ errors: failure.errors });
+        throw new Error(failure.message);
+      }
+      reads++;
+      return JSON.stringify({ data: { node: { projectItems: { nodes: [], pageInfo: { hasNextPage: false } } } } });
+    } };
+    assert.throws(() => github.ensureMembership(io, 'P', 'I'));
+    assert.equal(reads, 1, JSON.stringify(failure));
+  }
+});
+
 test('receipt boundary rejects relative and repository-contained paths before writes, including from nested cwd', () => {
   const { input } = approved();
   const relative = `to-backlog-rejected-${process.pid}.json`;
@@ -407,6 +478,10 @@ test('common instructions retain conversation, confirmation and cancellation bou
   assert.match(skill, /new full confirmation/);
   assert.match(skill, /explicit approval/);
   assert.match(skill, /If public, explicitly warn/);
+  const provider = fs.readFileSync(path.join(root, 'skills/universal/to-backlog/providers/github.md'), 'utf8');
+  assert.match(provider, /`publish`, `publish-set`, and `continue-set`/);
+  assert.match(provider, /Only confirmed membership in the requested\nProject counts as success/);
+  assert.match(provider, /both Claude Code and opencode/);
   assert.doesNotMatch(skill, /provider ===|provider: "github"/);
   for (const harness of ['claude', 'opencode']) {
     const wrapper = fs.readFileSync(path.join(root, `commands/${harness}/to-backlog.md`), 'utf8');

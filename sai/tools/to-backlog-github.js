@@ -38,7 +38,7 @@ function receiptPath(file) {
 
 function api(io, query, variables) {
   const result = JSON.parse(io.run('gh', ['api', 'graphql', '--hostname', 'github.com', '--input', '-'], JSON.stringify({ query, variables })));
-  if (result.errors?.length || !result.data) throw new Error(`GitHub query failed: ${JSON.stringify(result.errors || result)}`);
+  if (result.errors?.length || !result.data) throw Object.assign(new Error(`GitHub query failed: ${JSON.stringify(result.errors || result)}`), { graphqlErrors: result.errors });
   return result.data;
 }
 
@@ -91,6 +91,24 @@ function verifyMembership(io, projectId, issueId, itemId) {
     if (found) return found;
   }
   return undefined;
+}
+
+function ensureMembership(io, projectId, issueId, beforeInsert = () => {}) {
+  if (membership(io, projectId, issueId)) return;
+  beforeInsert();
+  let itemId;
+  try {
+    const added = api(io, 'mutation($project:ID!,$issue:ID!){addProjectV2ItemById(input:{projectId:$project,contentId:$issue}){item{id}}}', { project: projectId, issue: issueId });
+    itemId = added.addProjectV2ItemById?.item?.id;
+  } catch (error) {
+    const alreadyExists = error.graphqlErrors?.length
+      ? error.graphqlErrors.every(entry => entry.message === 'Content already exists' && (!entry.path || entry.path[0] === 'addProjectV2ItemById'))
+      : /^(?:gh:\s*)*Content already exists(?: \(addProjectV2ItemById\))?$/.test(error.message.trim());
+    if (!alreadyExists) throw error;
+    // Auto-add may win after our first read. Only a fresh issue-side read
+    // can establish membership when the mutation returns no usable item id.
+  }
+  if (!verifyMembership(io, projectId, issueId, itemId)) throw new Error('Project membership not verified');
 }
 
 function repository(value) {
@@ -177,13 +195,10 @@ function insert(receipt, file, io) {
     const current = issues(receipt, io).find(issue => issue.id === receipt.issue.id && issue.url === receipt.issue.url);
     if (!current) throw new Error('Created issue could not be verified');
     if (current.title !== receipt.proposal.title || current.body !== receipt.proposal.description) throw new Error('Issue content changed; fresh review is required before insertion');
-    if (!membership(io, receipt.proposal.project.id, receipt.issue.id)) {
+    ensureMembership(io, receipt.proposal.project.id, receipt.issue.id, () => {
       receipt.stage = 'insertion_pending';
       save(file, receipt);
-      const data = api(io, 'mutation($project:ID!,$issue:ID!){addProjectV2ItemById(input:{projectId:$project,contentId:$issue}){item{id}}}', { project: receipt.proposal.project.id, issue: receipt.issue.id });
-      // A response without an item id is verified by the issue-side read instead.
-      if (!verifyMembership(io, receipt.proposal.project.id, receipt.issue.id, data.addProjectV2ItemById?.item?.id)) throw new Error('Project membership not verified');
-    }
+    });
     receipt.stage = 'complete';
     save(file, receipt);
     return report(receipt);
@@ -325,7 +340,7 @@ function lookupSlice(request, io) {
   });
   return { status: candidates.length === 1 ? 'complete' : 'needs_input', candidates };
 }
-module.exports = { query, publish, recover, pages, membership, verifyMembership, inspect, digest, receiptPath, save, api, 'read-update': readUpdate, 'query-update': queryUpdate, update, 'recover-update': recoverUpdate,
+module.exports = { query, publish, recover, pages, membership, verifyMembership, ensureMembership, inspect, digest, receiptPath, save, api, 'read-update': readUpdate, 'query-update': queryUpdate, update, 'recover-update': recoverUpdate,
   'lookup-slice': lookupSlice,
   'query-set': set.query, 'publish-set': set.publish, 'recover-set': set.recover, 'continue-set': set.continueSet,
   'inspect-assignment': assignment.inspect, 'propose-assignment': assignment.propose, assign: assignment.assign, 'verify-assignment': assignment.verify };
