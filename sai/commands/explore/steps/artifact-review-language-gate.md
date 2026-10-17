@@ -12,7 +12,7 @@ When a turn's primary deliverable is a review of an existing OpenSpec artifact a
 
 **Fast-track skip**: If the fast-track signal is active, produce the review directly in English with no question.
 
-**Non-English gate**: If the turn's dominant natural language is not English, ask exactly one question with two options. Translate the entire question prompt and the non-English option label into the user's current language; only the literal word `English` stays verbatim. The English option is the default: emit it first, labelled `English (Recommended)`. Produce **no** review content until the user answers. Translate this English template rather than printing it verbatim:
+**Non-English gate**: If the turn's dominant natural language is not English, ask exactly one question with two options. Present it through the harness-native picker per the "Closed-choice prompts" rule in `sai/policies/remember.md` (`AskUserQuestion` on Claude Code, `question` on opencode). Translate the entire question prompt and the non-English option label into the user's current language; only the literal word `English` stays verbatim. The English option is the default: emit it first, labelled `English (Recommended)`. Produce **no** review content until the user answers. Translate this English template rather than printing it verbatim:
 ```
 You're about to review an OpenSpec artifact. Which language should the review be in?
 - English (Recommended)

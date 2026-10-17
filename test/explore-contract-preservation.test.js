@@ -156,7 +156,7 @@ test('open decisions: the step pins one notice, a closed-choice question per dec
   assert.match(step, /show this notice once per idea/);
   assert.equal(step.match(/^> Some decisions are still open\./gm).length, 1, 'the notice text is pinned once');
   assert.match(step, /will be asked during planning or implementation, and that question stops an unattended route/);
-  assert.match(step, /Ask each open decision once, one decision per question, as a closed-choice prompt through the native picker/);
+  assert.match(step, /Ask each open decision once, one decision per question\. Present it through the harness-native picker per the "Closed-choice prompts" rule/);
   assert.match(step, /sai\/policies\/remember\.md/);
   assert.match(step, /@sai\/policies\/question-context\.md/);
   assert.match(step, /followed by `Leave it open` as the last option/);

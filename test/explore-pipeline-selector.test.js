@@ -220,7 +220,7 @@ test('Claude Code and opencode share the native route-picker contract', () => {
   const instructions = spec('sai/commands/explore/instructions.md');
   const selector = spec('sai/commands/explore/steps/route-selector.md');
   const routeChoice = selector.slice(
-    selector.indexOf('## Native route picker'),
+    selector.indexOf('\n## Native route picker\n'),
     selector.indexOf('**Direct Build continuation authorization'),
   );
 
@@ -231,7 +231,7 @@ test('Claude Code and opencode share the native route-picker contract', () => {
       `${harness} wrapper must not implement a separate route-choice path`);
   }
   assert.match(instructions, /picker may be presented in the block-emission turn only after every proposal block is visible and its complete inventory is recorded/i);
-  assert.match(routeChoice, /Claude Code uses `AskUserQuestion`; opencode uses the `question` tool/i);
+  assert.match(routeChoice, /"Closed-choice prompts" rule in `sai\/policies\/remember\.md` \(`AskUserQuestion` on Claude Code, `question` on opencode\)/);
   assert.match(routeChoice, /cancelled picker, an absent response, an `Other`\/free-text answer/i);
   assert.match(routeChoice, /native picker answer is the only route-choice input/i);
   assert.match(routeChoice, /Plan - Unattended[\s\S]*Direct Build - Unattended[\s\S]*Manual/);
