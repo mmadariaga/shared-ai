@@ -186,7 +186,7 @@ The explore crystallization close SHALL record the `explore-slice@1` inventory o
 
 ### Requirement: Direct Build resumption consumes the first pending parked cursor
 
-With no active slice, `resume-direct-build` SHALL resume only when the first pending inventory entry has a Direct Build parked cursor. It SHALL set that entry active, restore its saved stage and Direct Build mode, consume its parked cursor, preserve done, and return `next.follow` to `sai/commands/explore/steps/pipeline-direct-build.md`. It SHALL ignore any legacy `pick` and require no fresh route-choice activation. With active set it SHALL reject `ALREADY_RUNNING`; without a first-pending Direct Build parked cursor it SHALL reject `NO_PENDING_DIRECT_BUILD`. Rejections SHALL preserve state.
+With no active slice, `resume-direct-build` SHALL resume only when the first pending inventory entry has a Direct Build parked cursor. It SHALL set that entry active, restore its saved stage and Direct Build mode, consume its parked cursor, preserve done, and return `next.follow` to `sai/commands/explore/steps/pipeline-direct-build.md`. It SHALL ignore any legacy `pick` and require no fresh route-choice activation. With active set it SHALL reject `ALREADY_RUNNING`; without a first-pending Direct Build parked cursor it SHALL reject `NO_PENDING_DIRECT_BUILD`. Rejections SHALL preserve state. A parked Direct Build cursor SHALL be resumable only inside the `/sai-explore` invocation that parked it: the `explore-slice@1` reset that a new invocation runs SHALL discard the parked cursors together with the rest of the slice state.
 
 #### Scenario: Each Direct Build stage resumes after fail or cancel
 
@@ -207,3 +207,8 @@ With no active slice, `resume-direct-build` SHALL resume only when the first pen
 
 - **WHEN** `resume-direct-build` is emitted while a slice is active
 - **THEN** the machine rejects `ALREADY_RUNNING` without another execution
+
+#### Scenario: A new invocation discards a parked Direct Build
+
+- **WHEN** a Direct Build slice was parked in an earlier `/sai-explore` invocation and the user runs `/sai-explore` again in the same chat
+- **THEN** the invocation reset of `explore-slice@1` discards the parked cursor, and `resume-direct-build` in the new invocation rejects `NO_PENDING_DIRECT_BUILD` without resuming that slice
