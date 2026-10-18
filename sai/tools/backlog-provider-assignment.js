@@ -5,13 +5,15 @@ function bind(platform, mechanics) {
   function inspect(request, io) {
     const state = mechanics.inspect(request, io);
     const selected = state.result.item, parent = state.result.sources?.find(source => source.role === 'parent-context')?.item;
-    if (state.result.status !== 'complete' || !selected?.parent || !parent || selected.correspondence?.role === 'parent') throw new Error('Assignment requires a verified child and parent; parent responsibility is preserved');
+    // A standalone leaf has no parent, and only evidence the adapter proved natively may stand in for the parent and marker.
+    const leaf = state.standalone === true && !selected?.parent && !selected?.correspondence;
+    if (state.result.status !== 'complete' || !selected || selected.correspondence?.role === 'parent' || (!leaf && (!selected.parent || !parent))) throw new Error('Assignment requires a verified child and parent; parent responsibility is preserved');
     const value = selected.correspondence;
     if (value && (!parent.correspondence || parent.correspondence.role !== 'parent' || digest(parent.correspondence.slices) !== digest(value.slices))) throw new Error('Parent does not confirm the selected child correspondence');
-    if (!value && !mechanics.native) throw new Error('Written child correspondence is required');
+    if (!value && !leaf && !mechanics.native) throw new Error('Written child correspondence is required');
     const validId = id => platform === 'gitlab' ? Number.isSafeInteger(id) && id > 0 : typeof id === 'string' && !!id;
     if (!Array.isArray(selected.assignees) || selected.assignees.some(id => !validId(id)) || new Set(selected.assignees).size !== selected.assignees.length || !validId(state.actor)) throw new Error('Incomplete assignment identity');
-    return { status: 'complete', issue: selected.url, parent: parent.url, actor: state.actor, assignees: selected.assignees.slice().sort(), correspondence: value };
+    return { status: 'complete', issue: selected.url, parent: leaf ? null : parent.url, actor: state.actor, assignees: selected.assignees.slice().sort(), correspondence: value };
   }
   function propose(request, io) {
     const current = inspect(request, io);
@@ -29,7 +31,7 @@ function bind(platform, mechanics) {
     const current = inspect(request, io), expected = request.expected_assignees || (request.choice === 'keep' ? [] : [current.actor]);
     const valid = Array.isArray(expected) && expected.length && expected.every(id => id) && new Set(expected).size === expected.length;
     const target = valid ? expected.slice().sort() : [];
-    let verified = !!valid && digest(target) === digest(current.assignees);
+    let verified = !!valid && request.expected_parent === current.parent && digest(target) === digest(current.assignees);
     if (request.choice === 'keep') verified = verified && request.confirmation === digest({ ...current, choice: 'keep', target });
     else verified = verified && target.length === 1 && target[0] === current.actor;
     return { ...current, status: verified ? 'complete' : 'needs_input', reason: 'assignment-verification', verified };
@@ -38,7 +40,7 @@ function bind(platform, mechanics) {
     if (request.choice === 'keep') throw new Error('Keeping responsibility is read-only; use verify-assignment');
     const ready = propose(request, io);
     if (ready.status !== 'ready' || ready.confirmation !== request.confirmation) throw new Error('Exact assignment approval and unchanged responsibility required');
-    try { mechanics.assign(request, ready.proposal, io); return verify(request, io); }
+    try { mechanics.assign(request, ready.proposal, io); return verify({ ...request, expected_parent: ready.proposal.parent }, io); }
     catch (error) {
       // A provider rejection that proves nothing changed is definite; retrying it cannot succeed.
       if (error.rejected === true) return { status: 'rejected', issue: ready.proposal.issue, message: `No change was applied: ${error.message}` };

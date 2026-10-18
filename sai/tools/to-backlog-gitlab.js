@@ -178,15 +178,37 @@ const set = require('./backlog-provider-set').bind('gitlab', {
     source.api(p, `projects/${p.repositoryId}/issues/${item.number}/links`, io, 'POST', { target_project_id: p.repositoryId, target_issue_iid: other.number, link_type: 'is_blocked_by' });
   }
 });
+const HIERARCHY = 'query($path:ID!,$iid:String!){namespace(fullPath:$path){workItem(iid:$iid){widgets{type ... on WorkItemWidgetHierarchy{parent{id} children(first:1){nodes{id}}}}}}}';
+// Only a complete response decides: a missing widget, parent field or children page is never read as "none".
+function readHierarchy(ref, io) {
+  const unverified = () => new Error('GitLab work item hierarchy could not be verified');
+  let response;
+  try { response = source.api(ref.target, 'graphql', io, 'POST', { query: HIERARCHY, variables: { path: ref.repository, iid: String(ref.number) } }); }
+  catch { throw unverified(); }
+  const widget = response?.errors?.length ? null : response?.data?.namespace?.workItem?.widgets?.find(item => item?.type === 'HIERARCHY');
+  if (!widget || !Object.hasOwn(widget, 'parent') || (widget.parent !== null && typeof widget.parent?.id !== 'string') || !Array.isArray(widget.children?.nodes)) throw unverified();
+  return { hasParent: widget.parent !== null, hasChildren: widget.children.nodes.length > 0 };
+}
+/** A work item without a written marker, native parent or native children; null when another flow decides. */
+function standaloneLeaf(ref, io) {
+  const row = source.issue(ref.target, ref.number, io, true);
+  if (require('./backlog-slice-identity').decode(row.description ?? '')) return null;
+  const hierarchy = readHierarchy(ref, io);
+  if (hierarchy.hasParent) return null;
+  if (hierarchy.hasChildren) throw new Error('Selected work item has child items; parent responsibility is preserved');
+  if (!Array.isArray(row.assignees) || row.assignees.some(actor => !Number.isSafeInteger(actor?.id) || actor.id < 1)) throw new Error('Incomplete GitLab assignees');
+  return { status: 'complete', item: { url: row.web_url, assignees: row.assignees.map(actor => actor.id) } };
+}
 const assignment = require('./backlog-provider-assignment').bind('gitlab', {
   native: false,
   inspect: (request, io) => {
     const ref = source.resolve(request.reference, io);
-    return { result: source.readSet(ref, io), actor: inspect(ref.target.url, io).actor };
+    const actor = inspect(ref.target.url, io).actor, leaf = standaloneLeaf(ref, io);
+    return leaf ? { result: leaf, actor, standalone: true } : { result: source.readSet(ref, io), actor };
   },
   assign: (request, proposal, io) => {
     const ref = source.resolve(request.reference, io);
-    const current = source.issue(ref.target, ref.number, io);
+    const current = source.issue(ref.target, ref.number, io, true);
     if (!Array.isArray(current.assignees) || digest(current.assignees.map(actor => actor.id).sort()) !== digest(proposal.assignees)) throw new Error('GitLab responsibility changed');
     source.api(ref.target, `projects/${ref.target.id}/issues/${ref.number}`, io, 'PUT', { assignee_ids: proposal.target });
   }
