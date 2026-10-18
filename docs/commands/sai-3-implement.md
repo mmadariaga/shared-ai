@@ -2,7 +2,7 @@
 
 ## Command function
 
-Implements a change's planning artifacts (`proposal.md`, `specs/`, `design.md`, `tasks.md`, `interfaces.md`) from start to finish with no human in the loop. It writes the tests, writes the code, runs the checks, and makes one local commit per step. It works on Claude Code and opencode. A run interrupted before the command was renamed cannot resume; the next run starts fresh.
+Implements a change's planning artifacts (`proposal.md`, `specs/`, `design.md`, `tasks.md`, `interfaces.md`) from start to finish with no human in the loop. It writes the tests, writes the code, runs the checks, and makes one local commit per step. It works on Claude Code and opencode.
 
 ## Flags and behavior modifiers
 
@@ -10,9 +10,9 @@ Implements a change's planning artifacts (`proposal.md`, `specs/`, `design.md`, 
 
 ## In detail
 
-Without a change name, the command takes the only active change that has a `tasks.md`; with none or several, it prints the candidates and stops so you can name one. The change must have `proposal.md`, `tasks.md`, and at least one file under `specs/`. When one is missing, the command prints which items are absent and stops before it starts. This is not an escalation. When every task in `tasks.md` is already checked and no audit report holds an open finding, it does no new work, runs the suites, and closes.
+Without a change name, the command takes the only active change that has a `tasks.md`; with none or several, it prints the candidates and stops so you can name one. The change must have `proposal.md`, `tasks.md`, and at least one file under `specs/`. When one is missing, the command prints which items are absent and stops before it starts. This is not an escalation. When every task in `tasks.md` is already checked and no audit report holds an open fixable finding, it does no new work, runs the suites, and closes.
 
-Before the first step, the command records which unit and integration tests already fail. Those failures are not obstacles. At the end it runs every unit and integration suite and compares the result with that record. End-to-end suites never run inside the command; leave them to your CI.
+Before the first step, the command records which unit and integration tests already fail, using the `Test Command` field of `tasks.md` (or, when it is missing, `SAI_LEARNINGS.md`, `design.md`, or the project's build files). Those failures are not obstacles. At the end it runs every unit and integration suite and compares the result with that record. End-to-end suites never run inside the command; leave them to your CI.
 
 The command works in steps. A step is one cycle of RED, GREEN, review, and commit, and the command chooses its size:
 
@@ -34,6 +34,8 @@ When the 3 attempts are spent, the command stops at once and asks you, without m
 The command keeps its run state in the `sai-state` store, as identifiers and file paths only. The free text of the run (deviations, overrides, worker reports, baselines) lives in files in a run directory inside the repository's ignored `.tmp/{change}/run-*/` folder, so workers can write there without leaving the project, and workers return only the path of their report. After a context compaction, the command reads the store and the files it points to and carries on. The store is keyed by the change, so a later session on the same machine finds an interrupted run and resumes it; run one build per change at a time. When the store is gone (another machine, or a cleared temporary directory), it rebuilds progress from `git log` and the `tasks.md` checkboxes and continues at the first pending step; the step that was in progress restarts with its counters at zero.
 
 When the run ends, whether it completed, you stopped it, or the question went unanswered, the command writes `openspec/changes/{change}/build-log.md`: the work done, the deviations and overrides, the suite result against the baseline, the pending findings left by the step reviews, the audit findings fixed and those left open, and the blocker with the options offered. The file is the record for a later review, because the run directory is scratch. It stays on disk next to the change's artifacts, and the command never stages it.
+
+When a deviation is a project fact, such as a package, command, or configuration rule, the command also records it in the root `SAI_LEARNINGS.md`. That file stays uncommitted, and the command creates no file when no deviation qualifies.
 
 When [`/sai-deep-review`](sai-deep-review.md) runs this command as its fix segment, it hands over the reports it regenerated and marked: the command applies only those reports, treats them as the run's own paths, and commits them with the first step. A Question that carries your answer is applied as a finding whose correction is that answer.
 

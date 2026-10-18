@@ -6,10 +6,10 @@ Reconstructs the basic documentation for a change that was made directly in code
 
 ## Flags and behavior modifiers
 
-- `--staged`: uses changes staged for commit as the information source.
-- `--unstaged`: uses local changes that are not yet staged for commit.
+- `--staged`: uses changes staged for commit as the information source. It stops when nothing is staged.
+- `--unstaged`: uses local changes that are not yet staged for commit, including untracked files.
 - `--diff <sha>`: uses the difference between the current state and the specified commit.
-- `--fast-track`: skips generated reconciliation questions, automatically continues after reporting specification conflicts, and accepts an already established change name without confirmation.
+- `--fast-track`: skips generated reconciliation questions, automatically continues after reporting specification conflicts, and accepts the change name from a `/sai-explore` block without confirmation, once a diff source is given.
 
 ## In detail
 
@@ -23,7 +23,7 @@ count as a pass. Exception metadata stays temporary and is never archived.
 
 The user identifies the manual change to regularize or chooses a change source using the available selector. The command studies that difference to separate what can be demonstrated from the code from what would only be an assumption.
 
-It then interviews the user about the original intent: what problem was meant to be solved, why that behavior was chosen, and which boundaries mattered. It also looks for possible contradictions with existing documentation and presents them before drafting anything.
+It then interviews the user about the original intent: what problem was meant to be solved, why that behavior was chosen, and which boundaries mattered. It also looks for possible contradictions with existing documentation and presents them before drafting anything. Answers already present in a `/sai-explore` handoff block are reused, and their questions are skipped.
 
 Using the answers and available evidence, it prepares a proposal and behavior criteria that can be justified. It does not invent technical decisions that are unsupported by the change or the answers. For that reason, it reconstructs the basic documentation but does not automatically create a detailed design, a complete task list, or interface contracts that would require new decisions.
 

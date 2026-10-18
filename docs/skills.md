@@ -2,19 +2,8 @@
 
 Skills are reusable behavior modules loaded by wrappers and subagents at runtime. SAI skills live under `skills/` and are installed globally by the main installer. OpenSpec skills are project-local and are installed by `openspec init` during project setup.
 
-## Explicit workflow skills
-
-These run in the current conversation in Claude Code and opencode without
-OpenSpec or SAI's fresh-context boot. Invoke them explicitly; imports never
-authorize implementation, and publication always needs content approval.
-
-| Skill | Purpose | Input |
-|-------|---------|-------|
-| [`new-change-branch`](commands/new-change-branch.md) | Create and switch to a local change branch named with underscores (`<type>/<id>_<name_with_underscores>`); preserve existing work. | Current discussion, then your base selection |
-| [`from-backlog`](commands/from-backlog.md) | Import a GitHub/GitLab issue or Azure Boards work item for discussion. | One reference |
-| [`from-next-backlog-item`](commands/from-next-backlog-item.md) | Select a highest-priority eligible backlog item and import it. | No arguments; missing pile context is asked |
-| [`to-backlog`](commands/to-backlog.md) | Create an item or update the originating item's title and description. | Agreed conversation context and approved destination/content |
-| [`to-pr`](commands/to-pr.md) | Publish a GitHub PR, GitLab MR, or Azure Repos PR from committed changes. | Destination/target choices; separate publication and push approvals |
+The backlog and branch workflow skills are described in the
+[backlog command reference](backlog-commands.md).
 
 ## Behavior skills
 

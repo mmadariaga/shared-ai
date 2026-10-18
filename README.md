@@ -159,19 +159,20 @@ retain the current conversation in Claude Code and opencode and need no OpenSpec
 | [`/from-next-backlog-item`](docs/commands/from-next-backlog-item.md) | Select and import a highest-priority eligible item from a chosen backlog; takes no arguments. |
 | [`/to-backlog`](docs/commands/to-backlog.md) | Capture agreed work in a new item, or update the originating item's title and description, after approval. |
 | [`/new-change-branch`](docs/commands/new-change-branch.md) | Create and switch to a local change branch from a base you select; reuse the current discussion for its name. |
-| [`/to-pr`](docs/commands/to-pr.md) | Create/update a GitHub PR, GitLab MR, or Azure Repos PR from committed changes; publication and push are approved separately. |
+| [`/to-pr`](docs/commands/to-pr.md) | Create/update a GitHub PR, GitLab MR, or Azure Repos PR from committed changes; push and publication share one approval. New GitHub/GitLab requests are assigned to you, get matching existing labels, and close their linked issues. |
 
 Use `/from-backlog` when you already know the item, or `/from-next-backlog-item`
 to pick from your backlog. Import is read-only; you decide what to do next.
 Use `/to-backlog` to save an agreed idea for later. If the conversation started
 from an existing item, it updates that item instead of creating another.
 
-Creating a branch is local; PR publication requires approval, and any push is
-approved separately.
+Creating a branch is local; PR publication and any push it needs require your
+approval.
 
 Importing or publishing requires Node.js and an authenticated provider CLI: `gh`, `glab`, or Azure CLI
 with the azure-devops extension. See [Backlog workflows](docs/backlog.md) for
-supported references, destination settings, ordering limits, and recovery.
+supported references, destination settings, ordering limits, and recovery, and the
+[backlog command reference](docs/backlog-commands.md) for options.
 
 ## Cost-Effective Strategies
 
@@ -287,7 +288,7 @@ command or agent overrides the global file with the same name:
 Keep the original `Fetch @` imports when editing overrides so the command still
 loads its workflow. Model customization preserves your other edits.
 
-To pre-answer the language and backlog provider questions, run `setup` and choose
+To pre-answer the language, backlog provider, and PR provider questions, run `setup` and choose
 **Project settings**. See [project settings](docs/project-settings.md).
 
 ### Default opencode models

@@ -16,4 +16,4 @@ The command reviews which files are staged and studies the project's last 20 com
 
 Using that information, it drafts a message that accurately describes what will be saved. Before executing anything, it shows a summary of the staged files and changes so the user can confirm that the set is correct.
 
-The user decides whether to authorize the commit. If approved, the command creates it with the proposed message. If the user rejects it or requests changes, no commit is created until new authorization is received. When sensitive-looking files are staged, it asks for confirmation before continuing. The command does not invent changes or stage files that were not already ready.
+The user decides whether to authorize the commit. `yes` creates it with the proposed message. `Allow on this session` does the same and also authorizes later commits in the same session without asking again. If the user rejects it or requests changes, no commit is created until new authorization is received. When sensitive-looking files are staged, it asks for confirmation before continuing. The command does not invent changes or stage files that were not already ready.

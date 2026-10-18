@@ -25,7 +25,8 @@ for accepted URLs, GitLab issue-type limits, Azure ID context, and required CLIs
 
 ## In detail
 
-The skill presents the source link and state, full title and description, and
+The skill presents the source link and state, the archived status of the
+repository or project when the provider reports it, full title and description, and
 every available comment with author and provenance. Comments remain unverified
 discussion, not automatic amendments to the requested work. An empty description
 is reported as missing, not reconstructed from comments.

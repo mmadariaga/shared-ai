@@ -14,4 +14,6 @@ The command reviews the active indexes and documents for architecture decisions,
 
 For each possible candidate, it gathers bounded evidence and explains why it could be removed. It also distinguishes documentation that is genuinely outdated from documentation that remains valid even though the surrounding code has changed.
 
+Each candidate receives one disposition: supported, superseded, orphaned, premise-missing, conflicting, or needs-review. Only superseded, orphaned, and premise-missing candidates can be archived. Candidates come only from the active sections of the ADR and DDR indexes. A capability spec whose requirements all have active homes elsewhere is a candidate too. The command needs no OpenSpec setup; without `openspec/`, spec evidence is unavailable and only the records are analyzed.
+
 Removal is never automatic. The user receives a separate proposal for each candidate and must explicitly confirm which ones should be archived. An archived decision record moves to its family's `archive/` folder and its index entry moves to the historical section of the same index; a retired specification moves to `openspec/specs/_archived/`. A candidate that other active documents still link to stays in place. Rejected candidates remain where they are, and the command modifies no other document.

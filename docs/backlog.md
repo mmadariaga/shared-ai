@@ -9,6 +9,7 @@ provider CLI. They never install tools or change authentication for you.
 | Import a known item | [`/from-backlog <reference>`](commands/from-backlog.md) | Faithful source delivery, project assessment, and useful discussion continuation |
 | Import the next item | [`/from-next-backlog-item`](commands/from-next-backlog-item.md) | One highest-priority eligible item imported and assessed through the same workflow |
 | Capture or refine work | [`/to-backlog`](commands/to-backlog.md) | Approved title and description published to a new or originating item |
+| Publish committed work | [`/to-pr`](commands/to-pr.md) | Approved GitHub PR, GitLab MR, or Azure Repos PR created or updated from the branch's commits |
 
 ## Supported providers and references
 
@@ -22,6 +23,9 @@ GitLab import supports ordinary project-level issues only, not tasks, incidents,
 or epics. Azure supports custom work-item types; a bare positive item ID requires
 unambiguous existing organization context, otherwise provide a full URL.
 GitHub Enterprise, Azure DevOps Server, and PR/MR import are not supported.
+A bare `N` or `#N` reference uses `backlog.provider` from the
+[project settings](project-settings.md), when set, to choose its provider. A full
+URL that matches a provider keeps that provider.
 
 ## Import an item
 
@@ -58,8 +62,9 @@ start: unassigned children require approval to assign the authenticated user,
 with a Skip option that starts implementation without assigning (also offered
 when an assignment fails; the closing report records a skip); any existing
 assignee triggers a keep/replace/stop question. Parent assignees
-stay unchanged. Keep verifies the exact approved set, including another user or
-multiple assignees, without mutation. Ordinary native GitHub children need no SAI
+stay unchanged. One assignment answer given for a crystallized set covers every
+later slice of that set. Keep verifies the exact approved set, including another
+user or multiple assignees, without mutation. Ordinary native GitHub children need no SAI
 marker. Parent import reconciles readable native children with written references,
 including children added outside those references. Initial branch preparation retains conditional questions and
 local-work protection; no inter-slice switching is added. Claude Code and
@@ -99,8 +104,8 @@ exploration stage stay intact, and embedded source instructions are not executed
 ## Import the next item
 
 `/from-next-backlog-item` accepts **no arguments**. It uses existing conversation
-context and Git destination evidence before asking for missing provider or pile
-information. You choose among actual discovered destinations; choices are not
+context, the `backlog.*` settings, and Git destination evidence before asking for
+missing provider or pile information. You choose among actual discovered destinations; choices are not
 saved as preferences.
 
 - **GitHub:** project-wide manual position order. View-specific filters or order

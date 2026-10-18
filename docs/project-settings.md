@@ -1,6 +1,6 @@
 # Project settings
 
-`.sai/settings.jsonc` in the project root holds committed, per-project answers to questions that commands otherwise ask each run. It is the same file for Claude Code and opencode. Edit it with the **Project settings** screen of `node bin/install setup`, or by hand.
+`.sai/settings.jsonc` in the project root holds committed, per-project answers to questions that commands otherwise ask each run. It is the same file for Claude Code and opencode. Edit it with the **Project settings** screen of `npx github:mmadariaga/shared-ai setup`, or by hand.
 
 The file is JSON with comments and trailing commas allowed. Setting ids are dotted key paths, so `backlog.provider` is the key `provider` inside the object `backlog`:
 
@@ -59,7 +59,7 @@ Every reader looks for `.sai/settings.jsonc` in the git top-level directory of t
 
 ## Project settings screen
 
-Run `node bin/install setup` and choose **Project settings** in the post-setup menu. The screen lists four settings with their current values:
+Run `npx github:mmadariaga/shared-ai setup` and choose **Project settings** in the post-setup menu. The screen lists four settings with their current values:
 
 - `explore.readyToProposeLanguage`: `ask`, `English`, or a language name you type.
 - `explore.overviewLanguage`: `ask`, `English`, `none`, or a language name you type.

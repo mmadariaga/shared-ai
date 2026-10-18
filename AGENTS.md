@@ -11,8 +11,9 @@ Some `sai-*` commands wrap the OpenSpec skill `openspec-explore`; others are SAI
 ## Main pipeline
 
 User-facing usage and flags are documented in [README.md](README.md),
-[the numbered reference](docs/sequential-pipeline.md), and
-[the on-demand reference](docs/on-demand-commands.md). Each command has a
+[the numbered reference](docs/sequential-pipeline.md),
+[the on-demand reference](docs/on-demand-commands.md), and
+[the backlog reference](docs/backlog-commands.md). Each command has a
 dedicated usage page under `docs/commands/`; keep those pages and their index
 links aligned when changing a user-visible contract.
 
@@ -198,9 +199,7 @@ whole file. Mechanical checks supplement independent coordinator review and
 authorize no mutation. Strategy explanations appear once per strategy or
 revision; closure retains actual outcomes, failures and pending state. Models
 are user-configured per role, so success is measured in model turns, tool
-calls, and tokens per run, not minutes. See
-`docs/merge-efficiency-measurements.md` for comparable measurement evidence
-and the separate full-runtime comparison protocol for both harnesses.
+calls, and tokens per run, not minutes.
 
 ### Direct Build (unattended) selector option (crystallization-close)
 Direct Build (unattended) mutation ownership is the existing `sai-backfill-worker` and

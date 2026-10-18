@@ -4,8 +4,6 @@ All artifact paths below resolve under `openspec/changes/{change-name}/` (referr
 
 These are the numbered phase commands (continuous sequence 1–7). [`/sai-build`](commands/sai-build.md) chains `implement` → `review` → a second `implement` run for the findings it selects, while [`/sai-deep-review`](commands/sai-deep-review.md) chains `review` → whichever audits its triage recommends → an `implement` run for the findings you select. The README emphasizes the composed workflow; this file is the full phase-by-phase reference.
 
-Audit commands and workers now use 5 for security, 6 for performance, and 7 for accessibility on Claude Code and OpenCode. Previous names have no aliases. On upgrade, the installer transfers audit model settings and preset entries before retiring managed old files; an existing new destination keeps its own settings. Customized old file bodies are kept with a `Pending resolution` notice. Review and move those custom instructions to the new file yourself before removing the old file; migration is not complete while such copies remain.
-
 | Command | Input | Output | Purpose |
 |---------|-------|--------|---------|
 | [`/sai-1-spec`](commands/sai-1-spec.md) | `Ready to Propose` block, or change name + feedback | `{c}/proposal.md`, `specs/**` | Paste the `Ready to Propose` block from `/sai-explore` to create the change, or name an existing change to refine it. The AI writes a proposal and acceptance criteria for you to review; running `/sai-2-design` approves them. Creates only proposal/spec artifacts plus permitted glossary updates. |
@@ -23,7 +21,7 @@ Every numbered phase runs the same shape: a **coordinator** in your main session
 Both harnesses preserve the same durable artifacts, gate wordings, and stop texts. Claude Code and opencode differ only in dispatch mechanics and model IDs.
 
 - `/sai-2-design` — the coordinator takes its model from the wrapper frontmatter, and the design worker (`sai-2-design-worker`) takes its model from its installed agent file, seeded from the manifest's `worker-matrix`. The fixed notice is acknowledged with `continue_after_notice`. Design ends at design completion — run `/sai-3-implement {name}` in a new chat.
-- `/sai-3-implement` and `/sai-4-review` — their coordinators run in your main session outside the shared orchestration; separate live workers own tests, production changes, and the review. The coordinator commits locally per step and stops only for force majeure.
+- `/sai-3-implement` and `/sai-4-review` — their coordinators run in your main session outside the shared orchestration; separate live workers own tests, production changes, and the review. The coordinator commits locally per step and stops only for force majeure. Running `/sai-3-implement` again for a change whose run was interrupted resumes that run.
 - `/sai-commit`, `/sai-merge` — same shape without any openspec dependency. The worker drafts, the coordinator alone runs git.
 
 > Full routing internals — envelopes, bindings, worker matrix, per-phase ownership boundaries — live in [AGENTS.md](../AGENTS.md), not here.

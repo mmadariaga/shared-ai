@@ -17,12 +17,16 @@ information is missing or ambiguous.
   identifier is preserved exactly. Existing branches keep their names.
 - Base: you always choose a suggested reference or enter one. Suggestions include
   the current branch, a detected parent, and available `main`/`master` references.
-  A detected parent is a convenience, not proof of historical origin. Existing
+  A detected parent is the nearest tip among the 20 most recent first-parent
+  commits, a convenience and not proof of historical origin. Existing
   remote-tracking references may be stale; the skill does not fetch. In both
   Claude Code and opencode, suggested options show short names such as `main`
   and `origin/main`, with localized local/remote qualifiers when names coincide.
   Each option still selects its full, exact Git reference. This display change
   applies only to suggested options; free-text input and option order stay unchanged.
+  Claude Code shows at most four options per page: with more than four bases, the
+  first page carries three bases and a `More` option. A detached HEAD has no
+  current-branch option.
 
 ## In detail
 

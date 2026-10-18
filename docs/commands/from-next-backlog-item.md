@@ -10,8 +10,9 @@ setup and writes no files or remote data.
 
 Invoke `/from-next-backlog-item` with **no arguments or flags**. Use conversation
 context for the desired provider, project/pile, and supported filters. The skill
-tries existing context and Git remotes first, then asks only for missing or
-ambiguous information using actual destination candidates. Choices are not
+tries existing context, the `backlog.*` settings in
+[`.sai/settings.jsonc`](../project-settings.md), and Git remotes first, then asks
+only for missing or ambiguous information using actual destination candidates. Choices are not
 persisted as preferences.
 
 ## In detail

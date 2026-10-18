@@ -43,6 +43,9 @@ without board insertion, or asks for the Azure work-item type for this invocatio
 You review full content and the exact destination before confirming, editing,
 or cancelling. Azure Boards shows source Markdown and converted outgoing HTML.
 A changed update baseline requires fresh approval; matching content is a no-op.
+Before approving an update, GitHub and GitLab show that their content check and
+write cannot be made atomic, so a concurrent edit in between can be overwritten.
+Azure's write is guarded by the confirmed revision.
 
 Publication runs once. Keep the reported receipt and existing item link after a
 partial or uncertain result: recovery verifies outcomes, never recreates an item

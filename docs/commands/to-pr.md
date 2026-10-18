@@ -4,7 +4,7 @@
 
 Creates or updates a **GitHub pull request**, **GitLab merge request**, or
 **Azure Repos pull request** from committed branch changes. This universal skill
-works in Claude Code and opencode without OpenSpec and replaces `/sai-pr`.
+works in Claude Code and opencode without OpenSpec.
 
 ## Inputs and choices
 
@@ -39,6 +39,13 @@ evidence. An existing open request for the same source and target is updated
 instead of duplicated; multiple matches require clarification. Updates change
 only the title and description and preserve unrelated content.
 
+On GitHub and GitLab, the description ends with a `Closes` block generated from
+closing keywords in the branch's committed messages (such as `Fixes #12`). A branch
+named `<number>_<slug>` after an issue also closes that issue, but only when it has
+children and all of them are closed or covered by this request. Issues you already
+close by hand in the description are not repeated. An issue on another host is
+reported as a warning and not closed. Azure Repos requests get no closing block.
+
 When it **creates** a GitHub pull request or GitLab merge request, the skill also
 assigns the request to you and applies zero or more labels that already exist in the
 project. It reads the project's full label list, chooses type or area labels (for
@@ -68,5 +75,4 @@ push or automatic commit runs, and a failed or unverified push skips publication
 
 Publication executes once and reports only a verified request URL or a concrete
 blocker with the local receipt. Recovery from an uncertain response is read-only
-and never automatically repeats creation. Reinstalling retires managed `/sai-pr`
-copies; modified overrides and user-authored `pr.md` files remain untouched.
+and never automatically repeats creation.

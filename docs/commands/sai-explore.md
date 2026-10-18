@@ -2,7 +2,7 @@
 
 ## Command function
 
-Helps think through an idea before committing to an implementation. It clarifies needs, compares alternatives, uncovers risks, and turns a large or unclear idea into manageable changes.
+Helps think through an idea before committing to an implementation. It clarifies needs, compares alternatives, uncovers risks, and turns a large or unclear idea into manageable changes. Pass a change name to explore an existing change.
 
 ## Flags and behavior modifiers
 
@@ -18,7 +18,7 @@ If the idea is too large for one reviewable change, it splits it into a small, u
 
 If it detects that the place where the feature would be added mixes too many responsibilities or does not offer a clear extension point, it may first propose a reorganization that preserves current behavior. This gives the new feature a clearer place to connect.
 
-When the technical approach is uncertain or there are several plausible explanations for a bug, it may propose a disposable proof of concept. This experiment answers the question that separates the alternatives; it is not automatically considered part of the final product. An explicit decision is requested before running it.
+When the technical approach is uncertain or there are several plausible explanations for a bug, it may propose a disposable proof of concept. This experiment answers the question that separates the alternatives; it is not automatically considered part of the final product. An explicit decision is requested before running it. The POC runs on its own branch or worktree, which is abandoned afterward, so your repository returns to its prior state. Its verdict names one agreed candidate or `none`.
 
 The edge-case and implementation-detail lists use the optional third-party
 `writing-for-agents` skill for wording: Explore drafts each list, runs a silent
@@ -114,7 +114,7 @@ Git references internally.
 
 After rounds 1 and 2 finish or are skipped, choose how to continue. `Manual` hands you the
 Ready to Propose block for `/sai-1-spec`. `Plan - Unattended` runs spec and design
-with adversarial feedback, then stops for your review before `/sai-build`.
+with up to three in-session review rounds per phase, then stops for your review before `/sai-build`.
 Ambiguous questions still escalate. `Direct Build - Unattended` authorizes
 implementation, review/fix, retroactive specs, archive, and one local commit;
 it never pushes. For slices, the selector repeats per slice. Fast-track does

@@ -67,7 +67,8 @@ that the later implementer should be able to follow without redesigning them.
 ```
 
 Claude Code's shipped defaults match the OPUS preset: Opus for demanding roles,
-Sonnet for lighter coordination and implementation, and Haiku for the executor.
+Sonnet for the spec, design, and audit phases, and Haiku for the executor and the
+RED and GREEN implementation workers.
 These are starting points, not a guarantee for every project; test alternatives
 on your own work before switching the whole pipeline.
 
