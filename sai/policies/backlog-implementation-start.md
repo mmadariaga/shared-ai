@@ -105,12 +105,13 @@ correspondence, pass the known destination and explicit change name to
 
 1. Run `inspect-assignment`. Require either independently verified native child
    and parent identities, or verified published written correspondence. Ordinary
-   native children need no SAI marker. On GitHub, a standalone leaf (no SAI
-   marker, no native parent and no sub-issues) is also accepted; show it as
-   having no parent. GitLab and Azure keep the child-and-parent requirement. An
-   unverified/ambiguous written reference stops for a user decision; a parent
-   (including an unmarked issue with sub-issues) receives no assignment. Show the
-   issue URL and every current assignee.
+   native children need no SAI marker. On GitHub and GitLab, a standalone leaf (no SAI
+   marker, no native parent and no native children or sub-issues) is also
+   accepted; show it as having no parent. GitLab proves it with a complete read
+   of its native work-item hierarchy. Azure keeps the child-and-parent
+   requirement. An unverified/ambiguous written reference stops for a user
+   decision; a parent (including an unmarked issue with sub-issues) receives no
+   assignment. Show the issue URL and every current assignee.
 2. If any assignee exists, ask whether to keep that responsibility and start,
    explicitly replace it with the authenticated user, or stop. Wait. Keep starts
    with no mutation: run `propose-assignment` with `choice: "keep"`, require its

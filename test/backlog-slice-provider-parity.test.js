@@ -36,6 +36,7 @@ function fixture(platform) {
       if (args[0] === 'repo') return JSON.stringify({ id: 1, path_with_namespace: 'group/repo', archived: false, visibility: 'private', issues_enabled: true, web_url: repository });
       const endpoint = args[1], method = args[args.indexOf('--method') + 1];
       if (endpoint === 'user') return JSON.stringify({ id: actor });
+      if (endpoint === 'graphql') return JSON.stringify(state.graphql ? state.graphql(JSON.parse(input)) : { data: { namespace: { workItem: { widgets: [{ type: 'ASSIGNEES' }, { type: 'HIERARCHY', parent: null, children: { nodes: [] } }] } } } });
       if (endpoint.includes('/links')) {
         const number = Number(/issues\/(\d+)/.exec(endpoint)[1]);
         if (state.failLinkRead && method === 'GET') throw new Error(state.failLinkRead);
@@ -186,7 +187,7 @@ for (const platform of ['gitlab', 'azuredevops']) {
     assert.equal(f.adapter['propose-assignment'](request, f.io).reason, 'already-assigned');
     const before = f.state.writes.length;
     const keep = f.adapter['propose-assignment']({ ...request, choice: 'keep' }, f.io);
-    assert.equal(f.adapter['verify-assignment']({ ...request, choice: 'keep', expected_assignees: keep.proposal.target, confirmation: keep.confirmation }, f.io).verified, true);
+    assert.equal(f.adapter['verify-assignment']({ ...request, choice: 'keep', expected_assignees: keep.proposal.target, expected_parent: keep.proposal.parent, confirmation: keep.confirmation }, f.io).verified, true);
     assert.equal(f.state.writes.length, before);
     assert.throws(() => f.adapter['inspect-assignment']({ reference: f.url(1) }, f.io), /child/);
     const parent = f.state.rows[0];
@@ -445,6 +446,75 @@ test('azuredevops: without a reported unique name assign fails before the PATCH 
   f.state.noUniqueName = true;
   const before = f.state.writes.length, result = f.adapter.assign({ ...request, confirmation: ready.confirmation }, f.io);
   assert.equal(result.status, 'rejected'); assert.equal(f.state.writes.length, before);
+});
+function gitlabLeaf(row = {}) {
+  const f = fixture('gitlab');
+  f.state.rows.push({ id: 101, iid: 1, project_id: 1, title: 'Leaf', description: 'Plain description', web_url: f.url(1), author: { id: f.actor }, assignees: [], issue_type: 'issue', state: 'opened', updated_at: 'v1', ...row });
+  const hierarchy = (parent, children) => ({ data: { namespace: { workItem: { widgets: [{ type: 'HIERARCHY', parent, children: { nodes: children } }] } } } });
+  return { ...f, hierarchy, request: { provider: 'gitlab', reference: f.url(1) }, graphqlCalls: () => f.state.calls.filter(call => call.args[1] === 'graphql') };
+}
+test('gitlab: a verified standalone leaf of any work-item type is assigned and verified with a null parent', () => {
+  for (const type of ['issue', 'task']) {
+    const f = gitlabLeaf({ issue_type: type });
+    const current = f.adapter['inspect-assignment'](f.request, f.io);
+    assert.equal(current.parent, null); assert.equal(current.issue, f.url(1));
+    const query = JSON.parse(f.graphqlCalls()[0].input);
+    assert.deepEqual(query.variables, { path: 'group/repo', iid: '1' });
+    const ready = f.adapter['propose-assignment'](f.request, f.io);
+    assert.equal(ready.status, 'ready'); assert.equal(ready.proposal.parent, null);
+    const done = f.adapter.assign({ ...f.request, confirmation: ready.confirmation }, f.io);
+    assert.equal(done.verified, true, type); assert.equal(done.parent, null);
+    assert.deepEqual(Object.keys(f.state.writes.at(-1).body), ['assignee_ids']);
+    assert.deepEqual(f.state.rows[0].assignees, [{ id: f.actor }]);
+    assert.equal(f.adapter['verify-assignment']({ ...f.request, expected_parent: null }, f.io).verified, true);
+  }
+});
+test('gitlab: an unmarked work item with native children, open or closed, is rejected as a parent', () => {
+  const f = gitlabLeaf(); f.state.graphql = () => f.hierarchy(null, [{ id: 'gid://gitlab/WorkItem/9' }]);
+  for (const operation of ['inspect-assignment', 'propose-assignment']) assert.throws(() => f.adapter[operation](f.request, f.io), /has child items; parent responsibility is preserved/);
+  assert.throws(() => f.adapter.assign({ ...f.request, confirmation: 'any' }, f.io), /has child items/);
+  assert.equal(f.state.writes.length, 0);
+});
+test('gitlab: an incomplete native hierarchy read never accepts a standalone leaf', () => {
+  const widgets = widget => ({ data: { namespace: { workItem: { widgets: widget } } } });
+  const causes = {
+    'graphql error': () => ({ errors: [{ message: 'boom' }], data: null }),
+    'transport failure': () => { throw new Error('network down'); },
+    'missing work item': () => ({ data: { namespace: { workItem: null } } }),
+    'missing namespace': () => ({ data: { namespace: null } }),
+    'no hierarchy widget': () => widgets([{ type: 'ASSIGNEES' }]),
+    'missing parent field': () => widgets([{ type: 'HIERARCHY', children: { nodes: [] } }]),
+    'missing children field': () => widgets([{ type: 'HIERARCHY', parent: null }]),
+  };
+  for (const [cause, graphql] of Object.entries(causes)) {
+    const f = gitlabLeaf(); f.state.graphql = graphql;
+    assert.throws(() => f.adapter['inspect-assignment'](f.request, f.io), /GitLab work item hierarchy could not be verified/, cause);
+    assert.equal(f.state.writes.length, 0, cause);
+  }
+});
+test('gitlab: an unmarked work item with a native parent keeps being rejected and marked items skip the native read', t => {
+  const f = gitlabLeaf(); f.state.graphql = () => f.hierarchy({ id: 'gid://gitlab/WorkItem/8' }, []);
+  assert.throws(() => f.adapter['inspect-assignment'](f.request, f.io), /Assignment requires a verified child and parent/);
+  const g = fixture('gitlab'); publish(t, g);
+  assert.equal(g.adapter['propose-assignment']({ provider: 'gitlab', reference: g.url(2) }, g.io).status, 'ready');
+  assert.equal(g.state.calls.filter(call => call.args[1] === 'graphql').length, 0);
+});
+test('gitlab: verification compares expected_parent and fails when the leaf gains a child', () => {
+  const f = gitlabLeaf(), ready = f.adapter['propose-assignment'](f.request, f.io);
+  f.adapter.assign({ ...f.request, confirmation: ready.confirmation }, f.io);
+  assert.equal(f.adapter['verify-assignment']({ ...f.request, expected_parent: f.url(5) }, f.io).verified, false);
+  assert.equal(f.adapter['verify-assignment']({ ...f.request }, f.io).verified, false);
+  f.state.graphql = () => f.hierarchy(null, [{ id: 'gid://gitlab/WorkItem/9' }]);
+  assert.throws(() => f.adapter['verify-assignment']({ ...f.request, expected_parent: null }, f.io), /has child items/);
+});
+test('azuredevops: an item without a parent keeps being rejected and verification compares expected_parent', t => {
+  const f = fixture('azuredevops'); publish(t, f);
+  const request = { provider: 'azuredevops', reference: f.url(2) }, ready = f.adapter['propose-assignment'](request, f.io);
+  const done = f.adapter.assign({ ...request, confirmation: ready.confirmation }, f.io);
+  assert.equal(done.verified, true);
+  assert.equal(f.adapter['verify-assignment']({ ...request, expected_parent: f.url(5) }, f.io).verified, false);
+  f.state.rows.push({ id: 4, rev: 1, fields: { 'System.Title': 'Lone', 'System.Description': 'Lone', 'System.WorkItemType': 'Task', 'System.TeamProject': 'Project', 'System.State': 'New', 'System.CreatedBy': { id: f.actor } }, relations: [] });
+  assert.throws(() => f.adapter['inspect-assignment']({ reference: f.url(4) }, f.io), /Assignment requires a verified child and parent/);
 });
 test('all providers: a definite rejection maps to rejected and an unmarked failure to uncertain through one shared contract', () => {
   const { bind } = require('../sai/tools/backlog-provider-assignment');

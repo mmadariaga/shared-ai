@@ -123,6 +123,8 @@ After completed set publication on any supported provider in Explore, the identi
 
 The user-facing coordinator SHALL inspect selected-child responsibility before the first pending implementation dispatch in standalone apply, chained apply and full Direct Build. Planning, publication, import and optional branch preparation SHALL NOT assign issues. A supplied parent SHALL require explicit child selection. No provenance SHALL trigger no remote operation. Inspection SHALL independently verify a native child and parent or published written correspondence, show the child URL and all assignees and preserve parent responsibility. On GitHub, inspection SHALL also accept a standalone leaf (an issue with no SAI correspondence marker, no native parent and no sub-issues) and SHALL report it with `parent: null`. GitHub inspection SHALL read the native parent and the first page of sub-issues through one GraphQL hierarchy query and SHALL decide only from a complete response. Any error or incomplete response SHALL fail the inspection. An unmarked GitHub issue with no native parent and at least one sub-issue, open or closed, SHALL be rejected as a parent. A marked issue whose correspondence declares native hierarchy SHALL be rejected when GitHub reports no native parent.
 
+On GitLab, inspection SHALL also accept a standalone leaf (a work item of any type with no SAI correspondence marker, no native parent and no native children) and SHALL report it with `parent: null`. For a work item without a written marker, GitLab inspection SHALL read the native parent and the first page of children through one GraphQL work-item hierarchy query over the adapter's existing authenticated transport and SHALL decide only from a complete response. A GraphQL error, a transport failure, a missing work item, a missing hierarchy widget, or a response without the `parent` or `children` field SHALL fail the inspection with `GitLab work item hierarchy could not be verified`. An unmarked GitLab work item with no native parent and at least one native child, open or closed, SHALL be rejected with `Selected work item has child items; parent responsibility is preserved`. An unmarked GitLab work item with a native parent SHALL keep being rejected. A GitLab work item with a written marker SHALL skip the native hierarchy read and keep the written-correspondence flow.
+
 #### Scenario: Ordinary native child
 
 - **WHEN** a selected child has a verified native parent but no SAI marker
@@ -157,6 +159,31 @@ The user-facing coordinator SHALL inspect selected-child responsibility before t
 
 - **WHEN** a selected GitHub issue has a native parent and also has sub-issues
 - **THEN** inspection follows the native child flow and reports that parent.
+
+#### Scenario: GitLab standalone leaf
+
+- **WHEN** a selected GitLab work item of any type has no SAI marker and a complete native hierarchy read shows no parent and no children
+- **THEN** inspection returns `status: complete` with `parent: null`, and `propose-assignment`, `assign` and `verify-assignment` follow the existing implementation-start flow.
+
+#### Scenario: Unmarked GitLab work item with native children
+
+- **WHEN** a selected GitLab work item has no SAI marker, no native parent and at least one open or closed native child
+- **THEN** inspection fails with `Selected work item has child items; parent responsibility is preserved` and no assignment is proposed or written.
+
+#### Scenario: Incomplete GitLab hierarchy read
+
+- **WHEN** the GitLab hierarchy query fails, returns a GraphQL error, no work item, no hierarchy widget, no `parent` field or no `children` page
+- **THEN** inspection fails with `GitLab work item hierarchy could not be verified` instead of treating the work item as a standalone leaf.
+
+#### Scenario: Unmarked GitLab work item with a native parent
+
+- **WHEN** a selected GitLab work item has no SAI marker and the native hierarchy read reports a parent
+- **THEN** inspection fails with the child-and-parent error as before.
+
+#### Scenario: Marked GitLab work item
+
+- **WHEN** a selected GitLab work item carries a written SAI correspondence marker
+- **THEN** inspection performs no native hierarchy read and follows the existing written-correspondence flow.
 
 ### Requirement: Assignment has separate exact authorization and verification
 
@@ -252,7 +279,7 @@ Ordinary GitLab slice sets SHALL disclose written parent/child hierarchy and sep
 
 ### Requirement: Provider parity uses shared owners and isolated responsibility operations
 
-GitLab and Azure DevOps SHALL expose shared set-publication and selected-child assignment operations through their existing registered adapters. Implementation-start ownership SHALL resolve and retain the selected provider rather than assume GitHub. Responsibility inspection SHALL verify the selected child and parent, authenticated identity and exact current assignees. Only GitHub SHALL additionally accept a standalone leaf with no parent. GitLab and Azure DevOps SHALL keep requiring a verified child and parent. Existing responsibility SHALL require a keep, replace or stop decision. Assignment SHALL require exact proposal approval, change only the selected child's assignees and verify the result before implementation unless the user chose Skip. Keep SHALL verify the exact approved set without mutation. Parent responsibility SHALL remain unchanged. GitHub, GitLab and Azure DevOps SHALL map a provider rejection that proves no change was applied to `rejected` and every other assignment failure to `uncertain` through the shared assignment contract, and SHALL offer Skip identically. Both Claude Code and opencode SHALL receive the canonical shared tools and contracts without expanded read-only import permissions.
+GitLab and Azure DevOps SHALL expose shared set-publication and selected-child assignment operations through their existing registered adapters. Implementation-start ownership SHALL resolve and retain the selected provider rather than assume GitHub. Responsibility inspection SHALL verify the selected child and parent, authenticated identity and exact current assignees. GitHub and GitLab SHALL additionally accept a standalone leaf with no parent, each proven by a complete native hierarchy read. The shared assignment contract SHALL accept a standalone leaf only on explicit adapter-proven standalone evidence, never on the absence of a written marker. Azure DevOps SHALL keep requiring a verified child and parent. Existing responsibility SHALL require a keep, replace or stop decision. Assignment SHALL require exact proposal approval, change only the selected child's assignees and verify the result before implementation unless the user chose Skip. Keep SHALL verify the exact approved set without mutation. Parent responsibility SHALL remain unchanged. GitHub, GitLab and Azure DevOps SHALL map a provider rejection that proves no change was applied to `rejected` and every other assignment failure to `uncertain` through the shared assignment contract, and SHALL offer Skip identically. Both Claude Code and opencode SHALL receive the canonical shared tools and contracts without expanded read-only import permissions.
 
 #### Scenario: Existing child responsibility changes
 
@@ -276,7 +303,7 @@ GitLab and Azure DevOps SHALL expose shared set-publication and selected-child a
 
 #### Scenario: GitLab or Azure DevOps issue without a parent
 
-- **WHEN** a selected GitLab or Azure DevOps issue has no verified parent
+- **WHEN** a selected Azure DevOps item has no verified parent, or a selected GitLab work item has no verified parent and is not proven a standalone leaf by a complete native hierarchy read
 - **THEN** responsibility inspection does not accept it as a standalone leaf and keeps the child-and-parent requirement.
 
 ### Requirement: GitHub set publication verifies Project membership with direct reads
@@ -367,3 +394,22 @@ GitHub and provider-neutral set recovery SHALL NOT return an executable continua
 
 - **WHEN** recovery cannot verify the current hierarchy or dependency state required for ordinary continuation
 - **THEN** it provides no executable continuation authority and automatic continuation performs no remote write and consumes no retry allowance.
+
+### Requirement: GitLab and Azure DevOps assignment verification requires the approved parent
+
+On GitLab and Azure DevOps, `verify-assignment` SHALL report `verified: true` only when the supplied `expected_parent` equals the currently inspected parent (`null` for a GitLab standalone leaf) and the existing assignee and confirmation checks pass. `assign` SHALL verify against the parent of its approved proposal. When the parent changes after approval, `expected_parent` is missing, or an approved GitLab standalone leaf gains a native child, verification SHALL NOT succeed and implementation SHALL stay unstarted.
+
+#### Scenario: Expected parent differs from the current parent
+
+- **WHEN** GitLab or Azure DevOps `verify-assignment` is called with an `expected_parent` that differs from the currently inspected parent, or without `expected_parent`
+- **THEN** it returns `verified: false`.
+
+#### Scenario: Approved GitLab standalone leaf gains a child
+
+- **WHEN** a GitLab standalone leaf approved with `parent: null` gains a native child before verification
+- **THEN** inspection rejects it as a parent, verification does not succeed, and implementation does not start.
+
+#### Scenario: Assigned GitLab standalone leaf
+
+- **WHEN** an approved GitLab standalone leaf is assigned to the authenticated user
+- **THEN** `assign` verifies with `expected_parent: null` and reports `verified: true` with `parent: null`.

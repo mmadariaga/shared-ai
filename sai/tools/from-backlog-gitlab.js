@@ -43,7 +43,7 @@ function resolve(value, io) {
   return { status: 'resolved', provider: 'gitlab', repository: target.repository, number: parsed.number, url: `${target.url}/-/${parsed.route}/${parsed.number}`, target };
 }
 
-function issue(target, number, io) {
+function issue(target, number, io, anyType = false) {
   const data = api(target, `projects/${target.id}/issues/${number}`, io);
   if (!Number.isSafeInteger(data?.id) || data.id <= 0) throw fault('Invalid or missing GitLab issue ID');
   if (data.project_id !== target.id) throw fault('GitLab issue project ID does not match the requested project');
@@ -53,7 +53,7 @@ function issue(target, number, io) {
   if (parsed.destination !== target.url) throw fault('GitLab issue response URL destination does not match the requested project');
   if (parsed.number !== number) throw fault('GitLab issue response URL number does not match the requested number');
   if (typeof data.issue_type !== 'string' || !data.issue_type) throw fault('GitLab issue type cannot be verified: missing or invalid issue_type');
-  if (data.issue_type !== 'issue') throw fault(`Unsupported GitLab item type: ${data.issue_type}; only ordinary issues are supported`, 'not-an-issue');
+  if (!anyType && data.issue_type !== 'issue') throw fault(`Unsupported GitLab item type: ${data.issue_type}; only ordinary issues are supported`, 'not-an-issue');
   if (typeof data.title !== 'string') throw fault('Invalid or missing GitLab issue title');
   if (data.description !== null && typeof data.description !== 'string') throw fault('Invalid or missing GitLab issue description');
   if (!['opened', 'closed'].includes(data.state)) throw fault('Invalid or missing GitLab issue state');
