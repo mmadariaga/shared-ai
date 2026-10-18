@@ -1,6 +1,6 @@
 # Security Options
 
-The options `/sai-6-security` accepts after the change name. Any other token that starts with `--` is unknown.
+The options `/sai-5-security` accepts after the change name. Any other token that starts with `--` is unknown.
 
 - `--full` — audit the whole repository.
 - `--path <dir>` — audit one path.

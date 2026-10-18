@@ -30,7 +30,8 @@ All documentation files (README.md, AGENTS.md) SHALL reference commands using th
 - **THEN** all command examples show `/sai-*` syntax, not `/ai-*`
 
 ### Requirement: Command numbering reflects the two-phase spec/design split
-The numbered sai-* commands SHALL use the following mapping, with `sai-2-design` inserted between spec and implement. Number 5 is vacant after `/sai-5-review` was retired; no command takes it, and `sai-6-security`, `sai-7-performance`, and `sai-8-accessibility` keep their numbers.
+
+The numbered commands SHALL form the continuous 1–7 sequence in Claude Code and opencode, with the same mapping in public wrappers, associated worker identities, live routing, status recommendations, current documentation, and shipped presets.
 
 | Number | Command | Generates |
 |--------|---------|-----------|
@@ -38,11 +39,11 @@ The numbered sai-* commands SHALL use the following mapping, with `sai-2-design`
 | 2 | sai-2-design | design.md + tasks.md |
 | 3 | sai-3-implement | executes the RED→GREEN steps of tasks.md |
 | 4 | sai-4-review | review.md |
-| 6 | sai-6-security | security.md |
-| 7 | sai-7-performance | performance.md |
-| 8 | sai-8-accessibility | accessibility.md |
+| 5 | sai-5-security | security.md |
+| 6 | sai-6-performance | performance.md |
+| 7 | sai-7-accessibility | accessibility.md |
 
-Un-numbered commands (sai-commit, sai-pr, sai-archive, sai-explore, sai-backfill, sai-status, sai-worktree, sai-build, sai-deep-review) retain their names unchanged. `sai-build` is the un-numbered composition command that runs implementation and review back-to-back; it does not receive a phase number and does not renumber `sai-3-implement` or `sai-4-review`.
+The associated audit workers SHALL be `sai-5-security-worker`, `sai-6-performance-worker`, and `sai-7-accessibility-worker`. The former audit names SHALL be retired without aliases. Audit functions, accepted options, report names, execution conditions, unnumbered commands, and unrelated numbered commands SHALL remain unchanged. The internal security, performance, and accessibility directories and unnumbered identifiers SHALL retain their identities. Archived changes and historical decision records SHALL NOT be rewritten for this renaming.
 
 #### Scenario: sai-2-design command exists
 - **WHEN** `commands/claude/` is listed
@@ -50,11 +51,11 @@ Un-numbered commands (sai-commit, sai-pr, sai-archive, sai-explore, sai-backfill
 
 #### Scenario: renumbered commands exist with new numbers
 - **WHEN** `commands/claude/` is listed
-- **THEN** files `sai-3-implement.md`, `sai-4-review.md`, `sai-6-security.md`, `sai-7-performance.md`, `sai-8-accessibility.md` are present
+- **THEN** files `sai-3-implement.md`, `sai-4-review.md`, `sai-5-security.md`, `sai-6-performance.md`, and `sai-7-accessibility.md` are present
 
 #### Scenario: old numbered commands absent
 - **WHEN** `commands/claude/` is listed
-- **THEN** no files named `sai-2-implement.md`, `sai-4-apply.md`, `sai-5-review.md`, `sai-5-security.md`, `sai-6-performance.md`, `sai-7-accessibility.md` are present
+- **THEN** no files named `sai-2-implement.md`, `sai-4-apply.md`, `sai-5-review.md`, `sai-6-security.md`, `sai-7-performance.md`, or `sai-8-accessibility.md` are present
 
 #### Scenario: opencode mirrors the same numbering
 - **WHEN** `commands/opencode/` is listed
@@ -62,16 +63,23 @@ Un-numbered commands (sai-commit, sai-pr, sai-archive, sai-explore, sai-backfill
 
 #### Scenario: sai-backfill command exists as un-numbered auxiliary
 - **WHEN** `commands/claude/` is listed
-- **THEN** `sai-backfill.md` is present alongside other un-numbered commands (`sai-commit.md`, `sai-pr.md`, `sai-archive.md`, `sai-explore.md`)
+- **THEN** `sai-backfill.md` remains alongside the unchanged unnumbered commands
 
 #### Scenario: sai-build command exists as un-numbered auxiliary
 - **WHEN** `commands/claude/` is listed
-- **THEN** `sai-build.md` is present alongside other un-numbered commands
-- **AND** no numbered wrapper such as `sai-9-build.md` is required for the composition command
+- **THEN** `sai-build.md` is present without a numbered build wrapper
 
 #### Scenario: opencode includes sai-build
 - **WHEN** `commands/opencode/` is listed
-- **THEN** `sai-build.md` is present with the same un-numbered status as in Claude Code
+- **THEN** `sai-build.md` remains unnumbered with the same status as in Claude Code
+
+#### Scenario: Former security number does not select performance
+- **WHEN** live instructions or installed command and worker inventories identify a security audit
+- **THEN** they use `sai-5-security` and `sai-5-security-worker`, never the performance command or worker now numbered 6
+
+#### Scenario: Historical records retain the original audit names
+- **WHEN** the audit renaming updates current usage documentation and live instructions
+- **THEN** archived changes and historical ADR/DDR records retain their existing bytes
 
 ### Requirement: The retirement utility uses the canonical command name
 

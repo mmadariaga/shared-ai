@@ -30,9 +30,9 @@ Save the report to `openspec/changes/{change-name}/review.md`, with the closing 
 
 ```
 ## Recommended Audits
-Security     → { ⚠️  Run `/sai-6-security {change-name}` | ✅ Not required }
-Performance  → { ⚠️  Run `/sai-7-performance {change-name}` | ✅ Not required }
-Accessibility→ { ⚠️  Run `/sai-8-accessibility {change-name}` | ✅ Not required }
+Security     → { ⚠️  Run `/sai-5-security {change-name}` | ✅ Not required }
+Performance  → { ⚠️  Run `/sai-6-performance {change-name}` | ✅ Not required }
+Accessibility→ { ⚠️  Run `/sai-7-accessibility {change-name}` | ✅ Not required }
 ```
 
 The coordinator verifies the report again, commits it, and owns everything the user sees after that return. You fix none of these findings: `/sai-3-implement` applies them.

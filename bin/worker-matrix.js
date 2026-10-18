@@ -83,9 +83,9 @@ const TOKEN = /\{\{([A-Za-z0-9_.-]+)\}\}/g;
 const PHASE_WORKER_NAME = Object.freeze({
   spec: 'sai-1-spec-proposal-worker',
   design: 'sai-2-design-worker',
-  security: 'sai-6-security-worker',
-  performance: 'sai-7-performance-worker',
-  accessibility: 'sai-8-accessibility-worker',
+  security: 'sai-5-security-worker',
+  performance: 'sai-6-performance-worker',
+  accessibility: 'sai-7-accessibility-worker',
   commit: 'sai-commit-worker',
   archive: 'sai-archive-worker',
   backfill: 'sai-backfill-worker',
@@ -104,7 +104,7 @@ const PHASE_CONTRACT_DIR = Object.freeze({
   merge: 'merge',
 });
 
-const PHASE_WORKER_IDENTITY = /^sai-[12678]-[a-z-]+-worker$|^sai-commit-worker$|^sai-archive-worker$|^sai-backfill-worker$|^sai-merge-worker$/;
+const PHASE_WORKER_IDENTITY = /^sai-[12567]-[a-z-]+-worker$|^sai-commit-worker$|^sai-archive-worker$|^sai-backfill-worker$|^sai-merge-worker$/;
 const INVOCATION_ENVELOPE_FIELD = 'arguments_value';
 const RETIRED_INVOCATION_ENVELOPE_FIELD = ['wrapper', 'echo', 'value'].join('_');
 

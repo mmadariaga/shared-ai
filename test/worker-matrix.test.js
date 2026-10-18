@@ -26,9 +26,9 @@ const CANONICAL_PHASE_ORDER = [
 const WORKER_NAME = {
   spec: 'sai-1-spec-proposal-worker',
   design: 'sai-2-design-worker',
-  security: 'sai-6-security-worker',
-  performance: 'sai-7-performance-worker',
-  accessibility: 'sai-8-accessibility-worker',
+  security: 'sai-5-security-worker',
+  performance: 'sai-6-performance-worker',
+  accessibility: 'sai-7-accessibility-worker',
   commit: 'sai-commit-worker',
   archive: 'sai-archive-worker',
   backfill: 'sai-backfill-worker',
@@ -364,7 +364,7 @@ test('renderWorkerTemplate preserves opencode task(...) dispatch syntax', () => 
   const rendered = renderWorkerTemplate(OPENCODE_BINDING_TEMPLATE, bindingParameters('security', 'opencode'));
   assert.match(rendered, /task\s*\(/,
     'opencode rendering should preserve the task(...) dispatch form');
-  assert.ok(rendered.includes('task("sai-6-security-worker"'),
+  assert.ok(rendered.includes('task("sai-5-security-worker"'),
     'the substituted worker identity should be preserved inside the opencode dispatch');
   assert.ok(rendered.includes('harness opencode'),
     'the injected opencode harness label should be substituted');

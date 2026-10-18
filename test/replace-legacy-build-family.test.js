@@ -170,7 +170,7 @@ test('Direct Build inlines its terminal suite gate and cites no apply command', 
   assert.match(direct, /a retry runs the suite gate afresh/);
 });
 
-test('no surviving prose names a retired command and the numbered audits keep their numbers', () => {
+test('no surviving prose names a retired command and the numbered audits are continuous', () => {
   const scanned = [
     'AGENTS.md', 'README.md', 'GLOSSARY.md',
     ...walk('sai').filter(file => file.endsWith('.md') && file !== 'sai/install-manifest.json'),
@@ -180,10 +180,10 @@ test('no surviving prose names a retired command and the numbered audits keep th
   for (const file of scanned) {
     assert.doesNotMatch(read(file), /\/sai-5-review|\/sai-4-apply|\/sai-review\b/, `${file} names a retired command`);
   }
-  for (const wrapper of ['sai-6-security', 'sai-7-performance', 'sai-8-accessibility']) {
-    assert.ok(exists(`commands/claude/${wrapper}.md`), `${wrapper} keeps its number`);
+  for (const wrapper of ['sai-5-security', 'sai-6-performance', 'sai-7-accessibility']) {
+    assert.ok(exists(`commands/claude/${wrapper}.md`), `${wrapper} closes the numbering gap`);
   }
-  assert.equal(exists('commands/claude/sai-5-security.md'), false);
+  assert.equal(exists('commands/claude/sai-6-security.md'), false);
 });
 
 test('archived changes and ADR/DDR records stay unedited by the renaming', () => {

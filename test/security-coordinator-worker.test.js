@@ -27,7 +27,7 @@ test('Step 1 security card uses neutral root protocols and retires flat canonica
   for (const relativePath of [
     'sai/orchestration/coordinator-contract.md',
     'sai/orchestration/worker-lifecycle.md',
-    'sai/orchestration/workers/sai-6-security-worker.md',
+    'sai/orchestration/workers/sai-5-security-worker.md',
   ]) {
     assert.equal(fs.existsSync(path.join(repoRoot, relativePath)), false,
       `${relativePath} should be absent from the active source layout`);
@@ -82,9 +82,9 @@ test('security transport carries only arguments_value and contract metadata acro
     assert.doesNotMatch(source, /wrapper_echo_value/,
       'no security transport surface may carry wrapper_echo_value');
   }
-  assert.match(bindings[0], /sai-6-security-worker/);
+  assert.match(bindings[0], /sai-5-security-worker/);
   assert.match(bindings[0], /Agent/);
-  assert.match(bindings[1], /sai-6-security-worker/);
+  assert.match(bindings[1], /sai-5-security-worker/);
   assert.match(bindings[1], /task/i);
 });
 

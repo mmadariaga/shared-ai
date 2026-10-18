@@ -1,6 +1,6 @@
 # Accessibility Options
 
-The options `/sai-8-accessibility` accepts after the change name. Any other token that starts with `--` is unknown.
+The options `/sai-7-accessibility` accepts after the change name. Any other token that starts with `--` is unknown.
 
 - `--full` — audit all UI files in the repository.
 - `--path <dir>` — audit one path.

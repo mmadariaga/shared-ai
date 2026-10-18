@@ -30,7 +30,7 @@ After a completed review segment, `/sai-deep-review` SHALL activate the audit se
 #### Scenario: Triage recommends security only
 
 - **WHEN** the triage parse of `review.md` recommends only the security audit
-- **THEN** only `sai-6-security-worker` runs and the performance and accessibility artifacts stay untouched
+- **THEN** only `sai-5-security-worker` runs and the performance and accessibility artifacts stay untouched
 
 ### Requirement: /sai-deep-review accepts the union of its segments' options
 

@@ -35,17 +35,17 @@ function matrixAgent(harness, phase) {
 const MANAGED_WORKER_NAMES = [
   'sai-1-spec-proposal-worker',
   'sai-2-design-worker',
-  'sai-6-security-worker',
-  'sai-7-performance-worker',
-  'sai-8-accessibility-worker',
+  'sai-5-security-worker',
+  'sai-6-performance-worker',
+  'sai-7-accessibility-worker',
 ];
 
 const WORKER_CONTRACT_DIRS = {
   'sai-1-spec-proposal-worker': 'spec',
   'sai-2-design-worker': 'design',
-  'sai-6-security-worker': 'security',
-  'sai-7-performance-worker': 'performance',
-  'sai-8-accessibility-worker': 'accessibility',
+  'sai-5-security-worker': 'security',
+  'sai-6-performance-worker': 'performance',
+  'sai-7-accessibility-worker': 'accessibility',
 };
 
 function tempDir(prefix) {

@@ -14,9 +14,9 @@ const MANAGED_NAMES = [
   'sai-1-spec-proposal-worker',
   'sai-2-design-worker',
   'sai-4-review-worker',
-  'sai-6-security-worker',
-  'sai-7-performance-worker',
-  'sai-8-accessibility-worker',
+  'sai-5-security-worker',
+  'sai-6-performance-worker',
+  'sai-7-accessibility-worker',
   'sai-3-red-worker',
   'sai-3-green-worker',
 ];
@@ -84,9 +84,9 @@ test('customized managed agents are accepted by name presence', async () => {
       'sai-2-design-worker': { mode: 'subagent', model: 'user-design-model', variant: 'low' },
       'sai-3-red-worker': { mode: 'subagent', model: 'user-red-model', permission: { edit: 'deny' } },
       'sai-4-review-worker': { mode: 'subagent', model: 'user-review-model' },
-      'sai-6-security-worker': { mode: 'subagent', model: 'user-security-model' },
-      'sai-7-performance-worker': { mode: 'subagent', model: 'user-performance-model' },
-      'sai-8-accessibility-worker': { mode: 'subagent', model: 'user-accessibility-model' },
+      'sai-5-security-worker': { mode: 'subagent', model: 'user-security-model' },
+      'sai-6-performance-worker': { mode: 'subagent', model: 'user-performance-model' },
+      'sai-7-accessibility-worker': { mode: 'subagent', model: 'user-accessibility-model' },
     } }));
 
     const { code, report } = await runDoctor(projectRoot, opencodeBase);
@@ -98,9 +98,9 @@ test('customized managed agents are accepted by name presence', async () => {
       'sai-3-green-worker',
       'sai-3-red-worker',
       'sai-4-review-worker',
-      'sai-6-security-worker',
-      'sai-7-performance-worker',
-      'sai-8-accessibility-worker',
+      'sai-5-security-worker',
+      'sai-6-performance-worker',
+      'sai-7-accessibility-worker',
     ]);
     for (const record of records) {
       assert.equal(record.severity, 'ok', `${record.name} should be ok`);

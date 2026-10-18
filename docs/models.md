@@ -45,12 +45,12 @@ that the later implementer should be able to follow without redesigning them.
       WORKER        sai-4-review-worker          Large    ↑↑          opencode-go/gpt-5.6-luna (max)
 
       ORCHESTRATOR  sai-deep-review              Large    ↑↑          opencode-go/muse-spark-1.3-contributor (xhigh)
-      ORCHESTRATOR  sai-6-security               Medium   ↑           opencode-go/muse-spark-1.3-contributor (xhigh)
-      WORKER        sai-6-security-worker        Large    ↑↑↑         opencode-go/deepseek-v4.1-flash (max)
-      ORCHESTRATOR  sai-7-performance            Medium   ↑           opencode-go/muse-spark-1.3-contributor (xhigh)
-      WORKER        sai-7-performance-worker     Large    ↑↑          opencode-go/deepseek-v4.1-flash (max)
-      ORCHESTRATOR  sai-8-accessibility          Medium   ↑           opencode-go/muse-spark-1.3-contributor (xhigh)
-      WORKER        sai-8-accessibility-worker   Large    ↑↑          opencode-go/deepseek-v4.1-flash (max)
+      ORCHESTRATOR  sai-5-security               Medium   ↑           opencode-go/muse-spark-1.3-contributor (xhigh)
+      WORKER        sai-5-security-worker        Large    ↑↑↑         opencode-go/deepseek-v4.1-flash (max)
+      ORCHESTRATOR  sai-6-performance            Medium   ↑           opencode-go/muse-spark-1.3-contributor (xhigh)
+      WORKER        sai-6-performance-worker     Large    ↑↑          opencode-go/deepseek-v4.1-flash (max)
+      ORCHESTRATOR  sai-7-accessibility          Medium   ↑           opencode-go/muse-spark-1.3-contributor (xhigh)
+      WORKER        sai-7-accessibility-worker   Large    ↑↑          opencode-go/deepseek-v4.1-flash (max)
 
       ORCHESTRATOR  sai-backfill                 Medium   ↑↑          opencode-go/muse-spark-1.3-contributor (xhigh)
       WORKER        sai-backfill-worker          Large    ↑↑          opencode-go/deepseek-v4.1-flash (max)

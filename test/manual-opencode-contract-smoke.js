@@ -6,7 +6,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 
-const WORKER_NAME = 'sai-6-security-worker';
+const WORKER_NAME = 'sai-5-security-worker';
 const SENTINEL = 'SAI_CONTRACT_SMOKE_SENTINEL';
 const LOCAL_MARKER = 'SAI_PROJECT_LOCAL_CONTRACT_MARKER';
 const GLOBAL_MARKER = 'SAI_ISOLATED_GLOBAL_CONTRACT_MARKER';

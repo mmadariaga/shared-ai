@@ -7,12 +7,12 @@ TBD - created by archiving change opencode-preset-examples. Update Purpose after
 
 ### Requirement: Installer preserves existing destination presets
 
-OpenCode preset installation SHALL preserve existing files that are not destinations of distributed SAI default projections. It SHALL NOT delete or migrate old unprefixed preset files, overwrite personal presets, or overwrite arbitrary files solely because their filenames start with `[sai-default]-`.
+OpenCode preset installation SHALL preserve existing files that are not destinations of distributed SAI default projections. Outside the targeted audit-role key migration, it SHALL NOT delete or migrate old unprefixed preset files, overwrite personal presets, or overwrite arbitrary files solely because their filenames start with `[sai-default]-`. The targeted migration SHALL update recognized retired audit command and worker keys while preserving unrelated entries and any explicit new destination key.
 
 #### Scenario: Reinstall with customized preset
 
 - **WHEN** the OpenCode preset library contains legacy unprefixed files, personal presets, or reserved-prefix files not distributed by SAI
-- **THEN** installation SHALL leave those files byte-for-byte unchanged while refreshing the distributed defaults
+- **THEN** installation SHALL preserve those files and their unrelated entries, applying only targeted retired audit-role key migration while refreshing the distributed defaults
 
 ### Requirement: Opencode preset install stays harness-isolated
 Opencode preset projection SHALL never read or write the Claude preset library.
@@ -34,12 +34,12 @@ Uninstall SHALL preserve a customized example preset via the override guard and 
 
 ### Requirement: Installer preserves existing Claude destination preset
 
-Claude Code preset installation SHALL preserve existing files that are not destinations of distributed SAI default projections. It SHALL NOT delete or migrate old unprefixed preset files, overwrite personal presets, or overwrite arbitrary files solely because their filenames start with `[sai-default]-`.
+Claude Code preset installation SHALL preserve existing files that are not destinations of distributed SAI default projections. Outside the targeted audit-role key migration, it SHALL NOT delete or migrate old unprefixed preset files, overwrite personal presets, or overwrite arbitrary files solely because their filenames start with `[sai-default]-`. The targeted migration SHALL update recognized retired audit command and worker keys while preserving unrelated entries and any explicit new destination key.
 
 #### Scenario: Reinstall with customized Claude preset
 
 - **WHEN** the Claude Code preset library contains an old unprefixed OPUS.json, personal presets, or reserved-prefix files not distributed by SAI
-- **THEN** installation SHALL leave those files byte-for-byte unchanged while refreshing `[sai-default]-OPUS.json`
+- **THEN** installation SHALL preserve those files and their unrelated entries, applying only targeted retired audit-role key migration while refreshing `[sai-default]-OPUS.json`
 
 ### Requirement: Claude preset install stays harness-isolated
 Claude preset projection SHALL never read or write the opencode preset library.
@@ -80,3 +80,19 @@ Doctor SHALL treat missing distributed default preset files projected with the `
 
 - **WHEN** doctor checks a Claude Code or OpenCode installation with a missing distributed default preset
 - **THEN** its file census SHALL report a fatal missing-file error for that expected preset
+
+### Requirement: Preset keys migrate by audit role
+
+Preset migration SHALL map command and worker entries for security 6 to 5, performance 7 to 6, and accessibility 8 to 7. It SHALL transfer an old entry only when the new key is absent, retain an explicit new key, remove the retired key, and preserve unrelated entries. Installation SHALL migrate JSON presets in the selected harness library before retired-file cleanup; model customization SHALL also migrate loaded preset keys. Distributed defaults SHALL continue to refresh from their shipped contents.
+
+#### Scenario: A legacy preset has role-specific models
+- **WHEN** a preset contains retired security, performance, and accessibility command or worker entries and no corresponding new keys
+- **THEN** their values appear under their own renamed audit keys, without assigning security's model to performance
+
+#### Scenario: Destination key already exists
+- **WHEN** a preset has both a retired audit key and its new key
+- **THEN** migration retains the new key's value and removes only the retired key
+
+#### Scenario: Preset cannot be migrated
+- **WHEN** installation cannot parse or migrate a preset JSON file
+- **THEN** it reports that file as pending resolution and continues without inventing replacement settings

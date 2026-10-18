@@ -1,4 +1,4 @@
-# `/sai-8-accessibility`
+# `/sai-7-accessibility`
 
 ## Command function
 

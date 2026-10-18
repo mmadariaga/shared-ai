@@ -1,7 +1,7 @@
 'use strict';
 
 // performance-standalone@1 — data module for stateful stage machine owning
-// happy-path step routing for standalone `sai-7-performance` runs. Built via
+// happy-path step routing for standalone `sai-6-performance` runs. Built via
 // linear-steps factory.
 
 const { createLinearStepMachine } = require('./linear-steps.js');

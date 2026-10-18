@@ -2,7 +2,9 @@
 
 All artifact paths below resolve under `openspec/changes/{change-name}/` (referred to as `{c}` for brevity).
 
-These are the numbered phase commands (number 5 is unused). [`/sai-build`](commands/sai-build.md) chains `implement` → `review` → a second `implement` run for the findings it selects, while [`/sai-deep-review`](commands/sai-deep-review.md) chains `review` → whichever audits its triage recommends → an `implement` run for the findings you select. The README emphasizes the composed workflow; this file is the full phase-by-phase reference.
+These are the numbered phase commands (continuous sequence 1–7). [`/sai-build`](commands/sai-build.md) chains `implement` → `review` → a second `implement` run for the findings it selects, while [`/sai-deep-review`](commands/sai-deep-review.md) chains `review` → whichever audits its triage recommends → an `implement` run for the findings you select. The README emphasizes the composed workflow; this file is the full phase-by-phase reference.
+
+Audit commands and workers now use 5 for security, 6 for performance, and 7 for accessibility on Claude Code and OpenCode. Previous names have no aliases. On upgrade, the installer transfers audit model settings and preset entries before retiring managed old files; an existing new destination keeps its own settings. Customized old file bodies are kept with a `Pending resolution` notice. Review and move those custom instructions to the new file yourself before removing the old file; migration is not complete while such copies remain.
 
 | Command | Input | Output | Purpose |
 |---------|-------|--------|---------|
@@ -10,9 +12,9 @@ These are the numbered phase commands (number 5 is unused). [`/sai-build`](comma
 | [`/sai-2-design`](commands/sai-2-design.md) | {change-name}, `--fast-track`, `--overview-lang <language>` | `{c}/design.md`, `tasks.md`, `interfaces.md`; optional `change-overview.md` | Invoking the command approves the specs. Produces decisions, ordered tasks, public signatures, and exact test assertions. Ends at design completion; request detailed implementation separately. |
 | [`/sai-3-implement`](commands/sai-3-implement.md) | {change-name}, `--fast-track` (accepted and ignored) | Tests, code, one local commit per step, `{c}/build-log.md` | Implements the change's `tasks.md` end to end with no human in the loop: a RED worker writes each step's failing tests, a GREEN worker writes the production code, the run reviews each step adversarially and commits it, then applies the open fixable findings of the review and audit reports and runs the suites against a failure baseline. |
 | [`/sai-4-review`](commands/sai-4-review.md) | {change-name} + diff, `--parent-branch` | `{c}/review.md` | Reviews the diff in a fresh worker with 11 read-only analysis passes and an adversary challenge, commits `review.md`, and recommends specialized audits based on what changed. Fixes nothing. |
-| [`/sai-6-security`](commands/sai-6-security.md) | {change-name} + diff, `--full`, `--path`, `--parent-branch` | `{c}/security.md` | Finds security vulnerabilities in the diff — points to exact file and line, explains the risk, and maps findings to known standards (OWASP, CVE). |
-| [`/sai-7-performance`](commands/sai-7-performance.md) | {change-name} + diff, `--full`, `--path`, `--tier`, `--runtime`, `--parent-branch` | `{c}/performance.md` | Flags real performance bottlenecks (slow queries, heavy renders, unbounded loops). Evidence-based — no guesswork. |
-| [`/sai-8-accessibility`](commands/sai-8-accessibility.md) | {change-name} + diff, `--full`, `--path`, `--runtime`, `--parent-branch` | `{c}/accessibility.md` | Checks UI code for accessibility issues against WCAG 2.2 AA. Can also run browser-based tools for deeper analysis. |
+| [`/sai-5-security`](commands/sai-5-security.md) | {change-name} + diff, `--full`, `--path`, `--parent-branch` | `{c}/security.md` | Finds security vulnerabilities in the diff — points to exact file and line, explains the risk, and maps findings to known standards (OWASP, CVE). |
+| [`/sai-6-performance`](commands/sai-6-performance.md) | {change-name} + diff, `--full`, `--path`, `--tier`, `--runtime`, `--parent-branch` | `{c}/performance.md` | Flags real performance bottlenecks (slow queries, heavy renders, unbounded loops). Evidence-based — no guesswork. |
+| [`/sai-7-accessibility`](commands/sai-7-accessibility.md) | {change-name} + diff, `--full`, `--path`, `--runtime`, `--parent-branch` | `{c}/accessibility.md` | Checks UI code for accessibility issues against WCAG 2.2 AA. Can also run browser-based tools for deeper analysis. |
 
 ### How commands are routed
 

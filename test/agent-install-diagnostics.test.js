@@ -14,9 +14,9 @@ const WORKER_NAMES = [
   'sai-1-spec-proposal-worker',
   'sai-2-design-worker',
   'sai-4-review-worker',
-  'sai-6-security-worker',
-  'sai-7-performance-worker',
-  'sai-8-accessibility-worker',
+  'sai-5-security-worker',
+  'sai-6-performance-worker',
+  'sai-7-accessibility-worker',
   'sai-3-red-worker',
   'sai-3-green-worker',
 ];
@@ -188,14 +188,14 @@ test('doctor flags a missing destination with re-install remediation', async () 
   try {
     installClaude(claudeBase);
     installOpencode(opencodeBase);
-    const agentPath = path.join(opencodeBase, 'agents', 'sai-6-security-worker.md');
+    const agentPath = path.join(opencodeBase, 'agents', 'sai-5-security-worker.md');
     assert.ok(fs.existsSync(agentPath), 'the projected worker should exist after install');
     fs.unlinkSync(agentPath);
 
     const { code, report } = await runDoctor(projectRoot, claudeBase, opencodeBase);
     assert.equal(code, 1);
     const record = findRecords(report, '[Opencode]')
-      .find(entry => entry.name === 'sai-6-security-worker');
+      .find(entry => entry.name === 'sai-5-security-worker');
     assert.ok(record, 'doctor should enumerate the missing security worker');
     assert.equal(record.severity, 'error');
     assert.match(record.message || '', /re-?install/i,

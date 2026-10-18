@@ -1,6 +1,6 @@
 # Performance Options
 
-The options `/sai-7-performance` accepts after the change name. Any other token that starts with `--` is unknown.
+The options `/sai-6-performance` accepts after the change name. Any other token that starts with `--` is unknown.
 
 - `--full` — audit the whole repository.
 - `--path <dir>` — audit one path.

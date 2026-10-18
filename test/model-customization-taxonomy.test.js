@@ -84,8 +84,8 @@ test('context estimates distinguish fresh Step workers from cumulative orchestra
   assert.equal(customization.taskContextFor({ value: 'command:sai-3-implement' }), 'Large');
   assert.equal(customization.taskContextFor({ value: 'worker:sai-3-red-worker' }), 'Medium');
   assert.equal(customization.taskContextFor({ value: 'worker:sai-3-green-worker' }), 'Medium');
-  assert.equal(customization.taskContextFor({ value: 'command:sai-6-security' }), 'Medium');
-  assert.equal(customization.taskContextFor({ value: 'worker:sai-6-security-worker' }), 'Large');
+  assert.equal(customization.taskContextFor({ value: 'command:sai-5-security' }), 'Medium');
+  assert.equal(customization.taskContextFor({ value: 'worker:sai-5-security-worker' }), 'Large');
   assert.equal(customization.taskContextFor({ value: 'utility:sai-status' }), 'Small');
 });
 
@@ -106,9 +106,9 @@ test('orchestrator difficulty reflects coordinator reasoning rather than worker 
     'sai-3-implement': '↑↑↑',
     'sai-deep-review': '↑↑',
     'sai-4-review': '↑↑',
-    'sai-6-security': '↑',
-    'sai-7-performance': '↑',
-    'sai-8-accessibility': '↑',
+    'sai-5-security': '↑',
+    'sai-6-performance': '↑',
+    'sai-7-accessibility': '↑',
     'sai-backfill': '↑↑',
     'sai-archive': '↑↑',
     'sai-merge': '↑↑↑',

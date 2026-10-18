@@ -30,9 +30,9 @@ const REPO_ROOT = path.join(__dirname, '..');
 const WORKER_NAME = {
   spec: 'sai-1-spec-proposal-worker',
   design: 'sai-2-design-worker',
-  security: 'sai-6-security-worker',
-  performance: 'sai-7-performance-worker',
-  accessibility: 'sai-8-accessibility-worker',
+  security: 'sai-5-security-worker',
+  performance: 'sai-6-performance-worker',
+  accessibility: 'sai-7-accessibility-worker',
   commit: 'sai-commit-worker',
   archive: 'sai-archive-worker',
   backfill: 'sai-backfill-worker',

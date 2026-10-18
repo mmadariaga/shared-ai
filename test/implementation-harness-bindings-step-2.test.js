@@ -35,9 +35,9 @@ function artifact(relativePath) {
 const WORKERS = [
   ['sai-1-spec-proposal-worker', 'spec-worker.md'],
   ['sai-2-design-worker', 'design-worker.md'],
-  ['sai-6-security-worker', 'security-worker.md'],
-  ['sai-7-performance-worker', 'performance-worker.md'],
-  ['sai-8-accessibility-worker', 'accessibility-worker.md'],
+  ['sai-5-security-worker', 'security-worker.md'],
+  ['sai-6-performance-worker', 'performance-worker.md'],
+  ['sai-7-accessibility-worker', 'accessibility-worker.md'],
 ];
 
 const BINDING_PHASE = Object.fromEntries(WORKERS.map(([worker, filename]) => [

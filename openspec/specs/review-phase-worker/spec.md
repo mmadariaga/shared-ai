@@ -195,7 +195,7 @@ The security, performance and accessibility triage passes SHALL decide `surface 
 #### Scenario: Security surface touched
 - **WHEN** the diff touches an authentication path
 - **THEN** the security triage records `Surface touched: Yes` with no file list
-- **AND** the completed summary recommends `/sai-6-security`
+- **AND** the completed summary recommends `/sai-5-security`
 
 ### Requirement: Review severity definitions are stated once in the step library common file
 
@@ -211,7 +211,7 @@ The review step library SHALL define the five severities once, in `sai/commands/
 
 #### Scenario: Blatant security defect
 - **WHEN** the diff adds a literal hardcoded password
-- **THEN** the review recommends `/sai-6-security` and raises a `Critical` finding noting that the dedicated audit covers the rest
+- **THEN** the review recommends `/sai-5-security` and raises a `Critical` finding noting that the dedicated audit covers the rest
 
 #### Scenario: Resilience finding
 - **WHEN** pass 11 raises a resilience finding

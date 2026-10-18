@@ -37,9 +37,9 @@ const UTILITY_NAMES = Object.freeze(['sai-retire-docs', 'sai-status', 'sai-workt
 const TARGET_PROFILE = Object.freeze({
   'worker:sai-1-spec-proposal-worker':   { context: 'Medium',  difficulty: '↑↑' },
   'worker:sai-2-design-worker':          { context: 'Large',   difficulty: '↑↑↑' },
-  'worker:sai-6-security-worker':        { context: 'Large',   difficulty: '↑↑↑' },
-  'worker:sai-7-performance-worker':     { context: 'Large',   difficulty: '↑↑' },
-  'worker:sai-8-accessibility-worker':   { context: 'Large',   difficulty: '↑↑' },
+  'worker:sai-5-security-worker':        { context: 'Large',   difficulty: '↑↑↑' },
+  'worker:sai-6-performance-worker':     { context: 'Large',   difficulty: '↑↑' },
+  'worker:sai-7-accessibility-worker':   { context: 'Large',   difficulty: '↑↑' },
   'worker:sai-archive-worker':           { context: 'Medium',  difficulty: '↑' },
   'worker:sai-backfill-worker':          { context: 'Large',   difficulty: '↑↑' },
   'worker:sai-commit-worker':            { context: 'Small',   difficulty: '↑' },
@@ -57,9 +57,9 @@ const TARGET_PROFILE = Object.freeze({
   'command:sai-1-spec':                  { context: 'Medium',  difficulty: '↑↑' },
   'command:sai-2-design':                { context: 'Medium',  difficulty: '↑↑' },
   'command:sai-3-implement':             { context: 'Large',   difficulty: '↑↑↑' },
-  'command:sai-6-security':              { context: 'Medium',  difficulty: '↑' },
-  'command:sai-7-performance':           { context: 'Medium',  difficulty: '↑' },
-  'command:sai-8-accessibility':         { context: 'Medium',  difficulty: '↑' },
+  'command:sai-5-security':              { context: 'Medium',  difficulty: '↑' },
+  'command:sai-6-performance':           { context: 'Medium',  difficulty: '↑' },
+  'command:sai-7-accessibility':         { context: 'Medium',  difficulty: '↑' },
   'command:sai-archive':                 { context: 'Medium',  difficulty: '↑↑' },
   'command:sai-backfill':                { context: 'Medium',  difficulty: '↑↑' },
   'command:sai-build':                   { context: 'Large',   difficulty: '↑↑↑' },
@@ -129,9 +129,9 @@ const COMMAND_WORKER_ORDER = Object.freeze({
   'sai-2-design': Object.freeze(['sai-2-design-worker']),
   'sai-3-implement': Object.freeze(['sai-3-red-worker', 'sai-3-green-worker']),
   'sai-4-review': Object.freeze(['sai-4-review-worker']),
-  'sai-6-security': Object.freeze(['sai-6-security-worker']),
-  'sai-7-performance': Object.freeze(['sai-7-performance-worker']),
-  'sai-8-accessibility': Object.freeze(['sai-8-accessibility-worker']),
+  'sai-5-security': Object.freeze(['sai-5-security-worker']),
+  'sai-6-performance': Object.freeze(['sai-6-performance-worker']),
+  'sai-7-accessibility': Object.freeze(['sai-7-accessibility-worker']),
   'sai-archive': Object.freeze(['sai-archive-worker']),
   'sai-backfill': Object.freeze(['sai-backfill-worker']),
   'sai-merge': Object.freeze(['sai-merge-worker']),
@@ -144,7 +144,7 @@ const COMMAND_WORKER_ORDER = Object.freeze({
 const ALL_PHASE_ORDER = Object.freeze([
   Object.freeze(['sai-explore', 'sai-1-spec', 'sai-2-design']),
   Object.freeze(['sai-build', 'sai-3-implement', 'sai-4-review']),
-  Object.freeze(['sai-deep-review', 'sai-6-security', 'sai-7-performance', 'sai-8-accessibility']),
+  Object.freeze(['sai-deep-review', 'sai-5-security', 'sai-6-performance', 'sai-7-accessibility']),
   Object.freeze(['sai-backfill', 'sai-archive', 'sai-merge', 'sai-commit']),
 ]);
 
@@ -1534,7 +1534,7 @@ async function runPostSetupMenuInternal({
         }
         let parsedPreset;
         try {
-          parsedPreset = JSON.parse(fs.readFileSync(resolved.path, 'utf8'));
+          parsedPreset = require('./audit-name-migration').migratePreset(JSON.parse(fs.readFileSync(resolved.path, 'utf8')));
         } catch (error) {
           console.error(`Unable to load preset "${chosenPreset}": corrupt or invalid preset JSON reports an error and applies nothing partial.${error && error.message ? ` (${error.message})` : ''}`);
           screen = 'menu';

@@ -1,4 +1,4 @@
-# `/sai-6-security`
+# `/sai-5-security`
 
 ## Command function
 

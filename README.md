@@ -130,7 +130,7 @@ does not use the same RED → GREEN process; check its results before publishing
 | [`/sai-deep-review`](docs/commands/sai-deep-review.md) | Coordinate code review and specialized audits, then fix the findings you select | Reports and, if you select fixes, one local commit per fix step |
 | [`/sai-archive`](docs/commands/sai-archive.md) | Sync specs and archive the completed change | Archived change and optional local commit |
 
-For phase-by-phase control, use the seven [numbered commands](docs/sequential-pipeline.md) (number 5 is unused). See [review options and fix selection](docs/review-triage.md) for audit scope and handling findings.
+For phase-by-phase control, use the seven [numbered commands](docs/sequential-pipeline.md), numbered continuously from 1 to 7. Security is 5, performance is 6, and accessibility is 7 in both Claude Code and OpenCode. See [review options and fix selection](docs/review-triage.md) for audit scope and handling findings.
 
 ## Utility commands
 

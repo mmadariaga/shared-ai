@@ -83,9 +83,9 @@ function managedWorkerSourcePaths(repoRoot) {
     'sai-2-design-worker': 'design-worker',
     'sai-4-review-worker': 'review-worker',
     'sai-1-spec-proposal-worker': 'spec-worker',
-    'sai-6-security-worker': 'security-worker',
-    'sai-7-performance-worker': 'performance-worker',
-    'sai-8-accessibility-worker': 'accessibility-worker',
+    'sai-5-security-worker': 'security-worker',
+    'sai-6-performance-worker': 'performance-worker',
+    'sai-7-accessibility-worker': 'accessibility-worker',
   };
   return new Set(Object.entries(MANAGED_WORKERS).flatMap(([name, worker]) => [
     `sai/orchestration/workers/bindings/claude/${workerStems[name]}.md`,
@@ -100,10 +100,10 @@ test('managed worker source enumeration resolves the security worker stem', () =
   for (const source of [
     'sai/orchestration/workers/bindings/claude/security-worker.md',
     'sai/orchestration/workers/bindings/opencode/security-worker.md',
-    'agents/claude/sai-6-security-worker.md',
+    'agents/claude/sai-5-security-worker.md',
     'sai/orchestration/workers/bindings/claude/accessibility-worker.md',
     'sai/orchestration/workers/bindings/opencode/accessibility-worker.md',
-    'agents/claude/sai-8-accessibility-worker.md',
+    'agents/claude/sai-7-accessibility-worker.md',
   ]) {
     assert.equal(sources.has(path.resolve(repoRoot, source)), true, `should enumerate ${source}`);
   }
@@ -460,7 +460,7 @@ test('enumerateOpencode does not error with default paths (no manifest)', () => 
 
 test('Step 4 divergent Claude performance agents are overwritten with notice and uninstall removes body-matching agents', () => {
   const base = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-performance-collision-'));
-  const agent = path.join(base, 'agents', 'sai-7-performance-worker.md');
+  const agent = path.join(base, 'agents', 'sai-6-performance-worker.md');
   const sentinel = 'user-owned incompatible performance worker\n';
   const notices = [];
   const originalLog = console.log;
@@ -476,7 +476,7 @@ test('Step 4 divergent Claude performance agents are overwritten with notice and
     assert.ok(notices.some(message => message.includes(agent)),
       'a stdout notice should name the overwritten file');
 
-    const sidecar = path.join(base, 'agents', '.sai-7-performance-worker.owner.json');
+    const sidecar = path.join(base, 'agents', '.sai-6-performance-worker.owner.json');
     fs.writeFileSync(sidecar, JSON.stringify({ managedHash: crypto.createHash('sha256').update(expectedBytes).digest('hex') }));
     runDeletion(enumerateClaude(base));
     assert.equal(fs.existsSync(agent), false, 'the body-matching agent should be deleted on uninstall');
@@ -492,8 +492,8 @@ test('Step 4 managed performance agent installs without a sidecar and uninstall 
   const base = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-performance-managed-'));
   try {
     installClaude(base);
-    const agent = path.join(base, 'agents', 'sai-7-performance-worker.md');
-    const sidecar = path.join(base, 'agents', '.sai-7-performance-worker.owner.json');
+    const agent = path.join(base, 'agents', 'sai-6-performance-worker.md');
+    const sidecar = path.join(base, 'agents', '.sai-6-performance-worker.owner.json');
     assert.equal(fs.existsSync(agent), true, 'managed performance agent should be installed');
     assert.equal(fs.existsSync(sidecar), false, 'fresh installs must not create owner sidecars');
     runDeletion(enumerateClaude(base));
