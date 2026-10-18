@@ -56,6 +56,7 @@ function bind(provider, mechanics) {
     try {
     check(receipt, io);
     const candidates = [];
+    let verificationIncomplete = false;
     for (let index = 0; index < receipt.items.length; index++) {
       const item = receipt.items[index];
       if (!item.issue && item.attempted) {
@@ -83,6 +84,7 @@ function bind(provider, mechanics) {
           // An unavailable relation read is not proof of absence or success.
           item.hierarchy = false; item.dependencies = [];
           receipt.relation_error = error.message;
+          verificationIncomplete = true;
         }
       }
     }
@@ -93,7 +95,7 @@ function bind(provider, mechanics) {
       return { ...result, fallback_proposal: { hierarchy: 'written', dependencies: 'written', reason: receipt.relation_error,
         existing_native_links: receipt.items.filter(item => item.last_verified_hierarchy).map(item => item.issue), existing_native_dependencies: receipt.items.filter(item => item.last_verified_dependencies?.length).map(item => ({ issue: item.issue, depends_on: item.last_verified_dependencies })) }, continuation: digest({ receipt, fallback: 'written' }) };
     }
-    return { ...result, continuation: digest(receipt) };
+    return { ...result, ...(verificationIncomplete ? { message: 'Relationship verification incomplete; consult the user' } : { continuation: digest(receipt) }) };
     } catch (error) {
       // Keep verified identities visible, but offer no continuation from an unread frontier.
       return { ...report(receipt, error.message), candidates: [] };
@@ -154,8 +156,10 @@ function bind(provider, mechanics) {
   function continueSet(request, io) {
     const verified = recover(request, io);
     if (verified.candidates.length) return verified;
+    if (verified.status === 'complete' && !request.fallback) return verified;
     if (!verified.continuation || verified.continuation !== request.confirmation) throw new Error('Explicit approval of verified pending operations required');
     const { file, receipt } = load(request);
+    require('./backlog-publication-retry').authorize(request, receipt, file, save);
     if (request.fallback === 'written') {
       receipt.items.forEach((item, index) => { item.previous_body = body(receipt, index); item.references = false; });
       receipt.proposal.hierarchy = 'written'; receipt.proposal.dependencies = 'written'; save(file, receipt);

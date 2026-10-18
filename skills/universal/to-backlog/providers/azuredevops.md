@@ -36,7 +36,8 @@ identity and pre-creation IDs before one rules-enforced write.
 
 `complete` requires a remotely verified URL. `failure_before_publication` means
 no write was attempted. `rejected` is a confirmed server rejection; report and
-stop. On `uncertain`, keep the receipt and run `recover` with it. Remote recovery
+consult under `../publication-recovery.md`. On `uncertain`, keep the receipt and
+run `recover` directly with it, without asking permission to verify. Remote recovery
 is queries only: a WIQL POST is a query, not a publication. If the write response
 was lost, show candidate links and ask for the actual created URL, then pass it
 as `issueUrl`. Candidates must be new relative to saved IDs and match type,
@@ -50,8 +51,9 @@ For a crystallized set, use the shared `slice-set.md` contract and
 `query-set|publish-set|recover-set|continue-set`, with the ordinary project,
 explicit invocation-scoped `type`, source parent content and complete `blocks`.
 The selected type applies to parent and children: show it for each item before
-approval. Project rules remain enabled; incompatible types or hierarchy rules
-stop the pending operation for a human decision, not an automatic type change.
+approval. Project rules remain enabled; follow shared publication recovery for
+pending operations. Incompatible types or hierarchy rules require a human
+decision about scope changes, not an automatic type change.
 Child blocks are losslessly escaped HTML pre blocks; show their full outgoing
 HTML alongside source Markdown. Structured correspondence is a visible escaped
 `sai-backlog-slices@1` pre block so HTML sanitizers need not retain comments.

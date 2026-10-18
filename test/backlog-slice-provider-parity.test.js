@@ -123,6 +123,23 @@ function publish(t, fixture) {
   return { file, ready, result: fixture.adapter['publish-set']({ ...fixture.request, receipt: file, confirmation: ready.confirmation }, fixture.io) };
 }
 for (const platform of ['gitlab', 'azuredevops']) {
+  test(`${platform}: one automatic retry is durable across relationship failures`, t => {
+    const f = fixture(platform); f.state.failRelation = true;
+    const { file, result } = publish(t, f);
+    assert.equal(result.status, 'partial_failure');
+    let verified = f.adapter['recover-set']({ receipt: file }, f.io);
+    const before = f.state.writes.length;
+    assert.equal(f.adapter['continue-set']({ receipt: file, confirmation: verified.continuation, automatic_retry: true }, f.io).status, 'partial_failure');
+    assert.equal(JSON.parse(fs.readFileSync(file)).automatic_retry_consumed, true);
+    verified = f.adapter['recover-set']({ receipt: file }, f.io);
+    const after = f.state.writes.length;
+    assert.ok(after >= before);
+    assert.throws(() => f.adapter['continue-set']({ receipt: file, confirmation: verified.continuation, automatic_retry: true }, f.io), /exhausted/);
+    assert.equal(f.state.writes.length, after);
+    f.state.failRelation = false;
+    assert.equal(f.adapter['continue-set']({ receipt: file, confirmation: verified.continuation }, f.io).status, 'complete');
+    assert.equal(f.state.rows.length, 3);
+  });
   test(`${platform}: verified parent/child publication, complete import, identity transport and lookup`, t => {
     const f = fixture(platform), { result } = publish(t, f);
     assert.equal(result.status, 'complete', result.message);

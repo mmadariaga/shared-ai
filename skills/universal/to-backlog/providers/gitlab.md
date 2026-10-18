@@ -18,7 +18,8 @@ the same fields plus the unchanged `confirmation` token and absolute private
 `receipt` path. It rereads the destination, writes a durable receipt before the
 POST, and verifies the result. Content is a JSON body on stdin, never a command.
 
-For an uncertain response, run `recover` with `provider` and the saved `receipt`.
+For an uncertain response, follow `../publication-recovery.md` and run `recover`
+directly with `provider` and the saved `receipt`, without a verification question.
 Recovery reads all issues first and never creates another issue. If it returns
 candidates, have the user identify the actual created issue, then pass that
 confirmed canonical `issueUrl` to `recover`. Similar content alone is not proof.
@@ -31,8 +32,8 @@ For a crystallized set, use the shared `slice-set.md` contract and
 `query-set|publish-set|recover-set|continue-set` with the same destination fields
 and `blocks`. Ordinary GitLab issues use disclosed written parent/child references,
 not a claimed native hierarchy. Immediate dependencies use separately verified
-native `is_blocked_by` issue links. A permission or tier limitation stops the
-pending relation for a human decision; the shared explicitly approved written
+native `is_blocked_by` issue links. Follow shared publication recovery for pending
+relations before consulting about a permission or tier limitation. The explicitly approved written
 fallback preserves created issues and discloses existing native links. Each issue
 stores the structured correspondence; project configuration is unchanged.
 Read-only `lookup-slice` requires the known project and explicit change name.

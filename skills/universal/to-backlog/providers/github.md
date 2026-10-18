@@ -78,4 +78,9 @@ which, if any, belongs to this attempt; a concurrent matching issue is not
 proof. Supply the confirmed `issueUrl` in another recover request. If no issue
 can be established, stop uncertain and request manual verification; never
 automatically repeat creation. For a known issue, recovery checks membership
-before retrying only insertion. Keep the receipt for any failed recovery.
+without modifying the Project. A pending insertion returns `continuation`.
+Follow `../publication-recovery.md`: call `recover` with that token as
+`confirmation` and `automatic_retry: true` for the single covered retry.
+Subsequent insertion requires an explicit user response and a fresh token without
+that flag. Keep the receipt for any failed recovery. Read-only verification
+requires no additional permission.

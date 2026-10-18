@@ -32,8 +32,18 @@ each block as comma-separated immediate change names and are validated before
 storage/publication. Blockers publish and run first; independent slices retain
 their original order. Native hierarchy/dependencies are used when supported;
 unavailable relationships are disclosed as written links. Partial publication
-preserves created issues and a receipt; continuation needs approval and never
-blindly repeats creation.
+preserves created issues and a receipt. In both Claude Code and opencode,
+`/to-backlog` warns with completed and pending work, verifies without asking for
+additional permission, and retries verified pending actions once within the
+original publication approval. This covers individual GitHub Project insertion
+and sets' pending creation, membership and relationships, never a blind replay.
+The receipt records the retry before execution; recovery and re-entry do not
+reset it. Already-completed work is reported without another write. An uncertain
+creation is never repeated: identify its existing result with the user first.
+After an unsuccessful retry, verification runs again and further continuation
+requires an explicit user response. Changed content, destination or relationships
+requires renewed review. Existing-issue content edits receive read-only
+verification but no automatic mutation retry.
 
 After a completed publication in Explore, each stored slice receives its actual
 child issue URL and a recomputed hash before planning begins. Spec preserves that

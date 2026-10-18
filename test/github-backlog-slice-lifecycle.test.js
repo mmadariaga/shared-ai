@@ -160,6 +160,67 @@ test('partial creation has read-only recovery and approved continuation without 
   assert.equal(fixture.state.issues.length, 3);
 });
 const adds = fixture => fixture.state.calls.filter(call => call.input?.includes('addProjectV2ItemById(')).length;
+test('one durable automatic retry covers the complete set and exhaustion survives recovery', t => {
+  const fixture = fake(); fixture.state.insertionError = 'Permission denied';
+  const { file } = publish(t, fixture);
+  let verified = github['recover-set']({ receipt: file }, fixture.io);
+  assert.equal(adds(fixture), 1);
+  const failed = github['continue-set']({ receipt: file, confirmation: verified.continuation, automatic_retry: true }, fixture.io);
+  assert.equal(failed.status, 'partial_failure');
+  assert.equal(JSON.parse(fs.readFileSync(file)).automatic_retry_consumed, true);
+  verified = github['recover-set']({ receipt: file }, fixture.io);
+  assert.throws(() => github['continue-set']({ receipt: file, confirmation: verified.continuation, automatic_retry: true }, fixture.io), /exhausted/);
+  assert.equal(adds(fixture), 2);
+  fixture.state.insertionError = null;
+  // An explicit subsequent answer still uses the fresh verified token.
+  assert.equal(github['continue-set']({ receipt: file, confirmation: verified.continuation }, fixture.io).status, 'complete');
+  assert.equal(fixture.state.issues.length, 3);
+});
+test('automatic continuation preserves verified work and completion does not consume retry', t => {
+  const fixture = fake(); fixture.state.insertionError = 'Permission denied';
+  const { file } = publish(t, fixture);
+  const verified = github['recover-set']({ receipt: file }, fixture.io);
+  fixture.state.insertionError = null;
+  assert.equal(github['continue-set']({ receipt: file, confirmation: verified.continuation, automatic_retry: true }, fixture.io).status, 'complete');
+  const before = fixture.state.calls.filter(call => call.input?.includes('mutation(')).length;
+  assert.equal(github['continue-set']({ receipt: file, automatic_retry: true }, fixture.io).status, 'complete');
+  assert.equal(fixture.state.calls.filter(call => call.input?.includes('mutation(')).length, before);
+  assert.equal(fixture.state.issues.length, 3);
+});
+test('uncertain creation and changed content cannot use the automatic continuation', t => {
+  const fixture = fake(); fixture.state.lostCreation = true;
+  const { file } = publish(t, fixture);
+  const verified = github['recover-set']({ receipt: file }, fixture.io);
+  assert.equal(github['continue-set']({ receipt: file, confirmation: verified.continuation, automatic_retry: true }, fixture.io).candidates.length, 1);
+  assert.equal(JSON.parse(fs.readFileSync(file)).automatic_retry_consumed, undefined);
+  assert.equal(fixture.state.issues.length, 1);
+  fixture.state.issues[0].body = 'unapproved edit';
+  assert.equal(github['continue-set']({ receipt: file, identified: { 0: fixture.state.issues[0].url }, confirmation: verified.continuation, automatic_retry: true }, fixture.io).candidates.length, 1);
+  assert.equal(fixture.state.issues.length, 1);
+});
+test('known issue content and relationship scope changes invalidate automatic continuation', t => {
+  const fixture = fake({ native: true }); fixture.state.failNative = true;
+  const { file } = publish(t, fixture);
+  const fallback = github['recover-set']({ receipt: file, fallback: 'written' }, fixture.io);
+  assert.throws(() => github['continue-set']({ receipt: file, fallback: 'written', confirmation: fallback.continuation, automatic_retry: true }, fixture.io), /renewed approval/);
+  fixture.state.failNative = false;
+  const verified = github['recover-set']({ receipt: file }, fixture.io);
+  fixture.state.issues[0].body = 'unapproved edit';
+  assert.throws(() => github['continue-set']({ receipt: file, confirmation: verified.continuation, automatic_retry: true }, fixture.io), /diverged/);
+  assert.equal(JSON.parse(fs.readFileSync(file)).automatic_retry_consumed, undefined);
+});
+test('verified completion consumes nothing and an unread relationship authorizes no retry', t => {
+  const complete = fake(); const finished = publish(t, complete);
+  const before = complete.state.calls.length;
+  assert.equal(github['continue-set']({ receipt: finished.file, automatic_retry: true }, complete.io).status, 'complete');
+  assert.equal(JSON.parse(fs.readFileSync(finished.file)).automatic_retry_consumed, undefined);
+  assert.ok(complete.state.calls.slice(before).every(call => !call.input?.includes('mutation(')));
+  const partial = fake({ native: true }); partial.state.failNative = true;
+  const { file } = publish(t, partial);
+  assert.throws(() => github['recover-set']({ receipt: file }, partial.io), /unavailable/);
+  assert.throws(() => github['continue-set']({ receipt: file, automatic_retry: true }, partial.io), /unavailable/);
+  assert.equal(JSON.parse(fs.readFileSync(file)).automatic_retry_consumed, undefined);
+});
 test('Project membership is verified by direct reads: no wait when visible at once, no items connection', t => {
   const fixture = fake(); const { result } = publish(t, fixture);
   assert.equal(result.status, 'complete'); assert.equal(adds(fixture), 3); assert.deepEqual(fixture.state.sleeps, []);

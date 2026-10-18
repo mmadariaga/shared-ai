@@ -41,14 +41,17 @@ complete verified correspondence to `backlog-origin-transport.md`: that owner
 amends the stored blocks with actual child origins and new hashes before cold
 planning dispatch. Conversation-only retention is not sufficient for that path.
 
-On a partial or uncertain result, show `created`, `pending`, and the receipt.
-Offer verify/recover, stop, or explicit continuation when verifiable; wait.
+On a partial or uncertain result, follow `publication-recovery.md` beside this
+file: warn, verify directly, and automatically retry verified pending work once
+within the original approval. Show `created`, `pending`, and the receipt.
 `recover-set` reads remote results and updates only the local receipt. A lost
 creation response returns candidates, never another creation. Ask the user to
 identify the existing result and send `identified: {"<index>": "<issue URL>"}`.
-If unresolved, stay stopped. After recovery, show all pending operations and
-ask approval; `continue-set` uses the returned `continuation` as its
-`confirmation`. It re-verifies results before executing pending operations.
+If unresolved, consult the user. `continue-set` uses the returned `continuation`
+as its `confirmation`, with `automatic_retry: true` only for the one covered
+retry. After that allowance is consumed, show pending operations and obtain an
+explicit response before further continuation. It re-verifies results before
+executing pending operations.
 Changed content or visibility requires renewed review, not automatic replay.
 
 If native relationship operations fail, `recover-set` with `fallback: "written"`
