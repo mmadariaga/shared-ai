@@ -66,9 +66,10 @@
  * Exit codes: 0 = valid (dispatchable: `dispatchable` is true); 1 = violations
  * found or judgment pending; 2 = usage or I/O error.
  *
- * A second sub-command recomputes a block's hash for the worker that receives a
- * stored block (sai/policies/ready-to-propose-format.md § Stored block
- * transport):
+ * A second sub-command prints a block's diagnostic hash, for investigating a
+ * mismatch. It is not transport verification, which is `verify-file` on the
+ * exported block file (sai/policies/ready-to-propose-format.md § Stored block
+ * transport), and its result never authorizes a dispatch:
  *   node sai/tools/ready-to-propose.js hash < block
  * It prints `{ ok: true, hash }` (the same sha256 the dispatchable verdict
  * reports per block) and exits 0 when stdin carries exactly one block; any other

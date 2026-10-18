@@ -7,7 +7,7 @@ Define the hash recomputation that every worker receiving a stored block perform
 
 ### Requirement: Hash sub-command recomputes one block's hash
 
-`node sai/tools/ready-to-propose.js hash` SHALL read stdin, extract its `Ready to Propose` blocks, and, when exactly one block is present, print `{ok: true, hash}` with the same sha256 the dispatchable verdict reports for that block and exit 0, ignoring text around the block. Any other block count SHALL print `{ok: false, blocks, error}` and exit 1. Unreadable stdin SHALL exit 2.
+`node sai/tools/ready-to-propose.js hash` SHALL read stdin, extract its `Ready to Propose` blocks, and, when exactly one block is present, print `{ok: true, hash}` with the same sha256 the dispatchable verdict reports for that block and exit 0, ignoring text around the block. Any other block count SHALL print `{ok: false, blocks, error}` and exit 1. Unreadable stdin SHALL exit 2. The printed hash SHALL be a diagnostic hash for investigating a mismatch: it SHALL NOT be the transport verification of a stored block, which is `verify-file` on the exported block file per `sai/policies/ready-to-propose-format.md` § Stored block transport, and its result SHALL NOT authorize a dispatch.
 
 #### Scenario: Single block prints its hash
 
@@ -26,11 +26,11 @@ Define the hash recomputation that every worker receiving a stored block perform
 
 ### Requirement: Receiving workers verify the block hash before any work
 
-The Direct Build implementer after `--direct-build`, the backfill prepare worker after `--direct-build-prepare`, and the supervised spec worker after `--supervised` SHALL require paired `--block-file <absolute path>` and `--block-hash <sha256>` lines. Before dependent work each SHALL invoke `ready-to-propose.js verify-file` with those references. Verification SHALL require a safe regular transfer file containing exactly one block and matching the existing LF-normalized hash; it SHALL reject missing, unreadable, unsafe, or mismatched files. Each receiver SHALL return `failed` with no changes and identify the problem before repository reads or writes when verification fails. After success the verified file SHALL supply the sole block input. Workers SHALL never reconstruct, complete, or repair a block from chat.
+The Direct Build implementer after `--direct-build`, the backfill prepare worker after `--direct-build-prepare`, and the supervised spec worker after `--supervised` SHALL require paired `--block-file <absolute path>` and `--block-hash <sha256>` lines. Before dependent work each SHALL invoke `ready-to-propose.js verify-file` with those references. Verification SHALL require a safe regular transfer file containing exactly one block and matching the existing LF-normalized hash; it SHALL reject missing, unreadable, unsafe, or mismatched files. Each receiver SHALL return `failed` with no changes and identify the problem before repository reads or writes when verification fails. After success the verified file SHALL supply the sole block input. Workers SHALL never reconstruct, complete, or repair a block from chat, and SHALL NOT compute a hash from block text in place of `verify-file`.
 
 #### Scenario: Hash mismatch fails without changes
 
-- **WHEN** a receiving worker's recomputed hash differs from its envelope `--block-hash` value
+- **WHEN** a receiving worker's `verify-file` run on its envelope `--block-file` and `--block-hash` reports that the file does not match the hash
 - **THEN** it returns `failed` with a summary stating that the received block does not match its hash, and it changes nothing
 
 #### Scenario: Missing required hash line fails
