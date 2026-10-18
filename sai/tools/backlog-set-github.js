@@ -146,6 +146,7 @@ function recover(request, io) {
   const { file, receipt } = load(request);
   checkDestination(receipt, io);
   const all = allIssues(receipt, io), candidates = [];
+  let verificationIncomplete = false;
   for (let index = 0; index < receipt.items.length; index++) {
     const item = receipt.items[index];
     if (!item.issue && item.attempted) {
@@ -165,6 +166,7 @@ function recover(request, io) {
         catch (error) {
           if (!receipt.hierarchy_error && !(request.fallback === 'written' && receipt.dependency_error)) throw error;
           receipt.hierarchy_error = error.message;
+          verificationIncomplete = true;
           item.hierarchy = false;
         }
       }
@@ -175,6 +177,7 @@ function recover(request, io) {
         } catch (error) {
           if (!receipt.dependency_error && !(request.fallback === 'written' && receipt.hierarchy_error)) throw error;
           receipt.dependency_error = error.message; item.dependencies = [];
+          verificationIncomplete = true;
         }
       }
     }
@@ -185,13 +188,15 @@ function recover(request, io) {
     if (!receipt.hierarchy_error && !receipt.dependency_error) throw new Error('Written fallback requires an established native relationship failure');
     return { ...result, fallback_proposal: { hierarchy: 'written', dependencies: 'written', reason: receipt.hierarchy_error || receipt.dependency_error, existing_native_links: receipt.items.filter(item => item.hierarchy).map(item => item.issue), existing_native_dependencies: receipt.items.filter(item => item.dependencies?.length).map(item => ({ issue: item.issue, depends_on: item.dependencies })) }, continuation: adapter().digest({ receipt, fallback: 'written' }) };
   }
-  return { ...result, continuation: adapter().digest(receipt) };
+  return { ...result, ...(verificationIncomplete ? { message: 'Relationship verification incomplete; consult the user' } : { continuation: adapter().digest(receipt) }) };
 }
 function continueSet(request, io) {
   const verified = recover(request, io);
   if (verified.candidates.length) return verified;
-  if (verified.continuation !== request.confirmation) throw new Error('Explicit approval of the verified pending operations is required');
+  if (verified.status === 'complete' && !request.fallback) return verified;
+  if (!verified.continuation || verified.continuation !== request.confirmation) throw new Error('Explicit approval of the verified pending operations is required');
   const { file, receipt } = load(request);
+  require('./backlog-publication-retry').authorize(request, receipt, file, save);
   if (request.fallback === 'written') {
     receipt.items.forEach((item, index) => { item.previous_relation_body = relationBody(receipt, index); item.relations = false; });
     receipt.proposal.hierarchy = 'written';

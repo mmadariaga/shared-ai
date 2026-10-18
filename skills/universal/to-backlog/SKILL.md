@@ -133,6 +133,9 @@ for the exact approved title, description, and destination. Keep its durable
 local receipt path and returned work-item identification for recovery. Do not
 install tools, change authentication, or create destinations automatically.
 
+For a failed creation, read `publication-recovery.md` beside this skill and
+follow its shared warning, verification, and single-retry sequence.
+
 Report the actual result: complete publication, failure before publication,
 partial failure (include the existing issue link), or uncertain outcome.
 Never claim success from an attempted command. Preserve created work and

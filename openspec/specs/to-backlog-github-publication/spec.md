@@ -64,12 +64,12 @@ Creation publication, update publication, and their recovery operations SHALL re
 
 ### Requirement: Conservative publication results and recovery
 
-For creation, the adapter SHALL distinguish complete publication, failure before publication, partial failure, and uncertain creation. It SHALL preserve a created issue and return its identification when insertion cannot be confirmed. Creation recovery SHALL never create an issue; it SHALL verify identity, repository, Project, visibility, issue content, and Project membership before attempting only pending insertion. Changed identity, destination, visibility, or known issue content SHALL block further insertion. Origin-issue update results and recovery SHALL use the separate read-only update verification contract without creation or Project insertion.
+For creation, the adapter SHALL distinguish complete publication, failure before publication, partial failure, and uncertain creation. It SHALL preserve a created issue and return its identification when insertion cannot be confirmed. Creation recovery SHALL never create an issue; it SHALL verify identity, repository, Project, visibility, issue content, and Project membership before attempting only pending insertion. Changed identity, destination, visibility, or known issue content SHALL block further insertion. Recovery without an exact pending-insertion confirmation SHALL inspect membership without remote mutation and return a continuation token when insertion remains pending. A request with `automatic_retry: true` SHALL require that exact verified token and SHALL durably consume the publication's single retry allowance before insertion. Already-present membership SHALL return complete without insertion or allowance consumption. An exhausted automatic retry SHALL be rejected; further insertion SHALL require an explicit user response and fresh confirmation without that flag. Origin-issue update results and recovery SHALL use the separate read-only update verification contract without creation or Project insertion.
 
 #### Scenario: Project insertion failure
 
 - **WHEN** issue creation succeeds but insertion fails
-- **THEN** the adapter returns partial failure with the existing issue link and permits recovery of insertion without another creation.
+- **THEN** the adapter returns partial failure with the existing issue link and permits verified token-bound recovery of insertion without another creation.
 
 #### Scenario: Lost insertion response
 
@@ -80,6 +80,26 @@ For creation, the adapter SHALL distinguish complete publication, failure before
 
 - **WHEN** known issue content or repository visibility changes after creation
 - **THEN** creation recovery blocks insertion and requests fresh review without overwriting the changed issue or recreating it.
+
+#### Scenario: Pending insertion verification is read-only
+
+- **WHEN** recovery verifies an existing issue that is not in the approved Project and receives no exact continuation confirmation
+- **THEN** it returns insertion pending with the verified token and sends no insertion mutation.
+
+#### Scenario: One automatic insertion retry
+
+- **WHEN** recovery receives the exact pending token and automatic retry flag with unused allowance
+- **THEN** it saves consumed retry state before attempting only insertion of the existing issue.
+
+#### Scenario: Repeated automatic insertion retry
+
+- **WHEN** recovery is called again with automatic retry after the allowance was consumed
+- **THEN** it reports exhaustion without repeating insertion or issue creation.
+
+#### Scenario: Completion during verification
+
+- **WHEN** membership verification finds the existing issue already in the approved Project
+- **THEN** recovery reports complete without consuming retry allowance or making a remote mutation.
 
 ### Requirement: Uncertain creation verification
 

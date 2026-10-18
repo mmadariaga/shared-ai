@@ -254,6 +254,16 @@ function recover(request, io) {
       if (current.title !== receipt.proposal.title || current.body !== receipt.proposal.description) throw new Error('Issue content changed; fresh review is required before recovery');
     }
     save(request.receipt, receipt);
+    const present = !!membership(io, receipt.proposal.project.id, receipt.issue.id);
+    receipt.stage = present ? 'complete' : 'insertion_pending';
+    save(request.receipt, receipt);
+    if (present) return report(receipt);
+    const continuation = digest(receipt);
+    if (request.confirmation !== continuation) {
+      if (request.automatic_retry === true) throw new Error('Exact verified pending insertion confirmation is required');
+      return { ...report(receipt), continuation };
+    }
+    require('./backlog-publication-retry').authorize(request, receipt, request.receipt, save);
     return insert(receipt, request.receipt, io);
   } catch (error) {
     return receipt?.proposal ? { ...report(receipt, error.message), status: receipt.issue ? 'partial_failure' : 'uncertain' } : { status: 'failure_before_publication', message: error.message };

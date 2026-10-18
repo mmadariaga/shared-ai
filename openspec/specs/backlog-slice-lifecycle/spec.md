@@ -40,17 +40,32 @@ Set publication SHALL validate dependencies and use blocker-first order. Issue c
 
 ### Requirement: Partial set publication preserves results and requires approved continuation
 
-Publication SHALL retain a private receipt and report created issues and pending operations after partial or uncertain results. Recovery SHALL reread remote results without remote mutation. A lost creation response SHALL return candidates and require explicit identification rather than another creation. Continuation SHALL require the unchanged approval token for verified pending operations and SHALL reverify results before performing them. Changed destination, identity, visibility or issue content SHALL stop continuation for renewed review.
+Publication SHALL retain a private receipt and report created issues and pending operations after partial or uncertain results. Before recovery the workflow SHALL warn with completed and pending work and the receipt. Recovery SHALL reread remote results without remote mutation or an additional verification permission question. A lost creation response SHALL return candidates and require explicit identification rather than another creation. Continuation SHALL require the unchanged verified continuation token and SHALL reverify results before performing only pending operations. One automatic retry of verified pending creation, membership and relationships SHALL be covered by the original publication approval using `automatic_retry: true`. Its allowance SHALL be recorded durably before writes and SHALL apply to the whole publication, surviving recovery and re-entry. After an unsuccessful retry, the workflow SHALL verify again and require an explicit user response before further continuation. Changed destination, identity, visibility, issue content or relationship representation SHALL require renewed review. Already-complete publication SHALL return completion without remote writes or retry consumption.
 
 #### Scenario: Lost creation response
 
 - **WHEN** issue creation may have succeeded but its response is lost
-- **THEN** recovery returns matching candidates and no new creation occurs until the existing result is identified and pending work is approved.
+- **THEN** recovery returns matching candidates and no new creation occurs until the existing result is identified and the remaining work is verified within an applicable approval.
 
 #### Scenario: Remote content changed
 
 - **WHEN** recovery finds issue content that differs from the approved source or relationship content
 - **THEN** continuation stops without overwriting the changed issue or creating a replacement.
+
+#### Scenario: Pending operations receive one automatic retry
+
+- **WHEN** recovery verifies pending actions under the unchanged approved proposal and the receipt has an unused retry allowance
+- **THEN** continuation with the exact token and automatic retry flag records consumption before executing pending actions and preserves all completed work.
+
+#### Scenario: Exhaustion survives recovery across providers
+
+- **WHEN** GitHub, GitLab or Azure DevOps recovery reopens a publication whose automatic retry was consumed
+- **THEN** another automatic retry is rejected without remote writes and further continuation requires an explicit user response with the fresh verified token.
+
+#### Scenario: Verified complete set
+
+- **WHEN** continuation verifies that every approved set action is already complete without a requested fallback
+- **THEN** it returns complete without requiring a pending-action token, making another mutation or consuming retry allowance.
 
 ### Requirement: Published correspondence is durable and explicitly validated
 
@@ -343,3 +358,12 @@ On GitHub, `verify-assignment` SHALL receive `expected_parent` for every choice:
 
 - **WHEN** an approved standalone leaf is assigned to the authenticated user
 - **THEN** `assign` verifies with `expected_parent: null` and reports `verified: true` with `parent: null`.
+
+### Requirement: Unread relationship state supplies no continuation authority
+
+GitHub and provider-neutral set recovery SHALL NOT return an executable continuation token when required relationship verification is incomplete. It SHALL preserve known results and report the unavailable verification or the need to consult the user. Continuation SHALL reject missing or mismatched verified tokens before consuming the automatic retry allowance or writing remote state. A changed written fallback SHALL remain a separately approved operation, not an automatic retry.
+
+#### Scenario: Relationship read fails
+
+- **WHEN** recovery cannot verify the current hierarchy or dependency state required for ordinary continuation
+- **THEN** it provides no executable continuation authority and automatic continuation performs no remote write and consumes no retry allowance.

@@ -220,3 +220,22 @@ The Azure DevOps adapter SHALL compare a sent description with a description rea
 
 - **WHEN** a GitLab slice set publication reads back a description that differs from the sent one only by added whitespace
 - **THEN** creation verification fails as a content mismatch.
+
+### Requirement: Direct verification and shared bounded publication recovery
+
+The Azure DevOps publication instructions SHALL direct recovery queries without an additional verification permission question, including partial and uncertain outcomes. Failed new-issue publications SHALL use the shared warning, verification and bounded retry contract: preserve completed work, allow one verified pending-only retry within original approval when executable pending actions exist, record its publication-wide allowance before writes, then verify and consult if incomplete. Individual Boards recovery SHALL remain query-only and SHALL NOT repeat publication. Pending set operations SHALL follow the shared retry sequence while retaining project rules and the approved work-item type. Incompatible types, hierarchy rules or changed relationship representation SHALL require a human decision rather than an automatic scope or type change. Existing-issue content edits SHALL receive no automatic mutation retry.
+
+#### Scenario: Uncertain individual creation
+
+- **WHEN** individual creation has no verified outcome
+- **THEN** the workflow queries directly without a verification permission question, retains the receipt and requests identification when necessary without another creation.
+
+#### Scenario: Set relationships remain pending
+
+- **WHEN** a set has verified pending relationships within the unchanged approval and an unused automatic retry allowance
+- **THEN** continuation consumes the durable allowance before retrying pending work while preserving created items and completed relationships.
+
+#### Scenario: Automatic retry fails
+
+- **WHEN** the automatic set retry remains incomplete
+- **THEN** the workflow verifies again without additional consent and consults the user with completed and pending state instead of granting another automatic retry.

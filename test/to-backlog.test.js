@@ -298,7 +298,10 @@ test('single-issue recovery also resolves a concurrent insertion without recreat
   state.failInsertion = false;
   state.insertionError = 'Content already exists';
   state.raceMember = true;
-  assert.equal(github.recover({ receipt }, io).status, 'complete');
+  const verified = github.recover({ receipt }, io);
+  assert.equal(verified.status, 'partial_failure');
+  assert.equal(state.insertions, 1);
+  assert.equal(github.recover({ receipt, confirmation: verified.continuation, automatic_retry: true }, io).status, 'complete');
   assert.equal(state.creations, 1);
   assert.equal(state.insertions, 2);
 });
@@ -435,7 +438,10 @@ test('partial failure and lost insertion recover membership without issue recrea
     assert.equal(github.publish(input, io).status, 'partial_failure');
     const before = state.insertions;
     state[option] = false;
-    assert.equal(github.recover({ receipt }, io).status, 'complete');
+    const verified = github.recover({ receipt }, io);
+    assert.equal(state.insertions, before);
+    const result = verified.status === 'complete' ? verified : github.recover({ receipt, confirmation: verified.continuation, automatic_retry: true }, io);
+    assert.equal(result.status, 'complete');
     assert.equal(state.creations, 1);
     assert.equal(state.insertions, option === 'loseInsertion' ? before : before + 1);
   }
@@ -448,7 +454,25 @@ test('lost creation returns uncertain, requires verified issue choice, never rep
   const found = github.recover({ receipt }, io);
   assert.equal(found.status, 'uncertain');
   assert.equal(found.candidates[0].url, state.issue.url);
-  assert.equal(github.recover({ receipt, issueUrl: state.issue.url }, io).status, 'complete');
+  const verified = github.recover({ receipt, issueUrl: state.issue.url }, io);
+  assert.equal(verified.status, 'partial_failure');
+  assert.equal(github.recover({ receipt, confirmation: verified.continuation, automatic_retry: true }, io).status, 'complete');
+  assert.equal(state.creations, 1);
+});
+
+test('single publication retry is durably consumed before insertion and cannot reset through verification', () => {
+  const state = { failInsertion: true };
+  const { input, io, receipt } = approved(state);
+  github.publish(input, io);
+  let verified = github.recover({ receipt }, io);
+  assert.equal(state.insertions, 1);
+  assert.equal(github.recover({ receipt, confirmation: verified.continuation, automatic_retry: true }, io).status, 'partial_failure');
+  assert.equal(JSON.parse(fs.readFileSync(receipt)).automatic_retry_consumed, true);
+  verified = github.recover({ receipt }, io);
+  assert.match(github.recover({ receipt, confirmation: verified.continuation, automatic_retry: true }, io).message, /exhausted/);
+  assert.equal(state.insertions, 2);
+  state.failInsertion = false;
+  assert.equal(github.recover({ receipt, confirmation: verified.continuation }, io).status, 'complete');
   assert.equal(state.creations, 1);
 });
 
