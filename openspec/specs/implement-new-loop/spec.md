@@ -7,7 +7,7 @@ TBD - created by archiving change sai-build-new-walking-skeleton. Update Purpose
 
 ### Requirement: Implement-new loads only non-stopping cross-cutting policies
 
-The `/sai-3-implement` and `/sai-build` coordinators SHALL load only cross-cutting policies that never stop a run: public chat, `remember`, `safe-operations`, `prereqs-check` with `prereqs-paths`, `tool-resolution`, the budget executor binding, and, for `/sai-3-implement`, `artifact-review-contract` for the step review and `finding-state` for the audit findings. They SHALL NOT load `command-runner`, `worker-core`, `bounded-recovery`, `stop-options`, `unattended-runtime-recovery`, `no-commit-guard`, or `composition.md`.
+The `/sai-3-implement` and `/sai-build` coordinators SHALL load only cross-cutting policies that never stop a run: public chat, `remember`, `safe-operations`, `prereqs-check` with `prereqs-paths`, `tool-resolution`, the budget executor binding, and, for `/sai-3-implement`, `artifact-review-contract` for the step review, `finding-state` for the audit findings, and `sai-learnings-format` for the learnings promotion at run close. They SHALL NOT load `command-runner`, `worker-core`, `bounded-recovery`, `stop-options`, `unattended-runtime-recovery`, `no-commit-guard`, or `composition.md`.
 
 #### Scenario: Shared stopping orchestration is absent
 
@@ -18,6 +18,11 @@ The `/sai-3-implement` and `/sai-build` coordinators SHALL load only cross-cutti
 
 - **WHEN** the `/sai-3-implement` coordinator card is inspected
 - **THEN** it fetches `@sai/policies/finding-state.md`
+
+#### Scenario: The learnings format policy is loaded only for promotion
+
+- **WHEN** the `/sai-3-implement` coordinator card is inspected
+- **THEN** it fetches `@sai/policies/sai-learnings-format.md` only in its run-close learnings promotion, when a deviation qualifies
 
 ### Requirement: Start preconditions
 
@@ -32,6 +37,8 @@ The coordinator SHALL run the OpenSpec prerequisite check before anything else. 
 
 Before the first step, the coordinator SHALL record the dirty baseline with `git status --porcelain` and SHALL run the unit and integration suites once through the executor, recording the failing tests as the failure baseline, or `unavailable` when no suite can be found or run. When every task in `tasks.md` is already checked and no audit report holds an open fixable finding, it SHALL do no new work, run the suites exactly once, report their result, and close.
 
+To find the test commands, the coordinator SHALL take the `**Test Command**` field of `tasks.md`'s `## Implementation Context` as the first source, using only its command line, with its scoping idiom for the step tests, and SHALL NOT research it again. When that field is missing or holds the sentinel `None — no test runner in this project`, the coordinator SHALL fall back to `SAI_LEARNINGS.md`, `design.md`, `package.json`, and the build files.
+
 #### Scenario: Every task is already checked
 
 - **WHEN** the run starts, every task in `tasks.md` is checked, and no audit report holds an open fixable finding
@@ -42,9 +49,19 @@ Before the first step, the coordinator SHALL record the dirty baseline with `git
 - **WHEN** the run starts, every task in `tasks.md` is checked, and an audit report holds an open fixable finding
 - **THEN** the coordinator records the baselines and applies the audit findings instead of closing
 
+#### Scenario: The design test command comes first
+
+- **WHEN** `tasks.md` carries a `**Test Command**` with a runnable command line
+- **THEN** the coordinator uses that command line, with its scoping idiom for the step tests, before consulting `SAI_LEARNINGS.md`, `design.md`, `package.json`, or the build files
+
+#### Scenario: The design test command is missing or the sentinel
+
+- **WHEN** `**Test Command**` is missing from `tasks.md` or holds `None — no test runner in this project`
+- **THEN** the coordinator falls back to `SAI_LEARNINGS.md`, `design.md`, `package.json`, and the build files, and records the baseline as `unavailable` when none of them yields a suite that can be run
+
 ### Requirement: Per-step RED, GREEN, review, and commit cycle
 
-The coordinator SHALL size each step as the smallest group of unchecked tasks that delivers one testable behavior, SHALL name it `step-{n}` and emit `step-start`, and SHALL write a brief naming the goal, task ids, spec scenarios, `interfaces.md` signatures, writable paths, and the path where the worker writes its report. After RED and after GREEN it SHALL run only the step's own tests through the executor. RED SHALL be closed only when the tests fail by assertion on the behavior under test; a pass or a non-assertion failure SHALL return to RED as a corrected instruction that is an attempt of the step, except that a pass whose behavior already exists SHALL commit the tests, skip GREEN, and record a deviation. A step that admits no meaningful test SHALL run GREEN only with a recorded deviation. GREEN SHALL be closed only when the tests pass and no test file or `interfaces.md` changed since RED; the coordinator SHALL restore a touched file from the index, delete a test file GREEN created, and count either as an attempt. The coordinator SHALL then run the adversarial step review of the `implement-new-adversarial-review` capability, whose bounded fix rounds are not attempts of the step. After the step's commit it SHALL emit `step-done`.
+The coordinator SHALL size each step as the smallest group of unchecked tasks that delivers one testable behavior, SHALL name it `step-{n}` and emit `step-start`, and SHALL write a brief naming the goal, task ids, spec scenarios, `interfaces.md` signatures, the `## Required Documentation` entries of `tasks.md` relevant to the step, writable paths, and the path where the worker writes its report. Each documentation entry SHALL carry its path or URL with its note, as context to read that adds no requirement; the brief SHALL carry no documentation entry when the section is missing or every subsection is `None`, and the run SHALL continue. After RED and after GREEN it SHALL run only the step's own tests through the executor. RED SHALL be closed only when the tests fail by assertion on the behavior under test; a pass or a non-assertion failure SHALL return to RED as a corrected instruction that is an attempt of the step, except that a pass whose behavior already exists SHALL commit the tests, skip GREEN, and record a deviation. A step that admits no meaningful test SHALL run GREEN only with a recorded deviation. GREEN SHALL be closed only when the tests pass and no test file or `interfaces.md` changed since RED; the coordinator SHALL restore a touched file from the index, delete a test file GREEN created, and count either as an attempt. The coordinator SHALL then run the adversarial step review of the `implement-new-adversarial-review` capability, whose bounded fix rounds are not attempts of the step. After the step's commit it SHALL emit `step-done`.
 
 #### Scenario: GREEN modifies a test file
 
@@ -55,6 +72,16 @@ The coordinator SHALL size each step as the smallest group of unchecked tasks th
 
 - **WHEN** the step's tests fail because of an import, syntax, or fixture error after RED
 - **THEN** the coordinator sends RED a corrected instruction, counted as an attempt of the step, before GREEN starts.
+
+#### Scenario: The brief carries the relevant documentation
+
+- **WHEN** `tasks.md`'s `## Required Documentation` lists entries relevant to a step
+- **THEN** that step's brief carries each relevant path or URL with its note, as context that adds no requirement
+
+#### Scenario: No documentation to carry
+
+- **WHEN** `## Required Documentation` is missing from `tasks.md` or every subsection is `None`
+- **THEN** the step brief carries no documentation entry and the run continues
 
 ### Requirement: Step commits
 

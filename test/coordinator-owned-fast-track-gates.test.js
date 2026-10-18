@@ -11,19 +11,16 @@ function read(file) {
   return fs.readFileSync(path.join(__dirname, '..', file), 'utf8').replace(/\r\n/g, '\n');
 }
 
-test('published build specification preserves coordinator-owned fast-track grants', () => {
+test('published build specification keeps fast-track out of build and with the implement coordinator', () => {
   const spec = read('openspec/specs/sai-build-command/spec.md');
-  const requirement = title => {
-    const heading = `### Requirement: ${title}\n`;
-    const start = spec.indexOf(heading);
-    assert.notEqual(start, -1, `published specification should contain ${title}`);
-    const next = spec.indexOf('\n### Requirement:', start + heading.length);
-    return spec.slice(start + heading.length, next === -1 ? spec.length : next);
-  };
-  const activation = requirement('Apply fast-track is injected and composition-owned');
-  assert.match(activation, /print `> FAST-TRACK MODE ACTIVE` exactly once at implement activation, not at apply activation/);
-  const commit = requirement('Apply commit grant is active before the first Step');
-  assert.match(commit, /At apply segment entry the apply coordinator SHALL set `session_commit_authorized` from injected fast-track state before Step projection or dispatch/);
+  const heading = '### Requirement: Build strips residual fast-track tokens before resolution\n';
+  const start = spec.indexOf(heading);
+  assert.notEqual(start, -1, 'published specification should contain the fast-track token requirement');
+  const next = spec.indexOf('\n### Requirement:', start + heading.length);
+  const requirement = spec.slice(start + heading.length, next === -1 ? spec.length : next);
+  assert.match(requirement, /every `--fast-track` token SHALL be removed from `arguments_value` in any order, by the first implementation segment's Start step/);
+  assert.match(requirement, /SHALL not make build a fifth parser or create build-local fast-track state/);
+  assert.match(read('sai/commands/implement/coordinator.md'), /Drop any `--fast-track` token from `arguments_value`/);
 });
 
 test('fast-track never skips the explore open-decision reconfirmation', () => {

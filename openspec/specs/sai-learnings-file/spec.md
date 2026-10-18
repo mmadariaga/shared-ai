@@ -12,6 +12,8 @@ The durable learnings artifact SHALL live at exactly one place: the project root
 
 The filename SHALL be namespaced with the `SAI_` prefix. A generic name such as `LEARNINGS.md` SHALL NOT be used, because shared-ai installs into third-party repositories where such a file could collide with pre-existing retrospective or onboarding notes and silently feed unrelated prose into the pipeline.
 
+The `/sai-3-implement` coordinator SHALL be the only writer of `SAI_LEARNINGS.md`, by its learnings promotion at run close. No other command, coordinator, or worker SHALL write it.
+
 #### Scenario: Phase reads the learnings file
 
 - **WHEN** any SAI phase reads the durable learnings artifact
@@ -21,7 +23,7 @@ The filename SHALL be namespaced with the `SAI_` prefix. A generic name such as 
 #### Scenario: Promotion writes the file
 
 - **WHEN** any SAI phase would create or update the durable learnings artifact
-- **THEN** no SAI command does so: no command instruction writes `SAI_LEARNINGS.md`, so no promotion writes it, in the root or any other directory
+- **THEN** only the `/sai-3-implement` coordinator does so, by its learnings promotion at run close, and it writes `./SAI_LEARNINGS.md` at the project root and in no other directory
 
 #### Scenario: Consumer repo already has a generic learnings file
 
@@ -40,8 +42,8 @@ A section with no entries SHALL be present with its heading and left empty rathe
 
 #### Scenario: File is bootstrapped with a single entry
 
-- **WHEN** a SAI command is read for the step that creates `SAI_LEARNINGS.md` with one entry under **Avoid**
-- **THEN** no such step exists: no command creates the file, so no bootstrap occurs
+- **WHEN** the `/sai-3-implement` coordinator promotes one qualifying **Avoid** fact at run close and no `SAI_LEARNINGS.md` exists
+- **THEN** it creates the file at the project root per the bootstrap rules of `sai/policies/sai-learnings-format.md`, with all four section headings present and the entry under **Avoid**
 
 #### Scenario: A fact does not fit the four sections
 
@@ -68,13 +70,13 @@ When the project has no test runner, the section SHALL carry the same explicit s
 
 #### Scenario: A run observes the project's real test invocation
 
-- **WHEN** a promotion would write the **Test Command** section
-- **THEN** no SAI command writes it, so the section holds only the command a human or an earlier file already recorded, with `*Observed:*` provenance kept on its own line beneath it
+- **WHEN** the `/sai-3-implement` coordinator's learnings promotion writes the **Test Command** section
+- **THEN** it writes the single directly-executable command line with `*Observed:*` provenance on its own line beneath it
 
 #### Scenario: A later run observes a different invocation
 
-- **WHEN** a later run finds a **Test Command** that differs from the one the section holds
-- **THEN** no SAI command replaces the existing command, so the section keeps exactly one command until a human edits it
+- **WHEN** a later `/sai-3-implement` run promotes a **Test Command** that differs from the one the section holds
+- **THEN** the new command replaces the whole section, so the section keeps exactly one command
 
 #### Scenario: Command line is lifted for injection
 

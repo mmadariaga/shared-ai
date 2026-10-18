@@ -31,6 +31,8 @@ A relevance note SHALL be derived from the design-phase research and SHALL NOT b
 
 The section SHALL NOT be left empty or omitted.
 
+`/sai-3-implement` SHALL read this section from `tasks.md` at Start, without researching it again, and SHALL carry the entries relevant to each step in that step's brief.
+
 #### Scenario: sai-2-design populates both subsections from research findings
 
 - **WHEN** `/sai-2-design` generates `tasks.md` after researching the codebase and external docs
@@ -44,7 +46,7 @@ The section SHALL NOT be left empty or omitted.
 #### Scenario: sai-3-implement reads section without re-exploring
 
 - **WHEN** `/sai-3-implement` reads `tasks.md` to plan its Steps
-- **THEN** its Start step does not name `## Required Documentation`, and it reads the change artifacts once as that Start step lists them
+- **THEN** its Start step names `## Required Documentation` among the inputs it takes from `tasks.md`, it does not research that documentation again, and each step brief carries the entries relevant to that step
 
 ### Requirement: tasks-required-documentation-schema
 The `tasks` artifact instruction in `openspec/schemas/sai-workflow/schema.yaml` SHALL include a directive requiring `/sai-2-design` to populate `## Required Documentation` from docs visited during codebase research.
