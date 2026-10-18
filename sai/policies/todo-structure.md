@@ -64,7 +64,7 @@ The milestone stamp is a decorative rendering action: an HH:mm annotation that d
     [~] Analyze artifacts and validate decisions
     [ ] Review required documentation
 
-**Scope.** Stamps attach to every routed phase progress task list whose steps are marked from worker progress events — the spec, design, and implement planning plans and the review, security, performance, and accessibility audit plans alike. The `sai-explore` Idea Progress List and the apply step projection carry no stamps: neither is marked from worker progress events, so neither has a payload to take a stamp value from. A plan suppressed by the minimum-threshold rule renders no list and therefore no stamps.
+**Scope.** Stamps attach to every routed phase progress task list whose steps are marked from worker progress events — the spec and design planning plans and the security, performance, and accessibility audit plans alike. The `sai-explore` Idea Progress List carries no stamps: it is not marked from worker progress events, so it has no payload to take a stamp value from. A plan suppressed by the minimum-threshold rule renders no list and therefore no stamps.
 
 **Freeze.** `needs_input`, `failed`, and `cancelled` leave the list and its stamps exactly as last rendered: they add no stamp, change none, and clear none. Pause time is absorbed into the next stamp a step receives, because that stamp is the validator's observation instant.
 
@@ -173,10 +173,6 @@ foreign surface. Once claimed, the binding's full-list convergence may
 intentionally displace foreign entries, and no restoration is attempted at
 terminal closure. The coordinator must describe this as exclusive ownership,
 not marker-only isolation.
-
-## Apply step projection
-
-The **apply step projection** — the task list `/sai-4-apply` renders at run start from the `#### Step N:` headings of `openspec/changes/{change-name}/implementation.md` — is a governed surface of this policy. The list structure (one entry per planned step, stable id + label), the state vocabulary (`pending` / `in_progress` / `completed`), the deterministic derivation (plan order + on-disk marked set), the minimum-threshold rule, and the emission-ownership invariant apply to the projection unchanged. Consuming surfaces such as `sai/commands/apply/coordinator.md` reference this policy and never restate the threshold constant.
 
 ## Single-source reference rule
 

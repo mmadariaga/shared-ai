@@ -66,19 +66,16 @@ The Direct Build - Unattended final report SHALL NOT present the auto-answer aut
 
 ### Requirement: Automatic corrections and ignored process statements are reported
 
-Unattended lanes SHALL add entries for automatic corrections and for ignored process statements to their terminal report, in the layout single-sourced at `sai/policies/autonomy-audit-log.md`, after the auto-answer entries when both exist. A correction entry SHALL record what failed, what was corrected, and why it stays within the authorization; an ignored-statement entry SHALL record the worker input statement and the worker that reported it. Each count SHALL be emitted only when non-zero. The Direct Build close of `/sai-5-review` and `/sai-review` SHALL produce this record too, appended after the caller's close.
+Unattended lanes SHALL add entries for automatic corrections and for ignored process statements to their terminal report, in the layout single-sourced at `sai/policies/autonomy-audit-log.md`, after the auto-answer entries when both exist. A correction entry SHALL record what failed, what was corrected, and why it stays within the authorization; an ignored-statement entry SHALL record the worker input statement and the worker that reported it. Each count SHALL be emitted only when non-zero.
 
 #### Scenario: An automatic correction is reported
-
 - **WHEN** an unattended lane corrects a failure automatically
 - **THEN** its terminal report lists the correction with what failed, what was corrected, and why it stays within the authorization
 
 #### Scenario: A process statement was ignored
-
 - **WHEN** a worker reports that it ignored a process statement
 - **THEN** the terminal report lists the statement and the worker that reported it
 
 #### Scenario: The review close produces the record
-
-- **WHEN** the Direct Build close of `/sai-5-review` or `/sai-review` made an automatic correction
-- **THEN** its terminal report carries the correction entry after the caller's close
+- **WHEN** the command catalog is read
+- **THEN** no `/sai-5-review` or `/sai-review` command exists, so no review Direct Build close appends this record

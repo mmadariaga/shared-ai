@@ -8,23 +8,20 @@ This capability defines design.md's manual-verification section as the human-che
 
 ### Requirement: design.md ends with a Manual Verification section
 
-The active design step authority at `sai/commands/design/steps/design.md` SHALL require `openspec/changes/{name}/design.md` to close with a `## Manual Verification` section, a hard filter listing only checks that no automated test in the plan covers and that `/sai-5-review` does not already cover.
+The active design step authority at `sai/commands/design/steps/design.md` SHALL require `openspec/changes/{name}/design.md` to close with a `## Manual Verification` section, a hard filter listing only checks that no automated test in the plan covers and that `/sai-4-review` does not already cover.
 
 The section SHALL be the closing section of `design.md`. When nothing is manual-only, the section SHALL still be emitted with an explicit `None` and a one-line reason, so a reader can distinguish "nothing to check" from "not considered".
 
 #### Scenario: Manual Verification closes design.md
-
 - **WHEN** `sai-2-design` generates `design.md`
-- **THEN** `## Manual Verification` is present as the file's closing section
+- **THEN** `## Manual Verification` is present as the file closing section
 
 #### Scenario: change with no manual check
-
 - **WHEN** a change has no manual-only check
 - **THEN** `## Manual Verification` is emitted with `None` and a one-line reason
 - **AND** the section is NOT omitted
 
 #### Scenario: manual-verification-uses-live-authority
-
 - **WHEN** the design worker completes `design.md`
 - **THEN** the file ends with the Manual Verification section required by the active step contract.
 
@@ -56,17 +53,15 @@ Each item SHALL name what to check and what a correct result looks like. An item
 
 ### Requirement: Manual Verification is the middle tier, not a substitute for tests or review
 
-The active design step authority at `sai/commands/design/steps/design.md` SHALL state that `## Manual Verification` is a hard filter: it lists only checks that no automated test in the plan covers. It SHALL NOT be used to record work that belongs in an automated test, nor to duplicate what `/sai-5-review` already covers.
+The active design step authority at `sai/commands/design/steps/design.md` SHALL state that `## Manual Verification` is a hard filter: it lists only checks that no automated test in the plan covers. It SHALL NOT be used to record work that belongs in an automated test, nor to duplicate what `/sai-4-review` already covers.
 
 An item SHALL qualify for `## Manual Verification` only when no automated test in the plan covers the check.
 
 #### Scenario: automatable check is not routed here
-
 - **WHEN** a check can be encoded as an ordinary automated test
-- **THEN** it belongs in the step's `**Testing Strategy**` and `interfaces.md`
+- **THEN** it belongs in the step `**Testing Strategy**` and `interfaces.md`
 - **AND** it is NOT listed under `## Manual Verification`
 
 #### Scenario: review-scope item is not duplicated here
-
-- **WHEN** a concern is already within `/sai-5-review`'s scope
+- **WHEN** a concern is already within `/sai-4-review`'s scope
 - **THEN** it is NOT restated under `## Manual Verification`

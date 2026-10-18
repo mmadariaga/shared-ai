@@ -51,8 +51,3 @@ the next restore completes it. Foreign entries stay set aside until then.
   the staging of its owned paths, through
   `sai/commands/archive/worker.md` § Direct Build (unattended) execute
   continuation.
-- **Apply** realizes the same rule with `apply-step.js
-  restore-unrelated-index`: the guard's mixed reset is its set-aside, its
-  immutable baseline is its record, and the tool verifies that the unrelated
-  content is unchanged before it restores any entry. A failed restoration stops
-  with work preserved (`sai/commands/apply/coordinator.md` § No-commit guard).

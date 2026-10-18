@@ -7,7 +7,7 @@ TBD - created by archiving change sai-build-new-walking-skeleton. Update Purpose
 
 ### Requirement: Live workers with a creation-only ready handshake
 
-The RED and GREEN `-new` workers SHALL be created when their first step needs them and SHALL live for the whole run unless the coordinator replaces one. The creation dispatch SHALL carry no task and the worker SHALL return exactly `event: ready` with an empty `changed_files`; every step SHALL then arrive as a continuation of the same worker (`SendMessage` to the captured agent ID on Claude Code, `task` with the captured `task_id` on opencode). A worker that returns no ready SHALL be an obstacle under the attempt budget. A worker created to replace another SHALL receive the same creation-only handshake and a hand-over summary the coordinator wrote, which SHALL be the only account of earlier work it receives.
+The RED and GREEN workers SHALL be created when their first step needs them and SHALL live for the whole run unless the coordinator replaces one. The creation dispatch SHALL carry no task and the worker SHALL return exactly `event: ready` with an empty `changed_files`; every step SHALL then arrive as a continuation of the same worker (`SendMessage` to the captured agent ID on Claude Code, `task` with the captured `task_id` on opencode). A worker that returns no ready SHALL be an obstacle under the attempt budget. A worker created to replace another SHALL receive the same creation-only handshake and a hand-over summary the coordinator wrote, which SHALL be the only account of earlier work it receives.
 
 #### Scenario: Second step reuses the worker
 
@@ -16,7 +16,7 @@ The RED and GREEN `-new` workers SHALL be created when their first step needs th
 
 ### Requirement: Pointer delivery of step files
 
-Each worker role SHALL have its own linear step machine, `red-new-steps@1` and `green-new-steps@1`, with the steps `task-intake` (no file) followed by `red-step` (`sai/commands/implement-new/steps/red-step.md`) or `green-step` (`sai/commands/implement-new/steps/green-step.md`), both registered in `sai-state/registry.js`. The coordinator SHALL reset the role's machine before each step and open every brief with `Active step: <stage> — follow <next.follow>`; when the store fails, it SHALL send the pointer from the static order itself and continue.
+Each worker role SHALL have its own linear step machine, `red-steps@1` and `green-steps@1`, with the steps `task-intake` (no file) followed by `red-step` (`sai/commands/implement/steps/red-step.md`) or `green-step` (`sai/commands/implement/steps/green-step.md`), both registered in `sai-state/registry.js`. The coordinator SHALL reset the role's machine before each step and open every brief with `Active step: <stage> — follow <next.follow>`; when the store fails, it SHALL send the pointer from the static order itself and continue.
 
 #### Scenario: Store failure
 

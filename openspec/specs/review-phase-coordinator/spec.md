@@ -7,107 +7,72 @@ TBD - created by archiving change sai-5-review-coordinator-worker-split. Update 
 
 ### Requirement: Routed review entrypoints use a terminal-only coordinator
 
-The Claude Code and opencode `/sai-5-review` entrypoints SHALL invoke a review coordinator and its harness-specific review-worker binding. The coordinator SHALL own lifecycle routing and terminal presentation only; GitHub Copilot SHALL remain on its existing inline review path.
+The Claude Code and opencode `/sai-4-review` entrypoints SHALL invoke a review coordinator and its harness-specific review-worker binding. The coordinator SHALL own lifecycle routing, the review step machine, and terminal presentation; the review worker SHALL own the diff analysis and the report.
 
 #### Scenario: Routed harness starts review
-- **WHEN** Claude Code or opencode invokes `/sai-5-review`
+- **WHEN** Claude Code or opencode invokes `/sai-4-review`
 - **THEN** the wrapper enters the review coordinator and its matching review-worker binding
 - **AND** it does not execute the inline review instruction as the coordinator's technical workflow
 
 #### Scenario: Copilot starts review
-- **WHEN** GitHub Copilot invokes `/sai-5-review`
-- **THEN** its existing inline review prompt remains the execution path
-- **AND** it does not require a routed review worker or binding
-
-### Requirement: Coordinator supplies the shared phase adapter fields
-
-The review coordinator SHALL reuse `sai/orchestration/command-runner.md` unchanged and SHALL supply the seven adapter fields `original_envelope`, `dispatch_operation`, `continuation_operation`, `allowed_nonterminal_extensions`, `extension_handlers`, `replacement_reconstruction_fields`, and `terminal_navigation`.
-
-#### Scenario: Coordinator initializes a review invocation
-- **WHEN** a routed review command starts
-- **THEN** it constructs the original envelope and all seven review adapter fields
-- **AND** it dispatches exactly one review worker through the active binding
+- **WHEN** the command catalog is read
+- **THEN** no `/sai-5-review` command exists, so Copilot has no review entrypoint under that name to start
 
 ### Requirement: Review invocation envelope preserves both positional arguments
 
-The coordinator SHALL construct `original_envelope` with the complete argument string preserved in `arguments_value`. Both Claude Code and opencode SHALL carry the change name and the optional `--parent-branch <branch>` option in that one field for worker-owned parsing. The coordinator SHALL fetch `sai/commands/review/options.md` and SHALL NOT parse `arguments_value`. No wrapper-echo field is used.
+The coordinator SHALL parse `arguments_value` into the optional change name and the optional `--parent-branch <branch>` option, drop `--fast-track` tokens, and reject an unknown option, a second positional value, or an option without its value before any dispatch. It SHALL pass the change name and the parent branch to the review worker in the task message.
 
 #### Scenario: Routed review receives a parent branch
-- **WHEN** the user invokes `/sai-5-review my-change --parent-branch develop`
-- **THEN** the worker receives `my-change`, `--parent-branch`, and `develop` within `arguments_value`
-- **AND** the coordinator does not resolve or discard any of those values
-
-### Requirement: Coordinator performs no technical review I/O
-
-The review coordinator SHALL NOT run prerequisites, resolve a change, read or write artifacts, inspect git, load a diff, perform review passes, run tests, apply mutations, or make findings. Those operations SHALL belong exclusively to the review worker. The single clean-route exception is the no-commit guard: the review coordinator SHALL run the guard's `snapshot` and `verify` tool invocations (`sai/tools/no-commit-guard.js`) at each guard window's opening and immediately before each boundary the no-commit-guard policy lists (human turn, coordinator git mutation, run close), acting on a progress event or notice with no guard call, and those two tool invocations per window are the coordinator's only git observations on the artifact-blind clean route. No other rule of this requirement changes.
-
-#### Scenario: Technical work is requested
-
-- **WHEN** review requires repository, artifact, git, diff, test, or mutation information
-- **THEN** the coordinator delegates it to the review worker and performs no equivalent technical operation itself
-
-#### Scenario: the guard's two tool invocations are the only clean-route git access
-
-- **WHEN** the review coordinator snapshots at a window opening and verifies before a boundary
-- **THEN** those two no-commit-guard tool invocations are its only git observations on the clean route, and no diff loading, review pass, or mutation is performed by the coordinator itself
+- **WHEN** the user invokes `/sai-4-review my-change --parent-branch develop`
+- **THEN** the task message to the review worker names `my-change`, the parent branch `develop`, and the path `openspec/changes/my-change/review.md`
 
 ### Requirement: Review lifecycle results are closed and validated
 
-The coordinator SHALL validate every worker result before acting on it. A terminal result SHALL use exactly one of `completed`, `needs_input`, `failed`, or `cancelled`, with a string `summary` and string-list `changed_files`; `needs_input` SHALL also contain an exact question, ordered options, and binding-owned continuation metadata. After change resolution, payloads SHALL carry `resolved_change_name`.
+The coordinator SHALL validate every worker result before acting on it. A result SHALL be either `event: step-done` with a `step_id` of `establish-diff-scope` or `resolve-review-analysis`, or a terminal `status` of `completed`, `no-changes`, or `failed`, with a string `summary` and string-list `changed_files`. A `completed` result SHALL also carry `review_path`, `counts`, and `recommended_audits`.
 
 #### Scenario: Worker returns a malformed result
-- **WHEN** a worker result has an unknown status, missing required field, wrong field type, or invalid option shape
-- **THEN** the coordinator treats it as a failed lifecycle result
-- **AND** it does not perform technical recovery or invent missing payload data
+- **WHEN** a worker result has an unknown status, missing required field, or wrong field type
+- **THEN** the coordinator treats it as an obstacle of the run and applies the obstacle budget, and it does not invent missing payload data
 
 #### Scenario: Worker requests change selection
-- **WHEN** the worker returns `needs_input`
-- **THEN** the coordinator presents the exact worker-authored question and ordered options through the native picker
-- **AND** forwards the exact selected value through the active binding
-
-### Requirement: Coordinator maintains the changed-files union
-
-The coordinator SHALL initialize an invocation-scoped ordered, duplicate-free `changed_files` union and SHALL add every worker-reported path in first-seen order. It SHALL preserve the union across input, continuation, and replacement-worker recovery.
-
-#### Scenario: Worker reports repeated paths
-- **WHEN** multiple lifecycle results report the same path or report paths in different orders
-- **THEN** the terminal union contains each path once
-- **AND** paths retain their first-seen order
+- **WHEN** a review worker result is read
+- **THEN** the review lifecycle defines no `needs_input` status, so no change-selection picker is presented from it
 
 ### Requirement: Coordinator retries continuation before replacement
 
-The coordinator SHALL attempt same-worker continuation first. If continuation fails, it SHALL preserve the original envelope, changed-files union, exact opaque input history, and required review reconstruction fields, and SHALL dispatch at most one replacement worker. When the phase's declared `step_machine: review-standalone@1` is in force, the required reconstruction fields SHALL additionally include the departing worker's `active_step_id`, and the replacement's first continuation SHALL carry the correct pointer line for that active step. If required reconstruction data is unavailable, it SHALL return a failed lifecycle result without dispatching a replacement.
+The coordinator SHALL first send a corrected instruction to the same worker. When that does not resolve the obstacle, it SHALL create a new worker that receives the ready handshake and a hand-over note naming the symptom. The obstacle budget is three attempts; an exhausted budget escalates through the native picker.
 
 #### Scenario: Same-worker continuation fails
-- **WHEN** the active binding cannot continue the review worker
-- **THEN** the coordinator dispatches no more than one replacement worker with complete reconstruction state
-- **AND** it does not send the prior worker journal or artifact contents to the replacement
+- **WHEN** the review worker stays silent or drifts from its instruction after a corrected instruction
+- **THEN** the coordinator creates a replacement worker and does not send it the prior worker's history
 
 #### Scenario: Replacement resumes the departing worker's active step
+- **WHEN** a replacement review worker is dispatched after same-worker continuation fails
+- **THEN** the review coordinator carries no `active_step_id` reconstruction field, and the replacement's first message opens with `Active step: establish-diff-scope — follow <pointer>`
 
-- **WHEN** a replacement review worker is dispatched after same-worker continuation fails while the step machine is in force
-- **THEN** the replacement's first continuation carries the pointer line for the departed worker's recorded `active_step_id`
+#### Scenario: Replacement starts from the first step
+- **WHEN** a replacement review worker is dispatched
+- **THEN** its first task message opens with `Active step: establish-diff-scope — follow <pointer>`
 
 ### Requirement: Terminal output preserves the review completion boundary
 
-After a completed worker result, the coordinator SHALL print the worker-authored `summary` verbatim. That summary SHALL contain severity counts, top three Critical findings when present, report path, parent-branch statement, and the existing `## Recommended Audits` block with all three audit lines. The coordinator SHALL never parse, split, reconstruct, or recompose the summary or its audit block. It SHALL then print the exact existing review completion boundary, `Review done.`, and stop without presenting an artifact-feedback gate.
+After a `completed` worker result, the coordinator SHALL verify `review.md`, commit it through its own contract, and print the worker-authored `summary` verbatim. That summary SHALL contain severity counts, top three Critical findings when present, report path, parent-branch statement, and the `## Recommended Audits` block with all three audit lines. The coordinator SHALL never parse, split, reconstruct, or recompose the summary or its audit block. It SHALL then print the exact review completion boundary, `Review done.`, and stop without presenting an artifact-feedback gate.
 
 #### Scenario: Review completes
-- **WHEN** the worker returns `completed`
+- **WHEN** the worker returns `completed` and the report verifies
 - **THEN** the coordinator prints the worker-authored summary verbatim, including all three recommended-audit lines
-- **AND** it prints the invocation-scoped changed-file union
 - **AND** it prints `Review done.`
-- **AND** it does not read `review.md`, parse or recompose the summary, add findings, or start another lifecycle phase
+- **AND** it adds no findings and starts no other lifecycle phase
+
+#### Scenario: Review fails
+- **WHEN** the worker returns `failed`
+- **THEN** the coordinator prints the supplied summary, ends with no closing line, and commits nothing
 
 #### Scenario: Review fails or is cancelled
-- **WHEN** the worker returns `failed` or `cancelled`
-- **THEN** the coordinator prints the supplied blocking or clean-stop summary and changed-file union
-- **AND** it stops without technical recovery
+- **WHEN** the worker returns `failed`
+- **THEN** the coordinator prints the supplied summary, ends with no closing line, and commits nothing
+- **AND** no `cancelled` status exists in the review result contract, so no cancellation branch is printed
 
-### Requirement: Review progress uses payload-derived stamps
-
-The review coordinator SHALL validate lifecycle results and render each completed-step stamp from the `received_at` of the response that marked it, without taking ownership of review analysis or report I/O.
-
-#### Scenario: Review progress returns
-- **WHEN** the review worker reports progress
-- **THEN** the coordinator renders the `received_at`-derived stamp and resumes the worker unchanged.
+#### Scenario: Review finds no changes
+- **WHEN** the worker returns `no-changes`
+- **THEN** the coordinator prints the summary, writes and commits nothing, and ends with `Review done.`

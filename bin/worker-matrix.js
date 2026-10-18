@@ -5,8 +5,6 @@ const { assignment, translate, permissionYaml } = require('./capabilities');
 const PHASE_ORDER = Object.freeze([
   'spec',
   'design',
-  'implementation',
-  'review',
   'security',
   'performance',
   'accessibility',
@@ -16,33 +14,10 @@ const PHASE_ORDER = Object.freeze([
   'merge',
 ]);
 
-// Closed RED/GREEN apply role identities appended after the nine canonical
-// phase entries. Each role pins its workerName to a role-specific apply worker
-// contract and a unique binding stem so the shared apply phase never resolves
-// through a sibling entry.
-const APPLY_ROLES = Object.freeze([
-  Object.freeze({
-    phase: 'apply',
-    workerName: 'sai-4-red-worker',
-    workerContract: 'sai/commands/apply/red-worker.md',
-    bindingStem: 'red',
-    tier: 'budget',
-  }),
-  Object.freeze({
-    phase: 'apply',
-    workerName: 'sai-4-green-worker',
-    workerContract: 'sai/commands/apply/green-worker.md',
-    bindingStem: 'green',
-    tier: 'budget',
-  }),
-]);
-
-// Closed direct-build role identities appended after the apply roles. The
-// implementer remains an explore-owned fast-lane worker; Direct-build mutation
-// execution is deliberately routed through the existing backfill and archive
-// phase workers rather than a third role. The review-fix role is the
-// findings-driven sai-review close worker; it reuses the direct-build
-// prohibitions by reference without modifying the explore implementer.
+// Closed direct-build role identity appended after the canonical phase
+// entries. The implementer remains an explore-owned fast-lane worker;
+// Direct-build mutation execution is deliberately routed through the existing
+// backfill and archive phase workers rather than a second role.
 const DIRECT_BUILD_ROLES = Object.freeze([
   Object.freeze({
     phase: 'direct-build',
@@ -51,56 +26,48 @@ const DIRECT_BUILD_ROLES = Object.freeze([
     bindingStem: 'direct-build',
     tier: 'budget',
   }),
+]);
+
+// Closed RED, GREEN, and review role identities of the implement and review
+// commands, appended after the direct-build role. Each role pins its own
+// contract and binding stem; the commands live outside the shared
+// orchestration, so these roles render from the standalone binding templates.
+const IMPLEMENT_ROLES = Object.freeze([
   Object.freeze({
-    phase: 'review-fix',
-    workerName: 'sai-review-fix-worker',
-    workerContract: 'sai/commands/meta-review/review-fix-worker.md',
-    bindingStem: 'review-fix',
+    phase: 'red',
+    workerName: 'sai-3-red-worker',
+    workerContract: 'sai/commands/implement/red-worker.md',
+    bindingStem: 'red',
     tier: 'budget',
+  }),
+  Object.freeze({
+    phase: 'green',
+    workerName: 'sai-3-green-worker',
+    workerContract: 'sai/commands/implement/green-worker.md',
+    bindingStem: 'green',
+    tier: 'budget',
+  }),
+  Object.freeze({
+    phase: 'review',
+    workerName: 'sai-4-review-worker',
+    workerContract: 'sai/commands/review/worker.md',
+    bindingStem: 'review',
   }),
 ]);
 
-// Closed RED, GREEN, and review role identities of the `-new` command family, appended after
-// the direct-build roles. Each role pins its own contract and binding stem; the
-// family lives outside the shared orchestration, so these roles never join the
-// apply phase.
-const IMPLEMENT_NEW_ROLES = Object.freeze([
-  Object.freeze({
-    phase: 'red-new',
-    workerName: 'sai-red-new-worker',
-    workerContract: 'sai/commands/implement-new/red-worker.md',
-    bindingStem: 'red-new',
-    tier: 'budget',
-  }),
-  Object.freeze({
-    phase: 'green-new',
-    workerName: 'sai-green-new-worker',
-    workerContract: 'sai/commands/implement-new/green-worker.md',
-    bindingStem: 'green-new',
-    tier: 'budget',
-  }),
-  Object.freeze({
-    phase: 'review-new',
-    workerName: 'sai-review-new-worker',
-    workerContract: 'sai/commands/review-new/worker.md',
-    bindingStem: 'review-new',
-  }),
-]);
-
-const APPLY_PHASE = 'apply';
-// The `-new` roles render from their own binding templates, which carry only the
-// create and continue calls: their coordinator owns the lifecycle.
-const STANDALONE_PHASES = new Set(IMPLEMENT_NEW_ROLES.map(role => role.phase));
+// The implement and review roles render from their own binding templates, which
+// carry only the create and continue calls: their coordinator owns the lifecycle.
+const STANDALONE_PHASES = new Set(IMPLEMENT_ROLES.map(role => role.phase));
 // Every role that pins its own contract and is validated by position after the
-// canonical phases and the apply roles.
-const PINNED_ROLES = Object.freeze([...DIRECT_BUILD_ROLES, ...IMPLEMENT_NEW_ROLES]);
+// canonical phases.
+const PINNED_ROLES = Object.freeze([...DIRECT_BUILD_ROLES, ...IMPLEMENT_ROLES]);
 const PINNED_ROLE_BY_WORKER = Object.freeze(Object.fromEntries(
   PINNED_ROLES.map(role => [role.workerName, role]),
 ));
 const PINNED_ROLE_BY_PHASE = Object.freeze(Object.fromEntries(
   PINNED_ROLES.map(role => [role.phase, role]),
 ));
-const EXPECTED_ENTRY_COUNT = PHASE_ORDER.length + APPLY_ROLES.length + PINNED_ROLES.length;
+const EXPECTED_ENTRY_COUNT = PHASE_ORDER.length + PINNED_ROLES.length;
 
 const REQUIRED_FIELDS = Object.freeze([
   'phase',
@@ -116,8 +83,6 @@ const TOKEN = /\{\{([A-Za-z0-9_.-]+)\}\}/g;
 const PHASE_WORKER_NAME = Object.freeze({
   spec: 'sai-1-spec-proposal-worker',
   design: 'sai-2-design-worker',
-  implementation: 'sai-3-implementation-worker',
-  review: 'sai-5-review-worker',
   security: 'sai-6-security-worker',
   performance: 'sai-7-performance-worker',
   accessibility: 'sai-8-accessibility-worker',
@@ -130,8 +95,6 @@ const PHASE_WORKER_NAME = Object.freeze({
 const PHASE_CONTRACT_DIR = Object.freeze({
   spec: 'spec',
   design: 'design',
-  implementation: 'implement',
-  review: 'review',
   security: 'security',
   performance: 'performance',
   accessibility: 'accessibility',
@@ -141,13 +104,10 @@ const PHASE_CONTRACT_DIR = Object.freeze({
   merge: 'merge',
 });
 
-const PHASE_WORKER_IDENTITY = /^sai-[1278]-[a-z-]+-worker$|^sai-3-implementation-worker$|^sai-5-review-worker$|^sai-6-security-worker$|^sai-commit-worker$|^sai-archive-worker$|^sai-backfill-worker$|^sai-merge-worker$/;
+const PHASE_WORKER_IDENTITY = /^sai-[12678]-[a-z-]+-worker$|^sai-commit-worker$|^sai-archive-worker$|^sai-backfill-worker$|^sai-merge-worker$/;
 const INVOCATION_ENVELOPE_FIELD = 'arguments_value';
 const RETIRED_INVOCATION_ENVELOPE_FIELD = ['wrapper', 'echo', 'value'].join('_');
 
-const APPLY_CONTRACT_BY_WORKER = Object.freeze(Object.fromEntries(
-  APPLY_ROLES.map(role => [role.workerName, role.workerContract]),
-));
 
 function clone(value) {
   if (Array.isArray(value)) return value.map(clone);
@@ -175,20 +135,13 @@ function validateEntry(entry, index) {
   if (!entry || typeof entry !== 'object') throw new Error(`Worker Matrix entry ${index} must be an object`);
   assertOneStringInvocationEnvelope(entry, index);
   const autoRole = PINNED_ROLE_BY_PHASE[entry.phase];
-  if (entry.phase === APPLY_PHASE && APPLY_CONTRACT_BY_WORKER[entry.workerName] === undefined) {
-    throw new Error(`Invalid Worker Matrix worker identity for ${entry.phase}: ${entry.workerName}`);
-  }
   if (autoRole && (!PINNED_ROLE_BY_WORKER[entry.workerName] || PINNED_ROLE_BY_WORKER[entry.workerName].phase !== entry.phase)) {
     throw new Error(`Invalid Worker Matrix worker identity for ${entry.phase}: ${entry.workerName}`);
   }
   for (const field of REQUIRED_FIELDS) {
     if (entry[field] === undefined || entry[field] === null || entry[field] === '') invalidEntry(index, field);
   }
-  if (entry.phase === APPLY_PHASE) {
-    if (!/^sai\/commands\/apply\/(?:red|green)-worker\.md$/.test(entry.workerContract)) {
-      throw new Error(`Invalid Worker Matrix contract path for ${entry.phase}: ${entry.workerContract}`);
-    }
-  } else if (autoRole) {
+  if (autoRole) {
     if (entry.workerContract !== autoRole.workerContract) {
       throw new Error(`Invalid Worker Matrix contract path for ${entry.phase}: ${entry.workerContract}`);
     }
@@ -209,7 +162,6 @@ function defineWorkerMatrix(entries, capabilities = require('../sai/install-mani
   }
   const seenPhases = new Set();
   const seenWorkers = new Set();
-  let applySeen = 0;
   let pinnedSeen = 0;
   entries.forEach((entry, index) => {
     validateEntry(entry, index);
@@ -217,18 +169,7 @@ function defineWorkerMatrix(entries, capabilities = require('../sai/install-mani
       throw new Error(`Duplicate Worker Matrix worker name: ${entry.workerName}`);
     }
     seenWorkers.add(entry.workerName);
-    if (entry.phase === APPLY_PHASE) {
-      applySeen += 1;
-      if (applySeen > APPLY_ROLES.length) {
-        throw new Error(`Duplicate Worker Matrix phase: ${entry.phase}`);
-      }
-      const expected = APPLY_ROLES[applySeen - 1];
-      if (entry.workerName !== expected.workerName) {
-        throw new Error(
-          `Worker Matrix apply role out of order; expected ${expected.workerName} before ${APPLY_ROLES[applySeen].workerName}`
-        );
-      }
-    } else if (PINNED_ROLE_BY_PHASE[entry.phase]) {
+    if (PINNED_ROLE_BY_PHASE[entry.phase]) {
       pinnedSeen += 1;
       if (pinnedSeen > PINNED_ROLES.length) {
         throw new Error(`Duplicate Worker Matrix phase: ${entry.phase}`);
@@ -236,7 +177,7 @@ function defineWorkerMatrix(entries, capabilities = require('../sai/install-mani
       const expected = PINNED_ROLES[pinnedSeen - 1];
       if (entry.workerName !== expected.workerName) {
         throw new Error(
-          `Worker Matrix direct-build role out of order; expected ${expected.workerName} before ${PINNED_ROLES[pinnedSeen].workerName}`
+          `Worker Matrix pinned role out of order; expected ${expected.workerName} before ${PINNED_ROLES[pinnedSeen].workerName}`
         );
       }
     } else {
@@ -300,13 +241,11 @@ function materializeWorkerMatrix(matrix, templates) {
       if (typeof templates[name] !== 'string') throw new Error(`Missing Worker Matrix template: ${name}`);
       return name;
     };
-    const panelRenderBinding = harness => entry.phase === APPLY_PHASE
-      ? ''
-      : [
-        'When the coordinator adapter declares a `progress_plan`,',
-        `Fetch @sai/adapters/${harness}/panel-render.md for coordinator-owned task-list rendering;`,
-        'render actions come from @sai/policies/todo-structure.md, and the worker never emits panel tool calls.',
-      ].join('\n') + '\n\n';
+    const panelRenderBinding = harness => [
+      'When the coordinator adapter declares a `progress_plan`,',
+      `Fetch @sai/adapters/${harness}/panel-render.md for coordinator-owned task-list rendering;`,
+      'render actions come from @sai/policies/todo-structure.md, and the worker never emits panel tool calls.',
+    ].join('\n') + '\n\n';
     return [
       {
         kind: 'binding',
@@ -364,26 +303,14 @@ function assertWorkerIdentity(entry) {
   if (!entry || typeof entry !== 'object') {
     throw new Error('Worker Matrix identity requires an entry object');
   }
-  if (entry.phase === APPLY_PHASE) {
-    const expectedContract = APPLY_CONTRACT_BY_WORKER[entry.workerName];
-    if (expectedContract === undefined) {
-      throw new Error(`Unknown apply worker identity: ${entry.workerName}`);
-    }
-    if (entry.workerContract !== expectedContract) {
-      throw new Error(
-        `Apply worker ${entry.workerName} must pin its role-specific contract ${expectedContract}; found ${entry.workerContract}`
-      );
-    }
-    return;
-  }
   const autoRole = PINNED_ROLE_BY_WORKER[entry.workerName];
   if (autoRole) {
     if (entry.phase !== autoRole.phase) {
-      throw new Error(`Direct-build worker ${entry.workerName} must declare its role phase ${autoRole.phase}; found ${entry.phase}`);
+      throw new Error(`Pinned worker ${entry.workerName} must declare its role phase ${autoRole.phase}; found ${entry.phase}`);
     }
     if (entry.workerContract !== autoRole.workerContract) {
       throw new Error(
-        `Direct-build worker ${entry.workerName} must pin its explore-owned contract ${autoRole.workerContract}; found ${entry.workerContract}`
+        `Pinned worker ${entry.workerName} must pin its role contract ${autoRole.workerContract}; found ${entry.workerContract}`
       );
     }
     return;
@@ -401,9 +328,8 @@ function assertWorkerIdentity(entry) {
 
 module.exports = {
   PHASE_ORDER,
-  APPLY_ROLES,
   DIRECT_BUILD_ROLES,
-  IMPLEMENT_NEW_ROLES,
+  IMPLEMENT_ROLES,
   defineWorkerMatrix,
   renderWorkerTemplate,
   materializeWorkerMatrix,

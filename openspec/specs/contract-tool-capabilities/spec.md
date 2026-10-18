@@ -7,15 +7,7 @@ Define canonical contract-derived tool capabilities and their native projections
 
 ### Requirement: Canonical capability profiles and assignments
 
-The system SHALL declare abstract capability profiles and agent and command
-assignments in `sai/install-manifest.json`. Profiles SHALL support inherited
-flags and replacement of list-valued grants. Resolution SHALL reject unknown
-capabilities, missing profile assignments, invalid values, and inheritance
-cycles. The twenty-five shipped command-requirement assignments SHALL include
-to-backlog, from-backlog, from-next-backlog-item, to-pr, and the skill-only
-new-change-branch workflow with their own resolvable profiles, alongside the
-twenty SAI commands, including sai-3-implement-new and sai-build-new. The new-change-branch assignment SHALL NOT require a
-command wrapper. The retired sai-pr command SHALL have no current assignment.
+The system SHALL declare abstract capability profiles and agent and command assignments in `sai/install-manifest.json`. Profiles SHALL support inherited flags and replacement of list-valued grants. Resolution SHALL reject unknown capabilities, missing profile assignments, invalid values, and inheritance cycles. The twenty-five shipped command-requirement assignments SHALL include to-backlog, from-backlog, from-next-backlog-item, to-pr, and the skill-only new-change-branch workflow with their own resolvable profiles, alongside the twenty SAI commands, including sai-3-implement and sai-build. The new-change-branch assignment SHALL NOT require a command wrapper. The retired sai-pr command SHALL have no current assignment.
 
 #### Scenario: Required identities receive assignments
 
@@ -40,7 +32,7 @@ command wrapper. The retired sai-pr command SHALL have no current assignment.
 #### Scenario: Next backlog-item selection capabilities
 
 - **WHEN** the from-next-backlog-item command profile is resolved for either harness
-- **THEN** it inherits the read-only import profile, includes the selector and importer skills, and limits shell grants to the selector Node helper's select invocation and the existing import Node helper without adding file writes or direct provider-CLI grants.
+- **THEN** it inherits the read-only import profile, includes the selector and importer skills, and limits shell grants to the selector Node helper select invocation and the existing import Node helper without adding file writes or direct provider-CLI grants.
 
 #### Scenario: PR/MR invocation capabilities
 
@@ -50,7 +42,7 @@ command wrapper. The retired sai-pr command SHALL have no current assignment.
 #### Scenario: Change-branch skill capabilities
 
 - **WHEN** the new-change-branch-command profile is resolved for either harness
-- **THEN** it inherits boot access, grants search and questions, includes the new-change-branch and safe-operations skills, and grants invocation of the common new-change-branch Node helper without authorizing any operation beyond the workflow's requested local creation and switch.
+- **THEN** it inherits boot access, grants search and questions, includes the new-change-branch and safe-operations skills, and grants invocation of the common new-change-branch Node helper without authorizing any operation beyond the workflow requested local creation and switch.
 
 #### Scenario: Skill-only command requirements
 

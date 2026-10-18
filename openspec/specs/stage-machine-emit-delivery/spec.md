@@ -17,7 +17,7 @@ TBD - created by archiving change sai-state-emit-via-stdin. Update Purpose after
 - **THEN** each entry states that `emit` takes the event JSON on stdin with the canonical form
 
 ### Requirement: Bounded corrective retry for delivery failures
-The stage-machine policy SHALL let a caller retry an emit without asking the user when the emit answers `reason: "EVENT_UNPARSEABLE"` or an `emit` usage error (exit 2), up to 2 times. Each retry MUST change the delivery form by correcting it to the canonical example, and repeating the same command SHALL NOT count as a retry. When both retries fail, the caller SHALL stop and show the error, except that the `/sai-3-implement-new` coordinator SHALL keep the same facts in `run-state.md` in its run directory and continue the run. The retry counter SHALL belong to that one emit, not to the session. The rule SHALL apply to every emitter, including coordinators that declare a `step_machine`, and SHALL run before any store failure is declared, because a delivery failure is not a store failure. Every other emit error SHALL keep today's stop-and-wait or degraded-mode behavior without retry: a logic failure (`INVALID_EVENT` without `reason`), `UNKNOWN_MACHINE`, `VERSION_MISMATCH`, or an unreachable or degraded store.
+The stage-machine policy SHALL let a caller retry an emit without asking the user when the emit answers `reason: "EVENT_UNPARSEABLE"` or an `emit` usage error (exit 2), up to 2 times. Each retry MUST change the delivery form by correcting it to the canonical example, and repeating the same command SHALL NOT count as a retry. When both retries fail, the caller SHALL stop and show the error, except that the `/sai-3-implement` coordinator SHALL keep the same facts in `run-state.md` in its run directory and continue the run. The retry counter SHALL belong to that one emit, not to the session. The rule SHALL apply to every emitter, including coordinators that declare a `step_machine`, and SHALL run before any store failure is declared, because a delivery failure is not a store failure. Every other emit error SHALL keep today's stop-and-wait or degraded-mode behavior without retry: a logic failure (`INVALID_EVENT` without `reason`), `UNKNOWN_MACHINE`, `VERSION_MISMATCH`, or an unreachable or degraded store.
 
 #### Scenario: Delivery failure is corrected and retried without asking
 - **WHEN** an emit answers `INVALID_EVENT` with `reason: "EVENT_UNPARSEABLE"`
@@ -31,10 +31,14 @@ The stage-machine policy SHALL let a caller retry an emit without asking the use
 - **WHEN** a coordinator that declares a `step_machine` receives an emit usage error with exit 2
 - **THEN** it runs the corrective retry before treating the result as a store failure
 
-#### Scenario: Implement-new continues from the run-state file
+#### Scenario: Implement continues from the run-state file
 
-- **WHEN** an `implement-new-run@1` emit of the `/sai-3-implement-new` coordinator still fails after both corrective retries
+- **WHEN** an `implement-run@1` emit of the `/sai-3-implement` coordinator still fails after both corrective retries
 - **THEN** the coordinator keeps the same facts in `run-state.md` in the run directory and the run continues
+
+#### Scenario: Implement-new continues from the run-state file
+- **WHEN** the command catalog is read
+- **THEN** no `/sai-3-implement-new` command exists, so run-state continuation is owned only by `/sai-3-implement` and its `implement-run@1` emits
 
 ### Requirement: Recorded lists carry identifiers only
 The stage-machine policy SHALL require that a recordedList event carries only list identifiers (such as E1, E2, I1, or Step ids) and never item text, because the machine uses the list only for its recorded or empty state. Explore-slice is the sole exception: its recordedList carries change names, which are kebab-case identifiers, because that machine tracks slices by name. Route events SHALL carry no slice name and no pick; the machine always chooses the first pending entry in that ordered inventory.

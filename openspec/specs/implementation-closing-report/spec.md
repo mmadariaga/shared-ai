@@ -7,12 +7,16 @@ Define one outcome-first closing-report authority for standalone Apply, Build, a
 
 ### Requirement: Shared closing authority applies only at full-route terminal close
 
-Standalone `/sai-4-apply`, `/sai-build`, and Explore's full `direct-build-unattended` route SHALL use `sai/policies/implementation-closing-report.md` as their single closing-format authority in Claude Code and opencode. Each route SHALL render its report once at its existing terminal close, including failure, cancellation, and interruption. An execution question or pending recovery choice SHALL remain a pause, not a closing report. Contract-pinned stop text SHALL retain its precedence. The `--no-specs` POC SHALL retain its own closing behavior.
+Explore's full `direct-build-unattended` route SHALL use `sai/policies/implementation-closing-report.md` as its single closing-format authority in Claude Code and opencode. The route SHALL render its report once at its existing terminal close, including failure, cancellation, and interruption. An execution question or pending recovery choice SHALL remain a pause, not a closing report. Contract-pinned stop text SHALL retain its precedence. The `--no-specs` POC SHALL retain its own closing behavior.
+
+#### Scenario: The full route uses the authority
+
+- **WHEN** the full route reaches its existing terminal close in Claude Code or opencode
+- **THEN** it uses the closing-format authority without changing route completion conditions, execution ownership, authorizations, recovery budgets, or safety gates
 
 #### Scenario: Full routes share the authority
-
-- **WHEN** any of the three full routes reaches its existing terminal close in Claude Code or opencode
-- **THEN** it uses the same closing-format authority without changing route completion conditions, execution ownership, authorizations, recovery budgets, or safety gates
+- **WHEN** Explore's full `direct-build-unattended` route reaches its existing terminal close in Claude Code or opencode
+- **THEN** it uses the closing-format authority without changing route completion conditions, execution ownership, authorizations, recovery budgets, or safety gates
 
 #### Scenario: A question pauses execution
 
@@ -66,27 +70,22 @@ After its initial status, the report SHALL use this order: Terminology when appl
 
 The report SHALL use only results already available from execution, including checks, incidents, affected files, commits, and authorization decisions. It SHALL remain conversation-only, introduce no persisted reporting state, and run no verification solely to compose the report. A stopped report SHALL state what work and commits remain, including observed written, staged, and uncommitted work and known commit references. Declined commits SHALL retain their existing consequences and be disclosed. Reporting SHALL assume no rollback and grant no new operation.
 
-When an Apply or Build Step stopped, the stopped report SHALL state whether a new run can retry that Step, taken from the `next_dispatch` that `apply-step.js inspect --step <N>` returned. That read-only call SHALL be part of the stop and the tool SHALL be the only source of this fact. On `would_pass: true` the report SHALL state that the Step's files are recognised as its own work. On `would_pass: false` it SHALL list the `conflicts` and the two `exits`, committing those files or discarding their changes, and SHALL offer a retry only as viable after one of the two exits. When the call could not run, the report SHALL say that the retry state is unknown.
-
 #### Scenario: Run stops after partial work
 
 - **WHEN** a route closes after writing or staging work or creating commits without completing
 - **THEN** the report describes that observed remaining state and existing recovery guidance without authorizing rollback, another commit, or additional verification
 
 #### Scenario: Stopped Step can be retried
-
-- **WHEN** a Step stopped and `inspect --step <N>` returned `next_dispatch` with `would_pass: true`
-- **THEN** the stopped report states that a new run can retry the Step because its files are recognised as its own work
+- **WHEN** the command catalog is read
+- **THEN** no `apply-step.js inspect` subcommand exists, so no stopped report states a Step retry
 
 #### Scenario: Stopped Step is blocked by foreign files
-
-- **WHEN** a Step stopped and `inspect --step <N>` returned `next_dispatch` with `would_pass: false`
-- **THEN** the stopped report lists the `conflicts` and the two `exits` and offers a retry only after one of them
+- **WHEN** the command catalog is read
+- **THEN** no `apply-step.js inspect` subcommand exists, so no stopped report lists `conflicts` or `exits` for a Step
 
 #### Scenario: Retry state could not be read
-
-- **WHEN** a Step stopped and the `inspect --step <N>` call could not run
-- **THEN** the stopped report says the retry state is unknown
+- **WHEN** the command catalog is read
+- **THEN** no `apply-step.js inspect` subcommand exists, so no stopped report reports a retry state
 
 ### Requirement: Authorization disclosures remain at their decision point
 

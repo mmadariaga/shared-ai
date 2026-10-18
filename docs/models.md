@@ -17,8 +17,8 @@ delegated tasks.
 - **DIFFICULTY:** reasoning demand, from `↑` to `↑↑↑`.
 - **SETTING:** provider/model and reasoning variant.
 
-Keep design at least as capable as implementation planning, and planning at
-least as capable as the apply GREEN worker. The earlier phases make decisions
+Keep design at least as capable as the implement coordinator, and the
+coordinator at least as capable as the GREEN worker. The earlier phases make decisions
 that the later implementer should be able to follow without redesigning them.
 
 ## Full opencode defaults
@@ -38,16 +38,13 @@ that the later implementer should be able to follow without redesigning them.
       WORKER        sai-2-design-worker          Large    ↑↑↑         opencode-go/deepseek-v4.1-flash (max)
 
       ORCHESTRATOR  sai-build                    Large    ↑↑↑         opencode-go/muse-spark-1.3-contributor (xhigh)
-      ORCHESTRATOR  sai-3-implement              Medium   ↑↑          opencode-go/muse-spark-1.3-contributor (xhigh)
-      WORKER        sai-3-implementation-worker  Large    ↑↑          opencode-go/deepseek-v4.1-flash (max)
-      ORCHESTRATOR  sai-4-apply                  Large    ↑↑↑         opencode-go/muse-spark-1.3-contributor (xhigh)
-      WORKER        sai-4-red-worker             Medium   ↑           opencode-go/deepseek-v4.1-flash (max)
-      WORKER        sai-4-green-worker           Medium   ↑↑          opencode-go/deepseek-v4.1-flash (max)
+      ORCHESTRATOR  sai-3-implement              Large    ↑↑↑         opencode-go/muse-spark-1.3-contributor (xhigh)
+      WORKER        sai-3-red-worker             Medium   ↑           opencode-go/deepseek-v4.1-flash (max)
+      WORKER        sai-3-green-worker           Medium   ↑↑          opencode-go/deepseek-v4.1-flash (max)
+      ORCHESTRATOR  sai-4-review                 Medium   ↑↑          opencode-go/muse-spark-1.3-contributor (xhigh)
+      WORKER        sai-4-review-worker          Large    ↑↑          opencode-go/gpt-5.6-luna (max)
 
-      ORCHESTRATOR  sai-review                   Large    ↑↑          opencode-go/muse-spark-1.3-contributor (xhigh)
-      ORCHESTRATOR  sai-5-review                 Medium   ↑↑          opencode-go/muse-spark-1.3-contributor (xhigh)
-      WORKER        sai-5-review-worker          Large    ↑↑          opencode-go/gpt-5.6-luna (max)
-      WORKER        sai-review-fix-worker        Medium   ↑↑          opencode-go/deepseek-v4.1-flash (max)
+      ORCHESTRATOR  sai-deep-review              Large    ↑↑          opencode-go/muse-spark-1.3-contributor (xhigh)
       ORCHESTRATOR  sai-6-security               Medium   ↑           opencode-go/muse-spark-1.3-contributor (xhigh)
       WORKER        sai-6-security-worker        Large    ↑↑↑         opencode-go/deepseek-v4.1-flash (max)
       ORCHESTRATOR  sai-7-performance            Medium   ↑           opencode-go/muse-spark-1.3-contributor (xhigh)

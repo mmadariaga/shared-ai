@@ -413,10 +413,10 @@ test('CLI: reset clears one machine state in a fresh session', () => {
 
   try {
     // Reset a machine that has no prior state (fresh session)
-    const reset = invokeCommand('reset', id, 'review-standalone@1');
+    const reset = invokeCommand('reset', id, 'security-standalone@1');
     assert.equal(reset.exitCode, 0, 'reset on fresh session should succeed');
     const json = JSON.parse(reset.stdout);
-    assert.equal(json.reset, 'review-standalone@1', 'reset should return the machine id');
+    assert.equal(json.reset, 'security-standalone@1', 'reset should return the machine id');
   } finally {
     cleanup([id]);
   }
@@ -433,22 +433,22 @@ test('CLI: reset resets one machine to initial state and preserves others', () =
     const emit1 = invokeCommand('emit', id, 'explore-idea@1', event1);
     assert.equal(emit1.exitCode, 0);
 
-    // Emit to review-standalone to establish state
-    const event2 = JSON.stringify({ step_ids: ['resolve-change'] });
-    const emit2 = invokeCommand('emit', id, 'review-standalone@1', event2);
+    // Emit to security-standalone to establish state
+    const event2 = JSON.stringify({ step_ids: ['resolve-security-scope'] });
+    const emit2 = invokeCommand('emit', id, 'security-standalone@1', event2);
     assert.equal(emit2.exitCode, 0);
     const json2 = JSON.parse(emit2.stdout);
-    assert.equal(json2.stage, 'establish-diff-scope', 'review should be past first step');
+    assert.equal(json2.stage, 'discover-module-map', 'security should be past first step');
 
-    // Reset only review-standalone
-    const reset = invokeCommand('reset', id, 'review-standalone@1');
+    // Reset only security-standalone
+    const reset = invokeCommand('reset', id, 'security-standalone@1');
     assert.equal(reset.exitCode, 0);
 
-    // Verify review is back to initial state
-    const project = invokeCommand('emit', id, 'review-standalone@1', JSON.stringify({}));
+    // Verify security is back to initial state
+    const project = invokeCommand('emit', id, 'security-standalone@1', JSON.stringify({}));
     assert.equal(project.exitCode, 0);
     const json3 = JSON.parse(project.stdout);
-    assert.equal(json3.stage, 'resolve-change', 'review should be reset to initial step');
+    assert.equal(json3.stage, 'resolve-security-scope', 'security should be reset to initial step');
 
     // Verify explore-idea state is preserved
     const exploreCheck = invokeCommand('emit', id, 'explore-idea@1', event1);
@@ -649,8 +649,6 @@ test('stdin emit: non-delivery failures return their error without reason', () =
 const FIRST_FILED = [
   ['spec-standalone@1', 'prereqs-and-change', 'research', 'proposal', 'sai/commands/spec/steps/research.md'],
   ['design-standalone@1', 'prereqs-resolution', 'research', 'design', 'sai/commands/design/steps/research.md'],
-  ['implement-standalone@1', 'prereqs-resolution', 'collapse-implemented-steps', 'artifact-analysis', 'sai/commands/implement/steps/collapse-implemented-steps.md'],
-  ['review-standalone@1', 'resolve-change', 'establish-diff-scope', 'resolve-review-analysis', 'sai/commands/review/steps/establish-diff-scope.md'],
   ['security-standalone@1', 'resolve-security-scope', 'discover-module-map', 'resolve-sast-analysis', 'sai/commands/security/steps/discover-module-map.md'],
   ['performance-standalone@1', 'resolve-performance-scope', 'map-stack-hot-paths', 'audit-performance-tiers', 'sai/commands/performance/steps/map-stack-hot-paths.md'],
   ['accessibility-standalone@1', 'resolve-accessibility-scope', 'map-ui-framework', 'resolve-static-audit', 'sai/commands/accessibility/steps/map-ui-framework.md'],
@@ -660,7 +658,7 @@ function progressPayload(stepIds) {
   return JSON.stringify({ event: 'progress', step_ids: stepIds, changed_files: [] });
 }
 
-test('CLI: reset returns the first filed step pointer for all seven step machines', () => {
+test('CLI: reset returns the first filed step pointer for all five step machines', () => {
   const id = JSON.parse(invokeCommand('spawn', '--key', 'test-reset-first-filed').stdout).id;
   try {
     for (const [machineId, , second, , follow] of FIRST_FILED) {
@@ -681,7 +679,7 @@ test('CLI: reset returns the first filed step pointer for all seven step machine
 test('CLI: reset on a non-step machine keeps the plain {reset} response', () => {
   const id = JSON.parse(invokeCommand('spawn', '--key', 'test-reset-non-step').stdout).id;
   try {
-    for (const machineId of ['explore-idea@1', 'explore-slice@1', 'apply-standalone@1', 'recovery-ledger@1']) {
+    for (const machineId of ['explore-idea@1', 'explore-slice@1', 'recovery-ledger@1']) {
       const json = JSON.parse(invokeCommand('reset', id, machineId).stdout);
       assert.deepEqual(Object.keys(json), ['received_at', 'reset'], `${machineId} reset carries only the time and reset`);
       assert.equal(json.reset, machineId);

@@ -103,7 +103,7 @@ The `compile` / `runtime` distinction declared per step by the `tasks-existing-t
 
 ### Requirement: Files Affected lists every file a step changes
 
-In `tasks.md`, a step's `**Files Affected**` SHALL list every file the step creates, modifies, or deletes, tests included: the production and test files its RED and GREEN work will write, the files it retires, and the existing test files that reference a contract the step changes. `/sai-4-apply` compares each step's changed files with this list, and `/sai-3-implement` reports any path its plan names that the list omits.
+In `tasks.md`, a step's `**Files Affected**` SHALL list every file the step creates, modifies, or deletes, tests included: the production and test files its RED and GREEN work will write, the files it retires, and the existing test files that reference a contract the step changes. `sai/tools/file-manifest.js` folds every step's `**Files Affected**` entries into the change's file manifest.
 
 #### Scenario: Step writes a new test file
 - **WHEN** a step's RED work creates a test file and its GREEN work creates a production file

@@ -28,8 +28,7 @@ const AGENT_KEYS = ['explore', 'executor', 'budget'];
 const CURRENT_CENSUS = [
   'sai-1-spec-proposal-worker',
   'sai-2-design-worker',
-  'sai-3-implementation-worker',
-  'sai-5-review-worker',
+  'sai-4-review-worker',
   'sai-6-security-worker',
   'sai-7-performance-worker',
   'sai-8-accessibility-worker',
@@ -39,7 +38,6 @@ const CURRENT_CENSUS = [
   'sai-merge-worker',
 ];
 const UTILITY_COMMANDS = {
-  'sai-4-apply': 'apply',
   'sai-archive': 'archive',
   'sai-explore': 'explore',
   'sai-retire-docs': 'retire-docs',
@@ -47,7 +45,6 @@ const UTILITY_COMMANDS = {
   'sai-worktree': 'worktree',
 };
 const UTILITY_CARD_CONTENTS = {
-  apply: ['command-bootstrap.md', 'coordinator.md', 'green-worker.md', 'invocation.md', 'red-worker.md', 'runner.md', 'steps', 'worker-common.md'],
   archive: ['archive-commit-gate.instructions.md', 'command-bootstrap.md', 'coordinator.md', 'instructions.md', 'retirement-declaration.md', 'worker.md'],
   backfill: ['command-bootstrap.md', 'coordinator.md', 'instructions.md', 'worker.md'],
   commit: ['command-bootstrap.md', 'coordinator.md', 'instructions.md', 'worker.md'],
@@ -82,8 +79,7 @@ const STEP_2_SCRATCH_DIR = path.join(__dirname, '..', '.tmp', 'collapse-sai-work
 const WORKER_CONTRACT_BY_NAME = {
   'sai-1-spec-proposal-worker': { phase: 'spec', binding: 'spec-worker.md' },
   'sai-2-design-worker': { phase: 'design', binding: 'design-worker.md' },
-  'sai-3-implementation-worker': { phase: 'implement', binding: 'implementation-worker.md' },
-  'sai-5-review-worker': { phase: 'review', binding: 'review-worker.md' },
+  'sai-4-review-worker': { phase: 'review', binding: 'review-worker.md' },
   'sai-6-security-worker': { phase: 'security', binding: 'security-worker.md' },
   'sai-7-performance-worker': { phase: 'performance', binding: 'performance-worker.md' },
   'sai-8-accessibility-worker': { phase: 'accessibility', binding: 'accessibility-worker.md' },
@@ -251,7 +247,9 @@ test('Step 2 initial Opencode task dispatches deliver the matching contract and 
     const installDir = path.join(scratchDir, 'opencode');
     fs.mkdirSync(installDir, { recursive: true });
     installOpencode(installDir);
-    for (const workerName of CURRENT_CENSUS) {
+    // The review worker renders from the standalone binding template, which its
+    // coordinator drives with its own continuation shape.
+    for (const workerName of CURRENT_CENSUS.filter(name => name !== 'sai-4-review-worker')) {
       const { phase, binding: bindingName } = WORKER_CONTRACT_BY_NAME[workerName];
       const bindingPath = path.join(installDir, 'sai', 'orchestration', 'workers', 'bindings', bindingName);
       const calls = extractDispatchCalls(fs.readFileSync(bindingPath, 'utf8'), 'task');
@@ -308,8 +306,11 @@ test('installOpencode projects grouped SAI command assets and excludes former co
   }
   assert.equal(fs.existsSync(path.join(tmpDir, 'sai', 'commands', 'implement', 'invocation.md')), false,
     'implement/invocation.md should not be projected after retirement');
-  for (const file of [path.join('meta-build', 'coordinator.md'), path.join('meta-build', 'command-bootstrap.md')]) {
+  for (const file of [path.join('build', 'coordinator.md'), path.join('deep-review', 'coordinator.md'), path.join('deep-review', 'command-bootstrap.md'), path.join('review', 'coordinator.md')]) {
     assert.ok(fs.existsSync(path.join(tmpDir, 'sai', 'commands', file)), `${file} should be projected`);
+  }
+  for (const retired of ['apply', 'meta-build', 'meta-review', 'implement-new', 'review-new', 'build-new']) {
+    assert.equal(fs.existsSync(path.join(tmpDir, 'sai', 'commands', retired)), false, `${retired} should not be projected`);
   }
   for (const file of ['sai-2-design.md', 'sai-3-implement.md']) {
     assert.equal(fs.existsSync(path.join(tmpDir, 'sai', 'commands', file)), false, `${file} should not be projected`);
@@ -372,8 +373,7 @@ test('Step 3 fresh opencode install omits all routed worker proxy skills and pro
       assert.ok(fs.existsSync(path.join(tmpDir, 'sai', 'orchestration', 'workers', 'bindings', `${worker
         .replace('sai-1-spec-proposal-worker', 'spec-worker')
         .replace('sai-2-design-worker', 'design-worker')
-        .replace('sai-3-implementation-worker', 'implementation-worker')
-        .replace('sai-5-review-worker', 'review-worker')
+        .replace('sai-4-review-worker', 'review-worker')
         .replace('sai-6-security-worker', 'security-worker')
         .replace('sai-7-performance-worker', 'performance-worker')
         .replace('sai-8-accessibility-worker', 'accessibility-worker')
@@ -1295,9 +1295,9 @@ test('Step 1 Claude agent rows remain byte-preserving without ownership sidecars
 
 // --- Step 3: binding-derived roster replaces the retired registration surface ---
 
-test('Step 3 binding roster validation yields exactly the seventeen managed workers', () => {
+test('Step 3 binding roster validation yields exactly the thirteen managed workers', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-roster-'));
-  const WORKERS = [...CURRENT_CENSUS, 'sai-4-red-worker', 'sai-4-green-worker', 'sai-direct-build-worker', 'sai-review-fix-worker', 'sai-red-new-worker', 'sai-green-new-worker', 'sai-review-new-worker'];
+  const WORKERS = [...CURRENT_CENSUS, 'sai-3-red-worker', 'sai-3-green-worker', 'sai-direct-build-worker'];
   try {
     installOpencode(tmpDir);
     const bindingsDir = path.join(tmpDir, 'sai', 'orchestration', 'workers', 'bindings');
@@ -1306,15 +1306,15 @@ test('Step 3 binding roster validation yields exactly the seventeen managed work
       .map(entry => (typeof entry === 'string' ? entry : entry && entry.name))
       .sort();
     assert.deepEqual(names, [...WORKERS].sort(),
-      'specs/opencode-agent-census/spec.md: the binding roster must contain exactly the seventeen managed workers with no extra or missing worker');
+      'specs/opencode-agent-census/spec.md: the binding roster must contain exactly the thirteen managed workers with no extra or missing worker');
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 });
 
-test('Step 3 binding files declare exactly the seventeen initial worker dispatches', () => {
+test('Step 3 binding files declare exactly the thirteen initial worker dispatches', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-bindings-scan-'));
-  const WORKERS = [...CURRENT_CENSUS, 'sai-4-red-worker', 'sai-4-green-worker', 'sai-direct-build-worker', 'sai-review-fix-worker', 'sai-red-new-worker', 'sai-green-new-worker', 'sai-review-new-worker'];
+  const WORKERS = [...CURRENT_CENSUS, 'sai-3-red-worker', 'sai-3-green-worker', 'sai-direct-build-worker'];
   try {
     installOpencode(tmpDir);
     const bindingsDir = path.join(tmpDir, 'sai', 'orchestration', 'workers', 'bindings');
@@ -1337,7 +1337,7 @@ test('Step 3 binding files declare exactly the seventeen initial worker dispatch
 
 test('Step 3 roster validation admits dispatch-less render bindings alongside worker bindings', () => {
   const fixtureDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-render-binding-'));
-  const WORKERS = [...CURRENT_CENSUS, 'sai-4-red-worker', 'sai-4-green-worker', 'sai-direct-build-worker', 'sai-review-fix-worker', 'sai-red-new-worker', 'sai-green-new-worker', 'sai-review-new-worker'];
+  const WORKERS = [...CURRENT_CENSUS, 'sai-3-red-worker', 'sai-3-green-worker', 'sai-direct-build-worker'];
   try {
     const installDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-render-install-'));
     try {
@@ -1480,7 +1480,7 @@ test('Step 2 retired agent-key merge exports are no longer available from the in
     'specs/opencode-config-install/spec.md: OPENCODE_PLACEHOLDER_MODEL must be retired');
 });
 
-test('Step 3 install seeds the seven managed opencode worker agent files with their canonical contracts', () => {
+test('Step 3 install seeds the managed opencode worker agent files with their canonical contracts', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-agents-projected-'));
   const repoRoot = path.join(__dirname, '..');
   const manifest = loadInstallManifest(repoRoot);
@@ -1521,7 +1521,7 @@ test('Step 3 install seeds the seven managed opencode worker agent files with th
   }
 });
 
-test('opencode installer consumes exactly the seventeen matrix worker bindings and agents', () => {
+test('opencode installer consumes exactly the thirteen matrix worker bindings and agents', () => {
   const repoRoot = path.join(__dirname, '..');
   const manifest = loadInstallManifest(repoRoot);
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-matrix-inventory-'));
@@ -1535,21 +1535,21 @@ test('opencode installer consumes exactly the seventeen matrix worker bindings a
       root: tmpDir,
     };
     const active = expandInstallManifest(manifest, { harness: 'opencode', repoRoot, destinationRoot });
-    const phases = ['spec', 'design', 'implementation', 'review', 'security', 'performance', 'accessibility', 'commit', 'archive', 'backfill'];
+    const phases = ['spec', 'design', 'security', 'performance', 'accessibility', 'commit', 'archive', 'backfill'];
     const bindingNames = active
       .filter(projection => path.relative(destinationRoot.sai, projection.destinationPath)
         .split(path.sep).join('/').startsWith('orchestration/workers/bindings/') &&
         phases.includes(path.basename(projection.destinationPath, '-worker.md')))
       .map(projection => path.basename(projection.destinationPath));
-    assert.equal(bindingNames.length, 10, 'opencode should project exactly ten phase worker bindings');
+    assert.equal(bindingNames.length, 8, 'opencode should project exactly eight phase worker bindings');
     assert.equal(bindingNames.includes('idea-list-render.md'), false,
       'opencode must not project an idea-list-render matrix binding');
     const allBindingNames = active
       .filter(projection => path.relative(destinationRoot.sai, projection.destinationPath)
         .split(path.sep).join('/').startsWith('orchestration/workers/bindings/'))
       .map(projection => path.basename(projection.destinationPath));
-    assert.equal(allBindingNames.length, 18,
-      'opencode should keep only the seventeen routed worker bindings in the matrix destination');
+    assert.equal(allBindingNames.length, 13,
+      'opencode should keep only the thirteen routed worker bindings in the matrix destination');
     const ideaList = active.find(projection =>
       path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/') ===
       'sai/adapters/opencode/idea-list-render.md');
@@ -1562,7 +1562,7 @@ test('opencode installer consumes exactly the seventeen matrix worker bindings a
       .filter(projection => projection.destinationPath.startsWith(destinationRoot.agents) &&
         CURRENT_CENSUS.includes(path.basename(projection.destinationPath, '.md')))
       .map(projection => path.basename(projection.destinationPath, '.md'));
-    assert.equal(agentNames.length, 11, 'opencode should project exactly eleven managed agents');
+    assert.equal(agentNames.length, 10, 'opencode should project exactly ten managed agents');
     assert.equal(agentNames.some(name => ['budget', 'executor', 'explore'].includes(name)), false,
       'opencode must not project support agents as matrix worker inventory');
     const allAgentNames = active
@@ -1614,7 +1614,7 @@ test('installOpencode active projection carries the neutral root protocols, rout
     assert.equal(sourceSet.has('sai/adapters/claude/boot.md'), false,
       'opencode must not project the Claude boot adapter');
     for (const utility of Object.values(UTILITY_COMMANDS)) {
-      if (utility === 'apply' || utility === 'archive') continue;
+      if (utility === 'archive') continue;
       assert.ok(sourceSet.has(`sai/commands/${utility}/body.md`),
         `opencode should project the utility card sai/commands/${utility}/body.md`);
     }
@@ -1626,14 +1626,12 @@ test('installOpencode active projection carries the neutral root protocols, rout
       'opencode should project the archive commit-gate instruction');
     assert.equal(sourceSet.has('sai/commands/archive/body.md'), false,
       'opencode must not project the retired archive body card');
-    for (const card of ['coordinator.md', 'red-worker.md', 'green-worker.md', 'runner.md', 'invocation.md']) {
-      assert.ok(sourceSet.has(`sai/commands/apply/${card}`),
-        `opencode should project the routed apply card sai/commands/apply/${card}`);
+    for (const card of ['coordinator.md', 'red-worker.md', 'green-worker.md', 'worker-common.md']) {
+      assert.ok(sourceSet.has(`sai/commands/implement/${card}`),
+        `opencode should project the implement card sai/commands/implement/${card}`);
     }
-    assert.equal(sourceSet.has('sai/commands/apply/body.md'), false,
-      'opencode must not project the retired apply body card');
-    assert.equal(sourceSet.has('sai/commands/apply/instructions.md'), false,
-      'opencode must not project the retired monolithic apply instruction');
+    assert.equal(sources.some(source => source.startsWith('sai/commands/apply/')), false,
+      'opencode must not project the retired apply card set');
     for (const flat of Object.keys(UTILITY_COMMANDS).map(name => `sai/commands/${name}.md`)) {
       assert.equal(sourceSet.has(flat), false, `${flat} must be absent from the active source layout`);
     }
@@ -1646,11 +1644,9 @@ test('opencode wrappers route through the opencode boot adapter and never the Cl
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-boot-routing-'));
   const wrappers = [
     ...Object.keys(UTILITY_COMMANDS),
-    'sai-build',
+    'sai-deep-review',
     'sai-1-spec',
     'sai-2-design',
-    'sai-3-implement',
-    'sai-5-review',
     'sai-6-security',
     'sai-7-performance',
     'sai-8-accessibility',
@@ -1704,14 +1700,14 @@ test('opencode boot adapter loads command-runner first, selects utility bodies, 
     assert.match(boot, /Fetch @sai\/commands\/(?:\{name\}|[a-z-]+)\/body\.md/,
       'utility selection should target the matching body card');
     for (const name of Object.values(UTILITY_COMMANDS)) {
-      if (name === 'apply') continue;
+      
       assert.doesNotMatch(boot, new RegExp(`@sai/commands/${name}/coordinator\\.md`),
         `the opencode boot must not select a coordinator card for the ${name} utility`);
     }
-    assert.match(boot, /@sai\/commands\/apply\/coordinator\.md/,
-      'the opencode boot must select the routed coordinator card for apply');
-    assert.doesNotMatch(boot, /@sai\/commands\/apply\/body\.md/,
-      'the opencode boot must no longer select the apply utility body card');
+    assert.match(boot, /@sai\/commands\/deep-review\/coordinator\.md/,
+      'the opencode boot must select the routed coordinator card for deep-review');
+    assert.doesNotMatch(boot, /@sai\/commands\/apply\//,
+      'the opencode boot must no longer select any apply card');
 
     assert.doesNotMatch(boot, /\bAgent\s*\(/,
       'the opencode boot adapter must not mention the Claude Agent dispatch primitive');

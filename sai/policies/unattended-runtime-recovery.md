@@ -2,8 +2,7 @@
 
 This policy is the single source of the unattended **resilience rule**. It
 applies only to the unattended lanes: Explore's selected **Plan - Unattended**
-and **Direct Build - Unattended** routes, and the Direct Build close of
-`/sai-5-review` and `/sai-review`, after task disclosure. The Direct Build
+and **Direct Build - Unattended** routes, after task disclosure. The Direct Build
 `--no-specs` POC profile does not use it: a POC failure is the experiment's
 observation, and correcting it automatically could hide the result. It changes
 no attended command or other route.
@@ -207,9 +206,6 @@ the charge:
   which allows three attempts per failed step. A route diagnosis or
   **Bounded Recovery** continuation in a step is an attempt on its key; a
   step's attempts never draw on another step's key.
-- **Direct Build close of `/sai-5-review` and `/sai-review`:** the lane keeps
-  no diagnosis counter; count the three attempts per close in conversation.
-  An attempt never adds a fix-loop round.
 
 Stop (§ Stop condition) when the Plan phase's diagnosis round is used with the
 step still failing, when a Direct Build step's counter reaches three with that

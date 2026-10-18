@@ -2,9 +2,11 @@
 
 ## Purpose
 TBD - created by archiving change update-opencode-default-models. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: Opencode command wrappers declare the new default lineup
-Each opencode command wrapper SHALL declare the corrected default model and variant in its YAML frontmatter: cheap utility paths SHALL use `opencode/muse-spark-1.3-contributor-free` with `variant: high`, main pipeline wrappers SHALL use `opencode-go/muse-spark-1.3-contributor` with `variant: xhigh`, and the four review wrappers (`sai-5-review`, `sai-6-security`, `sai-7-performance`, `sai-8-accessibility`) SHALL use `opencode-go/muse-spark-1.3-contributor` with `variant: xhigh`. The Claude wrappers SHALL remain unchanged.
+Each opencode command wrapper SHALL declare the corrected default model and variant in its YAML frontmatter: cheap utility paths SHALL use `opencode/muse-spark-1.3-contributor-free` with `variant: high`, main pipeline wrappers SHALL use `opencode-go/muse-spark-1.3-contributor` with `variant: xhigh`, and the four review wrappers (`sai-4-review`, `sai-6-security`, `sai-7-performance`, `sai-8-accessibility`) SHALL use `opencode-go/muse-spark-1.3-contributor` with `variant: xhigh`. The Claude wrappers SHALL remain unchanged.
 
 #### Scenario: Wrapper frontmatter matches the new lineup
 - **WHEN** the cheap, pipeline, and review opencode wrappers are read after the change
@@ -30,4 +32,3 @@ The `README.md` opencode model table and design paragraph SHALL document the new
 #### Scenario: README table matches the implementation
 - **WHEN** the README model table is read after the change
 - **THEN** every opencode cell shows the corrected model and variant from the staged diff
-

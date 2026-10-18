@@ -33,8 +33,8 @@ function projections(harness) {
   return { base, entries: expandInstallManifest(manifest, { harness, repoRoot, destinationRoot }) };
 }
 
-test('all 36 Claude shipped roles match the unchanged OPUS preset exactly', () => {
-  assert.equal(hash(presetText), '214fff330885f84ece7527632bbb5bdd2b940d813c623c866e2f2f308cc3752f');
+test('all 33 Claude shipped roles match the unchanged OPUS preset exactly', () => {
+  assert.equal(hash(presetText), 'a06556da40728a66ff121b616983a66d2e4b4da5647d8f50762c2f65296b174b');
   const counts = {};
   const { base, entries } = projections('claude');
   for (const [role, expected] of Object.entries(preset)) {
@@ -52,7 +52,7 @@ test('all 36 Claude shipped roles match the unchanged OPUS preset exactly', () =
     assert.ok(generated, `${role} must be projected`);
     assert.deepEqual(settings(generated.sourceText ?? fs.readFileSync(generated.sourcePath, 'utf8')), expected, role);
   }
-  assert.deepEqual(counts, { agent: 3, command: 15, worker: 15, utility: 3 });
+  assert.deepEqual(counts, { agent: 3, command: 14, worker: 13, utility: 3 });
   for (const name of ['to-pr', 'to-backlog', 'from-backlog', 'from-next-backlog-item']) {
     assert.ok(!Object.hasOwn(preset, `command:${name}`));
   }
@@ -66,6 +66,6 @@ test('generated opencode agents, command wrappers, and configuration remain byte
     entry.sourceText ?? fs.readFileSync(entry.sourcePath, 'utf8'),
   ]).filter(([name]) => /^(agents|commands|config)\//.test(name))
     .sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0);
-  assert.equal(output.length, 47);
-  assert.equal(hash(JSON.stringify(output)), '8597e0dd4b3f3fe1d90e3d85c6a086a0462c90a902c68d52c183e98dafb510df');
+  assert.equal(output.length, 38);
+  assert.equal(hash(JSON.stringify(output)), '1f6a946c72390b472b7d2809df369e5a76a7637156a6113ac4cb1362866d551f');
 });

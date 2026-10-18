@@ -21,7 +21,7 @@ The deterministic HEAD-immobility check SHALL be performed by `sai/tools/no-comm
 
 ### Requirement: Every routed worker dispatch window is paired
 
-A guard window SHALL be the stretch between a guard `snapshot` and its `verify`, bounded by control hand-offs rather than by worker dispatches: one window SHALL span every consecutive worker stretch — fresh dispatches, same-worker continuations, and replacement workers alike — until the next boundary. The closed list of boundaries SHALL be exactly: (1) a human turn — a `needs_input` result (closed or open), a nonterminal extension whose handler hands the turn to the user, or a user interruption that is later resumed; (2) a coordinator git mutation — any git mutation the coordinator itself runs, including an apply commit gate whether asked or pre-authorized, a merge launch, checkout, `git mv`, or staging, the archive CLI move and post-archive commit, a close's staging and commit, and a nonterminal extension whose handler performs one; and (3) run close — the terminal result (`completed`, `failed`, `cancelled`) or user cancellation after which the coordinator dispatches no further worker before a human turn or its own git mutation. Nothing else SHALL be a boundary: a progress event, a `notice`, a ready return, a nonterminal extension whose handler neither asks the user nor mutates git, a terminal result followed directly by the next dispatch, and a segment transition inside a composition SHALL continue the running window, and the coordinator SHALL act on them with no guard call. The coordinator SHALL open a window with `snapshot` once the first dispatch's harness-native resumable handle is retained, immediately before the worker's expensive work proceeds; after a human turn, once the answer is in and before it is forwarded to a worker; and after a coordinator git mutation, before the next dispatch or continuation. The coordinator SHALL close the window with `verify --base <guard_base>` immediately before each boundary and before acting on it. Because every coordinator git mutation is a boundary, coordinator-owned mutations SHALL always run between windows and never inside one.
+A guard window SHALL be the stretch between a guard `snapshot` and its `verify`, bounded by control hand-offs rather than by worker dispatches: one window SHALL span every consecutive worker stretch — fresh dispatches, same-worker continuations, and replacement workers alike — until the next boundary. The closed list of boundaries SHALL be exactly: (1) a human turn — a `needs_input` result (closed or open), a nonterminal extension whose handler hands the turn to the user, or a user interruption that is later resumed; (2) a coordinator git mutation — any git mutation the coordinator itself runs, including an implement step commit whether asked or pre-authorized, a merge launch, checkout, `git mv`, or staging, the archive CLI move and post-archive commit, a close's staging and commit, and a nonterminal extension whose handler performs one; and (3) run close — the terminal result (`completed`, `failed`, `cancelled`) or user cancellation after which the coordinator dispatches no further worker before a human turn or its own git mutation. Nothing else SHALL be a boundary: a progress event, a `notice`, a ready return, a nonterminal extension whose handler neither asks the user nor mutates git, a terminal result followed directly by the next dispatch, and a segment transition inside a composition SHALL continue the running window, and the coordinator SHALL act on them with no guard call. The coordinator SHALL open a window with `snapshot` once the first dispatch's harness-native resumable handle is retained, immediately before the worker's expensive work proceeds; after a human turn, once the answer is in and before it is forwarded to a worker; and after a coordinator git mutation, before the next dispatch or continuation. The coordinator SHALL close the window with `verify --base <guard_base>` immediately before each boundary and before acting on it. Because every coordinator git mutation is a boundary, coordinator-owned mutations SHALL always run between windows and never inside one.
 
 #### Scenario: a progress event takes no guard call
 
@@ -86,7 +86,7 @@ A concurrent batch dispatch SHALL sit inside one guard window and SHALL NOT be a
 
 ### Requirement: Every coordinator that dispatches a routed worker carries the guard
 
-Every coordinator card that dispatches a routed worker binding — the spec, design, implement, apply, review, security, performance, accessibility, commit, archive, backfill, merge, and meta-review coordinator cards — plus explore's three Direct Build guard windows SHALL fetch `@sai/policies/no-commit-guard.md` and pair the guard at the boundaries of every guard window: a `snapshot` at each window opening and a `verify` immediately before each boundary the policy lists (human turn, coordinator git mutation, run close), acting on a progress event or notice with no guard call. On the artifact-blind clean route, the guard's own two tool invocations per window are the coordinator's only git observations. Worker contracts keep their prose prohibitions unchanged: the guard adds no worker prohibition, no binding edit, and no helper-permission change.
+Every coordinator card that dispatches a routed worker binding — the spec, design, security, performance, accessibility, commit, archive, backfill, merge, and deep-review coordinator cards — plus explore's three Direct Build guard windows SHALL fetch `@sai/policies/no-commit-guard.md` and pair the guard at the boundaries of every guard window: a `snapshot` at each window opening and a `verify` immediately before each boundary the policy lists (human turn, coordinator git mutation, run close), acting on a progress event or notice with no guard call. On the artifact-blind clean route, the guard's own two tool invocations per window are the coordinator's only git observations. Worker contracts keep their prose prohibitions unchanged: the guard adds no worker prohibition, no binding edit, and no helper-permission change.
 
 #### Scenario: a clean-route coordinator's only git access is the guard
 
@@ -120,24 +120,6 @@ The guard SHALL detect a violation when its window closes at the next boundary, 
 
 - **WHEN** a worker commits inside a window that spans several worker stretches and the window reaches its closing boundary
 - **THEN** the closing verify reports the violation, the mixed reset returns HEAD to the window's `guard_base` with all content preserved unstaged, and one incident line carries the evidence for every commit in the window
-
-### Requirement: Apply restores initial unrelated index entries after remediation
-
-Apply SHALL retain the existing HEAD-only guard and prescribed mixed-reset remediation. Its coordinator SHALL then use the immutable file baseline to restore only initial unrelated index entries after verifying that their working-tree content is unchanged. This restoration SHALL be apply's realization of the shared rule in `sai/policies/foreign-index-preservation.md`, through `apply-step.js restore-unrelated-index`.
-
-This bounded restoration SHALL not restore working-tree bytes, capture another baseline, or grant a worker Git authority. A restoration failure SHALL stop with work preserved. The next worker SHALL require a fresh HEAD snapshot. Other commands SHALL retain the existing remediation behavior.
-
-#### Scenario: Reset cleared unrelated staging
-- **WHEN** Apply's guard remediation resets HEAD and clears initial unrelated staging without changing unrelated content
-- **THEN** Apply's coordinator restores the initial unrelated index entries and opens a fresh guard window before further worker work
-
-#### Scenario: Unrelated content changed before restoration
-- **WHEN** initial unrelated content no longer equals the baseline
-- **THEN** restoration stops without rewriting that content or recapturing the baseline
-
-#### Scenario: Restoration runs under the shared rule
-- **WHEN** Apply's coordinator restores initial unrelated index entries
-- **THEN** it acts under `sai/policies/foreign-index-preservation.md` through `apply-step.js restore-unrelated-index`
 
 ### Requirement: A recovery hand-off to the budget agent opens its own guard window
 

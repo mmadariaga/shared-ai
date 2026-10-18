@@ -4,6 +4,7 @@
 Present every closed-choice question through the active harness's native option-picker, with the per-harness mapping and declared picker capacity single-sourced in `sai/policies/remember.md`.
 
 ## Requirements
+
 ### Requirement: Closed-choice prompts MUST use the harness's native option-picker when available
 
 Whenever a `sai-*` command asks the user to pick from a closed set of options (yes/no questions, numbered lists, commit authorization gates, change pickers), the session that talks to the user SHALL present it through the harness's native option-picker. A worker SHALL return the ask as `needs_input`, and its coordinator SHALL present it. Plain text is a fallback used only on a surface without a native picker or for a set larger than the harness's declared picker capacity, and it SHALL keep every option in its order. Presentation changes per harness; question text, option semantics, retry rules, decline rules, and "wait for the answer" requirements stay exactly as the defining instruction specifies.
@@ -16,8 +17,9 @@ The per-harness mapping, with capacity declared rather than inferred from runtim
 A free-text reply that does not map to a listed option follows that instruction's invalid-input rule (typically "reject and re-prompt" for picker prompts, "treat as decline" for yes/no gates).
 
 #### Scenario: Claude Code — yes/no commit gate
-- **WHEN** `sai-4-apply` reaches a STOP & COMMIT marker on Claude Code
-- **THEN** the coordinator presents the commit authorization question through `AskUserQuestion` with two clickable options labeled `yes` and `no`, and commits only when the user selects `yes`
+
+- **WHEN** `/sai-commit` reaches its commit authorization question on Claude Code
+- **THEN** the coordinator presents the question through `AskUserQuestion` with clickable options `yes (Recommended)`, `no`, and `Allow on this session`, and commits only when the user selects `yes` or `Allow on this session`
 
 #### Scenario: opencode — change picker
 - **WHEN** `openspec list --json` returns two or more active changes and the consuming `sai-*` command runs on opencode

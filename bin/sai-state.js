@@ -195,7 +195,7 @@ function withWarnings(payload, warnings) {
 // Machine-authored observability fields carried verbatim onto the emit wire.
 // The set is closed: budget tallies, the name of the exhausted budget, scope
 // entry outcomes, the apply-only authorized retry grant/history, and the
-// apply-only worker veto record/override outcomes, and the `/sai-3-implement-new`
+// apply-only worker veto record/override outcomes, and the `/sai-3-implement`
 // run view (identifiers and paths only).
 const OBSERVABILITY_FIELDS = ['budgets', 'exhausted', 'step_entry', 'retry_grant', 'retry_cycle', 'attempt_history', 'veto', 'veto_override', 'run'];
 

@@ -7,18 +7,9 @@ Define the execution surface the Claude `sai-build` wrapper declares so its chai
 
 ### Requirement: Chained apply segment runs under apply-parity toolset
 
-The Claude sai-build wrapper SHALL declare the exact apply-parity allowed-tools execution set so the chained apply segment can perform coordinator-owned git add and git commit, checkbox flips, pre-commit listing, and bounded repairs without re-entering the apply wrapper.
+The Claude sai-build wrapper SHALL declare the wide execution set of its `build-command` capability profile (shell `*`, write enabled, delegation to the executor, red, green, and review workers) so the chained implement and review segments can perform coordinator-owned git add and git commit, checkbox flips, pre-commit listing, and bounded repairs without re-entering the wrapper.
 
 #### Scenario: Build composition executes owned apply work
 
-- **WHEN** the /sai-build composition runs its chained apply segment on Claude Code
+- **WHEN** the /sai-build composition runs its chained implement and review segments on Claude Code
 - **THEN** coordinator-owned git, checklist, and verification operations execute under the sai-build toolset
-
-### Requirement: Build parity test pins wide execution set
-
-The build coordinator test suite SHALL assert that the sai-build allowed-tools line equals the sai-4-apply allowed-tools line and matches the wide execution set without node-scoped narrowing.
-
-#### Scenario: Parity regression is caught
-
-- **WHEN** either wrapper allowlist drifts from the wide execution set
-- **THEN** the parity test fails before the composition ships

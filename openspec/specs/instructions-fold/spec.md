@@ -28,12 +28,11 @@ Every command-owned instruction currently under `sai/instructions/` SHALL move v
 
 ### Requirement: command-templates-are-neighbors
 
-Every command-owned template currently under `sai/instructions/_templates/` SHALL move to the owning command directory using the `.template.md` suffix: `implementation-plan.template.md`, `review-report.template.md`, `security-report.template.md`, `performance-report.template.md`, `accessibility-report.template.md`, and `pr-body.template.md`. Each owning instruction SHALL fetch its neighboring template by exact path, and no command-owned template SHALL remain under `sai/instructions/_templates/`.
+Every command-owned template currently under `sai/instructions/_templates/` SHALL move to the owning command directory using the `.template.md` suffix: `review-report.template.md`, `security-report.template.md`, `performance-report.template.md`, `accessibility-report.template.md`, and `pr-body.template.md`. Each owning instruction SHALL fetch its neighboring template by exact path, and no command-owned template SHALL remain under `sai/instructions/_templates/`.
 
 #### Scenario: implementation template uses neighboring path
-
-- **WHEN** the implementation instruction loads its plan template
-- **THEN** it resolves `@sai/commands/implement/implementation-plan.template.md` and produces the same implementation artifact contract as before
+- **WHEN** the implement command directory is listed
+- **THEN** no `implementation-plan.template.md` exists there, so no implementation instruction loads a plan template
 
 #### Scenario: audit templates remain independent
 

@@ -14,8 +14,6 @@ const {
 const CANONICAL_PHASE_ORDER = [
   'spec',
   'design',
-  'implementation',
-  'review',
   'security',
   'performance',
   'accessibility',
@@ -28,8 +26,6 @@ const CANONICAL_PHASE_ORDER = [
 const WORKER_NAME = {
   spec: 'sai-1-spec-proposal-worker',
   design: 'sai-2-design-worker',
-  implementation: 'sai-3-implementation-worker',
-  review: 'sai-5-review-worker',
   security: 'sai-6-security-worker',
   performance: 'sai-7-performance-worker',
   accessibility: 'sai-8-accessibility-worker',
@@ -42,8 +38,6 @@ const WORKER_NAME = {
 const WORKER_DIR = {
   spec: 'spec',
   design: 'design',
-  implementation: 'implement',
-  review: 'review',
   security: 'security',
   performance: 'performance',
   accessibility: 'accessibility',
@@ -62,61 +56,37 @@ const REQUIRED_FIELDS = [
   'opencodeAgent',
 ];
 
-const APPLY_WORKER_NAMES = ['sai-4-red-worker', 'sai-4-green-worker'];
-
-const APPLY_ROLE = {
-  'sai-4-red-worker': 'red',
-  'sai-4-green-worker': 'green',
-};
-
 const DIRECT_BUILD_ROLE = {
   'sai-direct-build-worker': 'direct-build',
-  'sai-review-fix-worker': 'review-fix',
 };
 
-const IMPLEMENT_NEW_ROLE = {
-  'sai-red-new-worker': 'red-new',
-  'sai-green-new-worker': 'green-new',
-  'sai-review-new-worker': 'review-new',
+const IMPLEMENT_ROLE = {
+  'sai-3-red-worker': 'red',
+  'sai-3-green-worker': 'green',
+  'sai-4-review-worker': 'review',
 };
 
-function implementNewEntry(workerName, overrides = {}) {
-  const phase = IMPLEMENT_NEW_ROLE[workerName];
+function implementEntry(workerName, overrides = {}) {
+  const phase = IMPLEMENT_ROLE[workerName];
   const base = {
     phase,
     workerName,
-    workerContract: phase === 'review-new'
-      ? 'sai/commands/review-new/worker.md'
-      : `sai/commands/implement-new/${phase.replace('-new', '')}-worker.md`,
+    workerContract: phase === 'review'
+      ? 'sai/commands/review/worker.md'
+      : `sai/commands/implement/${phase}-worker.md`,
     bindingStem: phase,
-    claudeAgent: { name: workerName, model: 'claude-implement-new-model', keyword: `claude-${phase}` },
-    opencodeAgent: { name: workerName, model: 'opencode-implement-new-model', keyword: `opencode-${phase}` },
-  };
-  return { ...base, ...overrides };
-}
-
-function applyEntry(workerName, overrides = {}) {
-  const role = APPLY_ROLE[workerName];
-  const base = {
-    phase: 'apply',
-    workerName,
-    workerContract: `sai/commands/apply/${role}-worker.md`,
-    bindingStem: role,
-    claudeAgent: { name: workerName, model: 'claude-apply-model', keyword: `claude-apply-${role}` },
-    opencodeAgent: { name: workerName, model: 'opencode-apply-model', keyword: `opencode-apply-${role}` },
+    claudeAgent: { name: workerName, model: 'claude-implement-model', keyword: `claude-${phase}` },
+    opencodeAgent: { name: workerName, model: 'opencode-implement-model', keyword: `opencode-${phase}` },
   };
   return { ...base, ...overrides };
 }
 
 function directBuildEntry(workerName, overrides = {}) {
   const phase = DIRECT_BUILD_ROLE[workerName];
-  const contract = phase === 'review-fix'
-    ? 'sai/commands/meta-review/review-fix-worker.md'
-    : `sai/commands/explore/${phase}-worker.md`;
   const base = {
     phase,
     workerName,
-    workerContract: contract,
+    workerContract: `sai/commands/explore/${phase}-worker.md`,
     bindingStem: phase,
     claudeAgent: { name: workerName, model: 'claude-direct-build-model', keyword: `claude-${phase}` },
     opencodeAgent: { name: workerName, model: 'opencode-direct-build-model', keyword: `opencode-${phase}` },
@@ -127,13 +97,10 @@ function directBuildEntry(workerName, overrides = {}) {
 function fourteenEntries() {
   return [
     ...fullEntries(),
-    applyEntry('sai-4-red-worker'),
-    applyEntry('sai-4-green-worker'),
     directBuildEntry('sai-direct-build-worker'),
-    directBuildEntry('sai-review-fix-worker'),
-    implementNewEntry('sai-red-new-worker'),
-    implementNewEntry('sai-green-new-worker'),
-    implementNewEntry('sai-review-new-worker'),
+    implementEntry('sai-3-red-worker'),
+    implementEntry('sai-3-green-worker'),
+    implementEntry('sai-4-review-worker'),
   ];
 }
 
@@ -205,43 +172,44 @@ const TEMPLATES = {
   opencodeAgent: OPENCODE_AGENT_TEMPLATE,
 };
 
-test('defineWorkerMatrix returns the frozen matrix with the eleven canonical phases, two apply roles, one direct-build implementer, and one review-fix worker', () => {
-  assert.equal(PHASE_ORDER.length, 11, 'PHASE_ORDER should declare exactly eleven phases');
+test('defineWorkerMatrix returns the frozen matrix with the nine canonical phases, one direct-build implementer, and the RED, GREEN, and review roles', () => {
+  assert.equal(PHASE_ORDER.length, 9, 'PHASE_ORDER should declare exactly nine phases');
   assert.deepEqual(PHASE_ORDER, CANONICAL_PHASE_ORDER,
-    'PHASE_ORDER should be spec, design, implementation, review, security, performance, accessibility, commit, archive, backfill, merge');
+    'PHASE_ORDER should be spec, design, security, performance, accessibility, commit, archive, backfill, merge');
   assert.equal(Object.isFrozen(PHASE_ORDER), true, 'PHASE_ORDER should be frozen');
 
   const matrix = defineOrNull(twelveEntries());
-  assert.ok(matrix, 'defineWorkerMatrix should accept the eighteen-entry set');
+  assert.ok(matrix, 'defineWorkerMatrix should accept the thirteen-entry set');
   assert.equal(Object.isFrozen(matrix), true, 'defineWorkerMatrix should return a frozen matrix');
   assert.equal(matrix.phases, PHASE_ORDER, 'the matrix should reference the frozen canonical PHASE_ORDER');
   assert.equal(Object.isFrozen(matrix.entries), true, 'matrix entries should be frozen');
-  assert.equal(matrix.entries.length, 18, 'the matrix should carry eighteen entries');
-  assert.deepEqual(matrix.entries.slice(0, 11).map(item => item.phase), CANONICAL_PHASE_ORDER,
-    'the first eleven matrix entries should preserve the canonical phase order');
+  assert.equal(matrix.entries.length, 13, 'the matrix should carry thirteen entries');
+  assert.deepEqual(matrix.entries.slice(0, 9).map(item => item.phase), CANONICAL_PHASE_ORDER,
+    'the first nine matrix entries should preserve the canonical phase order');
   for (const item of matrix.entries) {
     assert.equal(Object.isFrozen(item), true, `${item.workerName} entry should be frozen`);
   }
 });
 
-test('defineWorkerMatrix yields entries with eleven phase identities followed by RED then GREEN apply identities', () => {
+test('defineWorkerMatrix yields entries with nine phase identities followed by the direct-build, RED, GREEN, and review identities', () => {
   const matrix = defineOrNull(twelveEntries());
-  assert.ok(matrix, 'defineWorkerMatrix should accept the eleven phase entries plus the two apply entries');
-  assert.equal(matrix.entries.length, 18, 'the matrix should yield eighteen entries');
-  assert.deepEqual(matrix.entries.slice(0, 11).map(item => item.workerName), Object.values(WORKER_NAME),
-    'the eleven phase identities should be unchanged');
-  const red = matrix.entries[11];
-  const green = matrix.entries[12];
-  assert.equal(red.phase, 'apply', 'the RED entry should share the apply phase');
-  assert.equal(green.phase, 'apply', 'the GREEN entry should share the apply phase');
-  assert.equal(red.workerName, 'sai-4-red-worker', 'the twelfth entry should be the RED worker');
-  assert.equal(green.workerName, 'sai-4-green-worker', 'the thirteenth entry should be the GREEN worker');
-  assert.equal(red.workerContract, 'sai/commands/apply/red-worker.md',
-    'RED should pin its role-specific apply contract');
-  assert.equal(green.workerContract, 'sai/commands/apply/green-worker.md',
-    'GREEN should pin its role-specific apply contract');
-  assert.notEqual(red.bindingStem, green.bindingStem,
-    'the two apply entries should carry unique binding stems');
+  assert.ok(matrix, 'defineWorkerMatrix should accept the nine phase entries plus the four role entries');
+  assert.equal(matrix.entries.length, 13, 'the matrix should yield thirteen entries');
+  assert.deepEqual(matrix.entries.slice(0, 9).map(item => item.workerName), Object.values(WORKER_NAME),
+    'the nine phase identities should be unchanged');
+  const [directBuild, red, green, review] = matrix.entries.slice(9);
+  assert.equal(directBuild.workerName, 'sai-direct-build-worker', 'the tenth entry should be the direct-build worker');
+  assert.equal(red.workerName, 'sai-3-red-worker', 'the eleventh entry should be the RED worker');
+  assert.equal(green.workerName, 'sai-3-green-worker', 'the twelfth entry should be the GREEN worker');
+  assert.equal(review.workerName, 'sai-4-review-worker', 'the thirteenth entry should be the review worker');
+  assert.equal(red.workerContract, 'sai/commands/implement/red-worker.md',
+    'RED should pin its role-specific implement contract');
+  assert.equal(green.workerContract, 'sai/commands/implement/green-worker.md',
+    'GREEN should pin its role-specific implement contract');
+  assert.equal(review.workerContract, 'sai/commands/review/worker.md',
+    'review should pin its review contract');
+  assert.equal(new Set([red.bindingStem, green.bindingStem, review.bindingStem]).size, 3,
+    'the three role entries should carry unique binding stems');
 });
 
 test('defineWorkerMatrix rejects duplicate phase identities naming the phase', () => {
@@ -258,33 +226,33 @@ test('defineWorkerMatrix rejects duplicate phase identities naming the phase', (
 
 test('defineWorkerMatrix rejects missing phase identities', () => {
   assert.throws(
-    () => defineWorkerMatrix(twelveEntries().filter(item => item.phase !== 'review')),
-    error => String(error && error.message || error).includes('exactly 18'),
-    'an entry set missing the review phase should be rejected for its exact entry count'
+    () => defineWorkerMatrix(twelveEntries().filter(item => item.phase !== 'security')),
+    error => String(error && error.message || error).includes('exactly 13'),
+    'an entry set missing the security phase should be rejected for its exact entry count'
   );
-  const omitReview = twelveEntries().map((item, index) => index === 4 ? entry('spec') : item);
+  const omitReview = twelveEntries().map((item, index) => index === 2 ? entry('spec') : item);
   assert.throws(
     () => defineWorkerMatrix(omitReview),
     error => {
       const message = String(error && error.message || error);
       return /duplicate/i.test(message) && message.includes('spec');
     },
-    'a twelve-entry set omitting review by duplicating spec should be rejected naming the phase'
+    'a twelve-entry set omitting security by duplicating spec should be rejected naming the phase'
   );
 });
 
 test('defineWorkerMatrix rejects a non-array or wrong-size entry set', () => {
   assert.throws(() => defineWorkerMatrix(null),
-    error => String(error && error.message || error).includes('exactly 18'),
+    error => String(error && error.message || error).includes('exactly 13'),
     'null entries should be rejected for the exact entry count');
   assert.throws(() => defineWorkerMatrix('not-an-array'),
-    error => String(error && error.message || error).includes('exactly 18'),
+    error => String(error && error.message || error).includes('exactly 13'),
     'non-array entries should be rejected for the exact entry count');
-  assert.throws(() => defineWorkerMatrix(twelveEntries().slice(0, 11)),
-    error => String(error && error.message || error).includes('exactly 18'),
-    'eleven entries should be rejected for the exact entry count');
+  assert.throws(() => defineWorkerMatrix(twelveEntries().slice(0, 9)),
+    error => String(error && error.message || error).includes('exactly 13'),
+    'nine entries should be rejected for the exact entry count');
   assert.throws(() => defineWorkerMatrix([...twelveEntries(), entry('spec')]),
-    error => String(error && error.message || error).includes('exactly 18'),
+    error => String(error && error.message || error).includes('exactly 13'),
     'fourteen entries should be rejected for the exact entry count');
 });
 
@@ -298,12 +266,12 @@ test('defineWorkerMatrix rejects unknown phases naming the phase', () => {
 });
 
 test('defineWorkerMatrix rejects out-of-order phases naming both phases', () => {
-  const outOfOrder = twelveEntries().map((item, index) => index === 1 ? entry('implementation') : item);
+  const outOfOrder = twelveEntries().map((item, index) => index === 1 ? entry('security') : item);
   assert.throws(
     () => defineWorkerMatrix(outOfOrder),
     error => {
       const message = String(error && error.message || error);
-      return message.includes('out of order') && message.includes('implementation') && message.includes('design');
+      return message.includes('out of order') && message.includes('security') && message.includes('design');
     },
     'an out-of-order phase should be rejected naming the misplaced and expected phases'
   );
@@ -357,7 +325,7 @@ test('defineWorkerMatrix rejects invalid worker identities and contract paths', 
       const message = String(error && error.message || error);
       return message.includes('Invalid Worker Matrix worker identity') && message.includes('spec');
     },
-    'a worker identity outside the sai-1/2/3/4/5/6/7/8 family should be rejected for its phase'
+    'a worker identity outside the sai-1/2/6/7/8 family should be rejected for its phase'
   );
   assert.throws(
     () => defineWorkerMatrix(twelveEntries().map((item, index) => index === 0 ? { ...item, workerContract: 'sai/orchestration/workers/generic-worker.md' } : item)),
@@ -393,10 +361,10 @@ test('renderWorkerTemplate preserves Claude Agent(...) dispatch syntax', () => {
 });
 
 test('renderWorkerTemplate preserves opencode task(...) dispatch syntax', () => {
-  const rendered = renderWorkerTemplate(OPENCODE_BINDING_TEMPLATE, bindingParameters('implementation', 'opencode'));
+  const rendered = renderWorkerTemplate(OPENCODE_BINDING_TEMPLATE, bindingParameters('security', 'opencode'));
   assert.match(rendered, /task\s*\(/,
     'opencode rendering should preserve the task(...) dispatch form');
-  assert.ok(rendered.includes('task("sai-3-implementation-worker"'),
+  assert.ok(rendered.includes('task("sai-6-security-worker"'),
     'the substituted worker identity should be preserved inside the opencode dispatch');
   assert.ok(rendered.includes('harness opencode'),
     'the injected opencode harness label should be substituted');
@@ -440,16 +408,16 @@ test('renderWorkerTemplate rejects unresolved tokens left after substitution', (
 
 test('materializeWorkerMatrix returns one binding and one agent per phase and harness', () => {
   const matrix = defineOrNull(twelveEntries());
-  assert.ok(matrix, 'materialization requires the eighteen-entry matrix');
+  assert.ok(matrix, 'materialization requires the thirteen-entry matrix');
   const projections = materializeWorkerMatrix(matrix, TEMPLATES);
-  assert.equal(projections.length, 72,
-    '18 workers × 2 harnesses × (binding + agent) should yield 72 projections');
-  assert.equal(projections.filter(item => item.kind === 'binding').length, 36,
-    'there should be 36 binding projections');
-  assert.equal(projections.filter(item => item.kind === 'agent').length, 36,
-    'there should be 36 agent projections');
+  assert.equal(projections.length, 52,
+    '13 workers × 2 harnesses × (binding + agent) should yield 52 projections');
+  assert.equal(projections.filter(item => item.kind === 'binding').length, 26,
+    'there should be 26 binding projections');
+  assert.equal(projections.filter(item => item.kind === 'agent').length, 26,
+    'there should be 26 agent projections');
   for (const harness of ['claude', 'opencode']) {
-    for (const phase of CANONICAL_PHASE_ORDER) {
+    for (const phase of [...CANONICAL_PHASE_ORDER, 'direct-build', ...Object.values(IMPLEMENT_ROLE)]) {
       const bindings = projections.filter(item =>
         item.kind === 'binding' && item.harness === harness && item.phase === phase);
       const agents = projections.filter(item =>
@@ -457,27 +425,17 @@ test('materializeWorkerMatrix returns one binding and one agent per phase and ha
       assert.equal(bindings.length, 1, `${harness}/${phase} should have exactly one binding projection`);
       assert.equal(agents.length, 1, `${harness}/${phase} should have exactly one agent projection`);
     }
-    for (const workerName of APPLY_WORKER_NAMES) {
-      const bindings = projections.filter(item =>
-        item.kind === 'binding' && item.harness === harness && item.phase === 'apply' &&
-        item.text.includes(`sai/commands/apply/${APPLY_ROLE[workerName]}-worker.md`));
-      const agents = projections.filter(item =>
-        item.kind === 'agent' && item.harness === harness && item.phase === 'apply' &&
-        item.destinationName === `${workerName}.md`);
-      assert.equal(bindings.length, 1, `${harness}/${workerName} should have exactly one binding projection`);
-      assert.equal(agents.length, 1, `${harness}/${workerName} should have exactly one agent projection`);
-    }
   }
 });
 
 test('materializeWorkerMatrix produces deterministic destinations and template names', () => {
   const matrix = defineOrNull(twelveEntries());
-  assert.ok(matrix, 'materialization requires the eighteen-entry matrix');
+  assert.ok(matrix, 'materialization requires the thirteen-entry matrix');
   const first = materializeWorkerMatrix(matrix, TEMPLATES);
   const second = materializeWorkerMatrix(matrix, TEMPLATES);
   assert.deepEqual(first, second, 'materialization should be deterministic across calls');
-  assert.equal(new Set(first.map(item => item.destinationName)).size, 36,
-    '18 binding destinations and 18 agent destinations should be distinct');
+  assert.equal(new Set(first.map(item => item.destinationName)).size, 26,
+    '13 binding destinations and 13 agent destinations should be distinct');
   for (const harness of ['claude', 'opencode']) {
     for (const phase of CANONICAL_PHASE_ORDER) {
       const binding = first.find(item =>
@@ -495,11 +453,18 @@ test('materializeWorkerMatrix produces deterministic destinations and template n
         `${harness}/${phase} agent should use its harness agent template`);
       assert.equal(agent.harness, harness, `${harness}/${phase} agent should preserve its harness`);
     }
-    for (const workerName of APPLY_WORKER_NAMES) {
+    for (const workerName of Object.keys(IMPLEMENT_ROLE)) {
+      const phase = IMPLEMENT_ROLE[workerName];
+      const binding = first.find(item =>
+        item.kind === 'binding' && item.harness === harness && item.phase === phase);
+      assert.equal(binding.destinationName, `${phase}-worker.md`,
+        `${harness}/${workerName} binding destination should be bindingStem-derived`);
+      assert.equal(binding.templateName, `${harness}StandaloneBinding`,
+        `${harness}/${workerName} binding should use its harness standalone binding template`);
       const agent = first.find(item =>
-        item.kind === 'agent' && item.harness === harness && item.phase === 'apply' &&
-        item.destinationName === `${workerName}.md`);
-      assert.ok(agent, `${harness}/${workerName} agent destination should be workerName-derived`);
+        item.kind === 'agent' && item.harness === harness && item.phase === phase);
+      assert.equal(agent.destinationName, `${workerName}.md`,
+        `${harness}/${workerName} agent destination should be workerName-derived`);
       assert.equal(agent.templateName, harness === 'claude' ? 'claudeAgent' : 'opencodeAgent',
         `${harness}/${workerName} agent should use its harness agent template`);
       assert.equal(agent.harness, harness, `${harness}/${workerName} agent should preserve its harness`);
@@ -509,7 +474,7 @@ test('materializeWorkerMatrix produces deterministic destinations and template n
 
 test('materializeWorkerMatrix renders non-empty content carrying the canonical Fetch target', () => {
   const matrix = defineOrNull(twelveEntries());
-  assert.ok(matrix, 'materialization requires the eighteen-entry matrix');
+  assert.ok(matrix, 'materialization requires the thirteen-entry matrix');
   const projections = materializeWorkerMatrix(matrix, TEMPLATES);
   for (const item of projections) {
     assert.equal(typeof item.text, 'string', `${item.destinationName} should carry rendered string text`);
@@ -517,18 +482,12 @@ test('materializeWorkerMatrix renders non-empty content carrying the canonical F
     if (PHASE_ORDER.includes(item.phase)) {
       assert.ok(item.text.includes(`Fetch @${contractFor(item.phase)} and follow it exactly.`),
         `${item.destinationName} should carry the canonical Fetch target for ${item.phase}`);
-    } else if (item.phase === 'apply') {
-      assert.match(item.text, /Fetch @sai\/commands\/apply\/(?:red|green)-worker\.md and follow it exactly\./,
-        `${item.destinationName} should carry a role-specific apply Fetch target`);
     } else if (item.phase === 'direct-build') {
       assert.match(item.text, /Fetch @sai\/commands\/explore\/direct-build-worker\.md and follow it exactly\./,
         `${item.destinationName} should carry its explore-owned direct-build Fetch target`);
-    } else if (item.phase === 'review-fix') {
-      assert.match(item.text, /Fetch @sai\/commands\/meta-review\/review-fix-worker\.md and follow it exactly\./,
-        `${item.destinationName} should carry its review-fix Fetch target`);
     } else {
-      assert.match(item.text, /Fetch @sai\/commands\/(?:implement-new\/(?:red|green)-worker|review-new\/worker)\.md and follow it exactly\./,
-        `${item.destinationName} should carry its -new family Fetch target`);
+      assert.match(item.text, /Fetch @sai\/commands\/(?:implement\/(?:red|green)-worker|review\/worker)\.md and follow it exactly\./,
+        `${item.destinationName} should carry its implement or review Fetch target`);
     }
     assert.doesNotMatch(item.text, /\{\{/,
       `${item.destinationName} text should leave no template token`);
@@ -537,48 +496,49 @@ test('materializeWorkerMatrix renders non-empty content carrying the canonical F
     item.kind === 'binding' && item.harness === 'claude' && item.phase === 'design');
   assert.match(designClaude.text, /Agent\s*\(/,
     'the Claude design binding should preserve Agent(...) dispatch syntax');
-  const implementationOpencode = projections.find(item =>
-    item.kind === 'binding' && item.harness === 'opencode' && item.phase === 'implementation');
-  assert.match(implementationOpencode.text, /task\s*\(/,
-    'the opencode implementation binding should preserve task(...) dispatch syntax');
+  const securityOpencode = projections.find(item =>
+    item.kind === 'binding' && item.harness === 'opencode' && item.phase === 'security');
+  assert.match(securityOpencode.text, /task\s*\(/,
+    'the opencode security binding should preserve task(...) dispatch syntax');
 });
 
-test('the RED and GREEN apply bindings fetch their own contracts and never resolve through the sibling entry', () => {
+test('the RED and GREEN bindings fetch their own contracts and never resolve through the sibling entry', () => {
   const matrix = defineOrNull(twelveEntries());
-  assert.ok(matrix, 'materialization requires the eighteen-entry matrix');
+  assert.ok(matrix, 'materialization requires the thirteen-entry matrix');
   const projections = materializeWorkerMatrix(matrix, TEMPLATES);
   for (const harness of ['claude', 'opencode']) {
     const redBindings = projections.filter(item =>
       item.kind === 'binding' && item.harness === harness &&
-      item.text.includes('Fetch @sai/commands/apply/red-worker.md and follow it exactly.'));
+      item.text.includes('Fetch @sai/commands/implement/red-worker.md and follow it exactly.'));
     const greenBindings = projections.filter(item =>
       item.kind === 'binding' && item.harness === harness &&
-      item.text.includes('Fetch @sai/commands/apply/green-worker.md and follow it exactly.'));
-    assert.equal(redBindings.length, 1, `${harness} should render exactly one RED apply binding`);
-    assert.equal(greenBindings.length, 1, `${harness} should render exactly one GREEN apply binding`);
+      item.text.includes('Fetch @sai/commands/implement/green-worker.md and follow it exactly.'));
+    assert.equal(redBindings.length, 1, `${harness} should render exactly one RED binding`);
+    assert.equal(greenBindings.length, 1, `${harness} should render exactly one GREEN binding`);
     assert.notEqual(redBindings[0].destinationName, greenBindings[0].destinationName,
-      'RED and GREEN bindings must not share a destination despite the shared apply phase');
-    assert.equal(redBindings[0].text.includes('sai/commands/apply/green-worker.md'), false,
+      'RED and GREEN bindings must not share a destination');
+    assert.equal(redBindings[0].text.includes('sai/commands/implement/green-worker.md'), false,
       'the RED binding must not resolve through the GREEN entry');
-    assert.equal(greenBindings[0].text.includes('sai/commands/apply/red-worker.md'), false,
+    assert.equal(greenBindings[0].text.includes('sai/commands/implement/red-worker.md'), false,
       'the GREEN binding must not resolve through the RED entry');
-    for (const workerName of APPLY_WORKER_NAMES) {
+    for (const workerName of ['sai-3-red-worker', 'sai-3-green-worker']) {
+      const role = IMPLEMENT_ROLE[workerName];
       const agent = projections.find(item =>
-        item.kind === 'agent' && item.harness === harness && item.phase === 'apply' &&
+        item.kind === 'agent' && item.harness === harness && item.phase === role &&
         item.destinationName === `${workerName}.md`);
       assert.ok(agent, `${harness} should render the ${workerName} agent`);
-      assert.ok(agent.text.includes(`sai/commands/apply/${APPLY_ROLE[workerName]}-worker.md`),
+      assert.ok(agent.text.includes(`sai/commands/implement/${role}-worker.md`),
         `${harness} ${workerName} agent should fetch its own role contract`);
-      const siblingRole = workerName === 'sai-4-red-worker' ? 'green' : 'red';
-      assert.equal(agent.text.includes(`sai/commands/apply/${siblingRole}-worker.md`), false,
-        `${harness} ${workerName} agent must not resolve through the sibling apply entry`);
+      const siblingRole = role === 'red' ? 'green' : 'red';
+      assert.equal(agent.text.includes(`sai/commands/implement/${siblingRole}-worker.md`), false,
+        `${harness} ${workerName} agent must not resolve through the sibling entry`);
     }
   }
 });
 
 test('materializeWorkerMatrix merges the per-harness agent metadata into agent text', () => {
   const matrix = defineOrNull(twelveEntries());
-  assert.ok(matrix, 'materialization requires the eighteen-entry matrix');
+  assert.ok(matrix, 'materialization requires the thirteen-entry matrix');
   const projections = materializeWorkerMatrix(matrix, TEMPLATES);
   for (const phase of CANONICAL_PHASE_ORDER) {
     const claudeAgent = projections.find(item =>
@@ -597,7 +557,7 @@ test('materializeWorkerMatrix requires a matrix and all four templates', () => {
     error => String(error && error.message || error).includes('Worker Matrix and templates are required'),
     'a missing matrix should be rejected');
   const matrix = defineOrNull(twelveEntries());
-  assert.ok(matrix, 'materialization requires the eighteen-entry matrix');
+  assert.ok(matrix, 'materialization requires the thirteen-entry matrix');
   assert.throws(() => materializeWorkerMatrix(matrix, { ...TEMPLATES, claudeAgent: undefined }),
     error => String(error && error.message || error).includes('Missing Worker Matrix template: claudeAgent'),
     'a missing claudeAgent template should be rejected');
@@ -606,59 +566,56 @@ test('materializeWorkerMatrix requires a matrix and all four templates', () => {
     'a non-string opencodeBinding template should be rejected');
 });
 
-test('defineWorkerMatrix rejects unknown sai-4 worker identities naming the role', () => {
+test('defineWorkerMatrix rejects unknown role worker identities naming the role', () => {
   const unknown = twelveEntries().map((item, index) =>
-    index === 9 ? applyEntry('sai-4-amber-worker') : item);
+    index === 12 ? implementEntry('sai-4-review-worker', { workerName: 'sai-4-amber-worker' }) : item);
   assert.throws(
     () => defineWorkerMatrix(unknown),
     error => {
       const message = String(error && error.message || error);
       return message.includes('sai-4-amber-worker') && /invalid|unknown|unsupported/i.test(message);
     },
-    'an unknown sai-4 worker identity should be rejected naming the role'
+    'an unknown role worker identity should be rejected naming the role'
   );
 });
 
-test('defineWorkerMatrix rejects generic apply worker-contract variants', () => {
+test('defineWorkerMatrix rejects generic implement worker-contract variants', () => {
   const generic = twelveEntries().map((item, index) =>
-    index === 9 ? applyEntry('sai-4-red-worker', { workerContract: 'sai/commands/apply/worker.md' }) : item);
+    index === 10 ? implementEntry('sai-3-red-worker', { workerContract: 'sai/commands/implement/worker.md' }) : item);
   assert.throws(
     () => defineWorkerMatrix(generic),
-    error => String(error && error.message || error).includes('sai/commands/apply/worker.md'),
-    'an apply entry with a generic non-role contract path should be rejected naming the path'
+    error => String(error && error.message || error).includes('sai/commands/implement/worker.md'),
+    'an implement entry with a generic non-role contract path should be rejected naming the path'
   );
   const genericRole = twelveEntries().map((item, index) =>
-    index === 11 ? applyEntry('sai-4-green-worker', { workerContract: 'sai/commands/apply/worker.md' }) : item);
+    index === 11 ? implementEntry('sai-3-green-worker', { workerContract: 'sai/commands/implement/worker.md' }) : item);
   assert.throws(
     () => defineWorkerMatrix(genericRole),
-    error => String(error && error.message || error).includes('sai/commands/apply/worker.md'),
-    'an apply entry reusing the shared worker contract should be rejected naming the path'
+    error => String(error && error.message || error).includes('sai/commands/implement/worker.md'),
+    'an implement entry reusing a shared worker contract should be rejected naming the path'
   );
 });
 
 test('defineWorkerMatrix rejects duplicate worker names', () => {
   const duplicated = twelveEntries().map((item, index) =>
-    index === 12 ? applyEntry('sai-4-red-worker') : item);
+    index === 11 ? implementEntry('sai-3-red-worker') : item);
   assert.throws(
     () => defineWorkerMatrix(duplicated),
     error => {
       const message = String(error && error.message || error);
-      return /duplicate/i.test(message) && message.includes('sai-4-red-worker');
+      return /duplicate/i.test(message) && message.includes('sai-3-red-worker');
     },
     'a duplicated worker name should be rejected naming the worker'
   );
 });
 
-test('defineWorkerMatrix rejects reversed apply-role order', () => {
+test('defineWorkerMatrix rejects reversed RED and GREEN role order', () => {
   const reversed = [
     ...fullEntries(),
-    applyEntry('sai-4-green-worker'),
-    applyEntry('sai-4-red-worker'),
     directBuildEntry('sai-direct-build-worker'),
-    directBuildEntry('sai-review-fix-worker'),
-    implementNewEntry('sai-red-new-worker'),
-    implementNewEntry('sai-green-new-worker'),
-    implementNewEntry('sai-review-new-worker'),
+    implementEntry('sai-3-green-worker'),
+    implementEntry('sai-3-red-worker'),
+    implementEntry('sai-4-review-worker'),
   ];
   assert.throws(
     () => defineWorkerMatrix(reversed),
@@ -666,11 +623,11 @@ test('defineWorkerMatrix rejects reversed apply-role order', () => {
       const message = String(error && error.message || error);
       return /order/i.test(message) && message.includes('green');
     },
-    'the GREEN apply role preceding the RED apply role should be rejected naming the misplaced role'
+    'the GREEN role preceding the RED role should be rejected naming the misplaced role'
   );
 });
 
-test('defineWorkerMatrix rejects non-apply duplicate phases beside the two apply entries', () => {
+test('defineWorkerMatrix rejects duplicate canonical phases beside the role entries', () => {
   const duplicatedPhase = twelveEntries().map((item, index) => index === 1 ? entry('spec') : item);
   assert.throws(
     () => defineWorkerMatrix(duplicatedPhase),
@@ -678,11 +635,11 @@ test('defineWorkerMatrix rejects non-apply duplicate phases beside the two apply
       const message = String(error && error.message || error);
       return /duplicate/i.test(message) && message.includes('spec');
     },
-    'a duplicated non-apply phase should be rejected naming the phase while the two apply entries share their phase'
+    'a duplicated canonical phase should be rejected naming the phase'
   );
 });
 
-test('the seven existing phase checks retain their outcomes beside the apply entries', () => {
+test('the existing phase checks retain their outcomes beside the role entries', () => {
   assert.throws(
     () => defineWorkerMatrix(twelveEntries().map((item, index) =>
       index === 0 ? { ...item, workerName: 'sai-9-watcher' } : item)),
@@ -697,41 +654,38 @@ test('the seven existing phase checks retain their outcomes beside the apply ent
   );
 });
 
-test('assertWorkerIdentity preserves the existing phase pins and adds the two apply pins', () => {
+test('assertWorkerIdentity preserves the existing phase pins and adds the role pins', () => {
   assert.equal(typeof assertWorkerIdentity, 'function',
     'assertWorkerIdentity should be exported');
   for (const phase of CANONICAL_PHASE_ORDER) {
     assert.doesNotThrow(() => assertWorkerIdentity(entry(phase)),
       `assertWorkerIdentity should preserve the ${phase} phase pin`);
   }
-  assert.doesNotThrow(() => assertWorkerIdentity(applyEntry('sai-4-red-worker')),
-    'the RED worker should be accepted with its role-specific apply contract');
-  assert.doesNotThrow(() => assertWorkerIdentity(applyEntry('sai-4-green-worker')),
-    'the GREEN worker should be accepted with its role-specific apply contract');
   for (const workerName of Object.keys(DIRECT_BUILD_ROLE)) {
     assert.doesNotThrow(() => assertWorkerIdentity(directBuildEntry(workerName)),
       `${workerName} should be accepted with its explore-owned direct-build contract`);
   }
-  for (const workerName of Object.keys(IMPLEMENT_NEW_ROLE)) {
-    assert.doesNotThrow(() => assertWorkerIdentity(implementNewEntry(workerName)),
-      `${workerName} should be accepted with its implement-new contract`);
+  for (const workerName of Object.keys(IMPLEMENT_ROLE)) {
+    assert.doesNotThrow(() => assertWorkerIdentity(implementEntry(workerName)),
+      `${workerName} should be accepted with its implement or review contract`);
   }
   assert.throws(
-    () => assertWorkerIdentity(implementNewEntry('sai-red-new-worker', { workerContract: 'sai/commands/implement-new/green-worker.md' })),
-    error => String(error && error.message || error).includes('sai-red-new-worker'),
-    'the implement-new RED worker must not resolve through the GREEN contract'
+    () => assertWorkerIdentity(implementEntry('sai-3-red-worker', { workerContract: 'sai/commands/implement/green-worker.md' })),
+    error => String(error && error.message || error).includes('sai-3-red-worker'),
+    'the implement RED worker must not resolve through the GREEN contract'
   );
 });
 
-test('assertWorkerIdentity never resolves an apply worker through the sibling apply contract', () => {
+test('assertWorkerIdentity never resolves a role worker through the sibling contract', () => {
   assert.throws(
-    () => assertWorkerIdentity(applyEntry('sai-4-red-worker', { workerContract: 'sai/commands/apply/green-worker.md' })),
-    error => String(error && error.message || error).includes('sai-4-red-worker'),
+    () => assertWorkerIdentity(implementEntry('sai-3-red-worker', { workerContract: 'sai/commands/implement/green-worker.md' })),
+    error => String(error && error.message || error).includes('sai-3-red-worker'),
     'the RED worker must not resolve through the GREEN contract'
   );
   assert.throws(
-    () => assertWorkerIdentity(applyEntry('sai-4-green-worker', { workerContract: 'sai/commands/apply/red-worker.md' })),
-    error => String(error && error.message || error).includes('sai-4-green-worker'),
+    () => assertWorkerIdentity(implementEntry('sai-3-green-worker', { workerContract: 'sai/commands/implement/red-worker.md' })),
+    error => String(error && error.message || error).includes('sai-3-green-worker'),
     'the GREEN worker must not resolve through the RED contract'
   );
 });
+

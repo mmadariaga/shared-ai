@@ -40,39 +40,27 @@
     "effort": "medium"
   },
   "command:sai-3-implement": {
-    "model": "sonnet",
-    "effort": "high"
-  },
-  "worker:sai-3-implementation-worker": {
     "model": "opus",
     "effort": "medium"
   },
-  "command:sai-4-apply": {
-    "model": "opus",
-    "effort": "medium"
-  },
-  "worker:sai-4-red-worker": {
+  "worker:sai-3-red-worker": {
     "model": "haiku",
     "effort": "medium"
   },
-  "worker:sai-4-green-worker": {
+  "worker:sai-3-green-worker": {
     "model": "haiku",
     "effort": "xhigh"
   },
-  "command:sai-review": {
+  "command:sai-deep-review": {
     "model": "opus",
     "effort": "medium"
   },
-  "command:sai-5-review": {
-    "model": "sonnet",
-    "effort": "high"
-  },
-  "worker:sai-5-review-worker": {
+  "command:sai-4-review": {
     "model": "opus",
     "effort": "medium"
   },
-  "worker:sai-review-fix-worker": {
-    "model": "haiku",
+  "worker:sai-4-review-worker": {
+    "model": "opus",
     "effort": "medium"
   },
   "command:sai-6-security": {

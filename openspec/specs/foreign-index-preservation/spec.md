@@ -7,7 +7,7 @@ TBD - created by archiving change archive-foreign-index-preservation. Update Pur
 
 ### Requirement: One shared rule keeps foreign index entries out of a slice commit
 
-SAI SHALL define in `sai/policies/foreign-index-preservation.md` the single rule that keeps index entries staged before a slice out of that slice's commit and gives them back afterwards, and both apply and archive SHALL follow it. An owned path is a path that belongs to the slice being committed, a directory standing for every path beneath it; a foreign entry is an index entry already staged when the slice started that is not an owned path. Before the slice stages anything, the staged entries SHALL be listed with `git diff --cached --name-only -z --no-renames`, and every listed path that is not an owned path SHALL be a foreign entry. An owned path SHALL stay staged and enter the commit, even when it was staged before the slice. The foreign entries SHALL be unstaged with `git reset -q -- <foreign paths>`, which changes the index only and keeps every working-tree byte, before the slice stages and commits its own paths.
+SAI SHALL define in `sai/policies/foreign-index-preservation.md` the single rule that keeps index entries staged before a slice out of that slice's commit and gives them back afterwards, and the archive worker SHALL follow it. An owned path is a path that belongs to the slice being committed, a directory standing for every path beneath it; a foreign entry is an index entry already staged when the slice started that is not an owned path. Before the slice stages anything, the staged entries SHALL be listed with `git diff --cached --name-only -z --no-renames`, and every listed path that is not an owned path SHALL be a foreign entry. An owned path SHALL stay staged and enter the commit, even when it was staged before the slice. The foreign entries SHALL be unstaged with `git reset -q -- <foreign paths>`, which changes the index only and keeps every working-tree byte, before the slice stages and commits its own paths.
 
 #### Scenario: A pre-staged owned path enters the commit
 
@@ -53,9 +53,14 @@ A record on disk SHALL mean that a restore is pending. Any run that finds one SH
 
 ### Requirement: Apply and archive each realize the shared rule
 
-The archive worker SHALL follow the rule's steps itself in its Direct Build (unattended) execute continuation, between the CLI archive and the staging of its owned paths. Apply SHALL realize the same rule through `apply-step.js restore-unrelated-index`, where the guard's mixed reset is its set-aside and its immutable baseline is its record, verifying that the unrelated content is unchanged before it restores any entry and stopping with work preserved when restoration fails.
+The archive worker SHALL follow the rule's steps itself in its Direct Build (unattended) execute continuation, between the CLI archive and the staging of its owned paths, setting aside its foreign entries and restoring them under `sai/policies/foreign-index-preservation.md`. No other command realizes the rule, and no second copy of the rule exists.
 
 #### Scenario: Both commands reference one rule
 
-- **WHEN** the apply coordinator restores initial unrelated index entries or the archive worker sets aside and restores foreign entries
-- **THEN** both act under `sai/policies/foreign-index-preservation.md` and no second copy of the rule exists
+- **WHEN** the command catalog is read for an apply coordinator that restores unrelated index entries
+- **THEN** no `/sai-4-apply` coordinator exists, so only the archive worker sets aside and restores foreign entries, under `sai/policies/foreign-index-preservation.md`, and no second copy of the rule exists
+
+#### Scenario: The archive worker reads one rule
+
+- **WHEN** the archive worker sets aside and restores foreign entries
+- **THEN** it acts under `sai/policies/foreign-index-preservation.md` and no second copy of the rule exists

@@ -128,7 +128,7 @@ Every worker-matrix entry whose contract, transitive SAI Fetch closure, or sibli
 - **THEN** its derived Claude tools include Agent, Edit, and Write and its opencode permissions grant the explore subagent target required for conflict scanning
 
 #### Scenario: A delegating worker without dispatch capability fails the guard test
-- **WHEN** a worker's loaded instructions require budget delegation but its derived grants omit Agent or its required opencode target
+- **WHEN** a worker loaded instructions require budget delegation but its derived grants omit Agent or its required opencode target
 - **THEN** `test/worker-delegation-tools.test.js` fails naming the worker and delegation source
 
 #### Scenario: Non-delegating workers holding Agent are not flagged
@@ -136,5 +136,5 @@ Every worker-matrix entry whose contract, transitive SAI Fetch closure, or sibli
 - **THEN** the delegation guard passes without requiring or forbidding dispatch capability for that entry
 
 #### Scenario: Contract-specific target grants do not become blanket delegation
-- **WHEN** current RED, GREEN, direct implementation, and review-fix profiles are translated
+- **WHEN** current RED, GREEN, direct implementation, and review profiles are translated
 - **THEN** they receive no delegation grant, while Design and Implement receive their additional budget target

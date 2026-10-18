@@ -8,7 +8,7 @@ Keep the pre-commit file report a user sees in `sai-commit` structurally identic
 
 ### Requirement: sai-commit Step 6 emits the same pre-commit file report structure
 
-The sai-commit flow's authorization step SHALL keep the structured pre-commit file report that `sai-4-apply` emits, so a user moving between the two commands sees one consistent shape. In the routed architecture the worker authors the report in its Step 6 (Present and Authorize) from `git status` + `git diff --cached --stat`, returns it as payload content inside the terminal summary, and the coordinator presents it verbatim alongside the ask. Where `sai-4-apply`'s report cross-checks against a plan and detects subagent/git mismatch, `sai-commit` does not — there is no plan, and no subagent beyond the phase worker itself. The report contains only sections derivable from `git status` and `git diff --cached --stat` alone.
+The sai-commit flow's authorization step SHALL emit the structured pre-commit file report defined by this requirement. In the routed architecture the worker authors the report in its Step 6 (Present and Authorize) from `git status` + `git diff --cached --stat`, returns it as payload content inside the terminal summary, and the coordinator presents it verbatim alongside the ask. The report contains only sections derivable from `git status` and `git diff --cached --stat` alone.
 
 The sections emitted by sai-commit SHALL be, in this order:
 

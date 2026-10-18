@@ -1,5 +1,7 @@
 ## Step 1: <!-- Title -->
 
+- [ ] Step 1: <!-- Title -->
+
 **Routing**: category=<!-- frontend-ui|frontend-code|backend|data|infra|docs|other --> · context=<!-- small|medium|large --> · difficulty=<!-- low|medium|high -->
 
 **Files Affected**:

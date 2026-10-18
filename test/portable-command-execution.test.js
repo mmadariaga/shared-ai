@@ -61,7 +61,6 @@ test('each affected mutation surface loads the shared execution policy', () => {
     'sai/commands/commit/coordinator.md',
     'sai/commands/merge/coordinator.md',
     'sai/commands/explore/steps/pipeline-direct-build.md',
-    'sai/commands/meta-review/direct-build-close.md',
   ];
 
   for (const surface of mutationSurfaces) {
@@ -84,7 +83,6 @@ test('archive and commit surfaces preserve operation gates without Bash-only for
   const commit = read('sai/commands/commit/coordinator.md');
   const merge = read('sai/commands/merge/coordinator-stages.md');
   const explore = read('sai/commands/explore/steps/pipeline-direct-build.md');
-  const metaReview = read('sai/commands/meta-review/direct-build-close.md');
 
   assert.match(archiveWorker, /active command-execution tool using Bash or\s+PowerShell 7/);
   assert.match(archiveWorker, /0\. \*\*Retirement declaration\*\*[\s\S]*?1\. \*\*CLI archive\*\*[\s\S]*?2\. \*\*Staging\*\*[\s\S]*?3\. \*\*Commit\*\*/);
@@ -106,8 +104,6 @@ test('archive and commit surfaces preserve operation gates without Bash-only for
   assert.ok(explore.includes('git commit -F -'));
   assert.ok(explore.includes('@sai/policies/command-execution.md'));
   assert.doesNotMatch(explore, /HEREDOC local commit/);
-  assert.match(metaReview, /git commit -F -[\s\S]*?complete message literally/);
-  assert.doesNotMatch(metaReview, /HEREDOC message/);
 });
 
 const MESSAGE_BASE = [

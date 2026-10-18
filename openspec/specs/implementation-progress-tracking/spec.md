@@ -2,38 +2,13 @@
 
 ## Purpose
 TBD - created by archiving change tasks-as-scaffold. Update Purpose after archive.
+
 ## Requirements
-### Requirement: archive-tracks-implementation
-
-`sai-archive` SHALL check `openspec/changes/{name}/implementation.md` for incomplete checkbox items (`- [ ]`) when deciding whether the change is ready to archive. It SHALL NOT check `tasks.md` for this purpose.
-
-If `implementation.md` does not exist for the change, `sai-archive` SHALL skip the completion check entirely and proceed without a warning.
-
-When incomplete items are found, the check is a **soft confirmation gate** (defined normatively in `sai-archive-soft-warn-audits`): `sai-archive` SHALL list every unchecked item concretely (its `implementation.md:{line}` location, enclosing `#### Step N`, and checkbox text) and prompt the user to confirm before archiving, rather than performing a silent hard stop.
-
-#### Scenario: implementation.md exists with all tasks complete
-
-- **WHEN** `sai-archive` is run on a change whose `implementation.md` contains only `- [x]` markers (no `- [ ]` remaining)
-- **THEN** the archive proceeds without a completion prompt
-
-#### Scenario: implementation.md exists with incomplete tasks
-
-- **WHEN** `sai-archive` is run on a change whose `implementation.md` contains one or more `- [ ]` markers
-- **THEN** `sai-archive` lists the unchecked items (citing `implementation.md`, not `tasks.md`) and prompts the user to confirm before archiving; it proceeds with the archive only on explicit confirmation
-
-#### Scenario: implementation.md does not exist
-
-- **WHEN** `sai-archive` is run on a change that has no `implementation.md` file
-- **THEN** `sai-archive` skips the completion check entirely and proceeds to archive without a warning about incomplete tasks
-
----
 
 ### Requirement: schema-apply-tracks-implementation
 
-The `apply.tracks` field in `openspec/schemas/sai-workflow/schema.yaml` SHALL be set to `implementation.md`.
+The `apply` block of `openspec/schemas/sai-workflow/schema.yaml` SHALL set `requires: [tasks]` and `tracks: tasks.md`, so the schema apply progress is tracked on `tasks.md`.
 
 #### Scenario: schema apply.tracks is implementation.md
-
 - **WHEN** `openspec status --change <name> --json` is called and the status is inspected
-- **THEN** the schema's `apply.tracks` value resolves to `implementation.md`, not `tasks.md`
-
+- **THEN** the schema apply.tracks value does not resolve to `implementation.md`, and resolves to `tasks.md`

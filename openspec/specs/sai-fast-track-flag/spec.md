@@ -52,95 +52,82 @@ The fast-track signal SHALL NOT auto-approve or skip any of the POC lane's three
 
 ### Requirement: sai-archive under fast-track auto-proceeds the unchecked-items gate and conditionally the delta-spec sync gate
 
-When `sai-archive` runs with `--fast-track`, the unchecked-items gate SHALL auto-proceed as if the user answered `yes`, without asking the unchecked-items question or writing approval metadata. Delta-spec synchronization SHALL NOT have a separate decision gate: the archive CLI SHALL handle synchronization and movement through exactly `openspec archive <name> --yes --json`. The existing archive commit gate, safe-operations confirmations, CORE hard stop, AUDIT informational line, collision check, and change-name resolution SHALL remain in force.
+When `sai-archive` runs with `--fast-track`, the archive flow SHALL present no decision gate of its own for synchronization or movement: the archive CLI SHALL handle synchronization and movement through exactly `openspec archive <name> --yes --json`. The existing archive commit gate, safe-operations confirmations, CORE hard stop, AUDIT informational line, collision check, and change-name resolution SHALL remain in force.
 
 #### Scenario: Unchecked-items gate auto-proceeds under fast-track
-
-- **WHEN** `sai-archive {name} --fast-track` runs and `implementation.md` contains unchecked items
-- **THEN** the agent does not ask the unchecked-items question, proceeds as if `yes` was chosen, and writes no approval key
+- **WHEN** `sai-archive {name} --fast-track` runs
+- **THEN** no unchecked-items question exists, because archive reads no `implementation.md` completion check
 
 #### Scenario: Delta-spec synchronization has no separate gate
-
 - **WHEN** `sai-archive {name} --fast-track` runs and delta specs require synchronization
 - **THEN** no synchronization choice is presented and the authorized archive flow uses the CLI archive primitive
 
 #### Scenario: Sync gate auto-syncs when the implementation is applied
-
-- **WHEN** `sai-archive {name} --fast-track` runs, delta specs need changes, and `implementation.md` contains at least one `- [x]`
-- **THEN** no synchronization choice is presented and the authorized archive flow uses the CLI archive primitive
+- **WHEN** `sai-archive {name} --fast-track` runs and delta specs need changes
+- **THEN** no synchronization choice is presented and no `implementation.md` checkbox is read
 
 #### Scenario: Sync gate auto-syncs when the change was born from sai-backfill
-
 - **WHEN** `sai-archive {name} --fast-track` runs, delta specs need changes, and the Classification Check resolved `backfilled: true`
 - **THEN** no synchronization choice is presented and the authorized archive flow uses the CLI archive primitive
 
 #### Scenario: Sync gate still asks when neither low-risk condition holds
-
-- **WHEN** `sai-archive {name} --fast-track` runs and delta specs need changes without an applicable legacy low-risk condition
-- **THEN** no synchronization choice is presented and the authorized archive flow uses the CLI archive primitive, subject to its pre-write validation
+- **WHEN** `sai-archive {name} --fast-track` runs and delta specs need changes
+- **THEN** no synchronization choice is presented, because no low-risk condition gates the sync, and the CLI archive primitive runs subject to its pre-write validation
 
 #### Scenario: Already-synced sync gate auto-archives under fast-track
-
 - **WHEN** `sai-archive {name} --fast-track` runs and the delta specs are already in sync with the main specs
 - **THEN** no synchronization choice is presented and the archive flow uses the CLI archive primitive
 
 #### Scenario: No delta specs still use the CLI
-
 - **WHEN** `sai-archive {name} --fast-track` runs without delta specs
 - **THEN** the archive flow still uses `openspec archive <name> --yes --json` rather than a separate manual move
 
 #### Scenario: CORE-missing hard stop still halts under fast-track
-
 - **WHEN** `sai-archive {name} --fast-track` runs and one or more CORE artifacts are not `done`
 - **THEN** the agent stops with `Missing CORE artifact(s): …. Archive blocked.` and fast-track does not bypass the hard stop
 
 #### Scenario: AUDIT informational line still prints under fast-track
-
 - **WHEN** `sai-archive {name} --fast-track` runs with complete CORE artifacts and missing AUDIT artifacts
 - **THEN** the agent prints the informational AUDIT line and continues without suppressing it
 
 #### Scenario: Archive commit gate remains protected
-
 - **WHEN** fast-track archive processing leaves eligible staged changes after the CLI archive succeeds
 - **THEN** the documented fast-track commit behavior creates only the authorized new local commit and retains the empty-index guard
 
 #### Scenario: Archive commit gate auto-commits via a new commit under fast-track
-
 - **WHEN** fast-track archive processing leaves eligible staged changes after the CLI archive succeeds
 - **THEN** the command presents no commit-gate prompt and creates one authorized new local commit
 
 #### Scenario: Archive commit gate commits nothing when the index is empty under fast-track
-
 - **WHEN** fast-track archive processing leaves the index empty after exact-path classification
 - **THEN** the command creates no commit and preserves the empty-index guard
 
 #### Scenario: Safe operations and collision checks remain in force
-
 - **WHEN** fast-track archive processing reaches a safe-operations confirmation or an existing archive target
 - **THEN** the confirmation or collision stop remains required and fast-track does not bypass it
 
 ### Requirement: The --fast-track flag is parsed from arguments_value before the picker
-Exactly seven commands — sai-explore, sai-2-design, sai-3-implement, sai-4-apply, sai-archive, sai-backfill, and sai-merge — SHALL accept a --fast-track token in their arguments. The token SHALL be parsed from arguments_value before downstream resolution: in the shared body file for sai-explore, sai-2-design, and sai-4-apply, in the sai-3-implement coordinator card before dispatch, in the sai-archive coordinator card before the change-picker, in the sai-backfill worker card per its Envelope Tokens procedure, which also parses the diff-source tokens and reads the trimmed remainder as the request body, and in the sai-merge coordinator card before forwarding the cleaned remainder to its worker. After extraction the token SHALL be removed from arguments_value, and the cleaned remainder SHALL remain authoritative downstream. Sai-build remains outside this parser membership and may inject implement plus apply fast-track through composition. No wrapper-echo field is forwarded or used to find or clean a change name. For sai-2-design, sai-3-implement, sai-4-apply, and sai-archive, the cleaned arguments_value SHALL reach downstream resolution before it resolves a name. Sai-4-apply and sai-archive SHALL NOT strip a residual --fast-track token from the pickers resolved value or perform a second flag-removal pass after picking. Sai-backfill consumes no change-picker; its cleaned request body is read by its own technical flow. The parse SHALL be single-sourced in one location per command so that all harness thin wrappers inherit identical behavior.
+Exactly five commands — sai-explore, sai-2-design, sai-archive, sai-backfill, and sai-merge — SHALL accept a --fast-track token in their arguments and activate fast-track on it. The token SHALL be parsed from arguments_value before downstream resolution: in the shared body file for sai-explore, in the sai-2-design worker card per its parse ownership, in the sai-archive coordinator card before the change-picker, in the sai-backfill worker card per its Envelope Tokens procedure, which also parses the diff-source tokens and reads the trimmed remainder as the request body, and in the sai-merge coordinator card before forwarding the cleaned remainder to its worker. After extraction the token SHALL be removed from arguments_value, and the cleaned remainder SHALL remain authoritative downstream. `/sai-3-implement`, `/sai-4-review`, `/sai-deep-review`, and `/sai-build` accept and strip an explicit `--fast-track` token without activating fast-track or printing a banner. No wrapper-echo field is forwarded or used to find or clean a change name. For sai-2-design and sai-archive, the cleaned arguments_value SHALL reach downstream resolution before it resolves a name. Sai-archive SHALL NOT strip a residual --fast-track token from the picker's resolved value or perform a second flag-removal pass after picking. Sai-backfill consumes no change-picker; its cleaned request body is read by its own technical flow. The parse SHALL be single-sourced in one location per command so that all harness thin wrappers inherit identical behavior.
 
 #### Scenario: Flag is stripped and the change-name passes through cleanly
-- **WHEN** a user runs /sai-4-apply oauth2-auth --fast-track in any token order
-- **THEN** the body file activates fast-track mode, removes the --fast-track token from arguments_value before picking, and the change-picker receives oauth2-auth with no residual flag text
+- **WHEN** a user runs /sai-archive oauth2-auth --fast-track in any token order
+- **THEN** the archive coordinator activates fast-track mode, removes the --fast-track token from arguments_value before picking, and the change-picker receives oauth2-auth with no residual flag text
 
 #### Scenario: Backfill strips tokens worker-side
 - **WHEN** a user runs /sai-backfill my-change --staged --fast-track
 - **THEN** the worker card activates fast-track, resolves --staged as the diff source, and reads my-change as the explicit request-body identifier with no residual token text
 
 #### Scenario: Absent flag leaves behavior identical to today
-- **WHEN** a user runs /sai-4-apply oauth2-auth with no --fast-track token
+- **WHEN** a user runs /sai-archive oauth2-auth with no --fast-track token
 - **THEN** fast-track mode is inactive and every gate behaves exactly as it did before this capability existed
 
 #### Scenario: The flag is confined to the named commands
-- **WHEN** a --fast-track token is passed to any command other than sai-explore, sai-2-design, sai-3-implement, sai-4-apply, sai-archive, sai-backfill, or sai-merge for example sai-1-spec, sai-5-review, sai-pr
-- **THEN** that command SHALL NOT gain fast-track behavior from this capability — the flag is not defined for it and its gates are unaffected
+- **WHEN** a --fast-track token is passed to any command other than sai-explore, sai-2-design, sai-archive, sai-backfill, or sai-merge — for example sai-1-spec, sai-4-review, or sai-build
+- **THEN** that command SHALL NOT gain fast-track behavior from this capability — the flag activates nothing and its gates are unaffected
 
 #### Scenario: Implement coordinator parses fast-track before dispatch
-- **WHEN** sai-3-implement receives --fast-track with a change name
-- **THEN** the coordinator strips the token, prints the banner once, and declares fast_track_active alongside the envelope
+- **WHEN** `/sai-3-implement` receives `--fast-track` with a change name
+- **THEN** the coordinator strips the token before dispatch, activates nothing, and prints no banner
 
 ### Requirement: Fast-track mode announces itself with a single-line banner at run start
 When `--fast-track` is active, the owning coordinator or main-session card SHALL print the exact line `> FAST-TRACK MODE ACTIVE` exactly once per invocation at run start as ordinary conversation text; compositions own their chained-segment banner so every path yields exactly one visible confirmation; routed-shaped `sai-backfill` parses worker-side and SHALL emit no banner anywhere in the run. The banner SHALL NOT be written to disk.
@@ -155,75 +142,6 @@ When `--fast-track` is active, the owning coordinator or main-session card SHALL
 - **WHEN** any command starts a run without `--fast-track`
 - **THEN** no `FAST-TRACK MODE ACTIVE` banner is printed
 
-### Requirement: Composition-injected apply fast-track under sai-build
-Sai-build SHALL always inject fast_track_active true as invocation-scoped session state never written to a file for both the chained implement segment and the chained apply segment without becoming a body-file parser. An explicit --fast-track token on build SHALL remain a build-local no-op that changes no phase order, injection, gates, or banner behavior.
-
-#### Scenario: Build injects apply fast-track
-- **WHEN** build activates its implement segment and later its apply segment
-- **THEN** both segments receive injected fast_track_active while build remains outside parser membership with identical phase order and gates with or without the explicit token
-
-#### Scenario: Build injects fast-track for implement and apply
-- **WHEN** build activates its implement segment and later its apply segment
-- **THEN** both segments receive injected fast_track_active with identical phase order and gates with or without the explicit token
-
-### Requirement: Composition owns the chained banner
-When chained segments receive composition-injected fast-track true, the supervising coordinator SHALL emit > FAST-TRACK MODE ACTIVE exactly once at implement-segment activation as the first fast-track activation of the build, print no second banner at apply activation, and print zero banners when neither segment activates. Skipped segment shells SHALL print no banner. Standalone parser-member behavior remains unchanged.
-
-#### Scenario: Build banner is activation-scoped
-- **WHEN** a build activates its implement segment with injected fast-track and later transitions to apply
-- **THEN** the supervisor prints one banner at implement activation and the skipped apply shell does not print another
-
-#### Scenario: Failed build has no banner
-- **WHEN** a build fails or is cancelled before implement activation
-- **THEN** no composition banner is printed
-
-#### Scenario: Banner prints once when the flag is present
-- **WHEN** any banner-emitting parser-member command starts a run with --fast-track active
-- **THEN** the agent prints the exact line > FAST-TRACK MODE ACTIVE in the conversation before proceeding, and writes nothing to disk to record it
-
-#### Scenario: No banner without the flag
-- **WHEN** a command runs without --fast-track
-- **THEN** no FAST-TRACK MODE ACTIVE banner is printed
-
-#### Scenario: Build banner fires once at implement activation
-- **WHEN** a build activates its implement segment with injected fast-track
-- **THEN** the supervisor prints the single banner once at implement activation
-
-#### Scenario: No second banner at apply activation
-- **WHEN** a build completes implement and activates the chained apply segment
-- **THEN** the supervisor prints no additional banner and the chained apply shell prints no banner
-
-#### Scenario: Zero banners when neither segment activates
-- **WHEN** a build closes without activating implement nor apply
-- **THEN** no banner is printed
-
-#### Scenario: Failed build before implement prints none
-- **WHEN** a build fails or is cancelled before implement activation
-- **THEN** no composition banner is printed
-
-### Requirement: Apply fast-track restores its two gate opt-outs
-When the apply fast-track signal is active, the coordinator SHALL pre-activate session-scoped commit authorization and SHALL auto-resolve the branch-selection prompt of `sai/commands/apply/steps/branch-selection.md` to staying on a non-empty current branch, without loading that file. All safe-operations, GREEN-conflict, and reporting requirements remain in force. Fast-track SHALL NOT carry a functional-check branch of its own: functional checks follow the terminal functional review path identically with and without fast-track.
-
-#### Scenario: Fast-track stays on a current branch
-- **WHEN** the fast-track signal is active and the current branch is non-empty
-- **THEN** the coordinator skips the three-option branch prompt without loading `branch-selection.md`, creates or switches to no branch, and prints `> Fast-track: staying on current branch "{current-branch}"`
-
-#### Scenario: Branch-base sub-prompt needs no handling because stay is a git no-op
-- **WHEN** the branch prompt is auto-resolved to "Stay on current branch" under fast-track
-- **THEN** the branch-base sub-prompt is not reached — it is surfaced only for new branches — so the auto-selection introduces no additional prompt to suppress
-
-#### Scenario: Detached HEAD remains interactive
-- **WHEN** the fast-track signal is active and the current branch is empty because HEAD is detached
-- **THEN** the coordinator fetches `branch-selection.md`, presents the original three-option branch prompt, and prints no auto-stay announcement
-
-#### Scenario: Auto-stay does not relax any other apply gate
-- **WHEN** `sai-4-apply {name} --fast-track` auto-stays on the current branch and later reaches a safe-operations confirmation or the commit-authorization gate
-- **THEN** the safe-operations confirmation is still required and the commit gate still prints its pre-commit file visibility report and proposed message; auto-staying opts out of the branch prompt only, nothing else
-
-#### Scenario: Fast-track changes no functional-check handling
-- **WHEN** the fast-track signal is active and a run reaches the terminal functional review
-- **THEN** the review marks the checks it verified and reports the rest as pending human review exactly as it does without fast-track
-
 ### Requirement: The fast-track flag opts out only of the gates named per command, never others
 
 For each parser-member command, `--fast-track` SHALL opt out of exactly the named gates and nothing else. It is a fixed, audited list of opt-outs, not a generic skip-all-gates switch. Safe-operations confirmations SHALL remain in force under fast-track for every member command. For `sai-explore`, the language-gate opt-outs SHALL NOT include any of the POC lane's three stops — the go/no-go evaluated at the close of the `Explore change` stage, the `C1..Cn` candidate-list agreement, and the verdict menu.
@@ -235,7 +153,7 @@ For each parser-member command, `--fast-track` SHALL opt out of exactly the name
 
 #### Scenario: the opt-out set is fixed per command
 
-- **WHEN** fast-track is active for `sai-explore`, `sai-2-design`, `sai-4-apply`, `sai-archive`, `sai-backfill`, or `sai-merge`
+- **WHEN** fast-track is active for `sai-explore`, `sai-2-design`, `sai-archive`, `sai-backfill`, or `sai-merge`
 - **THEN** no gate beyond each command's named set changes behavior
 - **AND** `sai-explore` still presents the go/no-go, the `C1..Cn` candidate-list agreement, and the verdict menu
 
@@ -273,7 +191,8 @@ On every surface that also validates other options, the fast-track presence-plus
 - **THEN** the fast-track token is stripped and its banner printed before the overview-language validation examines the cleaned remainder
 
 ### Requirement: Fast-track membership and parse ownership
-The set of commands that accept and parse --fast-track SHALL remain exactly sai-explore, sai-2-design, sai-3-implement, sai-4-apply, sai-archive, sai-backfill, and sai-merge per the canonical model in sai/policies/fast-track-flag.md. The design worker SHALL own parse-plus-strip of --fast-track on every route, routed and supervised, and the design coordinator SHALL never parse. The sai-3-implement coordinator SHALL own parse-plus-strip with banner emission exactly once on every route. Banner ownership SHALL stay with the coordinator on the routed route via a nonterminal notice with dedup, and with the supervising composition on the supervised route.
+
+The set of commands that accept and parse --fast-track SHALL be exactly sai-explore, sai-2-design, sai-archive, sai-backfill, and sai-merge per the canonical model in sai/policies/fast-track-flag.md. `/sai-3-implement`, `/sai-4-review`, `/sai-deep-review`, and `/sai-build` SHALL accept and ignore the token. The design worker SHALL own parse-plus-strip of --fast-track on every route, routed and supervised, and the design coordinator SHALL never parse. Banner ownership SHALL stay with the coordinator on the routed route via a nonterminal notice with dedup, and with the supervising composition on the supervised route.
 
 #### Scenario: Design parses worker-side on routed route
 - **WHEN** /sai-2-design receives an envelope containing --fast-track on the routed route with the banner-dedup field false
@@ -284,26 +203,20 @@ The set of commands that accept and parse --fast-track SHALL remain exactly sai-
 - **THEN** it strips the token before name resolution, returns no fast-track notice, and the supervising composition supplies the single visible activation confirmation
 
 #### Scenario: Review stays a no-op stripper
-- **WHEN** /sai-review receives --fast-track
+- **WHEN** `/sai-4-review` receives `--fast-track`
 - **THEN** it strips the token before change resolution without activating fast-track or printing a banner
 
+#### Scenario: Deep review stays a no-op stripper
+- **WHEN** /sai-deep-review receives --fast-track
+- **THEN** it strips the token before change resolution without activating fast-track or printing a banner
+
+#### Scenario: Implement accepts and ignores the token
+- **WHEN** /sai-3-implement receives --fast-track
+- **THEN** the coordinator strips the token, activates nothing, and prints no banner
+
 #### Scenario: Implement coordinator owns parse plus banner
-- **WHEN** sai-3-implement receives --fast-track on its routed route
-- **THEN** the coordinator strips the token before dispatch, prints the banner once, and declares fast_track_active alongside the envelope
-
-### Requirement: Implement fast-track auto-corrects single preserving sai-2 fix
-With fast_track_active true, sai-3-implement SHALL auto-correct a defective sai-2 artifact only when exactly one correction path preserves the proposal objective, writing design.md, tasks.md, or interfaces.md in place and then regenerating implementation.md with the same effect as a user-chosen amend.
-
-#### Scenario: Single preserving fix continues without escalation
-- **WHEN** fast-track implement encounters a defective sai-2 artifact with exactly one preserving correction
-- **THEN** it writes the sai-2 artifacts in place and regenerates implementation.md without escalating
-
-### Requirement: Implement fast-track escalates sai-1 empty and ambiguous blocks
-With fast_track_active true, sai-3-implement SHALL always escalate defects in sai-1 proposal or specs, defects with no correction path, and defects with multiple preserving paths, and SHALL never auto-pick among ambiguous options nor write fast_track_active to any file.
-
-#### Scenario: Ambiguous sai-2 defect escalates without writes
-- **WHEN** fast-track implement encounters a sai-2 defect with multiple preserving corrections
-- **THEN** it escalates for ambiguity without writing any sai-2 artifact
+- **WHEN** `/sai-3-implement` receives `--fast-track` on its routed route
+- **THEN** the coordinator strips the token before dispatch and prints no banner, so banner ownership does not sit with it
 
 ### Requirement: Explore fast-track never skips the open-decision reconfirmation
 
@@ -313,15 +226,3 @@ With fast_track_active true, sai-3-implement SHALL always escalate defects in sa
 
 - **WHEN** `sai-explore` runs with `--fast-track` and enters `Crystallize` with an open decision
 - **THEN** the notice is shown and every open decision is asked before any block is printed
-
-### Requirement: Apply fast-track amends a defective planning artifact without asking
-
-When the apply fast-track signal is active, including every `/sai-build` run, the coordinator SHALL amend a defective planning artifact on its own through `sai/commands/apply/steps/plan-amendment.md` and SHALL leave the amendment notice. When the signal is inactive, the coordinator SHALL ask the user before amending. This is apply's third fast-track opt-out, beside session commit authorization and the branch auto-stay; safe-operations confirmations and every unnamed gate SHALL remain in force.
-
-#### Scenario: Fast-track run reaches a plan defect
-- **WHEN** the fast-track signal is active and a Step's changed files differ from its `Files Affected` after a passing verify
-- **THEN** the coordinator amends the plan without asking and prints a `> PLAN AMENDED:` line
-
-#### Scenario: Ordinary run reaches a plan defect
-- **WHEN** the fast-track signal is inactive and the same discrepancy occurs
-- **THEN** the coordinator asks `Amend the plan as shown?` before any edit

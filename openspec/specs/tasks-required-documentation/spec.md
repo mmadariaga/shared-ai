@@ -36,15 +36,15 @@ The section SHALL NOT be left empty or omitted.
 - **WHEN** `/sai-2-design` generates `tasks.md` after researching the codebase and external docs
 - **THEN** `tasks.md` contains `## Required Documentation` with `### Spec files` listing every spec consulted, `### Local files` listing every file read with its relevance note, and `### External URLs` listing every external doc consulted with its relevance note; `### Spec files` is never empty, while a `### Local files` or `### External URLs` subsection with nothing to list contains only `None`
 
-#### Scenario: sai-3-implement reads section without re-exploring
-
-- **WHEN** `/sai-3-implement` reads `tasks.md` to produce `implementation.md`
-- **THEN** it treats each entry listed under `## Required Documentation` as a starting point, taking each path or URL from the text before ` — ` and using the note after it as reading guidance, reads the entries its Steps need, and researches beyond the supplied material only to close a concrete planning gap
-
 #### Scenario: no relevant external URLs
 
 - **WHEN** `/sai-2-design` finds no external documentation relevant to the change
 - **THEN** `tasks.md` contains `### External URLs` followed by `None`
+
+#### Scenario: sai-3-implement reads section without re-exploring
+
+- **WHEN** `/sai-3-implement` reads `tasks.md` to plan its Steps
+- **THEN** its Start step does not name `## Required Documentation`, and it reads the change artifacts once as that Start step lists them
 
 ### Requirement: tasks-required-documentation-schema
 The `tasks` artifact instruction in `openspec/schemas/sai-workflow/schema.yaml` SHALL include a directive requiring `/sai-2-design` to populate `## Required Documentation` from docs visited during codebase research.

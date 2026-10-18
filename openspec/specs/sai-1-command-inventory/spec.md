@@ -7,16 +7,15 @@ TBD - created by archiving change consolidate-sai-1-spec-flow. Update Purpose af
 
 ### Requirement: Both harness inventories enumerate sai-review
 
-The Claude Code and opencode command inventories SHALL include `sai-review`,
+The Claude Code and opencode command inventories SHALL include `sai-deep-review`,
 `to-backlog`, `from-backlog`, `from-next-backlog-item`, and `to-pr` and SHALL
-report twenty-four manifest-declared commands: twenty SAI commands, including
-`sai-3-implement-new` and `sai-build-new`, the three
+report twenty-one manifest-declared commands: seventeen SAI commands, including
+`sai-3-implement`, `sai-4-review`, `sai-build`, and `sai-deep-review`, the three
 conversation-preserving backlog invocations, and to-pr.
 
 #### Scenario: Harness command enumeration runs
-
 - **WHEN** either supported harness enumerates the manifest-declared command set
-- **THEN** the result includes `sai-review`, `to-backlog`, `from-backlog`, `from-next-backlog-item`, `to-pr`, `sai-3-implement-new`, and `sai-build-new` and contains twenty-four commands.
+- **THEN** the result includes `sai-deep-review`, `to-backlog`, `from-backlog`, `from-next-backlog-item`, `to-pr`, `sai-3-implement`, `sai-4-review`, and `sai-build` and contains twenty-one commands.
 
 ### Requirement: Both harness inventories enumerate sai-retire-docs
 

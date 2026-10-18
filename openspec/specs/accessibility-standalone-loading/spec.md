@@ -61,7 +61,7 @@ The terminal done state SHALL map to the exact literal `Active step: none — co
 
 ### Requirement: Every-activation scope with byte-identical pointers
 
-The machine SHALL govern the accessibility adapter for every activation — direct (`/sai-8-accessibility`) and chained (as an audit segment of a chained `/sai-review` invocation). No shared sessions or state exist between activations. Pointer sequences remain byte-identical between direct and chained paths. Feedback and recovery continuations SHALL carry no pointer and never consult the machine; parking and pointer behavior follow `@sai/policies/stage-machine.md` § Step machines.
+The machine SHALL govern the accessibility adapter for every activation — direct (`/sai-8-accessibility`) and chained (as an audit segment of a chained `/sai-deep-review` invocation). No shared sessions or state exist between activations. Pointer sequences remain byte-identical between direct and chained paths. Feedback and recovery continuations SHALL carry no pointer and never consult the machine; parking and pointer behavior follow `@sai/policies/stage-machine.md` § Step machines.
 
 #### Scenario: Direct activation consults the machine
 
@@ -70,10 +70,10 @@ The machine SHALL govern the accessibility adapter for every activation — dire
 
 #### Scenario: Chained activation consults the same machine
 
-- **WHEN** the accessibility adapter runs as an audit segment of a chained `/sai-review` invocation
+- **WHEN** the accessibility adapter runs as an audit segment of a chained `/sai-deep-review` invocation
 - **THEN** the same machine arbitrates step routing with identical pointer derivation as the direct path, with no supervised-transition fallback or separate static map
 
 #### Scenario: Store failure during chained segment stops the chain
 
-- **WHEN** the machine emits and the store reports a failure during the accessibility segment of a chained `/sai-review` invocation
-- **THEN** the run stops per stage-machine.md and the `/sai-review` invocation stops with it
+- **WHEN** the machine emits and the store reports a failure during the accessibility segment of a chained `/sai-deep-review` invocation
+- **THEN** the run stops per stage-machine.md and the `/sai-deep-review` invocation stops with it

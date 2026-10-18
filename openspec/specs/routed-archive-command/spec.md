@@ -42,7 +42,7 @@ The archive coordinator SHALL declare the minimal phase-adapter field set: `orig
 
 ### Requirement: Worker owns the read-only pre-flight and never mutates
 
-The dispatched `sai-archive-worker` SHALL perform the complete read-only technical pre-flight: classification, completion scanning, informational delta-spec comparison, and target-name collision checking. It SHALL return all findings as payload content, including AUDIT warnings, unchecked-item details, the combined delta comparison, and the collision verdict. It SHALL preserve the CORE-missing stop text and SHALL never move a directory, write a file, synchronize main specs, or run a git command during preparation.
+The dispatched `sai-archive-worker` SHALL perform the complete read-only technical pre-flight: classification, completion scanning, informational delta-spec comparison, and target-name collision checking. It SHALL return all findings as payload content, including AUDIT warnings, the combined delta comparison, and the collision verdict. It SHALL preserve the CORE-missing stop text and SHALL never move a directory, write a file, synchronize main specs, or run a git command during preparation.
 
 #### Scenario: Pre-flight findings arrive as payloads
 
@@ -56,11 +56,11 @@ The dispatched `sai-archive-worker` SHALL perform the complete read-only technic
 
 ### Requirement: Needs-input gate transport and coordinator-only execution
 
-The worker SHALL return only the unchecked-items decision as a pre-mutation `needs_input` result when `implementation.md` contains unchecked items. Under fast-track it SHALL auto-proceed that gate without writing approval metadata. The coordinator SHALL present the question through the native picker and forward the selected value verbatim. After the gate resolves, the ordinary coordinator SHALL run exactly `openspec archive <name> --yes --json` as the sole synchronization-and-move primitive, parse its JSON result, and stop on failure or invalid JSON without manual fallback, staging, or commit. The Direct Build execute continuation SHALL run the same CLI primitive before exact-path staging and the authorized local commit. Terminal navigation SHALL print the worker-authored summary verbatim and SHALL close with exactly `Archive done.` only when the archive move executed.
+The ordinary coordinator SHALL run exactly `openspec archive <name> --yes --json` as the sole synchronization-and-move primitive, parse its JSON result, and stop on failure or invalid JSON without manual fallback, staging, or commit. The Direct Build execute continuation SHALL run the same CLI primitive before exact-path staging and the authorized local commit. Terminal navigation SHALL print the worker-authored summary verbatim and SHALL close with exactly `Archive done.` only when the archive move executed.
 
 #### Scenario: A gate answer travels through the coordinator untouched
 
-- **WHEN** the user selects an option at the unchecked-items gate
+- **WHEN** the user selects an option at a gate the archive coordinator presents
 - **THEN** the coordinator forwards the selected value verbatim and executes no mutation until the gate authorizes archiving
 
 #### Scenario: The CLI result authorizes synchronization and movement
@@ -92,12 +92,12 @@ The `sai-archive-worker` identity SHALL be registered across the full projection
 
 ### Requirement: Fixed content assignment across the two cards
 
-The technical split SHALL remain single-sourced: `sai/commands/archive/instructions.md` belongs to the worker for read-only verification, completeness scanning, delta comparison, collision checking, and the unchecked-items question. The retirement declaration is single-sourced in `sai/commands/archive/retirement-declaration.md`, fetched by both cards. The coordinator owns the retirement declaration write, the CLI archive invocation, and the post-archive commit gate on the ordinary route; no OpenSpec skill is loaded. The Direct Build route delegates only its validated closed execution order, consisting of the CLI archive invocation, exact-path staging, and local commit, to the archive worker.
+The technical split SHALL remain single-sourced: `sai/commands/archive/instructions.md` belongs to the worker for read-only verification, completeness scanning, delta comparison, and collision checking. The retirement declaration is single-sourced in `sai/commands/archive/retirement-declaration.md`, fetched by both cards. The coordinator owns the retirement declaration write, the CLI archive invocation, and the post-archive commit gate on the ordinary route; no OpenSpec skill is loaded. The Direct Build route delegates only its validated closed execution order, consisting of the CLI archive invocation, exact-path staging, and local commit, to the archive worker.
 
 #### Scenario: Each technical duty lives in exactly one card
 
 - **WHEN** the archive card set is audited after the change
-- **THEN** preflight checks and the unchecked-items gate trace to the worker while CLI archive execution and git operations trace to the coordinator or validated Direct Build continuation
+- **THEN** preflight checks trace to the worker while CLI archive execution and git operations trace to the coordinator or validated Direct Build continuation
 
 ### Requirement: Archive guard windows and the single allow_commit carrier
 

@@ -1,6 +1,6 @@
 # Review Step — Resolve Review Analysis
 
-Active step: resolve-review-analysis. The step is done when the three surface outcomes (security, performance, accessibility) and the findings list are settled, with the eleven passes applied to every changed file; then report the `resolve-review-analysis` progress event per the worker contract.
+Active step: resolve-review-analysis. The step is done when the three surface outcomes (security, performance, accessibility) and the findings list are settled, with the eleven passes applied to every changed file and every pending finding of `build-log.md` verified against the current diff; then return `step-done` with `step_id: resolve-review-analysis`.
 
 Apply each pass to the full diff. A pass with nothing to report stays silent: it leaves nothing in the report. Delegate codebase-context lookups (how a modified function is called elsewhere, whether a pattern matches existing code) to **`budget-explorer`** subagents in parallel, each with the output contract `file:line` + one-line note, ≤200 words, no raw code blocks. In delegated review mode, inspect the file groups the scope step recorded, as that step directs. All dispatches of the review share a cap of eight.
 

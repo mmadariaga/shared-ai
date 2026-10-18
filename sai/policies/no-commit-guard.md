@@ -48,19 +48,18 @@ stretch follows, a new one to open. The closed list of boundaries is:
    `conflict_detected` language question), or a user interruption that is
    later resumed.
 2. **Coordinator git mutation** — any git mutation the coordinator itself runs:
-   an apply commit gate (asked or pre-authorized), a merge launch, checkout,
-   `git mv`, or staging, the archive CLI move and post-archive commit, a
-   close's staging and commit, and a nonterminal extension whose handler
-   performs one.
+   a merge launch, checkout, `git mv`, or staging, the archive CLI move and
+   post-archive commit, a close's staging and commit, and a nonterminal
+   extension whose handler performs one.
 3. **Run close** — the terminal result (`completed`, `failed`, `cancelled`) or
    user cancellation after which the coordinator dispatches no further worker
    before a human turn or its own git mutation.
 
 Nothing else is a boundary. A progress event, a `notice`, a ready return, a
 nonterminal extension whose handler neither asks the user nor mutates git, a
-terminal result followed directly by the next dispatch (apply's RED then
-GREEN, a recovery replacement, the next segment of a composition), and a
-segment transition inside a composition all continue the running window: the
+terminal result followed directly by the next dispatch (a recovery
+replacement, the next segment of a composition), and a segment transition
+inside a composition all continue the running window: the
 coordinator acts on them with no guard call.
 
 - **Snapshot** — open a window with `snapshot` once the first dispatch's
@@ -93,8 +92,8 @@ coordinator acts on them with no guard call.
   normal `verify` when the agent's report returns, before acting on it.
 
 Because every coordinator git mutation is a boundary, coordinator-owned
-mutations (an apply commit gate, a merge launch, the archive post-archive
-commit, backfill staging) always run between windows, never inside one.
+mutations (a merge launch, the archive post-archive commit, backfill
+staging) always run between windows, never inside one.
 
 `guard_base` is invocation-scoped conversation state, exactly like
 `fast_track_active`: it is never carried across a boundary and never written to
@@ -148,10 +147,8 @@ stays in force.
   still preserves all content unstaged, and one incident line may aggregate
   commits from several workers of the same window.
 - Pre-existing staged content loses its staged state on remediation; the
-  content stays intact. Apply is the bounded exception: its coordinator restores
-  initial unrelated index entries from its immutable file baseline under
-  `sai/commands/apply/coordinator.md` § No-commit guard. The HEAD guard still
-  performs the same mixed reset, and its next window requires a fresh snapshot.
+  content stays intact. The HEAD guard performs the mixed reset, and its next
+  window requires a fresh snapshot.
 - Branch and tag creation, and a worker that commits and self-resets, are
   undetectable.
 - Hook side effects of a worker commit (CI, linters) are not remediable.

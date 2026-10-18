@@ -80,9 +80,8 @@ function normalizeInventoryDestination(destination, destinationRoot) {
 
 function managedWorkerSourcePaths(repoRoot) {
   const workerStems = {
-    'sai-3-implementation-worker': 'implementation-worker',
     'sai-2-design-worker': 'design-worker',
-    'sai-5-review-worker': 'review-worker',
+    'sai-4-review-worker': 'review-worker',
     'sai-1-spec-proposal-worker': 'spec-worker',
     'sai-6-security-worker': 'security-worker',
     'sai-7-performance-worker': 'performance-worker',
@@ -158,12 +157,12 @@ test('install and uninstall inventories are exact and deterministic for every su
       const normalizedActive = rawActive.filter(destination => !isExcludedInventory(destination));
       const activeWorkerBindings = normalizedActive
         .filter(destination => /^sai\/orchestration\/workers\/bindings\/[a-z-]+-worker\.md$/.test(destination));
-       assert.equal(activeWorkerBindings.length, 18,
-         `${harness} should project exactly eighteen active worker bindings`);
+       assert.equal(activeWorkerBindings.length, 13,
+         `${harness} should project exactly thirteen active worker bindings`);
       const activeWorkers = normalizedActive
-         .filter(destination => /^agents\/sai-(?:\d-.*|commit|archive|backfill|merge|direct-build|review-fix|red-new|green-new|review-new)-worker\.md$/.test(destination));
-       assert.equal(activeWorkers.length, 18,
-         `${harness} should project exactly eighteen active managed agents`);
+         .filter(destination => /^agents\/sai-(?:\d-.*|commit|archive|backfill|merge|direct-build)-worker\.md$/.test(destination));
+       assert.equal(activeWorkers.length, 13,
+         `${harness} should project exactly thirteen active managed agents`);
        const entries = enumerate(base, destinationRoot);
       const normalizedUninstall = normalize(entries
         .filter(entry => entry.assetType !== 'retired-managed-file')

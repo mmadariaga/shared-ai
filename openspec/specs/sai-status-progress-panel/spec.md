@@ -3,7 +3,9 @@
 ## Purpose
 
 The sai-status-progress-panel capability defines the read-only progress panel that `/sai-status` renders for a single OpenSpec change. It reports the presence state of each of the 11 sai-workflow artifacts, the specs approval state read from `.openspec.yaml`, the change-overview state, implementation progress as a checked-vs-total count, and a `Next:` hint naming the appropriate next `/sai-N-...` command.
+
 ## Requirements
+
 ### Requirement: sai-status command and wrappers exist across all three harnesses
 
 A `sai-status` command SHALL exist as a body file at `sai/commands/status/body.md` with one wrapper per harness: `commands/claude/sai-status.md`, `commands/opencode/sai-status.md`, and `commands/copilot/sai-status.prompt.md`. All four files SHALL be created and edited together in a single commit (mirror discipline). The body file now dispatches to the deterministic status tool rather than containing an inline prose algorithm.
@@ -15,18 +17,6 @@ A `sai-status` command SHALL exist as a body file at `sai/commands/status/body.m
 #### Scenario: all three wrappers present
 - **WHEN** `commands/claude/`, `commands/opencode/`, and `commands/copilot/` are listed
 - **THEN** `sai-status.md`, `sai-status.md`, and `sai-status.prompt.md` are present respectively
-
-### Requirement: panel covers the 11 sai-workflow schema artifacts
-
-`/sai-status {change-name}` SHALL print a compact panel that reports the presence state of each of the 11 sai-workflow schema artifacts — `proposal`, `specs`, `design`, `tasks`, `interfaces`, `change-overview`, `implementation`, `review`, `security`, `performance`, and `accessibility` — and SHALL NOT include `pr.md` as a panel artifact. Panel derivation is now handled by the deterministic status tool.
-
-#### Scenario: all 11 artifacts represented
-- **WHEN** `/sai-status <change-name>` runs on an existing change
-- **THEN** the panel shows a per-phase line for each of the 11 schema artifacts and no line for `pr.md`
-
-#### Scenario: artifact completion derived from the CLI
-- **WHEN** the panel reports whether an artifact is present or done
-- **THEN** that state is derived from `openspec status --change <change-name> --json`, not re-derived from filesystem globs
 
 ### Requirement: interfaces.md is exempt; change-overview.md state is read from .openspec.yaml
 
@@ -107,31 +97,50 @@ The panel SHALL read the specs approval state from `.openspec.yaml` (the approva
 
 ### Requirement: implementation progress is shown as checked-vs-total
 
-The panel SHALL display implementation progress as a checked-vs-total count derived from the `- [x]` and `- [ ]` task lines in `implementation.md`. This checked-vs-total rendering SHALL be the only checkbox interpretation in the panel.
+The panel SHALL display implementation progress as a checked-vs-total count derived from the `- [x]` and `- [ ]` task lines in `tasks.md`. This checked-vs-total rendering SHALL be the only checkbox interpretation in the panel.
 
 #### Scenario: progress count rendered
-- **WHEN** `implementation.md` exists with a mix of `- [x]` and `- [ ]` task lines
+
+- **WHEN** `tasks.md` exists with a mix of `- [x]` and `- [ ]` task lines
 - **THEN** the panel shows the count of checked tasks over the total task count
 
 #### Scenario: no implementation.md
-- **WHEN** `implementation.md` does not exist for the change
-- **THEN** the panel shows the implementation phase without a progress count and does not error
+- **WHEN** the status panel reads a change
+- **THEN** it never reads `implementation.md`, shows progress only from `tasks.md`, and does not error
+
+#### Scenario: no checkbox in tasks.md
+
+- **WHEN** `tasks.md` does not exist or holds no checkbox lines
+- **THEN** the panel shows no progress count and does not error
 
 ### Requirement: panel prints a Next hint
 
-The panel SHALL include a `Next:` line that suggests the appropriate `/sai-N-...` command for the change's current state. `/sai-pr` MAY appear as a candidate `Next:` hint when the relevant gates are met, but SHALL NOT appear as a panel checkbox. Next hint resolution uses a deterministic first-match decision table reading the panel's derived cells.
+The panel SHALL include a `Next:` line that suggests the appropriate `/sai-N-...` command for the change's current state. `/sai-pr` MAY appear as a candidate `Next:` hint when the relevant gates are met, but SHALL NOT appear as a panel checkbox. Next hint resolution uses a deterministic first-match decision table reading the panel's derived cells. With design and tasks present, a change with any unchecked or no checkbox in `tasks.md` SHALL route to `/sai-3-implement`, and a change with every task checked and no `review.md` SHALL route to `/sai-4-review`.
 
 #### Scenario: next command suggested
+
 - **WHEN** `/sai-status <change-name>` runs on an in-progress change
 - **THEN** the panel prints a `Next:` line naming the appropriate next `/sai-N-...` command
 
 #### Scenario: specs present but not approved
+
 - **WHEN** the change has `specs` present but no recorded specs approval key
 - **THEN** the `Next:` line points to `/sai-2-design` (which carries the specs approval gate)
 
 #### Scenario: archived change has no next command
+
 - **WHEN** the change is archived
 - **THEN** the panel prints no `/sai-N-...` next command, reflecting that the change is closed
+
+#### Scenario: unchecked tasks route to implement
+
+- **WHEN** design and tasks are present and `tasks.md` has an unchecked task
+- **THEN** the `Next:` line points to `/sai-3-implement`
+
+#### Scenario: all tasks checked and no review
+
+- **WHEN** every task in `tasks.md` is checked and `review.md` is absent
+- **THEN** the `Next:` line points to `/sai-4-review`
 
 ### Requirement: sai-status is read-only
 
@@ -157,3 +166,16 @@ The `sai-status` command SHALL run entirely in the main session with no `budget-
 - **WHEN** the `sai-status` command body is read
 - **THEN** it defines no `--fast-track` flag or fast-track parse step
 
+### Requirement: panel covers the 10 sai-workflow schema artifacts
+
+`/sai-status {change-name}` SHALL print a compact panel that reports the presence state of each of the 10 sai-workflow schema artifacts — `proposal`, `specs`, `design`, `tasks`, `interfaces`, `change-overview`, `review`, `security`, `performance`, and `accessibility` — and SHALL NOT include `implementation.md` or `pr.md` as a panel artifact. Panel derivation is handled by the deterministic status tool.
+
+#### Scenario: all 10 artifacts represented
+
+- **WHEN** `/sai-status <change-name>` runs on an existing change
+- **THEN** the panel shows a per-phase line for each of the 10 schema artifacts and no line for `implementation.md` or `pr.md`
+
+#### Scenario: legacy implementation.md is ignored
+
+- **WHEN** a change still holds an `implementation.md` from the old planner
+- **THEN** the panel neither reads nor reports that file

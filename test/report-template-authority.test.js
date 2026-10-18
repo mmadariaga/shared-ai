@@ -30,18 +30,10 @@ const reportPairs = Object.freeze([
   }),
 ]);
 
-const implementationPair = Object.freeze({
-  id: 'implementation',
-  scaffold: 'openspec/schemas/sai-workflow/templates/implementation.md',
-  authority: 'sai/commands/implement/implementation-plan.template.md',
-});
-
-const pairs = Object.freeze([...reportPairs, implementationPair]);
+const pairs = reportPairs;
 
 const reportDelegation =
   'severity vocabulary, evidence rules, finding shape, and tally line are defined in';
-const implementationDelegation =
-  'planning, conditional RED/GREEN, verification, STOP & COMMIT, and commit-authorization checklist are defined in';
 const summaryComment =
   '<!-- Summary: use the command-owned tally line from the write-time authority; do not restate severity levels here. -->';
 const retiredParityPath = 'test/report-template-parity.test.js';
@@ -288,77 +280,20 @@ test('schema report scaffolds use the command-owned write-time authorities', () 
   }
 });
 
-test('implementation schema scaffold preserves the conditional plan shape and apply citation', () => {
-  const scaffold = readUtf8(implementationPair.scaffold);
-  const authority = readUtf8(implementationPair.authority);
-
-  assertFinalAuthority(implementationPair, scaffold, implementationDelegation);
-  assert.equal(scaffold.match(/^# \{FEATURE_NAME\}\s*$/m)?.[0].trim(), '# {FEATURE_NAME}',
-    'implementation scaffold must use the canonical feature-name title shape');
-  assert.deepEqual(
-    extractTopHeadings(scaffold),
-    ['Goal'],
-    'implementation scaffold must expose Goal as its top-level section and carry no branch prelude',
-  );
-  for (const heading of [
-    '### Step-by-Step Instructions',
-    '#### Step 1: {Action}',
-    '##### RED phase',
-    '##### GREEN phase (only after RED is verified)',
-    '##### Step 1 Verification Checklist',
-    '#### Step 1 STOP & COMMIT',
-  ]) {
-    assert.match(scaffold, new RegExp(`^${heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`, 'm'),
-      `implementation scaffold must preserve ${heading}`);
-  }
-  assert.match(scaffold, /non-testable/i,
-    'implementation scaffold must describe non-testable steps');
-  assert.match(scaffold, /deferred/i,
-    'implementation scaffold must describe deferred steps');
-  assert.match(scaffold, /without RED\/GREEN when the step has no testable logic/i,
-    'implementation scaffold must make RED/GREEN conditional rather than universal');
-
-  const stopIndex = scaffold.indexOf('STOP & COMMIT');
-  assert.ok(stopIndex >= 0, 'implementation scaffold must describe STOP & COMMIT');
-  const stopDescription = scaffold.slice(stopIndex);
-  assert.match(stopDescription, /sai\/commands\/apply\/invocation\.md/,
-    'STOP & COMMIT must cite the apply invocation contract');
-  assert.match(stopDescription, /per-Step STOP & COMMIT gate/i,
-    'STOP & COMMIT must name the per-Step gate');
-  assert.match(stopDescription, /terminal documentation commit gate/i,
-    'STOP & COMMIT must name the terminal documentation commit gate');
-  assert.doesNotMatch(stopDescription, /sai\/commands\/apply\/instructions\.md/,
-    'STOP & COMMIT must not cite the retired apply instructions path');
-
-  const authorityHeadings = extractTopHeadings(authority);
-  assert.deepEqual(
-    authorityHeadings.filter(heading => heading === 'Goal' || heading === 'Prerequisites'),
-    ['Goal'],
-    'implementation authority must retain Goal and carry no Prerequisites prelude',
-  );
-  for (const heading of ['##### RED phase', '##### GREEN phase', '##### Step 1 Verification Checklist']) {
-    const headingPattern = heading === '##### GREEN phase'
-      ? '^##### GREEN phase(?: \\(only after RED is verified\\))?\\s*$'
-      : `^${heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`;
-    assert.match(extractBody(authority), new RegExp(headingPattern, 'm'),
-      `implementation authority must retain ${heading}`);
-  }
-});
-
 test('schema instructions are exact two-sentence pointers and graph/apply baselines stay immutable', () => {
   const schema = readUtf8('openspec/schemas/sai-workflow/schema.yaml');
 
   for (const pair of pairs) {
     const instruction = schemaInstruction(schema, pair.id).trim();
     const expected =
-      `Fetch and follow ${pair.authority} exactly. This instruction is an informative reference only; it does not restate the ${pair.id === 'implementation' ? 'implementation plan' : `${pair.id} report`} contract.`;
+      `Fetch and follow ${pair.authority} exactly. This instruction is an informative reference only; it does not restate the ${pair.id} report contract.`;
     assert.equal(instruction, expected,
       `${pair.id} schema instruction must use the exact two-sentence informative-pointer formula`);
     assert.equal(instruction.split(/(?<=[.!?])\s+/).length, 2,
       `${pair.id} schema instruction must contain exactly two sentences`);
   }
 
-  // These are immutable graph guards: the five artifact entries may replace only
+  // These are immutable graph guards: the four artifact entries may replace only
   // their instruction blocks, never their graph identity or descriptive metadata.
   for (const pair of pairs) {
     const graph = nonInstructionGraphLines(schema, pair.id);

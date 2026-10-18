@@ -53,7 +53,7 @@ test('change-overview registered in the artifact graph', () => {
   assert.ok(schema.includes('generates: change-overview.md'), 'schema.yaml should declare generates: change-overview.md for change-overview');
   assert.ok(schema.includes('requires: [interfaces]'), 'schema.yaml should require [interfaces] for change-overview');
   const overviewSection = schema.substring(schema.indexOf('id: change-overview'));
-  assert.ok(overviewSection.includes('id: implementation'), 'change-overview entry should be registered before the implementation entry');
+  assert.ok(overviewSection.includes('id: review'), 'change-overview entry should be registered before the review entry');
 });
 
 test('apply is not gated on change-overview.md', () => {
@@ -61,7 +61,7 @@ test('apply is not gated on change-overview.md', () => {
   const applyIndex = schema.indexOf('apply:');
   assert.ok(applyIndex >= 0, 'schema.yaml should have an apply: section');
   const applySection = schema.substring(applyIndex);
-  assert.match(applySection, /requires:\s*\[\s*tasks\s*,\s*implementation\s*\]/);
+  assert.match(applySection, /requires:\s*\[\s*tasks\s*\]/);
   assert.ok(!applySection.includes('change-overview'), 'apply.requires must not list change-overview');
 });
 
@@ -562,7 +562,7 @@ test('schema change-overview instruction is a non-empty informative reference on
   const schema = artifact('openspec/schemas/sai-workflow/schema.yaml');
   const overviewInstruction = schema.slice(
     schema.indexOf('id: change-overview'),
-    schema.indexOf('id: implementation'),
+    schema.indexOf('id: review'),
   );
 
   // Non-empty and names the command-owned contract path.
@@ -598,7 +598,7 @@ test('schema change-overview instruction is a non-empty informative reference on
 
 test('schema and current generation consumers defer source organization without thematic conflicts', () => {
   const schema = artifact('openspec/schemas/sai-workflow/schema.yaml');
-  const overviewEntry = schema.slice(schema.indexOf('id: change-overview'), schema.indexOf('id: implementation'));
+  const overviewEntry = schema.slice(schema.indexOf('id: change-overview'), schema.indexOf('id: review'));
   assert.match(overviewEntry, /Faithful source-oriented review projection/);
   assert.match(overviewEntry, /Content selection and organization belong to the shared generation contract/);
   assert.match(overviewEntry, /requires: \[interfaces\]/);
@@ -812,13 +812,12 @@ test('completed Review change-overview forms findings only and marks no review i
 
 // ─── Step 6: Eleven-artifact archive classification and status panel ─
 
-test('archive names eleven artifacts with change-overview in AUDIT and interfaces in EXEMPT', () => {
+test('archive names ten artifacts with change-overview in AUDIT and interfaces in EXEMPT', () => {
   const archive = artifact('sai/commands/archive/instructions.md');
 
-  assert.match(archive, /eleven/, 'archive classification should name eleven artifacts');
-  assert.doesNotMatch(archive, /ten[\s-]?(?:`?sai-workflow`?\s+)?artifact/i,
-    'archive should drop the stale ten-artifact wording');
-  assert.match(archive, /change-overview/, 'archive should classify change-overview among the eleven');
+  assert.match(archive, /ten[\s-]?(?:`?sai-workflow`?\s+)?artifact/i, 'archive classification should name ten artifacts');
+  assert.doesNotMatch(archive, /eleven/, 'archive should drop the retired eleven-artifact wording');
+  assert.match(archive, /change-overview/, 'archive should classify change-overview among the ten');
   assert.match(archive, /interfaces/, 'archive should classify interfaces');
 
   const auditIndex = archive.indexOf('AUDIT');
@@ -847,19 +846,19 @@ test('archive synchronizes delta specs via CLI without presenting a sync choice'
     'archive should report rather than duplicate the CLI sync');
 });
 
-test('status panel lists the 11 artifact ids in order and derives overview state', () => {
+test('status panel lists the 10 artifact ids in order and derives overview state', () => {
   const status = artifact('sai/tools/status.js');
 
-  assert.match(status, /11\s+sai-workflow|eleven/i, 'the panel should reference the eleven-artifact schema');
+  assert.match(status, /ten\s+sai-workflow/i, 'the panel should reference the ten-artifact schema');
 
   const interfacesIndex = status.indexOf('interfaces');
   assert.ok(interfacesIndex !== -1, 'the tool should list interfaces');
   const changeOverviewIndex = status.indexOf('change-overview');
   assert.ok(changeOverviewIndex !== -1, 'the tool should list change-overview');
-  const implementationIndex = status.indexOf('implementation');
-  assert.ok(implementationIndex !== -1, 'the tool should list implementation');
+  const reviewIndex = status.indexOf("'review'");
+  assert.ok(reviewIndex !== -1, 'the tool should list review');
   assert.ok(interfacesIndex < changeOverviewIndex, 'change-overview should sit after interfaces');
-  assert.ok(changeOverviewIndex < implementationIndex, 'change-overview should sit before implementation');
+  assert.ok(changeOverviewIndex < reviewIndex, 'change-overview should sit before review');
 
   assert.match(status, /overview\.state/, 'the overview line should derive from overview.state');
 });
@@ -1184,7 +1183,7 @@ const PRE_CHANGE_DESIGN_GRAPH = Object.freeze({
   design: { generates: 'design.md', requires: ['proposal', 'specs'] },
   tasks: { generates: 'tasks.md', requires: ['specs', 'design'] },
   interfaces: { generates: 'interfaces.md', requires: ['tasks'] },
-  apply: { requires: ['tasks', 'implementation'], tracks: ['implementation.md'] },
+  apply: { requires: ['tasks'], tracks: ['tasks.md'] },
 });
 
 function escapeSchemaContractRegExp(value) {
@@ -1331,7 +1330,7 @@ test('design artifact schema preserves the fixed pre-change graph baseline and d
     'apply should preserve its pre-change requirements');
   assert.deepEqual(schemaListForContract(schemaFieldForContract(apply, 'tracks')),
     PRE_CHANGE_DESIGN_GRAPH.apply.tracks,
-    'apply should preserve tracking of implementation.md');
+    'apply should track tasks.md');
 });
 
 // ─── RED slice: single-source design artifact skeleton oracle ───────────────
@@ -1442,14 +1441,6 @@ test('RED skeleton oracle pins the single-source design artifact contracts', () 
     'tasks.md instruction must state the no-duplicate rule for specs under Spec files');
   assert.doesNotMatch(designTasksInstruction, /### Local files[\s\S]*?use line ranges/,
     'tasks.md instruction Local files section must not contain "use line ranges" instruction');
-
-  const docReviewFile = artifact('sai/commands/implement/steps/documentation-review.md');
-  assert.match(docReviewFile, /—[\s\S]*?path or URL is the text before/,
-    'documentation-review.md must mention the — separator and path/URL extraction');
-  assert.doesNotMatch(docReviewFile, /line ranges/,
-    'documentation-review.md must not read line ranges: Required Documentation lists whole files');
-  assert.match(docReviewFile, /Planning Evidence rule in `steps\/common\.md`/,
-    'documentation-review.md must defer to the Planning Evidence rule in steps/common.md');
 
   assert.match(interfaces, /^\*\*Interfaces\*\*/m,
     'interfaces.md must contain the **Interfaces** marker');

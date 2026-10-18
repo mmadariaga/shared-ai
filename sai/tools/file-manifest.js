@@ -76,9 +76,54 @@ function parseArgs(argv) {
 // Parsing tasks.md
 // ---------------------------------------------------------------------------
 
+function norm(p) {
+  return String(p).replace(/\\/g, '/').replace(/^\.\//, '');
+}
+
+function safePath(p) {
+  return typeof p === 'string' && p === norm(p) && p.length > 0 &&
+    !path.isAbsolute(p) && !p.includes(':') && !p.includes('\0') &&
+    !p.split('/').some((part) => part === '..' || part === '.' || part === '.git' || !part) &&
+    !/[\r\n*?\[\]]/.test(p);
+}
+
+// One basename family, one directory, a positive count; never a recursive glob.
+function generatedEntry(text) {
+  text = text.replace(/`/g, '');
+  const m = text.match(/^A\s+([^\s]+)\s+— generated count=([1-9]\d*)$/);
+  if (!m) return null;
+  const pattern = norm(m[1]);
+  const directory = path.posix.dirname(pattern);
+  const family = path.posix.basename(pattern);
+  if (!safePath(directory) || !/^[\w.-]+\*[\w.-]+$/.test(family)) return null;
+  return { directory, family, count: Number(m[2]) };
+}
+
+/** Parse one declaration line; returns {token, path, src?, generated?}, {sentinel}, or {error}. */
+function parseDeclaration(raw) {
+  const text = raw.trim().replace(/^[-*+]\s+/, '').replace(/`/g, '');
+  if (/^None\b/.test(text)) return { sentinel: true };
+  const generated = generatedEntry(text);
+  if (generated) return { token: 'A', path: `${generated.directory}/${generated.family}`, generated };
+  if (text.includes('generated count=')) return { error: 'invalid bounded generated-file declaration' };
+  const m = text.match(/^([AMDR])\s+(.+)$/);
+  if (!m) return { error: 'unrecognized affected-file declaration' };
+  const parts = m[2].replace(/\s+—\s+.*$/, '').split(/\s+->\s+/).map((p) => norm(p.trim()));
+  if (m[1] === 'R' && parts.length === 2 && parts[0] === parts[1]) return { error: 'rename source and destination are identical' };
+  if (parts.some((p) => !safePath(p)) || parts.length !== (m[1] === 'R' ? 2 : 1)) return { error: 'unsafe or unrecognized affected path' };
+  return m[1] === 'R' ? { token: 'R', src: parts[0], path: parts[1] } : { token: m[1], path: parts[0] };
+}
+
+function declarationsOverlap(a, b) {
+  if (a.directory !== b.directory) return false;
+  const [ap, as] = a.family.split('*');
+  const [bp, bs] = b.family.split('*');
+  return (ap.startsWith(bp) || bp.startsWith(ap)) && (as.endsWith(bs) || bs.endsWith(as));
+}
+
 /** Parse one entry text; returns {token, path, src?} or throws a message string. */
 function parseEntry(text) {
-  return require('./apply-step').parseDeclaration(text);
+  return parseDeclaration(text);
 }
 
 /** Extract ordered entries from tasks.md text. Returns {entries, errors}. */
@@ -166,7 +211,7 @@ function fold(entries) {
     const st = get(p);
 
     if (e.generated) {
-      for (const [key, previous] of states) if (previous.generated && require('./apply-step').declarationsOverlap(previous.generated, e.generated)) fail(e, `overlapping generated families: ${key} and ${p}`);
+      for (const [key, previous] of states) if (previous.generated && declarationsOverlap(previous.generated, e.generated)) fail(e, `overlapping generated families: ${key} and ${p}`);
       if (st.t !== 'E') fail(e, `generated family collides with affected path: ${p}`);
       states.set(p, { t: 'A', steps: [s], generated: e.generated });
       continue;
@@ -435,4 +480,4 @@ function main(argv) {
 
 if (require.main === module) process.exit(main(process.argv.slice(2)));
 
-module.exports = { extractEntries, fold, run, main, EMPTY_LINE };
+module.exports = { extractEntries, fold, run, main, EMPTY_LINE, parseDeclaration, declarationsOverlap };

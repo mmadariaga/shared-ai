@@ -127,13 +127,11 @@ test('verify accepts legacy and bullet manifests without writing; only the prefi
   } finally { fs.rmSync(root, { recursive: true }); }
 });
 
-test('bullet declarations preserve rename folding, notes, and relevant consumer compatibility', () => {
+test('bullet declarations preserve rename folding, notes, and notes', () => {
   const tasks = '## Step 1: move\n\n**Files Affected**:\n- R x/old.md -> x/new.md — relocate helper\n- M x/shared.md — caller to update\n\n**What Will Be Done**: move\n\n## Step 2: use\n\n**Files Affected**:\n- M x/new.md — update implementation\n';
   const expected = ['- R x/old.md -> x/new.md (Step 1, Step 2)', '- M x/shared.md (Step 1)'];
   const { root, design } = project(tasks, DESIGN_WITH);
   try {
-    const apply = require('../sai/tools/apply-step').parseFilesAffected(tasks, 1);
-    assert.deepEqual(apply.errors, []);
     assert.equal(run('fold', root).status, 0);
     assert.deepEqual(run('verify', root).payload.lines, expected);
     const original = fs.readFileSync(design, 'utf8');
@@ -232,7 +230,7 @@ test('shared design instructions and spec/design templates require bullet file a
   assert.match(proposal, /\*\*External URLs\*\*:\n<!--[^\n]*Markdown bullets \(- <URL>\)[^\n]*one entry per line/);
 });
 
-test('generated families retain counts in fold/verify and share Apply backtick interpretation', () => {
+test('generated families retain counts in fold/verify and share the backtick interpretation', () => {
   for (const declaration of ['A generated/migration-*.sql — generated count=2', 'A `generated/migration-*.sql` — generated count=2', '`A generated/migration-*.sql — generated count=2`']) {
     const tasks = `## Step 1: generated\n\n**Files Affected**:\n${declaration}\n`;
     const { root, design } = project(tasks, DESIGN_WITH);
@@ -240,9 +238,9 @@ test('generated families retain counts in fold/verify and share Apply backtick i
       assert.equal(run('fold', root).status, 0);
       assert.match(fs.readFileSync(design, 'utf8'), /A generated\/migration-\*\.sql — generated count=2 \(Step 1\)/);
       assert.equal(run('verify', root).status, 0);
-      const apply = require('../sai/tools/apply-step').parseFilesAffected(tasks, 1);
-      assert.equal(apply.generated[0].count, 2);
-      assert.deepEqual(apply.errors, []);
+      const parsed = require('../sai/tools/file-manifest').parseDeclaration(declaration);
+      assert.equal(parsed.generated.count, 2);
+      assert.equal(parsed.error, undefined);
     } finally { fs.rmSync(root, { recursive: true, force: true }); }
   }
 });
@@ -254,21 +252,16 @@ test('unsafe paths and overlapping generated families fail both fold and verify 
     try {
       for (const mode of ['fold', 'verify']) assert.equal(run(mode, root).status, 1);
       assert.equal(fs.readFileSync(design, 'utf8'), DESIGN_WITH);
-      assert.ok(require('../sai/tools/apply-step').parseFilesAffected(tasks, 1).errors.length > 0);
     } finally { fs.rmSync(root, { recursive: true, force: true }); }
   }
 });
 
-test('fold and Apply preflight share the canonical case-sensitive None declaration', () => {
+test('fold reads the canonical case-sensitive None declaration', () => {
   for (const sentinel of ['None', 'none', 'NONE']) {
     const tasks = `## Step 1: unchanged\n\n**Files Affected**:\n${sentinel}\n`;
     const { root, design } = project(tasks, DESIGN_WITH);
     try {
-      const plan = '#### Step 1: unchanged\n\n##### Step 1 Verification Checklist\n\n**Automated:**\n- [ ] `node -e "process.exit(0)"` — exit 0\n\n#### Step 1 STOP & COMMIT\n';
-      fs.writeFileSync(path.join(root, 'openspec', 'changes', 'c', 'implementation.md'), plan);
-      const apply = require('../sai/tools/apply-step').preflight({ cwd: root, change: 'c' });
       const folded = run('fold', root);
-      assert.equal(apply.ok, sentinel === 'None');
       assert.equal(folded.status === 0, sentinel === 'None');
       if (sentinel === 'None') assert.equal(run('verify', root).status, 0);
       else assert.equal(fs.readFileSync(design, 'utf8'), DESIGN_WITH);

@@ -164,7 +164,6 @@ test('E3a: overview conjunction - present when state current AND file done', () 
     specs: { present: true },
     design: { present: true },
     tasks: { present: true },
-    implementation: { present: true },
     proposal: { present: true },
     interfaces: { present: true },
     review: { present: true },
@@ -175,7 +174,7 @@ test('E3a: overview conjunction - present when state current AND file done', () 
   const yaml = { overview_state: 'current', backfilled: false, approval_specs_approved_at: '2024-01-01' };
   const auditFlags = { review: false, security: false, performance: false, accessibility: false };
 
-  const result = derivePanelCells(statuses, yaml, auditFlags, '', false);
+  const result = derivePanelCells(statuses, yaml, auditFlags, '');
   assert.equal(result.overviewCell, '●');
 });
 
@@ -185,7 +184,6 @@ test('E3b: overview conjunction - problem state stale', () => {
     specs: { present: true },
     design: { present: true },
     tasks: { present: true },
-    implementation: { present: true },
     proposal: { present: true },
     interfaces: { present: true },
     review: { present: true },
@@ -196,7 +194,7 @@ test('E3b: overview conjunction - problem state stale', () => {
   const yaml = { overview_state: 'stale', backfilled: false };
   const auditFlags = { review: false, security: false, performance: false, accessibility: false };
 
-  const result = derivePanelCells(statuses, yaml, auditFlags, '', false);
+  const result = derivePanelCells(statuses, yaml, auditFlags, '');
   assert.equal(result.overviewCell, '!');
 });
 
@@ -206,7 +204,6 @@ test('E3c: overview conjunction - problem state current but file absent', () => 
     specs: { present: true },
     design: { present: true },
     tasks: { present: true },
-    implementation: { present: true },
     proposal: { present: true },
     interfaces: { present: true },
     review: { present: true },
@@ -217,7 +214,7 @@ test('E3c: overview conjunction - problem state current but file absent', () => 
   const yaml = { overview_state: 'current', backfilled: false };
   const auditFlags = { review: false, security: false, performance: false, accessibility: false };
 
-  const result = derivePanelCells(statuses, yaml, auditFlags, '', false);
+  const result = derivePanelCells(statuses, yaml, auditFlags, '');
   assert.equal(result.overviewCell, '!');
 });
 
@@ -227,7 +224,6 @@ test('E3d: overview conjunction - expected unmaterialized state', () => {
     specs: { present: true },
     design: { present: false },
     tasks: { present: false },
-    implementation: { present: false },
     proposal: { present: true },
     interfaces: { present: false },
     review: { present: false },
@@ -238,7 +234,7 @@ test('E3d: overview conjunction - expected unmaterialized state', () => {
   const yaml = { overview_state: 'unmaterialized', backfilled: false };
   const auditFlags = { review: false, security: false, performance: false, accessibility: false };
 
-  const result = derivePanelCells(statuses, yaml, auditFlags, '', false);
+  const result = derivePanelCells(statuses, yaml, auditFlags, '');
   assert.equal(result.overviewCell, '·');
 });
 
@@ -248,7 +244,6 @@ test('E4: backfilled:true renders overview cell as N/A', () => {
     specs: { present: true },
     design: { present: true },
     tasks: { present: true },
-    implementation: { present: true },
     proposal: { present: true },
     interfaces: { present: true },
     review: { present: true },
@@ -259,12 +254,12 @@ test('E4: backfilled:true renders overview cell as N/A', () => {
   const yamlBackfilled = { backfilled: true };
   const auditFlags = { review: false, security: false, performance: false, accessibility: false };
 
-  const result = derivePanelCells(statuses, yamlBackfilled, auditFlags, '', false);
+  const result = derivePanelCells(statuses, yamlBackfilled, auditFlags, '');
   assert.equal(result.overviewCell, 'N/A');
 
   // Also test backfilled false doesn't force N/A
   const yamlNotBackfilled = { backfilled: false, overview_state: 'unmaterialized' };
-  const result2 = derivePanelCells(statuses, yamlNotBackfilled, auditFlags, '', false);
+  const result2 = derivePanelCells(statuses, yamlNotBackfilled, auditFlags, '');
   assert.equal(result2.overviewCell, '·');
 });
 
@@ -297,7 +292,6 @@ test('E6: absent interfaces renders as absent with no warning', () => {
     specs: { present: true },
     design: { present: true },
     tasks: { present: true },
-    implementation: { present: true },
     proposal: { present: true },
     review: { present: true },
     security: { present: true },
@@ -307,29 +301,29 @@ test('E6: absent interfaces renders as absent with no warning', () => {
   const yaml = { backfilled: false };
   const auditFlags = { review: false, security: false, performance: false, accessibility: false };
 
-  const result = derivePanelCells(statuses, yaml, auditFlags, '', false);
+  const result = derivePanelCells(statuses, yaml, auditFlags, '');
   assert.equal(result.cells.interfaces, '·');
   assert.ok(!result.cells.interfaces.includes('!'), 'absent interfaces should not have warning marker');
 });
 
-test('E7: implementation.md absent leaves cell empty, present counts checkboxes', () => {
-  const { countImplementationProgress } = require('../sai/tools/status.js');
+test('E7: tasks.md absent leaves progress empty, present counts checkboxes', () => {
+  const { countTaskProgress } = require('../sai/tools/status.js');
   const { cwd, parent } = makeTestOpenspec();
   try {
     // Absent
-    const result1 = countImplementationProgress(path.join(cwd, 'nonexistent.md'));
+    const result1 = countTaskProgress(path.join(cwd, 'nonexistent.md'));
     assert.equal(result1, '');
 
     // Present with checkboxes
     const file1 = path.join(cwd, 'impl1.md');
     fs.writeFileSync(file1, '- [x] Task 1\n- [x] Task 2\n- [ ] Task 3\n');
-    const result2 = countImplementationProgress(file1);
+    const result2 = countTaskProgress(file1);
     assert.equal(result2, '2/3');
 
     // Present without checkboxes
     const file2 = path.join(cwd, 'impl2.md');
     fs.writeFileSync(file2, 'No checkboxes here.');
-    const result3 = countImplementationProgress(file2);
+    const result3 = countTaskProgress(file2);
     assert.equal(result3, '');
   } finally {
     cleanup(parent);
@@ -341,7 +335,6 @@ test('E8a: Next resolves to /sai-1-spec when specs absent', () => {
     specs: { present: false },
     design: { present: false },
     tasks: { present: false },
-    implementation: { present: false },
     proposal: { present: true },
     interfaces: { present: false },
     'change-overview': { present: false },
@@ -353,7 +346,7 @@ test('E8a: Next resolves to /sai-1-spec when specs absent', () => {
   const yaml = null;
   const auditFlags = { review: false, security: false, performance: false, accessibility: false };
 
-  const result = derivePanelCells(statuses, yaml, auditFlags, '', false);
+  const result = derivePanelCells(statuses, yaml, auditFlags, '');
   assert.equal(result.next, '/sai-1-spec');
 });
 
@@ -362,7 +355,6 @@ test('E8b: Next resolves to /sai-2-design when specs present but not approved', 
     specs: { present: true },
     design: { present: false },
     tasks: { present: false },
-    implementation: { present: false },
     proposal: { present: true },
     interfaces: { present: false },
     'change-overview': { present: false },
@@ -374,16 +366,15 @@ test('E8b: Next resolves to /sai-2-design when specs present but not approved', 
   const yaml = { approval_specs_approved_at: null };
   const auditFlags = { review: false, security: false, performance: false, accessibility: false };
 
-  const result = derivePanelCells(statuses, yaml, auditFlags, '', false);
+  const result = derivePanelCells(statuses, yaml, auditFlags, '');
   assert.equal(result.next, '/sai-2-design');
 });
 
-test('E8c: Next resolves to /sai-3-implement when design+tasks present but implementation absent', () => {
+test('E8c: Next resolves to /sai-3-implement when design+tasks present but no task is checked', () => {
   const statuses = {
     specs: { present: true },
     design: { present: true },
     tasks: { present: true },
-    implementation: { present: false },
     proposal: { present: true },
     interfaces: { present: true },
     'change-overview': { present: true },
@@ -395,16 +386,15 @@ test('E8c: Next resolves to /sai-3-implement when design+tasks present but imple
   const yaml = { approval_specs_approved_at: '2024-01-01', overview_state: 'current' };
   const auditFlags = { review: false, security: false, performance: false, accessibility: false };
 
-  const result = derivePanelCells(statuses, yaml, auditFlags, '', false);
+  const result = derivePanelCells(statuses, yaml, auditFlags, '');
   assert.equal(result.next, '/sai-3-implement');
 });
 
-test('E8d: Next resolves to /sai-4-apply when implementation incomplete', () => {
+test('E8d: Next resolves to /sai-3-implement while tasks are unchecked', () => {
   const statuses = {
     specs: { present: true },
     design: { present: true },
     tasks: { present: true },
-    implementation: { present: true },
     proposal: { present: true },
     interfaces: { present: true },
     'change-overview': { present: true },
@@ -416,16 +406,15 @@ test('E8d: Next resolves to /sai-4-apply when implementation incomplete', () => 
   const yaml = { approval_specs_approved_at: '2024-01-01', overview_state: 'current' };
   const auditFlags = { review: false, security: false, performance: false, accessibility: false };
 
-  const result = derivePanelCells(statuses, yaml, auditFlags, '1/3', true);
-  assert.equal(result.next, '/sai-4-apply');
+  const result = derivePanelCells(statuses, yaml, auditFlags, '1/3');
+  assert.equal(result.next, '/sai-3-implement');
 });
 
-test('E8e: Next resolves to /sai-5-review when audits missing', () => {
+test('E8e: Next resolves to /sai-4-review when every task is checked and the review is missing', () => {
   const statuses = {
     specs: { present: true },
     design: { present: true },
     tasks: { present: true },
-    implementation: { present: true },
     proposal: { present: true },
     interfaces: { present: true },
     'change-overview': { present: true },
@@ -437,8 +426,8 @@ test('E8e: Next resolves to /sai-5-review when audits missing', () => {
   const yaml = { approval_specs_approved_at: '2024-01-01', overview_state: 'current' };
   const auditFlags = { review: false, security: false, performance: false, accessibility: false };
 
-  const result = derivePanelCells(statuses, yaml, auditFlags, '3/3', true);
-  assert.equal(result.next, '/sai-5-review');
+  const result = derivePanelCells(statuses, yaml, auditFlags, '3/3');
+  assert.equal(result.next, '/sai-4-review');
 });
 
 test('E8f: Next resolves to /to-pr when all audits present', () => {
@@ -446,7 +435,6 @@ test('E8f: Next resolves to /to-pr when all audits present', () => {
     specs: { present: true },
     design: { present: true },
     tasks: { present: true },
-    implementation: { present: true },
     proposal: { present: true },
     interfaces: { present: true },
     'change-overview': { present: true },
@@ -458,7 +446,7 @@ test('E8f: Next resolves to /to-pr when all audits present', () => {
   const yaml = { approval_specs_approved_at: '2024-01-01', overview_state: 'current' };
   const auditFlags = { review: false, security: false, performance: false, accessibility: false };
 
-  const result = derivePanelCells(statuses, yaml, auditFlags, '3/3', true);
+  const result = derivePanelCells(statuses, yaml, auditFlags, '3/3');
   assert.equal(result.next, '/to-pr');
 });
 
@@ -467,7 +455,6 @@ test('E8g: N/A audits count as satisfied', () => {
     specs: { present: true },
     design: { present: true },
     tasks: { present: true },
-    implementation: { present: true },
     proposal: { present: true },
     interfaces: { present: true },
     'change-overview': { present: true },
@@ -479,7 +466,7 @@ test('E8g: N/A audits count as satisfied', () => {
   const yaml = { approval_specs_approved_at: '2024-01-01', overview_state: 'current' };
   const auditFlags = { review: true, security: false, performance: false, accessibility: false };
 
-  const result = derivePanelCells(statuses, yaml, auditFlags, '3/3', true);
+  const result = derivePanelCells(statuses, yaml, auditFlags, '3/3');
   assert.equal(result.cells.review, 'N/A');
   assert.equal(result.next, '/sai-8-accessibility');
 });

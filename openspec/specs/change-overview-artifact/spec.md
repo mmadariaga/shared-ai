@@ -260,20 +260,20 @@ Only natural-language explanatory prose SHALL be eligible for translation. Struc
 
 ### Requirement: Overview is not a prerequisite or input for sai-3 or sai-4
 
-`change-overview.md` SHALL NOT be a prerequisite or input for `sai-3-implement` or `sai-4-apply`. The `sai-3-implement` step library (`sai/commands/implement/steps/`) and `sai/commands/apply/instructions.md` SHALL continue to read the authoritative source artifacts — `interfaces.md` step contracts, `tasks.md`, `design.md`, `specs/**`, `proposal.md` — and SHALL NOT read or depend on the overview.
+`change-overview.md` SHALL NOT be a prerequisite or input for `sai-3-implement`. The `sai-3-implement` step library (`sai/commands/implement/steps/`) SHALL continue to read the authoritative source artifacts — `interfaces.md` step contracts, `tasks.md`, `design.md`, `specs/**`, `proposal.md` — and SHALL NOT read or depend on the overview.
 
 #### Scenario: implement ignores the overview
 - **WHEN** `sai-3-implement` runs for a change that has an overview
-- **THEN** the overview is not read and does not influence `implementation.md` generation
+- **THEN** the overview is not read and does not influence step generation
 - **AND** behavior is identical to a change without an overview
 
 #### Scenario: apply ignores the overview
-- **WHEN** `sai-4-apply` runs for a change that has an overview
-- **THEN** the overview is not read, is not in any step's file scope, and does not influence dispatch or execution
+- **WHEN** the command catalog is read
+- **THEN** no `/sai-4-apply` command exists, so no apply run reads or depends on the overview
 
 ### Requirement: change-overview artifact registered but excluded from apply.requires
 
-`openspec/schemas/sai-workflow/schema.yaml` SHALL register a `change-overview` artifact with `id: change-overview`, `generates: change-overview.md`, and `requires: [interfaces]`, whose transitive closure covers proposal, specs, design, tasks, and interfaces. The `change-overview` artifact SHALL NOT appear in the schema's `apply.requires` list; `apply.requires` SHALL remain `[tasks, implementation]`.
+`openspec/schemas/sai-workflow/schema.yaml` SHALL register a `change-overview` artifact with `id: change-overview`, `generates: change-overview.md`, and `requires: [interfaces]`, whose transitive closure covers proposal, specs, design, tasks, and interfaces. The `change-overview` artifact SHALL NOT appear in the schema's `apply.requires` list; `apply.requires` SHALL remain `[tasks]`.
 
 #### Scenario: change-overview registered in the artifact graph
 - **WHEN** the sai-workflow schema is read
@@ -281,7 +281,7 @@ Only natural-language explanatory prose SHALL be eligible for translation. Struc
 
 #### Scenario: apply is not gated on change-overview.md
 - **WHEN** the schema's `apply.requires` is read
-- **THEN** it lists `tasks` and `implementation` only, and does NOT list `change-overview`
+- **THEN** it lists `tasks` only, and does NOT list `change-overview`
 
 ### Requirement: Backfilled changes require no overview
 
