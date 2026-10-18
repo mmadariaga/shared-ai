@@ -15,7 +15,7 @@ If this file exists, it means the project's domain language is recorded for the 
 
 - **Canonical location**: project root — `./SAI_LEARNINGS.md`
 - **Purpose**: durable, execution-observed facts about how the repository builds, tests, and behaves.
-- **Writer**: none at present; the implement command's learnings promotion is a planned follow-up change.
+- **Writer**: the `/sai-3-implement` coordinator, which promotes learnings from the deviations of its run at run close.
 - **Format**: sai/policies/sai-learnings-format.md
 
 If this file exists, it means execution-observed repository facts are recorded here.

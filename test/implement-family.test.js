@@ -72,6 +72,7 @@ test('the implement, review, and build coordinators load only the policies that 
     '@skills/budget-executor/SKILL.md',
     '@sai/policies/artifact-review-contract.md',
     '@sai/policies/finding-state.md',
+    '@sai/policies/sai-learnings-format.md',
     '@sai/orchestration/workers/bindings/red-worker.md',
     '@sai/orchestration/workers/bindings/green-worker.md',
     '@sai/orchestration/workers/bindings/review-worker.md',
@@ -130,6 +131,23 @@ test('step commits carry no attribution and the all-checked case runs the suites
   assert.ok(allChecked !== -1 && baseline !== -1 && allChecked < baseline,
     'the all-checked close must come before the baseline run');
   assert.equal(section.split('every task is already checked').length - 1, 1);
+});
+
+test('the implement coordinator reuses the design context and promotes learnings at run close', () => {
+  const source = read(COORDINATORS[0]);
+  const start = source.slice(source.indexOf('## Start'), source.indexOf('## The step cycle'));
+  const step7 = start.slice(start.indexOf('7. Find the project'), start.indexOf('8. Run the suites'));
+  assert.ok(step7.indexOf('`**Test Command**` in `tasks.md`') !== -1);
+  assert.ok(step7.indexOf('`**Test Command**` in `tasks.md`') < step7.indexOf('`SAI_LEARNINGS.md`'), 'the design test command comes first');
+  assert.match(step7, /None — no test runner in this project/);
+  assert.match(source, /`## Required Documentation` entries relevant to the step/);
+  assert.match(source, /every subsection is `None`/);
+  const close = source.slice(source.indexOf('## Close'));
+  assert.match(close, /Promote learnings, before the build log/);
+  assert.match(close, /leave `SAI_LEARNINGS.md` untouched and create no file/);
+  assert.match(close, /Fetch @sai\/policies\/sai-learnings-format\.md/);
+  assert.match(read('sai/policies/sai-learnings-format.md'), /`\/sai-3-implement` coordinator is the only writer/);
+  assert.match(read('sai/commands/design/steps/tasks.md'), /`\/sai-3-implement` coordinator's learnings promotion at run close/);
 });
 
 test('RED owns tests and stubs while GREEN owns production code and never writes tests', () => {

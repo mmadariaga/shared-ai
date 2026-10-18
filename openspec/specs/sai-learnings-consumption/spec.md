@@ -79,9 +79,9 @@ A learnings bullet that duplicates a research-derived bullet SHALL be treated as
 
 When `/sai-2-design` prefers a freshly-researched value over a `SAI_LEARNINGS.md` entry concerning the same repo-level artifact, it SHALL surface that disagreement to the user as a contradiction notice naming the entry's key, the recorded value, and the researched value.
 
-The notice SHALL be printed output only. `/sai-2-design` SHALL NOT edit, delete, or rewrite `SAI_LEARNINGS.md`, and this requirement SHALL NOT be read as granting it any write authority over that file. No command in the current tree writes `SAI_LEARNINGS.md`.
+The notice SHALL be printed output only. `/sai-2-design` SHALL NOT edit, delete, or rewrite `SAI_LEARNINGS.md`, and this requirement SHALL NOT be read as granting it any write authority over that file. `SAI_LEARNINGS.md` SHALL remain writable only by the `/sai-3-implement` coordinator's learnings promotion at run close.
 
-The notice exists because no command now prunes stale entries, and a correct value in `## Implementation Context` is what prevents the failure that would otherwise expose one. The notice hands the human the one signal needed to prune it, without granting delete authority to any phase.
+The notice exists because supersede-by-key alone cannot reach a class of stale entries: promotion fires only from a deviation, and a correct value in `## Implementation Context` is what prevents the failure that would otherwise expose one, so an entry corrected at design time may never be re-observed by an implement run. The notice hands the human the one signal needed to prune it, without granting delete authority to any phase.
 
 When `/sai-2-design` finds no such disagreement, it SHALL print nothing.
 
@@ -102,16 +102,21 @@ When `/sai-2-design` finds no such disagreement, it SHALL print nothing.
 
 ### Requirement: sai-3-implement never reads the learnings file directly
 
-`/sai-3-implement` SHALL NOT read `SAI_LEARNINGS.md` for its planning or step work. It SHALL receive promoted facts only through `tasks.md`'s `## Implementation Context`, which it already consumes as its expertise contract. The coordinator MAY read `SAI_LEARNINGS.md` once, only to locate the project's test command when every task is already checked, as `sai/commands/implement/coordinator.md` states.
+`/sai-3-implement` SHALL NOT read `SAI_LEARNINGS.md` for its planning or step work. It SHALL receive promoted facts only through `tasks.md`'s `## Implementation Context`, which it already consumes as its expertise contract. The coordinator MAY read `SAI_LEARNINGS.md` only to locate the project's test command when `tasks.md`'s `**Test Command**` is missing or holds the sentinel `None — no test runner in this project`, and to apply its learnings promotion at run close, as `sai/commands/implement/coordinator.md` states.
 
 `/sai-3-implement` starts from its supplied material, and `## Implementation Context` is part of it. A direct read of the learnings file would repeat work `/sai-2-design` already did when it merged the file.
 
-No instruction file other than that coordinator test-command lookup SHALL add `SAI_LEARNINGS.md` to `/sai-3-implement`'s reading list, and the `/sai-3-implement` step library (`sai/commands/implement/steps/`) SHALL NOT read it.
+No instruction file other than that coordinator test-command fallback and run-close promotion SHALL add `SAI_LEARNINGS.md` to `/sai-3-implement`'s reading list, and the `/sai-3-implement` step library (`sai/commands/implement/steps/`) SHALL NOT read it.
 
 #### Scenario: sai-3-implement plans a change in a repo with a learnings file
 
 - **WHEN** `/sai-3-implement` runs in a repository containing `SAI_LEARNINGS.md`
 - **THEN** its step library reads only its existing inputs, and any promoted fact reaches the steps solely through the four fields of `## Implementation Context`
+
+#### Scenario: The design test command makes the learnings lookup unnecessary
+
+- **WHEN** `/sai-3-implement` starts and `tasks.md` carries a runnable `**Test Command**`
+- **THEN** the coordinator takes the test command from `tasks.md` and does not read `SAI_LEARNINGS.md` to find it
 
 ### Requirement: Promoted facts never breach test-writer blindness
 
