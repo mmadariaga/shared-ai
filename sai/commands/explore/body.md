@@ -40,6 +40,7 @@
   Fetch @sai/commands/explore/instructions.md
   Fetch @skills/openspec-explore/SKILL.md and follow those instructions exactly.
   Fetch @sai/policies/remember.md
+  Fetch @sai/policies/question-context.md
   Run `sai-state spawn --key <stable-key>` per `@sai/policies/stage-machine.md` as the final step of the load, and retain the returned `id` as the load receipt's session id: every stage event of this invocation emits against it.
   On an invocation turn (a user message that runs `/sai-explore`), run `sai-state reset <id> explore-idea@1` and `sai-state reset <id> explore-slice@1` right after `sai-state spawn`, so the invocation starts from the initial stage, empty lists, and no slice inventory even when the chat holds the receipt of an earlier invocation; a parked Direct Build resumes only inside the invocation that parked it, and a new invocation discards its cursors with the rest of the state. A recovery load (a turn that is not an invocation, lacks the receipt, and completes the load before answering) runs `spawn` only and keeps the current stage, the agreed lists, and the slice inventory.
 

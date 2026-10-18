@@ -153,8 +153,9 @@ unknowns, separately from the faithfully delivered source and unverified comment
 
 Report that the PBI / Issue / Ticket is loaded and assessed, then ask the first
 substantive unresolved question that could change the recommendation. Explain
-why that uncertainty matters; use the ordinary conversation or closed-choice
-mechanism defined above. If none remains, identify the recommended next step
+why that uncertainty matters. A question with a closed option set goes through
+the native picker (`AskUserQuestion` on Claude Code, `question` on opencode); an
+open question uses the ordinary conversation. If none remains, identify the recommended next step
 without inventing a question or automatically starting that step. Further
 execution and exploration progression remain the user's decision.
 **Complete when:** the recommendation has a useful conversational continuation,
