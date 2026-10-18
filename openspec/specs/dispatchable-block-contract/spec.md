@@ -32,15 +32,6 @@ The Direct Build - Unattended route SHALL dispatch only blocks from the recorded
 - **WHEN** the user selects Direct Build - Unattended for a recorded change
 - **THEN** the route dispatches the recorded block without a pre-dispatch compatibility refusal
 
-### Requirement: Audit escalation blocks carry a proposed implementation item
-
-When `/sai-3-implement` audit ingestion escalates findings as a Ready to Propose block, that block's `**Implementation Details**` SHALL carry one proposed `I1` item stating the correction the escalated findings imply, never `- None`; the user MAY refine it in `/sai-explore`.
-
-#### Scenario: Escalation block is dispatchable
-
-- **WHEN** audit ingestion composes an escalation block
-- **THEN** its `**Implementation Details**` carries one proposed `I1` item
-
 ### Requirement: Dispatchable implementation item rules
 
 The `**Implementation Details**` field of a single-change block SHALL carry either at least one in-scope `I` item or exactly `- None`, and a block with `- None` there SHALL be dispatchable by Plan - Unattended, Direct Build - Unattended, and Manual. Every slice of a sliced set SHALL carry at least one in-scope `I` item. Within one block each `I` identifier SHALL appear exactly once across `**Implementation Details**` and `**Out of scope Implementation Details**`, and in a sliced set every `I` SHALL be in scope of at least one slice; a shared `I` MAY be in scope of several slices. `**Out of scope Implementation Details**` still carries exactly one `- None` bullet when no item is out of scope.

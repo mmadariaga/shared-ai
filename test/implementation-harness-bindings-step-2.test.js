@@ -35,8 +35,6 @@ function artifact(relativePath) {
 const WORKERS = [
   ['sai-1-spec-proposal-worker', 'spec-worker.md'],
   ['sai-2-design-worker', 'design-worker.md'],
-  ['sai-3-implementation-worker', 'implementation-worker.md'],
-  ['sai-5-review-worker', 'review-worker.md'],
   ['sai-6-security-worker', 'security-worker.md'],
   ['sai-7-performance-worker', 'performance-worker.md'],
   ['sai-8-accessibility-worker', 'accessibility-worker.md'],
@@ -55,7 +53,7 @@ const OPERATION_PHRASE = {
 
 test('Step 2 routed harness bindings expose the required lifecycle symbols', () => {
   for (const harness of ['claude', 'opencode']) {
-    const binding = matrixBinding(harness, 'implementation');
+    const binding = matrixBinding(harness, 'design');
     for (const operation of REQUIRED_OPERATIONS) {
       assert.match(binding, OPERATION_PHRASE[operation],
         `${harness} binding should expose ${operation}`);
@@ -75,7 +73,7 @@ test('Step 3 removes worker proxy skills while preserving harness-specific bindi
       const binding = matrixBinding(harness, BINDING_PHASE[filename]);
       assert.match(binding, permissionTarget,
         `${harness} binding should use its harness permission target`);
-      if (filename === 'implementation-worker.md') {
+      if (filename === 'design-worker.md') {
         for (const operation of REQUIRED_OPERATIONS) {
           assert.match(binding, OPERATION_PHRASE[operation],
             `${harness} binding should define ${operation}`);
@@ -85,7 +83,7 @@ test('Step 3 removes worker proxy skills while preserving harness-specific bindi
   }
 });
 
-test('Step 3 keeps all seven managed Claude agents alongside the neutral binding sources', () => {
+test('Step 3 keeps the managed Claude phase agents alongside the neutral binding sources', () => {
   for (const [worker, filename] of WORKERS) {
     const phase = BINDING_PHASE[filename];
     assert.match(matrixAgent('claude', phase), new RegExp(worker),
@@ -100,26 +98,24 @@ test('Step 3 keeps all seven managed Claude agents alongside the neutral binding
 });
 
 test('Step 2 routed coordinator failed needs_input continuation allows one replacement with complete reconstruction state', () => {
-  const coordinator = artifact('sai/commands/implement/coordinator.md');
+  const coordinator = artifact('sai/commands/design/coordinator.md');
   const fields = [
-    'original_envelope',
-    'resolved_change_name',
-    'opaque_input_history',
-    'durable[- ]artifact reconstruction instruction',
+    'original envelope',
+    'resolved name',
+    'opaque history',
+    'changed-file union',
   ];
 
   assert.match(coordinator, /failed|failure/i,
     'the coordinator should handle failed continuations');
   assert.match(coordinator, /at most one replacement|one fresh worker|one replacement/i,
     'the coordinator should allow one replacement');
-  assert.match(coordinator, /replacement_reconstruction_fields/,
-    'the coordinator should declare the reconstruction field set');
   for (const field of fields) {
     assert.match(coordinator, new RegExp(field),
       `the coordinator should reconstruct ${field}`);
   }
   for (const harness of ['claude', 'opencode']) {
-    const binding = matrixBinding(harness, 'implementation');
+    const binding = matrixBinding(harness, 'design');
     assert.match(binding, /one bounded replacement|replacement/i,
       `${harness} binding should carry the replacement path`);
     assert.match(binding, /reconstruction[ _]fields|originating binding context/i,

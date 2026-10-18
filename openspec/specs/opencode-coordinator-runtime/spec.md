@@ -42,7 +42,7 @@ The routed phases SHALL therefore require the active primary agent to permit nat
 
 ### Requirement: No dedicated opencode coordinator agent profile exists
 
-The canonical opencode configuration sample and the installer's managed opencode agent projection SHALL NOT define any primary coordinator agent for the SAI workflow, and no SAI wrapper SHALL select one. This governs what SAI ships and selects; a primary agent the user defines or activates themselves is outside its scope. The managed opencode agent set SHALL consist of exactly the subagent worker entries `sai-2-design-worker` and `sai-3-implementation-worker` alongside the pre-existing low-cost helper agents. No SAI-managed enumerated worker task-allowlist for a coordinator SHALL be installed, configured, or verified. This does not remove the active primary agent's own permissions from the picture; those are governed by the preceding requirement.
+The canonical opencode configuration sample and the installer's managed opencode agent projection SHALL NOT define any primary coordinator agent for the SAI workflow, and no SAI wrapper SHALL select one. This governs what SAI ships and selects; a primary agent the user defines or activates themselves is outside its scope. The managed opencode agent set SHALL consist of the subagent worker entries for the numbered SAI workers, including `sai-2-design-worker`, `sai-3-red-worker`, and `sai-3-green-worker`, alongside the pre-existing low-cost helper agents. No SAI-managed enumerated worker task-allowlist for a coordinator SHALL be installed, configured, or verified. This does not remove the active primary agent's own permissions from the picture; those are governed by the preceding requirement.
 
 #### Scenario: config sample has no coordinator entry
 
@@ -52,7 +52,7 @@ The canonical opencode configuration sample and the installer's managed opencode
 #### Scenario: installer projects only worker agents
 
 - **WHEN** the installer's managed opencode agent map is enumerated
-- **THEN** it SHALL contain `sai-2-design-worker` and `sai-3-implementation-worker` and SHALL contain no coordinator key
+- **THEN** it SHALL contain `sai-2-design-worker`, `sai-3-red-worker`, and `sai-3-green-worker`, and SHALL contain no coordinator key
 
 #### Scenario: adding a worker requires no SAI-managed allowlist edit
 
@@ -71,5 +71,5 @@ Removing the coordinator profile SHALL NOT change `subagent_depth`, which lives 
 
 #### Scenario: worker entries are byte-equivalent
 
-- **WHEN** the managed `sai-2-design-worker` and `sai-3-implementation-worker` opencode entries are compared before and after this change
+- **WHEN** the managed `sai-2-design-worker`, `sai-3-red-worker`, and `sai-3-green-worker` opencode entries are compared before and after this change
 - **THEN** their model, variant, mode, and permission fields SHALL be unchanged

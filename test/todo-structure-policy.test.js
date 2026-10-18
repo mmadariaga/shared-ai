@@ -53,40 +53,6 @@ test('todo-structure policy restricts task-list tool-call emission to the coordi
   assert.match(source, /exclusively|only the coordinator/i);
 });
 
-test('todo-structure policy names the apply step projection as a governed surface', () => {
-  const source = policy();
-
-  assert.match(source, /apply step projection|apply-step projection/i);
-  assert.match(source, /governed surface|governs the apply step/i);
-});
-
-test('todo-structure policy keeps the apply step projection state vocabulary and deterministic derivation', () => {
-  const source = policy();
-
-  assert.match(source, /apply step projection/i);
-  assert.match(source, /pending|in_progress|completed/i);
-  assert.match(source, /on[- ]disk|marked set/i);
-  assert.match(source, /plan order|deriv(?:ed|es|ation)/i);
-});
-
-test('todo-structure policy keeps the minimum-threshold rule single-sourced for the apply step projection', () => {
-  const source = policy();
-
-  assert.match(source, /apply step projection/i);
-  assert.match(source, /minimum[- ]threshold|render threshold/i);
-  assert.match(source, /single[- ]source/i);
-  assert.match(source, /reference(?:s|d)?(?: the policy)?/i);
-  assert.match(source, /without restating|do not restate|never restate/i);
-});
-
-test('todo-structure policy keeps apply step projection emission ownership in the coordinator session', () => {
-  const source = policy();
-
-  assert.match(source, /apply step projection/i);
-  assert.match(source, /coordinator session|coordinator\b/i);
-  assert.match(source, /(?:only|exclusively).*coordinator|coordinator.*(?:only|exclusively)/i);
-});
-
 test('todo-structure policy defines the milestone stamp as a decorative rendering action that leaves the step surface unchanged', () => {
   const source = policy();
 
@@ -98,7 +64,7 @@ test('todo-structure policy defines the milestone stamp as a decorative renderin
   assert.match(source, /deriv(?:ed|es|ation)|derived state/i);
 });
 
-test('todo-structure policy extends milestone stamps to every list marked from progress events, never the Idea Progress List or apply step projection', () => {
+test('todo-structure policy extends milestone stamps to every list marked from progress events, never the Idea Progress List', () => {
   const source = policy();
 
   assert.match(source, /milestone stamp/i);
@@ -107,8 +73,7 @@ test('todo-structure policy extends milestone stamps to every list marked from p
   assert.match(source, /audit plans/i,
     'the four audit plans should be inside the stamped scope');
   assert.match(source, /Idea Progress List/i);
-  assert.match(source, /apply step projection/i);
-  assert.match(source, /(?:never|not|no stamp).*(?:Idea Progress List|apply step projection)|(?:Idea Progress List|apply step projection).*(?:never|not|no stamp)/i);
+  assert.match(source, /(?:never|not|no stamp).*Idea Progress List|Idea Progress List.*(?:never|not|no stamp)/i);
   assert.doesNotMatch(source, /three routed/i,
     'the retired three-phase carve-out should be gone');
 });

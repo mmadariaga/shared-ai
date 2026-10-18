@@ -5,6 +5,7 @@
 Define the opencode wrapper contract that forwards command arguments through the invocation envelope without relying on transcript text or labelled wrapper lines.
 
 ## Requirements
+
 ### Requirement: opencode change-consuming wrappers forward an envelope
 
 Every opencode wrapper for a change-consuming `sai-*` command SHALL contain one standalone `InvocationEnvelope:` block directly after the launcher-call directive. The block SHALL contain exactly `command_name` and `arguments_value`, in that order. Opencode SHALL substitute `$ARGUMENTS` into `arguments_value`; a trimmed, non-empty value SHALL be authoritative. The wrapper SHALL be label-free, have no trailing content after the envelope block, and preserve its frontmatter byte-for-byte.
@@ -14,7 +15,7 @@ Every opencode wrapper for a change-consuming `sai-*` command SHALL contain one 
 - **THEN** its body ends with exactly one `InvocationEnvelope:` block containing only `command_name` and `arguments_value`, with no trailing labelled line
 
 #### Scenario: all nine change-consuming wrappers use the same label-free shape
-- **WHEN** the nine opencode change-consuming wrapper files are listed (`commands/opencode/sai-2-design.md`, `sai-3-implement.md`, `sai-4-apply.md`, `sai-5-review.md`, `sai-6-security.md`, `sai-7-performance.md`, `sai-8-accessibility.md`, `sai-archive.md`, `sai-pr.md`)
+- **WHEN** the nine opencode change-consuming wrapper files are listed (`commands/opencode/sai-2-design.md`, `sai-3-implement.md`, `sai-4-review.md`, `sai-6-security.md`, `sai-7-performance.md`, `sai-8-accessibility.md`, `sai-archive.md`, `sai-build.md`, `sai-deep-review.md`)
 - **THEN** each one has exactly the two envelope keys, forwards `$ARGUMENTS` through `arguments_value`, and contains no labelled change-name line or other trailing content
 
 #### Scenario: change-picker uses arguments value
@@ -51,7 +52,12 @@ The opencode invocation-envelope adapter addresses opencode's wrapper substituti
 
 #### Scenario: Claude Code and Copilot remain independent of wrapper labels
 
-- **WHEN** the corresponding Claude Code or GitHub Copilot change-consuming command is invoked
+- **WHEN** the shipped harness command trees are listed
+- **THEN** only `commands/claude/` and `commands/opencode/` exist, with no GitHub Copilot change-consuming wrapper, and the Claude Code change-consuming command's change-name behavior does not require a labelled wrapper line
+
+#### Scenario: Claude Code remains independent of wrapper labels
+
+- **WHEN** the corresponding Claude Code change-consuming command is invoked
 - **THEN** its change-name behavior does not require a labelled wrapper line and remains governed by that harness's argument substitution and the shared envelope semantics
 
 ### Requirement: future change-consuming opencode wrappers forward the envelope

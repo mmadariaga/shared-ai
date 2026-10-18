@@ -24,15 +24,6 @@ The active design step-owned instruction at `sai/commands/design/steps/design.md
 - **WHEN** a design step presents a fixed decision surface
 - **THEN** it references the question-context policy from the active step-local contract and preserves the required context anatomy.
 
-### Requirement: apply-gate-surfaces-reference-policy
-
-`sai/commands/apply/steps/routing-split-flow.md` SHALL reference the question-context policy at apply's fixed human decision surface: the GREEN-conflict halt presentation. The prompt SHALL comply with the anatomy while preserving the halt semantics. (The per-Step Human Verification gate no longer exists; see ADR 0186.)
-
-#### Scenario: GREEN-conflict halt complies
-
-- **WHEN** the apply coordinator surfaces a GREEN-conflict halt to the user
-- **THEN** the presentation references the question-context policy and states what is being decided (implementation, test, or interface fault), why it matters, the essential state context of the conflict, and the plain-language options, preserving the halt semantics
-
 ### Requirement: explore-slicing-question-references-policy
 
 `sai/commands/explore/instructions.md` SHALL reference the question-context policy at its slicing clarifying-question surface. When a clarifying question is asked, it SHALL comply with the anatomy — stating what is being decided (where the cuts fall), why it matters, and the essential state context of the candidate idea — while preserving the existing rule that the question is asked only when the answer would change where the cuts fall.

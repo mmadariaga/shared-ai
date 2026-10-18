@@ -15,7 +15,7 @@ candidate below that exists**, copied **verbatim**, exactly as written.
 
 Substitute the concrete file name (for example `prereqs.js`,
 `change-picker.js`, `commit.js`, `check-delta-headers.js`,
-`worker-report-validator.js`, `to-pr.js`, `file-manifest.js`, `apply-step.js`, `transfer.js`) for `<name>` below.
+`worker-report-validator.js`, `to-pr.js`, `file-manifest.js`, `transfer.js`) for `<name>` below.
 
 On **Claude Code**, in this order:
 
@@ -58,7 +58,6 @@ takes one — never substitute one for the other.
   defines the invocation.
 - `file-manifest.js`: `node <tool-path> <fold|verify> <change-name> --json
   --cwd <project-root>`.
-- `apply-step.js`: all subcommands take `--change <change-name> --cwd <project-root>` and optional `--json` (one JSON object always). `preflight` has no stdin. `route` requires `--step <N>`, has no stdin, and returns the Step's routing `mode`. `baseline` requires `--run-id <stable coordinator identity>` and exact planning-input paths on stdin. `dispatch-check` requires `--step <N> --dispatch red|green|green-direct|green-exception --baseline <ref>`. `verify` requires the same flags plus `--checkpoint <ref>` and the dispatch add-list on stdin; explicit `--baseline-only` is the cumulative compatibility mode for callers without per-dispatch snapshots, never a baseline exemption. `close` requires `--step <N> --baseline <ref> --guard-base <sha|n/a>` on every path, including `--dry-run` and `--mark-only`; ordinary/dry-run stdin holds the add-list, `---`, and message via quoted heredoc, while mark-only stdin is empty. `inspect` and coordinator-only `restore-unrelated-index` require `--baseline <ref>`, with no stdin; `inspect` accepts `--step <N>`, which adds `next_dispatch` (whether a new run could dispatch that Step). Pass retained `--settled <ref>` after a prior close; `verify` also accepts `--parent-was-absent`. Business rules remain in the owning command cards.
 - `check-delta-headers.js`: `node <tool-path> <change-name> [--json]
   [--root <dir>] [--delta-dir <dir>] [--specs-dir <dir>]
   [--scenario-exceptions <temporary-json-file>]`; it takes no

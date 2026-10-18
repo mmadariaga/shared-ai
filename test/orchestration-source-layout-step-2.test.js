@@ -125,12 +125,12 @@ test('grouped design and implementation phase assets preserve their former sourc
       name: 'implement',
       directory: path.join(repoRoot, 'sai', 'commands', 'implement'),
       coordinator: path.join(repoRoot, 'sai', 'commands', 'implement', 'coordinator.md'),
-      cardContents: ['adr-index.template.md', 'command-bootstrap.md', 'coordinator.md', 'ddr-index.template.md', 'implementation-plan.template.md', 'steps', 'worker.md'],
+      cardContents: ['adr-index.template.md', 'coordinator.md', 'ddr-index.template.md', 'green-worker.md', 'red-worker.md', 'steps', 'worker-common.md'],
     },
     {
-      name: 'meta-build',
-      directory: path.join(repoRoot, 'sai', 'commands', 'meta-build'),
-      cardContents: ['command-bootstrap.md', 'coordinator.md'],
+      name: 'build',
+      directory: path.join(repoRoot, 'sai', 'commands', 'build'),
+      cardContents: ['coordinator.md'],
     },
   ];
 
@@ -139,7 +139,7 @@ test('grouped design and implementation phase assets preserve their former sourc
      assert.equal(directoryExists, true, `${phase.name} source directory should exist`);
      if (!directoryExists) continue;
      assert.deepEqual(fs.readdirSync(phase.directory).sort(), phase.cardContents);
-      if (phase.name === 'meta-build') continue;
+      if (phase.name === 'build') continue;
     assert.equal(
       fs.readFileSync(path.join(phase.directory, 'coordinator.md'), 'utf8'),
       fs.readFileSync(phase.coordinator, 'utf8')

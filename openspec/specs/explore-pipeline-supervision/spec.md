@@ -8,7 +8,7 @@ Define routed supervision of the isolated sai-1 spec-proposal worker from `sai-e
 
 ### Requirement: Name supervised route identity
 
-The supervised pipeline SHALL use `Plan - Unattended` and route identity `plan-unattended` for the existing sai-1/sai-2 supervision, review, chaining, and retry lifecycle. The direct build route SHALL use `Direct Build - Unattended` and route identity `direct-build-unattended` for its separate worker flow. `/sai-build` and `meta-build` SHALL remain distinct composition identities.
+The supervised pipeline SHALL use `Plan - Unattended` and route identity `plan-unattended` for the existing sai-1/sai-2 supervision, review, chaining, and retry lifecycle. The direct build route SHALL use `Direct Build - Unattended` and route identity `direct-build-unattended` for its separate worker flow.
 
 #### Scenario: supervised selection is classified
 

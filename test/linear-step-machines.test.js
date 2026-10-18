@@ -6,26 +6,22 @@ const fs = require('fs');
 const path = require('path');
 
 const specMachine = require('../sai-state/machines/spec-standalone.js');
-const implementMachine = require('../sai-state/machines/implement-standalone.js');
-const reviewMachine = require('../sai-state/machines/review-standalone.js');
 const securityMachine = require('../sai-state/machines/security-standalone.js');
 const performanceMachine = require('../sai-state/machines/performance-standalone.js');
 const accessibilityMachine = require('../sai-state/machines/accessibility-standalone.js');
-const redNewMachine = require('../sai-state/machines/red-new-steps.js');
-const greenNewMachine = require('../sai-state/machines/green-new-steps.js');
-const reviewNewMachine = require('../sai-state/machines/review-new-steps.js');
+const redMachine = require('../sai-state/machines/red-steps.js');
+const greenMachine = require('../sai-state/machines/green-steps.js');
+const reviewMachine = require('../sai-state/machines/review-steps.js');
 const registry = require('../sai-state/registry.js');
 
 const machines = [
   { name: 'spec-standalone@1', machine: specMachine },
-  { name: 'implement-standalone@1', machine: implementMachine },
-  { name: 'review-standalone@1', machine: reviewMachine },
   { name: 'security-standalone@1', machine: securityMachine },
   { name: 'performance-standalone@1', machine: performanceMachine },
   { name: 'accessibility-standalone@1', machine: accessibilityMachine },
-  { name: 'red-new-steps@1', machine: redNewMachine },
-  { name: 'green-new-steps@1', machine: greenNewMachine },
-  { name: 'review-new-steps@1', machine: reviewNewMachine },
+  { name: 'red-steps@1', machine: redMachine },
+  { name: 'green-steps@1', machine: greenMachine },
+  { name: 'review-steps@1', machine: reviewMachine },
 ];
 
 for (const { name, machine } of machines) {

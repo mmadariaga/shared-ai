@@ -7,7 +7,7 @@ TBD - created by archiving change generalize-unattended-recovery. Update Purpose
 
 ### Requirement: One resilience rule decides every non-clean outcome of an unattended lane
 
-The unattended lanes (Explore Plan - Unattended, Explore Direct Build - Unattended, and the Direct Build close of `/sai-5-review` and `/sai-review`) SHALL apply one resilience rule to every non-clean outcome after task disclosure: "Can the error be corrected and the planned process continued with the information already available, without leaving what the user authorized?" A yes SHALL mean correct, retry, and log; a no SHALL mean stop with a clear report. The rule SHALL be open, so no failure needs to appear on any list. It SHALL be single-sourced in `sai/policies/unattended-runtime-recovery.md` and reached from each lane by a pointer.
+The unattended lanes (Explore Plan - Unattended and Explore Direct Build - Unattended) SHALL apply one resilience rule to every non-clean outcome after task disclosure: "Can the error be corrected and the planned process continued with the information already available, without leaving what the user authorized?" A yes SHALL mean correct, retry, and log; a no SHALL mean stop with a clear report. The rule SHALL be open, so no failure needs to appear on any list. It SHALL be single-sourced in `sai/policies/unattended-runtime-recovery.md` and reached from each lane by a pointer.
 
 #### Scenario: An unforeseen failure is corrected
 

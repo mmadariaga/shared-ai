@@ -16,7 +16,7 @@ When the final activated audit segment completes, or the review segment complete
 
 ### Requirement: Zero-audit terminal literal
 
-After successful review and a legible triage parse, when zero audits were activated, the composition SHALL apply the Direct Build close using only the freshly generated `review.md`. When no report qualifies for the Direct Build round, its standard close SHALL print exactly the literal `Review complete. No audits recommended. Run `/sai-archive {name}` in a new chat when ready.` and stop, preserving any warning the run produced. Open fixable findings and open Questions SHALL receive the Direct Build round, with no fix dispatch before the user chooses to fix. The composition SHALL NOT invent a distinct meta-review-only success message that replaces the pinned completion texts. All shared-close paths SHALL retain this run-specific standard close; decline paths SHALL retain the existing manual-build guidance.
+After successful review and a legible triage parse, when zero audits were activated, the composition SHALL run the findings round using only the freshly generated `review.md`. When no report qualifies for the findings round, its standard close SHALL print exactly the literal `Review complete. No audits recommended. Run `/sai-archive {name}` in a new chat when ready.` and stop, preserving any warning the run produced. Open fixable findings and open Questions SHALL receive the findings round, with no fix dispatch before the user chooses to fix. The composition SHALL NOT invent a distinct meta-review-only success message that replaces the pinned completion texts. All shared-close paths SHALL retain this run-specific standard close; decline paths SHALL retain the existing guidance to run `/sai-3-implement {name}` by hand.
 
 #### Scenario: Zero-audit literal is exact
 - **WHEN** the review segment completes successfully, the triage parse is legible, no audit segment activates, and `review.md` has no open fixable finding and no open Question
@@ -24,4 +24,4 @@ After successful review and a legible triage parse, when zero audits were activa
 
 #### Scenario: Zero-audit eligible findings receive the existing close
 - **WHEN** the review segment completes successfully, the triage parse is legible, no audit segment activates, and the freshly generated `review.md` contains an open fixable finding or an open Question
-- **THEN** the composition SHALL apply the Direct Build close with its round, exclusions, fix-loop and one-local-commit boundaries without activating an audit
+- **THEN** the composition SHALL run the findings round, apply the exclusion marks, and start the fix segment with its per-step commit boundaries, without activating an audit

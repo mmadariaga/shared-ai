@@ -965,7 +965,7 @@ test('lint.js worker-emission-ownership: sai-state reset command fails', () => {
     const testFile = path.join(tmpdir, 'worker.md');
     const workerContent = `# Worker
 
-The coordinator must handle \`sai-state reset <id> review-standalone@1\`.
+The coordinator must handle \`sai-state reset <id> review-steps@1\`.
 `;
     fs.writeFileSync(testFile, workerContent);
     const result = tool(['worker-emission-ownership', 'worker.md'], tmpdir);
@@ -976,13 +976,13 @@ The coordinator must handle \`sai-state reset <id> review-standalone@1\`.
   }
 });
 
-test('lint.js worker-emission-ownership: review-standalone reference in worker fails', () => {
+test('lint.js worker-emission-ownership: review-steps reference in worker fails', () => {
   const tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), 'lint-'));
   try {
     const testFile = path.join(tmpdir, 'worker.md');
     const workerContent = `# Worker
 
-The machine review-standalone@1 is coordinator-owned.
+The machine review-steps@1 is coordinator-owned.
 `;
     fs.writeFileSync(testFile, workerContent);
     const result = tool(['worker-emission-ownership', 'worker.md'], tmpdir);

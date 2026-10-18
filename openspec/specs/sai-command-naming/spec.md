@@ -30,20 +30,19 @@ All documentation files (README.md, AGENTS.md) SHALL reference commands using th
 - **THEN** all command examples show `/sai-*` syntax, not `/ai-*`
 
 ### Requirement: Command numbering reflects the two-phase spec/design split
-The numbered sai-* commands SHALL use the following mapping, with `sai-2-design` inserted between spec and implement:
+The numbered sai-* commands SHALL use the following mapping, with `sai-2-design` inserted between spec and implement. Number 5 is vacant after `/sai-5-review` was retired; no command takes it, and `sai-6-security`, `sai-7-performance`, and `sai-8-accessibility` keep their numbers.
 
 | Number | Command | Generates |
 |--------|---------|-----------|
 | 1 | sai-1-spec | proposal.md + specs/ |
 | 2 | sai-2-design | design.md + tasks.md |
-| 3 | sai-3-implement | implementation.md |
-| 4 | sai-4-apply | executes tasks |
-| 5 | sai-5-review | review.md |
+| 3 | sai-3-implement | executes the RED→GREEN steps of tasks.md |
+| 4 | sai-4-review | review.md |
 | 6 | sai-6-security | security.md |
 | 7 | sai-7-performance | performance.md |
 | 8 | sai-8-accessibility | accessibility.md |
 
-Un-numbered commands (sai-commit, sai-pr, sai-archive, sai-explore, sai-backfill, sai-status, sai-worktree, sai-build) retain their names unchanged. `sai-build` is the un-numbered composition command that runs implementation planning and apply back-to-back; it does not receive a phase number and does not renumber `sai-3-implement` or `sai-4-apply`.
+Un-numbered commands (sai-commit, sai-pr, sai-archive, sai-explore, sai-backfill, sai-status, sai-worktree, sai-build, sai-deep-review) retain their names unchanged. `sai-build` is the un-numbered composition command that runs implementation and review back-to-back; it does not receive a phase number and does not renumber `sai-3-implement` or `sai-4-review`.
 
 #### Scenario: sai-2-design command exists
 - **WHEN** `commands/claude/` is listed
@@ -51,11 +50,11 @@ Un-numbered commands (sai-commit, sai-pr, sai-archive, sai-explore, sai-backfill
 
 #### Scenario: renumbered commands exist with new numbers
 - **WHEN** `commands/claude/` is listed
-- **THEN** files `sai-3-implement.md`, `sai-4-apply.md`, `sai-5-review.md`, `sai-6-security.md`, `sai-7-performance.md`, `sai-8-accessibility.md` are present
+- **THEN** files `sai-3-implement.md`, `sai-4-review.md`, `sai-6-security.md`, `sai-7-performance.md`, `sai-8-accessibility.md` are present
 
 #### Scenario: old numbered commands absent
 - **WHEN** `commands/claude/` is listed
-- **THEN** no files named `sai-2-implement.md`, `sai-4-apply.md`, `sai-4-review.md`, `sai-5-security.md`, `sai-6-performance.md`, `sai-7-accessibility.md` are present
+- **THEN** no files named `sai-2-implement.md`, `sai-4-apply.md`, `sai-5-review.md`, `sai-5-security.md`, `sai-6-performance.md`, `sai-7-accessibility.md` are present
 
 #### Scenario: opencode mirrors the same numbering
 - **WHEN** `commands/opencode/` is listed

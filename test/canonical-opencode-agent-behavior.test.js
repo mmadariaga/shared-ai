@@ -487,16 +487,15 @@ test('Claude budget skills route dispatch through their agent basenames with no 
   }
 });
 
-test('worker-count parity: every harness projects exactly eighteen matrix bindings and eighteen managed agents', () => {
+test('worker-count parity: every harness projects exactly thirteen matrix bindings and thirteen managed agents', () => {
   const os = require('node:os');
   const { loadInstallManifest, expandInstallManifest } = require('../bin/install-manifest.js');
   const manifest = loadInstallManifest(REPO_ROOT);
-  const phases = ['spec', 'design', 'implementation', 'review', 'security', 'performance', 'accessibility', 'commit', 'archive', 'backfill'];
+  const phases = ['spec', 'design', 'security', 'performance', 'accessibility', 'commit', 'archive', 'backfill'];
   const workers = [
     'sai-1-spec-proposal-worker',
     'sai-2-design-worker',
-    'sai-3-implementation-worker',
-    'sai-5-review-worker',
+    'sai-4-review-worker',
     'sai-6-security-worker',
     'sai-7-performance-worker',
     'sai-8-accessibility-worker',
@@ -505,12 +504,8 @@ test('worker-count parity: every harness projects exactly eighteen matrix bindin
     'sai-direct-build-worker',
     'sai-backfill-worker',
     'sai-merge-worker',
-    'sai-4-red-worker',
-    'sai-4-green-worker',
-    'sai-review-fix-worker',
-    'sai-red-new-worker',
-    'sai-green-new-worker',
-    'sai-review-new-worker',
+    'sai-3-red-worker',
+    'sai-3-green-worker',
   ];
   for (const harness of ['claude', 'opencode']) {
     const destinationRoot = {
@@ -526,7 +521,7 @@ test('worker-count parity: every harness projects exactly eighteen matrix bindin
       .filter(projection => path.relative(destinationRoot.sai, projection.destinationPath)
         .split(path.sep).join('/').startsWith('orchestration/workers/bindings/'))
       .map(projection => path.basename(projection.destinationPath));
-    assert.equal(bindingNames.length, 18, `${harness} should project exactly eighteen worker bindings`);
+    assert.equal(bindingNames.length, 13, `${harness} should project exactly thirteen worker bindings`);
     const phaseBindingNames = bindingNames.filter(name => phases.includes(name.replace(/-worker\.md$/, '')));
     assert.deepEqual(phaseBindingNames.sort(), phases.map(phase => `${phase}-worker.md`).sort(),
       `${harness} phase worker binding names should match the canonical phase matrix`);
@@ -534,7 +529,7 @@ test('worker-count parity: every harness projects exactly eighteen matrix bindin
       .filter(projection => projection.destinationPath.startsWith(destinationRoot.agents) &&
         workers.includes(path.basename(projection.destinationPath, '.md')))
       .map(projection => path.basename(projection.destinationPath, '.md'));
-    assert.equal(agentNames.length, 18, `${harness} should project exactly eighteen managed agents`);
+    assert.equal(agentNames.length, 13, `${harness} should project exactly thirteen managed agents`);
     assert.deepEqual(agentNames.sort(), [...workers].sort(),
       `${harness} managed agent names should match the canonical worker matrix`);
   }

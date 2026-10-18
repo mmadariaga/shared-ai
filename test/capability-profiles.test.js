@@ -60,10 +60,10 @@ test('write includes creation and modification, while archive mutates only throu
 });
 
 test('contract-specific web, auxiliary and delegation access is translated separately', () => {
-  assert.equal(resolveProfile(registry, 'worker-implementation').webfetch, true);
+  assert.equal(resolveProfile(registry, 'research').webfetch, true);
   assert.equal(resolveProfile(registry, 'worker-design').webfetch, undefined);
   for (const harness of ['claude', 'opencode']) {
-    for (const worker of ['sai-4-red-worker', 'sai-4-green-worker', 'sai-direct-build-worker', 'sai-review-fix-worker']) {
+    for (const worker of ['sai-3-red-worker', 'sai-3-green-worker', 'sai-direct-build-worker']) {
       assert.equal(translate(registry, registry.assignments.agents[worker], harness).profile.delegate, undefined);
     }
   }

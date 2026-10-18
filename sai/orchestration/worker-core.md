@@ -146,7 +146,7 @@ changed_files: string[]
 ```
 
 It carries `changed_files` like the notice. A design, spec-proposal,
-implementation-planning, review, security, performance, or accessibility worker
+security, performance, or accessibility worker
 SHALL emit one progress event for each result that makes one or more newly
 declared progress or routing steps complete, after prerequisite checks pass and
 its required change or scope resolution completes. A phase adapter with
@@ -274,8 +274,7 @@ The coordinator side lives in `@sai/orchestration/command-runner.md`
 A phase adapter MAY declare an ordered report extension carried inside the
 terminal lifecycle envelope. The extension is phase-defined: the coordinator
 validates every reported value against the phase's declared field list and
-never invents, reorders, or drops a field. The apply phase declares its fields
-in `sai/commands/apply/worker-common.md` § Report contract.
+never invents, reorders, or drops a field.
 
 ## Question Content
 

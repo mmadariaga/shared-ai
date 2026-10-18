@@ -43,31 +43,23 @@
     "model": "openai/gpt-5.6-luna",
     "variant": "max"
   },
-  "worker:sai-3-implementation-worker": {
-    "model": "openai/gpt-6-luna",
-    "variant": "max"
-  },
-  "command:sai-4-apply": {
-    "model": "openai/gpt-5.6-luna",
-    "variant": "max"
-  },
-  "worker:sai-4-red-worker": {
+  "worker:sai-3-red-worker": {
     "model": "openai/gpt-6-luna",
     "variant": "xhigh"
   },
-  "worker:sai-4-green-worker": {
+  "worker:sai-3-green-worker": {
     "model": "openai/gpt-6-luna",
     "variant": "max"
   },
-  "command:sai-review": {
+  "command:sai-deep-review": {
     "model": "openai/gpt-6-luna",
     "variant": "xhigh"
   },
-  "command:sai-5-review": {
+  "command:sai-4-review": {
     "model": "openai/gpt-6-luna",
     "variant": "xhigh"
   },
-  "worker:sai-5-review-worker": {
+  "worker:sai-4-review-worker": {
     "model": "openai/gpt-5.6-luna",
     "variant": "max"
   },

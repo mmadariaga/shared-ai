@@ -46,7 +46,7 @@ Supervised review rounds SHALL assign `High`, `Medium`, or `Low` per the assignm
 
 ### Requirement: Artifact review severity vocabulary scope
 
-The `High`, `Medium`, and `Low` vocabulary SHALL apply to artifact review — supervised review rounds and the `sai-explore` manual review loop — per the shared `review-finding-format` contract. It SHALL NOT replace the severity vocabularies of `sai-5-review`, `sai-6-security`, `sai-7-performance`, or `sai-8-accessibility`.
+The `High`, `Medium`, and `Low` vocabulary SHALL apply to artifact review — supervised review rounds and the `sai-explore` manual review loop — per the shared `review-finding-format` contract. It SHALL NOT replace the severity vocabularies of `sai-6-security`, `sai-7-performance`, or `sai-8-accessibility`.
 
 #### Scenario: supervised review rounds use the shared vocabulary
 - **WHEN** a supervised review round runs
@@ -57,5 +57,5 @@ The `High`, `Medium`, and `Low` vocabulary SHALL apply to artifact review — su
 - **THEN** it uses the same shared `High`, `Medium`, and `Low` vocabulary per the shared contract
 
 #### Scenario: audit commands retain their own vocabularies
-- **WHEN** `sai-5-review`, `sai-6-security`, `sai-7-performance`, or `sai-8-accessibility` runs
+- **WHEN** `sai-6-security`, `sai-7-performance`, or `sai-8-accessibility` runs
 - **THEN** that command retains its existing finding format and severity vocabulary

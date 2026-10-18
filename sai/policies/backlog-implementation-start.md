@@ -79,13 +79,11 @@ answer. An intent whose publication was cancelled or failed lapses, and that
 slice asks steps 1–4 as written.
 
 This owner contract runs in the user-facing coordinator, immediately before
-the first implementation worker on standalone apply, chained apply, and Direct
-Build. Planning and optional initial-branch preparation do not run assignment.
+the first implementation worker of Direct Build. Planning and optional initial-branch preparation do not run assignment.
 Claude Code uses `AskUserQuestion`; opencode uses `question`. Load
 `safe-operations` before a remote mutation. Fast-track and unattended route
 consent do not approve assignment and never choose Skip; the questions are asked
-under `--fast-track`, `/sai-build`'s injected fast-track, and Direct Build
-alike, for every provider.
+under `--fast-track` and Direct Build alike, for every provider.
 
 Resolve the selected issue from a publication's structured correspondence for
 the explicitly selected change name, explicit originating-issue provenance, the

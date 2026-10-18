@@ -139,7 +139,7 @@ test('each failed step allows three attempts shared by both paths on the counter
   assert.match(attempts, /one diagnosis round per phase\. The\s+Explore Diagnosis Round and its \*\*Bounded Recovery\*\* continuation form that\s+one round/);
   assert.match(attempts, /keyed by the\s+failed step \(`step-1`, `step-2`, `step-2b`, and `step-3` through `step-8`\)/);
   assert.doesNotMatch(attempts, /across Steps 1–2/);
-  assert.match(attempts, /count the three attempts per close in conversation\. An attempt never adds a fix-loop round/);
+  assert.doesNotMatch(attempts, /Direct Build close of/);
   assert.match(attempts, /when a Direct Build step's counter reaches three with that\s+step still failing, or when the budget agent returns the diagnosis the\s+previous attempt already returned/);
   assert.match(attempts, /dispatch-retry limit, replacement limit, three-round review\/fix limits, and mutation gates remain unchanged/);
   assert.doesNotMatch(policy, /one-shot diagnosis allowance|Whichever is first consumes it/);
@@ -159,15 +159,6 @@ test('one open resilience rule leads the policy and agreed content passes throug
   assert.match(decision, /the coordinator corrects that input and re-dispatches/);
   assert.match(decision, /Agreed content passes through every correction unchanged/);
   assert.match(decision, /A correction that needs a change to the What, the Why, or the Edge Cases is a contradiction for the user to decide/);
-});
-
-test('the review Direct Build close loads the policy and keeps its cap', () => {
-  const close = compact(read('sai/commands/meta-review/direct-build-close.md'));
-
-  assert.match(close, /Fetch @sai\/policies\/unattended-runtime-recovery\.md/);
-  assert.match(close, /no round is added/);
-  assert.match(close, /The loop is capped at three rounds/);
-  assert.match(close, /autonomy-audit-log\.md/);
 });
 
 test('worker-core carries the authority section and the runner validates payloads as received', () => {

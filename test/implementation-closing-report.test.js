@@ -40,72 +40,12 @@ test('common order preserves complete human review before navigation and diagnos
   assert.match(text, /stops before Execution details[\s\S]*every pending human check and[\s\S]*reason/);
 });
 
-test('all full routes consult the authority for success and stops with unchanged Apply navigation', () => {
-  for (const file of ['sai/commands/apply/coordinator.md', 'sai/commands/meta-build/coordinator.md',
-    'sai/commands/explore/steps/pipeline-direct-build.md', 'sai/commands/apply/steps/terminal-lifecycle.md']) {
-    assert.match(read(file), /Fetch @sai\/policies\/implementation-closing-report\.md/);
-  }
-  const literal = 'Implementation applied. In a new chat when ready, run `/sai-5-review {name}` for a general review, or `/sai-review {name}` to add specialized audits based on the initial assessment performed by `/sai-5-review`.';
-  for (const file of ['sai/commands/apply/invocation.md', 'sai/commands/meta-build/coordinator.md']) {
-    const text = read(file);
-    assert.ok(text.includes(literal));
-    assert.match(text, /Next step/);
-    assert.match(text, /Execution details.*last/);
-  }
-  assert.match(read('sai/commands/apply/coordinator.md'), /incomplete run[\s\S]*no completion literal/);
-  assert.match(read('sai/commands/apply/coordinator.md'), /pending question is a pause/);
-  assert.match(read('sai/commands/meta-build/coordinator.md'), /stopped closing report/);
-  assert.match(read('sai/commands/apply/steps/terminal-lifecycle.md'), /shared stopped closing report[\s\S]*§§ 1–5 do not run/);
-});
-
-test('suite failures have a direct stopped-report print path without terminal work or success navigation', () => {
-  const terminal = read('sai/commands/apply/steps/terminal-lifecycle.md');
-  const gate = terminal.split('## 0. Terminal suite gate')[1].split('## 1. Terminal functional review')[0];
-  assert.match(gate, /lacks the command, the command cannot run, or the suite fails/);
-  assert.match(gate, /print the shared stopped closing report directly in § 0, independently of § 5/);
-  assert.match(gate, /without invoking successful `terminal_navigation`/);
-  assert.match(gate, /What you need to know and Next step/);
-  assert.match(gate, /Execution details last/);
-  assert.match(gate, /supervisor to print its single invocation-wide stopped report/);
-  assert.match(gate, /Omit the pending human-review block: no functional review ran/);
-  assert.match(gate, /This stop promotes learnings like any other: fetch `sai\/commands\/apply\/steps\/learnings-promotion\.md` and promote before the report prints/);
-  assert.match(gate, /no functional review, final sweep, or terminal documentation commit/);
-  assert.match(gate, /marks no terminal entry, and prints no completion literal or successful transition/);
-});
-
-test('an apply stop promotes learnings before the stopped report prints, and no other route does', () => {
-  const promotion = policy().split('## Apply stop: learnings promotion')[1].split('## Authorization visibility')[0];
-  assert.match(promotion, /Before the apply coordinator prints a stopped report, it fetches\s+`sai\/commands\/apply\/steps\/learnings-promotion\.md` and promotes/);
-  assert.match(promotion, /lists the path, the\s+entries added and superseded, and that the file is uncommitted/);
-  assert.match(promotion, /the report carries no learnings line/);
-  assert.match(promotion, /supervisor\s+prints the lines the apply coordinator hands over and promotes nothing itself/);
-  assert.match(promotion, /\(Build's implement segment, Direct Build\)\s+promotes nothing/);
-});
-
-test('permitted legacy suite omission reaches both summary and diagnostics as a warning', () => {
-  const terminal = read('sai/commands/apply/steps/terminal-lifecycle.md');
-  const gate = terminal.split('## 0. Terminal suite gate')[1].split('## 1. Terminal functional review')[0];
-  assert.match(gate, /print exactly `> Terminal suite gate: skipped — plan has no full-suite command` and continue to § 1/);
-  assert.match(gate, /Carry this known skipped-gate result into the closing What you need to know and Execution details/);
-  assert.match(gate, /omitted full-suite check with the reason `plan has no full-suite command`/);
-  assert.match(gate, /otherwise completed run as completed with warnings/);
-  assert.match(gate, /permitted skip still continues through §§ 1–5 and is not successful verification/);
-});
-
-test('Build failure closing preserves banner count according to implement activation', () => {
-  const build = read('sai/commands/meta-build/coordinator.md');
-  const failure = build.split('## Phase-1 failure blocks apply')[1].split('## Re-entry')[0];
-  assert.match(failure, /without printing any FAST-TRACK banner beyond the single activation banner when implement activated/);
-  assert.match(failure, /In What you need to know[\s\S]*failure, cancellation, or interruption/);
-  assert.match(failure, /when an interruption closes the invocation/);
-  assert.match(failure, /changes neither segment routing nor banner ownership/);
-});
-
-test('Apply closing explicitly collects affected files and declined or no-op commit decisions', () => {
-  const closing = read('sai/commands/apply/steps/terminal-lifecycle.md').split('## 5. Print and stop')[1];
-  assert.match(closing, /Execution details[\s\S]*affected files, declined\/no-op commit decisions/);
-  assert.match(closing, /shared policy as sole format authority/);
-  assert.match(closing, /Keep their pre-authorization disclosures where they are/);
+test('the full Direct Build route consults the authority and no apply-only part remains in it', () => {
+  assert.match(read('sai/commands/explore/steps/pipeline-direct-build.md'), /Fetch @sai\/policies\/implementation-closing-report\.md/);
+  const text = policy();
+  assert.doesNotMatch(text, /apply-step\.js/);
+  assert.doesNotMatch(text, /learnings-promotion/);
+  assert.doesNotMatch(text, /would_pass/);
 });
 
 test('authorization visibility and declined-commit consequences remain at their decision points', () => {
@@ -114,13 +54,6 @@ test('authorization visibility and declined-commit consequences remain at their 
   assert.match(text, /original reports verbatim rather than rebuilding/);
   assert.match(text, /reporting[\s\S]*authorizes no rollback or new operation/);
   assert.match(text, /no new persisted reporting state[\s\S]*no verification run solely/);
-  const runner = read('sai/commands/apply/runner.md');
-  assert.match(runner, /print `report_text`, then step 3's question, then `close`/);
-  assert.match(runner, /All reports and authorization disclosures below still print at their original decision point/);
-  assert.match(runner, /On `no`, run `close --mark-only`/);
-  const terminal = read('sai/commands/apply/steps/terminal-lifecycle.md');
-  assert.match(terminal, /Will be committed.*Will NOT be committed/);
-  assert.match(terminal, /On `no`, leave the files in the working tree/);
 });
 
 test('full Direct Build retains diagnostics and excludes the POC', () => {

@@ -7,21 +7,18 @@ TBD - created by archiving change sai-build-new-adversarial-review. Update Purpo
 
 ### Requirement: Adversarial step review after GREEN
 
-After GREEN closes a step, the `/sai-3-implement-new` coordinator SHALL stage GREEN's files, including new and unreported production files, and review the step's staged diff (`git diff --cached`, holding RED's tests and GREEN's production code) against the brief's spec scenarios and tasks before the step commits, applying the criteria of the Direct Build Step 2 functional fix loop in `sai/commands/explore/steps/pipeline-direct-build.md`. The structural check SHALL confirm that every scenario and task maps to changed production paths and to a test that asserts it, that the tests are not gamed (no special-casing of test inputs, no hard-coded expected values, no assertion that proves less than its scenario), that nothing beyond the brief or anticipatory of a later step is added, and that the production files match the plan or are justified in a deviation. The empirical check SHALL exercise the requested behavior through the project's runnable surface (tests, CLI, or script) with the executor whenever feasible, rather than inferring it from the diff. The review SHALL be limited to spec fidelity, test gaming, and excess scope, and SHALL NOT report style, design, performance, or general security.
+After GREEN closes a step, the `/sai-3-implement` coordinator SHALL stage GREEN's files, including new and unreported production files, and review the step's staged diff (`git diff --cached`, holding RED's tests and GREEN's production code) against the brief's spec scenarios and tasks before the step commits, applying the criteria of the Direct Build Step 2 functional fix loop in `sai/commands/explore/steps/pipeline-direct-build.md`. The structural check SHALL confirm that every scenario and task maps to changed production paths and to a test that asserts it, that the tests are not gamed (no special-casing of test inputs, no hard-coded expected values, no assertion that proves less than its scenario), that nothing beyond the brief or anticipatory of a later step is added, and that the production files match the plan or are justified in a deviation. The empirical check SHALL exercise the requested behavior through the project runnable surface (tests, CLI, or script) with the executor whenever feasible, rather than inferring it from the diff. The review SHALL be limited to spec fidelity, test gaming, and excess scope, and SHALL NOT report style, design, performance, or general security.
 
 #### Scenario: GREEN hard-codes the expected value
-
-- **WHEN** the step's tests pass because GREEN returns the value a test expects instead of implementing the scenario
+- **WHEN** the step tests pass because GREEN returns the value a test expects instead of implementing the scenario
 - **THEN** the coordinator reports a test-gaming finding before the step commits.
 
 #### Scenario: GREEN creates a new production file
-
-- **WHEN** GREEN satisfies the step's tests through a production file it created
+- **WHEN** GREEN satisfies the step tests through a production file it created
 - **THEN** the file is staged before the review and its content is part of the reviewed diff.
 
 #### Scenario: A style issue is not reported
-
-- **WHEN** the step's diff meets its scenarios and tasks but has a naming or formatting weakness
+- **WHEN** the step diff meets its scenarios and tasks but has a naming or formatting weakness
 - **THEN** the review reports no finding for it and leaves it to the later review command.
 
 ### Requirement: Step review findings follow the shared artifact review contract

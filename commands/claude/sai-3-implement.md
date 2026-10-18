@@ -1,14 +1,14 @@
 ---
-description: Plan a change's implementation into implementation.md — ordered RED→GREEN steps sized for a cheap model to apply. Stops before /sai-4-apply.
+description: Implement a change's plan end to end with no human in the loop — live RED and GREEN workers, per-step tests, and one local commit per step.
 argument-hint: "[change-name]"
-model: sonnet
-effort: high
+model: opus
+effort: medium
 allowed-tools: {{capabilityAllowedTools}}
 ---
 Fetch @skills/fetch/SKILL.md
-Fetch @sai/adapters/claude/boot.md and follow it.
+This invocation starts clean: disregard prior conversational context except where a fetched contract explicitly directs otherwise.
 Required capability profile: {{capabilityProfile}}.
-Fetch @sai/commands/implement/command-bootstrap.md and follow those instructions exactly, forwarding the InvocationEnvelope block below.
+Fetch @sai/commands/implement/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below.
 
 InvocationEnvelope:
   command_name: implement

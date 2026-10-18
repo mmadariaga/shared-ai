@@ -26,15 +26,14 @@ an association from a branch number or an ordinary `Refs` mention.
    that key. Anything else (absent file or key, `false`, the string `"true"`,
    `null`) is `false`. A corrupt file is `false` plus one warning line; the check
    continues. Log `[sai-archive] backfilled=<true|false>`.
-3. Group the eleven `sai-workflow` artifacts from the JSON `artifacts` array:
-   - **CORE** (blocking): `proposal`, `specs`, `design`, `tasks`,
-     `implementation`;
+3. Group the ten `sai-workflow` artifacts from the JSON `artifacts` array:
+   - **CORE** (blocking): `proposal`, `specs`, `design`, `tasks`;
    - **AUDIT** (informational): `review`, `security`, `performance`,
      `accessibility`, `change-overview`;
    - **EXEMPT** (silent): `interfaces`, never collected into any set and never
      named in a diagnostic.
-4. **CORE.** For a backfilled change, skip `design`, `tasks`, and
-   `implementation`; `proposal` and `specs` are always checked. Collect every
+4. **CORE.** For a backfilled change, skip `design` and `tasks`; `proposal` and
+   `specs` are always checked. Collect every
    remaining CORE artifact whose `status` is not `done`. When any is collected,
    close the run with a terminal result whose summary is exactly
    **"Missing CORE artifact(s): <id1>, <id2>. Archive blocked."**, with no AUDIT
@@ -50,23 +49,6 @@ an association from a branch number or an ordinary `Refs` mention.
      `current`. `## Not Applicable` does not apply to it.
    - When anything is collected, report exactly one line:
      `[sai-archive] informational: missing AUDIT artifact(s): <id1>, <id2>`.
-
-## Completion Check
-
-When `openspec/changes/$ARGUMENTS/implementation.md` exists and holds one or
-more `- [ ]` items, list each with its `implementation.md:{line}` location, its
-enclosing `#### Step N` heading, and its checkbox text. Then:
-
-- outside fast-track, ask **"Continue archiving with N unchecked items?"** with
-  ordered options `yes (Recommended)` / `no`, carrying the list as essential
-  state context;
-- under `fast_track_active`, proceed as if the answer were `yes`, without
-  asking.
-
-Only an explicit `yes` lets the archive proceed; any other answer closes with a
-summary stating that archiving was not performed, citing the unchecked items.
-The question is conversational: no approval key is written to `.openspec.yaml`.
-Without `implementation.md`, or with no unchecked item, this check is silent.
 
 ## Delta-sync summary
 

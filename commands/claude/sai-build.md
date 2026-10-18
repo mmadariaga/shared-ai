@@ -1,15 +1,15 @@
 ---
-description: Plan and apply a change in one run — /sai-3-implement then /sai-4-apply, with fast-track always on (commits pre-authorized, no stop between phases).
+description: Build a change in one run — /sai-3-implement then /sai-4-review, closing with a findings summary for you to triage (commits pre-authorized, no stop between segments).
 argument-hint: "[change-name]"
 model: opus
 effort: medium
 allowed-tools: {{capabilityAllowedTools}}
 ---
 Fetch @skills/fetch/SKILL.md
-Fetch @sai/adapters/claude/boot.md and follow it.
+This invocation starts clean: disregard prior conversational context except where a fetched contract explicitly directs otherwise.
 Required capability profile: {{capabilityProfile}}.
-Fetch @sai/commands/meta-build/command-bootstrap.md and follow those instructions exactly, forwarding the InvocationEnvelope block below.
+Fetch @sai/commands/build/coordinator.md and follow it exactly, forwarding the InvocationEnvelope block below.
 
 InvocationEnvelope:
-  command_name: meta-build
+  command_name: build
   arguments_value: $ARGUMENTS

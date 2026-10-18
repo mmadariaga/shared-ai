@@ -3,7 +3,9 @@
 ## Purpose
 
 The change-picker capability resolves a missing change name from the invocation envelope. A trimmed, non-empty `arguments_value` is authoritative; when it is empty, the capability uses the existing 0/1/N active-change picker.
+
 ## Requirements
+
 ### Requirement: Invocation envelope provides change-name authority
 
 The change-picker SHALL use only the invocation envelope's `arguments_value` for direct change-name resolution. After trimming, a non-empty `arguments_value` SHALL be authoritative and SHALL pass through as the resolved change name without an OpenSpec query or user prompt. No wrapper-echo field exists in the active envelope, and the change-picker SHALL NOT resolve a name from conversation history or require a labelled line.
@@ -26,7 +28,7 @@ The change-picker SHALL use the 0/1/N active-change picker only when `arguments_
 
 ### Requirement: Consumer scope excludes sai-status
 
-The shared `change-picker.md` instruction SHALL serve the commands whose main session resolves the change name before any dispatch — today `sai-4-apply`, `sai-archive`, and `sai-pr`, each through its own fetch. Routed phase workers resolve inside the worker and return picker questions as `needs_input`. `sai-status` SHALL NOT be a consumer of `change-picker.md`; it resolves change names via the dedicated `status-picker` capability instead. The policy SHALL NOT enumerate its consumers: the fetch lines are the source of truth. The invocation-envelope precedence and the 0/1/N fallback SHALL be decided by `sai/tools/change-picker.js` rather than re-derived in the instruction's prose.
+The shared `change-picker.md` instruction SHALL serve the commands whose main session resolves the change name before any dispatch — today `sai-archive`, through its own fetch. Routed phase workers resolve inside the worker and return picker questions as `needs_input`. `sai-status` SHALL NOT be a consumer of `change-picker.md`; it resolves change names via the dedicated `status-picker` capability instead. The policy SHALL NOT enumerate its consumers: the fetch lines are the source of truth. The invocation-envelope precedence and the 0/1/N fallback SHALL be decided by `sai/tools/change-picker.js` rather than re-derived in the instruction's prose.
 
 #### Scenario: the policy names no consumer list
 - **WHEN** `sai/policies/change-picker.md` is read
@@ -42,4 +44,3 @@ The shared `change-picker.md` instruction SHALL serve the commands whose main se
 #### Scenario: empty sai-1-spec request
 - **WHEN** `/sai-1-spec` is invoked with an empty arguments_value
 - **THEN** the spec worker stops with its block-required message and never fetches the shared change-picker
-

@@ -7,7 +7,6 @@ const path = require('node:path');
 
 const read = file => fs.readFileSync(path.join(__dirname, '..', file), 'utf8');
 const phases = [
-  ['review', 'resolve-change', 'establish-diff-scope'],
   ['security', 'resolve-security-scope', 'discover-module-map'],
   ['performance', 'resolve-performance-scope', 'map-stack-hot-paths'],
   ['accessibility', 'resolve-accessibility-scope', 'map-ui-framework'],
@@ -37,8 +36,8 @@ test('review and audits keep proposal gates without environment prerequisite sta
   }
 });
 
-test('meta-review retains the artifact table without a preflight', () => {
-  const coordinator = read('sai/commands/meta-review/coordinator.md');
+test('deep-review retains the artifact table without a preflight', () => {
+  const coordinator = read('sai/commands/deep-review/coordinator.md');
   assert.match(coordinator, /## Artifact paths/);
   assert.match(coordinator, /runs no OpenSpec prerequisite check/);
   assert.match(coordinator, /Fetch @sai\/policies\/prereqs-paths\.md/);

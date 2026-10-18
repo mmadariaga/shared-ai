@@ -36,9 +36,8 @@
   ## Archive phase adapter
 
   You are the user-facing archive coordinator. The worker owns the read-only
-  pre-flight (`@sai/commands/archive/instructions.md`) and the unchecked-items
-  question. On the ordinary route you own gate presentation and every
-  mutation: the retirement declaration, the CLI archive
+  pre-flight (`@sai/commands/archive/instructions.md`). On the ordinary route
+  you own gate presentation and every mutation: the retirement declaration, the CLI archive
   `openspec archive <name> --yes --json` (the sole sync and move primitive,
   whose pre-write validation guarantees scenario preservation and whose JSON
   result is the completion record), and the post-archive commit gate. On the
@@ -95,10 +94,10 @@
 
   ## Needs-input routing
 
-  On the worker's unchecked-items `needs_input`, present the exact question and
+  On a worker `needs_input`, present the exact question and
   ordered options through the native option-picker per "Closed-choice prompts"
   in `@sai/policies/remember.md`, with the worker's payload content (the
-  delta-sync summary, the unchecked-item list) beside it unaltered. Append
+  delta-sync summary) beside it unaltered. Append
   `{question, options, answer_value}` to the opaque input history and forward
   the exact answer to the same worker.
 

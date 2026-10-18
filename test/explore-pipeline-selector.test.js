@@ -1669,8 +1669,6 @@ test('Step 2 item-10 diagnosis references Bounded Recovery without restating the
   for (const coordinatorPath of [
     'sai/commands/spec/coordinator.md',
     'sai/commands/design/coordinator.md',
-    'sai/commands/apply/coordinator.md',
-    'sai/commands/meta-build/coordinator.md',
   ]) {
     assert.match(
       artifact(coordinatorPath),

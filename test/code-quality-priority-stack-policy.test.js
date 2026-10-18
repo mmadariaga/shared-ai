@@ -11,15 +11,11 @@ const manifest = require('../sai/install-manifest.json');
 const repoRoot = path.join(__dirname, '..');
 const POLICY = 'sai/policies/code-quality-priority-stack.md';
 const FETCH_LINE = 'Fetch @sai/policies/code-quality-priority-stack.md';
-const IMPLEMENT_COMMON = 'sai/commands/implement/steps/common.md';
 const REVIEW_PASS_6 = 'sai/commands/review/steps/resolve-review-analysis.md';
-const REVIEW_NEW_PASS_6 = 'sai/commands/review-new/steps/resolve-review-analysis.md';
 const STACK_HEADING = '## Code Quality Priority Stack';
 const CODE_WRITERS = [
-  'sai/commands/apply/worker-common.md',
   'sai/commands/explore/direct-build-worker.md',
-  'sai/commands/meta-review/review-fix-worker.md',
-  'sai/commands/implement-new/worker-common.md',
+  'sai/commands/implement/worker-common.md',
 ];
 const MERGE_INSTRUCTIONS = 'sai/commands/merge/instructions.md';
 
@@ -45,25 +41,18 @@ test('the Priority Stack section lives only in the policy', () => {
   assert.ok(read(POLICY).startsWith('# Code Quality Priority Stack\n'));
 });
 
-test('the implement step library loads the policy', () => {
-  assert.ok(read(IMPLEMENT_COMMON).split('\n').includes(FETCH_LINE));
-});
-
 test('review pass 6 loads the policy on a tension', () => {
   assert.ok(read(REVIEW_PASS_6).includes(FETCH_LINE));
-  assert.ok(read(REVIEW_NEW_PASS_6).includes(FETCH_LINE));
 });
 
 test('code-writing workers explicitly load the single-source policy within their boundaries', () => {
   for (const file of CODE_WRITERS) {
     assert.equal(read(file).split('\n').filter(line => line === FETCH_LINE).length, 1, file);
   }
-  assert.match(read(CODE_WRITERS[0]), /within the assigned Step and role restrictions/);
-  assert.match(read(CODE_WRITERS[0]), /GREEN's test-file prohibition remains in force/);
-  assert.match(read(CODE_WRITERS[1]), /within the crystallized block's scope/);
-  assert.match(read(CODE_WRITERS[2]), /only to the selected findings, retaining the exclusions/);
-  for (const file of ['sai/commands/apply/red-worker.md', 'sai/commands/apply/green-worker.md']) {
-    assert.ok(read(file).includes('Fetch @sai/commands/apply/worker-common.md'), file);
+  assert.match(read(CODE_WRITERS[0]), /within the crystallized block's scope/);
+  assert.match(read(CODE_WRITERS[1]), /within your role and the brief/);
+  for (const file of ['sai/commands/implement/red-worker.md', 'sai/commands/implement/green-worker.md']) {
+    assert.ok(read(file).includes('Fetch @sai/commands/implement/worker-common.md'), file);
   }
 });
 
@@ -90,7 +79,7 @@ test('policy references are limited to the intended planning, review, and code-w
     .filter(file => file.endsWith('.md'))
     .filter(file => fs.readFileSync(file, 'utf8').includes(FETCH_LINE))
     .map(file => path.relative(repoRoot, file).split(path.sep).join('/'));
-  assert.deepEqual(holders.sort(), [IMPLEMENT_COMMON, REVIEW_PASS_6, REVIEW_NEW_PASS_6, ...CODE_WRITERS, MERGE_INSTRUCTIONS].sort());
+  assert.deepEqual(holders.sort(), [REVIEW_PASS_6, ...CODE_WRITERS, MERGE_INSTRUCTIONS].sort());
   for (const file of [...CODE_WRITERS, MERGE_INSTRUCTIONS]) {
     assert.doesNotMatch(read(file), /\*\*(?:YAGNI|SOLID|Dependency ladder|Minimum surface area)\*\*/);
   }

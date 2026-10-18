@@ -1,7 +1,6 @@
 # Finding state
 
-How the Direct Build close of `/sai-review` and `/sai-5-review` classifies a
-finding in a report.
+How `/sai-deep-review` and `/sai-3-implement` classify a finding in a report.
 
 ## Question
 
@@ -9,7 +8,8 @@ A **Question** is a finding that needs an answer from the user. It carries a
 `Q*` identifier in `review.md`: the review writes a disagreement with a recorded
 decision, scope creep, and a concern it cannot locate in code as Questions. A
 Question is a finding waiting for the user's answer, never a finding to send to
-another command.
+another command. `/sai-deep-review` asks for the answer in its findings round and
+hands it to `/sai-3-implement`.
 
 ## Fixable
 
@@ -30,9 +30,9 @@ A finding is **open** when it carries no fixed mark and **fixed** when it
 carries one. A report keeps its fixed findings: it records what was found and
 what was fixed, so nothing is removed. A Question is open until it is answered
 and fixed; an unanswered Question stays open. Every consumer of a report acts
-on open findings only: the Direct Build close selects from them,
-`/sai-3-implement` ingests them, and `/sai-3-implement-new` applies them,
-except the findings that carry the excluded mark (see Excluded mark).
+on open findings only: the `/sai-deep-review` round selects from them and
+`/sai-3-implement` applies them, except the findings that carry the excluded
+mark (see Excluded mark).
 
 ## Fixed mark
 
@@ -46,11 +46,9 @@ The mark carries no commit hash: a commit cannot contain its own hash, and
 `git log` or `git blame` on the marked heading line leads to the commit that
 fixed it. The mark only states that the finding is fixed.
 
-The Direct Build close writes the marks through the fix worker, in a final
-instruction after the coordinator accepts convergence, so the marks enter the
-same commit as their fixes. The `/sai-3-implement-new` coordinator writes the
-marks itself, in the commit of the step that fixed each finding. Only the
-findings a run fixed are marked:
+The `/sai-3-implement` coordinator writes the marks itself, in the commit of the
+step that fixed each finding, so a mark and its fix enter history together. Only
+the findings a run fixed are marked:
 findings the run left out and unanswered Questions stay open. Regenerating a report
 replaces its findings together with their marks.
 
@@ -59,16 +57,17 @@ replaces its findings together with their marks.
 The **excluded mark** is the literal ` (EXCLUDED: <reason>)` appended to the end
 of the finding's heading line, for example
 `#### M2 — Rename helper (EXCLUDED: cosmetic, outside the change's behavior)`.
-The `/sai-build-new` coordinator writes it after its assessment pass, for a
-fixable finding it decides not to fix; a user may also write it by hand. The
+The `/sai-build` coordinator writes it after its assessment pass, for a fixable
+finding it decides not to fix; the `/sai-deep-review` coordinator writes it for
+each fixable finding the user left out of the findings round; a user may also
+write it by hand. The
 reason is concrete and fits on the heading line. Only the heading line changes,
 as with the fixed mark: the body, the identifier, the severity, and the closing
 `Summary:` tally stay exactly as the report wrote them. A Question never
 carries it.
 
-An excluded finding stays open for every consumer except `/sai-3-implement-new`,
-which skips it, standalone or inside `/sai-build-new`. The Direct Build close of
-`/sai-review` and `/sai-5-review` does not honor the mark. Removing the mark
-reopens the finding for `/sai-3-implement-new`, which then fixes it and writes
+An excluded finding stays open for every consumer except `/sai-3-implement`,
+which skips it, standalone or inside `/sai-build` or `/sai-deep-review`. Removing
+the mark reopens the finding for `/sai-3-implement`, which then fixes it and writes
 the fixed mark. Regenerating a report replaces its excluded marks together with
 its fixed marks, so no exclusion carries over to a new report.

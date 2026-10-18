@@ -7,11 +7,13 @@ TBD - created by archiving change tasks-as-scaffold. Update Purpose after archiv
 
 ### Requirement: tasks-artifact-format
 
-The active task-generation step SHALL remain the sole authority for the narrative task scaffold, Routing line, Files Affected entries, and mandatory trailing sections. `tasks.md` SHALL be a narrative planning document with no checkbox markers (`- [ ]`).
+The active task-generation step SHALL remain the sole authority for the narrative task scaffold, the progress checkbox, Routing line, Files Affected entries, and mandatory trailing sections. `tasks.md` SHALL be a planning document whose only checkbox markers are one `- [ ] Step N:` progress line per step, which `/sai-3-implement` checks off as each step is committed.
 
 The file SHALL contain one numbered section per implementation step, structured as:
 
     ## Step N: <title>
+
+    - [ ] Step N: <title>
 
     **Routing**: category=<category> · context=<context> · difficulty=<difficulty>
 
@@ -27,23 +29,23 @@ The file SHALL contain one numbered section per implementation step, structured 
 
     **Existing Tests Broken**: <existing tests this step breaks, each on its own `- ` bullet line beneath the label with failure mode `compile` or `runtime`; `None` when the step breaks none>
 
+The progress checkbox line SHALL sit directly beneath its `## Step N:` heading, SHALL be written unchecked as `- [ ] Step N: <title>`, and SHALL never be written as `- [x]` at generation. No other checkbox line SHALL appear in the file.
+
 The `**Files Affected**` sub-field SHALL contain one file-system change per Markdown bullet line, not a comma-separated list. Newly generated ordinary entries SHALL start with `- ` followed by exactly one change-type token from the closed four-letter vocabulary `A` (created), `M` (modified), `D` (deleted), `R` (moved/renamed), followed by exactly one space and then the exact project-root-relative path of the file. An `R` line SHALL instead carry the source path, the separator ` -> `, and the destination path, so a move or rename is recorded as one entry and never as a `D` entry plus an `A` entry.
 
 As the sole bounded generated-output exception to the exact-file form, an A entry MAY use `- A <directory>/<prefix>*<suffix> — generated count=<positive integer>`. The directory SHALL be exact and repository-relative, the basename SHALL have one wildcard between non-empty literal prefix and suffix, and the count SHALL be positive. Recursive and unrestricted wildcards SHALL not be permitted. This exception SHALL add neither a change-type token nor a sixth Step field. Apply SHALL resolve the family to exact paths before close; the derivative manifest SHALL retain the declared count rather than turn the family into an executable path.
 
-The `R` token SHALL cover both a pure relocation and a relocation that rewrites the file's content; the extent of the content change is carried by the step's `**What Will Be Done**` prose, not by the token. The token SHALL declare what happens to the file in the step's commit, not what the code inside it does; the four tokens are a closed vocabulary and no fifth letter SHALL be invented.
+The `R` token SHALL cover both a pure relocation and a relocation that rewrites the file content; the extent of the content change is carried by the step `**What Will Be Done**` prose, not by the token. The token SHALL declare what happens to the file in the step commit, not what the code inside it does; the four tokens are a closed vocabulary and no fifth letter SHALL be invented.
 
-For ordinary exact entries, the token SHALL be determined by the repository state immediately before that step's commit, not by the step's title or prose verb: a path that does not exist at that baseline and is created by the step is `A`; a path that exists at that baseline and is changed in place is `M`; a path that exists at that baseline and is removed is `D`; a path that exists at that baseline and is moved or renamed is `R`. A file created by an earlier step of the same change therefore carries `M` in a later step that changes it.
+For ordinary exact entries, the token SHALL be determined by the repository state immediately before that step commit, not by the step title or prose verb: a path that does not exist at that baseline and is created by the step is `A`; a path that exists at that baseline and is changed in place is `M`; a path that exists at that baseline and is removed is `D`; a path that exists at that baseline and is moved or renamed is `R`. A file created by an earlier step of the same change therefore carries `M` in a later step that changes it.
 
-Any consumer of an ordinary entry SHALL allow the Markdown `- ` presentation prefix and strip it, when present, before stripping the leading change-type token and interpreting the path, and for an `R` entry SHALL read the two paths on either side of the separator; which of the two paths a consumer then acts on is defined by that consumer's own requirement. No Routing value is derived from these paths. Consumers of bounded generated entries SHALL retain the separate directory, family, and count semantics rather than treat the wildcard declaration as one exact file.
+Any consumer of an ordinary entry SHALL allow the Markdown `- ` presentation prefix and strip it, when present, before stripping the leading change-type token and interpreting the path, and for an `R` entry SHALL read the two paths on either side of the separator; which of the two paths a consumer then acts on is defined by that consumer own requirement. No Routing value is derived from these paths. Consumers of bounded generated entries SHALL retain the separate directory, family, and count semantics rather than treat the wildcard declaration as one exact file.
 
 The `**Routing**` line SHALL be the first sub-field under the step title, immediately preceding `**Files Affected**`. The line uses key=value tagged pairs (not positional tokens); the three keys `category`, `context`, `difficulty` are mandatory and in that order. The three values are drawn from the enumerations defined in the `tasks-routing-metadata` capability spec, and each value is defined by its goal in the design instructions. No `routing.md`, routing table, or routing JSON sidecar is emitted; the formatted line is the only routing artifact. An optional trailing parenthetical `(... )` is allowed for human audit and MUST be ignored by any parser of the line.
 
 The `**Existing Tests Broken**` sub-field SHALL be the fifth and last sub-field of every step section, immediately following `**Testing Strategy**`. Its literal label SHALL be exactly `**Existing Tests Broken**` — the label is pinned so two independent design runs emit the same parseable token. Its content contract is defined by the `tasks-existing-test-impact` capability spec. The sub-field is mandatory for all `tasks.md` files emitted by `/sai-2-design` after this change lands; archived `tasks.md` files are exempt.
 
 The five sub-fields enumerated above are the complete and closed set for a `## Step N` section. No sixth sub-field SHALL be invented by the design agent.
-
-The file SHALL NOT contain any `- [ ]` or `- [x]` markers.
 
 The bullet presentation SHALL apply to new generation, not require rewriting existing artifacts. Legacy unbulleted entries SHALL remain valid input. Empty-list markers and all existing token, path, generated-family, and note semantics SHALL be preserved.
 
@@ -54,20 +56,28 @@ After all implementation steps, the file SHALL contain the following two mandato
 
 Both sections are mandatory for all new changes. Archived `tasks.md` files that predate this change are not required to be retroactively updated. Archived `tasks.md` files that predate the `**Routing**` line are exempt from carrying it; only new `tasks.md` files emitted after the `tasks-routing-metadata` change lands carry the line.
 
+#### Scenario: tasks.md generated with one progress checkbox per step
+- **WHEN** `sai-2-design` generates `tasks.md` for a change
+- **THEN** each `## Step N:` section carries one `- [ ] Step N:` line directly beneath its heading, plus the Routing, Files Affected, What Will Be Done, Testing Strategy, and Existing Tests Broken sub-fields; no `- [x]` marker is present and no other checkbox line appears in the file
+
 #### Scenario: tasks.md generated without checkboxes
 - **WHEN** `sai-2-design` generates `tasks.md` for a change
-- **THEN** the file contains only numbered `## Step N:` sections with Routing, Files Affected, What Will Be Done, Testing Strategy, and Existing Tests Broken sub-fields; no `- [ ]` markers are present anywhere in the file
+- **THEN** no `- [x]` marker is present at generation, and no checkbox line other than the unchecked `- [ ] Step N:` progress line appears in the file
 
 #### Scenario: tasks.md used as narrative context
-- **WHEN** `sai-3-implement` reads `tasks.md` to produce `implementation.md`
-- **THEN** it uses tasks.md as a high-level scaffold to organize the granular steps in `implementation.md`, not as a progress tracker
+- **WHEN** `/sai-3-implement` reads `tasks.md` to plan its steps
+- **THEN** it reads the checkbox lines as progress, and writes no `implementation.md` that would use `tasks.md` as a narrative scaffold
+
+#### Scenario: tasks.md used as progress tracker
+- **WHEN** `/sai-3-implement` commits a step
+- **THEN** it checks off that step `- [ ] Step N:` line in `tasks.md`, and `/sai-status` routes on the checked count
 
 #### Scenario: tasks.md contains both mandatory trailing sections
 - **WHEN** `sai-2-design` generates `tasks.md`
 - **THEN** the file ends with `## Required Documentation` followed by `## Implementation Context`, both containing real content derived from design-phase research
 
 #### Scenario: Existing Tests Broken label is pinned
-- **WHEN** `sai-2-design` emits a step's existing-test-impact declaration
+- **WHEN** `sai-2-design` emits a step existing-test-impact declaration
 - **THEN** the sub-field label is exactly `**Existing Tests Broken**`, with no synonym such as "Tests Affected" or "Broken Tests"
 
 #### Scenario: Archived tasks.md files exempt from the fifth sub-field
@@ -75,7 +85,7 @@ Both sections are mandatory for all new changes. Archived `tasks.md` files that 
 - **THEN** the absence of an `**Existing Tests Broken**` sub-field is not a violation
 
 #### Scenario: each Files Affected entry declares its change type
-- **WHEN** `sai-2-design` emits a step's `**Files Affected**`
+- **WHEN** `sai-2-design` emits a step `**Files Affected**`
 - **THEN** every change entry starts with `- ` followed by a token from `A`, `M`, `D`, `R` and its repository-relative exact path or permitted bounded A family, one entry per line without a comma-separated list
 
 #### Scenario: a rename is one entry with source and destination
@@ -91,12 +101,12 @@ Both sections are mandatory for all new changes. Archived `tasks.md` files that 
 - **THEN** the entry is a single R entry identical in form to a pure relocation, with the content change described in What Will Be Done rather than the token
 
 #### Scenario: token derived from the file's existence at the step's baseline
-- **WHEN** a step adds content to a file that already exists immediately before that step's commit
-- **THEN** its ordinary Files Affected entry is M rather than A regardless of the step's title or prose verb
+- **WHEN** a step adds content to a file that already exists immediately before that step commit
+- **THEN** its ordinary Files Affected entry is M rather than A regardless of the step title or prose verb
 
 #### Scenario: token baseline is the repository state before the step's commit
 - **WHEN** a step changes a file that an earlier step of the same change created
-- **THEN** the later entry is M because the token is relative to that step's commit baseline rather than the change's original baseline
+- **THEN** the later entry is M because the token is relative to that step commit baseline rather than the change original baseline
 
 #### Scenario: archived tasks.md files exempt from change-type entries
 - **WHEN** a reader inspects a `tasks.md` archived before this change
@@ -112,19 +122,17 @@ Both sections are mandatory for all new changes. Archived `tasks.md` files that 
 
 ### Requirement: schema-tasks-instruction-updated
 
-The `tasks` artifact entry in `openspec/schemas/sai-workflow/schema.yaml` SHALL have its `instruction` field updated to describe the narrative scaffold format including the two mandatory trailing sections, the `**Routing**` keyword line, and the change-type-declaring `**Files Affected**` format. The instruction SHALL NOT contain the sentence "IMPORTANT: The apply phase parses checkbox format." The instruction SHALL describe the Routing line as the first sub-field of every `## Step N` section, SHALL specify the key=value tagged format (`category=<category> · context=<context> · difficulty=<difficulty>`), and SHALL reference the `tasks-routing-metadata` capability spec for the token enumerations and goal definitions. The instruction SHALL describe `**Files Affected**` as one entry per line, each entry starting with exactly one change-type token from the closed vocabulary `A` (created), `M` (modified), `D` (deleted), `R` (moved/renamed, with the source path and the destination path separated by ` -> `), and SHALL NOT describe the sub-field as a comma-separated list of paths.
+The `tasks` artifact entry in `openspec/schemas/sai-workflow/schema.yaml` SHALL have its `instruction` field delegate to the `### Generate tasks.md` section of `sai/commands/design/instructions.md`, which SHALL describe the narrative scaffold format including the two mandatory trailing sections, the `**Routing**` keyword line, and the change-type-declaring `**Files Affected**` format. The schema instruction SHALL NOT restate that format, and SHALL NOT contain the sentence "IMPORTANT: The apply phase parses checkbox format."
 
 The template at `openspec/schemas/sai-workflow/templates/tasks.md` SHALL show the `**Routing**` line in its `## Step N` skeleton, immediately after the step title and before `**Files Affected**`, using the key=value format with the placeholders `category=<!-- frontend-ui|frontend-code|backend|data|infra|docs|other -->`, `context=<!-- small|medium|large -->` and `difficulty=<!-- low|medium|high -->`. The template SHALL show `**Files Affected**` as one Markdown bullet line per change, each line carrying `- ` followed by a change-type token placeholder from the closed vocabulary (`A`/`M`/`D`/`R`) followed by a path placeholder.
 
 #### Scenario: schema instruction matches narrative format with trailing sections, Routing line, and change-type Files Affected
-
 - **WHEN** `openspec instructions tasks --change <name>` is run
-- **THEN** the returned `instruction` field describes the `## Step N:` scaffold format; the instruction describes the `**Routing**` line as the first sub-field, in the same position as Files Affected / What Will Be Done / Testing Strategy / Existing Tests Broken; the instruction specifies the key=value format with the three keys `category`, `context`, `difficulty` in that order; the instruction describes `**Files Affected**` as one entry per line with change-type tokens from the closed vocabulary `A`, `M`, `D`, `R` and the `R` source -> destination form; the instruction does not describe `**Files Affected**` as a comma-separated list of paths; the instruction references `## Required Documentation` and `## Implementation Context` as mandatory trailing sections; the instruction contains no reference to checkboxes or the apply phase parsing `- [ ]` markers
+- **THEN** the returned `instruction` field directs the agent to the `### Generate tasks.md` section of `sai/commands/design/instructions.md`, which describes the `## Step N:` scaffold, the `**Routing**` line, the change-type `**Files Affected**` format, and the mandatory trailing sections; the schema instruction itself contains no reference to the apply phase parsing `- [ ]` markers
 
 #### Scenario: tasks template shows the Routing line in key=value form and change-type Files Affected entries
-
 - **WHEN** `openspec/schemas/sai-workflow/templates/tasks.md` is read
-- **THEN** the `## Step N` template skeleton includes a `**Routing**` line as the first sub-field; the template's `## Step N` block lists Routing, Files Affected, What Will Be Done, Testing Strategy, and Existing Tests Broken in that order; the `**Routing**` line in the template uses the key=value format with the three keys `category`, `context`, `difficulty` in that order; the template's `**Files Affected**` block shows one Markdown bullet entry per line prefixed with `- ` and a change-type token placeholder from the closed vocabulary `A`/`M`/`D`/`R` followed by a path placeholder
+- **THEN** the `## Step N` template skeleton includes a `**Routing**` line as the first sub-field; the template `## Step N` block lists Routing, Files Affected, What Will Be Done, Testing Strategy, and Existing Tests Broken in that order; the `**Routing**` line in the template uses the key=value format with the three keys `category`, `context`, `difficulty` in that order; the template `**Files Affected**` block shows one Markdown bullet entry per line prefixed with `- ` and a change-type token placeholder from the closed vocabulary `A`/`M`/`D`/`R` followed by a path placeholder
 
 ### Requirement: tasks-design-instruction-updated
 
@@ -224,11 +232,3 @@ This form SHALL extend the existing A token without adding a sixth Step field or
 #### Scenario: Recursive wildcard is declared
 - **WHEN** an affected-file declaration uses a recursive or unrestricted wildcard
 - **THEN** the shared declaration parser rejects it rather than treating it as authorized paths
-
-### Requirement: tasks.md Steps correspond one-to-one to implementation Steps
-
-The design task-generation step SHALL state that Step numbering is final and that each `## Step N` of `tasks.md` corresponds one-to-one to the `#### Step N:` of `implementation.md`, so `/sai-3-implement` neither splits nor merges Steps. It SHALL NOT permit `/sai-3-implement` to split, merge, or otherwise refine Steps without re-tagging `tasks.md`.
-
-#### Scenario: Design instruction pins step correspondence
-- **WHEN** `sai/commands/design/steps/tasks.md` is read
-- **THEN** it states that each `tasks.md` Step corresponds one-to-one to an `implementation.md` Step and contains no clause letting `/sai-3-implement` split or merge Steps

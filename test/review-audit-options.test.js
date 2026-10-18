@@ -20,8 +20,9 @@ test('each review and audit command declares its options in its own options.md',
     const options = read(`sai/commands/${command}/options.md`);
     const declared = [...options.matchAll(/^- `(--[a-z-]+)/gm)].map(match => match[1]);
     assert.deepEqual(declared, flags, `${command}/options.md declares exactly its options`);
-    assert.match(read(`sai/commands/${command}/steps/common.md`), new RegExp(`Fetch @sai/commands/${command}/options\\.md`));
     assert.match(read(`sai/commands/${command}/coordinator.md`), new RegExp(`Fetch @sai/commands/${command}/options\\.md`));
+    if (command === 'review') continue;
+    assert.match(read(`sai/commands/${command}/steps/common.md`), new RegExp(`Fetch @sai/commands/${command}/options\\.md`));
     assert.match(read(`sai/commands/${command}/worker.md`), /second positional value/);
   }
 });
@@ -35,9 +36,9 @@ test('the review command keeps reviewing the diff and retires the positional par
   }
 });
 
-test('/sai-review forwards to each segment only the options its command declares', () => {
-  const coordinator = read('sai/commands/meta-review/coordinator.md');
-  const bootstrap = read('sai/commands/meta-review/command-bootstrap.md');
+test('/sai-deep-review forwards to each segment only the options its command declares', () => {
+  const coordinator = read('sai/commands/deep-review/coordinator.md');
+  const bootstrap = read('sai/commands/deep-review/command-bootstrap.md');
 
   for (const command of Object.keys(DECLARED)) {
     assert.match(coordinator, new RegExp(`@sai/commands/${command}/options\\.md`));
@@ -50,7 +51,7 @@ test('/sai-review forwards to each segment only the options its command declares
   assert.match(coordinator, /`--fast-track` token/);
   assert.match(coordinator, /never receives `--full` or `--path`/);
   assert.match(coordinator, /had no effect/);
-  assert.match(coordinator, /also with `--full` or `--path`/);
+  assert.match(coordinator, /even with `--full` or `--path`/);
   assert.match(bootstrap, /`--full` or `--path` activates all three without the triage parse/);
   assert.match(bootstrap, /Error close below does\s+not apply/);
 });
@@ -64,7 +65,7 @@ test('only --runtime lets a review or audit command ask mid-run', () => {
 });
 
 test('both harness wrappers announce the options', () => {
-  const wrappers = { 'sai-review': ['--full', '--path', '--tier', '--runtime', '--parent-branch'], 'sai-5-review': ['--parent-branch'], 'sai-6-security': ['--parent-branch'], 'sai-7-performance': ['--parent-branch'], 'sai-8-accessibility': ['--parent-branch'] };
+  const wrappers = { 'sai-deep-review': ['--full', '--path', '--tier', '--runtime', '--parent-branch'], 'sai-4-review': ['--parent-branch'], 'sai-6-security': ['--parent-branch'], 'sai-7-performance': ['--parent-branch'], 'sai-8-accessibility': ['--parent-branch'] };
   for (const harness of ['claude', 'opencode']) {
     for (const [wrapper, flags] of Object.entries(wrappers)) {
       const text = read(`commands/${harness}/${wrapper}.md`);

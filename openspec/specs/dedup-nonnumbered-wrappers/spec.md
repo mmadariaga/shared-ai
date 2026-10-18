@@ -21,32 +21,6 @@ The Context Isolation block (no write commands, crystallization protocol) SHALL 
 - **WHEN** the instruction file loaded by both sai-explore wrappers is read
 - **THEN** the full Context Isolation text (including the crystallization block template) is present and no inline proposal refusal path remains
 
-### Requirement: completion-check-in-archive-instruction
-The Completion Check block (inspect `implementation.md` for unchecked items before archiving) SHALL reside in the instruction file loaded by both sai-archive wrappers, not inline in either wrapper body.
-
-#### Scenario: block absent from claude archive wrapper
-- **WHEN** `commands/claude/sai-archive.md` is read
-- **THEN** no "Before running the archive skill" text appears in the wrapper body
-
-#### Scenario: block absent from opencode archive wrapper
-- **WHEN** `commands/opencode/sai-archive.md` is read
-- **THEN** no "Before running the archive skill" text appears in the wrapper body
-
-#### Scenario: block present in archive instruction file
-- **WHEN** the instruction file loaded by both sai-archive wrappers is read
-- **THEN** it contains the `- [ ]` scan logic and the STOP message for incomplete tasks
-
-### Requirement: path-resolution-in-pr-instruction
-The path resolution sentence (`Resolve all artifact paths under openspec/changes/{change-name}/`, treating proposal.md + design.md + specs/**/*.md as spec.md equivalent and implementation.md as plan.md equivalent) SHALL reside in `sai/commands/pr/instructions.md`, not inline in either sai-pr wrapper.
-
-#### Scenario: path resolution absent from claude pr wrapper
-- **WHEN** `commands/claude/sai-pr.md` is read
-- **THEN** no "Resolve all artifact paths" sentence appears inline in the wrapper body
-
-#### Scenario: path resolution present in pr.md
-- **WHEN** `sai/commands/pr/instructions.md` is read
-- **THEN** it contains the full openspec artifact-path resolution mapping
-
 ### Requirement: no-handoff-for-nonnumbered
 Non-numbered instruction files (the files backing sai-explore, sai-archive, sai-commit, and sai-pr) SHALL NOT receive a STOP+print handoff block as part of this deduplication.
 

@@ -19,7 +19,7 @@ The installation manifest SHALL project the review coordinator/invocation assets
 Installer flow SHALL define the numbered Claude review-worker agent filename constant. The installer SHALL handle each `tunable-seed` projection by writing the agent file when absent, and on subsequent installs by overwriting the body and non-tunable frontmatter with the source bytes while preserving the destination's `model` and `effort` values placed per the structural anchor in `agent-tunable-ownership`. When the body or non-tunable frontmatter differs from source, the installer SHALL emit a console notice naming the destination path and continue; the installer SHALL NOT block installation on a body divergence and SHALL NOT block installation on an unknown agent. The `OWNER_BY_CLAUDE_AGENT` dispatch map and the `rename-or-remove` remediation are retired; the `.<basename>.owner.json` sidecar is no longer written.
 
 #### Scenario: Tuned review worker preserves its tunables on update
-- **WHEN** an exact-compatible user-owned `sai-5-review-worker` agent exists, possibly with a customized `model` or `effort`
+- **WHEN** an exact-compatible user-owned `sai-4-review-worker` agent exists, possibly with a customized `model` or `effort`
 - **THEN** installation preserves the agent file as-is (no body or non-tunable frontmatter change to overwrite)
 - **AND** guarded uninstall preserves it as user-owned
 
@@ -38,18 +38,18 @@ Installer flow SHALL define the numbered Claude review-worker agent filename con
 The installer SHALL register the numbered opencode review worker using the established namespaced agent policy, including permission to dispatch the read-only `explore` branch and write-capable `budget` branch as required by the binding. An existing user-owned entry SHALL be preserved according to the established opencode agent-preservation policy.
 
 #### Scenario: opencode review worker is absent
-- **WHEN** installation finds no `sai-5-review-worker` entry
+- **WHEN** installation finds no `sai-4-review-worker` entry
 - **THEN** it adds the canonical managed definition with both nested branch permissions
 - **AND** the wrapper dispatch target resolves to that name
 
 #### Scenario: opencode review worker is customized
-- **WHEN** an existing `sai-5-review-worker` entry is valid but customized
+- **WHEN** an existing `sai-4-review-worker` entry is valid but customized
 - **THEN** installation preserves the entry unchanged
 - **AND** dispatch uses the existing entry's configured runtime and permissions
 
 ### Requirement: Routed wrappers load the coordinator and matching binding
 
-The Claude Code and opencode `/sai-5-review` wrappers SHALL be thin routed wrappers that load the shared review coordinator and only their matching review-worker binding, preserving each harness's model, argument, and prerequisite behavior. Their standalone envelope SHALL carry the complete substituted request only in `arguments_value`; no wrapper label or wrapper-echo field is emitted. The Copilot review prompt SHALL remain pointed at the inline review instruction.
+The Claude Code and opencode `/sai-4-review` wrappers SHALL be thin routed wrappers that load the shared review coordinator and only their matching review-worker binding, preserving each harness's model, argument, and prerequisite behavior. Their standalone envelope SHALL carry the complete substituted request only in `arguments_value`; no wrapper label or wrapper-echo field is emitted. The Copilot review prompt SHALL remain pointed at the inline review instruction.
 
 #### Scenario: Claude wrapper is inspected
 - **WHEN** the Claude Code review wrapper is loaded

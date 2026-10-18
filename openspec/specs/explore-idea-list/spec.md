@@ -3,7 +3,9 @@
 ## Purpose
 
 TBD - seeded from delta spec `explore-idea-list` in change `explore-idea-progress-plan`.
+
 ## Requirements
+
 ### Requirement: Project the renamed route identities
 
 The coordinator-owned idea-list route projection SHALL use `plan-unattended`, `direct-build-unattended`, and `manual`. The Plan projection SHALL contain exactly sai-1, sai-2, and Implement; the Build projection SHALL contain Build/Implement, Backfill, and Archive; the Manual projection SHALL contain Manual handoff. Implement has no worker; it completes only on `next-slice` (or equivalent natural language). Manual SHALL NOT gain a Plan cursor or an Implement panel row.
@@ -416,40 +418,34 @@ While a `sai-explore` chat is active and the idea progress list has rendered —
 
 ### Requirement: idea-list-panel-lifecycle
 
-The idea list's panel entries are session-level render state of the current chat's list, not durable data: the list's content stays chat-scoped, while its rendering lives on the session-level panel until replaced. Each render SHALL leave the panel holding exactly the full idea list with no foreign entries — the idea list SHALL NOT coexist with entries from any other surface — and this resulting content is the mechanism by which the panel ownership declared in `idea-list-panel-ownership` is realized wherever it holds; on opencode, where `todowrite` replaces the whole list per call, the binding emits the full array on every render, while on Claude Code, whose task model is incremental, the binding converges the panel to the full list by updating existing entries in place, creating entries that are new, and deleting only entries that are no longer in the list. At first render (the first slice identification), the binding SHALL displace any pre-existing panel entries, including a routed phase's progress plan or another `sai-explore` chat's earlier list, with the full idea list. A new `sai-explore` chat starts with a fresh chat-scoped list, and the binding SHALL clear the panel at the chat's start of the entries a previous idea list rendered — a claim action distinct from rendering the list, which remains forbidden while the list holds only the research item — so a previous chat's entries never linger as current and a chat that never identifies a slice leaves no idea-list entries on the panel. Every idea-list panel entry SHALL carry an ownership marker in its machine-readable panel entry field — the same settable-and-readable field that carries the slice's `**Change name**` key per `idea-list-rendering` — and the start clear SHALL remove exactly the entries bearing that marker, leaving every other entry in place. The binding SHALL read panel entry state for that classification; the read covers the marker only and never derives list content, so the list's in-session-evidence rule is unaffected. The start clear SHALL NOT remove entries rendered by other surfaces — a routed phase's progress plan or `/sai-4-apply`'s step projection — which bear no marker and remain on the panel until the idea list's first render displaces them wholesale. When the explore chat ends, its last-rendered entries remain on the panel as session state — the chat performs no end-of-life cleanup — and any later surface that renders on the panel, including the next explore chat's start clear of the idea list's own entries, replaces them wholesale.
+The idea list's panel entries are session-level render state of the current chat's list, not durable data: the list's content stays chat-scoped, while its rendering lives on the session-level panel until replaced. Each render SHALL leave the panel holding exactly the full idea list with no foreign entries — the idea list SHALL NOT coexist with entries from any other surface — and this resulting content is the mechanism by which the panel ownership declared in `idea-list-panel-ownership` is realized wherever it holds; on opencode, where `todowrite` replaces the whole list per call, the binding emits the full array on every render, while on Claude Code, whose task model is incremental, the binding converges the panel to the full list by updating existing entries in place, creating entries that are new, and deleting only entries that are no longer in the list. At first render (the first slice identification), the binding SHALL displace any pre-existing panel entries, including a routed phase's progress plan or another `sai-explore` chat's earlier list, with the full idea list. A new `sai-explore` chat starts with a fresh chat-scoped list, and the binding SHALL clear the panel at the chat's start of the entries a previous idea list rendered — a claim action distinct from rendering the list, which remains forbidden while the list holds only the research item — so a previous chat's entries never linger as current and a chat that never identifies a slice leaves no idea-list entries on the panel. Every idea-list panel entry SHALL carry an ownership marker in its machine-readable panel entry field — the same settable-and-readable field that carries the slice's `**Change name**` key per `idea-list-rendering` — and the start clear SHALL remove exactly the entries bearing that marker, leaving every other entry in place. The binding SHALL read panel entry state for that classification; the read covers the marker only and never derives list content, so the list's in-session-evidence rule is unaffected. The start clear SHALL NOT remove entries rendered by other surfaces — a routed phase's progress plan — which bear no marker and remain on the panel until the idea list's first render displaces them wholesale. When the explore chat ends, its last-rendered entries remain on the panel as session state — the chat performs no end-of-life cleanup — and any later surface that renders on the panel, including the next explore chat's start clear of the idea list's own entries, replaces them wholesale.
 
 #### Scenario: first render displaces pre-existing entries
-
-- **WHEN** the list first renders while the panel already holds entries from another surface (a routed phase's progress plan or `/sai-4-apply`'s step projection)
+- **WHEN** the list first renders while the panel already holds entries from another surface (a routed phase's progress plan)
 - **THEN** the full idea list replaces those entries
 - **AND** no foreign entry remains and no coexistence occurs
 
 #### Scenario: every render emits the full list
-
 - **WHEN** a turn adds, marks, or clears an item
 - **THEN** the binding emits the full idea list, replacing the panel's current content in that update
 
 #### Scenario: a new explore chat clears its own previous entries at its start
-
 - **WHEN** a `sai-explore` chat begins while the panel holds entries a previous idea list rendered
 - **THEN** the binding clears at the chat's start exactly the entries bearing the idea-list ownership marker in their machine-readable field
 - **AND** they have no separate panel presence afterwards, even before the new list first renders
-- **AND** entries rendered by other surfaces (a routed phase's progress plan or `/sai-4-apply`'s step projection), which bear no such marker, are left in place
+- **AND** entries rendered by other surfaces (a routed phase's progress plan), which bear no such marker, are left in place
 
 #### Scenario: a chat that never crystallizes leaves no idea-list entries
-
 - **WHEN** a `sai-explore` chat begins and never identifies a slice
 - **THEN** the panel holds no idea-list entries: the start clear removed any previous idea-list entries, and the list is never rendered while it holds only the research item
 - **AND** entries from other surfaces, if any, remain untouched
 
 #### Scenario: entries persist after the chat ends
-
 - **WHEN** the explore chat ends and no other surface renders on the panel
 - **THEN** the idea list's last-rendered entries remain on the panel as session state
 - **AND** the ended chat performs no cleanup of them
 
 #### Scenario: a later surface replaces the entries
-
 - **WHEN** after the explore chat the session runs a command that renders its own task list on the panel
 - **THEN** that render replaces the idea list's entries wholesale
 
@@ -511,4 +507,3 @@ The idea progress list SHALL preserve a completed slice's progress states while 
 #### Scenario: Panel detail resolves from idea-list step
 - **WHEN** the idea panel renders before or after emission
 - **THEN** the idea-list step rules govern ownership with boot carrying only the marker
-

@@ -41,23 +41,6 @@ function rule(overrides = {}) {
 }
 
 const MANAGED_WORKER_PROJECTIONS = {
-  'sai-3-implementation-worker': {
-    claudeBinding: {
-      id: 'claude-implementation-worker-binding',
-      sourcePath: 'sai/orchestration/workers/bindings/claude/implementation-worker.md',
-       destinationPath: 'orchestration/workers/bindings/implementation-worker.md',
-    },
-    opencodeBinding: {
-      id: 'opencode-implementation-worker-binding',
-      sourcePath: 'sai/orchestration/workers/bindings/opencode/implementation-worker.md',
-       destinationPath: 'orchestration/workers/bindings/implementation-worker.md',
-    },
-    claudeAgent: {
-      id: 'claude-sai-3-implementation-worker',
-      sourcePath: 'agents/claude/sai-3-implementation-worker.md',
-      destinationPath: 'sai-3-implementation-worker.md',
-    },
-  },
   'sai-2-design-worker': {
     claudeBinding: {
       id: 'claude-design-worker-binding',
@@ -75,7 +58,7 @@ const MANAGED_WORKER_PROJECTIONS = {
       destinationPath: 'sai-2-design-worker.md',
     },
   },
-  'sai-5-review-worker': {
+  'sai-4-review-worker': {
     claudeBinding: {
       id: 'claude-review-worker-binding',
       sourcePath: 'sai/orchestration/workers/bindings/claude/review-worker.md',
@@ -87,9 +70,9 @@ const MANAGED_WORKER_PROJECTIONS = {
        destinationPath: 'orchestration/workers/bindings/review-worker.md',
     },
     claudeAgent: {
-      id: 'claude-sai-5-review-worker',
-      sourcePath: 'agents/claude/sai-5-review-worker.md',
-      destinationPath: 'sai-5-review-worker.md',
+      id: 'claude-sai-4-review-worker',
+      sourcePath: 'agents/claude/sai-4-review-worker.md',
+      destinationPath: 'sai-4-review-worker.md',
     },
   },
   'sai-6-security-worker': {
@@ -230,7 +213,7 @@ const MANAGED_WORKER_PROJECTIONS = {
   },
 
 
-  'sai-4-red-worker': {
+  'sai-3-red-worker': {
     claudeBinding: {
       id: 'claude-red-worker-binding',
       sourcePath: 'sai/orchestration/workers/bindings/claude/red-worker.md',
@@ -242,12 +225,12 @@ const MANAGED_WORKER_PROJECTIONS = {
        destinationPath: 'orchestration/workers/bindings/red-worker.md',
     },
     claudeAgent: {
-      id: 'claude-sai-4-red-worker',
-      sourcePath: 'agents/claude/sai-4-red-worker.md',
-      destinationPath: 'sai-4-red-worker.md',
+      id: 'claude-sai-3-red-worker',
+      sourcePath: 'agents/claude/sai-3-red-worker.md',
+      destinationPath: 'sai-3-red-worker.md',
     },
   },
-  'sai-4-green-worker': {
+  'sai-3-green-worker': {
     claudeBinding: {
       id: 'claude-green-worker-binding',
       sourcePath: 'sai/orchestration/workers/bindings/claude/green-worker.md',
@@ -259,9 +242,9 @@ const MANAGED_WORKER_PROJECTIONS = {
        destinationPath: 'orchestration/workers/bindings/green-worker.md',
     },
     claudeAgent: {
-      id: 'claude-sai-4-green-worker',
-      sourcePath: 'agents/claude/sai-4-green-worker.md',
-      destinationPath: 'sai-4-green-worker.md',
+      id: 'claude-sai-3-green-worker',
+      sourcePath: 'agents/claude/sai-3-green-worker.md',
+      destinationPath: 'sai-3-green-worker.md',
     },
   },
   'sai-direct-build-worker': {
@@ -279,74 +262,6 @@ const MANAGED_WORKER_PROJECTIONS = {
       id: 'claude-sai-direct-build-worker',
       sourcePath: 'agents/claude/sai-direct-build-worker.md',
       destinationPath: 'sai-direct-build-worker.md',
-    },
-  },
-  'sai-review-fix-worker': {
-    claudeBinding: {
-      id: 'claude-review-fix-worker-binding',
-      sourcePath: 'sai/orchestration/workers/bindings/claude/review-fix-worker.md',
-       destinationPath: 'orchestration/workers/bindings/review-fix-worker.md',
-    },
-    opencodeBinding: {
-      id: 'opencode-review-fix-worker-binding',
-      sourcePath: 'sai/orchestration/workers/bindings/opencode/review-fix-worker.md',
-       destinationPath: 'orchestration/workers/bindings/review-fix-worker.md',
-    },
-    claudeAgent: {
-      id: 'claude-sai-review-fix-worker',
-      sourcePath: 'agents/claude/sai-review-fix-worker.md',
-      destinationPath: 'sai-review-fix-worker.md',
-    },
-  },
-  'sai-red-new-worker': {
-    claudeBinding: {
-      id: 'claude-red-new-worker-binding',
-      sourcePath: 'sai/orchestration/workers/bindings/claude/red-new-worker.md',
-       destinationPath: 'orchestration/workers/bindings/red-new-worker.md',
-    },
-    opencodeBinding: {
-      id: 'opencode-red-new-worker-binding',
-      sourcePath: 'sai/orchestration/workers/bindings/opencode/red-new-worker.md',
-       destinationPath: 'orchestration/workers/bindings/red-new-worker.md',
-    },
-    claudeAgent: {
-      id: 'claude-sai-red-new-worker',
-      sourcePath: 'agents/claude/sai-red-new-worker.md',
-      destinationPath: 'sai-red-new-worker.md',
-    },
-  },
-  'sai-green-new-worker': {
-    claudeBinding: {
-      id: 'claude-green-new-worker-binding',
-      sourcePath: 'sai/orchestration/workers/bindings/claude/green-new-worker.md',
-       destinationPath: 'orchestration/workers/bindings/green-new-worker.md',
-    },
-    opencodeBinding: {
-      id: 'opencode-green-new-worker-binding',
-      sourcePath: 'sai/orchestration/workers/bindings/opencode/green-new-worker.md',
-       destinationPath: 'orchestration/workers/bindings/green-new-worker.md',
-    },
-    claudeAgent: {
-      id: 'claude-sai-green-new-worker',
-      sourcePath: 'agents/claude/sai-green-new-worker.md',
-      destinationPath: 'sai-green-new-worker.md',
-    },
-  },
-  'sai-review-new-worker': {
-    claudeBinding: {
-      id: 'claude-review-new-worker-binding',
-      sourcePath: 'sai/orchestration/workers/bindings/claude/review-new-worker.md',
-       destinationPath: 'orchestration/workers/bindings/review-new-worker.md',
-    },
-    opencodeBinding: {
-      id: 'opencode-review-new-worker-binding',
-      sourcePath: 'sai/orchestration/workers/bindings/opencode/review-new-worker.md',
-       destinationPath: 'orchestration/workers/bindings/review-new-worker.md',
-    },
-    claudeAgent: {
-      id: 'claude-sai-review-new-worker',
-      sourcePath: 'agents/claude/sai-review-new-worker.md',
-      destinationPath: 'sai-review-new-worker.md',
     },
   },
 };
@@ -557,7 +472,7 @@ test('canonical manifest has no active compatibility ADR-template projection', (
   );
 });
 
-test('canonical manifest projects implementation assets to neutral matrix destinations', () => {
+test('canonical manifest projects implement assets to neutral matrix destinations', () => {
   const repoRoot = path.join(__dirname, '..');
   const manifest = loadInstallManifest(repoRoot);
   const destinationRoot = {
@@ -573,6 +488,7 @@ test('canonical manifest projects implementation assets to neutral matrix destin
     'sai/orchestration/workers/bindings/opencode/implementation-worker.md',
     'agents/claude/sai-3-implementation-worker.md',
     'agents/opencode/sai-3-implementation-worker.md',
+    'sai/commands/implement/worker.md',
   ];
 
   for (const harness of ['claude', 'opencode']) {
@@ -585,22 +501,27 @@ test('canonical manifest projects implementation assets to neutral matrix destin
     for (const source of [
       'sai/orchestration/command-runner.md',
       'sai/orchestration/worker-core.md',
-      'sai/commands/implement/worker.md',
+      'sai/commands/implement/coordinator.md',
+      'sai/commands/implement/red-worker.md',
+      'sai/commands/implement/green-worker.md',
+      'sai/commands/implement/worker-common.md',
     ]) {
       assert.ok(sourceSet.has(source), `${harness} should include ${source}`);
     }
-    const binding = projections.find(projection =>
-      projection.destinationPath.endsWith(path.join('orchestration', 'workers', 'bindings', 'implementation-worker.md')));
-    assert.ok(binding, `${harness} should project the neutral matrix implementation binding`);
-    assert.equal(binding.harness, harness, `${harness} implementation binding should be harness-scoped`);
-    assert.equal(isRetiredPerPhaseSource(relSource(binding, repoRoot), harness), false,
-      `${harness} implementation binding must not source from a retired per-harness tree`);
+    for (const stem of ['red', 'green']) {
+      const binding = projections.find(projection =>
+        projection.destinationPath.endsWith(path.join('orchestration', 'workers', 'bindings', `${stem}-worker.md`)));
+      assert.ok(binding, `${harness} should project the neutral matrix ${stem} binding`);
+      assert.equal(binding.harness, harness, `${harness} ${stem} binding should be harness-scoped`);
+      assert.equal(isRetiredPerPhaseSource(relSource(binding, repoRoot), harness), false,
+        `${harness} ${stem} binding must not source from a retired per-harness tree`);
+    }
     if (harness === 'claude') {
       const agent = projections.find(projection =>
-        projection.destinationPath.endsWith(path.join('agents', 'sai-3-implementation-worker.md')));
-      assert.ok(agent, 'claude should project the implementation worker agent');
+        projection.destinationPath.endsWith(path.join('agents', 'sai-3-red-worker.md')));
+      assert.ok(agent, 'claude should project the RED worker agent');
       assert.equal(isRetiredPerPhaseSource(relSource(agent, repoRoot), harness), false,
-        'claude implementation agent must not source from a retired per-harness agent tree');
+        'claude RED agent must not source from a retired per-harness agent tree');
     }
     for (const retiredSource of retiredImplementationSources) {
       assert.equal(sourceSet.has(retiredSource), false,
@@ -669,7 +590,7 @@ test('Installer projects every routed review surface', () => {
   const expected = [
      ['claude', path.join('orchestration', 'workers', 'bindings', 'review-worker.md')],
      ['opencode', path.join('orchestration', 'workers', 'bindings', 'review-worker.md')],
-     ['claude', path.join('agents', 'sai-5-review-worker.md')],
+     ['claude', path.join('agents', 'sai-4-review-worker.md')],
   ];
 
   for (const harness of ['claude', 'opencode']) {
@@ -771,7 +692,7 @@ test('Routed review bindings remain harness-specific', () => {
       `${harness} review binding must not source from a retired per-harness tree`);
     const agent = projections.find(projection =>
       path.relative(destinationRoot.agents, projection.destinationPath)
-        .split(path.sep).join('/') === 'sai-5-review-worker.md');
+        .split(path.sep).join('/') === 'sai-4-review-worker.md');
     assert.ok(agent, `${harness} should project the matrix review worker agent`);
     assert.equal(isRetiredPerPhaseSource(relSource(agent, repoRoot), harness), false,
       `${harness} review agent must not source from a retired per-harness tree`);
@@ -816,7 +737,7 @@ test('canonical identity surfaces reject former routed names', () => {
     'commands/opencode/sai-2-design.md',
     'commands/opencode/sai-3-implement.md',
     'sai/commands/design/worker.md',
-    'sai/commands/implement/worker.md',
+    'sai/commands/implement/coordinator.md',
     'README.md',
     'AGENTS.md',
   ];
@@ -1445,7 +1366,6 @@ test('folded instruction templates project to their co-located and root destinat
   };
   const templateMap = [
     { source: 'sai/commands/accessibility/accessibility-report.template.md', destination: 'commands/accessibility/accessibility-report.template.md' },
-    { source: 'sai/commands/implement/implementation-plan.template.md', destination: 'commands/implement/implementation-plan.template.md' },
     { source: 'sai/commands/performance/performance-report.template.md', destination: 'commands/performance/performance-report.template.md' },
     { source: 'sai/commands/review/review-report.template.md', destination: 'commands/review/review-report.template.md' },
     { source: 'sai/commands/security/security-report.template.md', destination: 'commands/security/security-report.template.md' },
@@ -1480,18 +1400,17 @@ test('folded instruction templates project to their co-located and root destinat
       projectedCount += 1;
     }
   }
-  assert.equal(projectedCount, 14, 'seven folded templates across two harnesses should project to 14 paths');
+  assert.equal(projectedCount, 12, 'six folded templates across two harnesses should project to 12 paths');
 });
 
 test('matrix worker bindings and agents are the sole worker inventory per harness', () => {
   const repoRoot = path.join(__dirname, '..');
   const manifest = loadInstallManifest(repoRoot);
-  const phases = ['spec', 'design', 'implementation', 'review', 'security', 'performance', 'accessibility', 'commit', 'archive'];
+  const phases = ['spec', 'design', 'review', 'security', 'performance', 'accessibility', 'commit', 'archive'];
   const workers = {
     spec: 'sai-1-spec-proposal-worker',
     design: 'sai-2-design-worker',
-    implementation: 'sai-3-implementation-worker',
-    review: 'sai-5-review-worker',
+    review: 'sai-4-review-worker',
     security: 'sai-6-security-worker',
     performance: 'sai-7-performance-worker',
     accessibility: 'sai-8-accessibility-worker',
@@ -1506,9 +1425,9 @@ test('matrix worker bindings and agents are the sole worker inventory per harnes
         .split(path.sep).join('/').startsWith('orchestration/workers/bindings/') &&
         phases.includes(path.basename(projection.destinationPath, '-worker.md')))
       .map(projection => path.basename(projection.destinationPath));
-    assert.equal(bindingNames.length, 9, `${harness} should declare exactly nine worker bindings`);
+    assert.equal(bindingNames.length, 8, `${harness} should declare exactly eight worker bindings`);
     assert.deepEqual(bindingNames.sort(), phases.map(phase => `${phase}-worker.md`).sort(),
-      `${harness} worker bindings should cover exactly the nine phases`);
+      `${harness} worker bindings should cover exactly the eight phases`);
     assert.equal(bindingNames.includes('idea-list-render.md'), false,
       `${harness} must not declare an idea-list-render matrix binding projection`);
 
@@ -1516,9 +1435,9 @@ test('matrix worker bindings and agents are the sole worker inventory per harnes
       .filter(projection => projection.destinationPath.startsWith(destinationRoot.agents) &&
         Object.values(workers).includes(path.basename(projection.destinationPath, '.md')))
       .map(projection => path.basename(projection.destinationPath, '.md'));
-    assert.equal(agentNames.length, 9, `${harness} should declare exactly nine managed agents`);
+    assert.equal(agentNames.length, 8, `${harness} should declare exactly eight managed agents`);
     assert.deepEqual(agentNames.sort(), Object.values(workers).sort(),
-      `${harness} managed agents should be exactly the nine worker identities`);
+      `${harness} managed agents should be exactly the eight worker identities`);
     assert.equal(agentNames.some(name => ['budget', 'executor', 'explore'].includes(name)), false,
       `${harness} must not declare support agents as worker inventory`);
 
@@ -1543,7 +1462,7 @@ test('canonical manifest projects exactly one harness boot adapter and the utili
     root: path.join(os.tmpdir(), 'sai-adapter-config'),
   };
   const utilities = ['explore', 'retire-docs', 'status', 'worktree'];
-  const applyCards = ['coordinator.md', 'red-worker.md', 'green-worker.md', 'runner.md', 'invocation.md'];
+  const implementCards = ['coordinator.md', 'red-worker.md', 'green-worker.md', 'worker-common.md'];
   const commitCards = ['coordinator.md', 'worker.md'];
   const archiveCards = ['coordinator.md', 'worker.md'];
   const flatSources = [
@@ -1590,14 +1509,12 @@ test('canonical manifest projects exactly one harness boot adapter and the utili
     }
     assert.equal(sourceSet.has('sai/commands/backfill/body.md'), false,
       `${harness} must not project the retired backfill body card`);
-    for (const card of applyCards) {
-      assert.ok(sourceSet.has(`sai/commands/apply/${card}`),
-        `${harness} should project the routed apply card sai/commands/apply/${card}`);
+    for (const card of implementCards) {
+      assert.ok(sourceSet.has(`sai/commands/implement/${card}`),
+        `${harness} should project the implement card sai/commands/implement/${card}`);
     }
-    assert.equal(sourceSet.has('sai/commands/apply/body.md'), false,
-      `${harness} must not project the retired apply body card`);
-    assert.equal(sourceSet.has('sai/commands/apply/instructions.md'), false,
-      `${harness} must not project the retired monolithic apply instruction`);
+    assert.equal(sources.some(source => source.startsWith('sai/commands/apply/')), false,
+      `${harness} must not project the retired apply card set`);
     for (const flat of flatSources) {
       assert.equal(sourceSet.has(flat), false,
         `${harness} must not project the flat utility source ${flat}`);
@@ -1612,17 +1529,14 @@ test('canonical manifest projects exactly one harness boot adapter and the utili
         projection.destinationPath.endsWith(path.join('commands', utility, 'body.md')));
       assert.ok(card, `${harness} should land the ${utility} utility card at sai/commands/${utility}/body.md`);
     }
-    for (const card of applyCards) {
-      const applyCard = projections.find(projection =>
-        projection.destinationPath.endsWith(path.join('commands', 'apply', card)));
-      assert.ok(applyCard, `${harness} should land the routed apply card at sai/commands/apply/${card}`);
+    for (const card of implementCards) {
+      const implementCard = projections.find(projection =>
+        projection.destinationPath.endsWith(path.join('commands', 'implement', card)));
+      assert.ok(implementCard, `${harness} should land the implement card at sai/commands/implement/${card}`);
     }
     assert.equal(projections.some(projection =>
-      projection.destinationPath.endsWith(path.join('commands', 'apply', 'body.md'))), false,
-    `${harness} must not land the retired apply body card`);
-    assert.equal(projections.some(projection =>
-      projection.destinationPath.endsWith(path.join('commands', 'apply', 'instructions.md'))), false,
-    `${harness} must not land the retired monolithic apply instruction`);
+      projection.destinationPath.includes(path.join('commands', 'apply') + path.sep)), false,
+    `${harness} must not land any retired apply card`);
   }
 });
 

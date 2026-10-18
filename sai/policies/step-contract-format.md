@@ -28,7 +28,7 @@ A step that introduces neither a new/modified public interface nor a testable as
 
 ## Key constraints
 
-- **Self-contained**: The signature plus its anchored assertions must be sufficient to author the step's tests without reading `implementation.md`, `design.md`, or source code.
+- **Self-contained**: The signature plus its anchored assertions must be sufficient to author the step's tests without reading `design.md` or source code.
 - **No testing-stack section**: Do NOT add a testing-setup, stack, or `## Implementation Context` section to `interfaces.md`; the testing stack stays single-sourced in `tasks.md`'s `## Implementation Context`.
 - **Keep out of tasks.md**: Signatures and assertions are the "detailed behavior" that `tasks.md`'s conciseness rule excludes. `tasks.md`'s `**Testing Strategy**` stays high-level *approach* prose (what kind of test, what surface it exercises); the concrete assertion values live only here. Never restate them into `tasks.md`.
 - **Only step sections**: `interfaces.md` starts with its first `## Step N` section, or with the sole-content `None — no step contracts` sentinel when all steps are omitted. No `## Target State`, `### Architecture Snapshot`, `### File Manifest`, or other non-step section appears anywhere in the file.

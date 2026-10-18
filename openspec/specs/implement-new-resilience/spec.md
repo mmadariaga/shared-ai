@@ -7,20 +7,17 @@ TBD - created by archiving change sai-build-new-resilience. Update Purpose after
 
 ### Requirement: Identifiers-only run state
 
-The `/sai-3-implement-new` coordinator SHALL keep its run state in the `implement-new-run@1` stage machine, registered in `sai-state/registry.js`, under the `sai-state` session keyed `implement-new-{name}`, so that a later session on the same machine finds an interrupted run of the same change; one run per change SHALL run at a time. The machine SHALL hold identifiers and paths only: the run directory, the current step, the committed steps, the attempts spent per obstacle, the open escalation, and the paths of the files that hold deviations, overrides, worker reports, findings, and baselines. It SHALL accept the events `start`, `step-start`, `step-done`, `attempt`, `escalate`, `answer`, `record`, `close`, and `status`; `start` SHALL open a run only once while it is `running` or `escalated`, and SHALL start a fresh run over a `completed` or `stopped` one, `record` SHALL keep each path once, and `status` SHALL change nothing. Every emit response SHALL carry the `run` view and the per-obstacle `budgets`.
+The `/sai-3-implement` coordinator SHALL keep its run state in the `implement-run@1` stage machine, registered in `sai-state/registry.js`, under the `sai-state` session keyed `implement-{name}`, so that a later session on the same machine finds an interrupted run of the same change; one run per change SHALL run at a time. The machine SHALL hold identifiers and paths only: the run directory, the current step, the committed steps, the attempts spent per obstacle, the open escalation, and the paths of the files that hold deviations, overrides, worker reports, findings, and baselines. It SHALL accept the events `start`, `step-start`, `step-done`, `attempt`, `escalate`, `answer`, `record`, `close`, and `status`; `start` SHALL open a run only once while it is `running` or `escalated`, and SHALL start a fresh run over a `completed` or `stopped` one, `record` SHALL keep each path once, and `status` SHALL change nothing. Every emit response SHALL carry the `run` view and the per-obstacle `budgets`.
 
 #### Scenario: A second start is rejected
-
 - **WHEN** the coordinator emits `start` to a run that is already running
 - **THEN** the machine rejects it with `ALREADY_RUNNING` and keeps the original run directory.
 
 #### Scenario: A finished run does not block the next one
-
 - **WHEN** the coordinator emits `start` to a session whose earlier run is `completed` or `stopped`
 - **THEN** the machine opens a fresh run with the new run directory and no carried steps, attempts, or references.
 
 #### Scenario: Status leaves the state unchanged
-
 - **WHEN** the coordinator emits `status`
 - **THEN** the response carries the current `run` view and `budgets` and the persisted state is unchanged.
 

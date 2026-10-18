@@ -47,7 +47,7 @@ In the configured project, start with `/sai-explore`. See [Installation](#instal
 
 **You stay in control.** The AI is a peer, not a decision-maker. Choose how much to delegate: take manual control to validate direction phase by phase, use unattended routes to review only at selected checkpoints, or fully delegate once the change is clear.
 
-**Spec-driven.** The planned route captures what, why, and the acceptance criteria before code is written, then derives the implementation plan from those contracts. Direct Build and Backfill provide an explicit code-first exception for small changes while still leaving the project documented. Acceptance criteria remain as durable project documentation alongside ADRs and DDRs, giving future changes the context and behavioral contracts they need to add one feature without silently breaking another.
+**Spec-driven.** The planned route captures what, why, and the acceptance criteria before code is written, then implements against those contracts. Direct Build and Backfill provide an explicit code-first exception for small changes while still leaving the project documented. Acceptance criteria remain as durable project documentation alongside ADRs and DDRs, giving future changes the context and behavioral contracts they need to add one feature without silently breaking another.
 
 **Knowledge stays in the project.** Each phase writes its own artifact under `openspec/changes/{change-name}/` and `openspec/specs`. When you come back months later — or hand it off to someone else — the reasoning is already there, organized by concern instead of buried in chat history.
 
@@ -67,7 +67,7 @@ In the configured project, start with `/sai-explore`. See [Installation](#instal
 **Adversarial review out of the box.**
 
 - Explore challenges the plan or implementation before handing it back to you.
-- Run `/sai-review` for a deeper code review and relevant security, performance, and accessibility audits.
+- Run `/sai-deep-review` for a deeper code review and relevant security, performance, and accessibility audits.
 
 ## How to use it
 
@@ -77,23 +77,26 @@ Start with an idea in `/sai-explore`, or import existing work using the
 ```text
 /sai-explore                       # clarify the change and choose a route
 # Choose Plan - Unattended, review the plan, then:
-/sai-build <change-name>            # write tests and implement
-/sai-review <change-name>           # review and choose which findings to fix
+/sai-build <change-name>            # write tests, implement, review, and fix
+/sai-deep-review <change-name>      # deeper review, audits, and the fixes you select
 /sai-archive <change-name>          # sync specs and archive when ready
 ```
 
-`/sai-build` authorizes local commits as it works. If you want to approve each
-commit, use [`/sai-4-apply`](docs/commands/sai-4-apply.md) after preparing the
-[implementation plan](docs/commands/sai-3-implement.md) instead.
+`/sai-build` authorizes local commits as it works: it runs
+[`/sai-3-implement`](docs/commands/sai-3-implement.md), one
+[`/sai-4-review`](docs/commands/sai-4-review.md) pass, and a second implement run
+for the findings it judges justified. Run those two commands on their own for
+step-by-step control.
 
-Need broader specialized audits? Add `--full` or `--path <dir>` to `/sai-review`.
+Need broader specialized audits? Add `--full` or `--path <dir>` to `/sai-deep-review`.
 Use `--runtime` to request performance diagnostics and browser checks (with your
 permission), or `--parent-branch <branch>` to choose the comparison branch.
 See [review options](docs/review-triage.md) for scope and cost trade-offs.
 
-If you choose to fix findings at the end of review, it makes one local commit
-but does **not** run tests before committing; run project checks afterward. For fixes through RED → GREEN,
-leave findings open and run `/sai-build`, then review again.
+If you choose to fix findings at the end of the deep review, the fixes run through
+RED → GREEN with one local commit per fix step, and the suites run against the
+baseline recorded before the first fix. To fix findings later, leave them open and
+run `/sai-3-implement`, then review again.
 
 ### Divide and conquer
 
@@ -123,12 +126,11 @@ does not use the same RED → GREEN process; check its results before publishing
 | Command | Role | Output |
 |---------|------|--------|
 | [`/sai-explore`](docs/commands/sai-explore.md) | Clarify the idea and choose how to build it | Proposal handoff, reviewed plan, or completed Direct Build |
-| [`/sai-build`](docs/commands/sai-build.md) | Turn an approved design into a tested implementation | Tests, production code, and local commits |
-| [`/sai-build-new`](docs/commands/sai-build-new.md) | Build and review a change through the `-new` family, which coexists with `/sai-build` | Tests, production code, one local commit per step, and a `review.md`, and fixes for the findings it judges justified |
-| [`/sai-review`](docs/commands/sai-review.md) | Coordinate code review and specialized audits, then offer selected fixes | Reports and, if authorized, fixes with one local commit |
+| [`/sai-build`](docs/commands/sai-build.md) | Build and review a change in one run | Tests, production code, one local commit per step, a `review.md`, and fixes for the findings it judges justified |
+| [`/sai-deep-review`](docs/commands/sai-deep-review.md) | Coordinate code review and specialized audits, then fix the findings you select | Reports and, if you select fixes, one local commit per fix step |
 | [`/sai-archive`](docs/commands/sai-archive.md) | Sync specs and archive the completed change | Archived change and optional local commit |
 
-For phase-by-phase control, use the eight [numbered commands](docs/sequential-pipeline.md). See [review options and fix selection](docs/review-triage.md) for audit scope and handling findings.
+For phase-by-phase control, use the seven [numbered commands](docs/sequential-pipeline.md) (number 5 is unused). See [review options and fix selection](docs/review-triage.md) for audit scope and handling findings.
 
 ## Utility commands
 
@@ -268,8 +270,8 @@ Use the menu's estimates to choose:
 - `CONTEXT` — how much material the task needs to handle, from Small to Large.
 - `DIFFICULTY` — reasoning demand, from `↑` to `↑↑↑`; use stronger models for harder work.
 
-Keep design at least as capable as implementation planning, and planning at
-least as capable as GREEN (`sai-2` >= `sai-3` >= `sai-4`). Decisions belong in
+Keep design at least as capable as the implement coordinator, and the
+coordinator at least as capable as GREEN (`sai-2` >= `sai-3`). Decisions belong in
 the earlier phases; cheaper implementers should execute them, not redesign them.
 
 ### Per project installation / override

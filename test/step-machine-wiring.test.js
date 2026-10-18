@@ -67,10 +67,10 @@ test('discovered coordinators have registered step machines and fetch stage-mach
   const coordinators = discoverStepMachineCoordinators();
   assert.ok(coordinators.length > 0, 'should discover at least one coordinator with step_machine');
 
-  // Must discover exactly spec, design, implement, performance, review, security, and accessibility
+  // Must discover exactly spec, design, performance, security, and accessibility
   const names = coordinators.map(c => c.name).sort();
-  const expectedPhases = ['accessibility', 'design', 'implement', 'performance', 'review', 'security', 'spec'];
-  assert.deepEqual(names, expectedPhases, 'must discover exactly spec, design, implement, performance, review, security, and accessibility');
+  const expectedPhases = ['accessibility', 'design', 'performance', 'security', 'spec'];
+  assert.deepEqual(names, expectedPhases, 'must discover exactly spec, design, performance, security, and accessibility');
 
   for (const coord of coordinators) {
     assert.ok(registry.has(coord.machineId), `${coord.machineId} must be registered in sai-state/registry.js`);
@@ -112,7 +112,7 @@ test('coordinator progress plans match their registered machines (source-driven)
       assert.ok(unoptedMatch, 'design phase-contract should have unopted plan block');
       const unoptedIds = planIds(unoptedMatch[0]);
       assert.deepEqual(unoptedIds, machine.UNOPTED_STEPS, 'design unopted ids must match UNOPTED_STEPS');
-    } else if (coord.name === 'implement' || coord.name === 'performance' || coord.name === 'review' || coord.name === 'security' || coord.name === 'accessibility') {
+    } else if (coord.name === 'performance' || coord.name === 'security' || coord.name === 'accessibility') {
       // Extract from coordinator card itself
       extractedIds = planIds(coord.content);
       assert.deepEqual(extractedIds, machine.STEPS, `${coord.name} progress plan ids must match machine STEPS`);
@@ -171,7 +171,7 @@ test('step machines own STAGE_FILES with no static pointer tables (source-driven
           `design ${id} pointer must match STAGE_FILES[${id}]`);
       }
     }
-    // Note: all seven phases use step_machine; no phase retains a static step_pointer_map table
+    // Note: every routed phase uses step_machine; no phase retains a static step_pointer_map table
   }
 });
 
@@ -193,28 +193,6 @@ test('design-standalone@1 machine is properly registered', () => {
   assert.ok(machine.UNOPTED_STEPS, 'must have UNOPTED_STEPS array');
   assert.ok(machine.OPTED_IN_STEPS, 'must have OPTED_IN_STEPS array');
   assert.ok(machine.STAGE_FILES, 'must have STAGE_FILES');
-  assert.equal(typeof machine.transition, 'function', 'must have transition function');
-  assert.equal(typeof machine.project, 'function', 'must have project function');
-});
-
-test('implement-standalone@1 machine is properly registered', () => {
-  const machine = registry.get('implement-standalone@1');
-  assert.ok(machine, 'implement-standalone@1 must be registered');
-  assert.equal(machine.machineId, 'implement-standalone@1');
-  assert.ok(Array.isArray(machine.STEPS), 'must have STEPS array');
-  assert.ok(machine.STAGE_FILES, 'must have STAGE_FILES');
-  assert.ok(machine.initialState, 'must have initialState');
-  assert.equal(typeof machine.transition, 'function', 'must have transition function');
-  assert.equal(typeof machine.project, 'function', 'must have project function');
-});
-
-test('review-standalone@1 machine is properly registered', () => {
-  const machine = registry.get('review-standalone@1');
-  assert.ok(machine, 'review-standalone@1 must be registered');
-  assert.equal(machine.machineId, 'review-standalone@1');
-  assert.ok(Array.isArray(machine.STEPS), 'must have STEPS array');
-  assert.ok(machine.STAGE_FILES, 'must have STAGE_FILES');
-  assert.ok(machine.initialState, 'must have initialState');
   assert.equal(typeof machine.transition, 'function', 'must have transition function');
   assert.equal(typeof machine.project, 'function', 'must have project function');
 });
@@ -283,8 +261,8 @@ test('replacement before the first progress event reconstructs with the first fi
 });
 
 test('every step-machine coordinator sends the first filed pointer with the task disclosure', () => {
-  const coordinators = discoverStepMachineCoordinators().filter((c) => c.machineId !== 'apply-standalone@1');
-  assert.equal(coordinators.length, 7, 'seven step-machine coordinators should be discovered');
+  const coordinators = discoverStepMachineCoordinators();
+  assert.equal(coordinators.length, 5, 'five step-machine coordinators should be discovered');
   for (const { name, machineId, content } of coordinators) {
     const mod = registry.get(machineId);
     const second = mod.firstFiled().stage;
@@ -297,16 +275,12 @@ test('every step-machine coordinator sends the first filed pointer with the task
 });
 
 test('every step-machine worker and common.md adopt the task-disclosure pointer rule', () => {
-  for (const name of ['spec', 'design', 'implement', 'review', 'security', 'performance', 'accessibility']) {
+  for (const name of ['spec', 'design', 'security', 'performance', 'accessibility']) {
     const worker = readRepo(`sai/commands/${name}/worker.md`);
     const common = readRepo(`sai/commands/${name}/steps/common.md`);
     assert.match(worker, /§ Step-machine task disclosure/, `${name} worker should reference the shared rule`);
-    // Review, security, and performance state the pointer rule once, in their worker card; their common.md carries no pointer rule.
-    if (name === 'review') {
-      assert.match(worker, /first delivered pointer targets `establish-diff-scope`/, 'review worker should carry the step-delivery rule');
-      assert.match(worker, /reports together with `establish-diff-scope` in the first progress event/, 'review worker should report both ids together');
-      assert.doesNotMatch(common, /Step delivery|Active step:/, 'review common.md should not repeat the pointer rule');
-    } else if (name === 'security' || name === 'performance') {
+    // Security and performance state the pointer rule once, in their worker card; their common.md carries no pointer rule.
+    if (name === 'security' || name === 'performance') {
       assert.match(worker, /Each progress-event continuation carries one pointer line/, `${name} worker should carry the step-delivery rule`);
       assert.doesNotMatch(common, /first line of the task-disclosure continuation/, `${name} common.md should not repeat the step-delivery rule`);
     } else {
@@ -318,9 +292,7 @@ test('every step-machine worker and common.md adopt the task-disclosure pointer 
 });
 
 test('chained and supervised surfaces deliver the first pointer in their own task disclosure (E9)', () => {
-  const build = readRepo('sai/commands/meta-build/coordinator.md');
   const pipeline = readRepo('sai/commands/explore/steps/pipeline-plan-unattended.md');
-  assert.match(build, /post-ready task disclosure opens with the `collapse-implemented-steps` pointer line/);
   assert.match(pipeline, /reset <id> spec-standalone@1` returns/);
   assert.match(pipeline, /reset <id> design-standalone@1` returns[\s\S]{0,300}--with-overview false` in every supervised run, including on a design-phase retry/);
 });

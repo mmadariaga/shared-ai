@@ -12,7 +12,7 @@ When `/sai-2-design` authors `tasks.md`'s `## Implementation Context`, it SHALL 
 
 **Test Command** SHALL NOT be merged field-to-field. The consuming field is contractually a single directly-executable command, and `/sai-2-design` SHALL populate it from its own research as it does today. The learnings **Test Command** section SHALL be used only as corroboration: when fresh research and the recorded command agree, the field is written as researched; when they disagree, the field is written as researched and the disagreement is surfaced per the contradiction-notice requirement below.
 
-When `/sai-2-design` takes any value from the learnings **Test Command** section, it SHALL take the command line only. It SHALL NOT carry the `*Observed:*` provenance line, a bullet marker, or a key prefix into the field, because `/sai-3-implement` copies `## Implementation Context`'s **Test Command** into the plan's runnable commands and any such syntax would render it non-executable. `/sai-4-apply` SHALL deliver only **Stack**, **Conventions**, and **Avoid** to its workers, never **Test Command**.
+When `/sai-2-design` takes any value from the learnings **Test Command** section, it SHALL take the command line only. It SHALL NOT carry the `*Observed:*` provenance line, a bullet marker, or a key prefix into the field, because an implementation run copies this field into its runnable test commands and any such syntax would render it non-executable.
 
 The merge SHALL be additive to codebase research, not a replacement for it. The existing requirement that each field be derived from actual codebase research SHALL continue to hold; a populated `SAI_LEARNINGS.md` SHALL NOT be accepted as a substitute for that research, and SHALL NOT license a placeholder in any field.
 
@@ -47,8 +47,8 @@ The merge SHALL NOT change the shape of `## Implementation Context`. It remains 
 
 #### Scenario: Blind test-writer receives the merged field
 
-- **WHEN** `/sai-3-implement` copies the **Test Command** field into the plan's runnable commands and a blind test-writer later runs its Step's command
-- **THEN** the command is directly executable from the project root, because the merge carried no bullet or provenance syntax into the field, and the field itself is never part of the apply disclosure
+- **WHEN** an implementation run copies the **Test Command** field into its runnable test commands and a blind test-writer later runs its Step's command
+- **THEN** the command is directly executable from the project root, because the merge carried no bullet or provenance syntax into the field
 
 ### Requirement: Fresh research takes precedence within the Conventions quota
 
@@ -79,9 +79,9 @@ A learnings bullet that duplicates a research-derived bullet SHALL be treated as
 
 When `/sai-2-design` prefers a freshly-researched value over a `SAI_LEARNINGS.md` entry concerning the same repo-level artifact, it SHALL surface that disagreement to the user as a contradiction notice naming the entry's key, the recorded value, and the researched value.
 
-The notice SHALL be printed output only. `/sai-2-design` SHALL NOT edit, delete, or rewrite `SAI_LEARNINGS.md`, and this requirement SHALL NOT be read as granting it any write authority over that file — the file remains writable only by the `/sai-4-apply` coordinator's promotion pass.
+The notice SHALL be printed output only. `/sai-2-design` SHALL NOT edit, delete, or rewrite `SAI_LEARNINGS.md`, and this requirement SHALL NOT be read as granting it any write authority over that file. No command in the current tree writes `SAI_LEARNINGS.md`.
 
-This exists because supersede-by-key alone cannot reach a class of stale entries. Promotion fires only from a deviation, a deviation is an execution failure, and a correct value in `## Implementation Context` is precisely what prevents that failure — so an entry corrected at design time may never be re-observed at apply time and would otherwise persist indefinitely. The notice hands the human the one signal needed to prune it, without granting delete authority to any phase.
+The notice exists because no command now prunes stale entries, and a correct value in `## Implementation Context` is what prevents the failure that would otherwise expose one. The notice hands the human the one signal needed to prune it, without granting delete authority to any phase.
 
 When `/sai-2-design` finds no such disagreement, it SHALL print nothing.
 
@@ -93,7 +93,7 @@ When `/sai-2-design` finds no such disagreement, it SHALL print nothing.
 #### Scenario: Design does not edit the learnings file
 
 - **WHEN** `/sai-2-design` detects a contradicted entry
-- **THEN** `SAI_LEARNINGS.md` is left byte-for-byte unchanged, and the entry is removed only if a human or a later promotion acts on it
+- **THEN** `SAI_LEARNINGS.md` is left byte-for-byte unchanged, and the entry is removed only if a human acts on it
 
 #### Scenario: No contradictions found
 
@@ -102,24 +102,24 @@ When `/sai-2-design` finds no such disagreement, it SHALL print nothing.
 
 ### Requirement: sai-3-implement never reads the learnings file directly
 
-`/sai-3-implement` SHALL NOT read `SAI_LEARNINGS.md`. It SHALL receive promoted facts only through `tasks.md`'s `## Implementation Context`, which it already consumes as its expertise contract.
+`/sai-3-implement` SHALL NOT read `SAI_LEARNINGS.md` for its planning or step work. It SHALL receive promoted facts only through `tasks.md`'s `## Implementation Context`, which it already consumes as its expertise contract. The coordinator MAY read `SAI_LEARNINGS.md` once, only to locate the project's test command when every task is already checked, as `sai/commands/implement/coordinator.md` states.
 
 `/sai-3-implement` starts from its supplied material, and `## Implementation Context` is part of it. A direct read of the learnings file would repeat work `/sai-2-design` already did when it merged the file.
 
-No instruction file SHALL add `SAI_LEARNINGS.md` to `/sai-3-implement`'s reading list, and the `sai-3-implement` step library (`sai/commands/implement/steps/`) SHALL NOT read it.
+No instruction file other than that coordinator test-command lookup SHALL add `SAI_LEARNINGS.md` to `/sai-3-implement`'s reading list, and the `/sai-3-implement` step library (`sai/commands/implement/steps/`) SHALL NOT read it.
 
 #### Scenario: sai-3-implement plans a change in a repo with a learnings file
 
-- **WHEN** `/sai-3-implement` produces `implementation.md` in a repository containing `SAI_LEARNINGS.md`
-- **THEN** it reads only its existing inputs, and any promoted fact reaches it solely through the four fields of `## Implementation Context`
+- **WHEN** `/sai-3-implement` runs in a repository containing `SAI_LEARNINGS.md`
+- **THEN** its step library reads only its existing inputs, and any promoted fact reaches the steps solely through the four fields of `## Implementation Context`
 
 ### Requirement: Promoted facts never breach test-writer blindness
 
 A promoted fact reaching the blind test-writer through `## Implementation Context` SHALL never reveal the current Step's GREEN implementation body.
 
-This invariant is held closed by construction rather than by an added filter: the promotion classification guarantees that a promoted entry keys on a repo-level artifact and never on a symbol the change being applied introduces. A fact that cannot name the change's new symbols cannot disclose that change's implementation body.
+This invariant is held closed by construction rather than by an added filter: an entry in the writing profile is expected to key on a repo-level artifact and never on a symbol the change being applied introduces. A fact that cannot name the change's new symbols cannot disclose that change's implementation body. No command currently checks this expectation.
 
-The invariant SHALL be stated explicitly wherever the promotion filter and the test-writer's injected slice are specified, rather than left as an implicit consequence. The coordinator SHALL NOT inject an accumulated learning directly into any dispatch: the writing profile is the only channel through which a promoted fact reaches a worker.
+The invariant SHALL be stated explicitly wherever the writing profile and the test-writer's injected slice are specified, rather than left as an implicit consequence. The coordinator SHALL NOT inject an accumulated learning directly into any dispatch: the writing profile is the only channel through which a promoted fact reaches a worker.
 
 #### Scenario: A promoted Stack fact reaches the test-writer
 
@@ -133,14 +133,14 @@ The invariant SHALL be stated explicitly wherever the promotion filter and the t
 
 ### Requirement: Wrapper wiring fetches the format file for both consuming commands
 
-`sai/commands/design/steps/tasks.md` and `sai/commands/apply/invocation.md` SHALL each fetch `sai/policies/sai-learnings-format.md`, so the format contract is in context wherever the file is read or written. The design side SHALL fetch it only at the tasks step's point of use (the `## Implementation Context` item) and only when a project-root `SAI_LEARNINGS.md` exists; it SHALL NOT fetch it at dispatch and never when the file is absent. The apply side fetches it in its instruction-loading block.
+`sai/commands/design/steps/tasks.md` SHALL fetch `sai/policies/sai-learnings-format.md` at the Implementation Context item, so the format contract is in context wherever the file is read. It SHALL fetch it only at that point of use and only when a project-root `SAI_LEARNINGS.md` exists; it SHALL NOT fetch it at dispatch and never when the file is absent.
 
 Harness parity SHALL ride the shared instruction bodies rather than being duplicated per harness, consistent with how the existing `glossary-format.md` fetch achieves parity today.
 
 #### Scenario: sai-4-apply loads its instructions
 
-- **WHEN** `sai/commands/apply/invocation.md` runs its instruction-loading block
-- **THEN** it fetches `sai/policies/sai-learnings-format.md` alongside `sai/commands/apply/instructions.md`
+- **WHEN** the command catalog is read
+- **THEN** no `/sai-4-apply` command exists, so no apply invocation fetches `sai/policies/sai-learnings-format.md`
 
 #### Scenario: sai-2-design tasks step with SAI_LEARNINGS.md present
 

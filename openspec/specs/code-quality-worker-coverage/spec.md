@@ -7,11 +7,11 @@ Deliver the existing code-quality priority policy explicitly to Apply RED/GREEN,
 
 ### Requirement: Apply Code Writers Load the Existing Policy
 
-The shared Apply RED/GREEN instructions SHALL explicitly load `sai/policies/code-quality-priority-stack.md` using `Fetch @sai/policies/code-quality-priority-stack.md`. The policy SHALL apply within the assigned Step and existing role restrictions and SHALL grant no additional paths or permissions. GREEN's test-file prohibition SHALL remain in force.
+The shared implement RED/GREEN instructions in `sai/commands/implement/worker-common.md` SHALL explicitly load `sai/policies/code-quality-priority-stack.md` using `Fetch @sai/policies/code-quality-priority-stack.md`. The policy SHALL apply within the assigned Step and existing role restrictions and SHALL grant no additional paths or permissions. GREEN's test-file prohibition SHALL remain in force.
 
 #### Scenario: Both Apply roles receive the policy
 
-- **WHEN** RED or GREEN loads `sai/commands/apply/worker-common.md`
+- **WHEN** RED or GREEN loads `sai/commands/implement/worker-common.md`
 - **THEN** the shared instructions explicitly load the existing policy within the assigned Step and role restrictions without permitting GREEN to edit tests
 
 ### Requirement: Direct Build Loads the Policy Within Its Assigned Scope
@@ -22,15 +22,6 @@ The Direct Build worker SHALL explicitly load `sai/policies/code-quality-priorit
 
 - **WHEN** the Direct Build worker loads its worker contract
 - **THEN** the contract explicitly loads the existing policy while retaining the crystallized block's scope and existing role restrictions
-
-### Requirement: Review Fixes Load the Policy Within Selected Findings
-
-The review-fix worker SHALL explicitly load `sai/policies/code-quality-priority-stack.md` using `Fetch @sai/policies/code-quality-priority-stack.md`. The policy SHALL apply only to the selected findings and SHALL retain the worker's existing exclusions and role restrictions.
-
-#### Scenario: Review-fix guidance remains findings-driven
-
-- **WHEN** the review-fix worker loads its worker contract
-- **THEN** the contract explicitly loads the existing policy only for the selected findings without expanding its exclusions or role restrictions
 
 ### Requirement: Merge Loads the Policy Before Code Authorship
 
@@ -55,7 +46,7 @@ Choosing a complete existing version through `git-ours` or `git-theirs` alone SH
 
 ### Requirement: Coverage Remains Single-Sourced and Harness-Equivalent
 
-New worker coverage SHALL reference the existing policy rather than copy its rules. Existing implementation-planning and conditional review loads SHALL remain in place. New Fetch references SHALL be limited to shared Apply instructions, Direct Build, review-fix, and the code-authoring merge stages; artifact-only workers, read-only audits, and generic helpers SHALL receive no new loads.
+New worker coverage SHALL reference the existing policy rather than copy its rules. Existing conditional review loads SHALL remain in place. New Fetch references SHALL be limited to the shared implement RED/GREEN instructions, Direct Build, and the code-authoring merge stages; artifact-only workers, read-only audits, and generic helpers SHALL receive no new loads.
 
 Tests SHALL verify the intended Fetch-reference holders, merge stage disclosure, and identical shared policy and worker-instruction projection for Claude Code and opencode.
 

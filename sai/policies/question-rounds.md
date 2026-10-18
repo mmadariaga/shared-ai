@@ -1,6 +1,6 @@
 # Question Rounds
 
-Single source for presenting several independent closed questions as one round. Direct Build's findings selection (`sai/commands/meta-review/findings-selection.md`) and Explore's post-crystallization close (`sai/commands/explore/steps/route-selector.md`) both reference this file; neither restates it.
+Single source for presenting several independent closed questions as one round. Direct Build's findings selection (`sai/commands/deep-review/findings-selection.md`) and Explore's post-crystallization close (`sai/commands/explore/steps/route-selector.md`) both reference this file; neither restates it.
 
 ## Round
 

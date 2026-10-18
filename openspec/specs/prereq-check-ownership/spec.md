@@ -7,15 +7,20 @@ TBD - created by archiving change prereqs-explore-only. Update Purpose after arc
 
 ### Requirement: Explore is the only command that runs the prerequisite check
 
-`/sai-explore` SHALL be the only command surface that loads `sai/policies/prereqs-check.md` or runs `sai/tools/prereqs.js`. Every other command, coordinator, and worker card SHALL NOT fetch a prerequisite check, run the tool, or restate the three remediation literals. A project that never runs `/sai-explore` and lacks the CLI or `schema: sai-workflow` SHALL receive OpenSpec's native error or default templates, with no substitute notice.
+`/sai-explore`, `/sai-4-review`, and `/sai-3-implement` SHALL be the only command surfaces that load `sai/policies/prereqs-check.md` or run `sai/tools/prereqs.js`. Every other command, coordinator, and worker card SHALL NOT fetch a prerequisite check, run the tool, or restate the three remediation literals. A project that never runs `/sai-explore`, `/sai-4-review`, or `/sai-3-implement` and lacks the CLI or `schema: sai-workflow` SHALL receive OpenSpec's native error or default templates, with no substitute notice.
 
 #### Scenario: Non-explore cards run no prerequisite check
-- **WHEN** the apply invocation, `pr` and `status` bodies, and the archive, backfill, meta-review, and meta-build cards, and the design, implement, review, security, performance, accessibility, and spec worker cards are read
+- **WHEN** the `pr` and `status` bodies, the archive and backfill cards, and the design, implement, review, security, performance, accessibility, and spec worker cards are read
 - **THEN** none fetches `prereqs-check.md` or `prereqs.md` or invokes `prereqs.js`
 
 #### Scenario: Explore keeps the check
 - **WHEN** `sai/commands/explore/body.md` is read
 - **THEN** it still runs the inline prerequisite preflight
+
+#### Scenario: Review and implement coordinators keep the check
+
+- **WHEN** `sai/commands/review/coordinator.md` or `sai/commands/implement/coordinator.md` is read
+- **THEN** it fetches `sai/policies/prereqs-check.md` and runs its check in Start before any other step
 
 ### Requirement: Path table remains available without the check
 

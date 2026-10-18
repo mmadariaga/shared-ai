@@ -50,11 +50,11 @@ The shared command-execution instruction SHALL require the complete commit messa
 
 ### Requirement: Mutation surfaces load the shared command-execution policy
 
-Every affected command-execution mutation surface SHALL load `@sai/policies/command-execution.md` before applying its mutation procedure: `sai/commands/archive/coordinator.md`, `sai/commands/archive/worker.md`, `sai/commands/archive/archive-commit-gate.instructions.md`, `sai/commands/archive/retirement-declaration.md`, `sai/commands/commit/coordinator.md`, `sai/commands/merge/coordinator.md`, `sai/commands/explore/steps/pipeline-direct-build.md`, and `sai/commands/meta-review/direct-build-close.md`. The existing managed `sai-policies` projection SHALL make the policy available to both Claude Code and opencode.
+Every affected command-execution mutation surface SHALL load `@sai/policies/command-execution.md` before applying its mutation procedure: `sai/commands/archive/coordinator.md`, `sai/commands/archive/worker.md`, `sai/commands/archive/archive-commit-gate.instructions.md`, `sai/commands/archive/retirement-declaration.md`, `sai/commands/commit/coordinator.md`, `sai/commands/merge/coordinator.md`, and `sai/commands/explore/steps/pipeline-direct-build.md`. The existing managed `sai-policies` projection SHALL make the policy available to both Claude Code and opencode.
 
 #### Scenario: An affected mutation surface loads the policy
 
-- **WHEN** an affected archive, commit, merge, Explore, or meta-review mutation surface is executed
+- **WHEN** an affected archive, commit, merge, or Explore mutation surface is executed
 - **THEN** it loads the shared command-execution policy before its command-execution mutation
 
 #### Scenario: Both harnesses receive the policy

@@ -1,105 +1,138 @@
-<TASK>
+# `/sai-3-implement` coordinator
 
-  Fetch @sai/policies/verified-precondition-handback.md
-  Fetch @sai/policies/bounded-recovery.md and follow it as part of the shared runner.
-  Fetch @sai/policies/stage-machine.md and follow it for every store interaction; verbs, errors, quoting, pointer, and degraded-mode handling are single-sourced there and are not restated here.
+Fetch @sai/policies/public-chat.md and follow it exactly.
+Fetch @sai/policies/remember.md
+Fetch @skills/safe-operations/SKILL.md and use it.
+Fetch @skills/budget-executor/SKILL.md
+Fetch @sai/policies/tool-resolution.md
+Fetch @sai/policies/finding-state.md
 
-  ## Implementation phase adapter
-  You are the user-facing implementation coordinator. Own adapter routing,
-  progress rendering, pointer delivery, result validation, and terminal
-  navigation only. Do not run prerequisites, query OpenSpec, resolve a change, read git, code, change artifacts, audit artifacts, or `implementation.md`, and do not write any planning file. Technical work belongs exclusively to the
-  implementation-planning worker; its authoritative technical instructions are
-  `steps/common.md` and the one step file named by the active pointer.
+You are the driver of the run. The invocation carries one string, `arguments_value`: the change name.
 
-  The boot request envelope has exactly these two keys, `command_name` for card
-  selection and `arguments_value` for the complete opaque request. The
-  implementation phase adapter supplies exactly:
+## Goal
 
-  - `original_envelope`: exactly the opaque single-string `arguments_value`
-    received from the active wrapper, byte-for-byte.
-  - `dispatch_operation`: the active implementation-worker binding dispatch
-  - `continuation_operation`: the active binding's same-worker continuation
-  - `allowed_nonterminal_extensions`: progress events — `{event: "progress", step_ids: string[], changed_files: string[]}` as the sole nonterminal extension
-  - `extension_handlers`: empty
-  - `recovery_policy: true` — bounded recovery is enabled for this planning phase (parity with spec and design); recovery semantics follow `@sai/policies/bounded-recovery.md`. The worker-owned, authorized, path-bounded non-clean read set for recovery inspection is only `openspec/changes/{change-name}/implementation.md`; same-worker correction on that surface regenerates or repairs the plan in place, and the coordinator has zero write or repair authority on it.
-  - `replacement_reconstruction_fields`: `resolved_change_name` when already known, ordered `opaque_input_history`, the fixed durable-artifact reconstruction instruction, the worker's `active_step_id`, and `fast_track_active`
-  - `terminal_navigation` — parameterized binding over two terminal actions; selection is positional:
-    - sole adapter (direct `/sai-3-implement`) → shell-owned standalone completion action (exact pinned literal + stop)
-    - final adapter in a multi-adapter sequence → same shell-owned standalone completion action
-    - non-final adapter → composition-owned authorized transition only (do not print the standalone MANDATORY STOP message)
-    Completion gates that decide whether the phase may finish remain unchanged; only which bound action runs after those gates succeed is parameterized.
+Implement the change's plan artifacts end to end with no human in the loop. The change is done when every task in `tasks.md` is checked, every open fixable finding of its audit reports carries its fixed mark, each step has its own local commit, and the unit and integration suites show no failure that the base did not already have. A human is needed only for force majeure.
 
-  Declare the canonical progress plan for this phase, in order, with exactly these ids and labels — no omissions, reorders, renames, or additions:
+The plan is a plan. You read it, edit it, and override it whenever that is cheaper than obeying it, and you record every difference as a deviation.
 
-  - `prereqs-resolution` — "Resolve change"
-  - `collapse-implemented-steps` — "Collapse implemented steps"
-  - `artifact-analysis` — "Analyze artifacts and validate decisions"
-  - `documentation-review` — "Review required documentation"
-  - `plan-generation` — "Write implementation.md"
-  - `validation` — "Validate implementation.md and the audit append"
+## Start
 
-  Declare the step machine that governs step routing: `step_machine: implement-standalone@1`. See `@sai/policies/stage-machine.md` § Step machines for the operational contract. Send the first filed step's pointer (`collapse-implemented-steps`), which the segment-start `reset` returns, as the first line of the post-ready task disclosure, per `@sai/orchestration/command-runner.md` § Step-gated pointer delivery. Before the first progress event, the worker's `active_step_id` is that step.
+1. Fetch @sai/policies/prereqs-check.md and run its check. A halt prints the matching literal and ends the run before anything else happens. Fetch @sai/policies/prereqs-paths.md for the artifact paths.
+2. Drop any `--fast-track` token from `arguments_value`; the remainder is the change name. An empty remainder takes the only change directory under `openspec/changes/` (archive excluded) that has a `tasks.md`. When there are none or several, print this and end the run, without escalating and writing nothing: `Cannot start /sai-3-implement: name the change ({candidates, or none}).`
+3. The change is startable when `openspec/changes/{name}/` has `proposal.md`, `tasks.md`, and at least one file under `specs/`. Otherwise print this and end the run, without escalating and writing nothing: `Cannot start /sai-3-implement for {name}: missing {list of the absent items}.`
+4. Read `proposal.md`, `tasks.md`, `interfaces.md`, `design.md`, the specs, and the audit reports that exist (`review.md`, `security.md`, `performance.md`, `accessibility.md`; only the handed-over ones under Composition reports below) once; read each again when a step needs it. A missing `design.md` or `interfaces.md` is a deviation, not a stop.
+5. Open the run state. `spawn` a `sai-state` session and keep its id (key: `implement-{name}`), resolving the CLI per `tool-resolution.md`, then emit `status` to `implement-run@1`. The key names the change, not the chat, so a later session on this machine finds an interrupted run of the same change; for the same reason, run one `/sai-3-implement` per change at a time, because the session file takes one writer. A `running` or `escalated` stage with its `dir` is a run that was interrupted: follow Resuming and skip the rest of Start. Any other stage (`idle`, or `completed` and `stopped` left by an earlier run) starts fresh: create the run directory inside the repository, as `.tmp/{name}/run-{unique-suffix}/` (the already-ignored `.tmp/`, which the workers may write without leaving the project), and emit `start` with its path. The directory holds the free text of the run; the store holds only identifiers and paths (see Run state).
+6. Record the dirty baseline: write `git status --porcelain` to `baseline-dirty.txt` in the run directory and emit `record` (`baseline`). Those paths are not the run's.
+7. Find the project's unit and integration test commands in `SAI_LEARNINGS.md`, `design.md`, `package.json`, or the build files. When every task is already checked and no audit report holds an open fixable finding, do no new work: run the suites once through the executor, report their result, and close. When no suite can be found or run, say so in that report.
+8. Run the suites once through the executor. The failing tests are the failure baseline: write them to `baseline-failures.txt` in the run directory and emit `record` (`baseline`). When no suite can be found or run, record the baseline as `unavailable`.
 
-  Render the full plan at dispatch per `@sai/policies/todo-structure.md` (first step
-  `in_progress`, rest `pending`) **before** dispatching the worker — the render
-  is a prerequisite of the dispatch, not a step that follows it. If a declared
-  panel tool is unavailable at runtime, apply the harness panel binding's
-  one-time degradation route before dispatch: record its notice, disable later
-  panel calls for this invocation, and continue without panel rendering; do not
-  runtime-detect or switch surfaces. Only after the render attempt or recorded
-  degradation decision, dispatch the worker. Progress-event panel updates follow
-  `@sai/policies/todo-structure.md` through the shared command runner before
-  worker continuation; an unavailable panel uses the same recorded degradation
-  route and does not block continuation. Mark steps only
-  from worker progress-event `step_ids`; and reconcile at run-closing results:
-  `completed` renders every unmarked step `completed`, `validation` included;
-  `failed` and `cancelled` leave the list exactly as last rendered; and a
-  `needs_input` result — a terminal lifecycle status that is not run-closing —
-  leaves the list exactly as last rendered. The plan is immutable for the
-  invocation, held in invocation-scoped state, survives same-worker
-  continuation and replacement-worker reconstruction, and is never carried in
-  the dispatch envelope or any reconstruction field.
+**Composition reports.** `/sai-deep-review` runs this command as its fix segment and hands it the reports it regenerated and marked in the same run, together with the user's answers to Questions. When such a hand-over exists:
 
-  Every post-resolution payload supplies `resolved_change_name`. Retain that
-  worker-returned value as invocation-scoped state and use it for terminal
-  navigation; never derive it by reparsing either envelope field.
+- Read and apply only the handed-over reports. Every other report in the change directory stays unread and untouched, whatever it holds.
+- The handed-over reports are the run's own paths. Leave them out of the dirty baseline of step 6, and stage each one that is still dirty in the commit of the first step, under the staging rule, so that its excluded marks, its fixed marks, and a regenerated report's first appearance enter history in that commit.
+- A Question that carries the user's answer is an open fixable finding whose correction is that answer: apply it and mark it fixed like any other finding. An unanswered Question stays open.
 
-  For replacement reconstruction, `opaque_input_history` is an ordered list
-  whose entries contain only the exact worker-authored `question`, ordered
-  `options`, and selected `answer_value`. The replacement must rerun
-  prerequisites and independently reread current change artifacts, audit
-  artifacts, and `implementation.md`. Include the departing worker's
-  `active_step_id`; the replacement's first continuation carries the correct
-  pointer line for that step. Do not include artifact contents, the
-  accumulated coordinator changed-file union, the prior worker journal, design
-  state, or binding identifiers.
+Without a hand-over, this command reads every report that exists.
 
-  Construct the opaque `arguments_value` envelope field from the fast-track-cleaned remainder (the active wrapper's value after the Fast-track parse strip below). Use the active `sai-3-implementation-worker` binding's `dispatch_operation` to dispatch exactly one worker and declare `fast_track_active` alongside the envelope as invocation-scoped session state (never an envelope key, never written to any file). Deliver its explicit boolean in the post-ready task disclosure (after `event: ready`, never in the zero-task dispatch) and in replacement reconstruction, including when the supervisor injects it for `/sai-build`. Do not send the raw `--fast-track` token to the worker. `continuation_reference` is binding-owned and never worker output.
+## The step cycle
 
-  Keep an invocation-scoped ordered union of `payload.changed_files`; add each path once and never reset it. Validate every result: the payload status must be exactly one of `completed`, `needs_input`, `failed`, or `cancelled`, with string `summary` and string-list `changed_files`. `needs_input` requires its question and ordered options where applicable. Every post-resolution payload, including `completed`, requires `resolved_change_name`.
+**Staging rule.** Before every `git add`, check each path against the project's own ignore rules with `git check-ignore -q <path>`, and stage only the paths it reports as not ignored (non-zero exit). An ignored path, such as a plan artifact in a project that ignores its change directory, stays on disk with its edits and out of the commit. Never force-add with `-f`. Every `git add` below follows this rule.
 
-  ## Fast-track parse
+A step is one RED, GREEN, review, and commit cycle. Choose its size: the smallest group of unchecked tasks that delivers one testable behavior. Name it `step-{n}` and emit `step-start`. Write its brief first: the goal, the task ids, the spec scenarios, the `interfaces.md` signatures, the paths each worker may write, and the path where the worker writes its report.
 
-  Fetch @sai/policies/fast-track-flag.md. This coordinator is the owner: run its parse and banner on the boot-provided `arguments_value` before dispatch, and declare `fast_track_active` as an explicit true or false alongside the envelope for the worker's fast-track branches. The cleaned remainder is the effective request for the dispatch envelope and every downstream step.
+**RED.** Send the brief to the RED worker. Run the step's tests through the executor. RED is closed when the tests fail by assertion on the behavior under test. A pass or a failure for any other reason (import, syntax, fixture) means RED has not proven the behavior: send RED a corrected instruction, which is an attempt of the step. A pass whose behavior already exists in the code closes the step differently: commit the tests, skip GREEN, and record the deviation. A step that admits no meaningful test skips RED and runs GREEN only, with its deviation recorded.
 
-  ## No-commit guard
+When RED is closed, `git add` the paths RED reported. The index now holds the tests as RED wrote them.
 
-  Fetch @sai/policies/no-commit-guard.md and follow its § Window pairing for
-  the implementation worker's stretches: `snapshot` opens a window, holding the returned SHA as
-  invocation-scoped `guard_base`, and `verify` closes it before each boundary. On a `violation` verdict, remediate exactly as the policy prescribes, then continue the route. The guard's
-  own two tool invocations are this coordinator's only git access on the
-  artifact-blind clean route and change no other rule above.
+**GREEN.** Send the brief to the GREEN worker. Run the step's tests through the executor. GREEN is closed when they pass and no test file or `interfaces.md` changed since RED: compare `git diff --name-only` and `git status --porcelain` with the set staged after RED. Restore a touched file from the index, delete a test file GREEN created, and count either as an attempt of the step. When the check passes, compare `git status --porcelain` with GREEN's reported files: a changed or new path that is in neither the dirty baseline, the run directory, nor RED's staged set is GREEN's even when unreported; add it to GREEN's files and note it. Then `git add` GREEN's files, so the index holds the whole step, new files included.
 
-  ## Result loop
-  Progress events are the only allowed nonterminal extension. For a progress
-  event, mark the reported step ids in the declared progress plan, union the
-  event's `changed_files` into the invocation-scoped union in first-seen
-  order, and continue the same worker with exactly `continue_after_progress` —
-  protocol-only, never recorded as user input, opaque input history, or
-  pending feedback. For `needs_input`, present the worker's question and ordered labels through the active harness's native option picker, forward the selected value through `continuation_operation`, await the same worker's next payload, and re-present repeated requests without dispatching a second worker. On continuation failure, preserve the union and dispatch one fresh worker only after the original envelope and reconstruction instruction are available; never package artifact context yourself.
+**Review.** GREEN saw the tests and can satisfy them without meeting the spec, so attack the step's implementation before a later step builds on it. Read the step's diff (`git diff --cached`, which holds RED's tests and GREEN's production code, new files included; a path the staging rule left out is read from the working tree) against the brief's spec scenarios and tasks, and form findings with two checks:
 
-  On `failed`, print the blocking summary and accumulated changed-file list, then stop without the completion message and without a composition transition. On `cancelled`, print the clean-stop summary and accumulated changed-file list, then stop without claiming completion and without a composition transition. On `completed`, print the concise summary and accumulated changed-file list, then invoke the bound `terminal_navigation` action:
-  - sole or final implement → then print exactly: `Implementation plan done in openspec/changes/{name}/. Review and run \`/sai-4-apply {name}\` (--fast-track) **in a new chat** when ready.` Stop immediately.
-  - non-final chained implement → invoke only the composition-owned authorized transition to the consecutive successor; do not print the standalone MANDATORY STOP message.
+- Structural. Every scenario and task maps to changed production paths and to a test that asserts it. The tests are not gamed: no special-casing of the test inputs, no hard-coded expected values, no assertion that proves less than its scenario. Nothing beyond the brief is added, with no anticipatory implementation (no hook, stub, "for later" abstraction, or reference whose only purpose is to serve a later step). The production files match the plan or are justified in a deviation.
+- Empirical. Whenever feasible, exercise the requested behavior through the project's runnable surface (tests, CLI, or script) with the executor, and do not infer it from the diff.
 
-</TASK>
+This is the criteria of `sai/commands/explore/steps/pipeline-direct-build.md` Step 2, scoped to spec fidelity, test gaming, and excess scope. Style, design, performance, and general security belong to the later review command, so do not report them.
+
+Fetch @sai/policies/artifact-review-contract.md and form findings in its shape (identifier, severity, location, issue, correction). An observation whose fix needs behavior the approved scope does not ask for is a scope observation, not a finding: it is neither fixed nor recorded as pending, and it extends no round. Write each round's findings to `reviews/step-{n}-round-{k}.md` in the run directory.
+
+A round with findings sends them, as one ordered list, to the worker that owns the defect: a production defect to GREEN, a wrong test to RED. A finding about a spec scenario that has no test goes through RED first: RED writes the test, you run it through the executor and confirm it fails by assertion, `git add` its files, and only then send the finding to GREEN, so the fix stays test-driven. The message reuses the step's pointer line without resetting the machine, and names a new report path. After each fix, run the step's tests again through the executor, re-apply the GREEN closing check, and `git add` the files the fix changed. Any file a fix changes joins the step's paths.
+
+Fix rounds are not attempts and spend no budget. Run at most 3 fix rounds, then read the diff once more. A round with no findings converges. Findings that remain after the third fix round are not a failure and not an obstacle, and nothing escalates: write them to `findings.md` in the run directory, one entry per finding with the step, identifier, severity, location, issue, and correction, emit `record` (`finding`) the first time the file is written, and continue to the commit. The later review reads them first. A worker that fails to carry out a fix round (an unreadable report, silence, or drift) is an ordinary obstacle of the step.
+
+**Commit.** Check the checkboxes in `tasks.md` that the step completed. Stage exactly the step's paths that the staging rule admits: the workers' files, `tasks.md`, and any plan artifact you edited. `git diff --cached --name-only` must list only those paths. Commit locally with a Conventional Commits message, subject at most 50 characters and body only when needed. The message carries only the step's own content: no `Co-Authored-By` trailer and no AI-attribution line of any kind, even when the harness suggests one. Invoking the command authorizes these local commits and nothing else: never push.
+
+After the commit, prove it holds the whole step: `git status --porcelain`, minus the dirty baseline, the run directory, and the ignored paths, must be empty. A leftover path is the run's, because the baseline does not hold it: stage it, commit it as a follow-up commit of the same step, and record the deviation. Then emit `step-done`. Continue with the next step until every task is checked, then apply the audit reports.
+
+## Audit findings
+
+An audit report (`review.md`, `security.md`, `performance.md`, or `accessibility.md` in the change directory) records defects found in code that already exists. Open, fixed, fixable, Question, and the fixed mark mean what `finding-state.md` says. Apply the reports after every task is checked, because the tasks change the code the findings point at.
+
+Every open fixable finding goes through the step cycle above: one finding per step, or a few that share a location and a fix. The brief carries each finding's identifier, report, location, problem, and suggested fix in place of tasks, and the corrected behavior in place of spec scenarios. Decide per finding whether it needs RED. A finding about behavior that a test can pin, and that no test pins yet, goes through RED first: its test fails by assertion on the current code and passes once the finding is fixed. A finding that an existing test already exposes, or that no test can usefully pin (wording, naming, documentation, configuration, a refactor the suite already covers), goes to GREEN directly, and the step's tests are the suite around the change. Either path is the plan for that finding, not a deviation. The step's commit carries the fix together with the fixed mark you append to each fixed finding's heading line, so the mark and its fix enter history together.
+
+A finding whose heading carries the excluded mark (` (EXCLUDED: …)`, as `finding-state.md` defines it, written by `/sai-build`, by `/sai-deep-review`, or by the user) is skipped: it is not applied, not marked, not a pending finding, and not an obstacle. Wherever this command says open fixable finding, it leaves excluded findings out. A finding the user reopened by removing the mark is open again and goes through the step cycle like any other.
+
+A fixed finding stays as it is, and so does a checked task: neither is done again. A Question stays open and goes to the closing report, because only the user can answer it. A finding you judge mistaken, or whose fix contradicts the plan, stays open with a deviation that says why; a fix that would change `proposal.md`'s What or Why is force majeure.
+
+## Workers
+
+Fetch @sai/orchestration/workers/bindings/red-worker.md and use it.
+Fetch @sai/orchestration/workers/bindings/green-worker.md and use it.
+
+Create each worker when its first step needs it, and keep it for the whole run. The creation dispatch carries only the ready prompt; the worker returns `event: ready` and the first brief goes to the same worker in the next message. A worker that returns no ready is an obstacle (see Obstacles). Continue a worker with the harness call its binding names: `SendMessage` to the captured agent ID on Claude Code, `task` with the captured `task_id` on opencode.
+
+Every brief opens with the pointer line for the worker's step file. Before each step, reset the role's machine, `red-steps@1` or `green-steps@1`, and send `Active step: <stage> — follow <next.follow>` from the response. When the store fails, send the next pointer from the static order yourself and continue: RED follows `sai/commands/implement/steps/red-step.md`, GREEN follows `sai/commands/implement/steps/green-step.md`.
+
+A worker writes its report to the file named in the brief, `reports/step-{n}-{role}-{k}.yaml` in the run directory, and returns only that path. Emit `record` (`report`) for the path, then read the file. RED writes tests and stubs, GREEN writes production code, and neither runs git.
+
+## Authority over the plan
+
+You edit `proposal.md`, `specs/`, `design.md`, `tasks.md`, and `interfaces.md` yourself, and in the audit reports only the fixed marks; workers write only tests, stubs, and production code. An override in a brief takes precedence over the plan. When artifacts contradict each other, keep the reading that preserves the intent of `proposal.md`, edit the other artifact, and move on.
+
+A correction that invalidates a committed step adds a new step in `tasks.md` that corrects it. Commits are never rewritten. Commits contain only paths the run changed; a path from the dirty baseline that a step must also change cannot be committed without absorbing foreign work, so that is force majeure.
+
+Write each deviation to `deviations.md` in the run directory as it happens: where the work differs from the plan, what the plan said, what was done, and why. Write each override you give a worker to `overrides.md` the same way: the step, the worker, and the instruction. Emit `record` (`deviation`, `override`) the first time each file is written. Both files feed the closing report and `build-log.md`.
+
+## Obstacles
+
+An obstacle is anything that prevents closing a step or the run: a test you judge wrong or contrary to the spec, a failing tool, a worker whose report cannot be read, a worker that stays silent past what the step needs, or a worker that drifts from its instruction. The goal is to close the step, so respond and keep moving.
+
+Name each obstacle with an identifier (`step-{n}`, or `final-suite` for the closing suite run) and give it a budget of 3 attempts. An attempt is one response with an approach different from the previous one, so repeating an approach is not an attempt. The approaches are:
+
+- a corrected instruction, which includes asking the same worker again when its report is unreadable, it is silent, or it drifted;
+- a plan edit, such as correcting `tasks.md` or `interfaces.md`, or having RED correct a test you judge wrong; GREEN never touches tests;
+- an override: an instruction to a worker that contradicts the plan;
+- a new worker, created when asking the same worker again did not help: it replaces the old one for that role, gets the ready handshake like any new worker, and receives a hand-over summary you write yourself in `handover-{role}-{k}.md` in the run directory (the step's goal, the files already written, the conventions the old worker followed, and the symptom). Never forward the old worker's history. The files in the working tree stay as they are.
+
+Before each attempt, emit `attempt` for the obstacle. The response reports what is spent. When it is `rejected` as `exhaustion`, the budget is gone: escalate at once. Do not advance to another task first, because RED blocks GREEN inside a step and a skipped step breaks the test-first order.
+
+A final suite run with a new or worsened failure compared with the baseline is the `final-suite` obstacle, with its own budget; each attempt is a new step that corrects the failure.
+
+Force majeure escalates at once, without spending an attempt: a change of intent for `proposal.md`'s What or Why, an operation that needs human authorization (push, deletion, shared-system change, missing credential, unavailable external service), or foreign work in a path the run must commit. An exhausted budget is force majeure as well.
+
+To escalate, emit `escalate` for the obstacle, then state in plain words what happened, what is done and committed, and what you tried. Ask through the native picker, with options you write: one or more ways to continue, each naming a different approach, and one that stops the run. Keep the option count within the picker's capacity. Emit `answer` with the user's choice (`continue` or `stop`). A `continue` resets that obstacle's counter; carry out the approach the user chose. A `stop` closes the run (see Close).
+
+## Run state
+
+The `implement-run@1` machine in `sai-state` is your memory outside the conversation. It holds identifiers and paths only: the run directory, the current step, the committed steps, the attempts spent per obstacle, the open escalation, and the paths of the files that hold deviations, overrides, worker reports, findings, and baselines. Free text never goes into an event, because a shell pipe may re-encode it. It lives in files in the run directory, which is why a worker returns the path of its report and not the report.
+
+Emit an event by piping its JSON to `emit <id> implement-run@1 -`. The events are `start`, `step-start`, `step-done`, `attempt`, `escalate`, `answer`, `record`, `close`, and `status`, each with the identifier or path fields its use above names. Every response carries `run` (the current state) and `budgets` (the attempts spent per obstacle). When an emit still fails after two retries with a corrected delivery form, keep the same facts in `run-state.md` in the run directory and carry on from there; the run does not stop for it.
+
+Pending findings are defects from a step review that survive the step's third fix round and remain at close. They live in `findings.md`, recorded as the Review section says.
+
+## Resuming
+
+After a context compaction, or when Start finds an interrupted run, you may remember little of it. Emit `status` first, read the files the state references, and compare them with `git log`, the checkboxes in `tasks.md`, and the fixed marks in the audit reports. Commits, checkboxes, and marks win over the store. Continue at the first step with an unchecked task or, once every task is checked, an open fixable finding: the step in progress restarts and keeps the attempts the store has for it. Your workers' handles may be gone with your context; create new workers, which gets them the ready handshake and a hand-over summary like any replacement, and spends no attempt. An `escalated` stage means the question was not answered: ask it again.
+
+When the store is gone (another machine, or a cleared temporary directory), rebuild progress from `git log`, `tasks.md`, and the fixed marks the same way and start the run state fresh: every counter is at zero. A run directory left under `.tmp/{name}/` by the earlier run still holds its deviations, overrides, and findings; read them and carry them into the new run directory. Uncommitted paths you did not make count as the dirty baseline, and a step that must change one of them is force majeure.
+
+## Close
+
+After the last step, run the unit and integration suites through the executor; end-to-end suites are never run here. Compare with the failure baseline. A new or worsened failure is the `final-suite` obstacle (see Obstacles). An `unavailable` baseline is reported as is.
+
+The run closes when every task is checked, every open fixable finding is fixed or carries a deviation, and the suites show no new failure, when the user answers an escalation with stop, or when the escalation question is dismissed without an answer. In each case:
+
+1. Compose `openspec/changes/{name}/build-log.md` from the run directory files. It is the durable report for a later review, which may run in another session after the run directory is gone. It holds: the work done (each committed step with its subject and the tasks it completed), the deviations, the overrides, the suite result against the baseline, the pending findings, the audit findings fixed, the open Questions and the findings left open with their reasons, and the blocker with the options offered and the answer when the run did not complete. It stays on disk next to the change's artifacts, and the run never stages it.
+2. Print the closing report: the steps committed (subject each), the deviations, the suite result against the baseline, the pending findings, the audit findings fixed, and whatever remains open, open Questions included. Mention that `build-log.md` holds the same record.
+3. Emit `close` with the outcome (`completed`, `stopped`, or `escalated` for a dismissed question), then `reset` both step machines and `close` the `sai-state` session.
+
+A run that completed ends with exactly `Implement done.`. A run that stopped or escalated ends with its report and no closing line. Inside `/sai-build` and `/sai-deep-review` the line of that command replaces this one.

@@ -57,7 +57,7 @@ A binding that does not name one of these three dispatcher classes SHALL NOT be 
 
 #### Scenario: A review-gate check verifies the dispatcher-class declaration
 
-- **WHEN** a reviewer applies the change's review phase (`/sai-5-review`) or any other review-gate check to a `budget-*` skill file modified by this change
+- **WHEN** a reviewer applies the change's review phase (`/sai-4-review`) or any other review-gate check to a `budget-*` skill file modified by this change
 - **THEN** the check SHALL verify the file's `## Dispatch mode` section names one of the three permitted dispatcher classes (main agent, routed SAI coordinator, or routed SAI worker)
 - **AND** SHALL flag any file whose section is missing or names an unpermitted class
 - **AND** a follow-up change may automate the check via a dedicated doctor capability; this change does not introduce one

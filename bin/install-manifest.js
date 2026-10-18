@@ -25,7 +25,7 @@ const MATRIX_TEMPLATE_NAMES = Object.freeze([
   'opencodeAgent',
 ]);
 // Binding templates for roles that live outside the shared orchestration (the
-// `-new` family). Loaded only when the manifest declares them; the renderer
+// implement and review commands). Loaded only when the manifest declares them; the renderer
 // fails closed when such a role exists without its template.
 const OPTIONAL_MATRIX_TEMPLATE_NAMES = Object.freeze([
   'claudeStandaloneBinding',
@@ -38,8 +38,6 @@ const RETIRED_INVOCATION_ENVELOPE_FIELD = ['wrapper', 'echo', 'value'].join('_')
 const PHASE_WORKER_IDENTITIES = Object.freeze({
   spec: 'sai-1-spec-proposal-worker',
   design: 'sai-2-design-worker',
-  implementation: 'sai-3-implementation-worker',
-  review: 'sai-5-review-worker',
   security: 'sai-6-security-worker',
   performance: 'sai-7-performance-worker',
   accessibility: 'sai-8-accessibility-worker',
@@ -51,8 +49,6 @@ const PHASE_WORKER_IDENTITIES = Object.freeze({
 const PHASE_CONTRACT_DIRS = Object.freeze({
   spec: 'spec',
   design: 'design',
-  implementation: 'implement',
-  review: 'review',
   security: 'security',
   performance: 'performance',
   accessibility: 'accessibility',
@@ -159,31 +155,15 @@ function validateRule(rule, ids) {
   }
 }
 
-const APPLY_CONTRACT_BY_WORKER = Object.freeze({
-  'sai-4-red-worker': 'sai/commands/apply/red-worker.md',
-  'sai-4-green-worker': 'sai/commands/apply/green-worker.md',
-});
-
 const DIRECT_BUILD_CONTRACT_BY_WORKER = Object.freeze({
   'sai-direct-build-worker': 'sai/commands/explore/direct-build-worker.md',
-  'sai-review-fix-worker': 'sai/commands/meta-review/review-fix-worker.md',
-  'sai-red-new-worker': 'sai/commands/implement-new/red-worker.md',
-  'sai-green-new-worker': 'sai/commands/implement-new/green-worker.md',
-  'sai-review-new-worker': 'sai/commands/review-new/worker.md',
+  'sai-3-red-worker': 'sai/commands/implement/red-worker.md',
+  'sai-3-green-worker': 'sai/commands/implement/green-worker.md',
+  'sai-4-review-worker': 'sai/commands/review/worker.md',
 });
 
 function assertWorkerIdentity(entry, harness) {
   const prefix = `${harness} worker matrix: `;
-  if (entry.phase === 'apply') {
-    const expectedContract = APPLY_CONTRACT_BY_WORKER[entry.workerName];
-    if (expectedContract === undefined) {
-      throw new Error(`${prefix}unknown apply worker identity ${entry.workerName}`);
-    }
-    if (entry.workerContract !== expectedContract) {
-      throw new Error(`${prefix}apply worker ${entry.workerName} has mismatched worker contract ${entry.workerContract}`);
-    }
-    return;
-  }
   if (Object.prototype.hasOwnProperty.call(DIRECT_BUILD_CONTRACT_BY_WORKER, entry.workerName)) {
     const expectedContract = DIRECT_BUILD_CONTRACT_BY_WORKER[entry.workerName];
     if (entry.workerContract !== expectedContract) {
@@ -280,7 +260,6 @@ function validateMatrixBlock(matrix) {
     throw new Error('worker-matrix block must declare at least one phase entry');
   }
   const seen = new Set();
-  let applySeen = 0;
   for (const entry of matrix.entries) {
     if (!entry || typeof entry !== 'object') {
       throw new Error('worker-matrix phase entry must be an object');
@@ -288,17 +267,10 @@ function validateMatrixBlock(matrix) {
     if (typeof entry.phase !== 'string' || entry.phase.length === 0) {
       throw new Error('worker-matrix phase entry must declare a phase');
     }
-    if (entry.phase === 'apply') {
-      applySeen += 1;
-      if (applySeen > 2) {
-        throw new Error(`worker-matrix declares duplicate phase: ${entry.phase}`);
-      }
-    } else {
-      if (seen.has(entry.phase)) {
-        throw new Error(`worker-matrix declares duplicate phase: ${entry.phase}`);
-      }
-      seen.add(entry.phase);
+    if (seen.has(entry.phase)) {
+      throw new Error(`worker-matrix declares duplicate phase: ${entry.phase}`);
     }
+    seen.add(entry.phase);
   }
   defineWorkerMatrix(matrix.entries);
 }

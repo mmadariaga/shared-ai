@@ -28,8 +28,8 @@ const path = require('path');
 const { spawnSync, execFile } = require('child_process');
 const { readOpenspecYaml } = require('./openspec-yaml');
 
-// The eleven sai-workflow artifacts in canonical order
-const ARTIFACTS = ['proposal', 'specs', 'design', 'tasks', 'interfaces', 'change-overview', 'implementation', 'review', 'security', 'performance', 'accessibility'];
+// The ten sai-workflow artifacts in canonical order
+const ARTIFACTS = ['proposal', 'specs', 'design', 'tasks', 'interfaces', 'change-overview', 'review', 'security', 'performance', 'accessibility'];
 const AUDITS = ['review', 'security', 'performance', 'accessibility'];
 const NOT_APPLICABLE_HEADING = '## Not Applicable';
 
@@ -136,10 +136,10 @@ function hasNotApplicableHeading(filePath) {
 }
 
 /**
- * Count implementation progress: checked / total tasks
- * Returns "X/Y" or empty string if file doesn't exist
+ * Count task progress in tasks.md: checked / total tasks
+ * Returns "X/Y" or empty string if file doesn't exist or holds no checkboxes
  */
-function countImplementationProgress(filePath) {
+function countTaskProgress(filePath) {
   if (!pathExists(filePath)) return '';
   try {
     const content = fs.readFileSync(filePath, 'utf8');
@@ -200,12 +200,11 @@ function getArtifactStatuses(cwd, changeName) {
  *   statuses: artifact status map from CLI (artifact.name -> {present, status})
  *   openspecYaml: parsed .openspec.yaml result (null if absent)
  *   auditNotApplicableFlags: map of audit name -> boolean (true if has "## Not Applicable")
- *   implProgress: "X/Y" or empty string
- *   implExists: boolean
+ *   taskProgress: tasks.md progress "X/Y" or empty string
  *
  * Returns: {cells, specsCell, overviewCell, implProgress, next}
  */
-function derivePanelCells(statuses, openspecYaml, auditNotApplicableFlags, implProgress, implExists) {
+function derivePanelCells(statuses, openspecYaml, auditNotApplicableFlags, taskProgress) {
   const specsApproved = openspecYaml && openspecYaml.approval_specs_approved_at ? true : false;
 
   // Build cells for each artifact and track audit statuses
@@ -252,17 +251,17 @@ function derivePanelCells(statuses, openspecYaml, auditNotApplicableFlags, implP
   }
 
   // Resolve Next
-  const next = resolveNext(statuses, specsApproved, implProgress, implExists, auditStatus);
+  const next = resolveNext(statuses, specsApproved, taskProgress, auditStatus);
 
-  return { cells, specsCell, overviewCell, implProgress, next };
+  return { cells, specsCell, overviewCell, implProgress: taskProgress, next };
 }
 
 /**
  * Resolve Next: hint based on state (Step E)
- * implProgress is the string "X/Y" or empty string
+ * taskProgress is the tasks.md progress string "X/Y" or empty string
  * auditStatus is an object mapping audit name to boolean (true = satisfied)
  */
-function resolveNext(statuses, specsApproved, implProgress, implExists, auditStatus) {
+function resolveNext(statuses, specsApproved, taskProgress, auditStatus) {
   // specs absent
   if (!statuses.specs.present) {
     return '/sai-1-spec';
@@ -278,20 +277,15 @@ function resolveNext(statuses, specsApproved, implProgress, implExists, auditSta
     return '/sai-2-design';
   }
 
-  // design + tasks present, implementation absent
-  if (!statuses.implementation.present) {
-    return '/sai-3-implement';
-  }
-
-  // implementation present - check if all tasks are marked [x]
-  if (implExists && implProgress) {
-    const [checked, total] = implProgress.split('/').map(Number);
+  // design + tasks present - the implement command works until every task is checked
+  if (taskProgress) {
+    const [checked, total] = taskProgress.split('/').map(Number);
     if (checked < total) {
-      return '/sai-4-apply';
+      return '/sai-3-implement';
     }
-  } else if (implExists && !implProgress) {
-    // implementation.md exists but has no checkboxes - still needs work
-    return '/sai-4-apply';
+  } else {
+    // tasks.md has no checkboxes - nothing is verifiably done yet
+    return '/sai-3-implement';
   }
 
   // audits missing (not satisfied)
@@ -303,9 +297,9 @@ function resolveNext(statuses, specsApproved, implProgress, implExists, auditSta
   }
 
   if (missingAudits.length > 0) {
-    // Map to appropriate command: review -> /sai-5-review, etc.
+    // Map to appropriate command: review -> /sai-4-review, etc.
     const auditMap = {
-      review: '/sai-5-review',
+      review: '/sai-4-review',
       security: '/sai-6-security',
       performance: '/sai-7-performance',
       accessibility: '/sai-8-accessibility',
@@ -341,9 +335,7 @@ function renderPanel(cwd, changeName) {
   // Step C: Fill the gaps and gather local file data
   const changesDir = path.join(cwd, 'openspec', 'changes', changeName);
   const openspecYaml = readOpenspecYaml(path.join(changesDir, '.openspec.yaml'));
-  const implProgress = countImplementationProgress(path.join(changesDir, 'implementation.md'));
-  const implPath = path.join(changesDir, 'implementation.md');
-  const implExists = pathExists(implPath);
+  const implProgress = countTaskProgress(path.join(changesDir, 'tasks.md'));
 
   // Check which audits have "## Not Applicable" heading
   const auditNotApplicableFlags = {};
@@ -352,7 +344,7 @@ function renderPanel(cwd, changeName) {
   }
 
   // Pure derivation: compute all cells and Next hint
-  const derived = derivePanelCells(statuses, openspecYaml, auditNotApplicableFlags, implProgress, implExists);
+  const derived = derivePanelCells(statuses, openspecYaml, auditNotApplicableFlags, implProgress);
   const cells = derived.cells;
   const specsCell = derived.specsCell;
   const overviewCell = derived.overviewCell;
@@ -367,7 +359,6 @@ function renderPanel(cwd, changeName) {
     `  tasks: ${cells.tasks}`,
     `  interfaces: ${cells.interfaces}`,
     `  overview: ${overviewCell}`,
-    `  implementation: ${cells.implementation}`,
     `  review: ${cells.review}`,
     `  security: ${cells.security}`,
     `  performance: ${cells.performance}`,
@@ -530,7 +521,7 @@ async function renderBulk(cwd, gatherFn, listFn) {
       const changesDir = path.join(cwd, 'openspec', 'changes', changeName);
       const openspecYaml = readOpenspecYaml(path.join(changesDir, '.openspec.yaml'));
       const specsApproved = openspecYaml && openspecYaml.approval_specs_approved_at ? true : false;
-      const implProgress = countImplementationProgress(path.join(changesDir, 'implementation.md'));
+      const implProgress = countTaskProgress(path.join(changesDir, 'tasks.md'));
 
       // Build cells
       const cells = {};
@@ -571,12 +562,8 @@ async function renderBulk(cwd, gatherFn, listFn) {
         }
       }
 
-      // Check if implementation.md exists
-      const implPath = path.join(changesDir, 'implementation.md');
-      const implExists = pathExists(implPath);
-
       // Resolve Next
-      const next = resolveNext(statuses, specsApproved, implProgress, implExists, auditStatus);
+      const next = resolveNext(statuses, specsApproved, implProgress, auditStatus);
 
       rows.push({
         change: changeName,
@@ -596,15 +583,15 @@ async function renderBulk(cwd, gatherFn, listFn) {
   }
 
   // Build table header
-  const header = '| Change | prop | spec | dsgn | task | intf | cov | impl | rev | sec | perf | a11y | Impl | Next |';
-  const separator = '|--------|------|------|------|------|------|------|------|------|------|------|------|------|------|';
+  const header = '| Change | prop | spec | dsgn | task | intf | cov | rev | sec | perf | a11y | Impl | Next |';
+  const separator = '|--------|------|------|------|------|------|------|------|------|------|------|------|------|';
 
   const tableLines = [header, separator];
   for (const row of rows) {
     if (row.error) {
-      tableLines.push(`| ${row.change} | ERROR | | | | | | | | | | | | |`);
+      tableLines.push(`| ${row.change} | ERROR | | | | | | | | | | | |`);
     } else {
-      const line = `| ${row.change} | ${row.cells.proposal} | ${row.specsCell} | ${row.cells.design} | ${row.cells.tasks} | ${row.cells.interfaces} | ${row.cells['change-overview']} | ${row.cells.implementation} | ${row.cells.review} | ${row.cells.security} | ${row.cells.performance} | ${row.cells.accessibility} | ${row.implProgress} | ${row.next} |`;
+      const line = `| ${row.change} | ${row.cells.proposal} | ${row.specsCell} | ${row.cells.design} | ${row.cells.tasks} | ${row.cells.interfaces} | ${row.cells['change-overview']} | ${row.cells.review} | ${row.cells.security} | ${row.cells.performance} | ${row.cells.accessibility} | ${row.implProgress} | ${row.next} |`;
       tableLines.push(line);
     }
   }
@@ -734,4 +721,4 @@ if (require.main === module) {
   })();
 }
 
-module.exports = { renderPanel, renderBulk, parseArgs, detectArchived, hasNotApplicableHeading, countImplementationProgress, derivePanelCells };
+module.exports = { renderPanel, renderBulk, parseArgs, detectArchived, hasNotApplicableHeading, countTaskProgress, derivePanelCells };

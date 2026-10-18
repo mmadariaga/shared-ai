@@ -95,7 +95,7 @@ The `<context>` token SHALL be one of `small`, `medium`, `large`, and only these
 
 ### Requirement: Difficulty vocabulary is measured against the implementer
 
-The design task-generation step SHALL define the implementer once beside the Routing line as the agent that implements the Step in `/sai-4-apply`, no more capable than the design agent and usually less. The `<difficulty>` token SHALL be one of `low`, `medium`, `high`, and only these values. It SHALL state how hard the Step is for the implementer to finish from its plan, its tests, and its `interfaces.md` contract, and SHALL state that `/sai-3-implement` uses it to decide how much production code to write. When unsure, the design agent SHALL choose the higher value. A Step with no RED block SHALL still carry `difficulty`, judged on the plan and contract with no tests to guide the implementer.
+The design task-generation step SHALL define the implementer once beside the Routing line as the agent that implements the Step in `/sai-3-implement`, no more capable than the design agent and usually less. The `<difficulty>` token SHALL be one of `low`, `medium`, `high`, and only these values. It SHALL state how hard the Step is for the implementer to finish from its plan, its tests, and its `interfaces.md` contract, and SHALL state that `/sai-3-implement` uses it to decide how much production code to write. When unsure, the design agent SHALL choose the higher value. A Step with no RED block SHALL still carry `difficulty`, judged on the plan and contract with no tests to guide the implementer.
 
 #### Scenario: Uncertain difficulty rounds up
 - **WHEN** the design agent is unsure between two difficulty levels
@@ -115,8 +115,8 @@ The design task-generation step SHALL define the implementer once beside the Rou
 
 ### Requirement: The model capability funnel is documented
 
-`README.md` SHALL document, in its model customization section, the capability funnel in which each phase's model is no more capable than the previous one (`sai-2` >= `sai-3` >= `sai-4`), SHALL name the GREEN worker in that rule (the `sai-3` implementation worker >= the `sai-4` GREEN worker), and SHALL state that a more capable later phase is unsupported.
+`README.md` SHALL document, in its model customization section, the capability funnel `sai-2` >= `sai-3`, in which the design phase is at least as capable as the `/sai-3-implement` coordinator, and the coordinator is at least as capable as its GREEN worker. It SHALL state that decisions belong in the earlier phases and that cheaper implementers execute them.
 
 #### Scenario: Funnel note is present
 - **WHEN** a reader consults the README model customization section
-- **THEN** it finds the `sai-2` >= `sai-3` >= `sai-4` capability funnel note naming the `sai-3` implementation worker >= the `sai-4` GREEN worker and stating that a more capable later phase is unsupported
+- **THEN** it finds the `sai-2` >= `sai-3` funnel note naming the `/sai-3-implement` coordinator and its GREEN worker

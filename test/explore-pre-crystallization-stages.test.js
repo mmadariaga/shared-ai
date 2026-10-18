@@ -204,7 +204,7 @@ test('direct-looking imperative inputs mature as ideas without early implementat
   assert.match(source, /direct-looking request/);
   assert.match(source, /as the initial content of a candidate idea, never as authorization to implement, dispatch, or leave Explore/);
   assert.match(source, /Preserve its stated objectives, constraints, and acceptance criteria/);
-  assert.match(source, /never triggers a handoff to `\/sai-4-apply` or `\/sai-build`/);
+  assert.match(source, /never triggers a handoff to `\/sai-3-implement` or `\/sai-build`/);
   assert.match(source, /never advises exiting Explore/);
   assert.match(source, /`Explore change`, `Review edge cases`, `Implementation details`, and `Crystallize`.*remain mandatory/);
   assert.match(source, /never dispatches implementation before the crystallization-close route picker receives an explicit user answer/i);

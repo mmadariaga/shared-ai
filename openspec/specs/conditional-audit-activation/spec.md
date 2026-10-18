@@ -8,15 +8,15 @@ Defines the conditional activation rules for audit segments in the `/sai-review`
 
 ### Requirement: Audit segments activate only when triage resolves to Yes
 
-Without `--full` or `--path`, the activated segment list SHALL include the review segment (always) plus only the audit segments whose triage value is exactly `Yes`. It SHALL preserve the declared order (review → security → performance → accessibility) and omit the other segments. With `--full` or `--path`, a successful review SHALL activate all three audit segments in the declared order without the triage parse. If zero audits are activated after a successful review and a legible triage parse, the composition SHALL dispatch no audits and SHALL apply the Direct Build close using only the freshly generated `review.md`. Without `--full` or `--path`, a missing `review.md` or no legible triage value SHALL take the Error close defined in `sai/commands/meta-review/command-bootstrap.md`, and the Direct Build close SHALL NOT run. An individually illegible value SHALL keep its warning, SHALL activate no audit, and SHALL add no correction authorization.
+Without `--full` or `--path`, the activated segment list SHALL include the review segment (always) plus only the audit segments whose triage value is exactly `Yes`. It SHALL preserve the declared order (review → security → performance → accessibility) and omit the other segments. With `--full` or `--path`, a successful review SHALL activate all three audit segments in the declared order without the triage parse. If zero audits are activated after a successful review and a legible triage parse, the composition SHALL dispatch no audits and SHALL run the findings round using only the freshly generated `review.md`. Without `--full` or `--path`, a missing `review.md` or no legible triage value SHALL take the Error close defined in `sai/commands/deep-review/command-bootstrap.md`, and the findings round SHALL NOT run. An individually illegible value SHALL keep its warning, SHALL activate no audit, and SHALL add no correction authorization.
 
 #### Scenario: Zero audits recommended ends the suite
 - **WHEN** a successful review without `--full` or `--path` has at least one legible triage value and none of the three `**Surface touched:**` values is exactly `Yes`
-- **THEN** the composition SHALL dispatch no audits and SHALL use the Direct Build close with `review.md` only; open fixable findings and open Questions receive its round, otherwise the exact literal `Review complete. No audits recommended. Run `/sai-archive {name}` in a new chat when ready.` is preserved
+- **THEN** the composition SHALL dispatch no audits and SHALL run the findings round with `review.md` only; open fixable findings and open Questions receive its round, otherwise the exact literal `Review complete. No audits recommended. Run `/sai-archive {name}` in a new chat when ready.` is preserved
 
 #### Scenario: Missing or wholly illegible review retains the error close
 - **WHEN** review completes without `--full` or `--path` but `review.md` is absent or none of the three triage values is legible
-- **THEN** the composition SHALL report the gap, show the changed files, and end without an audit dispatch, a correction choice, or a Direct Build round
+- **THEN** the composition SHALL report the gap, show the changed files, and end without an audit dispatch, a correction choice, or a findings round
 
 #### Scenario: Individually illegible triage retains its warning
 - **WHEN** one or two triage values are illegible and the legible values activate no audit

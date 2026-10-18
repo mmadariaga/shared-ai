@@ -8,23 +8,33 @@ Define the shared-AI OpenSpec schema, artifact graph, and authoring-template con
 A custom OpenSpec schema at `openspec/schemas/sai-workflow/schema.yaml` SHALL declare all artifacts of the shared-AI pipeline with their IDs, output paths, dependency edges, and apply requirements.
 
 #### Scenario: schema declares all nine artifacts
+
 - **WHEN** `openspec/schemas/sai-workflow/schema.yaml` is read
-- **THEN** it declares artifacts with IDs: proposal, specs, design, tasks, implementation, review, security, performance, accessibility — each with an `outputPath` and optional `requires` list
+- **THEN** it declares ten artifacts, and `implementation` is not one of them
+
+#### Scenario: schema declares all ten artifacts
+- **WHEN** `openspec/schemas/sai-workflow/schema.yaml` is read
+- **THEN** it declares artifacts with IDs: proposal, specs, design, tasks, interfaces, change-overview, review, security, performance, accessibility — each with an `outputPath` and optional `requires` list
 
 #### Scenario: schema apply requirements are tasks and implementation
+
 - **WHEN** `openspec status` is run on a change using the sai-workflow schema
-- **THEN** `applyRequires` contains `["tasks", "implementation"]`
+- **THEN** `applyRequires` contains `["tasks"]` and does not contain `implementation`
+
+#### Scenario: schema apply requirements are tasks
+- **WHEN** `openspec status` is run on a change using the sai-workflow schema
+- **THEN** `applyRequires` contains `["tasks"]`
 
 #### Scenario: dependency chain is enforced
 - **WHEN** `openspec status` is run on a change with only proposal done
 - **THEN** specs and design show status `ready`, and tasks shows `blocked` with `missingDeps: ["design", "specs"]`
 
 ### Requirement: sai-workflow schema provides custom templates for all artifact types
-The schema directory SHALL include a `templates/` subdirectory with a `.md` template file for each of the eleven artifact types. The `design.md`, `tasks.md`, and `interfaces.md` templates SHALL be structural projections of the routed worker and step-owned instructions: they SHALL retain the live headings and ordering needed to scaffold each artifact, carry concise non-normative comments that identify retained fields where useful, carry a non-normative pointer to the corresponding active step-owned authoring section, and SHALL not duplicate normative generation rules or carry endpoint tables. The routed worker and step-local instructions remain authoritative for the ADR/DDR criteria, alternatives behavior, task fields, and interface assertions; the Target State contract remains owned by the design-target-state capability.
+The schema directory SHALL include a `templates/` subdirectory with a `.md` template file for each of the ten artifact types. The `design.md`, `tasks.md`, and `interfaces.md` templates SHALL be structural projections of the routed worker and step-owned instructions: they SHALL retain the live headings and ordering needed to scaffold each artifact, carry concise non-normative comments that identify retained fields where useful, carry a non-normative pointer to the corresponding active step-owned authoring section, and SHALL not duplicate normative generation rules or carry endpoint tables. The routed worker and step-local instructions remain authoritative for the ADR/DDR criteria, alternatives behavior, task fields, and interface assertions; the Target State contract remains owned by the design-target-state capability.
 
 #### Scenario: templates directory contains all artifact templates
 - **WHEN** `openspec/schemas/sai-workflow/templates/` is listed
-- **THEN** files `proposal.md`, `specs.md`, `design.md`, `tasks.md`, `interfaces.md`, `change-overview.md`, `implementation.md`, `review.md`, `security.md`, `performance.md`, and `accessibility.md` are present
+- **THEN** files `proposal.md`, `specs.md`, `design.md`, `tasks.md`, `interfaces.md`, `change-overview.md`, `review.md`, `security.md`, `performance.md`, and `accessibility.md` are present
 
 #### Scenario: design template is a heading-preserving live skeleton
 - **WHEN** `openspec/schemas/sai-workflow/templates/design.md` is read
@@ -37,8 +47,9 @@ The schema directory SHALL include a `templates/` subdirectory with a `.md` temp
 - **AND** outside the retained structural headings, markers, concise non-normative comments, and pointer, it contains no normative prose or table
 
 #### Scenario: implementation template includes RED/GREEN blocks
-- **WHEN** `openspec/schemas/sai-workflow/templates/implementation.md` is read
-- **THEN** it contains a RED block (failing test) section before the GREEN block (minimal implementation) section
+
+- **WHEN** the `openspec/schemas/sai-workflow/templates/` directory is listed
+- **THEN** no `implementation.md` template exists, and the directory holds the ten artifact templates
 
 #### Scenario: tasks template is a structural projection
 - **WHEN** `openspec/schemas/sai-workflow/templates/tasks.md` is read
@@ -59,6 +70,7 @@ The schema directory SHALL include a `templates/` subdirectory with a `.md` temp
 - **AND** the three ADR/DDR evaluation criteria, record-family routing, and alternatives-selection rules are sourced from the active routed design step rather than from duplicated template prose
 
 #### Scenario: templates-use-active-step-authority
+
 - **WHEN** a schema or template authoring pointer is inspected
 - **THEN** it names the active routed worker or step-local authoring surface rather than the deleted monolithic instruction.
 

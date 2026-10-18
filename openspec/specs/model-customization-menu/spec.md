@@ -147,19 +147,19 @@ The model-customization checklist and the reset and save/load preset previews SH
 - **THEN** its header and rows SHALL show `CONTEXT` before `DIFFICULTY` with the same widths as the customization checklist
 
 ### Requirement: Target profiles use family-qualified identities
-The customization logic SHALL resolve each target's `CONTEXT` and `DIFFICULTY` from one shared static profile mapping keyed by complete family-qualified identity, including the `worker:`, `agent:`, `command:`, or `utility:` prefix, for both supported harnesses. Configured context values MUST be `Small`, `Medium`, or `Large`; configured difficulty values MUST be `↑`, `↑↑`, or `↑↑↑`. An unmapped identity SHALL display `Unknown` in both columns so that a missing entry never reads as a small or easy task. `CONTEXT` estimates the typical task context — instructions, documents, results, and accumulated continuations: `Small` for isolated tasks with few inputs and little history, `Medium` for several documents or continuations, and `Large` for substantial documents, results, and accumulated state. It describes the task, independent of the selected model's context-window capacity and of live token counts. `DIFFICULTY` estimates the task's reasoning demand. Profiles are display-only: selection identities, family grouping, ordering, effective settings, and preset file contents SHALL be independent of them. `command:sai-commit` SHALL resolve to a single up-arrow and `worker:sai-4-green-worker` SHALL resolve to a double up-arrow, with `utility:sai-commit` absent.
+The customization logic SHALL resolve each target's `CONTEXT` and `DIFFICULTY` from one shared static profile mapping keyed by complete family-qualified identity, including the `worker:`, `agent:`, `command:`, or `utility:` prefix, for both supported harnesses. Configured context values MUST be `Small`, `Medium`, or `Large`; configured difficulty values MUST be `↑`, `↑↑`, or `↑↑↑`. An unmapped identity SHALL display `Unknown` in both columns so that a missing entry never reads as a small or easy task. `CONTEXT` estimates the typical task context — instructions, documents, results, and accumulated continuations: `Small` for isolated tasks with few inputs and little history, `Medium` for several documents or continuations, and `Large` for substantial documents, results, and accumulated state. It describes the task, independent of the selected model's context-window capacity and of live token counts. `DIFFICULTY` estimates the task's reasoning demand. Profiles are display-only: selection identities, family grouping, ordering, effective settings, and preset file contents SHALL be independent of them. `command:sai-commit` SHALL resolve to a single up-arrow and `worker:sai-3-green-worker` SHALL resolve to a double up-arrow, with `utility:sai-commit` absent.
 #### Scenario: Prevent bare-name taxonomy collisions
 
 - **WHEN** a profile is resolved for targets with family-qualified identities such as `agent:budget` and `command:sai-2-design`
 - **THEN** each lookup uses its complete identity rather than a bare target name, and the resulting display values remain within the permitted sets
 #### Scenario: Commit coordinator and green worker difficulty
-- **WHEN** difficulty is resolved for command:sai-commit and worker:sai-4-green-worker
+- **WHEN** difficulty is resolved for command:sai-commit and worker:sai-3-green-worker
 - **THEN** each lookup SHALL use its complete identity and return a single up-arrow and a double up-arrow respectively
 #### Scenario: Low-difficulty coordinator still shows medium context
 - **WHEN** the checklist displays `command:sai-6-security`
 - **THEN** it SHALL show `Medium` under `CONTEXT` and a single arrow under `DIFFICULTY`
 #### Scenario: Fresh Step workers carry less context than their supervisor
-- **WHEN** the checklist displays `command:sai-4-apply` and its RED and GREEN workers
+- **WHEN** the checklist displays `command:sai-3-implement` and its RED and GREEN workers
 - **THEN** the coordinator SHALL show `Large` and each worker SHALL show `Medium` under `CONTEXT`
 #### Scenario: Unmapped target shows Unknown
 - **WHEN** a target has no profile entry

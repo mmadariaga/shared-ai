@@ -7,7 +7,7 @@ TBD - created by archiving change sai-5-review-coordinator-worker-split. Update 
 
 ### Requirement: Claude Code binding dispatches the numbered review worker
 
-The Claude Code review-worker binding SHALL dispatch `sai-5-review-worker` through the managed worker agent, capture the agent identifier outside the worker payload, forward native user answers through same-worker continuation, and support at most one replacement dispatch with complete reconstruction state.
+The Claude Code review-worker binding SHALL dispatch `sai-4-review-worker` through the managed worker agent, capture the agent identifier outside the worker payload, forward native user answers through same-worker continuation, and support at most one replacement dispatch with complete reconstruction state.
 
 #### Scenario: Claude starts review work
 - **WHEN** Claude Code invokes the routed review coordinator
@@ -16,7 +16,7 @@ The Claude Code review-worker binding SHALL dispatch `sai-5-review-worker` throu
 
 ### Requirement: opencode binding dispatches and continues the numbered review worker
 
-The opencode review-worker binding SHALL dispatch `sai-5-review-worker`, capture the task identifier outside the worker payload, forward native question answers through same-task continuation, and support at most one replacement task with complete reconstruction state.
+The opencode review-worker binding SHALL dispatch `sai-4-review-worker`, capture the task identifier outside the worker payload, forward native question answers through same-task continuation, and support at most one replacement task with complete reconstruction state.
 
 #### Scenario: opencode resumes review work
 - **WHEN** the review worker returns `needs_input` and the coordinator receives a native answer
@@ -35,7 +35,7 @@ Both routed review bindings SHALL preserve the read-only research branch: budget
 #### Scenario: Mutation I/O is required
 - **WHEN** review follows its current step plan
 - **THEN** no mutation I/O is required or dispatched
-- **AND** only passes 1–11 and report writing are authorized
+- **AND** only the review steps and report writing are authorized
 
 ### Requirement: Copilot receives no routed review binding
 

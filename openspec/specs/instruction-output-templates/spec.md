@@ -8,24 +8,12 @@ Provide six independently loadable SAI instruction output templates while preser
 
 ### Requirement: Dedicated template files
 
-The instruction library SHALL contain six independently loadable Markdown output-template files next to their owning command instructions under `sai/commands/`, with these mappings: `sai/commands/implement/implementation-plan.template.md`, `sai/commands/review/review-report.template.md`, `sai/commands/security/security-report.template.md`, `sai/commands/performance/performance-report.template.md`, `sai/commands/accessibility/accessibility-report.template.md`, and `sai/commands/pr/pr-body.template.md`. The former `sai/instructions/_templates/` destinations SHALL be absent for these command-owned templates.
+The instruction library SHALL contain five independently loadable Markdown output-template files next to their owning command instructions under `sai/commands/`, with these mappings: `sai/commands/review/review-report.template.md`, `sai/commands/security/security-report.template.md`, `sai/commands/performance/performance-report.template.md`, `sai/commands/accessibility/accessibility-report.template.md`, and `sai/commands/pr/pr-body.template.md`. The former `sai/instructions/_templates/` destinations SHALL be absent for these command-owned templates.
 
 #### Scenario: all command templates are independently available
 
 - **WHEN** an instruction phase loads its assigned template
-- **THEN** the assigned neighboring `.template.md` file exists at the exact command-local destination and the other five template contracts remain independently addressable
-
-### Requirement: Implementation plan contract is preserved
-
-The implementation plan template SHALL preserve the current headings, placeholders, ordering, RED-to-GREEN execution contract, automated verification, human verification, deferred UI checks, STOP and COMMIT markers, the **Detail range** GREEN instructions (complete content in Steps without a RED block; `TODO(sai-4)` markers only in files named by `Complete the skeleton below in`), and first-generation versus rerun behavior as carried by `sai/commands/implement/implementation-plan.template.md`.
-
-#### Scenario: Implementation plan is generated from the extracted template
-- **WHEN** the implementation phase creates `openspec/changes/{change-name}/implementation.md` for the first time
-- **THEN** it uses `sai/commands/implement/implementation-plan.template.md` and produces the same required plan structure and verification gates as the former inline template
-
-#### Scenario: Existing implementation plan is rerun
-- **WHEN** the implementation phase is rerun after an implementation plan already exists
-- **THEN** the extracted template does not cause the phase to regenerate or overwrite the existing plan
+- **THEN** the assigned neighboring `.template.md` file exists at the exact command-local destination and the other four template contracts remain independently addressable
 
 ### Requirement: Audit report contracts are preserved independently
 
@@ -77,11 +65,11 @@ The pull request body template SHALL preserve its Summary, Goal, Design Decision
 
 ### Requirement: Parent instructions load templates by exact path
 
-Each affected parent instruction SHALL load its template using the exact neighboring directive: `@sai/commands/implement/implementation-plan.template.md`, `@sai/commands/review/review-report.template.md`, `@sai/commands/security/security-report.template.md`, `@sai/commands/performance/performance-report.template.md`, `@sai/commands/accessibility/accessibility-report.template.md`, or `@sai/commands/pr/pr-body.template.md`. The surrounding instructions SHALL continue to control loading order, output saving, summaries, feedback, and stopping.
+Each affected parent instruction SHALL load its template using the exact neighboring directive: `@sai/commands/review/review-report.template.md`, `@sai/commands/security/security-report.template.md`, `@sai/commands/performance/performance-report.template.md`, `@sai/commands/accessibility/accessibility-report.template.md`, or `@sai/commands/pr/pr-body.template.md`. The surrounding instructions SHALL continue to control loading order, output saving, summaries, feedback, and stopping.
 
 #### Scenario: parent instruction resolves its assigned neighbor
 
-- **WHEN** a harness executes one of the six affected command instructions
+- **WHEN** a harness executes one of the five affected command instructions
 - **THEN** it resolves exactly one matching `sai/commands/{name}/*.template.md` file and retains the phase-specific surrounding workflow rules
 
 ### Requirement: Extraction fidelity and projection verification are explicit
@@ -96,7 +84,7 @@ The fold SHALL verify that each command-local template contains the complete for
 #### Scenario: both projections contain folded templates
 
 - **WHEN** the manifest-driven projections are inspected for Claude Code and opencode
-- **THEN** each supported harness contains all six command-local templates with content equivalent to the repository source
+- **THEN** each supported harness contains all five command-local templates with content equivalent to the repository source
 
 ### Requirement: Existing installation projections remain consistent
 

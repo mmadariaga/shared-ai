@@ -39,7 +39,7 @@ The `sai-explore` flow SHALL preserve stated objectives, constraints, and accept
 
 ### Requirement: Read-only handoff boundary
 
-The `sai-explore` instruction SHALL prohibit handoff to `/sai-4-apply` or `/sai-build`, advice to exit Explore, or implementation dispatch before the crystallization-close route selector based only on imperative wording, while keeping the explicit artifact-review deliverable on its existing review path.
+The `sai-explore` instruction SHALL prohibit handoff to `/sai-3-implement` or `/sai-build`, advice to exit Explore, or implementation dispatch before the crystallization-close route selector based only on imperative wording, while keeping the explicit artifact-review deliverable on its existing review path.
 
 #### Scenario: No early handoff from imperative wording
 

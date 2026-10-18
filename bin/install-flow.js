@@ -219,9 +219,8 @@ const CLAUDE_BINDINGS_DIR = path.join(REPOSITORY_ROOT, 'sai', 'orchestration', '
 // the validated Worker Matrix phase entries. The canonical key order below is
 // preserved for compatibility with consumers that read MANAGED_WORKERS.
 const MANAGED_WORKER_ORDER = Object.freeze([
-  'sai-3-implementation-worker',
   'sai-2-design-worker',
-  'sai-5-review-worker',
+  'sai-4-review-worker',
   'sai-6-security-worker',
   'sai-7-performance-worker',
   'sai-8-accessibility-worker',
@@ -230,13 +229,9 @@ const MANAGED_WORKER_ORDER = Object.freeze([
   'sai-archive-worker',
   'sai-backfill-worker',
   'sai-merge-worker',
-  'sai-4-red-worker',
-  'sai-4-green-worker',
+  'sai-3-red-worker',
+  'sai-3-green-worker',
   'sai-direct-build-worker',
-  'sai-review-fix-worker',
-  'sai-red-new-worker',
-  'sai-green-new-worker',
-  'sai-review-new-worker',
 ]);
 
 function matrixRenderings(harness) {
@@ -260,10 +255,9 @@ function matrixWorkerRoster(harness) {
 const MANAGED_WORKERS = Object.freeze(Object.fromEntries(
   MANAGED_WORKER_ORDER.map(name => [name, Object.freeze({ claude: Object.freeze({ agent: `${name}.md` }) })])
 ));
-const CLAUDE_IMPLEMENTATION_WORKER_AGENT = MANAGED_WORKERS['sai-3-implementation-worker'].claude.agent;
 const CLAUDE_DESIGN_WORKER_AGENT = MANAGED_WORKERS['sai-2-design-worker'].claude.agent;
 const CLAUDE_SPEC_WORKER_AGENT = MANAGED_WORKERS['sai-1-spec-proposal-worker'].claude.agent;
-const CLAUDE_REVIEW_WORKER_AGENT = MANAGED_WORKERS['sai-5-review-worker'].claude.agent;
+const CLAUDE_REVIEW_WORKER_AGENT = MANAGED_WORKERS['sai-4-review-worker'].claude.agent;
 
 const MANAGED_WORKER_CONTRACTS = Object.freeze(Object.fromEntries(
   loadInstallManifest(REPOSITORY_ROOT)['worker-matrix'].entries.map(entry => [entry.workerName, entry.workerContract])
@@ -399,8 +393,8 @@ function parseClaudeInitialDispatches(text, bindingPath) {
 function validateClaudeWorkerBindings() {
   assertBindingDirectoryUsesOneStringEnvelope(CLAUDE_BINDINGS_DIR);
   const roster = matrixWorkerRoster('claude');
-  if (roster.length !== 18) {
-    throw new Error('Claude worker roster cannot be derived from the validated Worker Matrix; expected the ordered eighteen-worker roster.');
+  if (roster.length !== 13) {
+    throw new Error('Claude worker roster cannot be derived from the validated Worker Matrix; expected the ordered thirteen-worker roster.');
   }
   const seenBy = new Map();
   for (const binding of matrixBindings('claude')) {
@@ -478,8 +472,8 @@ function validateOpencodeWorkerBindings(bindingsDir = OPENCODE_BINDINGS_DIR) {
         throw new Error(`Opencode worker "${workerName}" has no binding with a validated initial task dispatch.`);
       }
     }
-    if (seenBy.size !== 18) {
-      throw new Error('Opencode worker roster must contain exactly the ordered eighteen-worker roster.');
+    if (seenBy.size !== 13) {
+      throw new Error('Opencode worker roster must contain exactly the ordered thirteen-worker roster.');
     }
       return [...seenBy.keys()].sort((left, right) =>
         left.split(path.sep).join('/').localeCompare(right.split(path.sep).join('/')));
@@ -1822,7 +1816,6 @@ module.exports = {
   runOpenspecInstall,
   offerOpenspecInstall,
   MANAGED_WORKERS,
-  CLAUDE_IMPLEMENTATION_WORKER_AGENT,
   CLAUDE_DESIGN_WORKER_AGENT,
   CLAUDE_SPEC_WORKER_AGENT,
   CLAUDE_REVIEW_WORKER_AGENT,

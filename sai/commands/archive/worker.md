@@ -21,8 +21,8 @@ carries `resolved_change_name`, and `$ARGUMENTS` in the instructions is that
 name.
 
 The coordinator declares `fast_track_active` beside the envelope as session
-state. It changes only the unchecked-items question; the CORE stop, the AUDIT
-line, the collision check, and every retirement refusal behave identically.
+state. It changes nothing in the pre-flight: the CORE stop, the AUDIT line, the
+collision check, and every retirement refusal behave identically.
 
 The Direct Build (unattended) composition prefixes the initial envelope with a
 `--direct-build-prepare` line followed by the resolved change name. Strip the
@@ -41,15 +41,14 @@ English `summary`, an ordered duplicate-free `changed_files`, and
 
 ## Pre-flight
 
-Run the whole pre-flight of `instructions.md`: Classification Check,
-Completion Check, delta-sync summary, capability retirement detection and
-preconditions, and collision check. Everything reads; findings travel as
-payload content (the AUDIT line, the unchecked-item list, the delta-sync
-summary, the retired capabilities, the collision verdict) for the coordinator
-to present verbatim.
+Run the whole pre-flight of `instructions.md`: Classification Check, delta-sync
+summary, capability retirement detection and preconditions, and collision check.
+Everything reads; findings travel as payload content (the AUDIT line, the
+delta-sync summary, the retired capabilities, the collision verdict) for the
+coordinator to present verbatim.
 
-Close the run early on the CORE stop, a retirement refusal (a stop with no
-mutation plan and no execution order), or a declined unchecked-items answer.
+Close the run early on the CORE stop or a retirement refusal (a stop with no
+mutation plan and no execution order).
 Otherwise close with a `completed` summary restating the change name, schema,
 collision verdict, delta-sync summary, every retired capability, and any
 warnings. The coordinator presents it before running the CLI archive on the

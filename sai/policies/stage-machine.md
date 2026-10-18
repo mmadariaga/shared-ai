@@ -17,7 +17,7 @@ project and never travels in a request or a response.
 
 A session file takes one writer at a time: run `emit` and `reset` calls against
 the same session id one after another, even while workers run in parallel. The
-meta-review audit batch emits in fixed order security → performance →
+deep-review audit batch emits in fixed order security → performance →
 accessibility.
 
 ## Verbs
@@ -138,7 +138,7 @@ without re-spelling the verbs):
 
 ```text
 sai-state spawn --key <stable-key>
-sai-state reset <id> review-standalone@1
+sai-state reset <id> security-standalone@1
 echo '{"intent":"next-step"}' | node <tool-path> emit <id> explore-idea@1 -
 sai-state close <id>
 ```

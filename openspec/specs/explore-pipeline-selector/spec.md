@@ -31,7 +31,7 @@ Selecting Direct Build - Unattended SHALL preserve the direct implementation, fu
 #### Scenario: Build uses the existing closed flow
 
 - **WHEN** Direct Build - Unattended is selected for an eligible slice
-- **THEN** the existing eight-step Direct Build flow remains authoritative without re-entering `/sai-build` or `meta-build`.
+- **THEN** the existing eight-step Direct Build flow remains authoritative without re-entering `/sai-build`.
 
 ### Requirement: Preserve Manual and fast-track gates
 

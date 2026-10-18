@@ -61,7 +61,7 @@ The terminal done state SHALL map to the exact literal `Active step: none — co
 
 ### Requirement: Every-activation scope with byte-identical pointers
 
-The machine SHALL govern the security adapter for every activation — direct (`/sai-6-security`) and chained (as position 1 of `/sai-review`). No shared sessions or state exist between activations. Pointer sequences remain byte-identical between direct and chained paths. Feedback and recovery continuations SHALL carry no pointer and never consult the machine; parking and pointer behavior follow `@sai/policies/stage-machine.md` § Step machines.
+The machine SHALL govern the security adapter for every activation — direct (`/sai-6-security`) and chained (as position 1 of `/sai-deep-review`). No shared sessions or state exist between activations. Pointer sequences remain byte-identical between direct and chained paths. Feedback and recovery continuations SHALL carry no pointer and never consult the machine; parking and pointer behavior follow `@sai/policies/stage-machine.md` § Step machines.
 
 #### Scenario: Direct activation consults the machine
 
@@ -70,10 +70,10 @@ The machine SHALL govern the security adapter for every activation — direct (`
 
 #### Scenario: Chained activation consults the same machine
 
-- **WHEN** the security adapter runs as position 1 of a chained `/sai-review` invocation
+- **WHEN** the security adapter runs as position 1 of a chained `/sai-deep-review` invocation
 - **THEN** the same machine arbitrates step routing with identical pointer derivation as the direct path, with no supervised-transition fallback or separate static map
 
 #### Scenario: Store failure during chained segment stops the chain
 
-- **WHEN** the machine emits and the store reports a failure during a chained `/sai-review` segment
-- **THEN** the run stops per stage-machine.md, and `/sai-review` does not proceed to the next segment
+- **WHEN** the machine emits and the store reports a failure during a chained `/sai-deep-review` segment
+- **THEN** the run stops per stage-machine.md, and `/sai-deep-review` does not proceed to the next segment
