@@ -22,8 +22,11 @@ For an imported single issue, include its verified URL when creating the block.
 If that block was already prepared, read it from the store, add only its
 `Backlog origin` field, run the existing dispatchable check and bounded hygiene
 judgment, then submit it through `sai-state emit`'s existing
-`--ready-to-propose --amend <name>` operation. Re-read the amended block and
-check its extracted origin and refreshed hash before dispatch. Never patch
+`--ready-to-propose --amend <name>` operation. Re-read the amended block with
+`sai-state block <id> <change-name> --export --harness <claude|opencode>` and
+check its extracted origin and the refreshed `hash` it returns before dispatch;
+when the export returns `BLOCK_EXPORT_FAILED` or `BLOCK_NOT_FOUND`, stop before
+dispatch. Never patch
 the session file or reuse a pre-amendment hash. This amendment uses the same
 block field and validation mechanism, not a separate origin envelope.
 

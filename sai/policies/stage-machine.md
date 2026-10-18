@@ -119,8 +119,8 @@ verbs take neither `--json` nor `--cwd`. A missing argument is a usage error
   returns `{received_at, error: "BLOCK_NOT_FOUND"}` and exits 1, with no text.
   Plan and Direct Build dispatches, and every later reading of a slice's block
   by an Explore route, take block text only from this verb, never from
-  conversation. The receiving worker recomputes the hash of the block it
-  received (`@sai/policies/ready-to-propose-format.md` § Stored block
+  conversation. The receiving worker runs `verify-file` on the exported
+  `block_file` (`@sai/policies/ready-to-propose-format.md` § Stored block
   transport). For worker delivery use `sai-state block <id> <change-name> --export --harness <claude|opencode>` instead: it checks the stored hash and writes the text directly through `transfer.js` into a private file. It returns `{received_at, hash, block_file, transfer_dir}` without text. An export failure returns `BLOCK_EXPORT_FAILED` and its reason (exit 1); a missing block still returns `BLOCK_NOT_FOUND`. The harness is mandatory for export (exit 2 on omission or invalid value). Refresh and retain these references per the stored-block transport policy.
 - **Reset**: `sai-state reset <id> <machineId>` clears that one machine's state
   and returns `{received_at, reset: <machineId>}`; other machines in the session keep theirs.
