@@ -64,6 +64,8 @@ function enumerateRetiredFiles(manifest, { harness, repoRoot, destinationRoot, e
     editorBase,
     assetType: 'retired-managed-file',
     acceptedHashes: [...retirement.managedHashes],
+    managedBodyHashes: retirement.managedBodyHashes,
+    tunableKeys: retirement.tunableKeys,
     ruleId: retirement.id,
   }));
 }
@@ -151,7 +153,7 @@ function computeClaudeAgentPlanEntry(entry) {
 function computeRetiredPlanEntry(entry) {
   const destHash = sha256File(entry.dest);
   if (destHash === null) return { ...entry, action: 'not-found', exists: false, hashMatches: false };
-  const hashMatches = entry.acceptedHashes.includes(destHash);
+  const hashMatches = require('./retirement-identity').recognizedRetirement(fs.readFileSync(entry.dest), entry);
   return { ...entry, action: hashMatches ? 'delete' : 'keep-override', exists: true, hashMatches };
 }
 
@@ -191,7 +193,7 @@ function deleteEntry(entry) {
   if (entry.assetType === 'retired-managed-file') {
     const destHash = sha256File(entry.dest);
     if (destHash === null) return 'not-found';
-    if (!entry.acceptedHashes.includes(destHash)) {
+    if (!require('./retirement-identity').recognizedRetirement(fs.readFileSync(entry.dest), entry)) {
       console.warn(`Kept (unrecognized retired file): ${entry.dest}`);
       return 'kept-override';
     }

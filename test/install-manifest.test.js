@@ -75,7 +75,7 @@ const MANAGED_WORKER_PROJECTIONS = {
       destinationPath: 'sai-4-review-worker.md',
     },
   },
-  'sai-6-security-worker': {
+  'sai-5-security-worker': {
     claudeBinding: {
       id: 'claude-security-worker-binding',
       sourcePath: 'sai/orchestration/workers/bindings/claude/security-worker.md',
@@ -87,12 +87,12 @@ const MANAGED_WORKER_PROJECTIONS = {
        destinationPath: 'orchestration/workers/bindings/security-worker.md',
     },
     claudeAgent: {
-      id: 'claude-sai-6-security-worker',
-      sourcePath: 'agents/claude/sai-6-security-worker.md',
-      destinationPath: 'sai-6-security-worker.md',
+      id: 'claude-sai-5-security-worker',
+      sourcePath: 'agents/claude/sai-5-security-worker.md',
+      destinationPath: 'sai-5-security-worker.md',
     },
   },
-  'sai-7-performance-worker': {
+  'sai-6-performance-worker': {
     claudeBinding: {
       id: 'claude-performance-worker-binding',
       sourcePath: 'sai/orchestration/workers/bindings/claude/performance-worker.md',
@@ -104,12 +104,12 @@ const MANAGED_WORKER_PROJECTIONS = {
        destinationPath: 'orchestration/workers/bindings/performance-worker.md',
     },
     claudeAgent: {
-      id: 'claude-sai-7-performance-worker',
-      sourcePath: 'agents/claude/sai-7-performance-worker.md',
-      destinationPath: 'sai-7-performance-worker.md',
+      id: 'claude-sai-6-performance-worker',
+      sourcePath: 'agents/claude/sai-6-performance-worker.md',
+      destinationPath: 'sai-6-performance-worker.md',
     },
   },
-  'sai-8-accessibility-worker': {
+  'sai-7-accessibility-worker': {
     claudeBinding: {
       id: 'claude-accessibility-worker-binding',
       sourcePath: 'sai/orchestration/workers/bindings/claude/accessibility-worker.md',
@@ -121,9 +121,9 @@ const MANAGED_WORKER_PROJECTIONS = {
        destinationPath: 'orchestration/workers/bindings/accessibility-worker.md',
     },
     claudeAgent: {
-      id: 'claude-sai-8-accessibility-worker',
-      sourcePath: 'agents/claude/sai-8-accessibility-worker.md',
-      destinationPath: 'sai-8-accessibility-worker.md',
+      id: 'claude-sai-7-accessibility-worker',
+      sourcePath: 'agents/claude/sai-7-accessibility-worker.md',
+      destinationPath: 'sai-7-accessibility-worker.md',
     },
   },
   'sai-1-spec-proposal-worker': {
@@ -397,7 +397,7 @@ test('Step 6 security worker exposes matrix binding and worker projections', () 
   const expected = [
      ['claude', 'claude-security-worker-binding', 'orchestration/workers/bindings/security-worker.md'],
      ['opencode', 'opencode-security-worker-binding', 'orchestration/workers/bindings/security-worker.md'],
-     ['claude', 'claude-sai-6-security-worker', 'sai-6-security-worker.md'],
+     ['claude', 'claude-sai-5-security-worker', 'sai-5-security-worker.md'],
   ];
 
   for (const [harness, expectedId, expectedDestination] of expected) {
@@ -416,10 +416,10 @@ test('Step 6 security worker exposes matrix binding and worker projections', () 
 });
 
 test('security worker fixture preserves the owned Claude agent contract', () => {
-  assert.deepEqual(MANAGED_WORKER_PROJECTIONS['sai-6-security-worker'].claudeAgent, {
-    id: 'claude-sai-6-security-worker',
-    sourcePath: 'agents/claude/sai-6-security-worker.md',
-    destinationPath: 'sai-6-security-worker.md',
+  assert.deepEqual(MANAGED_WORKER_PROJECTIONS['sai-5-security-worker'].claudeAgent, {
+    id: 'claude-sai-5-security-worker',
+    sourcePath: 'agents/claude/sai-5-security-worker.md',
+    destinationPath: 'sai-5-security-worker.md',
   });
 });
 
@@ -633,7 +633,7 @@ test('Installer projects deterministic routed performance surfaces with ownershi
   const matrixDestinations = [
     ['claude', 'orchestration/workers/bindings/performance-worker.md', 'copy', 'managed'],
     ['opencode', 'orchestration/workers/bindings/performance-worker.md', 'copy', 'managed'],
-    ['claude', 'sai-7-performance-worker.md', 'tunable-seed', 'managed'],
+    ['claude', 'sai-6-performance-worker.md', 'tunable-seed', 'managed'],
   ];
 
   for (const harness of ['claude', 'opencode']) {
@@ -1411,9 +1411,9 @@ test('matrix worker bindings and agents are the sole worker inventory per harnes
     spec: 'sai-1-spec-proposal-worker',
     design: 'sai-2-design-worker',
     review: 'sai-4-review-worker',
-    security: 'sai-6-security-worker',
-    performance: 'sai-7-performance-worker',
-    accessibility: 'sai-8-accessibility-worker',
+    security: 'sai-5-security-worker',
+    performance: 'sai-6-performance-worker',
+    accessibility: 'sai-7-accessibility-worker',
     commit: 'sai-commit-worker',
     archive: 'sai-archive-worker',
   };

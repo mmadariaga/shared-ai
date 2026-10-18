@@ -1,4 +1,4 @@
-# `/sai-7-performance`
+# `/sai-6-performance`
 
 ## Command function
 

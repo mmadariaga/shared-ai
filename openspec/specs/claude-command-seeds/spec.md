@@ -7,10 +7,10 @@ TBD - created by archiving change update-claude-factory-models-efforts. Update P
 
 ### Requirement: Orchestrator command seed defaults
 
-The Claude Code command wrapper defaults SHALL match each corresponding command entry in `sai/presets/claude/[sai-default]-OPUS.json`. The `sai-1-spec`, `sai-2-design`, `sai-6-security`, `sai-7-performance`, `sai-8-accessibility`, `sai-backfill`, and `sai-archive` wrappers SHALL declare model sonnet with effort high. The `sai-explore`, `sai-build`, `sai-3-implement`, `sai-deep-review`, and `sai-merge` wrappers SHALL declare model opus with effort medium.
+The Claude Code command wrapper defaults SHALL match each corresponding command entry in `sai/presets/claude/[sai-default]-OPUS.json`. The `sai-1-spec`, `sai-2-design`, `sai-5-security`, `sai-6-performance`, `sai-7-accessibility`, `sai-backfill`, and `sai-archive` wrappers SHALL declare model sonnet with effort high. The `sai-explore`, `sai-build`, `sai-3-implement`, `sai-deep-review`, and `sai-merge` wrappers SHALL declare model opus with effort medium.
 
 #### Scenario: Orchestrator factory seed is observed
-- **WHEN** a fresh install materializes the Claude Code sai-6-security command wrapper
+- **WHEN** a fresh install materializes the Claude Code sai-5-security command wrapper
 - **THEN** its frontmatter declares model sonnet with effort high
 
 #### Scenario: Preset retains an opus command default
@@ -35,8 +35,8 @@ The Claude Code sai-commit wrapper SHALL declare model sonnet with effort high. 
 
 ### Requirement: Security command seed defaults
 
-The Claude Code sai-6-security command wrapper SHALL declare model sonnet with effort high, matching `command:sai-6-security` in `sai/presets/claude/[sai-default]-OPUS.json`.
+The Claude Code sai-5-security command wrapper SHALL declare model sonnet with effort high, matching `command:sai-5-security` in `sai/presets/claude/[sai-default]-OPUS.json`.
 
 #### Scenario: Security factory seed is observed
-- **WHEN** a fresh install materializes the Claude Code sai-6-security command wrapper
+- **WHEN** a fresh install materializes the Claude Code sai-5-security command wrapper
 - **THEN** its frontmatter declares model sonnet with effort high

@@ -19,9 +19,9 @@ const STEP_2_SCRATCH_DIR = path.join(__dirname, '..', '.tmp', 'collapse-sai-work
 const WORKER_BINDINGS = [
   ['spec', 'sai-1-spec-proposal-worker', 'spec-worker.md'],
   ['design', 'sai-2-design-worker', 'design-worker.md'],
-  ['security', 'sai-6-security-worker', 'security-worker.md'],
-  ['performance', 'sai-7-performance-worker', 'performance-worker.md'],
-  ['accessibility', 'sai-8-accessibility-worker', 'accessibility-worker.md'],
+  ['security', 'sai-5-security-worker', 'security-worker.md'],
+  ['performance', 'sai-6-performance-worker', 'performance-worker.md'],
+  ['accessibility', 'sai-7-accessibility-worker', 'accessibility-worker.md'],
   ['commit', 'sai-commit-worker', 'commit-worker.md'],
   ['archive', 'sai-archive-worker', 'archive-worker.md'],
   ['backfill', 'sai-backfill-worker', 'backfill-worker.md'],
@@ -32,9 +32,9 @@ const WORKER_NAMES = [
   'sai-1-spec-proposal-worker',
   'sai-2-design-worker',
   'sai-4-review-worker',
-  'sai-6-security-worker',
-  'sai-7-performance-worker',
-  'sai-8-accessibility-worker',
+  'sai-5-security-worker',
+  'sai-6-performance-worker',
+  'sai-7-accessibility-worker',
   'sai-commit-worker',
   'sai-archive-worker',
   'sai-backfill-worker',
@@ -137,9 +137,9 @@ test('managed worker registry defines every Claude compatibility export', () => 
   const expectedNames = [
     'sai-2-design-worker',
     'sai-4-review-worker',
-    'sai-6-security-worker',
-    'sai-7-performance-worker',
-    'sai-8-accessibility-worker',
+    'sai-5-security-worker',
+    'sai-6-performance-worker',
+    'sai-7-accessibility-worker',
     'sai-1-spec-proposal-worker',
     'sai-commit-worker',
     'sai-archive-worker',
@@ -174,14 +174,14 @@ test('managed worker registry defines every Claude compatibility export', () => 
     'sai-4-review-worker': {
       agent: 'sai-4-review-worker.md',
     },
-    'sai-6-security-worker': {
-      agent: 'sai-6-security-worker.md',
+    'sai-5-security-worker': {
+      agent: 'sai-5-security-worker.md',
     },
-    'sai-7-performance-worker': {
-      agent: 'sai-7-performance-worker.md',
+    'sai-6-performance-worker': {
+      agent: 'sai-6-performance-worker.md',
     },
-    'sai-8-accessibility-worker': {
-      agent: 'sai-8-accessibility-worker.md',
+    'sai-7-accessibility-worker': {
+      agent: 'sai-7-accessibility-worker.md',
     },
     'sai-3-red-worker': {
       agent: 'sai-3-red-worker.md',
@@ -257,7 +257,7 @@ test('installClaude copies sai/commands/*.md to dest/sai/commands/', () => {
   }
   assert.equal(fs.existsSync(path.join(saiCmdDir, 'implement', 'invocation.md')), false,
     'implement/invocation.md should not be projected after retirement');
-  for (const file of ['sai-1-spec.md', 'sai-4-review.md', 'sai-6-security.md', 'sai-7-performance.md', 'sai-8-accessibility.md', 'sai-2-design.md', 'sai-3-implement.md']) {
+  for (const file of ['sai-1-spec.md', 'sai-4-review.md', 'sai-5-security.md', 'sai-6-performance.md', 'sai-7-accessibility.md', 'sai-2-design.md', 'sai-3-implement.md']) {
     assert.equal(fs.existsSync(path.join(saiCmdDir, file)), false, `${file} should not be projected`);
   }
   fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -314,9 +314,9 @@ test('Step 3 fresh Claude install omits all routed worker proxy skills', () => {
     'sai-1-spec-proposal-worker',
     'sai-2-design-worker',
     'sai-4-review-worker',
-    'sai-6-security-worker',
-    'sai-7-performance-worker',
-    'sai-8-accessibility-worker',
+    'sai-5-security-worker',
+    'sai-6-performance-worker',
+    'sai-7-accessibility-worker',
   ];
   try {
     installClaude(tmpDir);
@@ -632,9 +632,9 @@ test('restore-coordinator-instruction-loading Step 3: isolated Claude installati
   const wrappers = [
     ['commands/sai-2-design.md', 'design', 'design-worker.md'],
     ['commands/sai-commit.md', 'commit', 'commit-worker.md'],
-    ['commands/sai-6-security.md', 'security', 'security-worker.md'],
-    ['commands/sai-7-performance.md', 'performance', 'performance-worker.md'],
-    ['commands/sai-8-accessibility.md', 'accessibility', 'accessibility-worker.md'],
+    ['commands/sai-5-security.md', 'security', 'security-worker.md'],
+    ['commands/sai-6-performance.md', 'performance', 'performance-worker.md'],
+    ['commands/sai-7-accessibility.md', 'accessibility', 'accessibility-worker.md'],
   ];
 
   function globInstalledFiles(relativeDir = '') {
@@ -821,9 +821,9 @@ test('Claude wrappers route through the Claude boot adapter and never the openco
     'sai-1-spec',
     'sai-2-design',
     'sai-commit',
-    'sai-6-security',
-    'sai-7-performance',
-    'sai-8-accessibility',
+    'sai-5-security',
+    'sai-6-performance',
+    'sai-7-accessibility',
   ];
   try {
     installClaude(tmpDir);

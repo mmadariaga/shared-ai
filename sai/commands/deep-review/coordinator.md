@@ -240,8 +240,8 @@
   ## Workers
   Position 0 dispatches `sai-4-review-worker` through the review coordinator.
   Activated audit segments dispatch their respective existing workers
-  (`sai-6-security-worker`, `sai-7-performance-worker`,
-  `sai-8-accessibility-worker`). The fix segment dispatches `sai-3-red-worker`
+  (`sai-5-security-worker`, `sai-6-performance-worker`,
+  `sai-7-accessibility-worker`). The fix segment dispatches `sai-3-red-worker`
   and `sai-3-green-worker` through the implement coordinator. Deep-review
   declares no other managed worker of its own.
 

@@ -28,3 +28,31 @@ Installation SHALL retire recognized managed sai-pr wrappers, command cards, tem
 #### Scenario: All review and audit requirements are satisfied
 - **WHEN** status navigation reaches the publication recommendation
 - **THEN** the next action is `/to-pr` rather than `/sai-pr`.
+
+### Requirement: Audit rename migration preserves role-specific tunables before cleanup
+
+For both Claude Code and opencode, installation SHALL prepare renamed audit commands and workers before cleaning up retired names. If the renamed destination is absent and the legacy file exists, preparation SHALL seed the destination from that file with its audit name replaced. If the destination already exists, its own configuration SHALL take precedence. Current managed command content SHALL preserve the destination's model tunables; workers SHALL retain the existing tunable-seed lifecycle. Claude Code SHALL preserve model and effort; opencode SHALL preserve command model/variant notation and worker model plus optional variant.
+
+#### Scenario: Fresh installation has no legacy files
+- **WHEN** installation runs with no old or new audit files
+- **THEN** it projects the new command and worker names with their shipped role defaults
+
+#### Scenario: Upgrade carries custom role models
+- **WHEN** legacy audit commands and workers have custom model tunables and the corresponding renamed destinations are absent
+- **THEN** installation transfers each audit's tunables to that same audit's new name before removing any recognized retired copy
+
+#### Scenario: Renamed destination already has configuration
+- **WHEN** both a legacy audit file and its renamed destination exist
+- **THEN** installation preserves the destination's own model tunables rather than replacing them with the legacy values
+
+### Requirement: Audit retirement uses managed body identity across lifecycle tools
+
+Installation cleanup, doctor inventory, and uninstallation SHALL share retirement recognition. They SHALL recognize an exact managed hash or a declared managed body hash after stripping only the declared model, effort, or variant tunable lines. Installation and uninstallation SHALL remove recognized legacy audit commands and workers. A legacy file with customized instructions or non-tunable content SHALL remain on disk rather than being deleted or treated as completely migrated. Retirement declarations SHALL validate and project the body hashes and permitted tunable keys.
+
+#### Scenario: Only model tunables differ from a managed copy
+- **WHEN** a retired audit file differs from a declared managed body only in its permitted tunable lines
+- **THEN** installation cleanup and uninstallation both recognize it as removable after installation's settings preparation
+
+#### Scenario: Customized legacy body remains pending
+- **WHEN** a retired audit file contains user-owned instruction changes
+- **THEN** installation preserves it and reports its exact path as pending resolution, and uninstallation preserves it as an override

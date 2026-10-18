@@ -12,9 +12,9 @@ const { STRATEGIES, validateManifest, loadInstallManifest, expandInstallManifest
 const WORKER_NAMES = [
   'sai-1-spec-proposal-worker',
   'sai-2-design-worker',
-  'sai-6-security-worker',
-  'sai-7-performance-worker',
-  'sai-8-accessibility-worker',
+  'sai-5-security-worker',
+  'sai-6-performance-worker',
+  'sai-7-accessibility-worker',
   'sai-commit-worker',
   'sai-archive-worker',
   'sai-backfill-worker',

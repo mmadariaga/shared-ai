@@ -300,9 +300,9 @@ function resolveNext(statuses, specsApproved, taskProgress, auditStatus) {
     // Map to appropriate command: review -> /sai-4-review, etc.
     const auditMap = {
       review: '/sai-4-review',
-      security: '/sai-6-security',
-      performance: '/sai-7-performance',
-      accessibility: '/sai-8-accessibility',
+      security: '/sai-5-security',
+      performance: '/sai-6-performance',
+      accessibility: '/sai-7-accessibility',
     };
     return auditMap[missingAudits[0]];
   }

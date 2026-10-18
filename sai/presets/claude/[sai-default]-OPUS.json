@@ -63,27 +63,27 @@
     "model": "opus",
     "effort": "medium"
   },
-  "command:sai-6-security": {
+  "command:sai-5-security": {
     "model": "sonnet",
     "effort": "high"
   },
-  "worker:sai-6-security-worker": {
+  "worker:sai-5-security-worker": {
     "model": "opus",
     "effort": "medium"
   },
-  "command:sai-7-performance": {
+  "command:sai-6-performance": {
     "model": "sonnet",
     "effort": "high"
   },
-  "worker:sai-7-performance-worker": {
+  "worker:sai-6-performance-worker": {
     "model": "opus",
     "effort": "medium"
   },
-  "command:sai-8-accessibility": {
+  "command:sai-7-accessibility": {
     "model": "sonnet",
     "effort": "high"
   },
-  "worker:sai-8-accessibility-worker": {
+  "worker:sai-7-accessibility-worker": {
     "model": "opus",
     "effort": "medium"
   },

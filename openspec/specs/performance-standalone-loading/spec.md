@@ -61,11 +61,11 @@ The terminal done state SHALL map to the exact literal `Active step: none — co
 
 ### Requirement: Every-activation scope with byte-identical pointers
 
-The machine SHALL govern the performance adapter for every activation — direct (`/sai-7-performance`) and chained (as an audit segment of a chained `/sai-deep-review` invocation). No shared sessions or state exist between activations. Pointer sequences remain byte-identical between direct and chained paths. Feedback and recovery continuations SHALL carry no pointer and never consult the machine; parking and pointer behavior follow `@sai/policies/stage-machine.md` § Step machines.
+The machine SHALL govern the performance adapter for every activation — direct (`/sai-6-performance`) and chained (as an audit segment of a chained `/sai-deep-review` invocation). No shared sessions or state exist between activations. Pointer sequences remain byte-identical between direct and chained paths. Feedback and recovery continuations SHALL carry no pointer and never consult the machine; parking and pointer behavior follow `@sai/policies/stage-machine.md` § Step machines.
 
 #### Scenario: Direct activation consults the machine
 
-- **WHEN** `/sai-7-performance` is invoked directly
+- **WHEN** `/sai-6-performance` is invoked directly
 - **THEN** the machine arbitrates step routing via the coordinator's declared `step_machine: performance-standalone@1` and delivers the two-line continuation
 
 #### Scenario: Chained activation consults the same machine

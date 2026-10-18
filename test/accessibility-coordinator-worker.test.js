@@ -77,7 +77,7 @@ test('Step 1 accessibility card uses neutral root protocols and retires flat can
   for (const relativePath of [
     'sai/orchestration/coordinator-contract.md',
     'sai/orchestration/worker-lifecycle.md',
-    'sai/orchestration/workers/sai-8-accessibility-worker.md',
+    'sai/orchestration/workers/sai-7-accessibility-worker.md',
   ]) {
     assert.equal(fs.existsSync(path.join(repoRoot, relativePath)), false,
       `${relativePath} should be absent from the active source layout`);
@@ -87,8 +87,8 @@ test('Step 1 accessibility card uses neutral root protocols and retires flat can
 test('accessibility scope, runtime, and parent arguments reach the worker unchanged', () => {
   const coordinator = artifact('sai/commands/accessibility/coordinator.md');
   const worker = artifact('sai/commands/accessibility/worker.md');
-  const claudeWrapper = artifact('commands/claude/sai-8-accessibility.md');
-  const opencodeWrapper = artifact('commands/opencode/sai-8-accessibility.md');
+  const claudeWrapper = artifact('commands/claude/sai-7-accessibility.md');
+  const opencodeWrapper = artifact('commands/opencode/sai-7-accessibility.md');
   const argumentsValue = '--full --path src/components --runtime feature-branch';
 
   assert.match(coordinator, /arguments_value/);
@@ -119,8 +119,8 @@ test('accessibility review defaults to static-only without a runtime scanner', (
 test('Step 2 accessibility coordinator dispatches one worker and performs no technical I/O', () => {
   const coordinator = artifact('sai/commands/accessibility/coordinator.md');
 
-  assert.match(coordinator, /dispatch[\s\S]{0,160}exactly one[\s\S]{0,160}sai-8-accessibility-worker/i);
-  assert.equal((coordinator.match(/sai-8-accessibility-worker/g) || []).length, 1);
+  assert.match(coordinator, /dispatch[\s\S]{0,160}exactly one[\s\S]{0,160}sai-7-accessibility-worker/i);
+  assert.equal((coordinator.match(/sai-7-accessibility-worker/g) || []).length, 1);
   for (const operation of ['prerequisite', 'argument', 'git', 'source', 'scanner', 'research', 'artifact']) {
     assert.match(
       coordinator,
@@ -232,8 +232,8 @@ test('Step 3 Claude Code and opencode wrappers load the launcher and the launche
     'launcher should load the neutral accessibility binding');
 
   const wrappers = [
-    ['claude', 'commands/claude/sai-8-accessibility.md', 'claude'],
-    ['opencode', 'commands/opencode/sai-8-accessibility.md', 'opencode'],
+    ['claude', 'commands/claude/sai-7-accessibility.md', 'claude'],
+    ['opencode', 'commands/opencode/sai-7-accessibility.md', 'opencode'],
   ];
 
   for (const [harness, wrapperPath, bindingHarness] of wrappers) {
@@ -241,11 +241,11 @@ test('Step 3 Claude Code and opencode wrappers load the launcher and the launche
     assert.match(wrapper, /sai[\\/]commands[\\/]accessibility[\\/]command-bootstrap\.md/,
       `${harness} should load the accessibility command bootstrap`);
     assert.match(wrapper, /\$ARGUMENTS/, `${harness} should preserve complete arguments`);
-    assert.doesNotMatch(wrapper, /Fetch @skills\/sai-8-accessibility-worker\/SKILL\.md/,
+    assert.doesNotMatch(wrapper, /Fetch @skills\/sai-7-accessibility-worker\/SKILL\.md/,
       `${harness} should not load the worker forwarding skill`);
     assert.match(
       matrixBinding(bindingHarness, 'accessibility'),
-      /sai-8-accessibility-worker/,
+      /sai-7-accessibility-worker/,
       `${harness} should have the matching accessibility binding`
     );
   }
@@ -258,12 +258,12 @@ test('Step 3 accessibility manifest projections are deterministic, unique, and h
     claude: [
       'sai/commands/accessibility/worker.md',
       '.tmp/collapse-sai-worker-matrix/matrix-sources/claude/accessibility-worker.md',
-      '.tmp/collapse-sai-worker-matrix/matrix-sources/claude/sai-8-accessibility-worker.md',
+      '.tmp/collapse-sai-worker-matrix/matrix-sources/claude/sai-7-accessibility-worker.md',
     ],
     opencode: [
       'sai/commands/accessibility/worker.md',
       '.tmp/collapse-sai-worker-matrix/matrix-sources/opencode/accessibility-worker.md',
-      '.tmp/collapse-sai-worker-matrix/matrix-sources/opencode/sai-8-accessibility-worker.md',
+      '.tmp/collapse-sai-worker-matrix/matrix-sources/opencode/sai-7-accessibility-worker.md',
     ],
   };
 
@@ -305,8 +305,8 @@ test('Step 3 accessibility manifest projections are deterministic, unique, and h
 
 test('Step 3 accessibility installation overwrites a conflicting Claude destination with notice', () => {
   const base = tempDir('sai-accessibility-collision-');
-  const agentPath = path.join(base, 'agents', 'sai-8-accessibility-worker.md');
-  const ownerPath = path.join(base, 'agents', '.sai-8-accessibility-worker.owner.json');
+  const agentPath = path.join(base, 'agents', 'sai-7-accessibility-worker.md');
+  const ownerPath = path.join(base, 'agents', '.sai-7-accessibility-worker.owner.json');
   const sentinel = 'unrelated user-owned accessibility agent\n';
   const notices = [];
   const originalLog = console.log;
@@ -354,8 +354,8 @@ test('Step 3 doctor and uninstall enumerate accessibility assets from the manife
 test('Step 3 divergent accessibility agents are overwritten, doctor-clean, and uninstalled', async () => {
   const base = tempDir('sai-accessibility-owned-');
   const projectRoot = tempDir('sai-accessibility-doctor-');
-  const agentPath = path.join(base, 'agents', 'sai-8-accessibility-worker.md');
-  const ownerPath = path.join(base, 'agents', '.sai-8-accessibility-worker.owner.json');
+  const agentPath = path.join(base, 'agents', 'sai-7-accessibility-worker.md');
+  const ownerPath = path.join(base, 'agents', '.sai-7-accessibility-worker.owner.json');
   const sentinel = 'custom user accessibility agent\n';
   const captured = collectOutput();
   try {
@@ -392,7 +392,7 @@ test('Step 3 divergent accessibility agents are overwritten, doctor-clean, and u
 
 test('Step 3 routed accessibility worker contract accepts only closed lifecycle fields', () => {
   const worker = artifact('sai/commands/accessibility/worker.md');
-  assert.match(worker, /Accessibility Worker|sai-8-accessibility-worker/);
+  assert.match(worker, /Accessibility Worker|sai-7-accessibility-worker/);
   const payloadContract = worker.match(/(?:payload includes|closed payload|lifecycle result)[\s\S]{0,800}/i);
   assert.ok(payloadContract, 'the worker contract should define a closed lifecycle result contract');
   for (const field of ['completed', 'needs_input', 'failed', 'cancelled', 'status', 'question', 'options', 'changed_files', 'summary']) {

@@ -33,8 +33,8 @@ function projections(harness) {
   return { base, entries: expandInstallManifest(manifest, { harness, repoRoot, destinationRoot }) };
 }
 
-test('all 33 Claude shipped roles match the unchanged OPUS preset exactly', () => {
-  assert.equal(hash(presetText), 'a06556da40728a66ff121b616983a66d2e4b4da5647d8f50762c2f65296b174b');
+test('all 33 Claude shipped roles match the audit-renumbered OPUS preset exactly', () => {
+  assert.equal(hash(presetText), '8edf51ac0a6c066b3c2949e27ce53204525bb72ec945a246136e9dbf4625d09e');
   const counts = {};
   const { base, entries } = projections('claude');
   for (const [role, expected] of Object.entries(preset)) {
@@ -58,7 +58,7 @@ test('all 33 Claude shipped roles match the unchanged OPUS preset exactly', () =
   }
 });
 
-test('generated opencode agents, command wrappers, and configuration remain byte-identical', () => {
+test('generated opencode agents, command wrappers, and configuration match the audit-renumbered snapshot', () => {
   // Fingerprint captured before the Claude-only defaults alignment; refreshed for the explore load-receipt pointer, the review and audit wrapper descriptions (options) and the -new family wrappers and workers (including /sai-4-review-new).
   const { base, entries } = projections('opencode');
   const output = entries.map(entry => [
@@ -67,5 +67,5 @@ test('generated opencode agents, command wrappers, and configuration remain byte
   ]).filter(([name]) => /^(agents|commands|config)\//.test(name))
     .sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0);
   assert.equal(output.length, 38);
-  assert.equal(hash(JSON.stringify(output)), '1f6a946c72390b472b7d2809df369e5a76a7637156a6113ac4cb1362866d551f');
+  assert.equal(hash(JSON.stringify(output)), '6202b86e80505ada1c4a40c4197784990befd5097a75b3e5131e3b887eb04a19');
 });

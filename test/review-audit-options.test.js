@@ -65,7 +65,7 @@ test('only --runtime lets a review or audit command ask mid-run', () => {
 });
 
 test('both harness wrappers announce the options', () => {
-  const wrappers = { 'sai-deep-review': ['--full', '--path', '--tier', '--runtime', '--parent-branch'], 'sai-4-review': ['--parent-branch'], 'sai-6-security': ['--parent-branch'], 'sai-7-performance': ['--parent-branch'], 'sai-8-accessibility': ['--parent-branch'] };
+  const wrappers = { 'sai-deep-review': ['--full', '--path', '--tier', '--runtime', '--parent-branch'], 'sai-4-review': ['--parent-branch'], 'sai-5-security': ['--parent-branch'], 'sai-6-performance': ['--parent-branch'], 'sai-7-accessibility': ['--parent-branch'] };
   for (const harness of ['claude', 'opencode']) {
     for (const [wrapper, flags] of Object.entries(wrappers)) {
       const text = read(`commands/${harness}/${wrapper}.md`);

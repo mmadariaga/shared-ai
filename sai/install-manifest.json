@@ -15,13 +15,13 @@
       "coordinator": { "extends": "boot", "search": true, "question": true, "panel": true, "message": true, "shell": ["node {sai}/tools/worker-report-validator.js *", "node {sai}/tools/no-commit-guard.js *", "node {sai}/bin/sai-state.js *", "git reset *"] },
       "spec-command": { "extends": "coordinator", "delegate": ["sai-1-spec-proposal-worker"] },
       "design-command": { "extends": "coordinator", "delegate": ["sai-2-design-worker"] },
-      "security-command": { "extends": "coordinator", "delegate": ["sai-6-security-worker"] },
-      "performance-command": { "extends": "coordinator", "delegate": ["sai-7-performance-worker"] },
-      "accessibility-command": { "extends": "coordinator", "delegate": ["sai-8-accessibility-worker"] },
+      "security-command": { "extends": "coordinator", "delegate": ["sai-5-security-worker"] },
+      "performance-command": { "extends": "coordinator", "delegate": ["sai-6-performance-worker"] },
+      "accessibility-command": { "extends": "coordinator", "delegate": ["sai-7-accessibility-worker"] },
       "implement-command": { "extends": "coordinator", "write": true, "shell": ["*"], "skills": ["safe-operations"], "delegate": ["executor", "sai-3-red-worker", "sai-3-green-worker"] },
       "review-command": { "extends": "implement-command", "delegate": ["sai-4-review-worker"] },
       "build-command": { "extends": "implement-command", "delegate": ["executor", "sai-3-red-worker", "sai-3-green-worker", "sai-4-review-worker"] },
-      "deep-review-command": { "extends": "implement-command", "delegate": ["executor", "sai-3-red-worker", "sai-3-green-worker", "sai-4-review-worker", "sai-6-security-worker", "sai-7-performance-worker", "sai-8-accessibility-worker"] },
+      "deep-review-command": { "extends": "implement-command", "delegate": ["executor", "sai-3-red-worker", "sai-3-green-worker", "sai-4-review-worker", "sai-5-security-worker", "sai-6-performance-worker", "sai-7-accessibility-worker"] },
       "mutation-coordinator": { "extends": "coordinator", "write": true, "shell": ["*"] },
       "commit-command": { "extends": "mutation-coordinator", "write": false, "delegate": ["sai-commit-worker"] },
       "archive-command": { "extends": "mutation-coordinator", "shell": ["*", "node {sai}/tools/transfer.js *"], "delegate": ["sai-archive-worker", "sai-backfill-worker"] },
@@ -44,9 +44,9 @@
         "budget-subagent": "task", "budget": "task",
         "sai-1-spec-proposal-worker": "worker-research",
         "sai-2-design-worker": "worker-design",
-        "sai-6-security-worker": "worker-research",
-        "sai-7-performance-worker": "worker-research",
-        "sai-8-accessibility-worker": "worker-research",
+        "sai-5-security-worker": "worker-research",
+        "sai-6-performance-worker": "worker-research",
+        "sai-7-accessibility-worker": "worker-research",
         "sai-commit-worker": "worker-read", "sai-archive-worker": "worker-read",
         "sai-backfill-worker": "worker-backfill", "sai-merge-worker": "worker-write",
         "sai-direct-build-worker": "worker-write",
@@ -56,7 +56,7 @@
       "commands": {
         "sai-1-spec": "spec-command", "sai-2-design": "design-command", "sai-3-implement": "implement-command",
         "sai-4-review": "review-command", "sai-build": "build-command", "sai-deep-review": "deep-review-command",
-        "sai-6-security": "security-command", "sai-7-performance": "performance-command", "sai-8-accessibility": "accessibility-command",
+        "sai-5-security": "security-command", "sai-6-performance": "performance-command", "sai-7-accessibility": "accessibility-command",
         "sai-commit": "commit-command", "sai-archive": "archive-command",
         "sai-backfill": "backfill-command", "sai-merge": "merge-command",
         "sai-explore": "explore-command", "sai-retire-docs": "utility-write",
@@ -140,51 +140,51 @@
       },
       {
         "phase": "security",
-        "workerName": "sai-6-security-worker",
+        "workerName": "sai-5-security-worker",
         "workerContract": "sai/commands/security/worker.md",
         "bindingStem": "security",
         "claudeAgent": {
-          "agentName": "sai-6-security-worker",
-          "description": "Security-audit worker for /sai-6-security and /sai-deep-review, dispatched only by their coordinators. Writes security.md.",
+          "agentName": "sai-5-security-worker",
+          "description": "Security-audit worker for /sai-5-security and /sai-deep-review, dispatched only by their coordinators. Writes security.md.",
           "model": "opus",
           "effort": "medium"
         },
         "opencodeAgent": {
-          "description": "Security-audit worker for /sai-6-security and /sai-deep-review, dispatched only by their coordinators. Writes security.md.",
+          "description": "Security-audit worker for /sai-5-security and /sai-deep-review, dispatched only by their coordinators. Writes security.md.",
           "model": "opencode-go/deepseek-v4.1-flash",
           "variant": "max"
         }
       },
       {
         "phase": "performance",
-        "workerName": "sai-7-performance-worker",
+        "workerName": "sai-6-performance-worker",
         "workerContract": "sai/commands/performance/worker.md",
         "bindingStem": "performance",
         "claudeAgent": {
-          "agentName": "sai-7-performance-worker",
-          "description": "Performance-audit worker for /sai-7-performance and /sai-deep-review, dispatched only by their coordinators. Writes performance.md.",
+          "agentName": "sai-6-performance-worker",
+          "description": "Performance-audit worker for /sai-6-performance and /sai-deep-review, dispatched only by their coordinators. Writes performance.md.",
           "model": "opus",
           "effort": "medium"
         },
         "opencodeAgent": {
-          "description": "Performance-audit worker for /sai-7-performance and /sai-deep-review, dispatched only by their coordinators. Writes performance.md.",
+          "description": "Performance-audit worker for /sai-6-performance and /sai-deep-review, dispatched only by their coordinators. Writes performance.md.",
           "model": "opencode-go/deepseek-v4.1-flash",
           "variant": "max"
         }
       },
       {
         "phase": "accessibility",
-        "workerName": "sai-8-accessibility-worker",
+        "workerName": "sai-7-accessibility-worker",
         "workerContract": "sai/commands/accessibility/worker.md",
         "bindingStem": "accessibility",
         "claudeAgent": {
-          "agentName": "sai-8-accessibility-worker",
-          "description": "Accessibility-audit worker for /sai-8-accessibility and /sai-deep-review, dispatched only by their coordinators. Writes accessibility.md.",
+          "agentName": "sai-7-accessibility-worker",
+          "description": "Accessibility-audit worker for /sai-7-accessibility and /sai-deep-review, dispatched only by their coordinators. Writes accessibility.md.",
           "model": "opus",
           "effort": "medium"
         },
         "opencodeAgent": {
-          "description": "Accessibility-audit worker for /sai-8-accessibility and /sai-deep-review, dispatched only by their coordinators. Writes accessibility.md.",
+          "description": "Accessibility-audit worker for /sai-7-accessibility and /sai-deep-review, dispatched only by their coordinators. Writes accessibility.md.",
           "model": "opencode-go/deepseek-v4.1-flash",
           "variant": "max"
         }
@@ -768,11 +768,11 @@
       }
     },
     {
-      "id": "claude-sai-6-security-worker",
+      "id": "claude-sai-5-security-worker",
       "source": "agents/claude/worker-template.md",
       "destination": {
         "class": "agents",
-        "path": "sai-6-security-worker.md"
+        "path": "sai-5-security-worker.md"
       },
       "harnesses": [
         "claude"
@@ -787,11 +787,11 @@
       }
     },
     {
-      "id": "claude-sai-7-performance-worker",
+      "id": "claude-sai-6-performance-worker",
       "source": "agents/claude/worker-template.md",
       "destination": {
         "class": "agents",
-        "path": "sai-7-performance-worker.md"
+        "path": "sai-6-performance-worker.md"
       },
       "harnesses": [
         "claude"
@@ -806,11 +806,11 @@
       }
     },
     {
-      "id": "claude-sai-8-accessibility-worker",
+      "id": "claude-sai-7-accessibility-worker",
       "source": "agents/claude/worker-template.md",
       "destination": {
         "class": "agents",
-        "path": "sai-8-accessibility-worker.md"
+        "path": "sai-7-accessibility-worker.md"
       },
       "harnesses": [
         "claude"
@@ -965,11 +965,11 @@
       }
     },
     {
-      "id": "opencode-sai-6-security-worker",
+      "id": "opencode-sai-5-security-worker",
       "source": "agents/opencode/worker-template.md",
       "destination": {
         "class": "agents",
-        "path": "sai-6-security-worker.md"
+        "path": "sai-5-security-worker.md"
       },
       "harnesses": [
         "opencode"
@@ -984,11 +984,11 @@
       }
     },
     {
-      "id": "opencode-sai-7-performance-worker",
+      "id": "opencode-sai-6-performance-worker",
       "source": "agents/opencode/worker-template.md",
       "destination": {
         "class": "agents",
-        "path": "sai-7-performance-worker.md"
+        "path": "sai-6-performance-worker.md"
       },
       "harnesses": [
         "opencode"
@@ -1003,11 +1003,11 @@
       }
     },
     {
-      "id": "opencode-sai-8-accessibility-worker",
+      "id": "opencode-sai-7-accessibility-worker",
       "source": "agents/opencode/worker-template.md",
       "destination": {
         "class": "agents",
-        "path": "sai-8-accessibility-worker.md"
+        "path": "sai-7-accessibility-worker.md"
       },
       "harnesses": [
         "opencode"
@@ -3512,6 +3512,246 @@
     { "id": "retired-legacy-build-sai-state-machines-red-new-steps-js", "destination": { "class": "sai", "path": "sai-state/machines/red-new-steps.js" }, "harnesses": ["claude", "opencode"], "managedHashes": ["56f100448dce08821fa6acee2dc5a74fd83229eaeff64191a89d2249478c64c7"] },
     { "id": "retired-legacy-build-sai-state-machines-review-new-steps-js", "destination": { "class": "sai", "path": "sai-state/machines/review-new-steps.js" }, "harnesses": ["claude", "opencode"], "managedHashes": ["ec7d1028855a1f0538d8f86a551156163664a2f9ed5962525f160918ec3c6f08"] },
     { "id": "retired-legacy-build-sai-state-machines-review-standalone-js", "destination": { "class": "sai", "path": "sai-state/machines/review-standalone.js" }, "harnesses": ["claude", "opencode"], "managedHashes": ["c70a0f8945cffdf6cdf60209709dfadfccc1cb8d50b7c54e5bd50f6ce25fde52"] },
-    { "id": "retired-legacy-build-tools-apply-step-js", "destination": { "class": "sai", "path": "tools/apply-step.js" }, "harnesses": ["claude", "opencode"], "managedHashes": ["3083830c727d94a28f5477d122c37193ecdd401d397ea4c0cb7d68974f111240"] }
+    { "id": "retired-legacy-build-tools-apply-step-js", "destination": { "class": "sai", "path": "tools/apply-step.js" }, "harnesses": ["claude", "opencode"], "managedHashes": ["3083830c727d94a28f5477d122c37193ecdd401d397ea4c0cb7d68974f111240"] },
+    {
+      "id": "retired-claude-retired-audit-sai-6-security-worker",
+      "harnesses": [
+        "claude"
+      ],
+      "destination": {
+        "class": "agents",
+        "path": "sai-6-security-worker.md"
+      },
+      "managedHashes": [
+        "afc26333e222e01d7dd09fe92cf74cd40bff8549ad4477460283efcc8b0bfd43"
+      ],
+      "tunableKeys": [
+        "model",
+        "effort"
+      ],
+      "managedBodyHashes": [
+        "136ad9994449a5b4497f66da73785d01db2e7c5433cb621c2dfacae64581727a"
+      ]
+    },
+    {
+      "id": "retired-claude-retired-audit-sai-7-performance-worker",
+      "harnesses": [
+        "claude"
+      ],
+      "destination": {
+        "class": "agents",
+        "path": "sai-7-performance-worker.md"
+      },
+      "managedHashes": [
+        "0898949abf4a25b397fc7861255afb7ed01b2df52fe3faa3570ffd1d8edb5c98"
+      ],
+      "tunableKeys": [
+        "model",
+        "effort"
+      ],
+      "managedBodyHashes": [
+        "dab5f29ad6d7509bdf746b0e5f5e295f388f03a97c24ed63397ca2ed7360562e"
+      ]
+    },
+    {
+      "id": "retired-claude-retired-audit-sai-8-accessibility-worker",
+      "harnesses": [
+        "claude"
+      ],
+      "destination": {
+        "class": "agents",
+        "path": "sai-8-accessibility-worker.md"
+      },
+      "managedHashes": [
+        "5d7fe4ec107d36f24c67926a6a5673310a1b47e5e381127c95f52fe76572d51c"
+      ],
+      "tunableKeys": [
+        "model",
+        "effort"
+      ],
+      "managedBodyHashes": [
+        "cd567f38968c60eb5f787d595c9ee34c9c3ab04743c8d54963e0ac04114222db"
+      ]
+    },
+    {
+      "id": "retired-claude-retired-audit-sai-6-security",
+      "harnesses": [
+        "claude"
+      ],
+      "destination": {
+        "class": "commands",
+        "path": "sai-6-security.md"
+      },
+      "managedHashes": [
+        "b7dad79e15803f5698637cea3c4bf8f35d4617ce3f5b028563fc8318d1ceda2d"
+      ],
+      "tunableKeys": [
+        "model",
+        "effort"
+      ],
+      "managedBodyHashes": [
+        "99b02321e65d6c4ef5054754c6334ab1779dfc71c66f4c124eed98dd22803792"
+      ]
+    },
+    {
+      "id": "retired-claude-retired-audit-sai-7-performance",
+      "harnesses": [
+        "claude"
+      ],
+      "destination": {
+        "class": "commands",
+        "path": "sai-7-performance.md"
+      },
+      "managedHashes": [
+        "b48062ac8cfd8c0a55d32f1af3d56045f3c5bd637b9d58acb7bb0a40bc0153c9"
+      ],
+      "tunableKeys": [
+        "model",
+        "effort"
+      ],
+      "managedBodyHashes": [
+        "c2eb92e6482fc7910a1fe654471c65192a9a59ca941926abd81b4531edf34600"
+      ]
+    },
+    {
+      "id": "retired-claude-retired-audit-sai-8-accessibility",
+      "harnesses": [
+        "claude"
+      ],
+      "destination": {
+        "class": "commands",
+        "path": "sai-8-accessibility.md"
+      },
+      "managedHashes": [
+        "e6bc42ee2b33728e5a7fc9030ccfa729dc44900e6b562e10e9498c71c1d805da"
+      ],
+      "tunableKeys": [
+        "model",
+        "effort"
+      ],
+      "managedBodyHashes": [
+        "cc0c938dce0e33b5f449fcc2e14ea04e82207176864bf42d79e9bc7b3be62b6d"
+      ]
+    },
+    {
+      "id": "retired-opencode-retired-audit-sai-6-security-worker",
+      "harnesses": [
+        "opencode"
+      ],
+      "destination": {
+        "class": "agents",
+        "path": "sai-6-security-worker.md"
+      },
+      "managedHashes": [
+        "ee4d0261b3e980942e1ca47517dfdb21c6c4258e01e6d5c4be6879337fabf3fc"
+      ],
+      "tunableKeys": [
+        "model",
+        "variant"
+      ],
+      "managedBodyHashes": [
+        "47b8709e5197172f2d018d03e4addb20316f758248d18f3514b915afbf0a4ea5"
+      ]
+    },
+    {
+      "id": "retired-opencode-retired-audit-sai-7-performance-worker",
+      "harnesses": [
+        "opencode"
+      ],
+      "destination": {
+        "class": "agents",
+        "path": "sai-7-performance-worker.md"
+      },
+      "managedHashes": [
+        "f32b2a2cc2f6d48049ed4867831caa437e0300cd9c6544018001320243dae755"
+      ],
+      "tunableKeys": [
+        "model",
+        "variant"
+      ],
+      "managedBodyHashes": [
+        "c3b59f721480d0b5af47672a5df5eb60d52a9d4c148143e2c46b190a956df697"
+      ]
+    },
+    {
+      "id": "retired-opencode-retired-audit-sai-8-accessibility-worker",
+      "harnesses": [
+        "opencode"
+      ],
+      "destination": {
+        "class": "agents",
+        "path": "sai-8-accessibility-worker.md"
+      },
+      "managedHashes": [
+        "370404b421e208bae9a8f5dad96b92a6697f92ea8c8475aa566f1139e1a90014"
+      ],
+      "tunableKeys": [
+        "model",
+        "variant"
+      ],
+      "managedBodyHashes": [
+        "b2f6be72091b7e6abdae83125d2cfc031b8db550be9fdf836d6ea67029c62b5f"
+      ]
+    },
+    {
+      "id": "retired-opencode-retired-audit-sai-6-security",
+      "harnesses": [
+        "opencode"
+      ],
+      "destination": {
+        "class": "commands",
+        "path": "sai-6-security.md"
+      },
+      "managedHashes": [
+        "403e110a8674a5043943d4cbf0c7582ecff405dd08977be0ae837e630ce5524a"
+      ],
+      "tunableKeys": [
+        "model",
+        "variant"
+      ],
+      "managedBodyHashes": [
+        "2876235fe86c3686897a5bb9d4cb630ce0930e87e5a08e3e05f57b50b7bb839e"
+      ]
+    },
+    {
+      "id": "retired-opencode-retired-audit-sai-7-performance",
+      "harnesses": [
+        "opencode"
+      ],
+      "destination": {
+        "class": "commands",
+        "path": "sai-7-performance.md"
+      },
+      "managedHashes": [
+        "a48c0d5e941af3adc4f175a2fc3fcb58de9f4a25dfd6e422b048b5c31296eb63"
+      ],
+      "tunableKeys": [
+        "model",
+        "variant"
+      ],
+      "managedBodyHashes": [
+        "d00ded5a901bb5b279dabd6cb8ac60502d3e77b2ba4fff563e4666c4add6a187"
+      ]
+    },
+    {
+      "id": "retired-opencode-retired-audit-sai-8-accessibility",
+      "harnesses": [
+        "opencode"
+      ],
+      "destination": {
+        "class": "commands",
+        "path": "sai-8-accessibility.md"
+      },
+      "managedHashes": [
+        "34a2b2f7ef1c00fe6b4baf7fdecbaa1364138a1ce116108c976da0bc594c3ed5"
+      ],
+      "tunableKeys": [
+        "model",
+        "variant"
+      ],
+      "managedBodyHashes": [
+        "b6dc6f5006930c074f270798853a67c488eaa5533c64e370af86057b7574bf03"
+      ]
+    }
   ]
 }

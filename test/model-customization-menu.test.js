@@ -39,9 +39,9 @@ const OPENCODE_AGENTS = [
   'sai-3-green-worker',
   'sai-3-red-worker',
   'sai-4-review-worker',
-  'sai-6-security-worker',
-  'sai-7-performance-worker',
-  'sai-8-accessibility-worker',
+  'sai-5-security-worker',
+  'sai-6-performance-worker',
+  'sai-7-accessibility-worker',
   'sai-archive-worker',
   'sai-backfill-worker',
   'sai-commit-worker',
@@ -58,9 +58,9 @@ const CLAUDE_AGENTS = [
   'sai-3-green-worker',
   'sai-3-red-worker',
   'sai-4-review-worker',
-  'sai-6-security-worker',
-  'sai-7-performance-worker',
-  'sai-8-accessibility-worker',
+  'sai-5-security-worker',
+  'sai-6-performance-worker',
+  'sai-7-accessibility-worker',
   'sai-archive-worker',
   'sai-backfill-worker',
   'sai-commit-worker',
@@ -79,9 +79,9 @@ const COMMANDS = [
   'sai-2-design',
   'sai-3-implement',
   'sai-4-review',
-  'sai-6-security',
-  'sai-7-performance',
-  'sai-8-accessibility',
+  'sai-5-security',
+  'sai-6-performance',
+  'sai-7-accessibility',
   'sai-archive',
   'sai-backfill',
   'sai-build',
@@ -135,9 +135,9 @@ const OPENCODE_COMMANDS = [
   'sai-2-design',
   'sai-3-implement',
   'sai-4-review',
-  'sai-6-security',
-  'sai-7-performance',
-  'sai-8-accessibility',
+  'sai-5-security',
+  'sai-6-performance',
+  'sai-7-accessibility',
   'sai-archive',
   'sai-backfill',
   'sai-build',
@@ -167,12 +167,12 @@ const COMBINED_BOTH_FULL = [
   'command:sai-4-review',
   'worker:sai-4-review-worker',
   'command:sai-deep-review',
-  'command:sai-6-security',
-  'worker:sai-6-security-worker',
-  'command:sai-7-performance',
-  'worker:sai-7-performance-worker',
-  'command:sai-8-accessibility',
-  'worker:sai-8-accessibility-worker',
+  'command:sai-5-security',
+  'worker:sai-5-security-worker',
+  'command:sai-6-performance',
+  'worker:sai-6-performance-worker',
+  'command:sai-7-accessibility',
+  'worker:sai-7-accessibility-worker',
   'command:sai-backfill',
   'worker:sai-backfill-worker',
   'command:sai-archive',
@@ -1090,8 +1090,8 @@ test('scope All presents phased orchestrator blocks with semantic worker pairs i
 
 test('the implement and review workers follow their commands in All and stay alphabetical in Workers for both harnesses', async () => {
   for (const [harness, factoryName] of [['OpenCode', 'createOpencodeAdapter'], ['Claude Code', 'createClaudeAdapter']]) {
-    const workers = ['sai-6-security-worker', 'sai-4-review-worker', 'sai-3-green-worker', 'sai-3-red-worker'];
-    const commands = ['sai-6-security', 'sai-4-review', 'sai-3-implement'];
+    const workers = ['sai-5-security-worker', 'sai-4-review-worker', 'sai-3-green-worker', 'sai-3-red-worker'];
+    const commands = ['sai-5-security', 'sai-4-review', 'sai-3-implement'];
     const ops = { select: [], create: [] };
     const restore = patchFactory(factoryName, () => makeFakeAdapter(workers, ops, { model: 'opencode-go/test-model' }, commands));
     try {
@@ -1110,8 +1110,8 @@ test('the implement and review workers follow their commands in All and stay alp
         'worker:sai-3-green-worker',
         'command:sai-4-review',
         'worker:sai-4-review-worker',
-        'command:sai-6-security',
-        'worker:sai-6-security-worker',
+        'command:sai-5-security',
+        'worker:sai-5-security-worker',
       ],
         `${harness}: All shows the RED and GREEN workers after sai-3-implement and the review worker after sai-4-review`);
     } finally {
@@ -1145,7 +1145,7 @@ test('the implement and review workers follow their commands in All and stay alp
       const present = missing === 'sai-3-red-worker' ? 'sai-3-green-worker' : 'sai-3-red-worker';
       const ops = { select: [], create: [] };
       const restore = patchFactory(factoryName, () => makeFakeAdapter(
-        [present], ops, { model: 'opencode-go/test-model' }, ['sai-3-implement', 'sai-6-security']));
+        [present], ops, { model: 'opencode-go/test-model' }, ['sai-3-implement', 'sai-5-security']));
       try {
         const answers = ['Customize models', harness, 'All', 'Exit'];
         const checklistCalls = [];
@@ -1155,7 +1155,7 @@ test('the implement and review workers follow their commands in All and stay alp
           promptChoice: async () => answers.shift() ?? '<model>',
           promptChecklist: recordChecklist(checklistCalls),
         });
-        assert.deepEqual(checklistCalls[0][1], ['command:sai-3-implement', `worker:${present}`, 'command:sai-6-security'],
+        assert.deepEqual(checklistCalls[0][1], ['command:sai-3-implement', `worker:${present}`, 'command:sai-5-security'],
           `${harness}: missing ${missing} shows only available workers without empty or duplicate rows`);
       } finally {
         restore();
@@ -3725,9 +3725,9 @@ test('customization inventory is matrix-derived: exactly thirteen worker agents 
     'sai-3-red-worker',
     'sai-3-green-worker',
     'sai-4-review-worker',
-    'sai-6-security-worker',
-    'sai-7-performance-worker',
-    'sai-8-accessibility-worker',
+    'sai-5-security-worker',
+    'sai-6-performance-worker',
+    'sai-7-accessibility-worker',
     'sai-archive-worker',
     'sai-backfill-worker',
     'sai-commit-worker',

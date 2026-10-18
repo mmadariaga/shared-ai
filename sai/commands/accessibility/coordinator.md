@@ -11,7 +11,7 @@
   Supply the closed adapter field set plus the optional `progress_plan`:
 
   - `original_envelope`: exactly `arguments_value` from the active wrapper, preserving the complete argument string.
-  - `dispatch_operation`: dispatch exactly one sai-8-accessibility-worker through the active accessibility-worker binding.
+  - `dispatch_operation`: dispatch exactly one sai-7-accessibility-worker through the active accessibility-worker binding.
   - `continuation_operation`: continue the captured worker with the exact selected answer value.
   - `allowed_nonterminal_extensions`: progress events — `{event: "progress", step_ids: string[], changed_files: string[]}` as the sole nonterminal extension.
   - `extension_handlers`: empty.

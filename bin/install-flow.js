@@ -49,7 +49,7 @@ function spliceTunables(sourceText, destinationText, tunableKeys) {
   if (!splitFrontmatter(destinationText)) return sourceText;
   // Opencode agents use separate `model:` and optional `variant:` lines;
   // opencode commands keep a single-line `model: <id>#<variant>`.
-  // This (currently unused) helper preserves the destination's tunable
+  // Audit-name migration preserves the destination's tunable
   // lines in the command single-line shape and drops any residual
   // `variant:` lines so a reinstall migrates legacy command files.
   if (tunableKeys.includes('variant')) {
@@ -221,9 +221,9 @@ const CLAUDE_BINDINGS_DIR = path.join(REPOSITORY_ROOT, 'sai', 'orchestration', '
 const MANAGED_WORKER_ORDER = Object.freeze([
   'sai-2-design-worker',
   'sai-4-review-worker',
-  'sai-6-security-worker',
-  'sai-7-performance-worker',
-  'sai-8-accessibility-worker',
+  'sai-5-security-worker',
+  'sai-6-performance-worker',
+  'sai-7-accessibility-worker',
   'sai-1-spec-proposal-worker',
   'sai-commit-worker',
   'sai-archive-worker',
@@ -1229,6 +1229,14 @@ function installProjection(projection, targetPath, notices) {
     tunableSeedInstaller(projection);
     return;
   }
+  if (require('./audit-name-migration').isAuditCommand(projection.destinationPath)
+      && fs.existsSync(projection.destinationPath)) {
+    const source = projection.sourceText ?? fs.readFileSync(projection.sourcePath, 'utf8');
+    const previous = fs.readFileSync(projection.destinationPath, 'utf8');
+    const keys = projection.harness === 'claude' ? CLAUDE_TUNABLE_KEYS : OPENCODE_TUNABLE_KEYS;
+    fs.writeFileSync(projection.destinationPath, spliceTunables(source, previous, keys));
+    return;
+  }
   if (projection.strategy === 'owned-copy') {
     throw new Error(`Projection ${projection.id} declares the retired owned-copy strategy; use tunable-seed`);
   }
@@ -1282,8 +1290,8 @@ function cleanupRetiredProjections(harness, roots) {
       results.push({ ...retirement, action: 'not-found' });
       continue;
     }
-    const currentHash = sha256Buffer(fs.readFileSync(retirement.destinationPath));
-    if (!retirement.managedHashes.includes(currentHash)) {
+    if (!require('./retirement-identity').recognizedRetirement(fs.readFileSync(retirement.destinationPath), retirement)) {
+      console.warn(`Pending resolution: customized retired file preserved: ${retirement.destinationPath}`);
       results.push({ ...retirement, action: 'preserved' });
       continue;
     }
@@ -1350,6 +1358,7 @@ function installClaude(destBase) {
   validateClaudeWorkerBindings();
   assertInstalledMarkdownSourcesUseOneStringEnvelope();
   const targetPath = destBase || CLAUDE_BASE;
+  require('./audit-name-migration').prepare(targetPath);
   cleanupRetiredProjections('claude', { base: targetPath });
   for (const projection of expandForInstall('claude', { base: targetPath })) installProjection(projection, targetPath);
 
@@ -1366,6 +1375,7 @@ function installOpencode(destBase, { spawnSync: spawnFn, env: runEnv, notices } 
   const targetPath = destBase || (Object.keys(resolveOptions).length > 0 ? resolveOpencodeBase(resolveOptions) : resolveOpencodeBase());
   const projections = expandForInstall('opencode', { base: targetPath });
   assertProjectionInputsUseOneStringEnvelope(projections, 'Opencode');
+  require('./audit-name-migration').prepare(targetPath);
   cleanupRetiredProjections('opencode', { base: targetPath });
   for (const projection of projections) installProjection(projection, targetPath, notices);
 
@@ -1827,6 +1837,7 @@ module.exports = {
   tunableSeedInstaller,
   deleteSidecarUnderShapeGuard,
   stripTunableLines,
+  spliceTunables,
   matrixBindings,
   matrixWorkerRoster,
   __test: {

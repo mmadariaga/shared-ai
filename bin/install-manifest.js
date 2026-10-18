@@ -38,9 +38,9 @@ const RETIRED_INVOCATION_ENVELOPE_FIELD = ['wrapper', 'echo', 'value'].join('_')
 const PHASE_WORKER_IDENTITIES = Object.freeze({
   spec: 'sai-1-spec-proposal-worker',
   design: 'sai-2-design-worker',
-  security: 'sai-6-security-worker',
-  performance: 'sai-7-performance-worker',
-  accessibility: 'sai-8-accessibility-worker',
+  security: 'sai-5-security-worker',
+  performance: 'sai-6-performance-worker',
+  accessibility: 'sai-7-accessibility-worker',
   commit: 'sai-commit-worker',
   archive: 'sai-archive-worker',
   backfill: 'sai-backfill-worker',
@@ -323,6 +323,13 @@ function validateRetirements(manifest, projectionIds) {
     if (new Set(retirement.managedHashes).size !== retirement.managedHashes.length) {
       throw new Error(`Retirement ${retirement.id} has duplicate managedHashes`);
     }
+    if (retirement.managedBodyHashes !== undefined
+        && (!Array.isArray(retirement.managedBodyHashes) || retirement.managedBodyHashes.length === 0
+          || retirement.managedBodyHashes.some(hash => !SHA256.test(hash))
+          || !Array.isArray(retirement.tunableKeys) || retirement.tunableKeys.length === 0
+          || retirement.tunableKeys.some(key => !['model', 'effort', 'variant'].includes(key)))) {
+      throw new Error(`Retirement ${retirement.id} has invalid tunable body identity`);
+    }
   }
 }
 
@@ -502,6 +509,10 @@ function expandRetirementManifest(manifest, { harness, repoRoot, destinationRoot
         destinationPath: path.resolve(destinationBase, retirement.destination.path),
         harness,
         managedHashes: [...retirement.managedHashes],
+        ...(retirement.managedBodyHashes ? {
+          managedBodyHashes: [...retirement.managedBodyHashes],
+          tunableKeys: [...retirement.tunableKeys],
+        } : {}),
       };
     })
     .sort((left, right) => normalizeRelative(left.destinationPath).localeCompare(normalizeRelative(right.destinationPath)) || left.id.localeCompare(right.id));

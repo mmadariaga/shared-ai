@@ -894,9 +894,9 @@ test('architecture snapshot display compares the extracted Target State block an
 test('routed Claude wrappers expose the exact coordinator and panel tool scope', () => {
   const routedWrappers = [
     'commands/claude/sai-2-design.md',
-    'commands/claude/sai-6-security.md',
-    'commands/claude/sai-7-performance.md',
-    'commands/claude/sai-8-accessibility.md',
+    'commands/claude/sai-5-security.md',
+    'commands/claude/sai-6-performance.md',
+    'commands/claude/sai-7-accessibility.md',
   ];
   const routedTools = ['Read', 'Glob', 'Skill', 'Agent', 'SendMessage', 'AskUserQuestion', 'TaskCreate', 'TaskUpdate', 'TaskGet', 'TaskList'];
   const nodeGrants = [

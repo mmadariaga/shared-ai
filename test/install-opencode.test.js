@@ -29,9 +29,9 @@ const CURRENT_CENSUS = [
   'sai-1-spec-proposal-worker',
   'sai-2-design-worker',
   'sai-4-review-worker',
-  'sai-6-security-worker',
-  'sai-7-performance-worker',
-  'sai-8-accessibility-worker',
+  'sai-5-security-worker',
+  'sai-6-performance-worker',
+  'sai-7-accessibility-worker',
   'sai-commit-worker',
   'sai-archive-worker',
   'sai-backfill-worker',
@@ -80,9 +80,9 @@ const WORKER_CONTRACT_BY_NAME = {
   'sai-1-spec-proposal-worker': { phase: 'spec', binding: 'spec-worker.md' },
   'sai-2-design-worker': { phase: 'design', binding: 'design-worker.md' },
   'sai-4-review-worker': { phase: 'review', binding: 'review-worker.md' },
-  'sai-6-security-worker': { phase: 'security', binding: 'security-worker.md' },
-  'sai-7-performance-worker': { phase: 'performance', binding: 'performance-worker.md' },
-  'sai-8-accessibility-worker': { phase: 'accessibility', binding: 'accessibility-worker.md' },
+  'sai-5-security-worker': { phase: 'security', binding: 'security-worker.md' },
+  'sai-6-performance-worker': { phase: 'performance', binding: 'performance-worker.md' },
+  'sai-7-accessibility-worker': { phase: 'accessibility', binding: 'accessibility-worker.md' },
   'sai-commit-worker': { phase: 'commit', binding: 'commit-worker.md' },
   'sai-archive-worker': { phase: 'archive', binding: 'archive-worker.md' },
   'sai-backfill-worker': { phase: 'backfill', binding: 'backfill-worker.md' },
@@ -374,9 +374,9 @@ test('Step 3 fresh opencode install omits all routed worker proxy skills and pro
         .replace('sai-1-spec-proposal-worker', 'spec-worker')
         .replace('sai-2-design-worker', 'design-worker')
         .replace('sai-4-review-worker', 'review-worker')
-        .replace('sai-6-security-worker', 'security-worker')
-        .replace('sai-7-performance-worker', 'performance-worker')
-        .replace('sai-8-accessibility-worker', 'accessibility-worker')
+        .replace('sai-5-security-worker', 'security-worker')
+        .replace('sai-6-performance-worker', 'performance-worker')
+        .replace('sai-7-accessibility-worker', 'accessibility-worker')
         .replace('sai-commit-worker', 'commit-worker')
         .replace('sai-archive-worker', 'archive-worker')
         .replace('sai-backfill-worker', 'backfill-worker')
@@ -1647,9 +1647,9 @@ test('opencode wrappers route through the opencode boot adapter and never the Cl
     'sai-deep-review',
     'sai-1-spec',
     'sai-2-design',
-    'sai-6-security',
-    'sai-7-performance',
-    'sai-8-accessibility',
+    'sai-5-security',
+    'sai-6-performance',
+    'sai-7-accessibility',
   ];
   try {
     installOpencode(tmpDir);

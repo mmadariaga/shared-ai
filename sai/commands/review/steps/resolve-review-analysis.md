@@ -17,7 +17,7 @@ Audit recommendations come only from passes 3 to 5: each flags *surface touched:
    - new or upgraded dependencies
    - logging that may capture sensitive data
 
-   On yes, recommend `/sai-6-security`.
+   On yes, recommend `/sai-5-security`.
 4. **Performance triage** — Flag *surface touched: yes/no* when the diff touches:
    - new or modified DB queries or ORM access (N+1 risk, missing indexes)
    - new HTTP endpoints, controllers, or hot-path handlers
@@ -27,13 +27,13 @@ Audit recommendations come only from passes 3 to 5: each flags *surface touched:
    - loops or data transformations over user-controlled or unbounded inputs
    - caching layers added, removed, or invalidated
 
-   On yes, recommend `/sai-7-performance`.
+   On yes, recommend `/sai-6-performance`.
 5. **Accessibility triage** — Flag *surface touched: yes/no* when the diff touches:
    - `.tsx`/`.jsx`/`.astro`/`.html`/`.vue`/`.svelte`/`.css` files
    - component-bearing markdown
    - interactive widgets, forms, navigation, media, dynamic SPA behavior, visual-design tokens, route announcements
 
-   On yes, recommend `/sai-8-accessibility`.
+   On yes, recommend `/sai-7-accessibility`.
 6. **Maintainability** — SOLID violations, unjustified coupling, duplication, unclear naming, dead code, leaked abstractions, missing or misleading comments where the WHY is non-obvious. On a tension between two of these practices, in a finding you report or dismiss: Fetch @sai/policies/code-quality-priority-stack.md and resolve it there; a reported finding names the result as `<winner> over <loser>`, each side `rule N <name>` or `project alignment`.
 7. **Testing** — Are new code paths covered? Do tests assert real behavior or just call the code? Are integration boundaries (DB, HTTP, queues) exercised where the project's convention requires it?
 8. **Consistency with Codebase** — Does the change follow the architectural patterns, naming, error handling, and logging conventions discoverable in the repo, and the `## Implementation Context` (Stack, Conventions, Avoid) in `tasks.md` when that file exists?

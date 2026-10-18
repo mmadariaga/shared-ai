@@ -468,7 +468,7 @@ test('E8g: N/A audits count as satisfied', () => {
 
   const result = derivePanelCells(statuses, yaml, auditFlags, '3/3');
   assert.equal(result.cells.review, 'N/A');
-  assert.equal(result.next, '/sai-8-accessibility');
+  assert.equal(result.next, '/sai-7-accessibility');
 });
 
 test('E9: bulk mode handles partial failure with degraded row', async () => {

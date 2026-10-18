@@ -12,9 +12,9 @@ Security, performance, and accessibility SHALL declare immutable five-step plans
 
 | Command | Ordered progress steps and completion conditions |
 | --- | --- |
-| `sai-6-security` | `resolve-security-scope` - Resolve security scope: selection, proposal gate, scope flags, and parent complete; `discover-module-map` - Discover modules and trust boundaries: ecosystems, modules, entry points, trust boundaries, SCA gate decision, and not-applicable decision complete; `resolve-sast-analysis` - Resolve SAST analysis: taint analysis, direct CWE mapping, and evidence-backed classification complete; `resolve-sca` - Audit dependencies: every manifest the SCA gate admitted is audited, or the step is reported with the SAST batch when the gate admits no manifest; `close-security-outcome` - Close security outcome: result and artifact verification complete |
-| `sai-7-performance` | `resolve-performance-scope` - Resolve performance scope and tier: selection, proposal gate, scope grammar, tier filter, and parent complete; `map-stack-hot-paths` - Map stack and hot paths: detection, baseline, mapping, and 500-LOC cutover complete; `audit-performance-tiers` - Resolve performance tier analysis: applicable backend, frontend, database, queue, and cross-cutting checks complete; `resolve-diagnostics` - Resolve diagnostics gate: authorization or applicability resolved, diagnostics run only when authorized; `close-performance-outcome` - Close performance outcome: result and artifact verification complete |
-| `sai-8-accessibility` | `resolve-accessibility-scope` - Resolve accessibility scope and runtime mode: selection, proposal gate, UI-scope/no-UI decision, runtime flag, and parent complete; `map-ui-framework` - Map UI components and framework: UI filtering, detection, component mapping, and delegation choice complete; `resolve-static-audit` - Resolve static accessibility audit: semantics, ARIA, keyboard/focus, forms, visual, media, and dynamic checks complete; `resolve-runtime-audit` - Resolve runtime-audit gate: runtime request, server confirmation, and per-command authorization resolved, checks run only when applicable; `close-accessibility-outcome` - Close accessibility outcome: result and artifact verification complete |
+| `sai-5-security` | `resolve-security-scope` - Resolve security scope: selection, proposal gate, scope flags, and parent complete; `discover-module-map` - Discover modules and trust boundaries: ecosystems, modules, entry points, trust boundaries, SCA gate decision, and not-applicable decision complete; `resolve-sast-analysis` - Resolve SAST analysis: taint analysis, direct CWE mapping, and evidence-backed classification complete; `resolve-sca` - Audit dependencies: every manifest the SCA gate admitted is audited, or the step is reported with the SAST batch when the gate admits no manifest; `close-security-outcome` - Close security outcome: result and artifact verification complete |
+| `sai-6-performance` | `resolve-performance-scope` - Resolve performance scope and tier: selection, proposal gate, scope grammar, tier filter, and parent complete; `map-stack-hot-paths` - Map stack and hot paths: detection, baseline, mapping, and 500-LOC cutover complete; `audit-performance-tiers` - Resolve performance tier analysis: applicable backend, frontend, database, queue, and cross-cutting checks complete; `resolve-diagnostics` - Resolve diagnostics gate: authorization or applicability resolved, diagnostics run only when authorized; `close-performance-outcome` - Close performance outcome: result and artifact verification complete |
+| `sai-7-accessibility` | `resolve-accessibility-scope` - Resolve accessibility scope and runtime mode: selection, proposal gate, UI-scope/no-UI decision, runtime flag, and parent complete; `map-ui-framework` - Map UI components and framework: UI filtering, detection, component mapping, and delegation choice complete; `resolve-static-audit` - Resolve static accessibility audit: semantics, ARIA, keyboard/focus, forms, visual, media, and dynamic checks complete; `resolve-runtime-audit` - Resolve runtime-audit gate: runtime request, server confirmation, and per-command authorization resolved, checks run only when applicable; `close-accessibility-outcome` - Close accessibility outcome: result and artifact verification complete |
 
 Adapters SHALL render through the shared policy and SHALL NOT add passes, tools, severities, or delegation units as steps. Completed steps SHALL receive closure-only Milestone Stamps from the marking response's `received_at`, not a clock call. The Idea Progress List remains separate.
 
@@ -23,17 +23,17 @@ Adapters SHALL render through the shared policy and SHALL NOT add passes, tools,
 - **THEN** its command declares no `progress_plan`: its steps are routed by the `review-steps@1` machine, which creates no task list, and the worker enumerates no progress ids
 
 #### Scenario: security declares its canonical plan
-- **WHEN** `sai-6-security` dispatches its worker
+- **WHEN** `sai-5-security` dispatches its worker
 - **THEN** its adapter declares the five security steps in the specified order with the specified labels
 - **AND** the worker enumerates the same five ids
 
 #### Scenario: performance declares its canonical plan
-- **WHEN** `sai-7-performance` dispatches its worker
+- **WHEN** `sai-6-performance` dispatches its worker
 - **THEN** its adapter declares the five performance steps in the specified order with the specified labels
 - **AND** the worker enumerates the same five ids
 
 #### Scenario: accessibility declares its canonical plan
-- **WHEN** `sai-8-accessibility` dispatches its worker
+- **WHEN** `sai-7-accessibility` dispatches its worker
 - **THEN** its adapter declares the five accessibility steps in the specified order with the specified labels
 - **AND** the worker enumerates the same five ids
 
@@ -43,7 +43,7 @@ Adapters SHALL render through the shared policy and SHALL NOT add passes, tools,
 - **AND** ids, labels, order, and states remain governed by `sai/policies/todo-structure.md`
 
 #### Scenario: security SCA step label
-- **WHEN** the `sai-6-security` plan is rendered
+- **WHEN** the `sai-5-security` plan is rendered
 - **THEN** the `resolve-sca` step carries the label "Audit dependencies" and keeps its id
 
 ### Requirement: audit-workers-report-completed-milestones

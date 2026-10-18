@@ -386,9 +386,9 @@ test('matrix retirement: active projections never source from retired per-phase 
   const workers = {
     spec: 'sai-1-spec-proposal-worker',
     design: 'sai-2-design-worker',
-    security: 'sai-6-security-worker',
-    performance: 'sai-7-performance-worker',
-    accessibility: 'sai-8-accessibility-worker',
+    security: 'sai-5-security-worker',
+    performance: 'sai-6-performance-worker',
+    accessibility: 'sai-7-accessibility-worker',
   };
   for (const harness of ['claude', 'opencode']) {
     const destinationRoot = {

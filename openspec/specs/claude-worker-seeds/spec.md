@@ -39,7 +39,7 @@ The worker-matrix Claude Code seeds for sai-commit-worker, sai-archive-worker, a
 
 ### Requirement: Remaining worker seeds match the selected OPUS preset
 
-The worker-matrix Claude Code seed for sai-1-spec-proposal-worker SHALL declare model sonnet with effort high. The sai-4-review-worker seed SHALL declare model opus with effort medium. The sai-6-security-worker, sai-7-performance-worker, and sai-8-accessibility-worker seeds SHALL declare model opus with effort medium. These settings SHALL match their worker entries in `sai/presets/claude/[sai-default]-OPUS.json`.
+The worker-matrix Claude Code seed for sai-1-spec-proposal-worker SHALL declare model sonnet with effort high. The sai-4-review-worker seed SHALL declare model opus with effort medium. The sai-5-security-worker, sai-6-performance-worker, and sai-7-accessibility-worker seeds SHALL declare model opus with effort medium. These settings SHALL match their worker entries in `sai/presets/claude/[sai-default]-OPUS.json`.
 
 #### Scenario: Spec proposal worker seed is observed
 - **WHEN** the installer materializes the Claude Code sai-1-spec-proposal-worker agent from the worker matrix
@@ -50,5 +50,5 @@ The worker-matrix Claude Code seed for sai-1-spec-proposal-worker SHALL declare 
 - **THEN** no sai-review-fix-worker agent is produced, because the Direct Build review-fix close retired with `/sai-5-review` and `/sai-review`
 
 #### Scenario: Implementation planning and audit worker seeds are observed
-- **WHEN** the installer materializes the Claude Code sai-4-review-worker, sai-6-security-worker, sai-7-performance-worker, and sai-8-accessibility-worker agents from the worker matrix
+- **WHEN** the installer materializes the Claude Code sai-4-review-worker, sai-5-security-worker, sai-6-performance-worker, and sai-7-accessibility-worker agents from the worker matrix
 - **THEN** all four agents declare model opus with effort medium, and no sai-3-implementation-worker agent is produced

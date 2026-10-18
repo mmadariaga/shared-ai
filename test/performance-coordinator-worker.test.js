@@ -35,7 +35,7 @@ test('Step 1 performance card uses neutral root protocols and retires flat canon
   for (const relativePath of [
     'sai/orchestration/coordinator-contract.md',
     'sai/orchestration/worker-lifecycle.md',
-    'sai/orchestration/workers/sai-7-performance-worker.md',
+    'sai/orchestration/workers/sai-6-performance-worker.md',
   ]) {
     assert.equal(fs.existsSync(path.join(repoRoot, relativePath)), false,
       `${relativePath} should be absent from the active source layout`);
@@ -202,11 +202,11 @@ test('performance step files and tier checklists follow the single-source layout
 });
 
 test('performance wrappers accept --runtime on both harnesses', () => {
-  for (const wrapper of ['commands/claude/sai-7-performance.md', 'commands/opencode/sai-7-performance.md']) {
+  for (const wrapper of ['commands/claude/sai-6-performance.md', 'commands/opencode/sai-6-performance.md']) {
     const description = artifact(wrapper).match(/^description:.*$/m)[0];
     assert.ok(description.includes('--runtime'), `${wrapper} description should name --runtime`);
   }
-  assert.match(artifact('commands/claude/sai-7-performance.md'), /^argument-hint:.*\[optional: --runtime\]/m);
+  assert.match(artifact('commands/claude/sai-6-performance.md'), /^argument-hint:.*\[optional: --runtime\]/m);
 });
 
 test('Step 3 Claude and opencode bindings route only their canonical performance worker', () => {
@@ -225,7 +225,7 @@ test('Step 3 Claude and opencode bindings route only their canonical performance
 
   for (const binding of surfaces) {
     const source = binding.binding;
-    assert.match(source, new RegExp(`${binding.mechanism}[\\s\\S]{0,100}sai-7-performance-worker`, 'i'),
+    assert.match(source, new RegExp(`${binding.mechanism}[\\s\\S]{0,100}sai-6-performance-worker`, 'i'),
       `${binding.name} binding should dispatch only its canonical worker`);
     assert.match(source, /original (InvocationEnvelope|envelope)/i,
       `${binding.name} dispatch should preserve the original envelope`);
@@ -259,9 +259,9 @@ test('performance transport carries only arguments_value and contract metadata a
     assert.doesNotMatch(source, /wrapper_echo_value/,
       'no performance transport surface may carry wrapper_echo_value');
   }
-  assert.match(bindings[0], /sai-7-performance-worker/);
+  assert.match(bindings[0], /sai-6-performance-worker/);
   assert.match(bindings[0], /Agent/);
-  assert.match(bindings[1], /sai-7-performance-worker/);
+  assert.match(bindings[1], /sai-6-performance-worker/);
   assert.match(bindings[1], /task/i);
 });
 
@@ -287,7 +287,7 @@ test('Step 3 coordinator preserves worker lifecycle results and owns the continu
 });
 
 test('Step 3 managed-agent identity and binding remain while forwarding skill sources are retired', () => {
-  const identity = 'sai-7-performance-worker';
+  const identity = 'sai-6-performance-worker';
   const surfaces = [
     matrixAgent('claude', 'performance'),
     matrixBinding('claude', 'performance'),
@@ -312,17 +312,17 @@ test('Step 4 routed performance wrappers fetch only their matching launcher and 
   const wrappers = [
     {
       name: 'Claude',
-      path: 'commands/claude/sai-7-performance.md',
+      path: 'commands/claude/sai-6-performance.md',
       model: /^model:\s*\S+$/m,
       setting: /^effort:\s*\S+$/m,
-      forbidden: /skills[\\/]opencode[\\/]sai-7-performance-worker|opencode-worker/i,
+      forbidden: /skills[\\/]opencode[\\/]sai-6-performance-worker|opencode-worker/i,
     },
     {
       name: 'opencode',
-      path: 'commands/opencode/sai-7-performance.md',
+      path: 'commands/opencode/sai-6-performance.md',
       model: /^model:\s*\S+#\S+$/m,
       setting: /^model:\s*\S+#\S+$/m,
-      forbidden: /skills[\\/]claude[\\/]sai-7-performance-worker|claude-worker/i,
+      forbidden: /skills[\\/]claude[\\/]sai-6-performance-worker|claude-worker/i,
       forbiddenVariant: /^variant:\s*\S+$/m,
     },
   ];
@@ -337,7 +337,7 @@ test('Step 4 routed performance wrappers fetch only their matching launcher and 
     }
     assert.match(source, /sai[\\/]commands[\\/]performance[\\/]command-bootstrap\.md/,
       `${wrapper.name} wrapper should fetch the performance launcher`);
-    assert.doesNotMatch(source, /Fetch @skills\/sai-7-performance-worker\/SKILL\.md/,
+    assert.doesNotMatch(source, /Fetch @skills\/sai-6-performance-worker\/SKILL\.md/,
       `${wrapper.name} wrapper should not fetch the worker forwarding skill`);
     assert.match(source, /\$ARGUMENTS/, `${wrapper.name} wrapper should preserve complete arguments`);
     assert.doesNotMatch(source, wrapper.forbidden,
